@@ -1,0 +1,29 @@
+{
+  "config_data": [
+    {
+      "module": "CIRCULATION",
+      "name": "renewals_allowed_count",
+      "description": "Limit the number of times a single item can be renewed",
+      "updated_by": "joe",
+      "update_date": "yyyy.mm.dd.hh.mm.ss",
+      "institution_id": "aaa",
+      "library_id": "vvv",
+      "row": [
+        {
+          "code": "UNDERGRAD",
+          "description": "for undergrads",
+          "default": true,
+          "enabled": true,
+          "value": 3
+        },
+        {
+          "code": "STAFF",
+          "description": "for staff",
+          "default": false,
+          "enabled": true,
+          "value": 6
+        }
+      ]
+    }
+  ]
+}

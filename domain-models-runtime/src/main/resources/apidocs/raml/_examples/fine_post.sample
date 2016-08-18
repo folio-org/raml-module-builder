@@ -1,0 +1,18 @@
+{
+  "fine_data": [
+    {
+      "fine_amount": 400,
+      "fine_outstanding": 100,
+      "fine_date": 1413879432450,
+      "fine_pay_in_full": false,
+      "fine_pay_in_partial": true,
+      "fine_note": "aaaaaa",
+      "item_id": "12345",
+      "patron_id": "1221212",
+       "fine_forgiven": {
+        "user": "the cool librarian",
+        "amount": "none"
+      }
+    }
+  ]
+}

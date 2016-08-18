@@ -1,0 +1,17 @@
+package rules 
+/* package MUST conform to the path of the file!!!!!! */
+
+import com.folio.rulez.Messages;
+
+rule "mvel Third Rule"
+
+no-loop
+
+dialect "mvel"
+
+when
+      m : Messages( status == Messages.HELLO, message : message )
+then
+      //System.out.println( message ); 
+      modify ( m ) { message = "Whatever" };
+end

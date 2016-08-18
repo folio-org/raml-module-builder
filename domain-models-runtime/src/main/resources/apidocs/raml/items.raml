@@ -1,0 +1,135 @@
+#%RAML 0.8
+title: Item
+version: v1
+baseUri: http://localhost:8081/apis
+protocols: [ HTTP ]
+
+documentation:
+  - title: Item API
+    content: <b>This documents the API calls that can be made for items to fulfill circulation functionality</b>
+
+schemas:
+ - item: !include _schemas/item.schema 
+ - fine:  !include _schemas/fine.schema
+ - item_request: !include  _schemas/item_request.schema 
+traits: 
+ - secured: !include traits/auth.raml
+ - orderable: !include traits/orderable.raml
+ - pageable:  !include traits/pageable.raml
+ - searchable: !include traits/searchable.raml
+ - display: !include traits/display.raml
+ - time-period: !include traits/time-period.raml
+ - item_id: !include traits/item_id.raml
+ - reason: !include traits/reason.raml
+ - payment: !include traits/payment.raml
+ - language: !include traits/language.raml
+
+resourceTypes: 
+ - collection: !include rtypes/collection.raml
+ - collection-item: !include rtypes/item-collection.raml
+ - get-only: !include rtypes/get-only.raml
+
+/items:
+  displayName: Items
+  description: Items services 
+  type:
+    collection:
+      exampleCollection: !include  _examples/item_get.sample
+      exampleItem: !include _examples/item_post.sample
+      schema: item
+  get:
+    is: [
+      searchable: {description: "with valid searchable fields: for example location", example: "[\"item_data.location.value\", \"STACK\", \"=\"]"},
+      orderable: {fieldsList: "field A, field B"},
+      pageable
+    ]
+    description: Return list of items
+  post:
+    description: Create an Item
+  /{itemId}:
+    type:
+      collection-item:
+        exampleItem: !include _examples/item_get.sample
+        schema: item
+    get:
+      is: [display: {view: "full"}]
+      
+    /fines:
+      displayName: Fees
+      type:
+        collection:
+          exampleCollection: !include  _examples/fine_get.sample
+          exampleItem: !include _examples/fine_post.sample
+          schema: fine
+      get:
+        is: [
+          searchable: {description: "with valid searchable fields: for example lastname", example: "[\"fine_data.fine_amount\", 400, \"=\"]"},
+          orderable: {fieldsList: "field A, field B"},
+          pageable
+        ] 
+      /{fineId}:
+        description:  <ul><li>Retrieves the fine for a particular item id and fine id<br><li>Update a fine for a specific item<br><li>Delete fineId belonging to ItemId<br><li>Pay, waive, or dispute a fine</ul>
+        type:
+          collection-item:
+            exampleItem: !include _examples/fine_get.sample
+            schema: fine
+        post:
+          description: Applies the operation specified in the query parameter to a specific fine.
+          is: [payment]
+          responses:
+            201:
+              description: "Returns a newly created item, with server-controlled fields like 'id' populated"
+              headers:
+                Location:
+                  description: URI to the created fine item
+              body:
+                application/json:
+                  example: !include _examples/fine_get.sample
+                  schema: fine
+            400:
+              description: "Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response."
+              body:
+                text/plain:
+                  example: |
+                    "unable to pay fine -- malformed JSON at 13:3"
+            500:
+              description: "Internal server error, e.g. due to misconfiguration"
+              body:
+                text/plain:
+                  example: "Internal server error, contact administrator"
+      
+      
+    /requests:
+      displayName: User requests
+      description:  <ul><li>Retrieve a list of requests made on an item<br><li>Add a request for an item</ul>
+      type:
+        collection:
+          exampleCollection: !include  _examples/item_request_post.sample
+          exampleItem: !include _examples/item_request_get.sample
+          schema: item_request
+      get:
+        is: [pageable]
+        queryParameters:
+          status:
+            description: |
+              Return requests that are either only active (default) or history of all requests (anonymized requests will not be returned) 
+            enum: [active, history]
+            required: true
+            default: active
+          request_type:
+            description: Filter by a specific request type
+            enum: [HOLD, DIGITIZATION, BOOKING, ALL]
+            required: false
+            default: ALL
+      post:
+        description: Create a request for a specific item id
+      /{requestId}:
+        displayName: RequestId
+        description: <ul><li>Retrieves the request for a particular item id and request id<br><li>Update a specific request for a specific item id<br><li>Cancel an item request</ul>
+        type:
+          collection-item:
+            exampleItem: !include _examples/item_request_get.sample  
+            schema: item_request
+        delete:
+          description: Cancel an item request
+          is: [reason]

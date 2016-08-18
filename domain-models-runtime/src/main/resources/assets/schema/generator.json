@@ -1,0 +1,89 @@
+{
+        "config": {
+            "jsBizlogicFilename": "acquisition_purchase.js",
+            "description": "Purchasing page",
+            "cachable": "false",
+            "params": {
+                "param": [
+                    "aaaa",
+                    "bbbb"
+                ]
+            }
+        },
+        "pageNameLabel": "Purchasing jobs",
+        "body": {
+            "frames": { 
+                "frame":  [{
+                    "frameHeader": "Purchasing status",
+                    "imports": {
+                        "type": "Tabs",
+                        "name": "purchase_tabs.xml",
+                        "selectedField": "selected_tab"
+                    },
+                    "isCollapsible": "false",
+                    "form": {
+                        "submitUrl": "/purchase/institution99/library54",
+                        "grid": {
+                            "type": "y",
+                            "value": "3"
+                        },
+                        "fields": {
+                            "exfield": [
+                            {
+                                "jsfile": "mycompnenet.js",
+                                "jsconfig": "configmycomponent.js",
+                                "params": {
+		                            "a": "b"
+		                        }
+                            }
+                            ],
+                            "field": [
+                                {
+                                    "componentLabel": "purchase.name",
+                                    "componentType": "Combobox",
+                                    "validationType": "String",
+                                    "componentCssClass": "label.css",
+                                    "populate": {
+                                        "populateUrl": "/purchase/institution99/library54",
+                                        "componentBizlogicFunction": "purchaseprocess"
+                                    },
+                                    "actions": {
+                                        "action": [{
+                                            "type": "onChange",
+                                            "url": "/purchase/institution99/library54",
+                                            "componentBizlogicFunction": "updateLabel",
+                                            "filters": {
+                                                "filterFunction": "removeCompleted"
+                                            },
+                                            "sort": ""
+                                        }]
+                                    },
+                                    "uiToolTip": "ToolTip"
+                                },
+                                {
+                                    "componentLabel": "purchase.name",
+                                    "componentType": "Combobox",
+                                    "validationType": "String",
+                                    "componentCssClass": "label.css",
+                                    "populateUrl": "/purchase/institution99/library54",
+                                    "uiToolTip": "ToolTip"
+                                },
+                                {
+                                    "componentLabel": "purchase.name",
+                                    "componentType": "Combobox",
+                                    "validationType": "String",
+                                    "componentCssClass": "label.css",
+                                    "populateUrl": "/purchase/institution99/library54",
+                                    "uiToolTip": "ToolTip"
+                                }
+                            ]
+                        }
+                    }
+                   
+                }
+                  ] 
+            }
+            
+         
+        }
+    }

@@ -1,0 +1,17 @@
+      queryParameters:
+        offset:
+          description: Skip over a number of elements by specifying an offset value for the query
+          type: integer
+          required: false
+          example: 0
+          default: 0
+          minimum: 0
+          maximum: 1000
+        limit:
+          description: Limit the number of elements returned in the response
+          type: integer
+          required: false
+          example: 10
+          default: 10
+          minimum: 1
+          maximum: 100

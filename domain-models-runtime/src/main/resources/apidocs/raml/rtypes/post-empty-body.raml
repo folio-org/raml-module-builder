@@ -1,0 +1,24 @@
+
+    is: [secured, language]
+    post:
+        responses:
+          201:
+            description: "Returns a newly created item, with server-controlled fields like 'id' populated"
+            headers:
+              Location:
+                description: URI to the created <<resourcePathName|!singularize>> item
+            body:
+              application/json:
+                example: <<exampleItem>>
+                schema: <<schema>>
+          400:
+            description: "Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response."
+            body:
+              text/plain:
+                example: |
+                  "unable to add <<resourcePathName|!singularize>> -- malformed JSON at 13:3"
+          500:
+            description: "Internal server error, e.g. due to misconfiguration"
+            body:
+              text/plain:
+                example: "Internal server error, contact administrator"

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+	version="2.0">
+
+	<persistence-unit name="mongoStore" transaction-type="RESOURCE_LOCAL">
+  <provider>org.hibernate.ogm.jpa.HibernateOgmPersistence</provider>
+	<properties>
+			<property name="hibernate.ogm.datastore.provider" value="mongodb" />
+			<property name="hibernate.ogm.datastore.database" value="indexd_test" />
+			<property name="hibernate.ogm.datastore.host" value="ec2-52-27-98-246.us-west-2.compute.amazonaws.com" />
+			<!-- <property name="hibernate.ogm.datastore.username" value="indexd" />
+			<property name="hibernate.ogm.datastore.password" value="indexd" />  -->
+			<property name="hibernate.ogm.datastore.port" value="27017"/>
+			<property name="hibernate.ogm.datastore.create_database" value="true" />
+			<property name="hibernate.ogm.datastore.document.association_storage" value="IN_ENTITY" />
+			<property name="hibernate.ogm.datastore.document.map_storage" value="BY_KEY" />
+			<property name="hibernate.ogm.mongodb.connection_timeout" value="10000" />
+			
+			 <!-- defines which JTA Transaction we plan to use -->
+            <property name="hibernate.transaction.jta.platform"
+                      value="org.hibernate.service.jta.platform.internal.JBossStandAloneJtaPlatform"/>
+
+		</properties>
+	</persistence-unit>
+</persistence>

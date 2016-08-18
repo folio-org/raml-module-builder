@@ -1,0 +1,15 @@
+{
+  "library_data": [
+    {
+      "library_code": "MyLib",
+      "full_library_code": "univ.inst.mylib",
+      "resource_sharing": false,
+      "name": "My Library",
+      "description": "aaaa",
+      "scope":{
+        "institution_id": "univ.inst",
+        "library_id": "mylib"
+      }
+    }
+  ]
+}

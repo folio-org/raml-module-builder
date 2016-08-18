@@ -1,0 +1,16 @@
+{
+  "item_request": [
+    {
+      "request_status": "NOT_STARTED",
+      "place_in_queue": 11,
+      "request_date": "2015-12-12",
+      "request_type": "HOLD|RECALL|MOVE|DIGITIZATION|BOOKING|ETC...",
+      "request_id": "00000000900111",
+      "pickup_location": "MATHLIB",
+      "item_id": "23344156380001021",
+      "bib_id": "13344156380001021",
+      "patron_id": "Me123"
+    }
+  ],
+  "total_record_count": 1
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "config_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          },
+          "update_date": {
+            "type": "string"
+          },
+          "scope": {
+            "type" : "object",
+            "properties": {
+              "institution_id": {
+                "type": "string"
+              },
+              "library_id": {
+                "type": "string"
+              }
+            }
+          },
+          "row": {
+            "type": "array",
+            "items": [
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "default": {
+                    "type": "boolean"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "value": {
+                    "type": "integer"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "module",
+          "name",
+          "description",
+          "institution_id",
+          "library_id"
+        ]
+      }
+    }
+  },
+  "required": [
+    "config_data"
+  ]
+}
