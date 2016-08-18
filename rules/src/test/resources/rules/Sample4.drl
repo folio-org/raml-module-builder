@@ -6,6 +6,7 @@ import com.folio.rulez.Messages2;
 
 rule "Mixed objects Rule"
 
+	//both statuses need to equal 0 for the 'then' to trigger
     when
         m1 : Messages1( m1.status  == 0)
         m2 : Messages2( m2.status  == 0)
