@@ -1,14 +1,11 @@
 package com.sling;
 
-import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import org.junit.After;
 import org.junit.Before;
@@ -28,7 +25,6 @@ import com.sling.rest.persist.PostgresClient;
 public class EmbeddedPostgresTest {
 
   private Vertx             vertx;
-  private ArrayList<String> urls;
   TestContext               context;
   Async                     async = null;
 
