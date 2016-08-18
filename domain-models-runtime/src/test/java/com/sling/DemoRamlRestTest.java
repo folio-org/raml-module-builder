@@ -79,55 +79,47 @@ public class DemoRamlRestTest {
   public void tearDown(TestContext context) {
     vertx.close(context.asyncAssertSuccess());
   }
-
+  
   /**
-   * just send a get request for books api - should be an empty result set so just
-   * check the returned status codes
+   * just send a get request for books api with and without the required author query param
+   * 1. one call should succeed and the other should fail (due to 
+   * validation aspect that should block the call and return 400)
    *
-   * @param context
-   *          the test context
+   * @param context - the test context
    */
   @Test
-  public void checkURLs(TestContext context) {
+  public void test(TestContext context){
+    checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
+    checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
+  }
+  
 
+  
+  public void checkURLs(TestContext context, String url, int codeExpected) {
     try {
         Async async = context.async();
         HttpMethod method = HttpMethod.GET;
         HttpClient client = vertx.createHttpClient();
         HttpClientRequest request = client.requestAbs(method, 
-          "http://localhost:" + port + "/apis/books", new Handler<HttpClientResponse>() {
-
+          url , new Handler<HttpClientResponse>() {
           @Override
           public void handle(HttpClientResponse httpClientResponse) {
 
-            if (httpClientResponse.statusCode() != 404) {
-              // this is cheating for now - add posts to the test case so that
-              // we dont get 404 for missing entities
-              context.assertInRange(200, httpClientResponse.statusCode(), 5);
+            if (httpClientResponse.statusCode() == codeExpected) {
+              context.assertTrue(true);
             }
-            // System.out.println(context.assertInRange(200, httpClientResponse.statusCode(),5).);
-            httpClientResponse.bodyHandler(new Handler<Buffer>() {
-              @Override
-              public void handle(Buffer buffer) {
-                /*
-                 * // System.out.println("Response (" // + buffer.length() // + "): ");
-                 */System.out.println(buffer.getString(0, buffer.length()));
-                async.complete();
-
-              }
-            });
+            async.complete();
           }
         });
         request.headers().add("Authorization", "abcdefg");
         request.headers().add("Accept", "application/json");
         request.setChunked(true);
         request.end();
-
-
     } catch (Throwable e) {
       e.printStackTrace();
     } finally {
 
     }
   }
+
 }

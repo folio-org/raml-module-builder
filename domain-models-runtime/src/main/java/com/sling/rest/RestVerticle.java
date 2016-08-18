@@ -592,11 +592,11 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, long beginTime) {
+    log.error(rc.request().absoluteURI() + " [ERROR] " + message);
     rc.response().setChunked(chunked);
     rc.response().setStatusCode(status);
     rc.response().write(message);
     rc.response().end();
-    log.error(rc.request().absoluteURI() + " [ERROR] " + message);
   }
 
 
