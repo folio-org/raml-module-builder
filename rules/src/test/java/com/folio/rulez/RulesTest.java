@@ -36,13 +36,35 @@ public class RulesTest {
       message.setMessage("Hello World");
       message.setStatus(Messages.HELLO);
       ksession.insert(message);
-      Assert.assertEquals(3, ksession.fireAllRules());
+      ksession.fireAllRules();
       Assert.assertEquals(5, message.getStatus());
     } catch (Throwable t) {
       t.printStackTrace();
       throw t;
     }
   }
+  
+  @Test
+  public final void check2ObjectsRule() throws Exception {
+    try {
+      final Messages1 message = new Messages1();
+      message.setMessage("Hello World");
+      message.setStatus(0);
+      final Messages2 message2 = new Messages2();
+      message2.setMessage("Hello World");
+      message2.setStatus(0);
+      ksession.insert(message);
+      ksession.insert(message2);
+      ksession.fireAllRules();
+      Assert.assertEquals(5, message.getStatus());
+      Assert.assertEquals(5, message2.getStatus());
+
+    } catch (Throwable t) {
+      t.printStackTrace();
+      throw t;
+    }
+  }
+  
   
   @Test
   public final void checkRuleWithAgenda() throws Exception {
