@@ -1,0 +1,11 @@
+{
+  "config_data": [
+    {
+      "module": "CIRCULATION",
+      "name": "renewals_allowed_count",
+      "description": "Limit the number of times a single item can be renewed",
+      "institution_id": "aaa",
+      "library_id": "vvv"
+    }
+  ]
+}

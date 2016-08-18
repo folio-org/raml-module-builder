@@ -1,0 +1,97 @@
+#%RAML 0.8
+title: Bib
+version: v1
+baseUri: http://localhost:8081/apis
+protocols: [ HTTP ]
+
+documentation:
+  - title: Bib API in the circulation context
+    content: <b>This documents the API calls that can be made for bibs to fulfill circulation functionality</b>
+
+schemas:
+ - bib: !include _schemas/bib.schema
+ - item: !include _schemas/item.schema 
+ - item_request: !include  _schemas/item_request.schema 
+traits: 
+ - secured: !include traits/auth.raml
+ - orderable: !include traits/orderable.raml
+ - pageable:  !include traits/pageable.raml
+ - searchable: !include traits/searchable.raml
+ - display: !include traits/display.raml
+ - time-period: !include traits/time-period.raml
+ - language: !include traits/language.raml 
+resourceTypes: 
+ - collection: !include rtypes/collection.raml
+ - collection-item: !include rtypes/item-collection.raml
+     
+/bibs:
+  displayName: Bibs
+  type:
+    collection:
+      exampleCollection: !include  _examples/bib_get.sample
+      exampleItem: !include _examples/bib_post.sample
+      schema: bib
+  get:
+    is: [
+      searchable: {description: "with valid searchable fields: for example fieldA", example: "[\"bib_data.bib_view.Title\", \"Of Mice And Men\", \"=\"]"},
+      orderable: {fieldsList: "field A, field B"},
+      pageable,
+      display: {view: "brief"}
+    ] 
+  /{bibId}:
+    type:
+      collection-item:
+        exampleItem: !include _examples/bib_get.sample
+        schema: bib
+    get:
+      is: [
+        display: {view: "[brief] or [full]"}
+      ]
+    delete:
+      responses:
+        409:
+         description: "Unable to delete bib. Item is linked to this bib"
+    /requests:
+      description: Bib level requests. <ul><li>List of requests per the given bib</li><li>Add request per given bib</li></ul>
+      type:
+        collection:
+          exampleCollection: !include  _examples/item_request_get.sample
+          exampleItem: !include _examples/item_request_post.sample
+          schema: item_request
+      get:
+        is: [pageable]
+        queryParameters:
+          status:
+            description: |
+              Return requests that are either only active (default) or history of all requests (anonymized requests will not be returned) 
+            enum: [active, history]
+            required: true
+            default: active
+          request_type:
+            description: Filter by a specific request type
+            enum: [HOLD, DIGITIZATION, BOOKING, ALL]
+            required: false
+            default: ALL
+      /{requestId}:
+        description: Bib level requests. <ul><li>Get s specific request per the given bib</li><li>Update request per given bib</li><li>Delete request per given bib.</li></ul>
+        type:
+          collection-item:
+            exampleItem: !include _examples/item_request_get.sample
+            schema: item_request
+    /items:
+      displayName: Items
+      description: Items services <br> <ul><li>Return list of items</li><li>Create an Item</li></ul>
+      type:
+        collection:
+          exampleCollection: !include  _examples/item_get.sample
+          exampleItem: !include _examples/item_post.sample
+          schema: item
+      get:
+        is: [pageable]
+      /{itemId}:
+        type:
+          collection-item:
+            exampleItem: !include _examples/item_get.sample
+            schema: item
+        get:
+          is: [display: {view: "full"}]

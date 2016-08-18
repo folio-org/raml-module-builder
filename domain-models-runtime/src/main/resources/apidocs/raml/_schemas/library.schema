@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "library_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "library_code": {
+            "type": "string"
+          },
+          "full_library_code": {
+            "type": "string"
+          },
+          "resource_sharing": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "scope": {
+            "type" : "object",
+            "properties": {
+              "institution_id": {
+                "type": "string"
+              },
+              "library_id": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "library_code",
+          "full_library_code",
+          "resource_sharing",
+          "name",
+          "description",
+          "scope"
+        ]
+      }
+    }
+  },
+  "required": [
+    "library_data"
+  ]
+}

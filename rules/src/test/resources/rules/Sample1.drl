@@ -1,0 +1,15 @@
+package rules
+/* package MUST conform to the path of the file!!!!!! */
+
+import com.folio.rulez.Messages;
+
+dialect "java"
+
+rule "java Second rule"
+
+when
+    a : Messages( a.status  == 0)
+then
+	a.setMessage("test");
+    //System.out.println(a.message);
+end

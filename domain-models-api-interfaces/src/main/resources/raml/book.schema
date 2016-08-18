@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "null"
+        },
+        "datetime": {
+          "type": "integer"
+        },
+        "genre": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "datetime",
+        "genre",
+        "author",
+        "link"
+      ]
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "data",
+    "success",
+    "status"
+  ]
+}

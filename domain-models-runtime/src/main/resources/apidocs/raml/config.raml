@@ -1,0 +1,59 @@
+#%RAML 0.8
+title: Configurations
+version: v1
+baseUri: http://localhost:8081/apis
+protocols: [ HTTP ]
+
+documentation:
+  - title: Configuration API updating system wide configurations
+    content: <b>This documents the API calls that can be made to update configurations in the system</b>
+
+
+schemas:
+ - configs: !include _schemas/kv_configuration.schema
+ - libraries: !include _schemas/library.schema
+
+traits: 
+ - secured: !include traits/auth.raml
+ - orderable: !include traits/orderable.raml
+ - pageable:  !include traits/pageable.raml
+ - searchable: !include traits/searchable.raml
+ - payment: !include traits/payment.raml
+ - barcode_id: !include traits/barcode_id.raml
+ - item_id: !include traits/item_id.raml
+ - reason: !include traits/reason.raml
+ - language: !include traits/language.raml
+resourceTypes: 
+ - collection: !include rtypes/collection.raml
+ - collection-item: !include rtypes/item-collection.raml
+ - post-empty-body: !include rtypes/post-empty-body.raml
+ - get-only: !include rtypes/get-only.raml
+
+/configurations:
+  /tables:
+    displayName: Configurations
+    description: <ul><li>Retrieve configurations for all modules associated with a specific institution.</li><li>Add a module to the configuration tables</li></ul><br>The JWT token limits the returned configurations to those of the calling institution
+    type:
+      collection:
+        schema: configs
+        exampleCollection: !include _examples/kv_configuration.sample
+        exampleItem: !include _examples/kv_configuration_module.sample
+    get:
+      is: [
+        searchable: {description: "with valid searchable fields: for example module = CIRCULATION", example: "[\"module\", \"CIRCULATION\", \"=\"]"},
+        orderable: {fieldsList: "module"},
+        pageable
+      ] 
+    /{tableId}:
+      displayName: Module configurations
+      description: <ul><li>Delete or Update a specific module from the configuration table<br>An example of this would be to add a configuration to the circulation table or to delete a configuration from the circulation table. The query parameters can be used to filter for the desired module's configuration</li><li>Get a the specified module's configurations</li></ul><br>The JWT token limits the returned configurations to those of the calling institution
+      type:
+        collection-item:
+          schema: configs
+          exampleItem: !include _examples/kv_configuration.sample
+      get:
+        is: [
+          searchable: {description: "with valid searchable fields: for example name = renewals_allowed_count", example: "[\"name\", \"renewals_allowed_count\", \"=\"]"},
+          orderable: {fieldsList: "module"},
+          pageable
+        ] 

@@ -1,0 +1,1134 @@
+<!DOCTYPE HTML><html><head><title>Bib API documentation</title><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta name="generator" content="https://github.com/kevinrenskers/raml2html 2.2.0"><link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.1/styles/default.min.css"><script type="text/javascript" src="https://code.jquery.com/jquery-1.11.0.min.js"></script><script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script><script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.1/highlight.min.js"></script><script type="text/javascript">
+      $(document).ready(function() {
+        $('.page-header pre code, .top-resource-description pre code').each(function(i, block) {
+          hljs.highlightBlock(block);
+        });
+
+        $('[data-toggle]').click(function() {
+          var selector = $(this).data('target') + ' pre code';
+          $(selector).each(function(i, block) {
+            hljs.highlightBlock(block);
+          });
+        });
+
+        // open modal on hashes like #_action_get
+        $(window).bind('hashchange', function(e) {
+          var anchor_id = document.location.hash.substr(1); //strip #
+          var element = $('#' + anchor_id);
+
+          // do we have such element + is it a modal?  --> show it
+          if (element.length && element.hasClass('modal')) {
+            element.modal('show');
+          }
+        });
+
+        // execute hashchange on first page load
+        $(window).trigger('hashchange');
+
+        // remove url fragment on modal hide
+        $('.modal').on('hidden.bs.modal', function() {
+          try {
+            if (history && history.replaceState) {
+                history.replaceState({}, '', '#');
+            }
+          } catch(e) {}
+        });
+      });
+    </script><style>
+      .hljs {
+        background: transparent;
+      }
+      .parent {
+        color: #999;
+      }
+      .list-group-item > .badge {
+        float: none;
+        margin-right: 6px;
+      }
+      .panel-title > .methods {
+        float: right;
+      }
+      .badge {
+        border-radius: 0;
+        text-transform: uppercase;
+        width: 70px;
+        font-weight: normal;
+        color: #f3f3f6;
+        line-height: normal;
+      }
+      .badge_get {
+        background-color: #63a8e2;
+      }
+      .badge_post {
+        background-color: #6cbd7d;
+      }
+      .badge_put {
+        background-color: #22bac4;
+      }
+      .badge_delete {
+        background-color: #d26460;
+      }
+      .badge_patch {
+        background-color: #ccc444;
+      }
+      .list-group, .panel-group {
+        margin-bottom: 0;
+      }
+      .panel-group .panel+.panel-white {
+        margin-top: 0;
+      }
+      .panel-group .panel-white {
+        border-bottom: 1px solid #F5F5F5;
+        border-radius: 0;
+      }
+      .panel-white:last-child {
+        border-bottom-color: white;
+        -webkit-box-shadow: none;
+        box-shadow: none;
+      }
+      .panel-white .panel-heading {
+        background: white;
+      }
+      .tab-pane ul {
+        padding-left: 2em;
+      }
+      .tab-pane h2 {
+        font-size: 1.2em;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #ddd;
+      }
+      .tab-pane h3 {
+        font-size: 1.1em;
+      }
+      .tab-content {
+        border-left: 1px solid #ddd;
+        border-right: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        padding: 10px;
+      }
+      #sidebar {
+        margin-top: 30px;
+        padding-right: 5px;
+        overflow: auto;
+        height: 90%;
+      }
+      .top-resource-description {
+        border-bottom: 1px solid #ddd;
+        background: #fcfcfc;
+        padding: 15px 15px 0 15px;
+        margin: -15px -15px 10px -15px;
+      }
+      .resource-description {
+        border-bottom: 1px solid #fcfcfc;
+        background: #fcfcfc;
+        padding: 15px 15px 0 15px;
+        margin: -15px -15px 10px -15px;
+      }
+      .resource-description p:last-child {
+        margin: 0;
+      }
+      .list-group .badge {
+        float: left;
+      }
+      .method_description {
+        margin-left: 85px;
+      }
+      .method_description p:last-child {
+        margin: 0;
+      }
+      .list-group-item {
+        cursor: pointer;
+      }
+      .list-group-item:hover {
+        background-color: #f5f5f5;
+      }
+    </style></head><body data-spy="scroll" data-target="#sidebar"><div class="container"><div class="row"><div class="col-md-9" role="main"><div class="page-header"><h1>Bib API documentation <small>version v1</small></h1><p>http://github.com/sling-incubator/lsp-apis</p><h3 id="Bib-API-in-the-circulation-context"><a href="#Bib-API-in-the-circulation-context">Bib API in the circulation context</a></h3><p><b>This documents the API calls that can be made for bibs to fulfill circulation functionality</b></p></div><div class="panel panel-default"><div class="panel-heading"><h3 id="bibs" class="panel-title">Bibs</h3></div><div class="panel-body"><div class="top-resource-description"><p>Collection of bib items.</p></div><div class="panel-group"><div class="panel panel-white"><div class="panel-heading"><h4 class="panel-title"><a class="collapsed" data-toggle="collapse" href="#panel_bibs"><span class="parent"></span>/bibs</a> <span class="methods"><a href="#bibs_get"><span class="badge badge_get">get</span></a> <a href="#bibs_post"><span class="badge badge_post">post</span></a></span></h4></div><div id="panel_bibs" class="panel-collapse collapse"><div class="panel-body"><div class="list-group"><div onclick="window.location.href = '#bibs_get'" class="list-group-item"><span class="badge badge_get">get</span><div class="method_description"><p>Retrieve a list of bib items.</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs_post'" class="list-group-item"><span class="badge badge_post">post</span><div class="method_description"><p>Create a new bib item.</p></div><div class="clearfix"></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs_get"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_get">get</span> <span class="parent"></span>/bibs</h4></div><div class="modal-body"><div class="alert alert-info"><p>Retrieve a list of bib items.</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs_get_request" data-toggle="tab">Request</a></li><li><a href="#bibs_get_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs_get_request"><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Query Parameters</h3><ul><li><strong>view</strong>: <em>(string)</em><p>displays a [brief] or [full] view of the returned entities - for example: show brief view of the entities</p></li><li><strong>offset</strong>: <em>(integer - maximum: 1000)</em><p>Skip over a number of elements by specifying an offset value for the query</p></li><li><strong>limit</strong>: <em>(integer - default: 10 - maximum: 100)</em><p>Limit the number of elements returned in the response</p><p><strong>Example</strong>:</p><pre><code>10</code></pre></li><li><strong>orderBy</strong>: <em>(string)</em><p>Order by field: field A, field B</p></li><li><strong>order</strong>: <em>(one of desc, asc - default: desc)</em><p>Order</p></li><li><strong>query</strong>: <em>(string)</em><p>JSON array [{"field1","value1","operator1"},{"field2","value2","operator2"},...,{"fieldN","valueN","operatorN"}] with valid searchable fields: for example fieldA</p><p><strong>Example</strong>:</p><pre>["Title", "Of Mice And Men", "="]
+</pre></li></ul></div><div class="tab-pane" id="bibs_get_response"><h2>HTTP status code <a href="http://httpstatus.es/200" target="_blank">200</a></h2><p>Returns a list of bib items</p><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bib_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bib_id": {
+            "type": "string"
+          },
+          "bib_view": {
+            "type": "object",
+            "properties": {
+              "Title": {
+                "type": "string"
+              },
+              "Author": {
+                "type": "string"
+              },
+              "publication_date": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "bib_id",
+          "bib_view"
+        ]
+      }
+    }
+  },
+  "required": [
+    "bib_data"
+  ]
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "bib_data": [
+    {
+      "bib_id": "23344156380001021",
+      "bib_view": {
+        "Title": "Of Mice And Men",
+        "Author": "J. Stienbeck",
+        "publication_date": "1413879432450",
+        "desc": "description"
+      }
+    }
+  ]
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>unable to list bibs -- malformed parameter &#39;query&#39;, syntax error at column 6</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs_post"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_post">post</span> <span class="parent"></span>/bibs</h4></div><div class="modal-body"><div class="alert alert-info"><p>Create a new bib item.</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs_post_request" data-toggle="tab">Request</a></li><li><a href="#bibs_post_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs_post_request"><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bib_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bib_id": {
+            "type": "string"
+          },
+          "bib_view": {
+            "type": "object",
+            "properties": {
+              "Title": {
+                "type": "string"
+              },
+              "Author": {
+                "type": "string"
+              },
+              "publication_date": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "bib_id",
+          "bib_view"
+        ]
+      }
+    }
+  },
+  "required": [
+    "bib_data"
+  ]
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "bib_data": [
+    {
+      "bib_view": {
+        "Title": "Of Mice And Men",
+        "Author": "J. Stienbeck",
+        "publication_date": "1413879432450",
+        "desc": "description"
+      }
+    }
+  ]
+}</code></pre></div><div class="tab-pane" id="bibs_post_response"><h2>HTTP status code <a href="http://httpstatus.es/201" target="_blank">201</a></h2><p>Returns a newly created item, with server-controlled fields like &#39;id&#39; populated</p><h3>Headers</h3><ul><li><strong>Location</strong>: <em>(string)</em><p>URI to the created bib item</p></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Example</strong>:</p><pre><code>{
+  "bib_data": [
+    {
+      "bib_id": "23344156380001021",
+      "bib_view": {
+        "Title": "Of Mice And Men",
+        "Author": "J. Stienbeck",
+        "publication_date": "1413879432450",
+        "desc": "description"
+      }
+    }
+  ]
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to add bib -- malformed JSON at 13:3"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Internal server error, contact administrator</code></pre></div></div></div></div></div></div></div><div class="panel panel-white"><div class="panel-heading"><h4 class="panel-title"><a class="collapsed" data-toggle="collapse" href="#panel_bibs__bibId_"><span class="parent">/bibs</span>/{bibId}</a> <span class="methods"><a href="#bibs__bibId__get"><span class="badge badge_get">get</span></a> <a href="#bibs__bibId__delete"><span class="badge badge_delete">delete</span></a> <a href="#bibs__bibId__put"><span class="badge badge_put">put</span></a></span></h4></div><div id="panel_bibs__bibId_" class="panel-collapse collapse"><div class="panel-body"><div class="resource-description"><p>Entity representing a bib</p></div><div class="list-group"><div onclick="window.location.href = '#bibs__bibId__get'" class="list-group-item"><span class="badge badge_get">get</span><div class="method_description"><p>Retrieve bib item with given {bibId}</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs__bibId__delete'" class="list-group-item"><span class="badge badge_delete">delete</span><div class="method_description"><p>Delete bib item with given {bibId}</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs__bibId__put'" class="list-group-item"><span class="badge badge_put">put</span><div class="method_description"><p>Update bib item with given {bibId}</p></div><div class="clearfix"></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__get"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_get">get</span> <span class="parent">/bibs</span>/{bibId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Retrieve bib item with given {bibId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__get_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__get_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__get_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Query Parameters</h3><ul><li><strong>view</strong>: <em>(string)</em><p>displays a [brief] or [full] view of the returned entities - for example: show [brief] or [full] view of the entities</p></li></ul></div><div class="tab-pane" id="bibs__bibId__get_response"><h2>HTTP status code <a href="http://httpstatus.es/200" target="_blank">200</a></h2><p>Returns item with a given ID</p><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bib_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bib_id": {
+            "type": "string"
+          },
+          "bib_view": {
+            "type": "object",
+            "properties": {
+              "Title": {
+                "type": "string"
+              },
+              "Author": {
+                "type": "string"
+              },
+              "publication_date": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "bib_id",
+          "bib_view"
+        ]
+      }
+    }
+  },
+  "required": [
+    "bib_data"
+  ]
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "bib_data": [
+    {
+      "bib_id": "23344156380001021",
+      "bib_view": {
+        "Title": "Of Mice And Men",
+        "Author": "J. Stienbeck",
+        "publication_date": "1413879432450",
+        "desc": "description"
+      }
+    }
+  ]
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"bib not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__delete"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_delete">delete</span> <span class="parent">/bibs</span>/{bibId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Delete bib item with given {bibId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__delete_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__delete_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__delete_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul></div><div class="tab-pane" id="bibs__bibId__delete_response"><h2>HTTP status code <a href="http://httpstatus.es/204" target="_blank">204</a></h2><p>Item deleted successfully</p><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to delete bib -- constraint violation"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"bib not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/409" target="_blank">409</a></h2><p>Unable to delete bib. Item is linked to this bib</p><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__put"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_put">put</span> <span class="parent">/bibs</span>/{bibId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Update bib item with given {bibId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__put_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__put_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__put_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bib_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bib_id": {
+            "type": "string"
+          },
+          "bib_view": {
+            "type": "object",
+            "properties": {
+              "Title": {
+                "type": "string"
+              },
+              "Author": {
+                "type": "string"
+              },
+              "publication_date": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "bib_id",
+          "bib_view"
+        ]
+      }
+    }
+  },
+  "required": [
+    "bib_data"
+  ]
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "bib_data": [
+    {
+      "bib_id": "23344156380001021",
+      "bib_view": {
+        "Title": "Of Mice And Men",
+        "Author": "J. Stienbeck",
+        "publication_date": "1413879432450",
+        "desc": "description"
+      }
+    }
+  ]
+}</code></pre></div><div class="tab-pane" id="bibs__bibId__put_response"><h2>HTTP status code <a href="http://httpstatus.es/204" target="_blank">204</a></h2><p>Item successfully updated</p><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to update bib -- malformed JSON at 13:4"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plainn</strong></p><p><strong>Example</strong>:</p><pre><code>"bib not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div></div><div class="panel panel-white"><div class="panel-heading"><h4 class="panel-title"><a class="collapsed" data-toggle="collapse" href="#panel_bibs__bibId__requests"><span class="parent">/bibs/{bibId}</span>/requests</a> <span class="methods"><a href="#bibs__bibId__requests_get"><span class="badge badge_get">get</span></a> <a href="#bibs__bibId__requests_post"><span class="badge badge_post">post</span></a></span></h4></div><div id="panel_bibs__bibId__requests" class="panel-collapse collapse"><div class="panel-body"><div class="resource-description"><p>Bib level requests.<ul><li>List of requests per the given bib</li><li>Add request per given bib</li></ul></p></div><div class="list-group"><div onclick="window.location.href = '#bibs__bibId__requests_get'" class="list-group-item"><span class="badge badge_get">get</span><div class="method_description"><p>Retrieve a list of request items.</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs__bibId__requests_post'" class="list-group-item"><span class="badge badge_post">post</span><div class="method_description"><p>Create a new request item.</p></div><div class="clearfix"></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__requests_get"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_get">get</span> <span class="parent">/bibs/{bibId}</span>/requests</h4></div><div class="modal-body"><div class="alert alert-info"><p>Retrieve a list of request items.</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__requests_get_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__requests_get_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__requests_get_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Query Parameters</h3><ul><li><strong>offset</strong>: <em>(integer - maximum: 1000)</em><p>Skip over a number of elements by specifying an offset value for the query</p></li><li><strong>limit</strong>: <em>(integer - default: 10 - maximum: 100)</em><p>Limit the number of elements returned in the response</p><p><strong>Example</strong>:</p><pre><code>10</code></pre></li><li><strong>status</strong>: <em>required (one of active, history - default: active)</em><p>Return requests that are either only active (default) or history of all requests (anonymized requests will not be returned)</p></li><li><strong>request_type</strong>: <em>(one of HOLD, DIGITIZATION, BOOKING, ALL - default: ALL)</em><p>Filter by a specific request type</p></li></ul></div><div class="tab-pane" id="bibs__bibId__requests_get_response"><h2>HTTP status code <a href="http://httpstatus.es/200" target="_blank">200</a></h2><p>Returns a list of request items</p><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_request": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "request_status": {
+            "type": "string"
+          },
+          "place_in_queue": {
+            "type": "integer"
+          },
+          "request_date": {
+            "type": "string"
+          },
+          "request_type": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "pickup_location": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "patron_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "item_id",
+          "patron_id"
+        ]
+      }
+    },
+    "total_record_count": {
+      "type": "integer"
+    }
+  }
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "item_request": [
+    {
+      "request_status": "NOT_STARTED",
+      "place_in_queue": 11,
+      "request_date": "2015-12-12",
+      "request_type": "HOLD|RECALL|MOVE|DIGITIZATION|BOOKING|ETC...",
+      "request_id": "00000000900111",
+      "pickup_location": "MATHLIB",
+      "item_id": "23344156380001021",
+      "bib_id": "13344156380001021",
+      "patron_id": "Me123"
+    }
+  ],
+  "total_record_count": 1
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>unable to list requests -- malformed parameter &#39;query&#39;, syntax error at column 6</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__requests_post"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_post">post</span> <span class="parent">/bibs/{bibId}</span>/requests</h4></div><div class="modal-body"><div class="alert alert-info"><p>Create a new request item.</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__requests_post_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__requests_post_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__requests_post_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_request": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "request_status": {
+            "type": "string"
+          },
+          "place_in_queue": {
+            "type": "integer"
+          },
+          "request_date": {
+            "type": "string"
+          },
+          "request_type": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "pickup_location": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "patron_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "item_id",
+          "patron_id"
+        ]
+      }
+    },
+    "total_record_count": {
+      "type": "integer"
+    }
+  }
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "item_request": [
+    {
+      "request_status": "NOT_STARTED",
+      "place_in_queue": 11,
+      "request_date": "2015-12-12",
+      "request_type": "HOLD|RECALL|MOVE|DIGITIZATION|BOOKING|ETC...",
+      "pickup_location": "MATHLIB",
+      "item_id": "23344156380001021",
+      "bib_id": "13344156380001021",
+      "patron_id": "Me123"
+    }
+  ],
+  "total_record_count": 1
+}</code></pre></div><div class="tab-pane" id="bibs__bibId__requests_post_response"><h2>HTTP status code <a href="http://httpstatus.es/201" target="_blank">201</a></h2><p>Returns a newly created item, with server-controlled fields like &#39;id&#39; populated</p><h3>Headers</h3><ul><li><strong>Location</strong>: <em>(string)</em><p>URI to the created request item</p></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Example</strong>:</p><pre><code>{
+  "item_request": [
+    {
+      "request_status": "NOT_STARTED",
+      "place_in_queue": 11,
+      "request_date": "2015-12-12",
+      "request_type": "HOLD|RECALL|MOVE|DIGITIZATION|BOOKING|ETC...",
+      "request_id": "00000000900111",
+      "pickup_location": "MATHLIB",
+      "item_id": "23344156380001021",
+      "bib_id": "13344156380001021",
+      "patron_id": "Me123"
+    }
+  ],
+  "total_record_count": 1
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to add request -- malformed JSON at 13:3"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Internal server error, contact administrator</code></pre></div></div></div></div></div></div></div><div class="panel panel-white"><div class="panel-heading"><h4 class="panel-title"><a class="collapsed" data-toggle="collapse" href="#panel_bibs__bibId__requests__requestId_"><span class="parent">/bibs/{bibId}/requests</span>/{requestId}</a> <span class="methods"><a href="#bibs__bibId__requests__requestId__get"><span class="badge badge_get">get</span></a> <a href="#bibs__bibId__requests__requestId__delete"><span class="badge badge_delete">delete</span></a> <a href="#bibs__bibId__requests__requestId__put"><span class="badge badge_put">put</span></a></span></h4></div><div id="panel_bibs__bibId__requests__requestId_" class="panel-collapse collapse"><div class="panel-body"><div class="resource-description"><p>Bib level requests.<ul><li>Get s specific request per the given bib</li><li>Update request per given bib</li><li>Delete request per given bib.</li></ul></p></div><div class="list-group"><div onclick="window.location.href = '#bibs__bibId__requests__requestId__get'" class="list-group-item"><span class="badge badge_get">get</span><div class="method_description"><p>Retrieve request item with given {requestId}</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs__bibId__requests__requestId__delete'" class="list-group-item"><span class="badge badge_delete">delete</span><div class="method_description"><p>Delete request item with given {requestId}</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs__bibId__requests__requestId__put'" class="list-group-item"><span class="badge badge_put">put</span><div class="method_description"><p>Update request item with given {requestId}</p></div><div class="clearfix"></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__requests__requestId__get"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_get">get</span> <span class="parent">/bibs/{bibId}/requests</span>/{requestId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Retrieve request item with given {requestId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__requests__requestId__get_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__requests__requestId__get_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__requests__requestId__get_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li><li><strong>requestId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul></div><div class="tab-pane" id="bibs__bibId__requests__requestId__get_response"><h2>HTTP status code <a href="http://httpstatus.es/200" target="_blank">200</a></h2><p>Returns item with a given ID</p><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_request": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "request_status": {
+            "type": "string"
+          },
+          "place_in_queue": {
+            "type": "integer"
+          },
+          "request_date": {
+            "type": "string"
+          },
+          "request_type": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "pickup_location": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "patron_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "item_id",
+          "patron_id"
+        ]
+      }
+    },
+    "total_record_count": {
+      "type": "integer"
+    }
+  }
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "item_request": [
+    {
+      "request_status": "NOT_STARTED",
+      "place_in_queue": 11,
+      "request_date": "2015-12-12",
+      "request_type": "HOLD|RECALL|MOVE|DIGITIZATION|BOOKING|ETC...",
+      "request_id": "00000000900111",
+      "pickup_location": "MATHLIB",
+      "item_id": "23344156380001021",
+      "bib_id": "13344156380001021",
+      "patron_id": "Me123"
+    }
+  ],
+  "total_record_count": 1
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"request not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__requests__requestId__delete"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_delete">delete</span> <span class="parent">/bibs/{bibId}/requests</span>/{requestId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Delete request item with given {requestId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__requests__requestId__delete_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__requests__requestId__delete_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__requests__requestId__delete_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li><li><strong>requestId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul></div><div class="tab-pane" id="bibs__bibId__requests__requestId__delete_response"><h2>HTTP status code <a href="http://httpstatus.es/204" target="_blank">204</a></h2><p>Item deleted successfully</p><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to delete request -- constraint violation"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"request not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__requests__requestId__put"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_put">put</span> <span class="parent">/bibs/{bibId}/requests</span>/{requestId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Update request item with given {requestId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__requests__requestId__put_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__requests__requestId__put_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__requests__requestId__put_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li><li><strong>requestId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_request": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "request_status": {
+            "type": "string"
+          },
+          "place_in_queue": {
+            "type": "integer"
+          },
+          "request_date": {
+            "type": "string"
+          },
+          "request_type": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "pickup_location": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "patron_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "item_id",
+          "patron_id"
+        ]
+      }
+    },
+    "total_record_count": {
+      "type": "integer"
+    }
+  }
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "item_request": [
+    {
+      "request_status": "NOT_STARTED",
+      "place_in_queue": 11,
+      "request_date": "2015-12-12",
+      "request_type": "HOLD|RECALL|MOVE|DIGITIZATION|BOOKING|ETC...",
+      "request_id": "00000000900111",
+      "pickup_location": "MATHLIB",
+      "item_id": "23344156380001021",
+      "bib_id": "13344156380001021",
+      "patron_id": "Me123"
+    }
+  ],
+  "total_record_count": 1
+}</code></pre></div><div class="tab-pane" id="bibs__bibId__requests__requestId__put_response"><h2>HTTP status code <a href="http://httpstatus.es/204" target="_blank">204</a></h2><p>Item successfully updated</p><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to update request -- malformed JSON at 13:4"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plainn</strong></p><p><strong>Example</strong>:</p><pre><code>"request not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div></div><div class="panel panel-white"><div class="panel-heading"><h4 class="panel-title"><a class="collapsed" data-toggle="collapse" href="#panel_bibs__bibId__items"><span class="parent">/bibs/{bibId}</span>/items</a> <span class="methods"><a href="#bibs__bibId__items_get"><span class="badge badge_get">get</span></a> <a href="#bibs__bibId__items_post"><span class="badge badge_post">post</span></a></span></h4></div><div id="panel_bibs__bibId__items" class="panel-collapse collapse"><div class="panel-body"><div class="resource-description"><p>Items services<br><ul><li>Return list of items</li><li>Create an Item</li></ul></p></div><div class="list-group"><div onclick="window.location.href = '#bibs__bibId__items_get'" class="list-group-item"><span class="badge badge_get">get</span><div class="method_description"><p>Retrieve a list of item items.</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs__bibId__items_post'" class="list-group-item"><span class="badge badge_post">post</span><div class="method_description"><p>Create a new item item.</p></div><div class="clearfix"></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__items_get"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_get">get</span> <span class="parent">/bibs/{bibId}</span>/items</h4></div><div class="modal-body"><div class="alert alert-info"><p>Retrieve a list of item items.</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__items_get_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__items_get_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__items_get_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Query Parameters</h3><ul><li><strong>offset</strong>: <em>(integer - maximum: 1000)</em><p>Skip over a number of elements by specifying an offset value for the query</p></li><li><strong>limit</strong>: <em>(integer - default: 10 - maximum: 100)</em><p>Limit the number of elements returned in the response</p><p><strong>Example</strong>:</p><pre><code>10</code></pre></li></ul></div><div class="tab-pane" id="bibs__bibId__items_get_response"><h2>HTTP status code <a href="http://httpstatus.es/200" target="_blank">200</a></h2><p>Returns a list of item items</p><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{"$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "material_type": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              }
+            }
+          },
+          "copy_id": {
+            "type": "string"
+          },
+          "item_link": {
+            "type": "string"
+          },
+          "shelf_location": {
+            "type": "object",
+            "properties": {
+              "classification_number": {
+                "type": "string"
+              },
+              "shelf_listing_number": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "location",
+          "status",
+          "material_type",
+          "item_link",
+          "bib_id"
+        ]
+      }
+    }
+  },
+  "required": [
+    "item_data"
+  ]
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "item_data": [
+    {
+      "item_id": "23344156380001021",
+      "barcode": "39031031697261",
+      "location": {
+        "value": "STACK",
+        "desc": "Stacks (STACK)"
+      },
+      "status": {
+        "value": "01",
+        "desc": "ITEM_STATUS_MISSING"
+      },
+      "material_type": {
+        "value": "BOOK",
+        "desc": "Book",
+        "icon": "book.png"
+      },
+      "shelf_location": {
+        "classification_number": "1234567890",
+        "shelf_listing_number": "12345678"
+      },
+      "copy_id": "1",
+      "item_link": "/bibs/99100383909999/item/1234567890009999",
+      "bib_id": "99100383909999"
+    }
+  ]
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>unable to list items -- malformed parameter &#39;query&#39;, syntax error at column 6</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__items_post"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_post">post</span> <span class="parent">/bibs/{bibId}</span>/items</h4></div><div class="modal-body"><div class="alert alert-info"><p>Create a new item item.</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__items_post_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__items_post_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__items_post_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{"$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "material_type": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              }
+            }
+          },
+          "copy_id": {
+            "type": "string"
+          },
+          "item_link": {
+            "type": "string"
+          },
+          "shelf_location": {
+            "type": "object",
+            "properties": {
+              "classification_number": {
+                "type": "string"
+              },
+              "shelf_listing_number": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "location",
+          "status",
+          "material_type",
+          "item_link",
+          "bib_id"
+        ]
+      }
+    }
+  },
+  "required": [
+    "item_data"
+  ]
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "item_data": [
+    {
+      "barcode": "39031031697261",
+      "location": {
+        "value": "STACK",
+        "desc": "Stacks (STACK)"
+      },
+      "status": {
+        "value": "01",
+        "desc": "ITEM_STATUS_MISSING"
+      },
+      "material_type": {
+        "value": "BOOK",
+        "desc": "Book",
+        "icon": "book.png"
+      },
+      "shelf_location": {
+        "classification_number": "1234567890",
+        "shelf_listing_number": "12345678"
+      },
+      "copy_id": "1",
+      "item_link": "/bibs/99100383909999/item/1234567890009999",
+      "bib_id": "99100383909999"
+    }
+  ]
+}</code></pre></div><div class="tab-pane" id="bibs__bibId__items_post_response"><h2>HTTP status code <a href="http://httpstatus.es/201" target="_blank">201</a></h2><p>Returns a newly created item, with server-controlled fields like &#39;id&#39; populated</p><h3>Headers</h3><ul><li><strong>Location</strong>: <em>(string)</em><p>URI to the created item item</p></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Example</strong>:</p><pre><code>{
+  "item_data": [
+    {
+      "item_id": "23344156380001021",
+      "barcode": "39031031697261",
+      "location": {
+        "value": "STACK",
+        "desc": "Stacks (STACK)"
+      },
+      "status": {
+        "value": "01",
+        "desc": "ITEM_STATUS_MISSING"
+      },
+      "material_type": {
+        "value": "BOOK",
+        "desc": "Book",
+        "icon": "book.png"
+      },
+      "shelf_location": {
+        "classification_number": "1234567890",
+        "shelf_listing_number": "12345678"
+      },
+      "copy_id": "1",
+      "item_link": "/bibs/99100383909999/item/1234567890009999",
+      "bib_id": "99100383909999"
+    }
+  ]
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to add item -- malformed JSON at 13:3"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Internal server error, contact administrator</code></pre></div></div></div></div></div></div></div><div class="panel panel-white"><div class="panel-heading"><h4 class="panel-title"><a class="collapsed" data-toggle="collapse" href="#panel_bibs__bibId__items__itemId_"><span class="parent">/bibs/{bibId}/items</span>/{itemId}</a> <span class="methods"><a href="#bibs__bibId__items__itemId__get"><span class="badge badge_get">get</span></a> <a href="#bibs__bibId__items__itemId__delete"><span class="badge badge_delete">delete</span></a> <a href="#bibs__bibId__items__itemId__put"><span class="badge badge_put">put</span></a></span></h4></div><div id="panel_bibs__bibId__items__itemId_" class="panel-collapse collapse"><div class="panel-body"><div class="resource-description"><p>Entity representing a item</p></div><div class="list-group"><div onclick="window.location.href = '#bibs__bibId__items__itemId__get'" class="list-group-item"><span class="badge badge_get">get</span><div class="method_description"><p>Retrieve item item with given {itemId}</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs__bibId__items__itemId__delete'" class="list-group-item"><span class="badge badge_delete">delete</span><div class="method_description"><p>Delete item item with given {itemId}</p></div><div class="clearfix"></div></div><div onclick="window.location.href = '#bibs__bibId__items__itemId__put'" class="list-group-item"><span class="badge badge_put">put</span><div class="method_description"><p>Update item item with given {itemId}</p></div><div class="clearfix"></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__items__itemId__get"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_get">get</span> <span class="parent">/bibs/{bibId}/items</span>/{itemId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Retrieve item item with given {itemId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__items__itemId__get_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__items__itemId__get_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__items__itemId__get_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li><li><strong>itemId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Query Parameters</h3><ul><li><strong>view</strong>: <em>(string)</em><p>displays a [brief] or [full] view of the returned entities - for example: show full view of the entities</p></li></ul></div><div class="tab-pane" id="bibs__bibId__items__itemId__get_response"><h2>HTTP status code <a href="http://httpstatus.es/200" target="_blank">200</a></h2><p>Returns item with a given ID</p><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{"$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "material_type": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              }
+            }
+          },
+          "copy_id": {
+            "type": "string"
+          },
+          "item_link": {
+            "type": "string"
+          },
+          "shelf_location": {
+            "type": "object",
+            "properties": {
+              "classification_number": {
+                "type": "string"
+              },
+              "shelf_listing_number": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "location",
+          "status",
+          "material_type",
+          "item_link",
+          "bib_id"
+        ]
+      }
+    }
+  },
+  "required": [
+    "item_data"
+  ]
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "item_data": [
+    {
+      "item_id": "23344156380001021",
+      "barcode": "39031031697261",
+      "location": {
+        "value": "STACK",
+        "desc": "Stacks (STACK)"
+      },
+      "status": {
+        "value": "01",
+        "desc": "ITEM_STATUS_MISSING"
+      },
+      "material_type": {
+        "value": "BOOK",
+        "desc": "Book",
+        "icon": "book.png"
+      },
+      "shelf_location": {
+        "classification_number": "1234567890",
+        "shelf_listing_number": "12345678"
+      },
+      "copy_id": "1",
+      "item_link": "/bibs/99100383909999/item/1234567890009999",
+      "bib_id": "99100383909999"
+    }
+  ]
+}</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"item not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__items__itemId__delete"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_delete">delete</span> <span class="parent">/bibs/{bibId}/items</span>/{itemId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Delete item item with given {itemId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__items__itemId__delete_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__items__itemId__delete_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__items__itemId__delete_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li><li><strong>itemId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul></div><div class="tab-pane" id="bibs__bibId__items__itemId__delete_response"><h2>HTTP status code <a href="http://httpstatus.es/204" target="_blank">204</a></h2><p>Item deleted successfully</p><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to delete item -- constraint violation"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"item not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Internal server error, contact administrator</code></pre></div></div></div></div></div></div><div class="modal fade" tabindex="0" id="bibs__bibId__items__itemId__put"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button><h4 class="modal-title" id="myModalLabel"><span class="badge badge_put">put</span> <span class="parent">/bibs/{bibId}/items</span>/{itemId}</h4></div><div class="modal-body"><div class="alert alert-info"><p>Update item item with given {itemId}</p></div><ul class="nav nav-tabs"><li class="active"><a href="#bibs__bibId__items__itemId__put_request" data-toggle="tab">Request</a></li><li><a href="#bibs__bibId__items__itemId__put_response" data-toggle="tab">Response</a></li></ul><div class="tab-content"><div class="tab-pane active" id="bibs__bibId__items__itemId__put_request"><h3>URI Parameters</h3><ul><li><strong>bibId</strong>: <em>required (string)</em></li><li><strong>itemId</strong>: <em>required (string)</em></li></ul><h3>Headers</h3><ul><li><strong>Authorization</strong>: <em>required (string)</em><p>Used to send a valid JWT token.</p><p><strong>Example</strong>:</p><pre>Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+</pre></li></ul><h3>Body</h3><p><strong>Type: application/json</strong></p><p><strong>Schema</strong>:</p><pre><code>{"$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          },
+          "material_type": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              }
+            }
+          },
+          "copy_id": {
+            "type": "string"
+          },
+          "item_link": {
+            "type": "string"
+          },
+          "shelf_location": {
+            "type": "object",
+            "properties": {
+              "classification_number": {
+                "type": "string"
+              },
+              "shelf_listing_number": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "location",
+          "status",
+          "material_type",
+          "item_link",
+          "bib_id"
+        ]
+      }
+    }
+  },
+  "required": [
+    "item_data"
+  ]
+}</code></pre><p><strong>Example</strong>:</p><pre><code>{
+  "item_data": [
+    {
+      "item_id": "23344156380001021",
+      "barcode": "39031031697261",
+      "location": {
+        "value": "STACK",
+        "desc": "Stacks (STACK)"
+      },
+      "status": {
+        "value": "01",
+        "desc": "ITEM_STATUS_MISSING"
+      },
+      "material_type": {
+        "value": "BOOK",
+        "desc": "Book",
+        "icon": "book.png"
+      },
+      "shelf_location": {
+        "classification_number": "1234567890",
+        "shelf_listing_number": "12345678"
+      },
+      "copy_id": "1",
+      "item_link": "/bibs/99100383909999/item/1234567890009999",
+      "bib_id": "99100383909999"
+    }
+  ]
+}</code></pre></div><div class="tab-pane" id="bibs__bibId__items__itemId__put_response"><h2>HTTP status code <a href="http://httpstatus.es/204" target="_blank">204</a></h2><p>Item successfully updated</p><h2>HTTP status code <a href="http://httpstatus.es/400" target="_blank">400</a></h2><p>Bad request, e.g malformed request body or query parameter. Details of the error (e.g name of the parameter or line/character number with malformed data) provided in the response.</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>"unable to update item -- malformed JSON at 13:4"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/401" target="_blank">401</a></h2><p>No valid token found</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/403" target="_blank">403</a></h2><p>Access denied not valid privilage in resurces</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>Unauthorized</code></pre><h2>HTTP status code <a href="http://httpstatus.es/404" target="_blank">404</a></h2><p>Item with a given ID not found</p><h3>Body</h3><p><strong>Type: text/plainn</strong></p><p><strong>Example</strong>:</p><pre><code>"item not found"
+</code></pre><h2>HTTP status code <a href="http://httpstatus.es/500" target="_blank">500</a></h2><p>Internal server error, e.g. due to misconfiguration</p><h3>Body</h3><p><strong>Type: text/plain</strong></p><p><strong>Example</strong>:</p><pre><code>internal server error, contact administrator</code></pre></div></div></div></div></div></div></div></div></div></div></div><div class="col-md-3"><div id="sidebar" class="hidden-print affix" role="complementary"><ul class="nav nav-pills nav-stacked"><li><a href="#bibs">Bibs</a></li></ul></div></div></div></div></body></html>

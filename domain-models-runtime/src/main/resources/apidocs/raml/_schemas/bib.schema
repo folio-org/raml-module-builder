@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bib_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bib_id": {
+            "type": "string"
+          },
+          "bib_view": {
+            "type": "object",
+            "properties": {
+              "Title": {
+                "type": "string"
+              },
+              "Author": {
+                "type": "string"
+              },
+              "publication_date": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "bib_id",
+          "bib_view"
+        ]
+      }
+    }
+  },
+  "required": [
+    "bib_data"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "item_request": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "request_status": {
+            "type": "string"
+          },
+          "place_in_queue": {
+            "type": "integer"
+          },
+          "request_date": {
+            "type": "string"
+          },
+          "request_type": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "pickup_location": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "bib_id": {
+            "type": "string"
+          },
+          "patron_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "item_id",
+          "patron_id"
+        ]
+      }
+    },
+    "total_record_count": {
+      "type": "integer"
+    }
+  }
+}

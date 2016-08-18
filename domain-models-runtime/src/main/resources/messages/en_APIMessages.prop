@@ -1,0 +1,16 @@
+#error_code , error_message
+#should be in a DB not in file - maybe initial copy in file
+
+#General
+10001=Internal Server Error, Please contact System Administrator or try again
+10002=Operation not supported
+10003=Unable to process request
+10004=Invalid parameters:
+10005=API resource does not support this HTTP method (verb)
+10006=Content-type requested does not match allowed type
+10007=Accept header does not match allowed Accept header for this request, can not send */*
+10008=Object does not exist
+
+#Circulation
+20002=Operation can not be calculated on a Null Amount
+20003=Unable to pay fine, amount is larger then owed
