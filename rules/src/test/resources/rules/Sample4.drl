@@ -1,0 +1,16 @@
+//created on: Aug 18, 2016
+package rules
+
+import com.folio.rulez.Messages1;
+import com.folio.rulez.Messages2;
+
+rule "Mixed objects Rule"
+
+    when
+        m1 : Messages1( m1.status  == 0)
+        m2 : Messages2( m2.status  == 0)
+    then
+        m1.setStatus(5);
+		m2.setStatus(5);
+end
+
