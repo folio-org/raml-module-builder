@@ -28,6 +28,7 @@ import io.vertx.ext.web.handler.StaticHandler;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -394,7 +395,20 @@ public class RestVerticle extends AbstractVerticle {
                           } else {
                             paramArray[order] = Integer.valueOf(param).intValue();
                           }
-                        } else { // enum object type
+                        } 
+                        else if (valueType.contains("BigDecimal")) {
+                          // cant pass null to an int type - replace with zero
+                          if (param == null) {
+                            if (defaultVal != null) {
+                              paramArray[order] = new BigDecimal((String) defaultVal);
+                            } else {
+                              paramArray[order] = new BigDecimal(0);
+                            }
+                          } else {
+                            paramArray[order] = new BigDecimal(param.replaceAll(",", "")); //big decimal can contain ","
+                          }
+                        }                         
+                        else { // enum object type
                           try {
                             String enumClazz = replaceLast(valueType, ".", "$");
                             Class<?> enumClazz1 = Class.forName(enumClazz);
