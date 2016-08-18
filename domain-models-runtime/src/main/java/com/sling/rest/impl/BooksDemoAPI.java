@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 
 import javax.ws.rs.core.Response;
 
+import com.sling.rest.annotations.Validate;
 import com.sling.rest.jaxrs.model.Book;
 import com.sling.rest.jaxrs.resource.BooksResource;
 
@@ -24,6 +25,11 @@ import com.sling.rest.jaxrs.resource.BooksResource;
  */
 public class BooksDemoAPI implements BooksResource {
 
+  
+  /**
+   * validate to test the validation aspect
+   */
+  @Validate
   @Override
   public void getBooks(String arg0, BigDecimal arg1, BigDecimal arg2, String arg3, Handler<AsyncResult<Response>> arg4, Context arg5)
       throws Exception {

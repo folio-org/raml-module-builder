@@ -201,7 +201,7 @@
 					<showWeaveInfo>false</showWeaveInfo>
 					<complianceLevel>1.8</complianceLevel>
 					<includes>
-						<include>**/PostgresClient.java</include>
+						<include>**/*.java</include>
 						<include>**/*.aj</include>
 					</includes>
 					<aspectDirectory>src/main/java/sling/rest/annotations</aspectDirectory>
