@@ -50,8 +50,8 @@ public class DemoRamlRestTest {
   private Vertx             vertx;
   private ArrayList<String> urls;
   int port;
+  
   /**
-   * Before executing our test, need to deploy our 2 verticles - the persistence verticle to write to mongo anf then the rest verticle.
    * <p/>
    * 
    * @param context
@@ -81,7 +81,8 @@ public class DemoRamlRestTest {
   }
 
   /**
-   * This method, iterates through the urls.csv and runs each url - currently only checking the returned status codes
+   * just send a get request for books api - should be an empty result set so just
+   * check the returned status codes
    *
    * @param context
    *          the test context
