@@ -523,10 +523,14 @@ public class RestVerticle extends AbstractVerticle {
                         // default to 8181.
                         p,
                         result -> {
-                          System.out.println("http server for apis and docs started on port " + p
-                                  + ", \ndocumentation availble at:     /apidocs/index.html?raml=raml/<name_of_raml>.raml");
+                          if (result.failed()) {
+                            startFuture.fail(result.cause());
+                          } else {
+                            System.out.println("http server for apis and docs started on port " + p + ".");
+                            System.out.println("documentation available at: /apidocs/index.html?raml=raml/<name_of_raml>.raml");
+                            startFuture.complete();
+                          }
                         });
-        startFuture.complete();
       }
     });
   }
