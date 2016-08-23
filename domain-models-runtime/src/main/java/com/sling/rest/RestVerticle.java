@@ -88,7 +88,7 @@ public class RestVerticle extends AbstractVerticle {
   private HttpServer                server;
   private static final ObjectMapper mapper                          = new ObjectMapper();
 
-  private static int                port                            = -1;                                                             // read
+  private int port = -1;
 
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
