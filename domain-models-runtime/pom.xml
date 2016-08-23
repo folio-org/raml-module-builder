@@ -149,7 +149,6 @@
 		<dependency>
 			<groupId>io.vertx</groupId>
 			<artifactId>vertx-mysql-postgresql-client</artifactId>
-			<version>3.3.2</version>
 		</dependency>
 	</dependencies>
 
