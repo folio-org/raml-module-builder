@@ -527,7 +527,8 @@ public class RestVerticle extends AbstractVerticle {
                             startFuture.fail(result.cause());
                           } else {
                             System.out.println("http server for apis and docs started on port " + p + ".");
-                            System.out.println("documentation available at: /apidocs/index.html?raml=raml/<name_of_raml>.raml");
+                            System.out.println("Documentation available at: "
+                                    + "http://localhost:" + Integer.toString(p) + "/apidocs/");
                             startFuture.complete();
                           }
                         });
