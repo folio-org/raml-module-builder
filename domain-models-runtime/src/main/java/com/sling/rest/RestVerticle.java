@@ -8,7 +8,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerRequest;
@@ -23,13 +22,11 @@ import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.CorsHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -509,31 +506,29 @@ public class RestVerticle extends AbstractVerticle {
          */
 
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
         if (port == -1) {
           port = config().getInteger("http.port", 8081);
         }
         Integer p = port;
         server = vertx
-          .createHttpServer()
-          .requestHandler(router::accept)
-          // router accepts request and will pass to next handler for
-          // specified path
+                .createHttpServer()
+                .requestHandler(router::accept)
+                // router accepts request and will pass to next handler for
+                // specified path
 
-          .listen(
-            // Retrieve the port from the configuration file - file needs to
-            // be passed as arg to command line,
-            // for example: -conf src/main/conf/my-application-conf.json
-            // default to 8181.
-            p,
-            result -> {
-              System.out.println("http server for apis and docs started on port " + p
-                  + ", \ndocumentation availble at:     /apidocs/index.html?raml=raml/<name_of_raml>.raml");
-            });
+                .listen(
+                        // Retrieve the port from the configuration file - file needs to
+                        // be passed as arg to command line,
+                        // for example: -conf src/main/conf/my-application-conf.json
+                        // default to 8181.
+                        p,
+                        result -> {
+                          System.out.println("http server for apis and docs started on port " + p
+                                  + ", \ndocumentation availble at:     /apidocs/index.html?raml=raml/<name_of_raml>.raml");
+                        });
         startFuture.complete();
       }
     });
-
   }
 
   /**
