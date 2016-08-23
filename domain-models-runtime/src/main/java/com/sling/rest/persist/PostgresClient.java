@@ -604,6 +604,7 @@ public class PostgresClient {
   }
 
   //@Timer
+  @SuppressWarnings("unchecked")
   public void mutate(Object conn, String sql, Handler<AsyncResult<String>> replyHandler){
     SQLConnection sqlConnection = (SQLConnection) ((io.vertx.core.Future<SQLConnection>) conn).result();
     try {
