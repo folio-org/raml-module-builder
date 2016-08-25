@@ -82,7 +82,7 @@ public class AnnotationGrabber {
     Collection<Object> classNames = Collections2.transform(classes, new Function<ClassPath.ClassInfo, Object>() {
       @Override
       public Object apply(ClassPath.ClassInfo input) {
-        System.out.println(input.getName());
+        System.out.println("Mapping functions in " + input.getName() +" class to appropriate urls");
         return input.getName(); // not needed - dont need transform function,
                                 // remove
       }
@@ -107,13 +107,13 @@ public class AnnotationGrabber {
         for (int i = 0; i < annotations.length; i++) {
           // get the annotation type - example in jersey would we javax.ws.rs.Path
           Class<? extends Annotation> type = annotations[i].annotationType();
-          System.out.println("Values of " + type.getName());
+          //System.out.println("Values of " + type.getName());
           // get the value of this specific annotation - for example /bibs is a
           // possible value for javax.ws.rs.Path - get value by invoking
           // function
           for (Method method : type.getDeclaredMethods()) {
             Object value = method.invoke(annotations[i], (Object[]) null);
-            System.out.println(" " + method.getName() + ": " + value);
+            //System.out.println(" " + method.getName() + ": " + value);
             // add entry with the actual url to this function - for example:
             // "url2class": "/apis/bibs/" - this will be concated to any method
             // url
@@ -138,14 +138,14 @@ public class AnnotationGrabber {
           // get annotations on the method and add all info per method to its
           // own methodObj
           Annotation[] methodAn = methods[i].getAnnotations();
-          System.out.println(methods[i].getName());
+          //System.out.println(methods[i].getName());
           // put the name of the function
           methodObj.put(FUNCTION_NAME, methods[i].getName());
           methodObj.put(METHOD_PARAMS, params);
           for (int j = 0; j < methodAn.length; j++) {
 
             Class<? extends Annotation> type = methodAn[j].annotationType();
-            System.out.println("Values of " + type.getName());
+            //System.out.println("Values of " + type.getName());
             if (POSSIBLE_HTTP_METHOD.contains(type.getName())) {
               // put the method - get or post, etc..
               methodObj.put(HTTP_METHOD, type.getName());
@@ -155,7 +155,7 @@ public class AnnotationGrabber {
               if (value.getClass().isArray()) {
                 List<Object> retList = new ArrayList<Object>();
                 for (int k = 0; k < Array.getLength(value); k++) {
-                  System.out.println(Array.get(value, k));
+                  //System.out.println(Array.get(value, k));
                   retList.add(Array.get(value, k));
                 }
                 // put generically things like consumes, produces as arrays
@@ -171,7 +171,7 @@ public class AnnotationGrabber {
                   methodObj.put(REGEX_URL, regexPath);
 
                 }
-                System.out.println(" " + method.getName() + ": " + value.toString());
+                //System.out.println(" " + method.getName() + ": " + value.toString());
               }
 
             }
