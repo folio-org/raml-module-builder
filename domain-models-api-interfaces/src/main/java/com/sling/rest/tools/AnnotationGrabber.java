@@ -74,6 +74,11 @@ public class AnnotationGrabber {
 
   public static void main(String args[]) throws Exception {
 
+    
+    if(args.length == 1){
+      //assume this is running via the GenerateRunner.class main, which means classes retrieved via...
+    }
+    
     JsonObject globalClassMapping = new JsonObject();
 
     // get classes in generated package
