@@ -690,7 +690,14 @@ public class RestVerticle extends AbstractVerticle {
 
   private MappedClasses populateConfig() {
     MappedClasses mappedURLs = new MappedClasses();
-    JsonObject jObjClasses = loadConfig(JSON_URL_MAPPINGS);
+    JsonObject jObjClasses = new JsonObject();
+    try {
+      jObjClasses.mergeIn(AnnotationGrabber.generateMappings());
+    } catch (Exception e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    } 
+    // loadConfig(JSON_URL_MAPPINGS);
     Set<String> classURLs = jObjClasses.fieldNames();
     classURLs.forEach(classURL -> {
       System.out.println(classURL);
