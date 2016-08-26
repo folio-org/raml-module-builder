@@ -141,28 +141,30 @@ public class Rules {
   
   private ArrayList<String> getRules(URI uri) throws Exception {
 
+    System.out.println("Getting rules from " + uri.toString());
     Path rulePath = null;
     ArrayList<String> list = new ArrayList<String>();
     FileSystem fileSystem = null;
     
-    if (!uri.isAbsolute()) {
-      fileSystem = null;
-      if (uri.getScheme().equals("jar")) {
-        try {
-          fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap());
-        } catch (FileSystemAlreadyExistsException e) {
-          fileSystem = FileSystems.getFileSystem(uri);
-          //e.printStackTrace();
-        }
-        rulePath = fileSystem.getPath(RULES_DIR_JAR);
-      } else {
-        uri = Rules.class.getClassLoader().getResource(RULES_DIR_IDE).toURI();
-        rulePath = Paths.get(uri);
+    //if (!uri.isAbsolute()) {
+    fileSystem = null;
+    if (uri.getScheme().equals("jar")) {
+      try {
+        fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap());
+      } catch (FileSystemAlreadyExistsException e) {
+        fileSystem = FileSystems.getFileSystem(uri);
+        //e.printStackTrace();
       }
-    }
-    else{
+      rulePath = fileSystem.getPath(RULES_DIR_JAR);
+    } 
+    else if(uri.isAbsolute()){
       rulePath = Paths.get(uri); 
+    }      
+    else {
+      uri = Rules.class.getClassLoader().getResource(RULES_DIR_IDE).toURI();
+      rulePath = Paths.get(uri);
     }
+    //}
     Stream<Path> walk = Files.walk(rulePath, 1);
     for (Iterator<Path> it = walk.iterator(); it.hasNext();) {
       Path file = it.next();
