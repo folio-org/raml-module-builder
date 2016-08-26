@@ -15,13 +15,18 @@ public class LoadConfs {
 
   public JsonObject loadConfig(String configFile) {
 
+    boolean loadDefault = true;
+    
     try {
       File file = new File(configFile);
-      byte[] jsonData;
+      byte[] jsonData = null;
       if (file.isAbsolute()) {
-        jsonData = ByteStreams.toByteArray(new FileInputStream(file));
+        if (file.exists()) {
+          jsonData = ByteStreams.toByteArray(new FileInputStream(file));
+          loadDefault = false;
+        }
       }
-      else{
+      if(loadDefault){
         jsonData = ByteStreams.toByteArray(getClass().getResourceAsStream(configFile));
       }
       return new JsonObject(new String(jsonData));

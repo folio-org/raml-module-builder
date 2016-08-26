@@ -116,7 +116,7 @@ public class MongoCRUD {
         System.out.println("Loading mongo-conf.json from " + configPath);
       }
       else{
-        System.out.println("Loading mongo-conf.json from default /resources/mongo-conf.json");
+        System.out.println("Loading mongo-conf.json from default " + path);
       }
       JsonObject jsonConf = new LoadConfs().loadConfig(path);
       if(jsonConf == null){
