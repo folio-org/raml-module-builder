@@ -195,8 +195,7 @@ public class RestVerticle extends AbstractVerticle {
 
                 // the url exists but the http method requested does not match a function
                 // meaning url+http method != a function
-                endRequestWithError(rc, 400, true, messages.getMessage("en", "10005"), start);
-                validRequest[0] = false;
+                endRequestWithError(rc, 400, true, messages.getMessage("en", "10005"), start, validRequest);
               }
               Class<?> aClass;
               try {
@@ -248,8 +247,7 @@ public class RestVerticle extends AbstractVerticle {
                     String contentType = StringUtils.defaultString(request.getHeader("Content-type"))
                         .replace(";", "").trim();
                     if (!consumes.contains(contentType)) {
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10006", consumes, contentType), start);
-                      validRequest[0] = false;
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10006", consumes, contentType), start, validRequest);
                     }
                   }
 
@@ -259,8 +257,7 @@ public class RestVerticle extends AbstractVerticle {
                     if (!doesContain(produces.getList(), accept)) {
                       // use contains because multiple values may be passed here
                       // for example json/application; text/plain mismatch of content type found
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10007", produces, accept), start);
-                      validRequest[0] = false;
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10007", produces, accept), start, validRequest);
                     }
                   }
 
@@ -332,8 +329,7 @@ public class RestVerticle extends AbstractVerticle {
                               for (ConstraintViolation<?> cv : validationErrors) {
                                 sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
                               }
-                              endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString(), start);
-                              validRequest[0] = false;
+                              endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString(), start, validRequest);
                             }
 
                             // complex rules validation here (drools) - after simpler validation rules pass -
@@ -351,15 +347,15 @@ public class RestVerticle extends AbstractVerticle {
                               }
                             } catch (Exception e) {
                               e.printStackTrace();
-                              endRequestWithError(rc, 400, true, e.getCause().getMessage(), start);
-                              validRequest[0] = false;
+                              endRequestWithError(rc, 400, true, e.getCause().getMessage(), start, validRequest);
+                              
                             }
                           }
                         }
                       } catch (Exception e) {
                         e.printStackTrace();
-                        endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), start);
-                        validRequest[0] = false;
+                        endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), start, validRequest);
+                        
                       }
                     } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
                       // handle header params - read the header field from the
@@ -472,13 +468,13 @@ public class RestVerticle extends AbstractVerticle {
                 }
               } catch (Exception e) {
                 e.printStackTrace();
-                endRequestWithError(rc, 400, true, messages.getMessage("en", "10003") + e.getMessage(), start);
+                endRequestWithError(rc, 400, true, messages.getMessage("en", "10003") + e.getMessage(), start, validRequest);
               }
             }
           }
           if (!validPath) {
             // invalid path
-            endRequestWithError(rc, 400, true, "invalid path", start);
+            endRequestWithError(rc, 400, true, "invalid path", start, validRequest);
           }
         } finally {
         }
@@ -553,7 +549,7 @@ public class RestVerticle extends AbstractVerticle {
     Response result = ((Response) ((AsyncResult<?>) v).result());
     if (result == null) {
       // catch all
-      endRequestWithError(rc, 500, true, "Server error", start);
+      endRequestWithError(rc, 500, true, "Server error", start,  new boolean[]{true});
       return;
     }
 
@@ -594,12 +590,16 @@ public class RestVerticle extends AbstractVerticle {
       .request().query(), rc.response().getStatusMessage());
   }
 
-  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, long beginTime) {
-    log.error(rc.request().absoluteURI() + " [ERROR] " + message);
-    rc.response().setChunked(chunked);
-    rc.response().setStatusCode(status);
-    rc.response().write(message);
-    rc.response().end();
+  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, long beginTime, boolean []isValid) {
+    if(isValid[0]){
+      log.error(rc.request().absoluteURI() + " [ERROR] " + message);
+      rc.response().setChunked(chunked);
+      rc.response().setStatusCode(status);
+      rc.response().write(message);
+      rc.response().end();
+    }
+    //once we are here the call is not valid
+    isValid[0] = false;
   }
 
 
@@ -628,7 +628,7 @@ public class RestVerticle extends AbstractVerticle {
       } catch (Throwable ee) {
         message = messages.getMessage("en", "10003");
       }
-      endRequestWithError(rc, 400, true, message, 0L);
+      endRequestWithError(rc, 400, true, message, 0L, new boolean[]{true});
     }
 
   });
