@@ -1,22 +1,23 @@
 package com.sling.rest.persist;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sling.rest.RestVerticle;
 import com.sling.rest.resource.utils.NetworkUtils;
 
-import de.flapdoodle.embed.mongo.MongodExecutable;
+import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
+import de.flapdoodle.embed.mongo.config.DownloadConfigBuilder;
+import de.flapdoodle.embed.mongo.config.ExtractedArtifactStoreBuilder;
 import de.flapdoodle.embed.mongo.config.IMongodConfig;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
+import de.flapdoodle.embed.mongo.config.RuntimeConfigBuilder;
 import de.flapdoodle.embed.mongo.distribution.Version;
+import de.flapdoodle.embed.process.config.IRuntimeConfig;
+import de.flapdoodle.embed.process.extract.UserTempNaming;
 import de.flapdoodle.embed.process.runtime.Network;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -46,7 +47,7 @@ public class MongoCRUD {
   public static final String        JSON_PROP_ENTITY        = "entity";
   public static final String        JSON_PROP_SORT          = "sort";
   public static final String        JSON_PROP_CLASS         = "clazz";
-  public static final MongodStarter MONGODB                 = MongodStarter.getDefaultInstance();
+  public static final MongodStarter MONGODB                 = getMongodStarter();
   private static MongodProcess mongoProcess;
   
   public static String MONGO_HOST = null;
@@ -96,6 +97,29 @@ public class MongoCRUD {
       }
     }
     return instance;
+  }
+
+  /**
+   * Return a MongodStarter with UserTempNaming() to avoid windows firewall dialog popups.
+   *
+   * Code taken from
+   * https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/blob/d67667f/README.md#usage---custom-mongod-filename
+   *
+   * @return the MongodStarter
+   */
+  private static final MongodStarter getMongodStarter() {
+    Command command = Command.MongoD;
+
+    IRuntimeConfig runtimeConfig = new RuntimeConfigBuilder()
+      .defaults(command)
+      .artifactStore(new ExtractedArtifactStoreBuilder()
+        .defaults(command)
+        .download(new DownloadConfigBuilder()
+          .defaultsForCommand(command).build())
+        .executableNaming(new UserTempNaming()))
+      .build();
+
+    return MongodStarter.getInstance(runtimeConfig);
   }
 
   private MongoClient init(Vertx vertx) throws Exception {
