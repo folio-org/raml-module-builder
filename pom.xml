@@ -28,7 +28,7 @@
 		<generated_files_path>${basedir}/src/main/java</generated_files_path>
 		<vertx-version>3.3.0</vertx-version>
 		<jackson-version>2.2.2</jackson-version>
-
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
 	<dependencies>
