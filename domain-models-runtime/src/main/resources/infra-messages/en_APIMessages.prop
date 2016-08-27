@@ -7,10 +7,6 @@
 10003=Unable to process request
 10004=Invalid parameters:
 10005=API resource does not support this HTTP method (verb)
-10006=Content-type requested does not match allowed type
-10007=Accept header does not match allowed Accept header for this request, can not send */*
+10006=Content-type header must be {0} but it is "{1}"
+10007=Accept header must be {0} for this request, but it is "{1}", can not send */*
 10008=Object does not exist
-
-#Circulation
-20002=Operation can not be calculated on a Null Amount
-20003=Unable to pay fine, amount is larger then owed

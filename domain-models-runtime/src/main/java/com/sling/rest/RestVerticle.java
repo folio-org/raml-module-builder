@@ -43,6 +43,7 @@ import javax.validation.Validation;
 import javax.validation.ValidatorFactory;
 import javax.ws.rs.core.Response;
 
+import org.apache.commons.lang3.StringUtils;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
 
@@ -238,25 +239,27 @@ public class RestVerticle extends AbstractVerticle {
                   JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
                   // what the api expects to get (content-type)
 
-                  // get the content type passed in the request
-                  String contentTypeRequested = request.getHeader("Content-type");
                   // check allowed content types in the raml for this resource + method
                   if (consumes != null && validRequest[0]) {
+                    // get the content type passed in the request
                     // if this was left out by the client they must add for request to return
                     // clean up simple stuff from the clients header - trim the string and remove ';' in case
                     // it was put there as a suffix
-                    if (contentTypeRequested == null || !consumes.contains(contentTypeRequested.trim().replace(";", ""))) {
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10006"), start);
+                    String contentType = StringUtils.defaultString(request.getHeader("Content-type"))
+                        .replace(";", "").trim();
+                    if (!consumes.contains(contentType)) {
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10006", consumes, contentType), start);
                       validRequest[0] = false;
                     }
                   }
-                  String acceptableContentRequested = request.getHeader("Accept");
+
                   // type of data expected to be returned by the server
                   if (produces != null && validRequest[0]) {
-                    if (acceptableContentRequested == null || !doesContain(produces.getList(), acceptableContentRequested)) {
+                    String accept = StringUtils.defaultString(request.getHeader("Accept"));
+                    if (!doesContain(produces.getList(), accept)) {
                       // use contains because multiple values may be passed here
                       // for example json/application; text/plain mismatch of content type found
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10007"), start);
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10007", produces, accept), start);
                       validRequest[0] = false;
                     }
                   }

@@ -8,6 +8,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,8 +18,9 @@ import java.util.stream.Stream;
 
 public class Messages {
 
-  public static final String      MESSAGES_DIR     = "messages";
-  public static final String      DEFAULT_LANGUAGE = "en";
+  public static final String      INFRA_MESSAGES_DIR     = "infra-messages";
+  public static final String      MESSAGES_DIR           = "messages";
+  public static final String      DEFAULT_LANGUAGE       = "en";
 
   // language + code = text
   private Map<String, Properties> messageMap       = new HashMap<>();
@@ -26,7 +28,7 @@ public class Messages {
   private Messages() {
 
     try {
-      loadMessages();
+      loadAllMessages();
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -43,14 +45,28 @@ public class Messages {
     return SingletonHelper.INSTANCE;
   }
 
-  // assume api messages are in English for now!!!
-  private void loadMessages() throws Exception {
-    System.out.println("Loading messages................................");
+  private void loadAllMessages() throws Exception {
 
-    URI uri = Messages.class.getClassLoader().getResource(MESSAGES_DIR).toURI();
+    //load messages from the runtime jar 
+    URI uri = Messages.class.getClassLoader().getResource(INFRA_MESSAGES_DIR).toURI();
     Path messagePath;
-
     FileSystem fileSystem = null;
+    try {
+      fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap());
+    } catch (FileSystemAlreadyExistsException e) {
+      fileSystem = FileSystems.getFileSystem(uri);
+      //e.printStackTrace();
+    }
+    messagePath = fileSystem.getPath(INFRA_MESSAGES_DIR);
+
+    loadMessages(messagePath);
+    if (fileSystem != null) {
+      fileSystem.close();
+    }
+    
+    //load project specific messages
+    uri = Messages.class.getClassLoader().getResource(MESSAGES_DIR).toURI();
+    
     if (uri.getScheme().equals("jar")) {
       
       try {
@@ -63,6 +79,13 @@ public class Messages {
     } else {
       messagePath = Paths.get(uri);
     }
+    loadMessages(messagePath);
+    
+  }
+  
+  // assume api messages are in English for now!!!
+  private void loadMessages(Path messagePath) throws Exception {
+
     Stream<Path> walk = Files.walk(messagePath, 1);
     for (Iterator<Path> it = walk.iterator(); it.hasNext();) {
       Path file = it.next();
@@ -72,23 +95,66 @@ public class Messages {
         continue;
       }
       String lang = name.substring(0, sep);
-      InputStream stream = getClass().getResourceAsStream("/" + MESSAGES_DIR + "/" + name);
+      System.out.println("Loading messages from "+ "/" + messagePath.getFileName().toString() + "/" + name +"................................");
+      InputStream stream = getClass().getResourceAsStream("/" + messagePath.getFileName().toString() + "/" + name);
       Properties properties = new Properties();
       properties.load(stream);
-      messageMap.put(lang, properties);
+      Properties existing = messageMap.get(lang);
+      if(existing == null){
+        messageMap.put(lang, properties);
+      }
+      else{
+        existing.putAll(properties);
+        messageMap.put(lang, existing);
+      }
     }
     walk.close();
-    if (fileSystem != null) {
-      fileSystem.close();
-    }
+
   }
 
+  /**
+   * Return the message from the properties file.
+   *
+   * @param language - the language of the properties file to search in
+   * @param code - message code
+   * @return the message, or null if not found
+   */
+  private String getMessageSingle(String language, String code) {
+    Properties properties = messageMap.get(language);
+    if (properties == null) {
+      return null;
+    }
+    return properties.getProperty(code);
+  }
+
+  /**
+   * Return the message from the properties file.
+   * @param language - the language of the properties file to search in. If not found, also tries
+   *                   the default language.
+   * @param code - message code
+   * @return the message, or null if not found
+   */
   public String getMessage(String language, String code) {
-    try {
-      return messageMap.get(language).getProperty(code, "Error");
-    } catch (Exception e) {
-      return messageMap.get(DEFAULT_LANGUAGE).getProperty(code, "Error");
+    String message = getMessageSingle(language, code);
+    if (message != null) {
+      return message;
     }
+    return getMessageSingle(DEFAULT_LANGUAGE, code);
   }
 
+  /**
+   * Return the message from the properties file.
+   * @param language  - the language of the properties file to search in. If not found, also tries
+   *                   the default language.
+   * @param code - message code
+   * @param messageArguments - message arguments to insert, see java.text.MessageFormat.format()
+   * @return the message with arguments inserted
+   */
+  public String getMessage(String language, String code, Object... messageArguments) {
+    String pattern = getMessage(language, code);
+    if (pattern == null) {
+      return "Error message not found: " + language + " " + code;
+    }
+    return MessageFormat.format(pattern, messageArguments);
+  }
 }
