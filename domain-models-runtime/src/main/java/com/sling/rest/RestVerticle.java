@@ -834,7 +834,7 @@ public class RestVerticle extends AbstractVerticle {
         if ("embed_mongo=true".equals(param)) {
           MongoCRUD.setIsEmbedded(true);
         }
-        else if (param.startsWith("http.port=")) {
+        else if (param.startsWith("-Dhttp.port=")) {
           port = Integer.parseInt(param.split("=")[1]);
           System.out.println("port to listen on " + port);
         } 
