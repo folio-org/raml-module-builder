@@ -61,8 +61,6 @@ import com.sling.rest.tools.AnnotationGrabber;
 import com.sling.rest.tools.Messages;
 
 public class RestVerticle extends AbstractVerticle {
-
-  private final Logger log = LoggerFactory.getLogger(getClass());
   
   public static final String        API_BUS_ADDRESS                 = "bus.api.rest";
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
@@ -88,6 +86,10 @@ public class RestVerticle extends AbstractVerticle {
 
   private int port = -1;
 
+  private static String className = RestVerticle.class.getName();
+  
+  private static final Logger log = LoggerFactory.getLogger(className);
+
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
   public static void main(String[] args) {
@@ -109,8 +111,8 @@ public class RestVerticle extends AbstractVerticle {
     
     cmdProcessing();
     
-    System.out.println("metrics enabled: " + vertx.isMetricsEnabled());
-
+    LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
+    
     MetricsService metricsService = MetricsService.create(vertx);
 
     // maps API_PATH_MAPPINGS file into java object for quick access
@@ -138,17 +140,19 @@ public class RestVerticle extends AbstractVerticle {
     runHook(vv -> {
       if (((Future) vv).failed()) {
         System.out.println("init failed, exiting.......");
+        LogUtil.formatErrorLogMessage(className, "start", "During verticle deployment, init failed, exiting......." + 
+            ((Future) vv).cause().getMessage());
         startFuture.fail(((Future) vv).cause().getMessage());
         vertx.close();
         System.exit(-1);
         // startFuture.fail(res.cause().toString());
       } else {
-        System.out.println("init succeeded.......");
-
+        LogUtil.formatLogMessage(className, "start", "init succeeded.......");
         // startup periodic if exists
         try {
           runPeriodicHook();
         } catch (Exception e2) {
+          log.error(e2.getMessage(), e2);
           e2.printStackTrace();
         }
 
@@ -346,13 +350,14 @@ public class RestVerticle extends AbstractVerticle {
                                 droolsSession.delete(handle);
                               }
                             } catch (Exception e) {
+                              log.error(e.getMessage(), e);
                               e.printStackTrace();
-                              endRequestWithError(rc, 400, true, e.getCause().getMessage(), start, validRequest);
-                              
+                              endRequestWithError(rc, 400, true, e.getCause().getMessage(), start, validRequest);                              
                             }
                           }
                         }
                       } catch (Exception e) {
+                        log.error(e.getMessage(), e);
                         e.printStackTrace();
                         endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), start, validRequest);
                         
@@ -433,12 +438,14 @@ public class RestVerticle extends AbstractVerticle {
                               }
                             }
                           } catch (Exception ee) {
+                            log.error(ee.getMessage(), ee);
                             ee.printStackTrace();
                             validRequest[0] = false;
                           }
                         }
 
                       } catch (Exception e) {
+                        log.error(e.getMessage(), e);
                         e.printStackTrace();
                         validRequest[0] = false;
                       }
@@ -455,10 +462,11 @@ public class RestVerticle extends AbstractVerticle {
                         try {
                           // result = methods[i].invoke(o, paramArray);
                           invoke(methods[i], paramArray, o, rc, v -> {
-                            System.out.println(" invoking " + function + " response id " + rc.response().hashCode());
+                            LogUtil.formatLogMessage(className, "start", " invoking " + function);
                             sendResponse(rc, v, start);
                           });
                         } catch (Exception e1) {
+                          log.error(e1.getMessage(), e1);
                           e1.printStackTrace();
                           rc.response().end();
                         }
@@ -467,6 +475,7 @@ public class RestVerticle extends AbstractVerticle {
                   }
                 }
               } catch (Exception e) {
+                log.error(e.getMessage(), e);
                 e.printStackTrace();
                 endRequestWithError(rc, 400, true, messages.getMessage("en", "10003") + e.getMessage(), start, validRequest);
               }
@@ -525,9 +534,9 @@ public class RestVerticle extends AbstractVerticle {
                           if (result.failed()) {
                             startFuture.fail(result.cause());
                           } else {
-                            System.out.println("http server for apis and docs started on port " + p + ".");
-                            System.out.println("Documentation available at: "
-                                    + "http://localhost:" + Integer.toString(p) + "/apidocs/");
+                            LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + p + ".");
+                            LogUtil.formatLogMessage(className, "start", "Documentation available at: "
+                                + "http://localhost:" + Integer.toString(p) + "/apidocs/");
                             startFuture.complete();
                           }
                         });
@@ -579,6 +588,7 @@ public class RestVerticle extends AbstractVerticle {
         response.write(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       }
     } catch (Exception e) {
+      log.error(e.getMessage(), e);
       e.printStackTrace();
     } finally {
       rc.response().end();
@@ -619,6 +629,7 @@ public class RestVerticle extends AbstractVerticle {
         // response.setChunked(true);
         // response.setStatusCode(((Response)result).getStatus());
     } catch (Exception e) {
+      log.error(e.getMessage(), e);
       e.printStackTrace();
       String message;
       try {
@@ -639,6 +650,7 @@ public class RestVerticle extends AbstractVerticle {
       byte[] jsonData = ByteStreams.toByteArray(getClass().getClassLoader().getResourceAsStream(configFile));
       return new JsonObject(new String(jsonData));
     } catch (IOException e) {
+      log.error(e.getMessage(), e);
       e.printStackTrace();
     }
     return new JsonObject();
@@ -682,6 +694,7 @@ public class RestVerticle extends AbstractVerticle {
           impl = clazz;
         }
       } catch (ClassNotFoundException e) {
+        log.error(e.getMessage(), e);
         e.printStackTrace();
       }
     }
@@ -697,7 +710,7 @@ public class RestVerticle extends AbstractVerticle {
     try {
       jObjClasses.mergeIn(AnnotationGrabber.generateMappings());
     } catch (Exception e) {
-      // TODO Auto-generated catch block
+      log.error(e.getMessage(), e);
       e.printStackTrace();
     } 
     // loadConfig(JSON_URL_MAPPINGS);
@@ -777,6 +790,7 @@ public class RestVerticle extends AbstractVerticle {
             Method method1 = aClass.getMethod("run", paramArray1);
             method1.invoke(aClass.newInstance(), vertx, vertx.getOrCreateContext());
           } catch (Exception e) {
+            log.error(e.getMessage(), e);
             e.printStackTrace();
           }
         }
@@ -836,22 +850,23 @@ public class RestVerticle extends AbstractVerticle {
         }
         else if (param.startsWith("-Dhttp.port=")) {
           port = Integer.parseInt(param.split("=")[1]);
-          System.out.println("port to listen on " + port);
+          LogUtil.formatLogMessage(className, "cmdProcessing", "port to listen on " + port);
         } 
         else if (param.startsWith("drools_dir=")) {
           droolsPath = param.split("=")[1];
-          System.out.println("Drools rules file dir set to " + droolsPath);
+          LogUtil.formatLogMessage(className, "cmdProcessing", "Drools rules file dir set to " + droolsPath);
         } 
         else if (param.startsWith("db_connection=")) {
           String dbconnection = param.split("=")[1];
           PostgresClient.setConfigFilePath(dbconnection);
           PostgresClient.setIsEmbedded(false);
-          System.out.println("Setting path to db config file....  " + dbconnection);
+          LogUtil.formatLogMessage(className, "cmdProcessing", "Setting path to db config file....  " + dbconnection);
         }
         else if ("embed_postgres=true".contains(param)) {
           //allow setting config() from unit test mode which runs embedded
           
-          System.out.println("Using embedded postgres... starting... ");
+          LogUtil.formatLogMessage(className, "cmdProcessing", "Using embedded postgres... starting... ");
+
           //this blocks
           PostgresClient.setIsEmbedded(true);
           PostgresClient.setConfigFilePath(null);
@@ -860,7 +875,8 @@ public class RestVerticle extends AbstractVerticle {
           String dbconnection = param.split("=")[1];
           MongoCRUD.setConfigFilePath(dbconnection);
           MongoCRUD.setIsEmbedded(false);
-          System.out.println("Setting path to mongo config file....  " + dbconnection);
+          LogUtil.formatLogMessage(className, "cmdProcessing", "Setting path to mongo config file....  " + dbconnection);
+
         }
         else if (param != null && param.startsWith("postgres_import_path=")) {
           try{
