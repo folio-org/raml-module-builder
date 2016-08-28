@@ -52,13 +52,19 @@ public class Messages {
     URI uri = Messages.class.getClassLoader().getResource(INFRA_MESSAGES_DIR).toURI();
     Path messagePath;
     FileSystem fileSystem = null;
-    try {
-      fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap());
-    } catch (FileSystemAlreadyExistsException e) {
-      fileSystem = FileSystems.getFileSystem(uri);
-      //e.printStackTrace();
+    
+    if (uri.getScheme().equals("jar")) {
+      
+      try {
+        fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap());
+      } catch (FileSystemAlreadyExistsException e) {
+        fileSystem = FileSystems.getFileSystem(uri);
+        //e.printStackTrace();
+      }
+      messagePath = fileSystem.getPath(INFRA_MESSAGES_DIR);
+    } else {
+      messagePath = Paths.get(uri);
     }
-    messagePath = fileSystem.getPath(INFRA_MESSAGES_DIR);
 
     loadMessages(messagePath);
     if (fileSystem != null) {
