@@ -48,7 +48,6 @@ import com.sling.rest.resource.utils.NetworkUtils;
 public class DemoRamlRestTest {
 
   private Vertx             vertx;
-  private ArrayList<String> urls;
   int port;
   
   /**
