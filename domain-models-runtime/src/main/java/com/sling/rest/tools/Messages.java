@@ -2,6 +2,7 @@ package com.sling.rest.tools;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URL;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystems;
@@ -64,8 +65,12 @@ public class Messages {
       fileSystem.close();
     }
     
-    //load project specific messages
-    uri = Messages.class.getClassLoader().getResource(MESSAGES_DIR).toURI();
+    //load project specific messages - they may not exist
+    URL url = Messages.class.getClassLoader().getResource(MESSAGES_DIR);
+    if(url == null){
+      return;
+    }
+    uri = url.toURI();
     
     if (uri.getScheme().equals("jar")) {
       
