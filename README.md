@@ -245,6 +245,16 @@ Four plugins should be declared in the pom.xml -
 - The maven exec plugin that will generate the pojos and interfaces based on the raml files
 - The maven resource plugin that will copy the raml files into a directory under /apidocs so that the runtime framework can pick it up and display html documentation based on the raml files.
 
+Add `ramlfiles_path` property indicating the location of the raml directory:
+
+```sh
+	<properties>
+		<ramlfiles_path>${basedir}/ramls</ramlfiles_path>
+	</properties>
+```
+
+Add the plugins:
+
 ```sh
 
 			<plugin>
