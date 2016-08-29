@@ -240,7 +240,7 @@ schemas:
 ##### Step 3: Add the following plugins to your pom.xml
 
 Four plugins should be declared in the pom.xml - 
-- The aspect plugin which will pre-compile your code with validation aspects provided by the framework - remember the **@Validate** annotation. 
+- The aspect plugin which will pre-compile your code with validation aspects provided by the framework - remember the **@Validate** annotation. The validation supplied by the framework verifies that headers are passed correctly, parameters are of the correct type and contain the correct content as indicated by the RAML file.
 - The shade plugin - which will generate a fat-jar runnable jar - while the shade plugin is not mandatory - it makes things easier - the important thing to notice is the main class that will be run when running your module. notice the `Main-class` and `Main-Verticle` in the shade plugin configuration.
 - The maven exec plugin that will generate the pojos and interfaces based on the raml files
 - The maven resource plugin that will copy the raml files into a directory under /apidocs so that the runtime framework can pick it up and display html documentation based on the raml files.
@@ -785,5 +785,6 @@ http://localhost:8080/apis/patrons
  }
 }
 ````
+
 
 
