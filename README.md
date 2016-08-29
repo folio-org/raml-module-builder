@@ -13,6 +13,12 @@ The framework consists of a number of tools.
     -  Runtime library runs a vertx verticle
 4. rules - Basic Drools functionality allowing module developers to create validation rules via .drl files for objects (json schemas)
 
+The Basics:
+
+![](images/build.png)
+![](images/generate.png)
+![](images/what.png)
+
 Building the framework - clone / download:
 -  raml-module-builder - this is the core framework that can be used to help developers quickly get a vertx based module up and running. Build via `mvn clean install` - this will create all the needed jars for the framework.
 
@@ -20,20 +26,7 @@ There are a number of sample projects using the framework:
 
 1. Circulation - https://github.com/folio-org/circulation
     - Implements basic circulation APIs 
-
-	
-The runnable jars are the ones created from the `circulation` and `acqusitions` projects as they use the domain-models-poc created jar to do most of the boilerplate functionality. So the `domain-models-poc` project must be built first as every model implementation depends on it.
-
-
-Running the built projects from command line: (after `mvn clean install` of the domain-models-poc) 
-- The Circulation project (exposing circulation storage APIs):\
-`java -jar circulation-fat.jar` 
-- The Acquisitions project (exposing acq storage APIs):\
-`java -jar acquisitions-fat.jar` 
-
-To run from an IDE - include the following parameters
-
- - run com.sling.rest.RestVerticle (Mandatory)
+    - ramls directory is passed in the pom.xml via a maven exec plugin to the interfaces framework tool to generate source files within the circulation project. The generated interfaces are implemented within the project (in this case via the mongoDB async client provided by the runtime framework)
 
 Additional command line options:
 
