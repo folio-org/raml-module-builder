@@ -19,6 +19,34 @@ The Basics:
 ![](images/generate.png)
 ![](images/what.png)
 
+# Implement the interfaces 
+######  For example – note the validation annotations generated based on the constraints in the RAML
+![](images/interface_example.png)
+- When implementing the interfaces add the, you must add the @Validate annotation to enforce the annotated constraints declared by the interface 
+- Note that a Bib entity was passed as a parameter – the runtime framework transforms the json passed in the body to the correct pojo
+
+# Set up your pom.xml
+######  Add the needed maven plugins
+
+- After including the maven plugin to generate our sources we need to add a few more maven plugins: 
+    - Add the `aspectj-maven-plugin` to your pom – this is required if you would like the runtime framework to validate all URLs
+    - Add the `maven-resources-plugin` to your pom – this is plugin will copy your RAML files to the /apidocs directory where they will be made visible online (html view) by the runtime framework
+    - Add the `maven-shade-plugin` to your pom – indicating the main class to run as `RestLauncher` and main verticle as `RestVerticle` – this will create a runnable jar with the runtime’s `RestVerticle` serving as the main class
+
+# mvn clean install…
+###### and run :)
+
+The runtime framework will route URLs in your RAML to the correct method implementation. It will validate (if `@Validate` was used), log, and expose various tools
+
+
+Sample projects:
+
+- https://github.com/folio-org/circulation
+- https://github.com/folio-org/configuration
+- https://github.com/folio-org/acquisitions
+- https://github.com/folio-org/acquisitions-postgres
+
+
 Building the framework - clone / download:
 -  raml-module-builder - this is the core framework that can be used to help developers quickly get a vertx based module up and running. Build via `mvn clean install` - this will create all the needed jars for the framework.
 
