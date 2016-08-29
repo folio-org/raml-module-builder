@@ -2,7 +2,7 @@
 
 This documentation includes information about the  Raml-Module-Builder framework and examples of how to use it.
 
-The idea behind this project is to simplify the process of developing a micro service module. The framework is RAML driven, meaning a developer / analyst declares APIs the 'to be developed' module is to expose (via RAML files) and declares the objects to be used and exposed by the APIs (via json schemas). Once the schemas and RAML files are in place - the framework generates code and offers a number of tools to help implement the module.
+The goal of the project is to abstract away as much boilerplate functionality as possible and allow a developer to focus on imlpementing business functions, in other words - **simplify the process of developing a micro service module**. The framework is RAML driven, meaning a developer / analyst declares APIs the 'to be developed' module is to expose (via RAML files) and declares the objects to be used and exposed by the APIs (via json schemas). Once the schemas and RAML files are in place - the framework generates code and offers a number of tools to help implement the module.
 
 The framework consists of a number of tools.
  1. domain-models-api-interfaces - project exposes tools that receives as input these RAML files and these json schemas and generates java pojos and java interfaces.
@@ -48,7 +48,7 @@ Sample projects:
 - https://github.com/folio-org/acquisitions-postgres
 
 
-To get started with a sample working module:
+#### To get started with a sample working module:
 
 Clone / download the framework:
 -  raml-module-builder - this is the core framework that can be used to help developers quickly get a vertx based module up and running. Build via `mvn clean install` - this will create all the needed jars for the framework.
@@ -57,6 +57,8 @@ Clone / download the Circulation sample module - https://github.com/folio-org/ci
 - This module implements basic circulation APIs 
 - RAMLs and json schemas can be found in the ramls directory 
     -   Open the pom.xml - notice the jars in the `dependencies` section as well as the `plugins` section. The ramls directory is passed in the pom.xml via a maven exec plugin to the interfaces framework tool to generate source files within the circulation project. The generated interfaces are implemented within the project.
+    -   Open the `com.sling.rest.impl` package and notice that the appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. 
+    -   **IMPORTANT NOTE:** every interface implementation - by any module - must reside in package `com.sling.rest.impl` - this is the package that is scanned at runtime, by the runtime framework to find the needed runtime implementations of the generated interfaces.
 
 To run the circulation module -> navigate to the /target/ directory and `java -jar circulation-fat.jar`
 
@@ -91,85 +93,8 @@ To run the circulation module -> navigate to the /target/ directory and `java -j
  -  -XX:+HeapDumpOnOutOfMemoryError -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
  -Xloggc:C:\Git\circulation\gc.log (Optional)
  
-
-##### **MongoDB integration:**
-
-By default an embedded mongoDB is included in the runtime but is not run by default - to change that add `embed_mongo=true` to the command line (`java -jar circulation-fat.jar embed_mongo=true`). Connection parameters to a non-embedded mongoDB can be found in `resources/mongo-conf.json` or passed via cmd line.
-
-The runtime framework exposes a mongoDB async client which offers CRUD operations in an ORM type fashion. 
-
-##### **Drools integration:**
-
-The framework scans the `/resources/rules` path in an implemented project for `.drl.` files. Those files are loaded and are applied automatically to all objects passed in the body (post , put) by the runtime framework. This allows for more complex validation of passed objects
-- For example, if two specific fields can logically be null, but not at the same time - that can easily be implemented with a Drool, as those types of validations are harder to create in a raml file.
-- The `rules` project also exposes the drools session and allows validation within the implemented APIs 
-
-for example: (Sample.drl)
-
-```
-package com.sample
- 
-import com.sling.rest.jaxrs.model.Patron;
-
-rule "Patron needs one ID at the least"
-
-	no-loop
-	
-    when
-        p : Patron( patronBarcode  == null, patronLocalId == null )
-    then
-    	throw new java.lang.Exception("Patron needs one ID field populated at the least"); 
-end
-```
-
-
-### Domain Models POC project
-
-The Domain Models POC has several aspects. It is comprised of a parent project called `domain-models-poc` which in turn contains multiple modules 
-- `domain-models-api-interfaces` this project reads the RAML files found in the `raml` project and generates java pojos for every schema in the project. It also generates java interfaces - meaning it will take an API endpoint described in the RAML files
-
-    for example, the RAML snippet:
-    ```sh
-        /bibs:
-          /{bibId}:
-            type:
-              collection-item:
-                exampleItem: !include _examples/bib_get.sample
-                schema: bib
-    ```
-    will be generated into functions
     
-    `getBibs(String auth, Order order, int limit, int offset, ... )`
-    
-    `postBibs(String auth, Order order, int limit, int offset, ... )`
-
-    `getBibsByBibsId(String auth, String bibId, ...)`
-    
-    `deleteBibsByBibsId(String auth, String bibId, ...)`
-    
-    `putBibsByBibsId(String auth, String bibId, ...)`
-    
-    The appropriate parameters (as desscribed in the RAML) will be passed as parameters to these functions so that no parameter parsing is needed by the developer. See the `com.sling.rest.impl` package in the `circulation` module for for example implementations and interfaces generated from the RAML files.
-    
-    ##### IMPORTANT NOTE: every interface implementation - by any module - must reside in package `com.sling.rest.impl` - this is the package that is scanned by this project to find the needed runtime implementations of the generated interfaces.
-    
-- `domain-models-api` this project handles the Vert.x verticle startup for any project (such as circulation, acq, etc..). The jar created will be used by any domain module implementation. It will handle, routing, validations, parameter / header / body parsing. Its goal is to abstract away all boilerplate functionality and allow a module implementation to focus on imlpementing business functions.
-    - for example:
-    ```sh
-        /bibs:
-          /{bibId}:
-            type:
-              collection-item:
-                exampleItem: !include _examples/bib_get.sample
-                schema: bib
-    ```
-    - the RAML snippet above has two path `/bibs` and `/bibs/{bibId}` - requests coming in to these two paths will be routed automatically to the implemented functions (see `domain-models-api-interfaces` explanation). 
-    - Validations of the json body passed for put / post requests is validated by this project, as well as headers, params (their existance and correctness - for example - a parameter declared as a number in the raml cannot contain a non-numerical value) 
-        - the `domain-models-api-aspects` project is used to achieve some of these validations - hence the **`@Validate` annotation must be used to annotate interface implementations**
-- `domain-models-interface-extensions` this project consists of one class which adds some customizations to the generated code (mainly javadocs and vert.x customizations)
- 
-    
-#### Creating a new module:
+## Creating a new module:
 
 Step 1: describe the APIs to be exposed by the new module
 
@@ -195,78 +120,9 @@ Step 3: create a new project (for example inventory) include the three jars crea
 		</dependency>
 		<dependency>
 			<groupId>sling</groupId>
-			<artifactId>domain-models-api-aspects</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>sling</groupId>
 			<artifactId>domain-models-api</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
-```
-
-Additional Jars are also needed as well:
-```sh
-
-		<!-- VERTX CORE LIBRARY -->
-		<dependency>
-			<groupId>io.vertx</groupId>
-			<artifactId>vertx-core</artifactId>
-			<version>3.2.1</version>
-		</dependency>
-		<dependency>
-			<groupId>io.vertx</groupId>
-			<artifactId>vertx-web</artifactId>
-			<version>3.0.0</version>
-		</dependency>
-		
-		<!-- JSON PROCESSING / JAVA REST CORE LIBRARY -->
-		<dependency>
-			<groupId>org.glassfish.jersey.media</groupId>
-			<artifactId>jersey-media-json-jackson</artifactId>
-			<version>2.22</version>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-core</artifactId>
-			<version>2.2.2</version>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-			<version>2.2.2</version>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-annotations</artifactId>
-			<version>2.2.2</version>
-		</dependency>
-		
-		<!-- REQUEST VALIDATION CORE LIBRARIES -->
-		<dependency>
-			<groupId>javax.validation</groupId>
-			<artifactId>validation-api</artifactId>
-			<version>1.1.0.Final</version>
-		</dependency>
-		<dependency>
-			<groupId>org.aspectj</groupId>
-			<artifactId>aspectjrt</artifactId>
-			<version>1.8.9</version>
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.aspectj</groupId>
-			<artifactId>aspectjtools</artifactId>
-			<version>1.8.9</version>
-		</dependency>
-		<!-- POSTGRES ASYNC -->
-		<dependency>
-			<groupId>io.vertx</groupId>
-			<artifactId>vertx-mysql-postgresql-client</artifactId>
-			<version>3.3.2</version>
-		</dependency>
-
-
 ```
 
 And implement the interfaces associated with the RAML files you created - an interface is generated for every root endpoint in the RAML file you added to the `raml` project. So, for example adding the following entries in your RAML file
@@ -521,6 +377,60 @@ for (int i = 0; i < parts; i++) {
         Object o = part.getContent();
 }
 ```
+
+
+### **MongoDB integration:**
+
+By default an embedded mongoDB is included in the runtime but is not run by default - to change that add `embed_mongo=true` to the command line (`java -jar circulation-fat.jar embed_mongo=true`). Connection parameters to a non-embedded mongoDB can be found in `resources/mongo-conf.json` or passed via cmd line.
+
+The runtime framework exposes a mongoDB async client which offers CRUD operations in an ORM type fashion. 
+
+### **Drools integration:**
+
+The framework scans the `/resources/rules` path in an implemented project for `.drl.` files. A directory can also be passed via the cmd line. Those files are loaded and are applied automatically to all objects passed in the body (post , put) by the runtime framework. This allows for more complex validation of passed objects
+- For example, if two specific fields can logically be null, but not at the same time - that can easily be implemented with a Drool, as those types of validations are harder to create in a raml file.
+- The `rules` project also exposes the drools session and allows validation within the implemented APIs - see the `tests` in the `rules` project.
+
+for example: (Sample.drl)
+
+```
+package com.sample
+ 
+import com.sling.rest.jaxrs.model.Patron;
+
+rule "Patron needs one ID at the least"
+
+	no-loop
+	
+    when
+        p : Patron( patronBarcode  == null, patronLocalId == null )
+    then
+    	throw new java.lang.Exception("Patron needs one ID field populated at the least"); 
+end
+```
+
+
+
+    
+- `domain-models-api` this project handles the Vert.x verticle startup for any project (such as circulation, acq, etc..). The jar created will be used by any domain module implementation. It will handle, routing, validations, parameter / header / body parsing. Its goal is to abstract away all boilerplate functionality and allow a module implementation to focus on imlpementing business functions.
+    - for example:
+    ```sh
+        /bibs:
+          /{bibId}:
+            type:
+              get:
+                exampleItem: !include _examples/bib_get.sample
+                schema: bib
+              post:
+                exampleItem: !include _examples/bib_post.sample
+                schema: bib
+    ```
+    - the RAML snippet above has two path `/bibs` and `/bibs/{bibId}` - requests coming in to these two paths will be routed automatically to the implemented functions (see `domain-models-api-interfaces` explanation). 
+    - Validations of the json body passed for put / post requests is validated by this project, as well as headers, params (their existance and correctness - for example - a parameter declared as a number in the raml cannot contain a non-numerical value) 
+        - the `domain-models-api-aspects` project is used to achieve some of these validations - hence the **`@Validate` annotation must be used to annotate interface implementations**
+- `domain-models-interface-extensions` this project consists of one class which adds some customizations to the generated code (mainly javadocs and vert.x customizations)
+ 
+    
 
 ##### pre-compile stage: (some of the stuff being done by the framework)
  1. RAML to Java Interfaces (Jersey) generator which creates a documented,
