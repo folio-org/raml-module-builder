@@ -584,6 +584,39 @@ postgresClient.get(TABLE_NAME_POLINE, PoLine.class, criterion,
               reply -> {...
 ```
 
+#### Query Syntax
+
+Note for modules using the built in mongoDB client / Postgres client support:
+Query syntax varies whether the module is a mongoDB or a postgreSQL backed module.
+
+***For mongoDB*** backed modules the native mongoDB syntax should be passed in the query string as a parameter.  
+
+An Example from the Circulation sample module:
+`http://localhost:8081/apis/patrons?query={"$and":[{"total_loans": { "$lt": 60 } }, { "contact_info.patron_address_local.city": "London" } ]}`
+
+For usage examples, see: https://github.com/folio-org/circulation/blob/master/src/main/java/com/sling/rest/impl/PatronAPI.java
+
+***For postgreSQL*** backed modules, the following json format can be sent:
+[{"field":"''","value":"","op":""}]
+
+Some examples:
+```sh
+http://localhost:8081/apis/po_lines?query=[{"field":"'po_line_status'->>'value'","value":"fa(l|t)se","op":"SIMILAR TO"}]
+
+[{"field":"'fund_distributions'->'amount'->>'sum'","value":120,"op":">"}]
+[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]
+[[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}],[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"}],[{"field":"'rush'","value":"false","op":"="}], [{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'type'->>'value'","value":"PRINT_ONETIME","op":"="}, {"op":"OR"}]]
+[{"field":"'ebook_url'","value":null,"op":"IS NOT NULL"}]
+[{"field":"'ebook_url'","value":null,"op":"IS NULL"}]
+[{"field":"'price'","value":{"sum": "150.0"},"op":"@>"}]
+[{"field":"'po_line_status'->>'value'","value":"fa(l|t)se","op":"SIMILAR TO"}, {"op":"NOT"}]
+[{"field":"'fund_distributions'->[]->'amount'->>'sum'","value":120,"op":">"}]
+[{"field":"'notes'","value":null,"op":"="}]
+```
+
+See usage here: https://github.com/folio-org/acquisitions-postgres/blob/master/src/main/java/com/sling/rest/impl/POLine.java
+
+
 ### **Drools integration:**
 
 The framework scans the `/resources/rules` path in an implemented project for `.drl.` files. A directory can also be passed via the cmd line. Those files are loaded and are applied automatically to all objects passed in the body (post , put) by the runtime framework. This allows for more complex validation of passed objects
