@@ -554,12 +554,14 @@ The runtime framework exposes a postgreSQL async client which offers CRUD operat
 for example: 
 
 Saving a pojo  - 
+
 `
 PoLine poline = new PoLine();
 ...
 postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...`
 
 Querying for similar pojos in the DB (with or without additional criterias)
+
 `
 Criterion criterion = Criterion.json2Criterion(query);
 criterion.setLimit(new Limit(limit)).setOffset(new Offset(offset));
