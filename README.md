@@ -406,7 +406,7 @@ Implement the interfaces associated with the RAML files you created - an interfa
 
 #### See an example of an implemented function [here](#function-example)
 
-#### Adding an init() implementation
+###  Adding an init() implementation
 It is possible to add custom code - to init a DB, create a cache, create static variables, etc... by implementing the `InitAPIs` interface. You must implement the `init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler)`. Currently the implementation should sit in the `com.sling.rest.impl` package in the implementing project. The implementation will run during verticle deployment. The verticle will not complete deployment until the init() completes. The init() function can do anything basically but it must call back the Handler. For example:
 ```sh
 public class InitAPIs implements InitAPI {
@@ -423,7 +423,7 @@ public class InitAPIs implements InitAPI {
 }
 ```
 
-#### Adding code to run periodically 
+###  Adding code to run periodically 
 It is possible to add custom code that will run periodically. For example , to ongoingly check status of something in the system and act upon that.
 Need to implement the PeriodicAPI interface:
 ```sh
@@ -463,7 +463,7 @@ public class PeriodicAPIImpl implements PeriodicAPI {
 
 ```
 
-#### Adding a shutdown hook
+###  Adding a shutdown hook
 It is possible to add custom code that will run right before the verticle is undeployed and the JVM stopped. This will occur on graceful shutdowns - but can not be guaranteed to run if the JVM is forcefully shutdown.
 
 The interface to implement:
@@ -497,7 +497,7 @@ public class ShutdownImpl implements ShutdownAPI {
 }
 ```
 
-#### Implementing file uploads (alpha mode)
+###  Implementing file uploads (alpha mode)
 To create an api that allows file uploads do the following:
 
 1. in the RAML declare the API
@@ -567,14 +567,19 @@ Saving a pojo  -
 
 `
 PoLine poline = new PoLine();
+
 ...
+
 postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...`
+
 
 Querying for similar pojos in the DB (with or without additional criterias)
 
 `
 Criterion criterion = Criterion.json2Criterion(query);
+
 criterion.setLimit(new Limit(limit)).setOffset(new Offset(offset));
+
 postgresClient.get(TABLE_NAME_POLINE, PoLine.class, criterion,
               reply -> {...
 `
