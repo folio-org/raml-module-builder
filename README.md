@@ -565,24 +565,24 @@ for example:
 
 Saving a pojo  - 
 
-`
+```sh
 PoLine poline = new PoLine();
 
 ...
 
-postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...`
-
+postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...
+```
 
 Querying for similar pojos in the DB (with or without additional criterias)
 
-`
+```sh
 Criterion criterion = Criterion.json2Criterion(query);
 
 criterion.setLimit(new Limit(limit)).setOffset(new Offset(offset));
 
 postgresClient.get(TABLE_NAME_POLINE, PoLine.class, criterion,
               reply -> {...
-`
+```
 
 ### **Drools integration:**
 
