@@ -48,7 +48,7 @@ Sample projects:
 - https://github.com/folio-org/acquisitions-postgres
 
 
-#### To get started with a sample working module:
+## To get started with a sample working module:
 
 Clone / download the framework:
 -  raml-module-builder - this is the core framework that can be used to help developers quickly get a vertx based module up and running. Build via `mvn clean install` - this will create all the needed jars for the framework.
@@ -62,7 +62,7 @@ Clone / download the Circulation sample module - https://github.com/folio-org/ci
 
 To run the circulation module -> navigate to the /target/ directory and `java -jar circulation-fat.jar`
 
-#### Command line options:
+### Command line options:
 
  - java.util.logging.config.file=C:\Git\circulation\target\classes\vertx-default-jul-logging.properties (Optional - defaults to /target/classes/vertx-default-jul-logging.properties)  
  - embed_mongo=false (Optional - defaults to false)
@@ -94,7 +94,7 @@ To run the circulation module -> navigate to the /target/ directory and `java -j
  -Xloggc:C:\Git\circulation\gc.log (Optional)
  
     
-## Creating a new module:
+# Creating a new module:
 
 Step 1: describe the APIs to be exposed by the new module
 
@@ -120,7 +120,7 @@ Step 3: create a new project (for example inventory) include the three jars crea
 		</dependency>
 		<dependency>
 			<groupId>sling</groupId>
-			<artifactId>domain-models-api</artifactId>
+			<artifactId>domain-models-runtime</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 ```
@@ -147,7 +147,11 @@ And implement the interfaces associated with the RAML files you created - an int
 
 will create two interfaces, a `POLinesResource.java` and a `VendorsResource.java` interface. Notice the naming convention (Resource suffix added, as well as camel casing). These interfaces will be created in the `domain-models-api-interfaces` project in the `com.sling.rest.jaxrs.resource` package
 
-Two plugins should be declared in the pom.xml - the aspect plugin which will pre-compile your code with validation aspects provided by the framework - remember the **@Validate** annotation. And the shade plugin - which will generate a fat-jar runnable jar - while the shade plugin is not mandatory - it makes things easier - the important thing to notice is the main class that will be run when running your module. notice the `Main-class` and `Main-Verticle` in the shade plugin configuration.
+Four plugins should be declared in the pom.xml - 
+- The aspect plugin which will pre-compile your code with validation aspects provided by the framework - remember the **@Validate** annotation. 
+- The shade plugin - which will generate a fat-jar runnable jar - while the shade plugin is not mandatory - it makes things easier - the important thing to notice is the main class that will be run when running your module. notice the `Main-class` and `Main-Verticle` in the shade plugin configuration.
+- The maven exec plugin that will generate the pojos and interfaces based on the raml files
+- The maven resource plugin that will copy the raml files into a directory under /apidocs so that the runtime framework can pick it up and display html documentation based on the raml files.
 
 ```sh
 
@@ -159,6 +163,36 @@ Two plugins should be declared in the pom.xml - the aspect plugin which will pre
 					<target>1.8</target>
 					<encoding>UTF-8</encoding>
 				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.5.0</version>
+				<executions>
+					<execution>
+						<id>generate_interfaces</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>com.sling.rest.tools.GenerateRunner</mainClass>
+							<!-- <executable>java</executable> -->
+							<cleanupDaemonThreads>false</cleanupDaemonThreads>
+							<systemProperties>
+								<systemProperty>
+									<key>project.basedir</key>
+									<value>${basedir}</value>
+								</systemProperty>
+								<systemProperty>
+									<key>raml_files</key>
+									<value>${ramlfiles_path}/circulation</value>
+								</systemProperty>
+							</systemProperties>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 
 			<plugin>
@@ -180,7 +214,6 @@ Two plugins should be declared in the pom.xml - the aspect plugin which will pre
 						<aspectLibrary>
 							<groupId>sling</groupId>
 							<artifactId>domain-models-api-aspects</artifactId>
-
 						</aspectLibrary>
 					</aspectLibraries>
 				</configuration>
@@ -204,7 +237,29 @@ Two plugins should be declared in the pom.xml - the aspect plugin which will pre
 					</dependency>
 				</dependencies>
 			</plugin>
-
+			<plugin>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.0.1</version>
+				<executions>
+					<execution>
+						<id>copy-resources</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${basedir}/target/classes/apidocs/raml</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${ramlfiles_path}</directory>
+									<filtering>true</filtering>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
