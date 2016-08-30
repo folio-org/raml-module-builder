@@ -676,7 +676,10 @@ http://[host]:[port]/apidocs/index.html?raml=raml/circulation/patrons.raml
 
 ## A Little More on Validation
 
+Query parameters and header validation
 ![](images/validation.png)
+
+Object validations
 ![](images/object_validation.png)
 
 
