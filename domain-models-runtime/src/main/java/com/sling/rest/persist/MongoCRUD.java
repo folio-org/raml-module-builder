@@ -132,7 +132,7 @@ public class MongoCRUD {
       jsonConf.put("host", MONGO_HOST);
       jsonConf.put("port", MONGO_PORT);
       client = MongoClient.createShared(vertx, jsonConf);
-      System.out.println("created embedded mongo config on port " + MONGO_PORT);
+      log.info("created embedded mongo config on port " + MONGO_PORT);
     } else {      
       String path = "/mongo-conf.json";
       if(configPath != null){
