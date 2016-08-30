@@ -42,10 +42,10 @@ Notice that no web server was configured or even referenced in the implementing 
 
 Sample projects:
 
-- https://github.com/folio-org/circulation
-- https://github.com/folio-org/configuration
-- https://github.com/folio-org/acquisitions
-- https://github.com/folio-org/acquisitions-postgres
+- https://github.com/folio-org/mod-circulation
+- https://github.com/folio-org/mod-configuration
+- https://github.com/folio-org/mod-acquisitions
+- https://github.com/folio-org/mod-acquisitions-postgres
 
 
 ## To get started with a sample working module:
@@ -53,7 +53,7 @@ Sample projects:
 Clone / download the framework:
 -  raml-module-builder - this is the core framework that can be used to help developers quickly get a vertx based module up and running. Build via `mvn clean install` - this will create all the needed jars for the framework.
 
-Clone / download the Circulation sample module - https://github.com/folio-org/circulation - Build via `mvn clean install` 
+Clone / download the Circulation sample module - https://github.com/folio-org/mod-circulation - Build via `mvn clean install` 
 - This module implements basic circulation APIs 
 - RAMLs and json schemas can be found in the ramls directory 
     -   Open the pom.xml - notice the jars in the `dependencies` section as well as the `plugins` section. The ramls directory is passed in the pom.xml via a maven exec plugin to the interfaces framework tool to generate source files within the circulation project. The generated interfaces are implemented within the project.
@@ -616,7 +616,7 @@ Query syntax varies whether the module is a mongoDB or a postgreSQL backed modul
 An Example from the Circulation sample module:
 `http://localhost:8081/apis/patrons?query={"$and":[{"total_loans": { "$lt": 60 } }, { "contact_info.patron_address_local.city": "London" } ]}`
 
-For usage examples, see: https://github.com/folio-org/circulation/blob/master/src/main/java/com/sling/rest/impl/PatronAPI.java
+For usage examples, see: https://github.com/folio-org/mod-circulation/blob/master/src/main/java/com/sling/rest/impl/PatronAPI.java
 
 ***For postgreSQL*** backed modules, the following json format can be sent:
 [{"field":"''","value":"","op":""}]
@@ -636,7 +636,7 @@ http://localhost:8081/apis/po_lines?query=[{"field":"'po_line_status'->>'value'"
 [{"field":"'notes'","value":null,"op":"="}]
 ```
 
-See usage here: https://github.com/folio-org/acquisitions-postgres/blob/master/src/main/java/com/sling/rest/impl/POLine.java
+See usage here: https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java/com/sling/rest/impl/POLine.java
 
 
 ### **Drools integration:**
