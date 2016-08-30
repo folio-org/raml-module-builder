@@ -42,23 +42,26 @@ to use while developing their module.
 4. rules - Basic Drools functionality allowing module developers to create
 validation rules via .drl files for objects (JSON schemas).
 
-The Basics:
+# The basics
+
 ![](images/build.png)
 ![](images/generate.png)
 ![](images/what.png)
 
 # Implement the interfaces
-######  For example – note the validation annotations generated based on the constraints in the RAML
+
+For example – note the validation annotations generated based on the constraints in the RAML.
+
 ![](images/interface_example.png)
+
 - When implementing the interfaces, you must add the @Validate
 annotation to enforce the annotated constraints declared by the interface.
 - Note that a Bib entity was passed as a parameter – the runtime framework
 transforms the JSON passed in the body to the correct POJO.
 
 # Set up your pom.xml
-######  Add the needed maven plugins
 
-- After including the maven plugin to generate our sources we need to add a few
+After including the maven plugin to generate our sources we need to add a few
 more maven plugins:
     - Add the `aspectj-maven-plugin` to your pom – this is required if you
 would like the runtime framework to validate all URLs.
@@ -69,8 +72,9 @@ online (html view) by the runtime framework.
 run as `RestLauncher` and main verticle as `RestVerticle` – this will create a
 runnable jar with the runtime’s `RestVerticle` serving as the main class.
 
-# mvn clean install…
-###### and run :)
+# Build an run
+
+Do `mvn clean install` ... and run :)
 
 The runtime framework will route URLs in your RAML to the correct method
 implementation. It will validate (if `@Validate` was used), log, and expose
@@ -87,7 +91,7 @@ Sample projects:
 - https://github.com/folio-org/acquisitions-postgres
 
 
-## To get started with a sample working module:
+# Get started with a sample working module
 
 Clone / download the framework:
 -  raml-module-builder - this is the core framework that can be used to help
@@ -114,7 +118,7 @@ implementations of the generated interfaces.
 To run the circulation module, navigate to the /target/ directory and
 `java -jar circulation-fat.jar`
 
-### Command line options:
+# Command line options
 
  - java.util.logging.config.file=C:\Git\circulation\target\classes\vertx-default-jul-logging.properties
 (Optional - defaults to /target/classes/vertx-default-jul-logging.properties)
@@ -147,13 +151,13 @@ To run the circulation module, navigate to the /target/ directory and
  -Xloggc:C:\Git\circulation\gc.log (Optional)
 
 
-# Creating a new module:
+# Creating a new module
 
+Pre step 1: Clone / Download the raml-module-builder project and `mvn clean install`
 
-##### Pre step 1: Clone / Download the raml-module-builder project and `mvn clean install`
-##### Step 1: describe the APIs to be exposed by the new module
+### Step 1: Describe the APIs to be exposed by the new module
 
-1. Create a new project - Create a RAML file/s and define the API endpoints to
+Create a new project - Create a RAML file/s and define the API endpoints to
 be exposed by the module. Place this in the project - for example `/ramls`
 directory within the root of the project.
 
@@ -218,7 +222,7 @@ schemas:
              }
 ```
 
-2. Create JSON schemas indicating the objects exposed by the module
+Create JSON schemas indicating the objects exposed by the module:
 
 `ebook.schema`
 
@@ -279,7 +283,8 @@ schemas:
 
 ```
 
-#####  Step 2: in your project (pom.xml) - include the following jars
+### Step 2: Include the jars in your project pom.xml
+
 ```sh
         <dependency>
 			<groupId>sling</groupId>
@@ -293,7 +298,7 @@ schemas:
 		</dependency>
 ```
 
-##### Step 3: Add the following plugins to your pom.xml
+### Step 3: Add the plugins to your pom.xml
 
 Four plugins should be declared in the pom.xml file:
 - The aspect plugin, which will pre-compile your code with validation aspects
@@ -456,7 +461,9 @@ Add the plugins:
 			</plugin>
 ```
 
-##### 4: `mvn clean install` your project
+### Step 4: Build your project
+
+Do `mvn clean install`.
 
 This should:
 
@@ -470,7 +477,7 @@ needs to be handled by the implementer. This is handled by the framework,
 which handles validation.
 - POJOs - The JSON schemas will be generated into java objects.
 
-##### 5: Implement the generated interfaces
+### Step 5: Implement the generated interfaces
 
 Implement the interfaces associated with the RAML files you created - an
 interface is generated for every root endpoint in the RAML file you added to
@@ -479,10 +486,9 @@ the `raml` project. So, for the ebook RAML an
 Note that the `com.sling.rest.jaxrs.resource` will be the package for every
 generated interface.
 
+See an [example](#function-example) of an implemented function.
 
-#### See an example of an implemented function [here](#function-example)
-
-###  Adding an init() implementation
+## Adding an init() implementation
 
 It is possible to add custom code - to init a DB, create a cache, create static
 variables, etc. by implementing the `InitAPIs` interface. You must implement
@@ -509,7 +515,7 @@ public class InitAPIs implements InitAPI {
 }
 ```
 
-###  Adding code to run periodically
+## Adding code to run periodically
 
 It is possible to add custom code that will run periodically. For example,
 to ongoingly check status of something in the system and act upon that.
@@ -552,7 +558,7 @@ public class PeriodicAPIImpl implements PeriodicAPI {
 
 ```
 
-###  Adding a shutdown hook
+## Adding a shutdown hook
 
 It is possible to add custom code that will run just before the verticle is
 undeployed and the JVM stopped. This will occur on graceful shutdowns - but can
@@ -589,11 +595,11 @@ public class ShutdownImpl implements ShutdownAPI {
 }
 ```
 
-###  Implementing file uploads (alpha mode)
+## Implementing file uploads (alpha mode)
 
 To create an api that allows file uploads do the following:
 
-1. In the RAML declare the API:
+In the RAML declare the API:
 
 ```sh
 post:
@@ -632,6 +638,7 @@ The above demonstrate a multipart/form-data body with two parts - this can be
 with only one part or N parts. The random delimiter is used to separate the
 content.
 The generated API interface will have a function signiture of:
+
 ```sh
 public void postConfigurationsRules(String authorization, String lang, MimeMultipart entity, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception
 ```
@@ -647,8 +654,7 @@ for (int i = 0; i < parts; i++) {
 }
 ```
 
-
-### **MongoDB integration:**
+## MongoDB integration
 
 By default an embedded mongoDB is included in the runtime but is not run by
 default. To change that add `embed_mongo=true` to the command line
@@ -659,7 +665,7 @@ via the command line.
 The runtime framework exposes a mongoDB async client which offers CRUD
 operations in an ORM type fashion.
 
-### **PostgreSQL integration:**
+## PostgreSQL integration
 
 By default an embedded PostgreSQL is included in the runtime but is not run by
 default. To change that add `embed_postgres=true` to the command line
@@ -698,7 +704,7 @@ password: password
 
 Examples:
 
-Saving a POJO  -
+Saving a POJO:
 
 ```sh
 PoLine poline = new PoLine();
@@ -719,7 +725,7 @@ postgresClient.get(TABLE_NAME_POLINE, PoLine.class, criterion,
               reply -> {...
 ```
 
-#### Query Syntax
+## Query Syntax
 
 Note for modules using the built-in mongoDB client / Postgres client support:
 Query syntax varies whether the module is a mongoDB or a postgreSQL backed
@@ -755,8 +761,7 @@ http://localhost:8081/apis/po_lines?query=[{"field":"'po_line_status'->>'value'"
 See usage here:
 https://github.com/folio-org/acquisitions-postgres/blob/master/src/main/java/com/sling/rest/impl/POLine.java
 
-
-### **Drools integration:**
+## Drools integration
 
 The framework scans the `/resources/rules` path in an implemented project for
 `.drl.` files. A directory can also be passed via the command line. Those files are
@@ -787,16 +792,15 @@ rule "Patron needs one ID at the least"
 end
 ```
 
-### Messages
+## Messages
 
 The runtime framework comes with a set of messages it prints out to the logs /
 sends back as error responses to incorrect API calls. These messages are
 language specific. In order to add your own message files, place the files in
 your project under the `/resources/messages` directory.
+
 Note that the format of the file names should be:
-		 [lang_2_letters]_messages.yyy - for example: en_messages.prop
-
-
+`[lang_2_letters]_messages.yyy - for example: en_messages.prop`
 
 ## Documentation
 
@@ -820,7 +824,7 @@ Query parameters and header validation
 ![](images/object_validation.png)
 
 
-##### function example
+### function example
 ```sh
 
   @Validate
@@ -853,7 +857,7 @@ Query parameters and header validation
   }
 ```
 
-### **Some REST examples:**
+## Some REST examples
 
 An excel file can be found in the current directory containing examples of URLs
 in one tab and the data objects (in JSON format) in a separate tab.
@@ -951,8 +955,4 @@ http://localhost:8080/apis/patrons
  }
 }
 ````
-
-
-
-
 
