@@ -85,10 +85,10 @@ module - this is all handled by the runtime framework.
 
 Sample projects:
 
-- https://github.com/folio-org/circulation
-- https://github.com/folio-org/configuration
-- https://github.com/folio-org/acquisitions
-- https://github.com/folio-org/acquisitions-postgres
+- https://github.com/folio-org/mod-circulation
+- https://github.com/folio-org/mod-configuration
+- https://github.com/folio-org/mod-acquisitions
+- https://github.com/folio-org/mod-acquisitions-postgres
 
 
 # Get started with a sample working module
@@ -99,7 +99,7 @@ developers quickly get a vertx based module up and running. Build via
 `mvn clean install` - this will create all the needed jars for the framework.
 
 Clone / download the Circulation sample module -
-https://github.com/folio-org/circulation - Build via `mvn clean install`
+https://github.com/folio-org/mod-circulation - Build via `mvn clean install`
 - This module implements basic circulation APIs.
 - RAMLs and JSON schemas can be found in the `ramls` directory.
     -   Open the pom.xml - notice the jars in the `dependencies` section as
@@ -149,7 +149,6 @@ To run the circulation module, navigate to the /target/ directory and
 }`)
  -  -XX:+HeapDumpOnOutOfMemoryError -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
  -Xloggc:C:\Git\circulation\gc.log (Optional)
-
 
 # Creating a new module
 
@@ -738,7 +737,7 @@ An example from the Circulation sample module:
 `http://localhost:8081/apis/patrons?query={"$and":[{"total_loans": { "$lt": 60 } }, { "contact_info.patron_address_local.city": "London" } ]}`
 
 For usage examples, see:
-https://github.com/folio-org/circulation/blob/master/src/main/java/com/sling/rest/impl/PatronAPI.java
+https://github.com/folio-org/mod-circulation/blob/master/src/main/java/com/sling/rest/impl/PatronAPI.java
 
 ***For postgreSQL*** backed modules, the following JSON format can be sent:
 `[{"field":"''","value":"","op":""}]`
@@ -759,7 +758,7 @@ http://localhost:8081/apis/po_lines?query=[{"field":"'po_line_status'->>'value'"
 ```
 
 See usage here:
-https://github.com/folio-org/acquisitions-postgres/blob/master/src/main/java/com/sling/rest/impl/POLine.java
+https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java/com/sling/rest/impl/POLine.java
 
 ## Drools integration
 
