@@ -22,6 +22,7 @@ import de.flapdoodle.embed.process.runtime.Network;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -303,11 +304,15 @@ public class MongoCRUD {
           try {
             reply = mapper.readValue(res.result().toString(),
               mapper.getTypeFactory().constructCollectionType(List.class, cls));
+            if(reply == null){
+              replyHandler.handle(io.vertx.core.Future.failedFuture("Seems like a mapping issue between requested objects and returned objects"));
+            }else{
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(reply));
+            }
           } catch (Exception e) {
             e.printStackTrace();
             replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
           }
-          replyHandler.handle(io.vertx.core.Future.succeededFuture(reply));
         } else {
           res.cause().printStackTrace();
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
@@ -398,6 +403,52 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
 
     }
+  } 
+  
+  public void addToArray(String collection, String arrayName, Object arrayEntry, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
+
+    JsonObject ret = new JsonObject();
+    try {
+      UpdateOptions options = new UpdateOptions();
+      JsonObject update = new JsonObject();
+      JsonObject array = new JsonObject();
+
+      if (arrayEntry == null){ 
+        ret.put("error", "arrayEntry is null");
+        replyHandler.handle(io.vertx.core.Future.failedFuture("arrayEntry to update is null"));
+      }
+      else if(query == null) {
+        ret.put("error", "query is null");
+        replyHandler.handle(io.vertx.core.Future.failedFuture("query to update is null"));
+      }
+      else{
+        if(((List)arrayEntry).size() == 1){
+          array.put(arrayName, new JsonObject(entity2String(((List)arrayEntry).get(0))));
+        }
+        else{
+          JsonObject each = new JsonObject();
+          each.put("$each", new JsonArray( entity2String(arrayEntry)));
+          array.put(arrayName,  each );
+        }
+        
+        update.put("$push", array);
+        
+        client.updateWithOptions(collection, query, update, options, res -> {
+
+          if (res.succeeded()) {
+            System.out.println(" replaced !");
+            replyHandler.handle(io.vertx.core.Future.succeededFuture());
+          } else {
+            res.cause().printStackTrace();
+            replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
+          }
+        });
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
+
+    }
   }  
   
   public void startEmbeddedMongo() throws Exception {
@@ -425,6 +476,9 @@ public class MongoCRUD {
         //json object
         obj = ((JsonObject) entity).encode();
       }
+      else if(entity instanceof List<?>){
+        obj =  new JsonArray((List)entity).encode();
+      }
       else{
         try {
           //pojo
@@ -440,37 +494,47 @@ public class MongoCRUD {
   public static JsonObject buildJson(String returnClazz, String collection, String query, String orderBy, Object order, int offset, int limit){
     JsonObject q = null;
     if(query != null){
-      q = new JsonObject(query);
+      try {
+        q = new JsonObject(query);
+      } catch (Exception e) {
+        e.printStackTrace();
+        return null;
+      }
     }
     return buildJson(returnClazz, collection, q, orderBy, order, offset, limit );
   }
   
   public static JsonObject buildJson(String returnClazz, String collection, JsonObject query, String orderBy, Object order, int offset, int limit){
-    JsonObject req = new JsonObject();
-    if(query != null){
-      try {
-        req.put(MongoCRUD.JSON_PROP_QUERY, query);
-      } catch (Exception e) {
-        log.error( "Unable to parse query param to json " + e.getLocalizedMessage() );
+    try {
+      JsonObject req = new JsonObject();
+      if(query != null){
+        try {
+          req.put(MongoCRUD.JSON_PROP_QUERY, query);
+        } catch (Exception e) {
+          log.error( "Unable to parse query param to json " + e.getLocalizedMessage() );
+        }
       }
-    }
-    
-    req.put(MongoCRUD.JSON_PROP_COLLECTION, collection);
-    if(offset != -1){
-      req.put(MongoCRUD.JSON_PROP_OFFSET, offset);
-    }
-    if(limit != -1){
-      req.put(MongoCRUD.JSON_PROP_LIMIT, limit);
-    }    
-    req.put(MongoCRUD.JSON_PROP_CLASS, returnClazz);
-    if(orderBy != null){
-      int ord = -1;
-      if("asc".equals(order.toString())){
-        ord = 1;
+      
+      req.put(MongoCRUD.JSON_PROP_COLLECTION, collection);
+      if(offset != -1){
+        req.put(MongoCRUD.JSON_PROP_OFFSET, offset);
       }
-      req.put(MongoCRUD.JSON_PROP_SORT, new JsonObject("{\""+orderBy+"\" : "+ord+"}"));
+      if(limit != -1){
+        req.put(MongoCRUD.JSON_PROP_LIMIT, limit);
+      }    
+      req.put(MongoCRUD.JSON_PROP_CLASS, returnClazz);
+      if(orderBy != null){
+        int ord = -1;
+        if("asc".equals(order.toString())){
+          ord = 1;
+        }
+        req.put(MongoCRUD.JSON_PROP_SORT, new JsonObject("{\""+orderBy+"\" : "+ord+"}"));
+      }
+      return req;
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
     }
-    return req;
   }
   
   public static JsonObject buildJson(String returnClazz, String collection, String query){
