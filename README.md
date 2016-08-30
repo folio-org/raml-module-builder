@@ -561,7 +561,8 @@ By default an embedded PostgreSQL is included in the runtime but is not run by d
 
 The runtime framework exposes a postgreSQL async client which offers CRUD operations in an ORM type fashion. 
 
-**Important Note** that the PostgreSQL client implemented currently assumes JSONB tables in PostgreSQL. 
+**Important Note** that the PostgreSQL client implemented currently assumes JSONB tables in PostgreSQL. This is not mandatory and developers can work with regular postgreSQL tables but will need to implement their own data access layer.
+
 Currently the expected format is:
 
 ```sh
