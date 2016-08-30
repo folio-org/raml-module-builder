@@ -564,7 +564,7 @@ The runtime framework exposes a postgreSQL async client which offers CRUD operat
 **Important Note** that the PostgreSQL client implemented currently assumes JSONB tables in PostgreSQL. 
 Currently the expected format is:
 
-create table <schema>.<table_name> (
+create table [schema].[table_name] (
 	_id SERIAL PRIMARY KEY,
 	jsonb JSONB NOT NULL
 );
