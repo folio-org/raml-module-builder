@@ -565,8 +565,10 @@ The runtime framework exposes a postgreSQL async client which offers CRUD operat
 Currently the expected format is:
 
 create table {schema}.{table_name} (
+
 	_id SERIAL PRIMARY KEY,
 	jsonb JSONB NOT NULL
+	
 );
 
 **Schemas / Tables should be created manually.**
