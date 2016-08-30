@@ -569,9 +569,18 @@ create table <schema>.<table_name> (
 	jsonb JSONB NOT NULL
 );
 
-Dates (creation / updated) maybe added
+**Schemas / Tables should be created manually.**
 
-for example: 
+Dates (creation / updated) maybe added later on.
+
+credentials when running in embedded mode:
+port: 6000
+host: 127.0.0.1
+user: username
+password: password
+
+
+Examples: 
 
 Saving a pojo  - 
 
@@ -663,6 +672,12 @@ Note that the format of the file names should be:
 The runtime framework includes a web application which exposes ramls in a view friendly HTML format -  the `maven-resources-plugin` plugin described earlier copies the raml files into the correct directory in your project so that the runtime framework can access it and expose it.
 
 http://[host]:[port]/apidocs/index.html?raml=raml/circulation/patrons.raml
+
+
+## A Little More on Validation
+
+![](images/validation.png)
+![](images/object_validation.png)
 
 
 ##### function example
@@ -795,6 +810,7 @@ http://localhost:8080/apis/patrons
  }
 }
 ````
+
 
 
 
