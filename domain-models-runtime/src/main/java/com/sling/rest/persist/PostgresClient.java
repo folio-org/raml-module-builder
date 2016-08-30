@@ -692,6 +692,7 @@ public class PostgresClient {
       client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
 
       LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress started....");
+      embeddedMode = true;
     } else {
       LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress is already running...");
     }
@@ -718,6 +719,7 @@ public class PostgresClient {
   public static void stopEmbeddedPostgres() {
     if (postgresProcess != null) {
       postgresProcess.stop();
+      embeddedMode = false;
     }
   }
 

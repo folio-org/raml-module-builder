@@ -1,6 +1,8 @@
 package com.sling;
 
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -14,6 +16,7 @@ import org.junit.runner.RunWith;
 
 import com.sling.rest.RestVerticle;
 import com.sling.rest.persist.PostgresClient;
+import com.sling.rest.resource.utils.NetworkUtils;
 
 /**
  * This is our JUnit test for our verticle. VERY UGLY - TO FIX - TODO - move setup into @Test
@@ -27,7 +30,7 @@ public class EmbeddedPostgresTest {
   private Vertx             vertx;
   TestContext               context;
   Async                     async = null;
-
+  int port;
   /**
    * Before executing our test, need to deploy our 2 verticles - the persistence verticle to write to mongo anf then the rest verticle.
    * <p/>
@@ -39,7 +42,10 @@ public class EmbeddedPostgresTest {
   public void setUp(TestContext context) throws IOException {
     vertx = Vertx.vertx();
     this.context = context;
-    vertx.deployVerticle(RestVerticle.class.getName(), context.asyncAssertSuccess());
+    port = NetworkUtils.nextFreePort();
+    DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put("http.port",
+      port));
+    vertx.deployVerticle(RestVerticle.class.getName(), options, context.asyncAssertSuccess());
 
     async = context.async();
     try {
