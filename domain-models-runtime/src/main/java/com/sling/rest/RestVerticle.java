@@ -755,7 +755,7 @@ public class RestVerticle extends AbstractVerticle {
       }
     });
   }
-
+  
   /*
    * implementors of the InitAPI interface must call back the handler in there init() implementation like this:
    * resultHandler.handle(io.vertx.core.Future.succeededFuture(true)); or this will hang
@@ -890,7 +890,7 @@ public class RestVerticle extends AbstractVerticle {
         }
       }
       
-      if(PostgresClient.isEmbedded()){
+      if(PostgresClient.isEmbedded() || importDataPath != null){
         PostgresClient.getInstance(vertx).startEmbeddedPostgres();
       }
       
