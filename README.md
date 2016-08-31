@@ -4,8 +4,8 @@ This documentation includes information about the Raml-Module-Builder framework
 and examples of how to use it.
 
 The goal of the project is to abstract away as much boilerplate functionality as
-possible and allow a developer to focus on implementing business functions, in
-other words - **simplify the process of developing a micro service module**.
+possible and allow a developer to focus on implementing business functions. In
+other words: **simplify the process of developing a micro service module**.
 The framework is RAML driven, meaning a developer / analyst declares APIs that the
 'to be developed' module is to expose (via RAML files) and declares the objects
 to be used and exposed by the APIs (via JSON schemas). Once the schemas and RAML
@@ -35,12 +35,12 @@ The framework consists of a number of tools:
    automatically map URLs to the correct implemented function so that developers
    only need to implement APIs, and so all the wiring, validation,
    parameter / header / body parsing, logging (every request is logged in an
-   apache like format), etc. is handled by the framework. Its goal is to abstract
+   apache like format) is handled by the framework. Its goal is to abstract
    away all boilerplate functionality and allow a module implementation to focus
    on implementing business functions.
 
    - The runtime framework also exposes hooks that allow developers to
-     implement one time jobs, scheduled tasks, etc.
+     implement one-time jobs, scheduled tasks, etc.
 
    - Provides tooling (postgres client, mongodb client, etc.) for developers
      to use while developing their module.
@@ -73,15 +73,15 @@ For example – note the validation annotations generated based on the constrain
 After including the maven plugin to generate our sources, we need to add a few
 more maven plugins:
 
-- Add the `aspectj-maven-plugin` to your pom – this is required if you
+- Add the `aspectj-maven-plugin` to your pom. This is required if you
   would like the runtime framework to validate all URLs.
 
-- Add the `maven-resources-plugin` to your pom – this is plugin will copy
+- Add the `maven-resources-plugin` to your pom. This plugin will copy
   your RAML files to the /apidocs directory where they will be made visible
   online (html view) by the runtime framework.
 
-- Add the `maven-shade-plugin` to your pom – indicating the main class to
-  run as `RestLauncher` and main verticle as `RestVerticle` – this will create a
+- Add the `maven-shade-plugin` to your pom, indicating the main class to
+  run as `RestLauncher` and main verticle as `RestVerticle`. This will create a
   runnable jar with the runtime’s `RestVerticle` serving as the main class.
 
 # Build and run
@@ -109,7 +109,7 @@ Clone / download the framework:
 
 - raml-module-builder - this is the core framework that can be used to help
   developers quickly get a vertx based module up and running. Build via
-  `mvn clean install` - this will create all the needed jars for the framework.
+  `mvn clean install` which will create all the needed jars for the framework.
 
 Clone / download the Circulation sample module -
 https://github.com/folio-org/mod-circulation - Build via `mvn clean install`
@@ -133,7 +133,7 @@ https://github.com/folio-org/mod-circulation - Build via `mvn clean install`
   scanned at runtime by the runtime framework, to find the needed runtime
   implementations of the generated interfaces.
 
-To run the circulation module, navigate to the /target/ directory and
+To run the circulation module, navigate to the `/target/` directory and do
 `java -jar circulation-fat.jar`
 
 # Command-line options
@@ -338,13 +338,13 @@ Four plugins should be declared in the pom.xml file:
   correctly, parameters are of the correct type and contain the correct content
   as indicated by the RAML file.
 
-- The shade plugin, which will generate a fat-jar runnable jar - while the
-  shade plugin is not mandatory - it makes things easier. The important thing to
+- The shade plugin, which will generate a fat-jar runnable jar. While the
+  shade plugin is not mandatory, it does makes things easier. The important thing to
   notice is the main class that will be run when running your module. Notice the
   `Main-class` and `Main-Verticle` in the shade plugin configuration.
 
 - The maven exec plugin, which will generate the POJOs and interfaces based on
-  the RAML files
+  the RAML files.
 
 - The maven resource plugin, which will copy the RAML files into a directory
   under `/apidocs` so that the runtime framework can pick it up and display html
@@ -516,10 +516,10 @@ This should:
 
 ### Step 5: Implement the generated interfaces
 
-Implement the interfaces associated with the RAML files you created - an
+Implement the interfaces associated with the RAML files you created. An
 interface is generated for every root endpoint in the RAML file you added to
 the `raml` project. So, for the ebook RAML an
-`com.sling.rest.jaxrs.resource.EbooksResource` interface will be generated -
+`com.sling.rest.jaxrs.resource.EbooksResource` interface will be generated.
 Note that the `com.sling.rest.jaxrs.resource` will be the package for every
 generated interface.
 
@@ -527,14 +527,14 @@ See an [example](#function-example) of an implemented function.
 
 ## Adding an init() implementation
 
-It is possible to add custom code - to init a DB, create a cache, create static
-variables, etc. by implementing the `InitAPIs` interface. You must implement
+It is possible to add custom code (e.g. to init a DB, create a cache, create static
+variables, etc.) by implementing the `InitAPIs` interface. You must implement
 the
 `init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler)`.
 Currently the implementation should sit in the
 `com.sling.rest.impl` package in the implementing project. The implementation
 will run during verticle deployment. The verticle will not complete deployment
-until the init() completes. The init() function can do anything basically but
+until the init() completes. The init() function can do anything basically. but
 it must call back the Handler. For example:
 
 ```sh
@@ -632,7 +632,7 @@ public class ShutdownImpl implements ShutdownAPI {
 
 ## Implementing file uploads (alpha mode)
 
-To create an api that allows file uploads do the following:
+To create an api that allows file uploads, do the following:
 
 In the RAML declare the API:
 
@@ -702,7 +702,7 @@ operations in an ORM type fashion.
 
 ## PostgreSQL integration
 
-By default an embedded PostgreSQL is included in the runtime but is not run by
+By default an embedded PostgreSQL is included in the runtime, but is not run by
 default. To change that add `embed_postgres=true` to the command line
 (`java -jar circulation-fat.jar embed_postgres=true`).
 Connection parameters to a
@@ -763,8 +763,8 @@ postgresClient.get(TABLE_NAME_POLINE, PoLine.class, criterion,
 ## Query Syntax
 
 Note for modules using the built-in mongoDB client / Postgres client support:
-Query syntax varies whether the module is a mongoDB or a postgreSQL backed
-module.
+Query syntax varies depending on whether the module is a mongoDB or a
+postgreSQL backed module.
 
 ***For mongoDB*** backed modules, the native mongoDB syntax should be passed in
 the query string as a parameter.
@@ -799,7 +799,7 @@ https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java
 ## Drools integration
 
 The framework scans the `/resources/rules` path in an implemented project for
-`.drl.` files. A directory can also be passed via the command line. Those files are
+`*.drl` files. A directory can also be passed via the command line. Those files are
 loaded and are applied automatically to all objects passed in the body (post,
 put) by the runtime framework. This allows for more complex validation of
 passed objects.
@@ -842,8 +842,8 @@ Note that the format of the file names should be:
 ## Documentation
 
 The runtime framework includes a web application which exposes RAMLs in a view
-friendly HTML format -  the `maven-resources-plugin` plugin described earlier
-copies the RAML files into the correct directory in your project so that the
+friendly HTML format. The `maven-resources-plugin` plugin described earlier
+copies the RAML files into the correct directory in your project, so that the
 runtime framework can access it and expose it.
 
 ```
