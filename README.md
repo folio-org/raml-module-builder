@@ -311,7 +311,6 @@ Create JSON schemas indicating the objects exposed by the module:
     "status"
   ]
 }
-
 ```
 
 ### Step 2: Include the jars in your project pom.xml
@@ -593,7 +592,6 @@ public class PeriodicAPIImpl implements PeriodicAPI {
       e.printStackTrace();
     }
   }
-
 ```
 
 ## Adding a shutdown hook
@@ -610,7 +608,6 @@ public interface ShutdownAPI {
   public void shutdown(Vertx vertx, Context context, Handler<AsyncResult<Void>> handler);
 
 }
-
 ```
 
 An implementation example:
@@ -849,7 +846,9 @@ friendly HTML format -  the `maven-resources-plugin` plugin described earlier
 copies the RAML files into the correct directory in your project so that the
 runtime framework can access it and expose it.
 
+```
 http://[host]:[port]/apidocs/index.html?raml=raml/circulation/patrons.raml
+```
 
 ## A Little More on Validation
 
@@ -903,9 +902,9 @@ Have these in the headers - currently not validated hence not mandatory:
 - Accept: application/json,text/plain
 - Content-Type: application/json;
 
-
 Example 1. Add a fine to a patron (post)
-````
+
+```
 http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
 {
   "fine_amount": 10,
@@ -921,26 +920,35 @@ http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
   },
   "patron_id": "56dbe25ea12958478cec42ba"
 }
-````
+```
 
 Example 2. get fines for patron with id 56dbe25ea12958478cec42ba
-````
+
+```
 http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
-````
+```
+
 Example 3. get a specific patron
-````
+
+```
 http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba
-````
+```
+
 Example 4. get all patrons
-````
+
+```
 http://localhost:8080/apis/patrons
-````
+```
+
 Example 5. delete a patron (delete)
-````
+
+```
 http://localhost:8080/apis/patrons/56dbe791a129584a506fb41a
-````
+```
+
 Example 6. add a patron (post)
-````
+
+```
 http://localhost:8080/apis/patrons
 {
  "status": "ACTIVE",
@@ -990,5 +998,4 @@ http://localhost:8080/apis/patrons
   "description": "Child"
  }
 }
-````
-
+```
