@@ -118,18 +118,18 @@ implementations of the generated interfaces.
 To run the circulation module, navigate to the /target/ directory and
 `java -jar circulation-fat.jar`
 
-# Command line options
+# Command-line options
 
-- java.util.logging.config.file=C:\Git\circulation\target\classes\vertx-default-jul-logging.properties
+- `java.util.logging.config.file=C:\Git\circulation\target\classes\vertx-default-jul-logging.properties`
 (Optional - defaults to /target/classes/vertx-default-jul-logging.properties)
-- embed_mongo=false (Optional - defaults to false)
-- -Dhttp.port=8080 (Optional - defaults to 8081)
-- embed_postgres=true (Optional - defaults to false)
-- db_connection=[path] (Optional - path to an external JSON config file with connection parameters to a postgreSQL DB)
-  - for example (Postgres - `{"host":"localhost", "port":5432, "maxPoolSize":50, "username":"postgres","password":"mysecretpassword", "database":"postgres","charset":"windows-1252", "queryTimeout" : 10000}`)
-- drools_dir=[path] (Optional - path to an external drools file - by default - .drl files in the /resources/rules directory are loaded)
-- mongo_connection=[path] (Optional - path to an external JSON config file with connection parameters to a MongoDB)
-  - for example (MongoDB - `{
+- `embed_mongo=false` (Optional - defaults to false)
+- `-Dhttp.port=8080` (Optional - defaults to 8081)
+- `embed_postgres=true` (Optional - defaults to false)
+- `db_connection=[path]` (Optional - path to an external JSON config file with connection parameters to a postgreSQL DB)
+  - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50, "username":"postgres","password":"mysecretpassword", "database":"postgres","charset":"windows-1252", "queryTimeout" : 10000}`
+- `drools_dir=[path]` (Optional - path to an external drools file - by default - .drl files in the /resources/rules directory are loaded)
+- `mongo_connection=[path]` (Optional - path to an external JSON config file with connection parameters to a MongoDB)
+  - for example MongoDB: `{
   "db_name": "indexd_test",
   "host" : "ec2-52-41-57-165.us-west-2.compute.amazonaws.com",
   "port" : 27017,
@@ -146,9 +146,9 @@ To run the circulation module, navigate to the /target/ directory and
   "sendBufferSize"    : 8192,
   "receiveBufferSize" : 8192,
   "keepAlive" : true
-}`)
-- -XX:+HeapDumpOnOutOfMemoryError -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
- -Xloggc:C:\Git\circulation\gc.log (Optional)
+}`
+- `-XX:+HeapDumpOnOutOfMemoryError -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:C:\Git\circulation\gc.log`
+(Optional)
 
 # Creating a new module
 
