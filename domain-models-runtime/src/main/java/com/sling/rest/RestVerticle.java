@@ -101,6 +101,25 @@ public class RestVerticle extends AbstractVerticle {
 
   }
 
+  // https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
+  // first match - no q val check
+  static String acceptCheck(List<String> l, String h) {
+    String hl[] = h.split(",");
+    String hBest = null;
+    for (int i = 0; i < hl.length; i++) {
+      String mediaRange = hl[i].split(";")[0].trim();
+      Iterator<String> iterator = l.iterator();
+      while (iterator.hasNext()) {
+        String c = iterator.next();
+        if (mediaRange.compareTo("*/*") == 0 || c.equalsIgnoreCase(mediaRange)) {
+          hBest = c;
+          break;
+        }
+      }
+    }
+    return hBest;
+  }
+
   @Override
   public void start(Future<Void> startFuture) throws Exception {
 
@@ -258,7 +277,7 @@ public class RestVerticle extends AbstractVerticle {
                   // type of data expected to be returned by the server
                   if (produces != null && validRequest[0]) {
                     String accept = StringUtils.defaultString(request.getHeader("Accept"));
-                    if (!doesContain(produces.getList(), accept)) {
+                    if (acceptCheck(produces.getList(), accept) == null) {
                       // use contains because multiple values may be passed here
                       // for example json/application; text/plain mismatch of content type found
                       endRequestWithError(rc, 400, true, messages.getMessage("en", "10007", produces, accept), start, validRequest);
