@@ -50,7 +50,7 @@ The framework consists of a number of tools:
 4. rules - Basic Drools functionality allowing module developers to create
    validation rules via .drl files for objects (JSON schemas).
 
-# The basics
+# The basics (More detailed instructions later on)
 
 ![](images/build.png)
 ![](images/generate.png)
@@ -527,7 +527,7 @@ See an [example](#function-example) of an implemented function.
 
 ## Adding an init() implementation
 
-It is possible to add custom code - to init a DB, create a cache, create static
+It is possible to add custom code that will run once before the application is deployed - for example, to init a DB, create a cache, create static
 variables, etc. by implementing the `InitAPIs` interface. You must implement
 the
 `init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler)`.
@@ -688,6 +688,8 @@ for (int i = 0; i < parts; i++) {
         Object o = part.getContent();
 }
 ```
+
+see the https://github.com/folio-org/mod-configuration project for an example.
 
 ## MongoDB integration
 
