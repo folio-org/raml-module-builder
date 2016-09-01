@@ -1,10 +1,3 @@
-/**
- * FileUploadsUtil
- * 
- * Jul 14, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.resource.utils;
 
 import java.io.IOException;

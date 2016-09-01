@@ -1,10 +1,3 @@
-/**
- * JarHelper
- * 
- * Aug 23, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.tools;
 
 /*   Copyright 2004 The Apache Software Foundation

@@ -1,10 +1,3 @@
-/**
- * PostgresCRUD
- * 
- * Jul 19, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.persist;
 
 import java.io.File;
@@ -69,6 +62,7 @@ public class PostgresClient {
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
 
+  private static int             EMBEDDED_POSTGRES_PORT   = 6000;
   
   private static final Logger log = LoggerFactory.getLogger("PostgresClient");
 
@@ -663,7 +657,7 @@ public class PostgresClient {
   //@Timer
   public void startEmbeddedPostgres() throws Exception {
     // starting Postgres
-
+    embeddedMode = true;
     if (postgresProcess == null || !postgresProcess.isProcessRunning()) {
       // turns off the default functionality of unzipping on every run.
       IRuntimeConfig runtimeConfig = new RuntimeConfigBuilder()
@@ -676,7 +670,7 @@ public class PostgresClient {
       PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
       // final PostgresConfig config = PostgresConfig.defaultWithDbName("postgres", "username", "password");
 
-      final PostgresConfig config = new PostgresConfig(Version.V9_5_0, new AbstractPostgresConfig.Net("127.0.0.1", 6000),
+      final PostgresConfig config = new PostgresConfig(Version.V9_5_0, new AbstractPostgresConfig.Net("127.0.0.1", EMBEDDED_POSTGRES_PORT),
         new AbstractPostgresConfig.Storage("postgres"), new AbstractPostgresConfig.Timeout(20000), new AbstractPostgresConfig.Credentials(
           "username", "password"));
 
@@ -692,7 +686,6 @@ public class PostgresClient {
       client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
 
       LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress started....");
-      embeddedMode = true;
     } else {
       LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress is already running...");
     }
@@ -717,6 +710,7 @@ public class PostgresClient {
   }
 
   public static void stopEmbeddedPostgres() {
+    LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
     if (postgresProcess != null) {
       postgresProcess.stop();
       embeddedMode = false;

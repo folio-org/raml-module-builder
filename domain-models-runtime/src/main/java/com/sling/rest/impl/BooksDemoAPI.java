@@ -1,10 +1,3 @@
-/**
- * BooksDemoAPI
- * 
- * Aug 18, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.impl;
 
 import io.vertx.core.AsyncResult;

@@ -1,10 +1,3 @@
-/**
- * Timer
- * 
- * Aug 8, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.annotations;
 
 import java.lang.annotation.Documented;

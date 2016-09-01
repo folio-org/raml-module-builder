@@ -1,10 +1,3 @@
-/**
- * StatisticsListener
- * 
- * Jul 19, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.persist.listeners;
 
 import java.util.HashMap;
