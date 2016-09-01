@@ -34,8 +34,8 @@ import com.google.common.reflect.ClassPath;
 
 public class AnnotationGrabber {
 
-  private static final String INTERFACE_PACKAGE      = "com.sling.rest.jaxrs.resource";
-  private static final String IMPL_PACKAGE           = "com.sling.rest.impl";
+  private static final String INTERFACE_PACKAGE      = "com.folio.rest.jaxrs.resource";
+  private static final String IMPL_PACKAGE           = "com.folio.rest.impl";
 
   private static final String API_PREFIX             = "/apis/";
 

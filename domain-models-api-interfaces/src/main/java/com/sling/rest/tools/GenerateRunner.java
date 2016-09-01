@@ -24,7 +24,7 @@ public class GenerateRunner {
   private static String inputDirectory = null;
   private static Configuration configuration = null;
   
-  private static final String PACKAGE_DEFAULT = "com.sling.rest.jaxrs";
+  private static final String PACKAGE_DEFAULT = "com.folio.rest.jaxrs";
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
 

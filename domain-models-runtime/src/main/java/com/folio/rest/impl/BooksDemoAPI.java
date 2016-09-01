@@ -1,4 +1,4 @@
-package com.sling.rest.impl;
+package com.folio.rest.impl;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -8,9 +8,9 @@ import java.math.BigDecimal;
 
 import javax.ws.rs.core.Response;
 
+import com.folio.rest.jaxrs.model.Book;
+import com.folio.rest.jaxrs.resource.BooksResource;
 import com.sling.rest.annotations.Validate;
-import com.sling.rest.jaxrs.model.Book;
-import com.sling.rest.jaxrs.resource.BooksResource;
 
 /**
  * @author shale
