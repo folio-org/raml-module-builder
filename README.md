@@ -896,9 +896,6 @@ Query parameters and header validation
 
 ## Some REST examples
 
-An excel file can be found in the current directory containing examples of URLs
-in one tab and the data objects (in JSON format) in a separate tab.
-
 Have these in the headers - currently not validated hence not mandatory:
 - Authorization: Bearer a2VybWl0Omtlcm1pdA==
 - Accept: application/json,text/plain
