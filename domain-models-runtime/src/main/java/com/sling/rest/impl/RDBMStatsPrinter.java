@@ -2,14 +2,11 @@ package com.sling.rest.impl;
 
 import org.jooq.ExecuteType;
 
+import com.folio.rest.resource.interfaces.PeriodicAPI;
+
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
-import com.sling.rest.resource.interfaces.PeriodicAPI;
 
-/**
- * @author shale
- *
- */
 public class RDBMStatsPrinter implements PeriodicAPI {
 
   @Override

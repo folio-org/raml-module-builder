@@ -1,12 +1,8 @@
-package com.sling.rest.resource.interfaces;
+package com.folio.rest.resource.interfaces;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 
-/**
- * @author shale
- *
- */
 public interface PeriodicAPI {
   /** this implementation should return the delay in which to run the function */
   public long runEvery();

@@ -1,4 +1,4 @@
-package com.sling.rest.resource.interfaces;
+package com.folio.rest.resource.interfaces;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;

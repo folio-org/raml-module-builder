@@ -123,7 +123,7 @@
 					<!-- Optionally configure outputDirectory if you don't like the default -->
 					<outputDirectory>${generated_files_path}</outputDirectory>
 					<!-- Replace with your package name -->
-					<basePackageName>com.sling.rest.jaxrs</basePackageName>
+					<basePackageName>com.folio.rest.jaxrs</basePackageName>
 					<!-- Valid values: 1.1 2.0 -->
 					<JAX-RSVersion>2.0</JAX-RSVersion>
 					<useJsr303Annotations>true</useJsr303Annotations>

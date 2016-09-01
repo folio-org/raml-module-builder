@@ -71,8 +71,8 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
   private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept";
 
-  private static final String       PACKAGE_OF_IMPLEMENTATIONS      = "com.sling.rest.impl";
-  private static final String       PACKAGE_OF_HOOK_INTERFACES      = "com.sling.rest.resource.interfaces";
+  private static final String       PACKAGE_OF_IMPLEMENTATIONS      = "com.folio.rest.impl";
+  private static final String       PACKAGE_OF_HOOK_INTERFACES      = "com.folio.rest.resource.interfaces";
 
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_STREAMIN = "application/octet-stream";
