@@ -864,7 +864,7 @@ public class RestVerticle extends AbstractVerticle {
     if (cmdParams != null) {
       for (Iterator iterator = cmdParams.iterator(); iterator.hasNext();) {
         String param = (String) iterator.next();
-        if ("embed_mongo=true".equals(param)) {
+        if (param.startsWith("embed_mongo=true")) {
           MongoCRUD.setIsEmbedded(true);
         }
         else if (param.startsWith("-Dhttp.port=")) {
@@ -881,7 +881,7 @@ public class RestVerticle extends AbstractVerticle {
           PostgresClient.setIsEmbedded(false);
           LogUtil.formatLogMessage(className, "cmdProcessing", "Setting path to db config file....  " + dbconnection);
         }
-        else if ("embed_postgres=true".contains(param)) {
+        else if (param.startsWith("embed_postgres=true")) {
           //allow setting config() from unit test mode which runs embedded
           
           LogUtil.formatLogMessage(className, "cmdProcessing", "Using embedded postgres... starting... ");
