@@ -129,12 +129,12 @@ https://github.com/folio-org/mod-circulation - Build via `mvn clean install`
   within the circulation project. The generated interfaces are implemented within
   the project.
 
-- Open the `com.sling.rest.impl` package and notice that the appropriate
+- Open the `com.folio.rest.impl` package and notice that the appropriate
   parameters (as described in the RAML) are passed as parameters to these
   functions so that no parameter parsing is needed by the developer.
 
 - **IMPORTANT NOTE:** Every interface implementation - by any module -
-  must reside in package `com.sling.rest.impl`. This is the package that is
+  must reside in package `com.folio.rest.impl`. This is the package that is
   scanned at runtime by the runtime framework, to find the needed runtime
   implementations of the generated interfaces.
 
@@ -524,8 +524,8 @@ This should:
 Implement the interfaces associated with the RAML files you created. An
 interface is generated for every root endpoint in the RAML file you added to
 the `raml` project. So, for the ebook RAML an
-`com.sling.rest.jaxrs.resource.EbooksResource` interface will be generated.
-Note that the `com.sling.rest.jaxrs.resource` will be the package for every
+`com.folio.rest.jaxrs.resource.EbooksResource` interface will be generated.
+Note that the `com.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
 See an [example](#function-example) of an implemented function.
@@ -537,7 +537,7 @@ It is possible to add custom code that will run once before the application is d
 the `InitAPIs` interface. You must implement the
 `init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler)`.
 Currently the implementation should sit in the
-`com.sling.rest.impl` package in the implementing project. The implementation
+`com.folio.rest.impl` package in the implementing project. The implementation
 will run during verticle deployment. The verticle will not complete deployment
 until the init() completes. The init() function can do anything basically. but
 it must call back the Handler. For example:
@@ -780,7 +780,7 @@ An example from the Circulation sample module:
 `http://localhost:8081/apis/patrons?query={"$and":[{"total_loans": { "$lt": 60 } }, { "contact_info.patron_address_local.city": "London" } ]}`
 
 For usage examples, see:
-https://github.com/folio-org/mod-circulation/blob/master/src/main/java/com/sling/rest/impl/PatronAPI.java
+https://github.com/folio-org/mod-circulation/blob/master/src/main/java/com/folio/rest/impl/PatronAPI.java
 
 ***For postgreSQL*** backed modules, the following JSON format can be sent:
 `[{"field":"''","value":"","op":""}]`
@@ -801,7 +801,7 @@ http://localhost:8081/apis/po_lines?query=[{"field":"'po_line_status'->>'value'"
 ```
 
 See usage here:
-https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java/com/sling/rest/impl/POLine.java
+https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java/com/folio/rest/impl/POLine.java
 
 ## Drools integration
 
@@ -823,7 +823,7 @@ For example: (Sample.drl)
 ```
 package com.sample
 
-import com.sling.rest.jaxrs.model.Patron;
+import com.folio.rest.jaxrs.model.Patron;
 
 rule "Patron needs one ID at the least"
 
