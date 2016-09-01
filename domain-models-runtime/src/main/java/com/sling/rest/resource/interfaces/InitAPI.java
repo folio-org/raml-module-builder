@@ -1,10 +1,3 @@
-/**
- * InitAPI
- * 
- * Jul 3, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.resource.interfaces;
 
 import io.vertx.core.AsyncResult;

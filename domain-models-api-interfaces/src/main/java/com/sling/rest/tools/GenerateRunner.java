@@ -1,10 +1,3 @@
-/**
- * Runner
- * 
- * Aug 22, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.tools;
 
 import java.io.BufferedReader;

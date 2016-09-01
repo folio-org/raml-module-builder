@@ -1,10 +1,3 @@
-/**
- * JooQWrapperFactory
- * 
- * Jul 18, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.persist;
 
 import java.util.HashMap;

@@ -1,10 +1,3 @@
-/**
- * Select
- * 
- * Jul 26, 2016
- *
- * Apache License Version 2.0
- */
 package com.sling.rest.persist.Criteria;
 
 /**
