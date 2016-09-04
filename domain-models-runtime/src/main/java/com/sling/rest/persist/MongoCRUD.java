@@ -144,10 +144,21 @@ public class MongoCRUD {
         System.out.println("Loading mongo-conf.json from default " + path);
       }
       JsonObject jsonConf = new LoadConfs().loadConfig(path);
-      if(jsonConf == null){
+      if(jsonConf == null){        
+        JsonObject example = new JsonObject(" {  \"db_name\": \"indexd_test\",  \"host\" : \"SERVER_NAME\",\"port\" : 1234,"+
+        "\"maxPoolSize\" : 3, \"minPoolSize\" : 1, \"maxIdleTimeMS\" : 300000,\"maxLifeTimeMS\" : 3600000,"+      
+        "\"waitQueueMultiple\"  : 100, \"waitQueueTimeoutMS\" : 10000,\"maintenanceFrequencyMS\" : 2000, "+ 
+        "\"maintenanceInitialDelayMS\" : 500,\"connectTimeoutMS\" : 300000, \"socketTimeoutMS\"  : 100000,"+
+        "\"sendBufferSize\" : 8192, \"receiveBufferSize\" : 8192, \"keepAlive\" : true}");
         //not in embedded mode but there is no conf file found
-        throw new Exception("No mongo-conf.json file found at "+path+
-          " and not in embedded mode, can not connect to any db store");
+        throw new Exception("\nNo mongo-conf.json file found at "+path+
+          ". You need to run with either \n"
+          + "1. embed_mongo=true \n"
+          + "2. mongo_connection=<path_to_mongo-conf.json>\n"
+          + "3. place mongo-conf.json in the resources dir\n"
+          + " can not connect to any db store\n"
+          + "EXAMPLE FILE:\n"
+          + example.encodePrettily());
       }
       else{
         MONGO_HOST = jsonConf.getString("host");
@@ -504,6 +515,18 @@ public class MongoCRUD {
     return buildJson(returnClazz, collection, q, orderBy, order, offset, limit );
   }
   
+  /**
+   * 
+   * @param returnClazz - class of objects expected to be returned - for example passing a Fines class to get()
+   * fine objects
+   * @param collection - the collection to query from
+   * @param query - a valid mongodb json query
+   * @param orderBy
+   * @param order
+   * @param offset
+   * @param limit
+   * @return
+   */
   public static JsonObject buildJson(String returnClazz, String collection, JsonObject query, String orderBy, Object order, int offset, int limit){
     try {
       JsonObject req = new JsonObject();
