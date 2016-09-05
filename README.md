@@ -556,6 +556,7 @@ public class InitAPIs implements InitAPI {
   }
 }
 ```
+ 
 
 ## Adding code to run periodically
 
@@ -634,6 +635,11 @@ public class ShutdownImpl implements ShutdownAPI {
   }
 }
 ```
+
+
+
+Note that when implementing the generated interfaces it is possible to add a constructor to the implementing class. This constructor will be called for every API call. This is another way you can implement custom code that will run per request.
+
 
 ## Implementing file uploads (alpha mode)
 
@@ -1003,3 +1009,4 @@ http://localhost:8080/apis/patrons
  }
 }
 ```
+
