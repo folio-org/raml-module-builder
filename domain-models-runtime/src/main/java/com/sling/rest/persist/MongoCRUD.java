@@ -378,19 +378,27 @@ public class MongoCRUD {
     update(json, false, replyHandler);
   }
   
-  public void update(String collection, Object entity, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
+  public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
-    update(collection, entity, query, false, replyHandler);
+    update(collection, entity, query, false, addUpdateDate, replyHandler);
   }
   
-  public void update(String collection, Object entity, JsonObject query,  boolean upsert, Handler<AsyncResult<Void>> replyHandler) {
+  public void update(String collection, Object entity, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
+
+    update(collection, entity, query, false, false, replyHandler);
+  }
+  
+  public void update(String collection, Object entity, JsonObject query,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
     JsonObject ret = new JsonObject();
     try {
       UpdateOptions options = new UpdateOptions().setUpsert(upsert);
       JsonObject update = new JsonObject();
       update.put("$set", new JsonObject(entity2String(entity)));
-
+      
+      if(addUpdateDate){
+        update.put("$currentDate", new JsonObject("{\"last_modified\": true}"));  
+      }
       if (entity == null){ 
         ret.put("error", "entity is null");
       }
