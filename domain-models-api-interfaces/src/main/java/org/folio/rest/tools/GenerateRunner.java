@@ -43,6 +43,16 @@ public class GenerateRunner {
     
     String outputDirectoryWithPackage = outputDirectory + PACKAGE_DEFAULT.replace('.', '/');
     
+    try{
+      //this is a dirty hack needed when the project was refactored from com.folio to org.folio
+      //the old wrong packaged dir is not deleted sine the package_default has changed - this
+      //can be removed probably within a month - 9/7/2016
+      String tempoutputDirectoryWithPackage = outputDirectory + PACKAGE_DEFAULT.replace('.', '/');
+      FileUtils.cleanDirectory(new File(root+"/src/main/java/com/folio"));
+    }
+    catch(Exception e){}
+    
+    
     if(new File(outputDirectoryWithPackage).exists()){
       FileUtils.cleanDirectory(new File(outputDirectoryWithPackage));
     }else{
