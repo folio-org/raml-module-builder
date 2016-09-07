@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>sling</groupId>
+		<groupId>folio</groupId>
 		<artifactId>raml-module-builder</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 		<!-- <relativePath>../domain-models-poc</relativePath> -->
@@ -99,8 +99,8 @@
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries>
-										<Main-Class>io.vertx.core.Launcher</Main-Class>
-										<Main-Verticle>com.sling.rest.RestVerticle</Main-Verticle>
+										<Main-Class>com.folio.rest.RestLauncher</Main-Class>
+										<Main-Verticle>com.folio.rest.RestVerticle</Main-Verticle>
 									</manifestEntries>
 								</transformer>
 							</transformers>

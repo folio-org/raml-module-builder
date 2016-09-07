@@ -10,7 +10,7 @@ import javax.ws.rs.core.Response;
 
 import com.folio.rest.jaxrs.model.Book;
 import com.folio.rest.jaxrs.resource.BooksResource;
-import com.sling.rest.annotations.Validate;
+import com.folio.rest.annotations.Validate;
 
 /**
  * @author shale

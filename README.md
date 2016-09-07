@@ -322,12 +322,12 @@ Create JSON schemas indicating the objects exposed by the module:
 
 ```sh
         <dependency>
-			<groupId>sling</groupId>
+			<groupId>folio</groupId>
 			<artifactId>domain-models-api-interfaces</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>sling</groupId>
+			<groupId>folio</groupId>
 			<artifactId>domain-models-runtime</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
@@ -389,7 +389,7 @@ Add the plugins:
 							<goal>java</goal>
 						</goals>
 						<configuration>
-							<mainClass>com.sling.rest.tools.GenerateRunner</mainClass>
+							<mainClass>com.folio.rest.tools.GenerateRunner</mainClass>
 							<!-- <executable>java</executable> -->
 							<cleanupDaemonThreads>false</cleanupDaemonThreads>
 							<systemProperties>
@@ -419,12 +419,12 @@ Add the plugins:
 						<include>**/impl/*.java</include>
 						<include>**/*.aj</include>
 					</includes>
-					<aspectDirectory>src/main/java/sling/rest/annotations</aspectDirectory>
+					<aspectDirectory>src/main/java/folio/rest/annotations</aspectDirectory>
 					<XaddSerialVersionUID>true</XaddSerialVersionUID>
 					<showWeaveInfo>true</showWeaveInfo>
 					<aspectLibraries>
 						<aspectLibrary>
-							<groupId>sling</groupId>
+							<groupId>folio</groupId>
 							<artifactId>domain-models-api-aspects</artifactId>
 						</aspectLibrary>
 					</aspectLibraries>
@@ -487,8 +487,8 @@ Add the plugins:
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries>
-										<Main-Class>com.sling.rest.RestLauncher</Main-Class>
-										<Main-Verticle>com.sling.rest.RestVerticle</Main-Verticle>
+										<Main-Class>com.folio.rest.RestLauncher</Main-Class>
+										<Main-Verticle>com.folio.rest.RestVerticle</Main-Verticle>
 									</manifestEntries>
 								</transformer>
 							</transformers>
@@ -1009,4 +1009,5 @@ http://localhost:8080/apis/patrons
  }
 }
 ```
+
 

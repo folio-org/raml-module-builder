@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>sling</groupId>
+	<groupId>folio</groupId>
 	<artifactId>raml-module-builder</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
@@ -21,7 +21,7 @@
 		<ramlfiles_path>${basedir}/../domain-models-api-interfaces/src/main/resources/raml</ramlfiles_path>
 		<!-- not supported yet the interface package is currently hard coded when 
 			scanning a project to find the interface implementation -->
-		<interface_package>com.sling.rest.jaxrs</interface_package>
+		<interface_package>com.folio.rest.jaxrs</interface_package>
 		<!-- not supported yet - TODO, pushing the generated code to another project 
 			triggers a compile of that project which if it depends on the api jar will 
 			cause a compile problem -->
