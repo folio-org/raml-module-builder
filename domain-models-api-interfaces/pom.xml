@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>folio</groupId>
+		<groupId>org.folio</groupId>
 		<artifactId>raml-module-builder</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 		<!-- <relativePath>../domain-models-poc</relativePath> -->
@@ -65,12 +65,12 @@
 			<version>1.4.3</version>
 		</dependency>
 		<dependency>
-			<groupId>folio</groupId>
+			<groupId>org.folio</groupId>
 			<artifactId>domain-models-api-aspects</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>folio</groupId>
+			<groupId>org.folio</groupId>
 			<artifactId>domain-models-interface-extensions</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
@@ -103,36 +103,7 @@
 					<debuglevel>source</debuglevel>
 				</configuration>
 			</plugin>
-			
-<!-- 
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
-				<version>1.5.0</version>
-				<executions>
-					<execution>
-						<id>generate_resource_annotations</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>java</goal>
-						</goals>
 
-						<configuration>
-							<mainClass>com.sling.rest.tools.AnnotationGrabber</mainClass>
-							<arguments>
-
-							</arguments>
-							<systemProperties>
-								<systemProperty>
-									<key>file_path</key>
-									<value>${basedir}/target/classes</value>
-								</systemProperty>
-							</systemProperties>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
- -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
@@ -148,8 +119,8 @@
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries>
-										<Main-Class>com.folio.rest.RestLauncher</Main-Class>
-										<Main-Verticle>com.folio.rest.RestVerticle</Main-Verticle>
+										<Main-Class>org.folio.rest.RestLauncher</Main-Class>
+										<Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
 									</manifestEntries>
 								</transformer>
 							</transformers>
