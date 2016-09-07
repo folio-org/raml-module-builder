@@ -47,9 +47,8 @@ public class GenerateRunner {
       //this is a dirty hack needed when the project was refactored from com.folio to org.folio
       //the old wrong packaged dir is not deleted sine the package_default has changed - this
       //can be removed probably within a month - 9/7/2016
-      FileUtils.cleanDirectory(new File(root+"/src/main/java/com/folio"));
-      FileUtils.cleanDirectory(new File(root+"/src/main/java/com/sling"));
-
+      System.out.println("------------------------>--------------------------->"+new File(root+"/src/main/java/com").getAbsolutePath());
+      FileUtils.cleanDirectory(new File(root+"/src/main/java/com"));
     }
     catch(Exception e){}
     
