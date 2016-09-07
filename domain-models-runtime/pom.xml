@@ -6,7 +6,7 @@
 
 
 	<parent>
-		<groupId>sling</groupId>
+		<groupId>folio</groupId>
 		<artifactId>raml-module-builder</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 		<!-- <relativePath>../domain-models-poc</relativePath> -->
@@ -83,12 +83,12 @@
 			<artifactId>vertx-mongo-client</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>sling</groupId>
+			<groupId>folio</groupId>
 			<artifactId>domain-models-api-interfaces</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>sling</groupId>
+			<groupId>folio</groupId>
 			<artifactId>domain-models-api-aspects</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
@@ -121,7 +121,7 @@
 		</dependency>
 
 		<dependency>
-			<groupId>sling</groupId>
+			<groupId>folio</groupId>
 			<artifactId>rules</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
@@ -204,12 +204,12 @@
 						<include>**/*.java</include>
 						<include>**/*.aj</include>
 					</includes>
-					<aspectDirectory>src/main/java/sling/rest/annotations</aspectDirectory>
+					<aspectDirectory>src/main/java/folio/rest/annotations</aspectDirectory>
 					<XaddSerialVersionUID>true</XaddSerialVersionUID>
 					<showWeaveInfo>true</showWeaveInfo>
 					<aspectLibraries>
 						<aspectLibrary>
-							<groupId>sling</groupId>
+							<groupId>folio</groupId>
 							<artifactId>domain-models-api-aspects</artifactId>
 
 						</aspectLibrary>
@@ -239,8 +239,8 @@
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries>
-										<Main-Class>com.sling.rest.RestLauncher</Main-Class>
-										<Main-Verticle>com.sling.rest.RestVerticle</Main-Verticle>
+										<Main-Class>com.folio.rest.RestLauncher</Main-Class>
+										<Main-Verticle>com.folio.rest.RestVerticle</Main-Verticle>
 									</manifestEntries>
 								</transformer>
 							</transformers>
