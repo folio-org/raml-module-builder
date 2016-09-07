@@ -129,12 +129,12 @@ https://github.com/folio-org/mod-circulation - Build via `mvn clean install`
   within the circulation project. The generated interfaces are implemented within
   the project.
 
-- Open the `com.folio.rest.impl` package and notice that the appropriate
+- Open the `org.folio.rest.impl` package and notice that the appropriate
   parameters (as described in the RAML) are passed as parameters to these
   functions so that no parameter parsing is needed by the developer.
 
 - **IMPORTANT NOTE:** Every interface implementation - by any module -
-  must reside in package `com.folio.rest.impl`. This is the package that is
+  must reside in package `org.folio.rest.impl`. This is the package that is
   scanned at runtime by the runtime framework, to find the needed runtime
   implementations of the generated interfaces.
 
@@ -322,12 +322,12 @@ Create JSON schemas indicating the objects exposed by the module:
 
 ```sh
         <dependency>
-			<groupId>folio</groupId>
+			<groupId>org.folio</groupId>
 			<artifactId>domain-models-api-interfaces</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>folio</groupId>
+			<groupId>org.folio</groupId>
 			<artifactId>domain-models-runtime</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
@@ -389,7 +389,7 @@ Add the plugins:
 							<goal>java</goal>
 						</goals>
 						<configuration>
-							<mainClass>com.folio.rest.tools.GenerateRunner</mainClass>
+							<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
 							<!-- <executable>java</executable> -->
 							<cleanupDaemonThreads>false</cleanupDaemonThreads>
 							<systemProperties>
@@ -419,12 +419,12 @@ Add the plugins:
 						<include>**/impl/*.java</include>
 						<include>**/*.aj</include>
 					</includes>
-					<aspectDirectory>src/main/java/folio/rest/annotations</aspectDirectory>
+					<aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
 					<XaddSerialVersionUID>true</XaddSerialVersionUID>
 					<showWeaveInfo>true</showWeaveInfo>
 					<aspectLibraries>
 						<aspectLibrary>
-							<groupId>folio</groupId>
+							<groupId>org.folio</groupId>
 							<artifactId>domain-models-api-aspects</artifactId>
 						</aspectLibrary>
 					</aspectLibraries>
@@ -487,8 +487,8 @@ Add the plugins:
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries>
-										<Main-Class>com.folio.rest.RestLauncher</Main-Class>
-										<Main-Verticle>com.folio.rest.RestVerticle</Main-Verticle>
+										<Main-Class>org.folio.rest.RestLauncher</Main-Class>
+										<Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
 									</manifestEntries>
 								</transformer>
 							</transformers>
@@ -524,8 +524,8 @@ This should:
 Implement the interfaces associated with the RAML files you created. An
 interface is generated for every root endpoint in the RAML file you added to
 the `raml` project. So, for the ebook RAML an
-`com.folio.rest.jaxrs.resource.EbooksResource` interface will be generated.
-Note that the `com.folio.rest.jaxrs.resource` will be the package for every
+`org.folio.rest.jaxrs.resource.EbooksResource` interface will be generated.
+Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
 See an [example](#function-example) of an implemented function.
@@ -537,7 +537,7 @@ It is possible to add custom code that will run once before the application is d
 the `InitAPIs` interface. You must implement the
 `init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler)`.
 Currently the implementation should sit in the
-`com.folio.rest.impl` package in the implementing project. The implementation
+`org.folio.rest.impl` package in the implementing project. The implementation
 will run during verticle deployment. The verticle will not complete deployment
 until the init() completes. The init() function can do anything basically. but
 it must call back the Handler. For example:
@@ -829,7 +829,7 @@ For example: (Sample.drl)
 ```
 package com.sample
 
-import com.folio.rest.jaxrs.model.Patron;
+import org.folio.rest.jaxrs.model.Patron;
 
 rule "Patron needs one ID at the least"
 

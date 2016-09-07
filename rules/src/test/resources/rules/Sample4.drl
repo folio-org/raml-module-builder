@@ -1,8 +1,8 @@
 //created on: Aug 18, 2016
 package rules
 
-import com.folio.rulez.Messages1;
-import com.folio.rulez.Messages2;
+import org.folio.rulez.Messages1;
+import org.folio.rulez.Messages2;
 
 rule "Mixed objects Rule"
 
