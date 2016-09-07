@@ -6,7 +6,7 @@
 
 
 	<parent>
-		<groupId>folio</groupId>
+		<groupId>org.folio</groupId>
 		<artifactId>raml-module-builder</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 		<!-- <relativePath>../domain-models-poc</relativePath> -->
@@ -84,12 +84,12 @@
 			<artifactId>vertx-mongo-client</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>folio</groupId>
+			<groupId>org.folio</groupId>
 			<artifactId>domain-models-api-interfaces</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>folio</groupId>
+			<groupId>org.folio</groupId>
 			<artifactId>domain-models-api-aspects</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
@@ -122,7 +122,7 @@
 		</dependency>
 
 		<dependency>
-			<groupId>folio</groupId>
+			<groupId>org.folio</groupId>
 			<artifactId>rules</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
@@ -188,7 +188,7 @@
 							<goal>java</goal>
 						</goals>
 						<configuration>
-							<mainClass>com.folio.rest.tools.GenerateRunner</mainClass>
+							<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
 							<!-- <executable>java</executable> -->
 							<cleanupDaemonThreads>false</cleanupDaemonThreads>
 							<systemProperties>
@@ -236,12 +236,12 @@
 						<include>**/*.java</include>
 						<include>**/*.aj</include>
 					</includes>
-					<aspectDirectory>src/main/java/folio/rest/annotations</aspectDirectory>
+					<aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
 					<XaddSerialVersionUID>true</XaddSerialVersionUID>
 					<showWeaveInfo>true</showWeaveInfo>
 					<aspectLibraries>
 						<aspectLibrary>
-							<groupId>folio</groupId>
+							<groupId>org.folio</groupId>
 							<artifactId>domain-models-api-aspects</artifactId>
 
 						</aspectLibrary>
@@ -271,8 +271,8 @@
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries>
-										<Main-Class>com.folio.rest.RestLauncher</Main-Class>
-										<Main-Verticle>com.folio.rest.RestVerticle</Main-Verticle>
+										<Main-Class>org.folio.rest.RestLauncher</Main-Class>
+										<Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
 									</manifestEntries>
 								</transformer>
 							</transformers>
