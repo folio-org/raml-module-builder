@@ -62,6 +62,7 @@ public class PostgresClient {
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
 
+  private static int             EMBEDDED_POSTGRES_PORT   = 6000;
   
   private static final Logger log = LoggerFactory.getLogger("PostgresClient");
 
