@@ -873,12 +873,16 @@ Change log level of all classes to FINER
 
 (PUT) `http://localhost:8081/apis/admin/loglevel?level=INFO`
 
-a `java_package` parameter can also be passed to change the log level of a specific package
-
 Get log level of all classes
 
 (GET) `http://localhost:8081/apis/admin/loglevel`
 
+A `java_package` parameter can also be passed to change the log level of a specific package. For Example:
+
+ http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.MongoCRUD
+ 
+ http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist
+ 
 
 ## A Little More on Validation
 
@@ -1026,6 +1030,7 @@ http://localhost:8080/apis/patrons
  }
 }
 ```
+
 
 
 

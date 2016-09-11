@@ -60,7 +60,7 @@ public class MongoCRUD {
 
   private static String configPath;
 
-  private static final Logger log = LoggerFactory.getLogger("MongoCRUD");
+  private static final Logger log = LoggerFactory.getLogger(MongoCRUD.class);
 
   
   private MongoCRUD(Vertx vertx) throws Exception {
