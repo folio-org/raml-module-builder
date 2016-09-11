@@ -863,6 +863,23 @@ runtime framework can access it and expose it.
 http://[host]:[port]/apidocs/index.html?raml=raml/circulation/patrons.raml
 ```
 
+## Logging
+
+As started earlier (command line options), you can pass a configuration file with logging configurations. However, you may also change log levels via the /admin API provided by the framework.
+
+For example: 
+
+Change log level of all classes to FINER
+
+(PUT) http://localhost:8081/apis/admin/loglevel?level=INFO
+
+a `java_package` parameter can also be passed to change the log level of a specific package
+
+Get log level of all classes
+
+(GET) http://localhost:8081/apis/admin/loglevel
+
+
 ## A Little More on Validation
 
 Query parameters and header validation
@@ -1009,5 +1026,6 @@ http://localhost:8080/apis/patrons
  }
 }
 ```
+
 
 
