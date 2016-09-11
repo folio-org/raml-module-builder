@@ -169,37 +169,10 @@ public class MongoCRUD {
     return client;
   }
 
-  /**
-   * use save(String collection, Object entity, Handler<AsyncResult<String>> replyHandler) 
-   * @param json
-   * @param replyHandler
-   */
-  @Deprecated
-  public void save(JsonObject json, Handler<AsyncResult<String>> replyHandler) {
-    JsonObject ret = new JsonObject();
-    try {
-      String collectionObject = (String) json.getValue("entity");
-      String collection = json.getString("collection");
-
-      client.save(collection, new JsonObject(collectionObject), res1 -> {
-
-        if (res1.succeeded()) {
-          String id = res1.result();
-          System.out.println("Saved item with id " + id);
-          replyHandler.handle(io.vertx.core.Future.succeededFuture(id));
-
-        } else {
-          res1.cause().printStackTrace();
-          replyHandler.handle(io.vertx.core.Future.failedFuture(res1.cause().toString()));
-        }
-      });
-    } catch (Throwable e) {
-      e.printStackTrace();
-      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
-    }
-  }
-
   public void save(String collection, Object entity, Handler<AsyncResult<String>> replyHandler) {
+    
+    long start = System.nanoTime();
+
     String obj = entity2String(entity);
     try {
       client.save(collection , new JsonObject(obj), res1 -> {
@@ -212,6 +185,9 @@ public class MongoCRUD {
           res1.cause().printStackTrace();
           replyHandler.handle(io.vertx.core.Future.failedFuture(res1.cause().toString()));
         }
+        if(log.isDebugEnabled()){
+          elapsedTime("save() " + collection, start);
+        }
       });
     } catch (Throwable e) {
       e.printStackTrace();
@@ -219,16 +195,13 @@ public class MongoCRUD {
     }
   }
   
-  @Deprecated
-  public void delete(JsonObject json, Handler<AsyncResult<Void>> replyHandler) {
+  public void delete(String collection, String id, Handler<AsyncResult<Void>> replyHandler) {
+    long start = System.nanoTime();
 
     try {
-
-      String id = json.getString("entity");
-      String collection = json.getString("collection");
-      JsonObject query = QueryUtils.createQueryFilter(json.getJsonObject("query"));
-      client.removeOne(collection, query, res -> {
-
+      JsonObject jobj = new JsonObject();
+      jobj.put("_id", id);
+      client.removeDocument(collection, jobj, res -> {
         if (res.succeeded()) {
           System.out.println("deleted item");
           replyHandler.handle(io.vertx.core.Future.succeededFuture());
@@ -236,26 +209,8 @@ public class MongoCRUD {
           res.cause().printStackTrace();
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
-      });
-    } catch (Throwable e) {
-      e.printStackTrace();
-      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
-
-    }
-  }
-  
-  public void delete(String collection, String id, Handler<AsyncResult<Void>> replyHandler) {
-
-    try {
-      JsonObject jobj = new JsonObject();
-      jobj.put("_id", id);
-      client.removeOne(collection, jobj, res -> {
-        if (res.succeeded()) {
-          System.out.println("deleted item");
-          replyHandler.handle(io.vertx.core.Future.succeededFuture());
-        } else {
-          res.cause().printStackTrace();
-          replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
+        if(log.isDebugEnabled()){
+          elapsedTime("delete() " + collection + " " + jobj.encode(), start);
         }
       });
     } catch (Throwable e) {
@@ -266,15 +221,19 @@ public class MongoCRUD {
   }
 
   public void delete(String collection, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
+    long start = System.nanoTime();
 
     try {
-      client.remove(collection, query, res -> {
+      client.removeDocument(collection, query, res -> {
         if (res.succeeded()) {
           System.out.println("deleted item");
           replyHandler.handle(io.vertx.core.Future.succeededFuture());
         } else {
           res.cause().printStackTrace();
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
+        }
+        if(log.isDebugEnabled()){
+          elapsedTime("delete() " + collection + " " + query.encode(), start);
         }
       });
     } catch (Throwable e) {
@@ -286,12 +245,14 @@ public class MongoCRUD {
   
   public void get(JsonObject json, Handler<AsyncResult<List<?>>> replyHandler) {
 
+    long start = System.nanoTime();
+    
     try {
       String clazz = json.getString(JSON_PROP_CLASS);
       Integer limit = json.getInteger(JSON_PROP_LIMIT);
       Integer offset = json.getInteger(JSON_PROP_OFFSET);
-      String collection = json.getString(JSON_PROP_COLLECTION);
-      JsonObject query = json.getJsonObject(JSON_PROP_QUERY);
+      final String collection = json.getString(JSON_PROP_COLLECTION);
+      final JsonObject query = new JsonObject(); 
       FindOptions fo = new FindOptions();
       
       Class<?> cls = Class.forName(clazz);
@@ -302,8 +263,8 @@ public class MongoCRUD {
       if(offset != null){
         fo.setSkip(offset);
       }
-      if(query == null){
-        query = new JsonObject();
+      if(json.getJsonObject(JSON_PROP_QUERY) != null){
+        query.mergeIn(json.getJsonObject(JSON_PROP_QUERY));
       }
       JsonObject sort = json.getJsonObject(JSON_PROP_SORT);
       if(sort != null){
@@ -328,54 +289,14 @@ public class MongoCRUD {
           res.cause().printStackTrace();
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
+        if(log.isDebugEnabled()){
+          elapsedTime("get() " + collection + " " + query.encode(), start);
+        }
       });
     } catch (Throwable e) {
       e.printStackTrace();
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
-  }
-
-  @Deprecated
-  public void update(JsonObject json,  boolean upsert, Handler<AsyncResult<Void>> replyHandler) {
-
-    JsonObject ret = new JsonObject();
-    try {
-      UpdateOptions options = new UpdateOptions().setUpsert(upsert);
-      
-      // JsonObject json = (JsonObject) message.body();
-      String collection = json.getString("collection");
-      JsonObject update = new JsonObject();
-      update.put("$set", new JsonObject((String) json.getValue("entity")));
-      String collectionObject = (String) json.getValue("entity");
-      JsonObject query = QueryUtils.createQueryFilter(json.getJsonObject("query"));
-
-      if (collectionObject == null || query == null) {
-        ret.put("error", "entity is null");
-        // message.reply(ret);
-      }
-
-      client.updateWithOptions(collection, query, update, options, res -> {
-
-        if (res.succeeded()) {
-          System.out.println(" replaced !");
-          replyHandler.handle(io.vertx.core.Future.succeededFuture());
-        } else {
-          res.cause().printStackTrace();
-          replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
-
-        }
-      });
-    } catch (Exception e) {
-      e.printStackTrace();
-      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
-
-    }
-  }  
-  
-  @Deprecated
-  public void update(JsonObject json, Handler<AsyncResult<Void>> replyHandler) {
-
-    update(json, false, replyHandler);
   }
   
   public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
@@ -390,6 +311,8 @@ public class MongoCRUD {
   
   public void update(String collection, Object entity, JsonObject query,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
+    long start = System.nanoTime();
+    
     JsonObject ret = new JsonObject();
     try {
       UpdateOptions options = new UpdateOptions().setUpsert(upsert);
@@ -406,7 +329,7 @@ public class MongoCRUD {
         ret.put("error", "query is null");
       }
 
-      client.updateWithOptions(collection, query, update, options, res -> {
+      client.updateCollectionWithOptions(collection, query, update, options, res -> {
 
         if (res.succeeded()) {
           System.out.println(" replaced !");
@@ -414,7 +337,9 @@ public class MongoCRUD {
         } else {
           res.cause().printStackTrace();
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
-
+        }
+        if(log.isDebugEnabled()){
+          elapsedTime("update() " + collection + " " + query.encode(), start);
         }
       });
     } catch (Exception e) {
@@ -426,6 +351,8 @@ public class MongoCRUD {
   
   public void addToArray(String collection, String arrayName, Object arrayEntry, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
 
+    long start = System.nanoTime();
+    
     JsonObject ret = new JsonObject();
     try {
       UpdateOptions options = new UpdateOptions();
@@ -452,7 +379,7 @@ public class MongoCRUD {
         
         update.put("$push", array);
         
-        client.updateWithOptions(collection, query, update, options, res -> {
+        client.updateCollectionWithOptions(collection, query, update, options, res -> {
 
           if (res.succeeded()) {
             System.out.println(" replaced !");
@@ -460,6 +387,9 @@ public class MongoCRUD {
           } else {
             res.cause().printStackTrace();
             replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
+          }
+          if(log.isDebugEnabled()){
+            elapsedTime("addToArray() " + collection + " " + query.encode(), start);
           }
         });
       }
@@ -575,4 +505,9 @@ public class MongoCRUD {
   public static JsonObject buildJson(String returnClazz, String collection, JsonObject query){
     return buildJson(returnClazz, collection, query, null, null, -1 ,-1);
   }
+  
+  private void elapsedTime(String info, long start){
+      log.debug(new StringBuffer(info).append(" ").append(((System.nanoTime() - start)/1000000)).append(" ms"));
+  }
+  
 }
