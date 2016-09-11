@@ -614,9 +614,17 @@ public class RestVerticle extends AbstractVerticle {
     }
 
     long end = System.nanoTime();
-    LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(), rc.request().version()
-      .toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(), rc.request().path(), rc
-      .request().query(), rc.response().getStatusMessage());
+    if(log.isDebugEnabled()){
+      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(), rc.request().version()
+        .toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(), rc.request().path(), rc
+        .request().query(), rc.response().getStatusMessage(), rc.getBodyAsString());
+    }
+    else{
+      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(), rc.request().version()
+        .toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(), rc.request().path(), rc
+        .request().query(), rc.response().getStatusMessage());
+    }
+
   }
 
   private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, long beginTime, boolean []isValid) {
