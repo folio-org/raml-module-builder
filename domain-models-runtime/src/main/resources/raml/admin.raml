@@ -1,0 +1,38 @@
+#%RAML 0.8
+
+title: Admin API
+baseUri: http://localhost:8080/{version}
+version: v1
+
+traits:
+ - log-level: !include log-level.raml
+
+/admin:
+  /loglevel:
+    put:
+      is: [log-level]
+      responses:
+        200:
+          description: "Returns packages with log level of updated packages"
+          body:
+            application/json:
+              example: "{\"package\" : \"log level\" , \"package2\" : \"log level\"}"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+    get:
+      responses:
+        200:
+          description: "Returns packages with log level"
+          body:
+            application/json:
+              example: "{\"package\" : \"log level\" , \"package2\" : \"log level\"}"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+
+    

@@ -1,0 +1,13 @@
+      queryParameters:
+        level:
+          description: |
+            The log level to set the module's log to
+          enum: [SEVERE, WARNING, INFO, FINE, FINER, FINEST]
+          default: INFO
+          required: true
+        java_package:
+          description: |
+            The package to set the logging level to, defaults to all packages
+          type: string
+          required: false
+          default: "*"
