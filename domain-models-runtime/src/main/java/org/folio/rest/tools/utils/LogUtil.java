@@ -10,7 +10,7 @@ import io.vertx.core.logging.LoggerFactory;
 
 public class LogUtil {
 
-  private static final Logger log = LoggerFactory.getLogger("LogUtil");
+  private static final Logger log = LoggerFactory.getLogger(LogUtil.class);
 
   public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int ResponseCode, long responseTime,
       long responseSize, String url, String queryParams, String message) {

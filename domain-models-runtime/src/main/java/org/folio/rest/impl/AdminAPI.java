@@ -30,7 +30,7 @@ import org.folio.rest.tools.utils.OutStream;
  */
 public class AdminAPI implements AdminResource {
 
-  private static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger("AdminAPI");
+  private static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger(AdminAPI.class);
 
   
   @Override
