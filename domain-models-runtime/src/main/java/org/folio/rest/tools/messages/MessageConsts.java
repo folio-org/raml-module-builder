@@ -9,7 +9,8 @@ public enum MessageConsts implements MessageEnum {
   HTTPMethodNotSupported("10005"),
   ContentTypeError("10006"),
   AcceptHeaderError("10007"),
-  ObjectDoesNotExist("10008");
+  ObjectDoesNotExist("10008"),
+  ImportFailed("10009");
   
   private String code;
   

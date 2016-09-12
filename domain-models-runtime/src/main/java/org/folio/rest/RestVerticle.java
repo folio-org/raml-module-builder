@@ -932,7 +932,7 @@ public class RestVerticle extends AbstractVerticle {
       if(importDataPath != null){
         //blocks as well for now
         System.out.println("Import DB file....  " + importDataPath);
-        PostgresClient.getInstance(vertx).importFile(importDataPath);
+        PostgresClient.getInstance(vertx).importFileEmbedded(importDataPath);
       }
     }
     
