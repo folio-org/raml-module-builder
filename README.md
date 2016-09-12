@@ -869,9 +869,9 @@ As stated earlier (command line options), you can pass a configuration file with
 
 For example: 
 
-Change log level of all classes to FINER
+Change log level of all classes to FINE
 
-(PUT) `http://localhost:8081/apis/admin/loglevel?level=INFO`
+(PUT) `http://localhost:8081/apis/admin/loglevel?level=FINE`
 
 Get log level of all classes
 
@@ -879,9 +879,9 @@ Get log level of all classes
 
 A `java_package` parameter can also be passed to change the log level of a specific package. For Example:
 
- http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.MongoCRUD
+ `http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.MongoCRUD`
  
- http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist
+ `http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist`
  
 
 ## A Little More on Validation

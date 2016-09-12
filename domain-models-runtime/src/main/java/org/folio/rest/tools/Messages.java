@@ -153,6 +153,15 @@ public class Messages {
     }
     return getMessageSingle(DEFAULT_LANGUAGE, code);
   }
+  
+  public String getMessage(String language, MessageConsts consts) {
+    String message = getMessageSingle(language, consts.getCode());
+    if (message != null) {
+      return message;
+    }
+    return getMessageSingle(DEFAULT_LANGUAGE, consts.getCode());
+  }
+
 
   /**
    * Return the message from the properties file.
@@ -166,6 +175,14 @@ public class Messages {
     String pattern = getMessage(language, code);
     if (pattern == null) {
       return "Error message not found: " + language + " " + code;
+    }
+    return MessageFormat.format(pattern, messageArguments);
+  }
+  
+  public String getMessage(String language, MessageConsts consts, Object... messageArguments) {
+    String pattern = getMessage(language, consts.getCode());
+    if (pattern == null) {
+      return "Error message not found: " + language + " " + consts.getCode();
     }
     return MessageFormat.format(pattern, messageArguments);
   }
