@@ -8,8 +8,8 @@ public enum MessageConsts implements MessageEnum {
   InvalidParameters("10004"),
   HTTPMethodNotSupported("10005"),
   ContentTypeError("10006"),
-  AcceptHeaderError("1007"),
-  ObjectDoesNotExist("1008");
+  AcceptHeaderError("10007"),
+  ObjectDoesNotExist("10008");
   
   private String code;
   
