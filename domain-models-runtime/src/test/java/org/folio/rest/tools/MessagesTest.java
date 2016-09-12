@@ -1,7 +1,7 @@
 package org.folio.rest.tools;
 
 import static org.junit.Assert.*;
-
+import org.folio.rest.tools.messages.*;
 import org.junit.Test;
 
 public class MessagesTest {
