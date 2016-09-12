@@ -48,16 +48,20 @@ import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.folio.rulez.Rules;
+
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.ByteStreams;
 import com.google.common.reflect.ClassPath;
+
 import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.AnnotationGrabber;
+import org.folio.rest.tools.MessageConsts;
 import org.folio.rest.tools.Messages;
 
 public class RestVerticle extends AbstractVerticle {
@@ -218,7 +222,7 @@ public class RestVerticle extends AbstractVerticle {
 
                 // the url exists but the http method requested does not match a function
                 // meaning url+http method != a function
-                endRequestWithError(rc, 400, true, messages.getMessage("en", "10005"), start, validRequest);
+                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported), start, validRequest);
               }
               Class<?> aClass;
               try {
@@ -270,7 +274,7 @@ public class RestVerticle extends AbstractVerticle {
                     String contentType = StringUtils.defaultString(request.getHeader("Content-type"))
                         .replace(";", "").trim();
                     if (!consumes.contains(contentType)) {
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10006", consumes, contentType), start, validRequest);
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType), start, validRequest);
                     }
                   }
 
@@ -280,7 +284,7 @@ public class RestVerticle extends AbstractVerticle {
                     if (acceptCheck(produces.getList(), accept) == null) {
                       // use contains because multiple values may be passed here
                       // for example json/application; text/plain mismatch of content type found
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", "10007", produces, accept), start, validRequest);
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.AcceptHeaderError, produces, accept), start, validRequest);
                     }
                   }
 
@@ -496,7 +500,7 @@ public class RestVerticle extends AbstractVerticle {
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 e.printStackTrace();
-                endRequestWithError(rc, 400, true, messages.getMessage("en", "10003") + e.getMessage(), start, validRequest);
+                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(), start, validRequest);
               }
             }
           }
@@ -664,7 +668,7 @@ public class RestVerticle extends AbstractVerticle {
         // message
         message = e.getCause().getMessage();
       } catch (Throwable ee) {
-        message = messages.getMessage("en", "10003");
+        message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
       }
       endRequestWithError(rc, 400, true, message, 0L, new boolean[]{true});
     }
