@@ -1,6 +1,9 @@
 package org.folio.rest.persist;
 
 import java.io.File;
+import java.io.FileReader;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -21,9 +24,14 @@ import ru.yandex.qatools.embed.postgresql.ext.ArtifactStoreBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
+import org.folio.rest.tools.messages.MessageConsts;
+import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.LogUtil;
+import org.postgresql.copy.CopyManager;
+import org.postgresql.core.BaseConnection;
 
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
 import io.vertx.core.AsyncResult;
@@ -64,9 +72,12 @@ public class PostgresClient {
 
   private static int             EMBEDDED_POSTGRES_PORT   = 6000;
   
-  private static final Logger log = LoggerFactory.getLogger("PostgresClient");
-
+  private JsonObject postgreSQLClientConfig = null;
   
+  private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
+
+  private final Messages            messages = Messages.getInstance();
+
   private PostgresClient(Vertx vertx) throws Exception {
     init(vertx);
   }
@@ -112,7 +123,7 @@ public class PostgresClient {
         path = configPath;
         log.info("Loading PostgreSQL configuration from " + configPath);
       }
-      JsonObject postgreSQLClientConfig = new LoadConfs().loadConfig(path);
+      postgreSQLClientConfig = new LoadConfs().loadConfig(path);
       if(postgreSQLClientConfig == null){
         //not in embedded mode but there is no conf file found
         throw new Exception("No postgres-conf.json file found and not in embedded mode, can not connect to any db store");
@@ -257,6 +268,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
+          connection.close();
         });
     } catch (Exception e) {
       e.printStackTrace();
@@ -608,6 +620,7 @@ public class PostgresClient {
         } else {
           replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toString()));
         }
+        sqlConnection.close();
       });
     } catch (Exception e) {
       e.printStackTrace();
@@ -675,7 +688,7 @@ public class PostgresClient {
           "username", "password"));
 
       postgresProcess = runtime.prepare(config).start();
-      JsonObject postgreSQLClientConfig = new JsonObject();
+      postgreSQLClientConfig = new JsonObject();
 
       postgreSQLClientConfig.put("host", postgresProcess.getConfig().net().host());
       postgreSQLClientConfig.put("port", postgresProcess.getConfig().net().port());
@@ -691,7 +704,12 @@ public class PostgresClient {
     }
   }
 
-  public void importFile(String path) throws Exception {
+  /**
+   * .sql files
+   * @param path
+   * @throws Exception
+   */
+  public void importFileEmbedded(String path) throws Exception {
     // starting Postgres
     if (embeddedMode) {
       if (postgresProcess != null && postgresProcess.isProcessRunning()) {
@@ -706,6 +724,49 @@ public class PostgresClient {
     } else {
       // TODO
     }
+
+  }
+  
+  public void importFile(String path, String tableName) {
+  
+   vertx.<String>executeBlocking(dothis -> {
+  
+    try {
+      String host = postgreSQLClientConfig.getString("host");
+      int port = postgreSQLClientConfig.getInteger("port");
+      String user = postgreSQLClientConfig.getString("username");
+      String pass = postgreSQLClientConfig.getString("password");
+      String db = postgreSQLClientConfig.getString("database");
+      
+      log.info("Connecting to " + db);
+      
+      Connection con = DriverManager.getConnection(
+        "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
+ 
+      log.info("Copying text data rows from stdin");
+ 
+      CopyManager copyManager = new CopyManager((BaseConnection) con);
+ 
+      FileReader fileReader = new FileReader(path);
+      copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
+      
+    } catch (Exception e) {
+      log.error(messages.getMessage("en", MessageConsts.ImportFailed), e.getMessage());
+      dothis.fail(e.getMessage());
+    }
+    dothis.complete("Done.");
+    
+  }, whendone -> {
+    
+    if(whendone.succeeded()){
+      
+      log.info("Done importing file: " + path);
+    }
+    else{
+      log.info("Failed importing file: " + path);
+    }
+    
+  });
 
   }
 

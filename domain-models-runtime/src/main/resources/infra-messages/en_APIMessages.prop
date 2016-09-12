@@ -10,3 +10,4 @@
 10006=Content-type header must be {0} but it is "{1}"
 10007=Accept header must be {0} for this request, but it is "{1}", can not send */*
 10008=Object does not exist
+10009=Import failed, reason: {0}
