@@ -1,4 +1,4 @@
-package org.folio.rest.tools;
+package org.folio.rest.tools.messages;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -154,7 +154,7 @@ public class Messages {
     return getMessageSingle(DEFAULT_LANGUAGE, code);
   }
   
-  public String getMessage(String language, MessageConsts consts) {
+  public String getMessage(String language, MessageEnum consts) {
     String message = getMessageSingle(language, consts.getCode());
     if (message != null) {
       return message;
@@ -179,7 +179,7 @@ public class Messages {
     return MessageFormat.format(pattern, messageArguments);
   }
   
-  public String getMessage(String language, MessageConsts consts, Object... messageArguments) {
+  public String getMessage(String language, MessageEnum consts, Object... messageArguments) {
     String pattern = getMessage(language, consts.getCode());
     if (pattern == null) {
       return "Error message not found: " + language + " " + consts.getCode();

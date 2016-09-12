@@ -299,6 +299,54 @@ public class MongoCRUD {
     }
   }
   
+  public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
+
+    long start = System.nanoTime();
+    
+    try {
+      final JsonObject query = new JsonObject(); 
+      FindOptions fo = new FindOptions();
+      
+      Class<?> cls = Class.forName(clazz);
+      
+      if(to != null){
+        fo.setLimit(to); 
+      }
+      if(from != null){
+        fo.setSkip(from);
+      }
+      if(mongoQueryString != null){
+        query.mergeIn(new JsonObject(mongoQueryString));
+      }   
+      client.findWithOptions(collection, query, fo, res -> {
+        if (res.succeeded()) {
+          List<JsonObject> reply = null;
+          try {
+            reply = mapper.readValue(res.result().toString(),
+              mapper.getTypeFactory().constructCollectionType(List.class, cls));
+            if(reply == null){
+              replyHandler.handle(io.vertx.core.Future.failedFuture("Seems like a mapping issue between requested objects and returned objects"));
+            }else{
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(reply));
+            }
+          } catch (Exception e) {
+            e.printStackTrace();
+            replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          }
+        } else {
+          res.cause().printStackTrace();
+          replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
+        }
+        if(log.isDebugEnabled()){
+          elapsedTime("get() " + collection + " " + query.encode(), start);
+        }
+      });
+    } catch (Throwable e) {
+      e.printStackTrace();
+      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
+    }
+  }  
+  
   public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
     update(collection, entity, query, false, addUpdateDate, replyHandler);

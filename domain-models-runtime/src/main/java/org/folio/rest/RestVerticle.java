@@ -61,8 +61,8 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.AnnotationGrabber;
-import org.folio.rest.tools.MessageConsts;
-import org.folio.rest.tools.Messages;
+import org.folio.rest.tools.messages.MessageConsts;
+import org.folio.rest.tools.messages.Messages;
 
 public class RestVerticle extends AbstractVerticle {
   

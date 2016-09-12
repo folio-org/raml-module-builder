@@ -1,6 +1,6 @@
-package org.folio.rest.tools;
+package org.folio.rest.tools.messages;
 
-public enum MessageConsts {
+public enum MessageConsts implements MessageEnum {
 
   InternalServerError("10001"),
   OperationNotSupported("10002"),
@@ -17,7 +17,7 @@ public enum MessageConsts {
     this.code = code;
   }
   
-  protected String getCode(){
+  public String getCode(){
     return code;
   }
   
