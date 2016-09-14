@@ -279,9 +279,7 @@ public class RestVerticle extends AbstractVerticle {
                   Iterator<Map.Entry<String, Object>> paramList = params.iterator();
                   Object[] paramArray = new Object[params.size()];
 
-                  // ///////////////////////handle file uploads async - NOTE: currently only supporting one file per upload
-                  // ////////////can be changed by parsing buffer and looking for delimiter and then creating multiple
-                  // /////MimeBodyPart objects and adding them to MimeMultipart object
+                  // ///////////////////////handle file uploads async ///////////////////////////////////////////
                   if (validRequest[0]) {
                     // are we dealing with a file upload , currently only multipart/form-data content-type support
                     final boolean[] isFileUpload = new boolean[] { false };

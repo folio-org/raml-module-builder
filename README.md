@@ -641,7 +641,7 @@ public class ShutdownImpl implements ShutdownAPI {
 Note that when implementing the generated interfaces it is possible to add a constructor to the implementing class. This constructor will be called for every API call. This is another way you can implement custom code that will run per request.
 
 
-## Implementing file uploads (alpha mode)
+## Implementing file uploads
 
 To create an api that allows file uploads, do the following:
 
@@ -662,7 +662,11 @@ post:
               example: <<exampleItem>>
 ```
 
-The content should look something like this:
+Please see the `/resources/raml/admin.raml` file in the `domain-models-runtime` project for an example.
+
+
+
+The body content should look something like this:
 
 ```sh
 ------WebKitFormBoundaryNKJKWHABrxY1AdmG
@@ -689,7 +693,7 @@ The generated API interface will have a function signiture of:
 public void postConfigurationsRules(String authorization, String lang, MimeMultipart entity, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception
 ```
 
-The MimeMultipart parameter can be used to retrieve the contents in the
+The `MimeMultipart` parameter can be used to retrieve the contents in the
 following manner:
 
 ```sh
@@ -700,7 +704,35 @@ for (int i = 0; i < parts; i++) {
 }
 ```
 
-Example can be found in the https://github.com/folio-org/mod-configuration project.
+Example can be found in the https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/AdminAPI.java class.
+
+To create the body part of the request programmatically 
+
+```sh
+
+  private Buffer getBody(String filename) {
+    Buffer buffer = Buffer.buffer();
+    buffer.appendString("--PARTBoundary\r\n");
+    buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
+    buffer.appendString("Content-Type: application/octet-stream\r\n");
+    buffer.appendString("Content-Transfer-Encoding: binary\r\n");
+    buffer.appendString("\r\n");
+    try {
+      buffer.appendString(getFile(filename));
+      buffer.appendString("\r\n");
+    } catch (IOException e) {
+      e.printStackTrace();
+
+    }
+    buffer.appendString("--PARTBoundary--\r\n");
+    return buffer;
+  }
+  
+  private String getFile(String filename) throws IOException {
+    return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
+  }
+
+```
 
 ## MongoDB integration
 
@@ -1030,6 +1062,7 @@ http://localhost:8080/apis/patrons
  }
 }
 ```
+
 
 
 
