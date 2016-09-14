@@ -6,11 +6,13 @@ version: v1
 
 traits:
  - log-level: !include log-level.raml
-
+ - upload-handler: !include upload-handler.raml
+ 
 /admin:
   /upload:
     description: "Uploads a file and saves it to a directory configured on the server"
     post:
+      is: [upload-handler]
       description: |
           "Uploads a file and saves it to a directory configured on the server"
       body:
