@@ -1,6 +1,5 @@
 package org.folio;
 
-import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -13,14 +12,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -78,8 +70,8 @@ public class DemoRamlRestTest {
   public void test(TestContext context) throws Exception {
     checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json"), 204);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBodyERROR("uploadtest.json"), 500);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", false), 204);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 500);
 
   }
   
@@ -159,7 +151,7 @@ public class DemoRamlRestTest {
   }
 
 
-  private Buffer getBody(String filename) {
+  private Buffer getBody(String filename, boolean witherror) {
     Buffer buffer = Buffer.buffer();
     buffer.appendString("--MyBoundary\r\n");
     buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
@@ -173,25 +165,14 @@ public class DemoRamlRestTest {
       e.printStackTrace();
 
     }
-    buffer.appendString("--MyBoundary--\r\n");
-    return buffer;
-  }
-  
-  private Buffer getBodyERROR(String filename) {
-    Buffer buffer = Buffer.buffer();
-    buffer.appendString("--MyBoundary\r\n");
-    buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
-    buffer.appendString("Content-Type: application/octet-stream\r\n");
-    buffer.appendString("Content-Transfer-Encoding: binary\r\n");
-    buffer.appendString("\r\n");
-    try {
-      buffer.appendString(getFile(filename));
-      buffer.appendString("\r\n");
-    } catch (IOException e) {
-      e.printStackTrace();
-
+    if(witherror){
+      //dont add the corresponding boundary
+      buffer.appendString("--\r\n");
     }
-    buffer.appendString("--\r\n");
+    else{
+      buffer.appendString("--MyBoundary--\r\n");      
+    }
     return buffer;
   }
+
 }
