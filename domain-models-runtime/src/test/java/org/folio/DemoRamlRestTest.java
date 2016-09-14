@@ -78,7 +78,9 @@ public class DemoRamlRestTest {
   public void test(TestContext context) throws Exception {
     checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json"));
+    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json"), 204);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBodyERROR("uploadtest.json"), 500);
+
   }
   
 
@@ -116,7 +118,7 @@ public class DemoRamlRestTest {
    * @param context
    * @param content
    */
-  private void postData(TestContext context, String api, Buffer buffer) {
+  private void postData(TestContext context, String api, Buffer buffer, int errorCode) {
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request;
@@ -129,7 +131,7 @@ public class DemoRamlRestTest {
       // is it 2XX
       System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " for " + api);
 
-      if (statusCode >= HttpResponseStatus.OK.code() && statusCode < HttpResponseStatus.MULTIPLE_CHOICES.code()) {
+      if (statusCode == errorCode) {
         context.assertTrue(true);
       } else {        
         response.bodyHandler(responseData -> {
@@ -169,6 +171,24 @@ public class DemoRamlRestTest {
 
     }
     buffer.appendString("--MyBoundary--\r\n");
+    return buffer;
+  }
+  
+  private Buffer getBodyERROR(String filename) {
+    Buffer buffer = Buffer.buffer();
+    buffer.appendString("--MyBoundary\r\n");
+    buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
+    buffer.appendString("Content-Type: application/octet-stream\r\n");
+    buffer.appendString("Content-Transfer-Encoding: binary\r\n");
+    buffer.appendString("\r\n");
+    try {
+      buffer.appendString(getFile(filename));
+      buffer.appendString("\r\n");
+    } catch (IOException e) {
+      e.printStackTrace();
+
+    }
+    buffer.appendString("--\r\n");
     return buffer;
   }
 }

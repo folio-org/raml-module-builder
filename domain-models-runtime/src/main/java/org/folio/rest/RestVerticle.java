@@ -336,25 +336,6 @@ public class RestVerticle extends AbstractVerticle {
                                   // TODO Auto-generated catch block
                                   e.printStackTrace();
                                 }
-                                // if request is valid - invoke it
-                                request.endHandler( a -> {
-                                  parseParams(rc, paramList, validRequest, consumes, paramArray, start, pathParams);
-                                  if (validRequest[0]) {
-                                    for (int i = 0; i < methods.length; i++) {
-                                      if (methods[i].getName().equals(function)) {
-                                        try {
-                                          invoke(methods[i], paramArray, instance, rc, v -> {
-                                            LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                                            sendResponse(rc, v, start);
-                                          });
-                                        } catch (Exception e1) {
-                                          log.error(e1.getMessage(), e1);
-                                          rc.response().end();
-                                        }
-                                      }
-                                    }
-                                  }  
-                                });
                               }
                             });
                           }
@@ -383,8 +364,28 @@ public class RestVerticle extends AbstractVerticle {
                         }
                       }
                     }
+                    if (isFileUpload[0]) {
+                      // if request is valid - invoke it
+                      request.endHandler( a -> {
+                        parseParams(rc, paramList, validRequest, consumes, paramArray, start, pathParams);
+                        if (validRequest[0]) {
+                          for (int i = 0; i < methods.length; i++) {
+                            if (methods[i].getName().equals(function)) {
+                              try {
+                                invoke(methods[i], paramArray, instance, rc, v -> {
+                                  LogUtil.formatLogMessage(className, "start", " invoking " + function);
+                                  sendResponse(rc, v, start);
+                                });
+                              } catch (Exception e1) {
+                                log.error(e1.getMessage(), e1);
+                                rc.response().end();
+                              }
+                            }
+                          }
+                        }  
+                      });
+                    }
                   }
-
                 }
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
