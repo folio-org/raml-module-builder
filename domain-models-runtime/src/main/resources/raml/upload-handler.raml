@@ -1,0 +1,13 @@
+      queryParameters:
+        persist_method:
+          description: |
+            Where to push the uploaded file to, either to the temp dir set by the server or publish via event bus
+          enum: [TEMP_DIR, BUS]
+          default: TEMP_DIR
+          required: false
+        bus_address:
+          description: |
+            The event bus address to publish the uploads to
+          type: string
+          required: false
+          default: "admin.uploaded.files"
