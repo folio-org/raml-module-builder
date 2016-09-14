@@ -73,7 +73,7 @@ public class AdminAPI implements AdminResource {
     for (; i[0] < parts; i[0]++) {
       BodyPart part = entity.getBodyPart(i[0]);
       Buffer buff = Buffer.buffer(NetworkUtils.object2Bytes(part.getContent()));
-      final String filename = DEFAULT_TEMP_DIR + System.currentTimeMillis() + "_" + part.getFileName();
+      final String filename = DEFAULT_TEMP_DIR + "/" + System.currentTimeMillis() + "_" + part.getFileName();
       fs.writeFile(filename, buff,      
         new Handler<AsyncResult<Void>>() {
         @Override
@@ -85,7 +85,7 @@ public class AdminAPI implements AdminResource {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadResponse.withNoContent(part.getFileName())));
               }
             } else {
-              log.error("Failed uploading file " + DEFAULT_TEMP_DIR + "/" + System.currentTimeMillis() + "_" + part.getFileName()
+              log.error("Failed uploading file " + filename
                 + ", error: " + result.cause().getMessage(), result.cause());
               if(i[0] == parts){
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadResponse.withPlainInternalServerError(
