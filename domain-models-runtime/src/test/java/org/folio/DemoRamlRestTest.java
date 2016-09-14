@@ -87,28 +87,31 @@ public class DemoRamlRestTest {
   
   public void checkURLs(TestContext context, String url, int codeExpected) {
     try {
-        Async async = context.async();
-        HttpMethod method = HttpMethod.GET;
-        HttpClient client = vertx.createHttpClient();
-        HttpClientRequest request = client.requestAbs(method, 
-          url , new Handler<HttpClientResponse>() {
-          @Override
-          public void handle(HttpClientResponse httpClientResponse) {
+      Async async = context.async();
+      HttpMethod method = HttpMethod.GET;
+      HttpClient client = vertx.createHttpClient();
+      HttpClientRequest request = client.requestAbs(method,
+              url, new Handler<HttpClientResponse>() {
+        @Override
+        public void handle(HttpClientResponse httpClientResponse) {
 
-            if (httpClientResponse.statusCode() == codeExpected) {
-              context.assertTrue(true);
-            }
-            async.complete();
+          if (httpClientResponse.statusCode() == codeExpected) {
+            context.assertTrue(true);
           }
-        });
-        request.headers().add("Authorization", "abcdefg");
-        request.headers().add("Accept", "application/json");
-        request.setChunked(true);
-        request.end();
+          async.complete();
+        }
+      });
+      request.exceptionHandler(error -> {
+        context.fail(error.getMessage());
+        async.complete();
+      });
+      request.headers().add("Authorization", "abcdefg");
+      request.headers().add("Accept", "application/json");
+      request.setChunked(true);
+      request.end();
     } catch (Throwable e) {
       e.printStackTrace();
     } finally {
-
     }
   }
   
