@@ -1,6 +1,9 @@
 package org.folio.rest.tools.utils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -35,5 +38,22 @@ public class NetworkUtils {
       }
   }
   
+  public static byte[] object2Bytes(Object obj) throws Exception {
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    ObjectOutput out = null;
+    try {
+      out = new ObjectOutputStream(bos);   
+      out.writeObject(obj);
+      byte[] bytes = bos.toByteArray();
+      return bytes;
+    } finally {
+      try {
+        if (out != null) { out.close(); }
+      } catch (IOException ex) {}
+      try {
+        bos.close();
+      } catch (IOException ex) {}
+    }
+  }
   
 }

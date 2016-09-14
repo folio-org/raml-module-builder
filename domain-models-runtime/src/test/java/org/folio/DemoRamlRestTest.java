@@ -1,5 +1,6 @@
 package org.folio;
 
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -24,7 +25,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
+import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.tools.utils.NetworkUtils;
 
@@ -74,9 +75,10 @@ public class DemoRamlRestTest {
    * @param context - the test context
    */
   @Test
-  public void test(TestContext context){
+  public void test(TestContext context) throws Exception {
     checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json"));
   }
   
 
@@ -107,5 +109,66 @@ public class DemoRamlRestTest {
 
     }
   }
+  
+  /**
+   * for POST
+   * @param api
+   * @param context
+   * @param content
+   */
+  private void postData(TestContext context, String api, Buffer buffer) {
+    Async async = context.async();
+    HttpClient client = vertx.createHttpClient();
+    HttpClientRequest request;
+    request = client.postAbs(api);
+    request.exceptionHandler(error -> {
+      async.complete();
+      context.fail(error.getMessage());
+    }).handler(response -> {
+      int statusCode = response.statusCode();
+      // is it 2XX
+      System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " for " + api);
 
+      if (statusCode >= HttpResponseStatus.OK.code() && statusCode < HttpResponseStatus.MULTIPLE_CHOICES.code()) {
+        context.assertTrue(true);
+      } else {        
+        response.bodyHandler(responseData -> {
+          context.fail("got non 200 response from bosun, error: " + responseData + " code " + statusCode);
+        });
+      }
+      if(!async.isCompleted()){
+        async.complete();
+      }
+    });
+    request.setChunked(true);
+    request.putHeader("Authorization", "abcdefg");
+    request.putHeader("Accept", "application/json,text/plain");
+    request.putHeader("Content-type",
+      "multipart/form-data; boundary=MyBoundary");
+    request.write(buffer);
+    request.end();
+  }
+  
+  private String getFile(String filename) throws IOException {
+    return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
+  }
+
+
+  private Buffer getBody(String filename) {
+    Buffer buffer = Buffer.buffer();
+    buffer.appendString("--MyBoundary\r\n");
+    buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
+    buffer.appendString("Content-Type: application/octet-stream\r\n");
+    buffer.appendString("Content-Transfer-Encoding: binary\r\n");
+    buffer.appendString("\r\n");
+    try {
+      buffer.appendString(getFile(filename));
+      buffer.appendString("\r\n");
+    } catch (IOException e) {
+      e.printStackTrace();
+
+    }
+    buffer.appendString("--MyBoundary--\r\n");
+    return buffer;
+  }
 }

@@ -12,10 +12,6 @@ import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.resource.BooksResource;
 import org.folio.rest.annotations.Validate;
 
-/**
- * @author shale
- *
- */
 public class BooksDemoAPI implements BooksResource {
 
   

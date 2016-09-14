@@ -10,6 +10,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerFileUpload;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
@@ -35,6 +36,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.mail.MessagingException;
 import javax.mail.internet.InternetHeaders;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
@@ -65,7 +67,7 @@ import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 
 public class RestVerticle extends AbstractVerticle {
-  
+
   public static final String        API_BUS_ADDRESS                 = "bus.api.rest";
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
 
@@ -81,6 +83,10 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_STREAMIN = "application/octet-stream";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
+  private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
+  private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
+
+  private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
 
   private static ValidatorFactory   factory;
   private static KieSession         droolsSession;
@@ -88,11 +94,11 @@ public class RestVerticle extends AbstractVerticle {
   private HttpServer                server;
   private static final ObjectMapper mapper                          = new ObjectMapper();
 
-  private int port = -1;
+  private int                       port                            = -1;
 
-  private static String className = RestVerticle.class.getName();
-  
-  private static final Logger log = LoggerFactory.getLogger(className);
+  private static String             className                       = RestVerticle.class.getName();
+
+  private static final Logger       log                             = LoggerFactory.getLogger(className);
 
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
@@ -131,11 +137,11 @@ public class RestVerticle extends AbstractVerticle {
     // layer
 
     // EVENTBUS = getVertx().eventBus();
-    
+
     cmdProcessing();
-    
+
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
-    
+
     MetricsService metricsService = MetricsService.create(vertx);
 
     // maps API_PATH_MAPPINGS file into java object for quick access
@@ -151,20 +157,27 @@ public class RestVerticle extends AbstractVerticle {
     Router router = Router.router(vertx);
 
     // needed so that we get the body content of the request - note that this
-    // will read the entire body into memory for every request - if this is not
-    // needed - this line can be removed and can use something like this
-    // https://github.com/vert-x3/vertx-examples/blob/master/core-examples/src/main/java/io/vertx/example/core/http/simpleformupload/SimpleFormUploadServer.java
+    // will read the entire body into memory
     final BodyHandler handler = BodyHandler.create();
 
-    router.route().handler(handler);
+    // IMPORTANT!!!
+    // the body of the request will be read into memory for ALL PUT requests
+    // and for POST requests with the content-types below ONLY!!!
+    // multipart, for example will not be read by the body handler as it saves
+    // multiparts and www-encoded to disk - hence multiparts will be handled differently
+    // see uploadHandler below
+    router.put().handler(handler);
+    router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
+    router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
+    router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
 
     // run pluggable startup code in a class implementing the InitAPI interface
-    // in the "com.sling.rest.impl" package
+    // in the "org.folio.rest.impl" package
     runHook(vv -> {
       if (((Future) vv).failed()) {
         System.out.println("init failed, exiting.......");
-        LogUtil.formatErrorLogMessage(className, "start", "During verticle deployment, init failed, exiting......." + 
-            ((Future) vv).cause().getMessage());
+        LogUtil.formatErrorLogMessage(className, "start", "During verticle deployment, init failed, exiting......."
+            + ((Future) vv).cause().getMessage());
         startFuture.fail(((Future) vv).cause().getMessage());
         vertx.close();
         System.exit(-1);
@@ -176,7 +189,6 @@ public class RestVerticle extends AbstractVerticle {
           runPeriodicHook();
         } catch (Exception e2) {
           log.error(e2.getMessage(), e2);
-          e2.printStackTrace();
         }
 
         router.route("/apis/*").handler(rc -> {
@@ -245,262 +257,142 @@ public class RestVerticle extends AbstractVerticle {
                     // default no param constructor to create the object to be used to call functions on
                     o = aClass.newInstance();
                   }
+                  final Object instance = o;
                   // function to invoke for the requested url
                   String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
                   // parameters for the function to invoke
                   JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
-                  // create the parameters needed to invoke the function mapped to the requested URL
+                  // all methods in the class whose function is mapped to the called url
+                  // needed so that we can get a reference to the Method object and call it via reflection
+                  Method[] methods = aClass.getMethods();
+                  // what the api will return as output (Accept)
+                  JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
+                  // what the api expects to get (content-type)
+                  JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
+
+                  HttpServerRequest request = rc.request();
+
+                  checkAcceptContentType(produces, consumes, start, rc, validRequest);
+
+                  // create the array to be populated by parameters needed to invoke the function mapped to the requested URL
+                  // array will be populated by parseParams() function
                   Iterator<Map.Entry<String, Object>> paramList = params.iterator();
                   Object[] paramArray = new Object[params.size()];
-                  HttpServerRequest request = rc.request();
-                  MultiMap queryParams = request.params();
-                  int pathParamsIndex[] = new int[] { pathParams.length };
 
-                  /*
-                   * NOTE that the content type and accept headers will accept a partial match - for example: if the raml indicates a
-                   * text/plain and an application/json content-type and only one is passed - it will accept it
-                   */
-                  JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
-                  // what the api will return as output (Accept)
-                  JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
-                  // what the api expects to get (content-type)
-
-                  // check allowed content types in the raml for this resource + method
-                  if (consumes != null && validRequest[0]) {
-                    // get the content type passed in the request
-                    // if this was left out by the client they must add for request to return
-                    // clean up simple stuff from the clients header - trim the string and remove ';' in case
-                    // it was put there as a suffix
-                    String contentType = StringUtils.defaultString(request.getHeader("Content-type"))
-                        .replace(";", "").trim();
-                    if (!consumes.contains(contentType)) {
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType), start, validRequest);
-                    }
-                  }
-
-                  // type of data expected to be returned by the server
-                  if (produces != null && validRequest[0]) {
-                    String accept = StringUtils.defaultString(request.getHeader("Accept"));
-                    if (acceptCheck(produces.getList(), accept) == null) {
-                      // use contains because multiple values may be passed here
-                      // for example json/application; text/plain mismatch of content type found
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.AcceptHeaderError, produces, accept), start, validRequest);
-                    }
-                  }
-
-                  paramList.forEachRemaining(entry -> {
-                    if (validRequest[0]) {
-                      String valueName = ((JsonObject) entry.getValue()).getString("value");
-                      String valueType = ((JsonObject) entry.getValue()).getString("type");
-                      String paramType = ((JsonObject) entry.getValue()).getString("param_type");
-                      int order = ((JsonObject) entry.getValue()).getInteger("order");
-                      Object defaultVal = ((JsonObject) entry.getValue()).getValue("default_value");
-
-                      // validation of query params (other then enums), object in body,
-                      // and some header params validated by jsr311 (aspects) -the rest are handled in the code here
-                    if (AnnotationGrabber.NON_ANNOTATED_PARAM.equals(paramType)) {
-                      // handle un-annotated parameters - this is assumed to be
-                      // entities in HTTP BODY for post and put requests or the 2 injected params
-                      // (vertx context and vertx handler)
-                      try {
-                        // this will also validate the json against the
-                        // pojo created from the schema
-                        Class<?> entityClazz = Class.forName(valueType);
-
-                        if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context")) {
-                          // we have special handling for the Result Handler check the data that is accepted by the api
-                          // - it should be json or multipart content type of multipart should
-                          // look something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
-                          if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
-                            Buffer content = rc.getBody();
-                            // MimeMultipart mmp1 =
-                            // FileUploadsUtil.MultiPartFormData(content);
-                            if (content != null) {
-                              MimeMultipart mmp = new MimeMultipart();
-                              InternetHeaders headers = new InternetHeaders();
-                              Set<FileUpload> fileUploadSet = rc.fileUploads();
-                              Iterator<FileUpload> fileUploadIterator = fileUploadSet.iterator();
-                              while (fileUploadIterator.hasNext()) {
-                                FileUpload fileUpload = fileUploadIterator.next();
-                                // To get the uploaded file - to optimize - read first line of content
-                                // - that is the multi-part form data delimiter - delimit the content based on that
-                                // into the parts right now, reading from filesystem since vertx saves uploaded files
-                                // there automatically
-                                Buffer uploadedFile = vertx.fileSystem().readFileBlocking(fileUpload.uploadedFileName());
-                                MimeBodyPart mbp = new MimeBodyPart(headers, uploadedFile.getBytes());
-                                mmp.addBodyPart(mbp);
-                                // consider not deleting for debug purposes
-                                vertx.fileSystem().deleteBlocking(fileUpload.uploadedFileName());
-                              }
-                              paramArray[order] = mmp;
-                            } else {
-                              paramArray[order] = null;
-                            }
-                          }
-                          // TODO Stream file uploads - by pushing into a temp object in memory and
-                          // passing this to the function - and populate object and then end it to
-                          // indicate all date read - then it can be async - so in the handler, will
-                          // need to call invoke of the function and the function can then call the
-                          // handler once it finished reading all content from temp object
-                          /*
-                           * else if (consumes != null && consumes.contains (SUPPORTED_CONTENT_TYPE_FORMDATA)) {
-                           * 
-                           * rc.request().handler( buf -> { System.out.println( new String( buf.getByteBuf().array() )); }); }
-                           */
-                          else {
-                            paramArray[order] = mapper.readValue(rc.getBodyAsString(), entityClazz);
-
-                            Set<? extends ConstraintViolation<?>> validationErrors = factory.getValidator().validate(paramArray[order]);
-                            if (validationErrors.size() > 0) {
-                              StringBuffer sb = new StringBuffer();
-                              for (ConstraintViolation<?> cv : validationErrors) {
-                                sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
-                              }
-                              endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString(), start, validRequest);
-                            }
-
-                            // complex rules validation here (drools) - after simpler validation rules pass -
-                            try {
-                              // if no /rules exist then drools session will be null
-                              // TODO support adding .drl files dynamically to db / dir
-                              // and having them picked up
-                              if (droolsSession != null) {
-                                // add object to validate to session
-                                FactHandle handle = droolsSession.insert(paramArray[order]);
-                                // run all rules in session on object
-                                droolsSession.fireAllRules();
-                                // remove the object from the session
-                                droolsSession.delete(handle);
-                              }
-                            } catch (Exception e) {
-                              log.error(e.getMessage(), e);
-                              e.printStackTrace();
-                              endRequestWithError(rc, 400, true, e.getCause().getMessage(), start, validRequest);                              
-                            }
-                          }
-                        }
-                      } catch (Exception e) {
-                        log.error(e.getMessage(), e);
-                        e.printStackTrace();
-                        endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), start, validRequest);
-                        
-                      }
-                    } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
-                      // handle header params - read the header field from the
-                      // header (valueName) and get its value
-                      String value = request.getHeader(valueName);
-                      // set the value passed from the header as a param to the function
-                      paramArray[order] = value;
-                    } else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
-                      // these are placeholder values in the path - for example
-                      // /patrons/{patronid} - this would be the patronid value
-                      paramArray[order] = pathParams[pathParamsIndex[0] - 1];
-                      pathParamsIndex[0] = pathParamsIndex[0] - 1;
-                    } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
-                      String param = queryParams.get(valueName);
-                      // support enum, numbers or strings as query parameters
-                      try {
-                        if (valueType.contains("String")) {
-                          // regular string param in query string - just push value
-                          if (param == null && defaultVal != null) {
-                            // no value passed - check if there is a default value
-                            paramArray[order] = (String) defaultVal;
-                          } else {
-                            paramArray[order] = param;
-                          }
-                        } else if (valueType.contains("int")) {
-                          // cant pass null to an int type - replace with zero
-                          if (param == null) {
-                            if (defaultVal != null) {
-                              paramArray[order] = Integer.valueOf((String) defaultVal);
-                            } else {
-                              paramArray[order] = 0;
-                            }
-                          } else {
-                            paramArray[order] = Integer.valueOf(param).intValue();
-                          }
-                        } 
-                        else if (valueType.contains("BigDecimal")) {
-                          // cant pass null to an int type - replace with zero
-                          if (param == null) {
-                            if (defaultVal != null) {
-                              paramArray[order] = new BigDecimal((String) defaultVal);
-                            } else {
-                              paramArray[order] = new BigDecimal(0);
-                            }
-                          } else {
-                            paramArray[order] = new BigDecimal(param.replaceAll(",", "")); //big decimal can contain ","
-                          }
-                        }                         
-                        else { // enum object type
-                          try {
-                            String enumClazz = replaceLast(valueType, ".", "$");
-                            Class<?> enumClazz1 = Class.forName(enumClazz);
-                            if (enumClazz1.isEnum()) {
-                              Object defaultEnum = null;
-                              Object[] vals = enumClazz1.getEnumConstants();
-                              for (int i = 0; i < vals.length; i++) {
-                                if (vals[i].toString().equals(defaultVal)) {
-                                  defaultEnum = vals[i];
-                                }
-                                // set default value (if there was one in the raml)
-                                // in case no value was passed in the request
-                                if (param == null && defaultEnum != null) {
-                                  paramArray[order] = defaultEnum;
-                                  break;
-                                }
-                                // make sure enum value is valid by converting the string to an enum
-                                else if (vals[i].toString().equals(param)) {
-                                  paramArray[order] = vals[i];
-                                  break;
-                                }
-                                if (i == vals.length - 1) {
-                                  // if enum passed is not valid, replace with default value
-                                  paramArray[order] = defaultEnum;
-                                }
-                              }
-                            }
-                          } catch (Exception ee) {
-                            log.error(ee.getMessage(), ee);
-                            ee.printStackTrace();
-                            validRequest[0] = false;
-                          }
-                        }
-
-                      } catch (Exception e) {
-                        log.error(e.getMessage(), e);
-                        e.printStackTrace();
-                        validRequest[0] = false;
-                      }
-                    }
-                  }
-                });
-
+                  // ///////////////////////handle file uploads async - NOTE: currently only supporting one file per upload
+                  // ////////////can be changed by parsing buffer and looking for delimiter and then creating multiple
+                  // /////MimeBodyPart objects and adding them to MimeMultipart object
                   if (validRequest[0]) {
-                    Method[] methods = aClass.getMethods();
-                    for (int i = 0; i < methods.length; i++) {
-                      if (methods[i].getName().equals(function)) {
+                    // are we dealing with a file upload , currently only multipart/form-data content-type support
+                    final boolean[] isFileUpload = new boolean[] { false };
+                    final int[] uploadPosition = new int[] { -1 };
+                    params.forEach(param -> {
+                      if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
+                        isFileUpload[0] = true;
+                        uploadPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
+                      }
+                    });
 
-                        // Object result = null;
-                        try {
-                          // result = methods[i].invoke(o, paramArray);
-                          invoke(methods[i], paramArray, o, rc, v -> {
-                            LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                            sendResponse(rc, v, start);
-                          });
-                        } catch (Exception e1) {
-                          log.error(e1.getMessage(), e1);
-                          e1.printStackTrace();
-                          rc.response().end();
+                    if (isFileUpload[0]) {
+                      // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
+                      if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
+                        request.setExpectMultipart(true);       
+                        MimeMultipart mmp = new MimeMultipart();
+                        request.uploadHandler(new Handler<io.vertx.core.http.HttpServerFileUpload>() {
+                          
+                          Buffer content = Buffer.buffer();
+
+                          @Override
+                          public void handle(HttpServerFileUpload upload) {
+                            
+                            // called as data comes in
+                            upload.handler(new Handler<Buffer>() {
+                              @Override
+                              public void handle(Buffer buff) {
+                                if(content == null){
+                                  content = Buffer.buffer();
+                                }
+                                content.appendBuffer(buff);
+                              }
+                            });
+                            upload.exceptionHandler(new Handler<Throwable>() {
+                              @Override
+                              public void handle(Throwable event) {
+                                endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), start, validRequest);
+                              }
+                            });
+                            // endHandler called when all data completed streaming to server
+                            upload.endHandler(new Handler<Void>() {
+                              @Override
+                              public void handle(Void event) {
+                                
+                                InternetHeaders headers = new InternetHeaders();
+                                MimeBodyPart mbp = null;
+                                try {
+                                  mbp = new MimeBodyPart(headers, content.getBytes());
+                                  mbp.setFileName(upload.filename());
+                                  mmp.addBodyPart(mbp);
+                                  paramArray[uploadPosition[0]] = mmp;
+                                  content = null;
+                                } catch (MessagingException e) {
+                                  // TODO Auto-generated catch block
+                                  e.printStackTrace();
+                                }
+                                // if request is valid - invoke it
+                                request.endHandler( a -> {
+                                  parseParams(rc, paramList, validRequest, consumes, paramArray, start, pathParams);
+                                  if (validRequest[0]) {
+                                    for (int i = 0; i < methods.length; i++) {
+                                      if (methods[i].getName().equals(function)) {
+                                        try {
+                                          invoke(methods[i], paramArray, instance, rc, v -> {
+                                            LogUtil.formatLogMessage(className, "start", " invoking " + function);
+                                            sendResponse(rc, v, start);
+                                          });
+                                        } catch (Exception e1) {
+                                          log.error(e1.getMessage(), e1);
+                                          rc.response().end();
+                                        }
+                                      }
+                                    }
+                                  }  
+                                });
+                              }
+                            });
+                          }
+                        });
+                      } else {
+                        endRequestWithError(rc, 400, true, "Content-type for file uploads must be " + SUPPORTED_CONTENT_TYPE_FORMDATA,
+                          start, validRequest);
+                      }
+                    } else {
+
+                      parseParams(rc, paramList, validRequest, consumes, paramArray, start, pathParams);
+
+                      if (validRequest[0]) {
+                        for (int i = 0; i < methods.length; i++) {
+                          if (methods[i].getName().equals(function)) {
+                            try {
+                              invoke(methods[i], paramArray, o, rc, v -> {
+                                LogUtil.formatLogMessage(className, "start", " invoking " + function);
+                                sendResponse(rc, v, start);
+                              });
+                            } catch (Exception e1) {
+                              log.error(e1.getMessage(), e1);
+                              rc.response().end();
+                            }
+                          }
                         }
                       }
                     }
                   }
+
                 }
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 e.printStackTrace();
-                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(), start, validRequest);
+                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(), start,
+                  validRequest);
               }
             }
           }
@@ -508,8 +400,7 @@ public class RestVerticle extends AbstractVerticle {
             // invalid path
             endRequestWithError(rc, 400, true, "invalid path", start, validRequest);
           }
-        } finally {
-        }
+        } finally {}
       } );
         // routes requests on “/assets/*” to resources stored in the “assets”
         // directory.
@@ -541,28 +432,26 @@ public class RestVerticle extends AbstractVerticle {
           port = config().getInteger("http.port", 8081);
         }
         Integer p = port;
-        server = vertx
-                .createHttpServer()
-                .requestHandler(router::accept)
-                // router accepts request and will pass to next handler for
-                // specified path
+        server = vertx.createHttpServer().requestHandler(router::accept)
+        // router accepts request and will pass to next handler for
+        // specified path
 
-                .listen(
-                        // Retrieve the port from the configuration file - file needs to
-                        // be passed as arg to command line,
-                        // for example: -conf src/main/conf/my-application-conf.json
-                        // default to 8181.
-                        p,
-                        result -> {
-                          if (result.failed()) {
-                            startFuture.fail(result.cause());
-                          } else {
-                            LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + p + ".");
-                            LogUtil.formatLogMessage(className, "start", "Documentation available at: "
-                                + "http://localhost:" + Integer.toString(p) + "/apidocs/");
-                            startFuture.complete();
-                          }
-                        });
+        .listen(
+          // Retrieve the port from the configuration file - file needs to
+          // be passed as arg to command line,
+          // for example: -conf src/main/conf/my-application-conf.json
+          // default to 8181.
+          p,
+          result -> {
+            if (result.failed()) {
+              startFuture.fail(result.cause());
+            } else {
+              LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + p + ".");
+              LogUtil.formatLogMessage(className, "start", "Documentation available at: " + "http://localhost:" + Integer.toString(p)
+                  + "/apidocs/");
+              startFuture.complete();
+            }
+          });
       }
     });
   }
@@ -581,7 +470,7 @@ public class RestVerticle extends AbstractVerticle {
     Response result = ((Response) ((AsyncResult<?>) v).result());
     if (result == null) {
       // catch all
-      endRequestWithError(rc, 500, true, "Server error", start,  new boolean[]{true});
+      endRequestWithError(rc, 500, true, "Server error", start, new boolean[] { true });
       return;
     }
 
@@ -618,31 +507,29 @@ public class RestVerticle extends AbstractVerticle {
     }
 
     long end = System.nanoTime();
-    if(log.isDebugEnabled()){
-      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(), rc.request().version()
-        .toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(), rc.request().path(), rc
-        .request().query(), rc.response().getStatusMessage(), rc.getBodyAsString());
-    }
-    else{
-      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(), rc.request().version()
-        .toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(), rc.request().path(), rc
-        .request().query(), rc.response().getStatusMessage());
+    if (log.isDebugEnabled()) {
+      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
+        rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
+        rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), rc.getBodyAsString());
+    } else {
+      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
+        rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
+        rc.request().path(), rc.request().query(), rc.response().getStatusMessage());
     }
 
   }
 
-  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, long beginTime, boolean []isValid) {
-    if(isValid[0]){
+  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, long beginTime, boolean[] isValid) {
+    if (isValid[0]) {
       log.error(rc.request().absoluteURI() + " [ERROR] " + message);
       rc.response().setChunked(chunked);
       rc.response().setStatusCode(status);
       rc.response().write(message);
       rc.response().end();
     }
-    //once we are here the call is not valid
+    // once we are here the call is not valid
     isValid[0] = false;
   }
-
 
   public void invoke(Method method, Object[] params, Object o, RoutingContext rc, Handler<AsyncResult<Response>> resultHandler) {
     Context context = vertx.getOrCreateContext();
@@ -659,21 +546,21 @@ public class RestVerticle extends AbstractVerticle {
         method.invoke(o, newArray);
         // response.setChunked(true);
         // response.setStatusCode(((Response)result).getStatus());
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      e.printStackTrace();
-      String message;
-      try {
-        // catch exception for now in case of null point and show generic
-        // message
-        message = e.getCause().getMessage();
-      } catch (Throwable ee) {
-        message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        e.printStackTrace();
+        String message;
+        try {
+          // catch exception for now in case of null point and show generic
+          // message
+          message = e.getCause().getMessage();
+        } catch (Throwable ee) {
+          message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
+        }
+        endRequestWithError(rc, 400, true, message, 0L, new boolean[] { true });
       }
-      endRequestWithError(rc, 400, true, message, 0L, new boolean[]{true});
-    }
 
-  });
+    });
   }
 
   public JsonObject loadConfig(String configFile) {
@@ -743,7 +630,7 @@ public class RestVerticle extends AbstractVerticle {
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       e.printStackTrace();
-    } 
+    }
     // loadConfig(JSON_URL_MAPPINGS);
     Set<String> classURLs = jObjClasses.fieldNames();
     classURLs.forEach(classURL -> {
@@ -774,8 +661,7 @@ public class RestVerticle extends AbstractVerticle {
     PostgresClient.stopEmbeddedPostgres();
     try {
       droolsSession.dispose();
-    } catch (Exception e) {
-    }
+    } catch (Exception e) {}
     // removes the .lck file associated with the log file
     LogUtil.closeLogger();
     runShutdownHook(v -> {
@@ -786,7 +672,7 @@ public class RestVerticle extends AbstractVerticle {
       }
     });
   }
-  
+
   /*
    * implementors of the InitAPI interface must call back the handler in there init() implementation like this:
    * resultHandler.handle(io.vertx.core.Future.succeededFuture(true)); or this will hang
@@ -866,81 +752,276 @@ public class RestVerticle extends AbstractVerticle {
     }
     return false;
   }
-  
+
   private void cmdProcessing() throws Exception {
     String importDataPath = null;
     String droolsPath = null;
     // TODO need to add a normal command line parser
     List<String> cmdParams = processArgs();
-    
+
     if (cmdParams != null) {
       for (Iterator iterator = cmdParams.iterator(); iterator.hasNext();) {
         String param = (String) iterator.next();
         if (param.startsWith("embed_mongo=true")) {
           MongoCRUD.setIsEmbedded(true);
-        }
-        else if (param.startsWith("-Dhttp.port=")) {
+        } else if (param.startsWith("-Dhttp.port=")) {
           port = Integer.parseInt(param.split("=")[1]);
           LogUtil.formatLogMessage(className, "cmdProcessing", "port to listen on " + port);
-        } 
-        else if (param.startsWith("drools_dir=")) {
+        } else if (param.startsWith("drools_dir=")) {
           droolsPath = param.split("=")[1];
           LogUtil.formatLogMessage(className, "cmdProcessing", "Drools rules file dir set to " + droolsPath);
-        } 
-        else if (param.startsWith("db_connection=")) {
+        } else if (param.startsWith("db_connection=")) {
           String dbconnection = param.split("=")[1];
           PostgresClient.setConfigFilePath(dbconnection);
           PostgresClient.setIsEmbedded(false);
           LogUtil.formatLogMessage(className, "cmdProcessing", "Setting path to db config file....  " + dbconnection);
-        }
-        else if (param.startsWith("embed_postgres=true")) {
-          //allow setting config() from unit test mode which runs embedded
-          
+        } else if (param.startsWith("embed_postgres=true")) {
+          // allow setting config() from unit test mode which runs embedded
+
           LogUtil.formatLogMessage(className, "cmdProcessing", "Using embedded postgres... starting... ");
 
-          //this blocks
+          // this blocks
           PostgresClient.setIsEmbedded(true);
           PostgresClient.setConfigFilePath(null);
-        }
-        else if (param.startsWith("mongo_connection=")) {
+        } else if (param.startsWith("mongo_connection=")) {
           String dbconnection = param.split("=")[1];
           MongoCRUD.setConfigFilePath(dbconnection);
           MongoCRUD.setIsEmbedded(false);
           LogUtil.formatLogMessage(className, "cmdProcessing", "Setting path to mongo config file....  " + dbconnection);
 
-        }
-        else if (param != null && param.startsWith("postgres_import_path=")) {
-          try{
+        } else if (param != null && param.startsWith("postgres_import_path=")) {
+          try {
             importDataPath = param.split("=")[1];
             System.out.println("Setting path to import DB file....  " + importDataPath);
-          }
-          catch(Exception e){
-            //any problems - print exception and continue
+          } catch (Exception e) {
+            // any problems - print exception and continue
             e.printStackTrace();
           }
         }
       }
-      
-      if(PostgresClient.isEmbedded() || importDataPath != null){
+
+      if (PostgresClient.isEmbedded() || importDataPath != null) {
         PostgresClient.getInstance(vertx).startEmbeddedPostgres();
       }
-      
-      if(MongoCRUD.isEmbedded()){
+
+      if (MongoCRUD.isEmbedded()) {
         MongoCRUD.getInstance(vertx).startEmbeddedMongo();
       }
-      
-      if(importDataPath != null){
-        //blocks as well for now
+
+      if (importDataPath != null) {
+        // blocks as well for now
         System.out.println("Import DB file....  " + importDataPath);
         PostgresClient.getInstance(vertx).importFileEmbedded(importDataPath);
       }
     }
-    
+
     try {
       droolsSession = new Rules(droolsPath).buildSession();
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  /**
+   * look for the boundary and return just the multipart/form-data multipart/form-data boundary=----WebKitFormBoundaryP8wZiNAoFszXOXEt if
+   * boundary doesnt exist that return original string
+   */
+  private String removeBoundry(String contenttype) {
+    int idx = contenttype.indexOf("boundary");
+    if (idx != -1) {
+      return contenttype.substring(0, idx - 1);
+    }
+    return contenttype;
+  }
+
+  /**
+   * check accept and content-type headers if no - set the request asa not valid and return error to user
+   */
+  private void checkAcceptContentType(JsonArray produces, JsonArray consumes, long start, RoutingContext rc, boolean[] validRequest) {
+    /*
+     * NOTE that the content type and accept headers will accept a partial match - for example: if the raml indicates a text/plain and an
+     * application/json content-type and only one is passed - it will accept it
+     */
+    // check allowed content types in the raml for this resource + method
+    HttpServerRequest request = rc.request();
+    if (consumes != null && validRequest[0]) {
+      // get the content type passed in the request
+      // if this was left out by the client they must add for request to return
+      // clean up simple stuff from the clients header - trim the string and remove ';' in case
+      // it was put there as a suffix
+      String contentType = StringUtils.defaultString(request.getHeader("Content-type")).replace(";", "").trim();
+      if (!consumes.contains(removeBoundry(contentType))) {
+        endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType), start,
+          validRequest);
+      }
+    }
+
+    // type of data expected to be returned by the server
+    if (produces != null && validRequest[0]) {
+      String accept = StringUtils.defaultString(request.getHeader("Accept"));
+      if (acceptCheck(produces.getList(), accept) == null) {
+        // use contains because multiple values may be passed here
+        // for example json/application; text/plain mismatch of content type found
+        endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.AcceptHeaderError, produces, accept), start,
+          validRequest);
+      }
+    }
+  }
+
+  private void parseParams(RoutingContext rc, Iterator<Map.Entry<String, Object>> paramList, boolean[] validRequest, JsonArray consumes,
+      Object[] paramArray, long start, String[] pathParams) {
+
+    HttpServerRequest request = rc.request();
+    MultiMap queryParams = request.params();
+    int pathParamsIndex[] = new int[] { pathParams.length };
+
+    paramList.forEachRemaining(entry -> {
+      if (validRequest[0]) {
+        String valueName = ((JsonObject) entry.getValue()).getString("value");
+        String valueType = ((JsonObject) entry.getValue()).getString("type");
+        String paramType = ((JsonObject) entry.getValue()).getString("param_type");
+        int order = ((JsonObject) entry.getValue()).getInteger("order");
+        Object defaultVal = ((JsonObject) entry.getValue()).getValue("default_value");
+
+        // validation of query params (other then enums), object in body (not including drools),
+        // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
+        // handle un-annotated parameters - this is assumed to be
+        // entities in HTTP BODY for post and put requests or the 2 injected params
+        // (vertx context and vertx handler) - file uploads are also not annotated but are not handled here due
+        // to their async upload - so explicitly skip them
+        if (AnnotationGrabber.NON_ANNOTATED_PARAM.equals(paramType) && !FILE_UPLOAD_PARAM.equals(valueType)) {
+          try {
+            // this will also validate the json against the pojo created from the schema
+            Class<?> entityClazz = Class.forName(valueType);
+
+            if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context")) {
+              // we have special handling for the Result Handler and context
+
+              paramArray[order] = mapper.readValue(rc.getBodyAsString(), entityClazz);
+
+              Set<? extends ConstraintViolation<?>> validationErrors = factory.getValidator().validate(paramArray[order]);
+              if (validationErrors.size() > 0) {
+                StringBuffer sb = new StringBuffer();
+                for (ConstraintViolation<?> cv : validationErrors) {
+                  sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
+                }
+                endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString(), start, validRequest);
+              }
+
+              // complex rules validation here (drools) - after simpler validation rules pass -
+              try {
+                // if no /rules exist then drools session will be null
+                // TODO support adding .drl files dynamically to db / dir
+                // and having them picked up
+                if (droolsSession != null) {
+                  // add object to validate to session
+                  FactHandle handle = droolsSession.insert(paramArray[order]);
+                  // run all rules in session on object
+                  droolsSession.fireAllRules();
+                  // remove the object from the session
+                  droolsSession.delete(handle);
+                }
+              } catch (Exception e) {
+                log.error(e.getMessage(), e);
+                e.printStackTrace();
+                endRequestWithError(rc, 400, true, e.getCause().getMessage(), start, validRequest);
+              }
+              // }
+            }
+          } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            e.printStackTrace();
+            endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), start, validRequest);
+
+          }
+        } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
+          // handle header params - read the header field from the
+          // header (valueName) and get its value
+          String value = request.getHeader(valueName);
+          // set the value passed from the header as a param to the function
+          paramArray[order] = value;
+        } else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
+          // these are placeholder values in the path - for example
+          // /patrons/{patronid} - this would be the patronid value
+          paramArray[order] = pathParams[pathParamsIndex[0] - 1];
+          pathParamsIndex[0] = pathParamsIndex[0] - 1;
+        } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
+          String param = queryParams.get(valueName);
+          // support enum, numbers or strings as query parameters
+          try {
+            if (valueType.contains("String")) {
+              // regular string param in query string - just push value
+              if (param == null && defaultVal != null) {
+                // no value passed - check if there is a default value
+                paramArray[order] = (String) defaultVal;
+              } else {
+                paramArray[order] = param;
+              }
+            } else if (valueType.contains("int")) {
+              // cant pass null to an int type - replace with zero
+              if (param == null) {
+                if (defaultVal != null) {
+                  paramArray[order] = Integer.valueOf((String) defaultVal);
+                } else {
+                  paramArray[order] = 0;
+                }
+              } else {
+                paramArray[order] = Integer.valueOf(param).intValue();
+              }
+            } else if (valueType.contains("BigDecimal")) {
+              // cant pass null to an int type - replace with zero
+              if (param == null) {
+                if (defaultVal != null) {
+                  paramArray[order] = new BigDecimal((String) defaultVal);
+                } else {
+                  paramArray[order] = new BigDecimal(0);
+                }
+              } else {
+                paramArray[order] = new BigDecimal(param.replaceAll(",", "")); // big decimal can contain ","
+              }
+            } else { // enum object type
+              try {
+                String enumClazz = replaceLast(valueType, ".", "$");
+                Class<?> enumClazz1 = Class.forName(enumClazz);
+                if (enumClazz1.isEnum()) {
+                  Object defaultEnum = null;
+                  Object[] vals = enumClazz1.getEnumConstants();
+                  for (int i = 0; i < vals.length; i++) {
+                    if (vals[i].toString().equals(defaultVal)) {
+                      defaultEnum = vals[i];
+                    }
+                    // set default value (if there was one in the raml)
+                    // in case no value was passed in the request
+                    if (param == null && defaultEnum != null) {
+                      paramArray[order] = defaultEnum;
+                      break;
+                    }
+                    // make sure enum value is valid by converting the string to an enum
+                    else if (vals[i].toString().equals(param)) {
+                      paramArray[order] = vals[i];
+                      break;
+                    }
+                    if (i == vals.length - 1) {
+                      // if enum passed is not valid, replace with default value
+                      paramArray[order] = defaultEnum;
+                    }
+                  }
+                }
+              } catch (Exception ee) {
+                log.error(ee.getMessage(), ee);
+                ee.printStackTrace();
+                validRequest[0] = false;
+              }
+            }
+
+          } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            e.printStackTrace();
+            validRequest[0] = false;
+          }
+        }
+      }
+    });
   }
 
 }

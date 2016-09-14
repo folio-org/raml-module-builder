@@ -8,6 +8,35 @@ traits:
  - log-level: !include log-level.raml
 
 /admin:
+  /upload:
+    description: "Uploads a file and saves it to a directory configured on the server"
+    post:
+      description: |
+          "Uploads a file and saves it to a directory configured on the server"
+      body:
+        multipart/form-data:
+          formParameters:
+            file:
+              description: The file to be uploaded
+              required: true
+              type: file 
+      responses:
+        204:
+          description: "Returns id of saved item in location header"
+          headers:
+            Location:
+              description: URI to the created <<resourcePathName|!singularize>> item
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "unable to add <<resourcePathName|!singularize>>"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
   /loglevel:
     put:
       is: [log-level]
