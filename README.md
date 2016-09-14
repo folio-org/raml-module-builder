@@ -666,7 +666,14 @@ Please see the `/resources/raml/admin.raml` file in the `domain-models-runtime` 
 
 
 
-The body content should look something like this:
+(see a client example call in Java here:)
+
+https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/DemoRamlRestTest.java#L81
+
+
+The body content should look something like this: 
+
+
 
 ```sh
 ------WebKitFormBoundaryNKJKWHABrxY1AdmG
@@ -684,29 +691,7 @@ Content-Type: application/octet-stream
 ------WebKitFormBoundaryNKJKWHABrxY1AdmG
 ```
 
-The above demonstrate a multipart/form-data body with two parts - this can be
-with only one part or N parts. The random delimiter is used to separate the
-content.
-The generated API interface will have a function signiture of:
-
-```sh
-public void postConfigurationsRules(String authorization, String lang, MimeMultipart entity, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception
-```
-
-The `MimeMultipart` parameter can be used to retrieve the contents in the
-following manner:
-
-```sh
-int parts = entity.getCount();
-for (int i = 0; i < parts; i++) {
-        BodyPart part = entity.getBodyPart(i);
-        Object o = part.getContent();
-}
-```
-
-Example can be found in the https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/AdminAPI.java class.
-
-To create the body part of the request programmatically 
+Which can be generated in Java code as follows:
 
 ```sh
 
@@ -733,6 +718,29 @@ To create the body part of the request programmatically
   }
 
 ```
+
+The generated API interface will have a function signiture of:
+
+```sh
+public void postConfigurationsRules(String authorization, String lang, MimeMultipart entity, 
+Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception
+```
+
+The `MimeMultipart` parameter can be used to retrieve the contents in the
+following manner:
+
+```sh
+int parts = entity.getCount();
+for (int i = 0; i < parts; i++) {
+        BodyPart part = entity.getBodyPart(i);
+        Object o = part.getContent();
+}
+```
+
+Example can be found in the https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/AdminAPI.java#L67 class.
+
+To create the body part of the request programmatically 
+
 
 ## MongoDB integration
 
