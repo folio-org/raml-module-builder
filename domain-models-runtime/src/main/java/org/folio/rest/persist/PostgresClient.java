@@ -771,8 +771,8 @@ public class PostgresClient {
   }
 
   public static void stopEmbeddedPostgres() {
-    LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
     if (postgresProcess != null) {
+      LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
       postgresProcess.stop();
       embeddedMode = false;
     }
