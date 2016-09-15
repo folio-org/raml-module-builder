@@ -54,7 +54,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.folio.rulez.Rules;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Table;
 import com.google.common.io.ByteStreams;
 import com.google.common.reflect.ClassPath;
 
@@ -100,6 +102,11 @@ public class RestVerticle extends AbstractVerticle {
 
   private static final Logger       log                             = LoggerFactory.getLogger(className);
 
+  //we look for the class and function in the class that is mapped to a requested url 
+  //since we try to load via reflection an implementation of the class at runtime - better to load once and cache 
+  //for subsequent calls
+  private static Table<String, String, Class<?>> clazzCache       = HashBasedTable.create();
+  
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
   public static void main(String[] args) {
@@ -609,6 +616,11 @@ public class RestVerticle extends AbstractVerticle {
    *           - if no class in implDir implements the interface
    */
   private static Class<?> convert2Impl(String implDir, String interface2check) throws IOException, ClassNotFoundException {
+    Class<?> cachedClazz = clazzCache.get(implDir, interface2check);
+    if(cachedClazz != null){
+      log.debug("returned class from cache " + cachedClazz.getName());
+      return cachedClazz;
+    }
     ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
     ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
     Class<?> impl = null;
@@ -633,6 +645,7 @@ public class RestVerticle extends AbstractVerticle {
     if (impl == null) {
       throw new ClassNotFoundException("Implementation of " + interface2check + " not found in " + implDir);
     }
+    clazzCache.put(implDir, interface2check, impl);
     return impl;
   }
 
