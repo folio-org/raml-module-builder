@@ -2,6 +2,7 @@
 #should be in a DB not in file - maybe initial copy in file
 
 #General
+10000=During verticle deployment, init failed, exiting....... {0}
 10001=Internal Server Error, Please contact System Administrator or try again
 10002=Operation not supported
 10003=Unable to process request
@@ -11,3 +12,4 @@
 10007=Accept header must be {0} for this request, but it is "{1}", can not send */*
 10008=Object does not exist
 10009=Import failed, reason: {0}
+10010=Invalid URL path requested {0}

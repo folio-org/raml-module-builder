@@ -13,6 +13,10 @@ import com.google.common.collect.Table;
 
 public class MappedClasses {
 
+  //store data as a triplet -
+  //url path - http method <- these two are the look up key
+  //jsonobject is the function mapped to the key pair - the
+  //jsonobject also includes all params to the function and their type
   private Table<String, String, JsonObject> path2method = null;
 
   public MappedClasses() {

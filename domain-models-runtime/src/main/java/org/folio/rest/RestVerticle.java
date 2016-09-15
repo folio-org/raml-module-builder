@@ -88,7 +88,7 @@ public class RestVerticle extends AbstractVerticle {
 
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
 
-  private static ValidatorFactory   factory;
+  private static ValidatorFactory   validationFactory;
   private static KieSession         droolsSession;
   private final Messages            messages                        = Messages.getInstance();
   private HttpServer                server;
@@ -107,7 +107,10 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   static {
-    factory = Validation.buildDefaultValidatorFactory();
+    //validationFactory used to validate the pojos which are created from the json
+    //passed in the request body in put and post requests. The constraints validated by this factory 
+    //are the ones in the json schemas accompanying the raml files
+    validationFactory = Validation.buildDefaultValidatorFactory();
 
   }
 
@@ -133,18 +136,14 @@ public class RestVerticle extends AbstractVerticle {
   @Override
   public void start(Future<Void> startFuture) throws Exception {
 
-    // event bus to use for communicating between REST verticle and persistence
-    // layer
-
-    // EVENTBUS = getVertx().eventBus();
-
+    //process cmd line arguments
     cmdProcessing();
 
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
 
     MetricsService metricsService = MetricsService.create(vertx);
 
-    // maps API_PATH_MAPPINGS file into java object for quick access
+    // maps paths found in raml to the generated functions to route to when the paths are requested
     MappedClasses mappedURLs = populateConfig();
 
     // set of exposed urls as declared in the raml
@@ -157,15 +156,15 @@ public class RestVerticle extends AbstractVerticle {
     Router router = Router.router(vertx);
 
     // needed so that we get the body content of the request - note that this
-    // will read the entire body into memory
+    // will read the entire body into memory 
     final BodyHandler handler = BodyHandler.create();
 
     // IMPORTANT!!!
     // the body of the request will be read into memory for ALL PUT requests
     // and for POST requests with the content-types below ONLY!!!
-    // multipart, for example will not be read by the body handler as it saves
+    // multipart, for example will not be read by the body handler as vertx saves
     // multiparts and www-encoded to disk - hence multiparts will be handled differently
-    // see uploadHandler below
+    // see uploadHandler further down
     router.put().handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
@@ -174,26 +173,27 @@ public class RestVerticle extends AbstractVerticle {
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
     runHook(vv -> {
-      if (((Future) vv).failed()) {
-        System.out.println("init failed, exiting.......");
-        LogUtil.formatErrorLogMessage(className, "start", "During verticle deployment, init failed, exiting......."
-            + ((Future) vv).cause().getMessage());
-        startFuture.fail(((Future) vv).cause().getMessage());
+      if (((Future<?>) vv).failed()) {        
+        String reason = ((Future<?>) vv).cause().getMessage();        
+        log.error( messages.getMessage("en", MessageConsts.InitializeVerticleFail, reason));
+        startFuture.fail(reason);
         vertx.close();
         System.exit(-1);
-        // startFuture.fail(res.cause().toString());
       } else {
-        LogUtil.formatLogMessage(className, "start", "init succeeded.......");
-        // startup periodic if exists
+        log.info("init succeeded.......");
+        
         try {
+          // startup periodic impl if exists
           runPeriodicHook();
         } catch (Exception e2) {
           log.error(e2.getMessage(), e2);
         }
 
+        //single handler for all url calls
         router.route("/apis/*").handler(rc -> {
           long start = System.nanoTime();
           try {
+            //list of regex urls created from urls declared in the raml
             Iterator<String> iter = urlPaths.iterator();
             boolean validPath = false;
             boolean[] validRequest = { true };
@@ -202,6 +202,7 @@ public class RestVerticle extends AbstractVerticle {
             // the ramls and we return an error - this has positive security implications as well
           while (iter.hasNext()) {
             String regexURL = iter.next();
+            //try to match the requested url to the each regex pattern created from the urls in the raml
             Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
             if (m.find()) {
               validPath = true;
@@ -234,16 +235,21 @@ public class RestVerticle extends AbstractVerticle {
 
                 // the url exists but the http method requested does not match a function
                 // meaning url+http method != a function
-                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported), start, validRequest);
+                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported), 
+                  validRequest);
               }
               Class<?> aClass;
               try {
                 if (validRequest[0]) {
                   int groups = m.groupCount();
+                  //pathParams are the place holders in the raml query string
+                  //for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
+                  //they are replaced with actual values and are passed to the function which the url is mapped to
                   String[] pathParams = new String[groups];
                   for (int i = 0; i < groups; i++) {
                     pathParams[i] = m.group(i + 1);
                   }
+                  //get interface mapped to this url
                   String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
                   // convert from interface to an actual class implementing it, which appears in the impl package
                   aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, iClazz);
@@ -272,30 +278,37 @@ public class RestVerticle extends AbstractVerticle {
 
                   HttpServerRequest request = rc.request();
 
-                  checkAcceptContentType(produces, consumes, start, rc, validRequest);
-
-                  // create the array to be populated by parameters needed to invoke the function mapped to the requested URL
-                  // array will be populated by parseParams() function
+                  //check that the accept and content-types passed in the header of the request
+                  //are as described in the raml
+                  checkAcceptContentType(produces, consumes, rc, validRequest);
+                  
+                  // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped 
+                  //to the requested URL - array will be populated by parseParams() function
                   Iterator<Map.Entry<String, Object>> paramList = params.iterator();
-                  Object[] paramArray = new Object[params.size()];
+                  Object[] paramArray = new Object[params.size()];                                      
+                  parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
 
-                  // ///////////////////////handle file uploads async ///////////////////////////////////////////
-                  if (validRequest[0]) {
-                    // are we dealing with a file upload , currently only multipart/form-data content-type support
+                  if (validRequest[0]) {                   
+                    
+                    // check if we are dealing with a file upload , currently only multipart/form-data content-type support
                     final boolean[] isFileUpload = new boolean[] { false };
-                    final int[] uploadPosition = new int[] { -1 };
+                    final int[] uploadParamPosition = new int[] { -1 };
                     params.forEach(param -> {
                       if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
                         isFileUpload[0] = true;
-                        uploadPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
+                        uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
                       }
                     });
 
                     if (isFileUpload[0]) {
+                      //if file upload - set needed handlers
                       // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
                       if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
                         request.setExpectMultipart(true);       
                         MimeMultipart mmp = new MimeMultipart();
+                        //place the mmp as an argument to the 'to be called' function - at the correct position
+                        paramArray[uploadParamPosition[0]] = mmp;
+                        
                         request.uploadHandler(new Handler<io.vertx.core.http.HttpServerFileUpload>() {
                           
                           Buffer content = Buffer.buffer();
@@ -316,10 +329,11 @@ public class RestVerticle extends AbstractVerticle {
                             upload.exceptionHandler(new Handler<Throwable>() {
                               @Override
                               public void handle(Throwable event) {
-                                endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), start, validRequest);
+                                endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
                               }
                             });
                             // endHandler called when all data completed streaming to server
+                            //called for each part in the multipart - so if uploading 2 files - will be called twice
                             upload.endHandler(new Handler<Void>() {
                               @Override
                               public void handle(Void event) {
@@ -329,8 +343,7 @@ public class RestVerticle extends AbstractVerticle {
                                 try {
                                   mbp = new MimeBodyPart(headers, content.getBytes());
                                   mbp.setFileName(upload.filename());
-                                  mmp.addBodyPart(mbp);
-                                  paramArray[uploadPosition[0]] = mmp;
+                                  mmp.addBodyPart(mbp);                                  
                                   content = null;
                                 } catch (MessagingException e) {
                                   // TODO Auto-generated catch block
@@ -341,18 +354,17 @@ public class RestVerticle extends AbstractVerticle {
                           }
                         });
                       } else {
-                        endRequestWithError(rc, 400, true, "Content-type for file uploads must be " + SUPPORTED_CONTENT_TYPE_FORMDATA,
-                          start, validRequest);
+                        endRequestWithError(rc, 400, true, messages.getMessage("en", 
+                          MessageConsts.ContentTypeError, SUPPORTED_CONTENT_TYPE_FORMDATA, consumes) , validRequest);
                       }
-                    } else {
-
-                      parseParams(rc, paramList, validRequest, consumes, paramArray, start, pathParams);
-
+                    } 
+                    else{
                       if (validRequest[0]) {
+                        //if request is valid - invoke it
                         for (int i = 0; i < methods.length; i++) {
                           if (methods[i].getName().equals(function)) {
                             try {
-                              invoke(methods[i], paramArray, o, rc, v -> {
+                              invoke(methods[i], paramArray, instance, rc, v -> {
                                 LogUtil.formatLogMessage(className, "start", " invoking " + function);
                                 sendResponse(rc, v, start);
                               });
@@ -364,11 +376,15 @@ public class RestVerticle extends AbstractVerticle {
                         }
                       }
                     }
+                                        
+                    // register handler in case of file uploads - when the body handler is used then the entire body is read
+                    // and calling the endhandler will throw an exception since there is nothing to read. so this can only be called
+                    //when no body handler is associated with the paht - in our case multipart/form-data
+                    //real need for this is in case of bad file upload requests which dont trigger the upload end handler - so this catches is
                     if (isFileUpload[0]) {
-                      // if request is valid - invoke it
                       request.endHandler( a -> {
-                        parseParams(rc, paramList, validRequest, consumes, paramArray, start, pathParams);
                         if (validRequest[0]) {
+                          //if request is valid - invoke it
                           for (int i = 0; i < methods.length; i++) {
                             if (methods[i].getName().equals(function)) {
                               try {
@@ -382,7 +398,7 @@ public class RestVerticle extends AbstractVerticle {
                               }
                             }
                           }
-                        }  
+                        } 
                       });
                     }
                   }
@@ -390,14 +406,15 @@ public class RestVerticle extends AbstractVerticle {
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 e.printStackTrace();
-                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(), start,
+                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(),
                   validRequest);
               }
             }
           }
           if (!validPath) {
             // invalid path
-            endRequestWithError(rc, 400, true, "invalid path", start, validRequest);
+            endRequestWithError(rc, 400, true, 
+              messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
           }
         } finally {}
       } );
@@ -432,7 +449,7 @@ public class RestVerticle extends AbstractVerticle {
         }
         Integer p = port;
         server = vertx.createHttpServer().requestHandler(router::accept)
-        // router accepts request and will pass to next handler for
+        // router object (declared in the beginning of the atrt function accepts request and will pass to next handler for
         // specified path
 
         .listen(
@@ -469,7 +486,7 @@ public class RestVerticle extends AbstractVerticle {
     Response result = ((Response) ((AsyncResult<?>) v).result());
     if (result == null) {
       // catch all
-      endRequestWithError(rc, 500, true, "Server error", start, new boolean[] { true });
+      endRequestWithError(rc, 500, true, "Server error", new boolean[] { true });
       return;
     }
 
@@ -506,19 +523,17 @@ public class RestVerticle extends AbstractVerticle {
     }
 
     long end = System.nanoTime();
+    
+    StringBuffer sb = new StringBuffer();
     if (log.isDebugEnabled()) {
-      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
-        rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
-        rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), rc.getBodyAsString());
-    } else {
-      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
-        rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
-        rc.request().path(), rc.request().query(), rc.response().getStatusMessage());
-    }
-
+      sb.append(rc.getBodyAsString());
+    } 
+    LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
+      rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
+      rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), sb.toString());
   }
 
-  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, long beginTime, boolean[] isValid) {
+  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message,  boolean[] isValid) {
     if (isValid[0]) {
       log.error(rc.request().absoluteURI() + " [ERROR] " + message);
       rc.response().setChunked(chunked);
@@ -556,7 +571,7 @@ public class RestVerticle extends AbstractVerticle {
         } catch (Throwable ee) {
           message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
         }
-        endRequestWithError(rc, 400, true, message, 0L, new boolean[] { true });
+        endRequestWithError(rc, 400, true, message, new boolean[] { true });
       }
 
     });
@@ -732,26 +747,6 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  /**
-   * return true if at least one value in the source appears in the target
-   * 
-   * @param source
-   * @param target
-   * @return
-   */
-  private boolean doesContain(List source, String target) {
-    if (target == null) {
-      return false;
-    }
-    String targets[] = target.trim().replace(";", " ").split(" ");
-    for (int i = 0; i < targets.length; i++) {
-      if (source.contains(targets[i])) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   private void cmdProcessing() throws Exception {
     String importDataPath = null;
     String droolsPath = null;
@@ -836,7 +831,7 @@ public class RestVerticle extends AbstractVerticle {
   /**
    * check accept and content-type headers if no - set the request asa not valid and return error to user
    */
-  private void checkAcceptContentType(JsonArray produces, JsonArray consumes, long start, RoutingContext rc, boolean[] validRequest) {
+  private void checkAcceptContentType(JsonArray produces, JsonArray consumes, RoutingContext rc, boolean[] validRequest) {
     /*
      * NOTE that the content type and accept headers will accept a partial match - for example: if the raml indicates a text/plain and an
      * application/json content-type and only one is passed - it will accept it
@@ -850,7 +845,7 @@ public class RestVerticle extends AbstractVerticle {
       // it was put there as a suffix
       String contentType = StringUtils.defaultString(request.getHeader("Content-type")).replace(";", "").trim();
       if (!consumes.contains(removeBoundry(contentType))) {
-        endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType), start,
+        endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType),
           validRequest);
       }
     }
@@ -861,14 +856,14 @@ public class RestVerticle extends AbstractVerticle {
       if (acceptCheck(produces.getList(), accept) == null) {
         // use contains because multiple values may be passed here
         // for example json/application; text/plain mismatch of content type found
-        endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.AcceptHeaderError, produces, accept), start,
+        endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.AcceptHeaderError, produces, accept),
           validRequest);
       }
     }
   }
 
   private void parseParams(RoutingContext rc, Iterator<Map.Entry<String, Object>> paramList, boolean[] validRequest, JsonArray consumes,
-      Object[] paramArray, long start, String[] pathParams) {
+      Object[] paramArray, String[] pathParams) {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
@@ -898,13 +893,13 @@ public class RestVerticle extends AbstractVerticle {
 
               paramArray[order] = mapper.readValue(rc.getBodyAsString(), entityClazz);
 
-              Set<? extends ConstraintViolation<?>> validationErrors = factory.getValidator().validate(paramArray[order]);
+              Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray[order]);
               if (validationErrors.size() > 0) {
                 StringBuffer sb = new StringBuffer();
                 for (ConstraintViolation<?> cv : validationErrors) {
                   sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
                 }
-                endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString(), start, validRequest);
+                endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString(), validRequest);
               }
 
               // complex rules validation here (drools) - after simpler validation rules pass -
@@ -923,14 +918,14 @@ public class RestVerticle extends AbstractVerticle {
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 e.printStackTrace();
-                endRequestWithError(rc, 400, true, e.getCause().getMessage(), start, validRequest);
+                endRequestWithError(rc, 400, true, e.getCause().getMessage(), validRequest);
               }
               // }
             }
           } catch (Exception e) {
             log.error(e.getMessage(), e);
             e.printStackTrace();
-            endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), start, validRequest);
+            endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), validRequest);
 
           }
         } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {

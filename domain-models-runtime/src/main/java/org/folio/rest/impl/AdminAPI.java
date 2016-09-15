@@ -68,7 +68,7 @@ public class AdminAPI implements AdminResource {
   public void postAdminUpload(PersistMethod persistMethod, String busAddress, MimeMultipart entity, 
       io.vertx.core.Handler<io.vertx.core.AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
-    if (entity != null) {
+    if (entity != null && entity.getCount() > 0) {
       //could be null if the request sent was not correct from an http standard - for example - boundaries of the multiparts were
       //not the same
       final int parts = entity.getCount();

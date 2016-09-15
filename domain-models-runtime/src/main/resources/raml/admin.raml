@@ -10,11 +10,11 @@ traits:
  
 /admin:
   /upload:
-    description: "Uploads a file and saves it to a directory configured on the server"
+    description: Uploads a file and saves it to a directory configured on the server
     post:
       is: [upload-handler]
       description: |
-          "Uploads a file and saves it to a directory configured on the server"
+          Uploads a file and saves it to a directory configured on the server
       body:
         multipart/form-data:
           formParameters:
@@ -41,10 +41,11 @@ traits:
               example: "Internal server error, contact administrator"
   /loglevel:
     put:
+      description: Set logging level for all loggers in the JVM or just for a specific package / class
       is: [log-level]
       responses:
         200:
-          description: "Returns packages with log level of updated packages"
+          description: "Returns packages with log level of the updated packages"
           body:
             application/json:
               example: "{\"package\" : \"log level\" , \"package2\" : \"log level\"}"
@@ -54,6 +55,7 @@ traits:
             text/plain:
               example: "Internal server error, contact administrator"
     get:
+      description: Get the logging level for all loggers in the JVM
       responses:
         200:
           description: "Returns packages with log level"

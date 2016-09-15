@@ -1,7 +1,8 @@
 package org.folio.rest.tools.messages;
 
 public enum MessageConsts implements MessageEnum {
-
+  
+  InitializeVerticleFail("10000"),
   InternalServerError("10001"),
   OperationNotSupported("10002"),
   UnableToProcessRequest("10003"),
@@ -10,7 +11,8 @@ public enum MessageConsts implements MessageEnum {
   ContentTypeError("10006"),
   AcceptHeaderError("10007"),
   ObjectDoesNotExist("10008"),
-  ImportFailed("10009");
+  ImportFailed("10009"),
+  InvalidURLPath("10010");
   
   private String code;
   

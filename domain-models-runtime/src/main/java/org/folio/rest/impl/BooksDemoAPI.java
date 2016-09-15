@@ -12,6 +12,9 @@ import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.resource.BooksResource;
 import org.folio.rest.annotations.Validate;
 
+/**
+ * This is a demo class for unit testing - and to serve as an examle only!
+ */
 public class BooksDemoAPI implements BooksResource {
 
   

@@ -43,6 +43,12 @@ public class LogUtil {
     LoggerFactory.removeLogger("LogUtil");
   }
   
+  /**
+   * Update the log level for all packages / a specific package / a specific class
+   * @param packageName - pass "*" for all packages
+   * @param level
+   * @return - JsonObject with a list of updated loggers and their levels
+   */
   public static JsonObject updateLogConfiguration(String packageName, Level level){
     
     JsonObject updatedLoggers = new JsonObject();
@@ -62,6 +68,10 @@ public class LogUtil {
     return updatedLoggers;
   }
   
+  /**
+   * Iterate over all loggers and return a json object with them and their log level
+   * @return JsonObject
+   */
   public static JsonObject getLogConfiguration(){
     
     JsonObject loggers = new JsonObject();
