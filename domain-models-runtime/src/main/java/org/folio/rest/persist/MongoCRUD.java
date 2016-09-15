@@ -169,18 +169,31 @@ public class MongoCRUD {
     return client;
   }
 
+  /**
+   * Save entity into the collection. The id is the _id value of the entity if it is not null,
+   * otherwise a new id is created.
+   * @param collection - where to save into
+   * @param entity - the entity to save
+   * @param replyHandler - on success the result value is the id of the inserted entity
+   */
   public void save(String collection, Object entity, Handler<AsyncResult<String>> replyHandler) {
     
     long start = System.nanoTime();
 
-    String obj = entity2String(entity);
     try {
-      client.save(collection , new JsonObject(obj), res1 -> {
+      JsonObject jsonObject;
+      if (entity instanceof JsonObject) {
+        jsonObject = (JsonObject) entity;
+      } else {
+        String obj = entity2String(entity);
+        jsonObject = new JsonObject(obj);
+      }
+      client.save(collection, jsonObject, res1 -> {
         if (res1.succeeded()) {
           String id = res1.result();
           if(id == null){
             //_id was passed as part of the object - if save completes successfully, return the passed _id
-            id = new JsonObject(obj).getString("_id");
+            id = jsonObject.getString("_id");
           }
           System.out.println("Saved item with id " + id);
           replyHandler.handle(io.vertx.core.Future.succeededFuture(id));
