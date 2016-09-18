@@ -12,7 +12,8 @@ public enum MessageConsts implements MessageEnum {
   AcceptHeaderError("10007"),
   ObjectDoesNotExist("10008"),
   ImportFailed("10009"),
-  InvalidURLPath("10010");
+  InvalidURLPath("10010"),
+  FileUploadError("10011"); 
   
   private String code;
   

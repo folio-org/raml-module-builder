@@ -1,9 +1,9 @@
       queryParameters:
         persist_method:
           description: |
-            Where to push the uploaded file to, either to the temp dir set by the server or publish via event bus
-          enum: [TEMP_DIR, BUS]
-          default: TEMP_DIR
+            Either save to temp dir or save to temp dir and notify via bus
+          enum: [SAVE, SAVE_AND_NOTIFY]
+          default: SAVE
           required: false
         bus_address:
           description: |
@@ -11,3 +11,8 @@
           type: string
           required: false
           default: "admin.uploaded.files"
+        file_name:
+          description: |
+            name of the file - a timpstamp in milliseconds prefixes eah saved file
+          type: string
+          required: true

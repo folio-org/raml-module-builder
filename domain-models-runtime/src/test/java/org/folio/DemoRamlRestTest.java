@@ -12,14 +12,16 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
 import java.io.IOException;
+
+import org.apache.commons.io.IOUtils;
+import org.folio.rest.RestVerticle;
+import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.apache.commons.io.IOUtils;
-import org.folio.rest.RestVerticle;
-import org.folio.rest.tools.utils.NetworkUtils;
 
 /**
  * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
@@ -70,12 +72,11 @@ public class DemoRamlRestTest {
   public void test(TestContext context) throws Exception {
     checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", false), 204);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 500);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test2.json", Buffer.buffer(getFile("uploadtest.json")), 204);
 
   }
-  
-
   
   public void checkURLs(TestContext context, String url, int codeExpected) {
     try {
@@ -151,7 +152,7 @@ public class DemoRamlRestTest {
   }
 
 
-  private Buffer getBody(String filename, boolean witherror) {
+  private Buffer getBody(String filename, boolean closeBody) {
     Buffer buffer = Buffer.buffer();
     buffer.appendString("--MyBoundary\r\n");
     buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
@@ -165,11 +166,7 @@ public class DemoRamlRestTest {
       e.printStackTrace();
 
     }
-    if(witherror){
-      //dont add the corresponding boundary
-      buffer.appendString("--\r\n");
-    }
-    else{
+    if(closeBody){
       buffer.appendString("--MyBoundary--\r\n");      
     }
     return buffer;

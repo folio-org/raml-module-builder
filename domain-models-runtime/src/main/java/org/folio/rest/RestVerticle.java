@@ -8,6 +8,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.FileSystem;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerFileUpload;
@@ -24,6 +25,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.core.eventbus.*;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -60,6 +62,7 @@ import com.google.common.collect.Table;
 import com.google.common.io.ByteStreams;
 import com.google.common.reflect.ClassPath;
 
+import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.LogUtil;
@@ -70,7 +73,10 @@ import org.folio.rest.tools.messages.Messages;
 
 public class RestVerticle extends AbstractVerticle {
 
-  public static final String        API_BUS_ADDRESS                 = "bus.api.rest";
+  public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
+  private static final String       UPLOAD_PATH_TO_HANDLE           = "/apis/admin/upload";
+  private static final String       DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
+
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
 
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
@@ -106,6 +112,8 @@ public class RestVerticle extends AbstractVerticle {
   //since we try to load via reflection an implementation of the class at runtime - better to load once and cache 
   //for subsequent calls
   private static Table<String, String, Class<?>> clazzCache       = HashBasedTable.create();
+  
+  private EventBus eventBus;
   
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
@@ -162,6 +170,9 @@ public class RestVerticle extends AbstractVerticle {
     // Create a router object.
     Router router = Router.router(vertx);
 
+    
+    eventBus = vertx.eventBus();
+    
     // needed so that we get the body content of the request - note that this
     // will read the entire body into memory 
     final BodyHandler handler = BodyHandler.create();
@@ -176,7 +187,7 @@ public class RestVerticle extends AbstractVerticle {
     router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
-
+    
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
     runHook(vv -> {
@@ -285,10 +296,14 @@ public class RestVerticle extends AbstractVerticle {
 
                   HttpServerRequest request = rc.request();
 
+                  //whether framework should handle the request here or pass it on to an implementing function
+                  boolean handleInternally = handleInterally(request);
+
                   //check that the accept and content-types passed in the header of the request
                   //are as described in the raml
                   checkAcceptContentType(produces, consumes, rc, validRequest);
-                  
+
+
                   // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped 
                   //to the requested URL - array will be populated by parseParams() function
                   Iterator<Map.Entry<String, Object>> paramList = params.iterator();
@@ -307,7 +322,20 @@ public class RestVerticle extends AbstractVerticle {
                       }
                     });
 
-                    if (isFileUpload[0]) {
+                    /**
+                     * handle uploads requested from the admin interface by streaming them to the disk
+                     * and do not pass to an implementing function
+                     */
+                    if (isFileUpload[0] && handleInternally) {
+                      internalUploadService(rc, validRequest);
+                    }
+                    
+                    /**
+                     * file upload requested (multipart/form-data) but the url is not to the /apis/admin/upload
+                     * meaning, an implementing module is using its own upload handling, so read the content and 
+                     * pass to implementing function just like any other call
+                     */
+                    if (isFileUpload[0] && !handleInternally) {
                       //if file upload - set needed handlers
                       // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
                       if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
@@ -366,7 +394,7 @@ public class RestVerticle extends AbstractVerticle {
                       }
                     } 
                     else{
-                      if (validRequest[0]) {
+                      if (validRequest[0] && !handleInternally) {
                         //if request is valid - invoke it
                         for (int i = 0; i < methods.length; i++) {
                           if (methods[i].getName().equals(function)) {
@@ -386,9 +414,9 @@ public class RestVerticle extends AbstractVerticle {
                                         
                     // register handler in case of file uploads - when the body handler is used then the entire body is read
                     // and calling the endhandler will throw an exception since there is nothing to read. so this can only be called
-                    //when no body handler is associated with the paht - in our case multipart/form-data
+                    //when no body handler is associated with the path - in our case multipart/form-data
                     //real need for this is in case of bad file upload requests which dont trigger the upload end handler - so this catches is
-                    if (isFileUpload[0]) {
+                    if (isFileUpload[0] && !handleInternally) {
                       request.endHandler( a -> {
                         if (validRequest[0]) {
                           //if request is valid - invoke it
@@ -1027,6 +1055,72 @@ public class RestVerticle extends AbstractVerticle {
             validRequest[0] = false;
           }
         }
+      }
+    });
+  }
+  
+  private boolean handleInterally(HttpServerRequest request){
+    if(UPLOAD_PATH_TO_HANDLE.equals(request.path())){
+      return true;
+    }
+    return false;
+  }
+  
+  private void internalUploadService(RoutingContext rc, boolean []validRequest){
+    HttpServerRequest request = rc.request();
+    if(request.getParam("file_name") == null){
+      //handle validation manually since not using the built in framework for validation
+      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.FileUploadError, ", file_name can not be null"), validRequest);
+      return;
+    }
+    request.pause();
+    String filename = DEFAULT_TEMP_DIR + "/" + System.currentTimeMillis() + "_" + request.getParam("file_name");
+    vertx.fileSystem().open(filename, new io.vertx.core.file.OpenOptions(), ares -> {
+      try {
+        io.vertx.core.file.AsyncFile file = ares.result();
+        io.vertx.core.streams.Pump pump = io.vertx.core.streams.Pump.pump(request, file);
+        request.endHandler(v1 -> file.close(v2 -> {
+          PersistMethod persistMethod = PersistMethod.SAVE;
+          String requestedPersistMethod = request.getParam("persist_method");
+          if(requestedPersistMethod != null){
+            if(PersistMethod.valueOf(requestedPersistMethod) != null){
+              persistMethod = PersistMethod.valueOf(requestedPersistMethod);
+            }
+          }
+          System.out.println("Uploaded to " + filename);
+          if(persistMethod == PersistMethod.SAVE_AND_NOTIFY){
+            String address = request.getParam("bus_address");
+            if(address == null){
+              address = DEFAULT_UPLOAD_BUS_ADDRS;
+            }
+            DeliveryOptions dOps = new DeliveryOptions();
+            dOps.setSendTimeout(5000);
+            eventBus.send(address, filename, dOps, rep -> {
+              if(rep.succeeded()){
+                log.debug("Delivered Messaged of uploaded file " + filename);
+                request.response().setStatusCode(204);
+                request.response().end();
+              }
+              else{
+                log.error("Unable to deliver message of uploaded file " + filename);
+                request.response().setStatusCode(204);
+                request.response().setStatusMessage("The file was saved, but unable to notify of the upload to listening services");
+                request.response().end();
+              }
+            });
+          }
+          else{
+            request.response().setStatusCode(204);
+            request.response().end();
+          }
+          log.info("Successfully uploaded file " + filename);
+        }));
+        pump.start();
+        request.resume();
+      } catch (Exception e) {
+        e.printStackTrace();
+        endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.FileUploadError, e.getMessage()), validRequest);
+
       }
     });
   }

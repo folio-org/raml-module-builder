@@ -13,3 +13,4 @@
 10008=Object does not exist
 10009=Import failed, reason: {0}
 10010=Invalid URL path requested {0}
+10011=File uploading failed: {0}

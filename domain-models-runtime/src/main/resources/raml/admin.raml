@@ -23,8 +23,8 @@ traits:
               required: true
               type: file 
       responses:
-        204:
-          description: "Returns id of saved item in location header"
+        200:
+          description: "Saved"
           headers:
             Location:
               description: URI to the created <<resourcePathName|!singularize>> item
