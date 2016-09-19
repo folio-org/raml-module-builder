@@ -643,14 +643,19 @@ Note that when implementing the generated interfaces it is possible to add a con
 
 ## Implementing file uploads
 
-To create an api that allows file uploads, do the following:
+To create an api that allows file uploads, do one of the following:
 
-In the RAML declare the API:
+1. Use the `/apis/admin/upload` url which every module using the platform inherits. This will stream a file to the `java.io.tmpdir` directory and can optionally send a notification when the upload completes via the vertx event bus.
+ - The RAML file `/resources/raml/admin.raml` describes the API parameters.
+ - Example of a listening service waiting for notifications:
+ https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/ProcessUploads.java 
+
+2. The second option is to declare a file upload API in your RAML:
 
 ```sh
 post:
       description: |
-         Enters the file content for an existing song entity.
+         Enters the file content for an existing entity.
          Use the "multipart-form/data" content type to upload a file which content will become the file-content
       body:
         multipart/form-data:
@@ -662,13 +667,14 @@ post:
               example: <<exampleItem>>
 ```
 
-Please see the `/resources/raml/admin.raml` file in the `domain-models-runtime` project for an example.
+Please see the https://github.com/folio-org/mod-configuration/blob/master/ramls/configuration/config.raml file for an example.
+Notice the `/configurations/rules` entry in the RAML
 
 
 
 (see a client example call in Java here:)
 
-https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/DemoRamlRestTest.java#L81
+https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/DemoRamlRestTest.java
 
 
 The body content should look something like this: 
@@ -691,33 +697,6 @@ Content-Type: application/octet-stream
 ------WebKitFormBoundaryNKJKWHABrxY1AdmG
 ```
 
-Which can be generated in Java code as follows:
-
-```sh
-
-  private Buffer getBody(String filename) {
-    Buffer buffer = Buffer.buffer();
-    buffer.appendString("--PARTBoundary\r\n");
-    buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
-    buffer.appendString("Content-Type: application/octet-stream\r\n");
-    buffer.appendString("Content-Transfer-Encoding: binary\r\n");
-    buffer.appendString("\r\n");
-    try {
-      buffer.appendString(getFile(filename));
-      buffer.appendString("\r\n");
-    } catch (IOException e) {
-      e.printStackTrace();
-
-    }
-    buffer.appendString("--PARTBoundary--\r\n");
-    return buffer;
-  }
-  
-  private String getFile(String filename) throws IOException {
-    return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
-  }
-
-```
 
 The generated API interface will have a function signiture of:
 
@@ -737,10 +716,10 @@ for (int i = 0; i < parts; i++) {
 }
 ```
 
-Example can be found in the https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/AdminAPI.java#L67 class.
+where each section in the body (separated by the boundary) is a "part"
 
-To create the body part of the request programmatically 
-
+see an example here:
+https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/folio/rest/impl/ConfigAPI.java (see `postConfigurationsRules` function)
 
 ## MongoDB integration
 
@@ -1070,6 +1049,7 @@ http://localhost:8080/apis/patrons
  }
 }
 ```
+
 
 
 
