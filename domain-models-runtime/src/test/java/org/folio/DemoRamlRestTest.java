@@ -33,10 +33,7 @@ public class DemoRamlRestTest {
   int port;
   
   /**
-   * <p/>
-   * 
-   * @param context
-   *          the test context.
+   * @param context  the test context.
    */
   @Before
   public void setUp(TestContext context) throws IOException {
@@ -53,8 +50,7 @@ public class DemoRamlRestTest {
   /**
    * This method, called after our test, just cleanup everything by closing the vert.x instance
    *
-   * @param context
-   *          the test context
+   * @param context  the test context
    */
   @After
   public void tearDown(TestContext context) {
@@ -65,7 +61,7 @@ public class DemoRamlRestTest {
    * just send a get request for books api with and without the required author query param
    * 1. one call should succeed and the other should fail (due to 
    * validation aspect that should block the call and return 400)
-   *
+   * 2. test the built in upload functionality
    * @param context - the test context
    */
   @Test
@@ -110,22 +106,19 @@ public class DemoRamlRestTest {
   
   /**
    * for POST
-   * @param api
-   * @param context
-   * @param content
    */
-  private void postData(TestContext context, String api, Buffer buffer, int errorCode) {
+  private void postData(TestContext context, String url, Buffer buffer, int errorCode) {
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request;
-    request = client.postAbs(api);
+    request = client.postAbs(url);
     request.exceptionHandler(error -> {
       async.complete();
       context.fail(error.getMessage());
     }).handler(response -> {
       int statusCode = response.statusCode();
       // is it 2XX
-      System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " for " + api);
+      System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " for " + url);
 
       if (statusCode == errorCode) {
         context.assertTrue(true);
