@@ -725,12 +725,18 @@ https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/fol
 
 By default an embedded mongoDB is included in the runtime but is not run by
 default. To change that add `embed_mongo=true` to the command line
-(`java -jar circulation-fat.jar embed_mongo=true`). Connection parameters to
-a non-embedded mongoDB can be found in `resources/mongo-conf.json` or passed
+(`java -jar circulation-fat.jar embed_mongo=true`). Connection parameters to a 
+non-embedded mongoDB can be placed in `resources/mongo-conf.json` or passed 
 via the command line.
 
 The runtime framework exposes a mongoDB async client which offers CRUD
-operations in an ORM type fashion.
+operations in an ORM type fashion. Please see `/domain-models-runtime/src/main/java/org/folio/rest/persist/MongoCRUD.java` for the available APIs exposed. 
+
+Extensive usage examples can be found in the following classes:
+https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/PatronAPI.java
+https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/folio/rest/impl/ConfigAPI.java
+
+
 
 ## PostgreSQL integration
 
@@ -791,6 +797,10 @@ criterion.setLimit(new Limit(limit)).setOffset(new Offset(offset));
 postgresClient.get(TABLE_NAME_POLINE, PoLine.class, criterion,
               reply -> {...
 ```
+
+Usage examples:
+https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java/org/folio/rest/impl/POLine.java
+
 
 ## Query Syntax
 
@@ -870,6 +880,45 @@ your project under the `/resources/messages` directory.
 
 Note that the format of the file names should be:
 `[lang_2_letters]_messages.yyy - for example: en_messages.prop`
+
+For example: 
+In the circulation project, the messages file can be found at `/circulation/src/main/resources/en_messages.prop` with the following content:
+```sh
+20002=Operation can not be calculated on a Null Amount
+20003=Unable to pay fine, amount is larger then owed
+20004=The item {0} is not renewable
+20005=Loan period must be greater than 1, period entered: {0}
+```
+The circulation project exposes these messages as enums for easier usage in the code:
+
+```sh
+package org.folio.utils;
+
+import org.folio.rest.tools.messages.MessageEnum;
+
+public enum CircMessageConsts implements MessageEnum {
+
+  OperationOnNullAmount("20002"),
+  FinePaidTooMuch("20003"),
+  NonRenewable("20004"),
+  LoanPeriodError("20005");
+  
+  private String code;
+  private CircMessageConsts(String code){
+    this.code = code;
+  }
+  public String getCode(){
+    return code;
+  }
+}
+```
+
+Usage:
+
+`private final Messages messages = Messages.getInstance();`
+`messages.getMessage(lang, CircMessageConsts.OperationOnNullAmount);`
+
+Note: parameters can also be passed when relevant. The raml-module-builder runtime also exposes generic error message enums which can be found at `/domain-models-runtime/src/main/java/org/folio/rest/tools/messages/MessageConsts.java` 
 
 ## Documentation
 
