@@ -28,7 +28,7 @@ public class AdminAPI implements AdminResource {
   
   @Validate
   @Override
-  public void putAdminLoglevel(Level level, String javaPackage, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
+  public void putAdminLoglevel(String authorization, Level level, String javaPackage, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
       throws Exception {
 
     try {
@@ -45,7 +45,7 @@ public class AdminAPI implements AdminResource {
   }
 
   @Override
-  public void getAdminLoglevel(Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void getAdminLoglevel(String authorization, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     try {
       JsonObject loggers = LogUtil.getLogConfiguration();
@@ -64,93 +64,12 @@ public class AdminAPI implements AdminResource {
   }
   
   @Override
-  public void postAdminUpload(PersistMethod persistMethod, String busAddress, String fileName, MimeMultipart entity,
+  public void postAdminUpload(String authorization, PersistMethod persistMethod, String busAddress, String fileName, MimeMultipart entity,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
-    // TODO Auto-generated method stub
-    
-  }
-  
-  public void postAdminUpload(PersistMethod persistMethod, String busAddress, MimeMultipart entity, 
-      io.vertx.core.Handler<io.vertx.core.AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
-    
-    if (entity != null && entity.getCount() > 0) {
-      
-      //could be null if the request sent was not correct from an http standard - for example - boundaries of the multiparts were
-      //not the same
-      final int parts = entity.getCount();
-      final int[] i = new int[] { 0 };
-      
-      for (; i[0] < parts; i[0]++) {
-        final BodyPart part = entity.getBodyPart(i[0]);      
-          boolean complete = false;
-          if (i[0] == parts) {
-            complete = true;
-          }
-          sendViaBus(vertxContext.owner(), busAddress, part.getContent(), part.getFileName(), complete, persistMethod, asyncResultHandler);
-        //else{
-
-       // }
-      }
-    } else {
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadResponse.
-        withPlainInternalServerError("ERROR uploading file, request was not valid - verify boundaries are identical")));
-    }
-  }
-  
-  private void sendViaBus(Vertx vertx, String busAddress, Object content, String fileName, boolean end, PersistMethod persistMethod,
-      Handler<AsyncResult<Response>> asyncResultHandler){
-/*    EventBus eb = vertx.eventBus();
-    FileSystem fs = vertx.fileSystem();
-    eb.send(busAddress, content, result -> {
-      try {
-        if (result.succeeded()) { 
-          log.info("Uploaded file " + fileName + " received by consumer");
-          final String filename = DEFAULT_TEMP_DIR + "/" + System.currentTimeMillis() + "_" + fileName;
-          Buffer buff = Buffer.buffer(NetworkUtils.object2Bytes(content)); 
-          fs.writeFile(filename, buff, new Handler<AsyncResult<Void>>() {
-            @Override
-            public void handle(AsyncResult<Void> result) {
-              try {
-                if (result.succeeded()) {                  
-                  log.info("Uploaded file " + filename);
-                  //if("SAVE_AND_NOTIFY".equals(persistMethod.name())){
-                    if (end) {
-                      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                        PostAdminUploadResponse.withNoContent(fileName)));
-                    }
-                } else {
-                  log.error("Failed uploading file " + filename + ", error: " + result.cause().getMessage(), result.cause());
-                  if (end) {
-                    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                      PostAdminUploadResponse.withPlainInternalServerError("ERROR publishing uploaded file")));
-                  }
-                }
-              } catch (Exception e) {
-                e.printStackTrace();
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  PostAdminUploadResponse.withPlainInternalServerError("ERROR publishing uploaded file")));
-              }
-            }
-          });
-          if (end) {
-            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-              PostAdminUploadResponse.withNoContent(fileName)));
-          }
-        } else {
-          log.error("Failed publishing uploading file " + fileName + 
-            ", error: " + result.cause().getMessage(), result.cause());
-          if (end) {
-            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-              PostAdminUploadResponse.withPlainInternalServerError("ERROR publishing uploading file")));
-          }
-        }
-      } catch (Exception e) {
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          PostAdminUploadResponse.withPlainInternalServerError("ERROR publishing uploaded file")));
-        e.printStackTrace();
-      }
-    });*/
+    /**
+     * THIS FUNCTION WILL NEVER BE CALLED - HANDLED IN THE RestVerticle class
+     */    
   }
 
 }

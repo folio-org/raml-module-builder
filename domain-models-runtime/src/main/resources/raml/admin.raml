@@ -7,12 +7,13 @@ version: v1
 traits:
  - log-level: !include log-level.raml
  - upload-handler: !include upload-handler.raml
+ - secured: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/auth.raml
  
 /admin:
   /upload:
     description: Uploads a file and saves it to a directory configured on the server
     post:
-      is: [upload-handler]
+      is: [secured, upload-handler]
       description: |
           Uploads a file and saves it to a directory configured on the server
       body:
@@ -42,7 +43,7 @@ traits:
   /loglevel:
     put:
       description: Set logging level for all loggers in the JVM or just for a specific package / class
-      is: [log-level]
+      is: [secured, log-level]
       responses:
         200:
           description: "Returns packages with log level of the updated packages"
@@ -56,6 +57,7 @@ traits:
               example: "Internal server error, contact administrator"
     get:
       description: Get the logging level for all loggers in the JVM
+      is: [secured]
       responses:
         200:
           description: "Returns packages with log level"
