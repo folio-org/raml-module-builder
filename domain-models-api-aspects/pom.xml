@@ -42,11 +42,12 @@
 
 	<build>
 
+	  <pluginManagement>
 		<plugins>
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>aspectj-maven-plugin</artifactId>
-				<version>1.8</version>
+				<version>${aspectj-maven-plugin-version}</version>
 				<configuration>
 					<verbose>true</verbose>
 					<showWeaveInfo>false</showWeaveInfo>
@@ -112,5 +113,8 @@
 			</plugin>
 
 		</plugins>
+
+	  </pluginManagement>
+
 	</build>
 </project>
