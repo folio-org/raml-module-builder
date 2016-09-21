@@ -916,6 +916,7 @@ public enum CircMessageConsts implements MessageEnum {
 Usage:
 
 `private final Messages messages = Messages.getInstance();`
+
 `messages.getMessage(lang, CircMessageConsts.OperationOnNullAmount);`
 
 Note: parameters can also be passed when relevant. The raml-module-builder runtime also exposes generic error message enums which can be found at `/domain-models-runtime/src/main/java/org/folio/rest/tools/messages/MessageConsts.java` 
