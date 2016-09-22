@@ -15,9 +15,14 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.jaxrs.model.Book;
+import org.folio.rest.jaxrs.model.Data;
+import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -30,8 +35,8 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class DemoRamlRestTest {
 
-  private Vertx             vertx;
-  int port;
+  private static Vertx vertx;
+  private static int port;
 
   /**
    * @param context  the test context.
@@ -40,13 +45,27 @@ public class DemoRamlRestTest {
   public void setUp(TestContext context) throws IOException {
     vertx = Vertx.vertx();
     port = NetworkUtils.nextFreePort();
-    DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put("http.port",
-      port));
-    vertx.deployVerticle(RestVerticle.class.getName(), options, context.asyncAssertSuccess(id -> {
 
-    }));
-
+    try {
+      startEmbeddedMongo();
+      deployRestVerticle(context);
+    } catch (Exception e) {
+      context.fail(e);
+    }
   }
+  
+  private static void startEmbeddedMongo() throws Exception {
+    MongoCRUD.setIsEmbedded(true);
+    MongoCRUD.getInstance(vertx).startEmbeddedMongo();
+  }
+
+  private static void deployRestVerticle(TestContext context) {
+    DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(
+        new JsonObject().put("http.port", port));
+    vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions,
+            context.asyncAssertSuccess());
+  }
+  
 
   /**
    * This method, called after our test, just cleanup everything by closing the vert.x instance
@@ -83,12 +102,43 @@ public class DemoRamlRestTest {
    */
   @Test
   public void test(TestContext context) throws Exception {
+    //check GET
     checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
+    //check POST
     postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204);
-
+    //check bullk insert in Mongo
+    Async async = context.async();
+    List<Object> list = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      Book b = new Book();
+      b.setStatus(i);
+      b.setSuccess(true);
+      b.setData(null);
+      Data d = new Data();
+      d.setAuthor("a");
+      d.setDatetime(12345);
+      d.setGenre("b");
+      d.setDescription("c");
+      d.setLink("d");
+      d.setTitle("title");
+      b.setData(d);
+      list.add(b);
+    }
+    MongoCRUD.getInstance(vertx).bulkInsert("books", list, reply -> {
+      if(reply.succeeded()){        
+        context.assertEquals(5, reply.result().getInteger("n"), 
+          "bulk insert updated " + reply.result().getInteger("n") + " records instead of 5");
+      }
+      else{
+        context.fail();
+        System.out.println(reply.cause().getMessage());
+      }
+      async.complete();
+    });
+    
   }
 
   public void checkURLs(TestContext context, String url, int codeExpected) {

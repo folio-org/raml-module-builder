@@ -172,6 +172,8 @@ public class MongoCRUD {
   /**
    * Save entity into the collection. The id is the _id value of the entity if it is not null,
    * otherwise a new id is created.
+   * If the document has no _id field, it is inserted, otherwise, it is _upserted_. 
+   * Upserted means it is inserted if it doesn’t already exist, otherwise it is updated.
    * @param collection - where to save into
    * @param entity - the entity to save
    * @param replyHandler - on success the result value is the id of the inserted entity
@@ -195,7 +197,7 @@ public class MongoCRUD {
             //_id was passed as part of the object - if save completes successfully, return the passed _id
             id = jsonObject.getString("_id");
           }
-          log.debug("Saved item with id " + id);
+          log.debug("Saved to "+collection+" with id " + id);
           replyHandler.handle(io.vertx.core.Future.succeededFuture(id));
 
         } else {
@@ -203,7 +205,7 @@ public class MongoCRUD {
           replyHandler.handle(io.vertx.core.Future.failedFuture(res1.cause().toString()));
         }
         if(log.isDebugEnabled()){
-          elapsedTime("save() " + collection, start);
+          elapsedTime("save() to " + collection, start);
         }
       });
     } catch (Throwable e) {
@@ -211,7 +213,63 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
+  
+  /**
+   * 
+   * @param collection
+   * @param entity
+   * @param failIfExist - if true - if an _id is passed in the entity and that _id already exists then the save will fail
+   * @param replyHandler
+   */
+  public void save(String collection, Object entity, boolean failIfExist, Handler<AsyncResult<String>> replyHandler) {
+    if(!failIfExist){
+      save(collection, entity, replyHandler);
+    }
+    else{
+      long start = System.nanoTime();
+      JsonObject jsonObject;
+      if (entity instanceof JsonObject) {
+        jsonObject = (JsonObject) entity;
+      } else {
+        String obj = entity2String(entity);
+        jsonObject = new JsonObject(obj);
+      }
+      client.insert(collection, jsonObject, res -> {
+        if (res.succeeded()) {
+          String id = res.result();
+          replyHandler.handle(io.vertx.core.Future.succeededFuture(id));
+        } else {
+          replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        }
+        if(log.isDebugEnabled()){
+          elapsedTime("save[insert]() to " + collection, start);
+        }
+      });
+    }
+  }
 
+  /**
+   * 
+   * @param collection
+   * @param entities - list of pojos
+   * @param replyHandler - will return a json object where the field 'n' can be checked for amount of records inserted
+   */
+  public void bulkInsert(String collection, List<Object> entities, Handler<AsyncResult<JsonObject>> replyHandler) {
+    
+    JsonObject command = new JsonObject()
+      .put("insert", collection)
+      .put("documents", new JsonArray(entity2String(entities)))
+      .put("ordered", false);
+  
+      client.runCommand("insert", command, res -> {
+      if (res.succeeded()) {
+        replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+    });
+  }
+  
   public void delete(String collection, String id, Handler<AsyncResult<Void>> replyHandler) {
     long start = System.nanoTime();
 
@@ -374,6 +432,15 @@ public class MongoCRUD {
     update(collection, entity, query, false, false, replyHandler);
   }
 
+  /**
+   * 
+   * @param collection
+   * @param entity
+   * @param query
+   * @param upsert - if the query does not match any records - hence nothing to update - should the entity be inserted
+   * @param addUpdateDate - the object must have a last_modified field which will be populated with current timestamp by mongo
+   * @param replyHandler
+   */
   public void update(String collection, Object entity, JsonObject query,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
     long start = System.nanoTime();
@@ -382,7 +449,16 @@ public class MongoCRUD {
     try {
       UpdateOptions options = new UpdateOptions().setUpsert(upsert);
       JsonObject update = new JsonObject();
-      update.put("$set", new JsonObject(entity2String(entity)));
+      
+      JsonObject jsonObject;
+      if (entity instanceof JsonObject) {
+        jsonObject = (JsonObject) entity;
+      } else {
+        String obj = entity2String(entity);
+        jsonObject = new JsonObject(obj);
+      }
+      
+      update.put("$set", jsonObject);
 
       if(addUpdateDate){
         update.put("$currentDate", new JsonObject("{\"last_modified\": true}"));
