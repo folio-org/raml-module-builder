@@ -75,7 +75,7 @@ public class RestVerticle extends AbstractVerticle {
 
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/apis/admin/upload";
-  private static final String       DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
+  public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
 
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
 

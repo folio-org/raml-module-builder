@@ -42,8 +42,7 @@ public class RuleTracker extends DefaultAgendaEventListener  {
                       + ruleMetaDataMap.get(key));
           }
       }
-      System.out.println(sb.toString());
-      //log.debug(sb.toString());
+      log.debug(sb.toString());
     }
 
     public boolean isRuleFired(String ruleName) {

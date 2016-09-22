@@ -13,6 +13,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.commons.io.IOUtils;
@@ -54,9 +55,25 @@ public class DemoRamlRestTest {
    */
   @After
   public void tearDown(TestContext context) {
+    deleteTempFilesCreated();
     vertx.close(context.asyncAssertSuccess());
   }
 
+  private void deleteTempFilesCreated(){
+    System.out.println("deleting created files");
+    // Lists all files in folder
+    File folder = new File(RestVerticle.DEFAULT_TEMP_DIR);
+    File fList[] = folder.listFiles();
+    // Searchs test.json
+    for (int i = 0; i < fList.length; i++) {
+        String pes = fList[i].getName();
+        if (pes.endsWith("test.json")) {
+            // and deletes
+            boolean success = fList[i].delete();
+        }
+    }
+  }
+  
   /**
    * just send a get request for books api with and without the required author query param
    * 1. one call should succeed and the other should fail (due to
@@ -70,7 +87,7 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
     postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test2.json", Buffer.buffer(getFile("uploadtest.json")), 204);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204);
 
   }
 

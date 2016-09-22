@@ -195,7 +195,7 @@ public class MongoCRUD {
             //_id was passed as part of the object - if save completes successfully, return the passed _id
             id = jsonObject.getString("_id");
           }
-          System.out.println("Saved item with id " + id);
+          log.debug("Saved item with id " + id);
           replyHandler.handle(io.vertx.core.Future.succeededFuture(id));
 
         } else {
