@@ -50,7 +50,7 @@ public class MongoCRUD {
   public static final String        JSON_PROP_CLASS         = "clazz";
   public static final MongodStarter MONGODB                 = getMongodStarter();
   private static MongodProcess mongoProcess;
-  
+
   public static String MONGO_HOST = null;
   public static int MONGO_PORT = 27017;
 
@@ -62,11 +62,11 @@ public class MongoCRUD {
 
   private static final Logger log = LoggerFactory.getLogger(MongoCRUD.class);
 
-  
+
   private MongoCRUD(Vertx vertx) throws Exception {
     init(vertx);
   }
-  
+
   /**
    * must be called before getInstance() for this to take affect
    * @param embed - whether to use an embedded mongo instance
@@ -74,11 +74,11 @@ public class MongoCRUD {
   public static void setIsEmbedded(boolean embed){
     embeddedMode = embed;
   }
-  
+
   public static boolean isEmbedded(){
     return embeddedMode;
   }
-  
+
   /**
    * must be called before getInstance() for this to take affect
    * @param path
@@ -86,7 +86,7 @@ public class MongoCRUD {
   public static void setConfigFilePath(String path){
     configPath = path;
   }
-  
+
   // will return null on exception
   public static MongoCRUD getInstance(Vertx vertx) {
     // assumes a single thread vertx model so no sync needed
@@ -124,7 +124,7 @@ public class MongoCRUD {
   }
 
   private MongoClient init(Vertx vertx) throws Exception {
-    
+
     if (embeddedMode) {
       MONGO_HOST = "localhost";
       MONGO_PORT = NetworkUtils.nextFreePort();
@@ -134,7 +134,7 @@ public class MongoCRUD {
       jsonConf.put("port", MONGO_PORT);
       client = MongoClient.createShared(vertx, jsonConf);
       log.info("created embedded mongo config on port " + MONGO_PORT);
-    } else {      
+    } else {
       String path = "/mongo-conf.json";
       if(configPath != null){
         path = configPath;
@@ -144,10 +144,10 @@ public class MongoCRUD {
         System.out.println("Loading mongo-conf.json from default " + path);
       }
       JsonObject jsonConf = new LoadConfs().loadConfig(path);
-      if(jsonConf == null){        
+      if(jsonConf == null){
         JsonObject example = new JsonObject(" {  \"db_name\": \"indexd_test\",  \"host\" : \"SERVER_NAME\",\"port\" : 1234,"+
-        "\"maxPoolSize\" : 3, \"minPoolSize\" : 1, \"maxIdleTimeMS\" : 300000,\"maxLifeTimeMS\" : 3600000,"+      
-        "\"waitQueueMultiple\"  : 100, \"waitQueueTimeoutMS\" : 10000,\"maintenanceFrequencyMS\" : 2000, "+ 
+        "\"maxPoolSize\" : 3, \"minPoolSize\" : 1, \"maxIdleTimeMS\" : 300000,\"maxLifeTimeMS\" : 3600000,"+
+        "\"waitQueueMultiple\"  : 100, \"waitQueueTimeoutMS\" : 10000,\"maintenanceFrequencyMS\" : 2000, "+
         "\"maintenanceInitialDelayMS\" : 500,\"connectTimeoutMS\" : 300000, \"socketTimeoutMS\"  : 100000,"+
         "\"sendBufferSize\" : 8192, \"receiveBufferSize\" : 8192, \"keepAlive\" : true}");
         //not in embedded mode but there is no conf file found
@@ -163,7 +163,7 @@ public class MongoCRUD {
       else{
         MONGO_HOST = jsonConf.getString("host");
         MONGO_PORT = jsonConf.getInteger("port");
-        client = MongoClient.createShared(vertx, jsonConf, "MongoConnectionPool");  
+        client = MongoClient.createShared(vertx, jsonConf, "MongoConnectionPool");
       }
     }
     return client;
@@ -177,7 +177,7 @@ public class MongoCRUD {
    * @param replyHandler - on success the result value is the id of the inserted entity
    */
   public void save(String collection, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    
+
     long start = System.nanoTime();
 
     try {
@@ -211,7 +211,7 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
-  
+
   public void delete(String collection, String id, Handler<AsyncResult<Void>> replyHandler) {
     long start = System.nanoTime();
 
@@ -259,23 +259,23 @@ public class MongoCRUD {
 
     }
   }
-  
+
   public void get(JsonObject json, Handler<AsyncResult<List<?>>> replyHandler) {
 
     long start = System.nanoTime();
-    
+
     try {
       String clazz = json.getString(JSON_PROP_CLASS);
       Integer limit = json.getInteger(JSON_PROP_LIMIT);
       Integer offset = json.getInteger(JSON_PROP_OFFSET);
       final String collection = json.getString(JSON_PROP_COLLECTION);
-      final JsonObject query = new JsonObject(); 
+      final JsonObject query = new JsonObject();
       FindOptions fo = new FindOptions();
-      
+
       Class<?> cls = Class.forName(clazz);
-      
+
       if(limit != null){
-        fo.setLimit(limit); 
+        fo.setLimit(limit);
       }
       if(offset != null){
         fo.setSkip(offset);
@@ -285,8 +285,8 @@ public class MongoCRUD {
       }
       JsonObject sort = json.getJsonObject(JSON_PROP_SORT);
       if(sort != null){
-        fo.setSort(sort); 
-      }      
+        fo.setSort(sort);
+      }
       client.findWithOptions(collection, query, fo, res -> {
         if (res.succeeded()) {
           List<JsonObject> reply = null;
@@ -315,26 +315,26 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
-  
+
   public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
 
     long start = System.nanoTime();
-    
+
     try {
-      final JsonObject query = new JsonObject(); 
+      final JsonObject query = new JsonObject();
       FindOptions fo = new FindOptions();
-      
+
       Class<?> cls = Class.forName(clazz);
-      
+
       if(to != null){
-        fo.setLimit(to); 
+        fo.setLimit(to);
       }
       if(from != null){
         fo.setSkip(from);
       }
       if(mongoQueryString != null){
         query.mergeIn(new JsonObject(mongoQueryString));
-      }   
+      }
       client.findWithOptions(collection, query, fo, res -> {
         if (res.succeeded()) {
           List<JsonObject> reply = null;
@@ -362,32 +362,32 @@ public class MongoCRUD {
       e.printStackTrace();
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
-  }  
-  
+  }
+
   public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
     update(collection, entity, query, false, addUpdateDate, replyHandler);
   }
-  
+
   public void update(String collection, Object entity, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
 
     update(collection, entity, query, false, false, replyHandler);
   }
-  
+
   public void update(String collection, Object entity, JsonObject query,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
     long start = System.nanoTime();
-    
+
     JsonObject ret = new JsonObject();
     try {
       UpdateOptions options = new UpdateOptions().setUpsert(upsert);
       JsonObject update = new JsonObject();
       update.put("$set", new JsonObject(entity2String(entity)));
-      
+
       if(addUpdateDate){
-        update.put("$currentDate", new JsonObject("{\"last_modified\": true}"));  
+        update.put("$currentDate", new JsonObject("{\"last_modified\": true}"));
       }
-      if (entity == null){ 
+      if (entity == null){
         ret.put("error", "entity is null");
       }
       if(query == null) {
@@ -412,19 +412,19 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
 
     }
-  } 
-  
+  }
+
   public void addToArray(String collection, String arrayName, Object arrayEntry, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
 
     long start = System.nanoTime();
-    
+
     JsonObject ret = new JsonObject();
     try {
       UpdateOptions options = new UpdateOptions();
       JsonObject update = new JsonObject();
       JsonObject array = new JsonObject();
 
-      if (arrayEntry == null){ 
+      if (arrayEntry == null){
         ret.put("error", "arrayEntry is null");
         replyHandler.handle(io.vertx.core.Future.failedFuture("arrayEntry to update is null"));
       }
@@ -441,9 +441,9 @@ public class MongoCRUD {
           each.put("$each", new JsonArray( entity2String(arrayEntry)));
           array.put(arrayName,  each );
         }
-        
+
         update.put("$push", array);
-        
+
         client.updateCollectionWithOptions(collection, query, update, options, res -> {
 
           if (res.succeeded()) {
@@ -463,8 +463,8 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
 
     }
-  }  
-  
+  }
+
   public void startEmbeddedMongo() throws Exception {
 
     if(mongoProcess == null || !mongoProcess.isProcessRunning()){
@@ -482,7 +482,7 @@ public class MongoCRUD {
       mongoProcess.stop();
     }
   }
-  
+
   private String entity2String(Object entity){
     String obj = null;
     if(entity != null){
@@ -499,12 +499,12 @@ public class MongoCRUD {
           obj = mapper.writeValueAsString(entity);
         } catch (JsonProcessingException e) {
           e.printStackTrace();
-        } 
+        }
       }
-    }  
+    }
     return obj;
   }
-  
+
   public static JsonObject buildJson(String returnClazz, String collection, String query, String orderBy, Object order, int offset, int limit){
     JsonObject q = null;
     if(query != null){
@@ -517,9 +517,9 @@ public class MongoCRUD {
     }
     return buildJson(returnClazz, collection, q, orderBy, order, offset, limit );
   }
-  
+
   /**
-   * 
+   *
    * @param returnClazz - class of objects expected to be returned - for example passing a Fines class to get()
    * fine objects
    * @param collection - the collection to query from
@@ -540,14 +540,14 @@ public class MongoCRUD {
           log.error( "Unable to parse query param to json " + e.getLocalizedMessage() );
         }
       }
-      
+
       req.put(MongoCRUD.JSON_PROP_COLLECTION, collection);
       if(offset != -1){
         req.put(MongoCRUD.JSON_PROP_OFFSET, offset);
       }
       if(limit != -1){
         req.put(MongoCRUD.JSON_PROP_LIMIT, limit);
-      }    
+      }
       req.put(MongoCRUD.JSON_PROP_CLASS, returnClazz);
       if(orderBy != null){
         int ord = -1;
@@ -562,17 +562,17 @@ public class MongoCRUD {
       return null;
     }
   }
-  
+
   public static JsonObject buildJson(String returnClazz, String collection, String query){
     return buildJson(returnClazz, collection, query, null, null, -1 ,-1);
   }
-  
+
   public static JsonObject buildJson(String returnClazz, String collection, JsonObject query){
     return buildJson(returnClazz, collection, query, null, null, -1 ,-1);
   }
-  
+
   private void elapsedTime(String info, long start){
       log.debug(new StringBuffer(info).append(" ").append(((System.nanoTime() - start)/1000000)).append(" ms"));
   }
-  
+
 }

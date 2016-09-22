@@ -8,7 +8,7 @@ public class Select {
 
   String snippet;
   String asValue;
-  
+
   public String getSnippet() {
     return snippet;
   }
@@ -16,7 +16,7 @@ public class Select {
   public void setSnippet(String snippet) {
     this.snippet = snippet;
   }
-  
+
   public String getAsValue() {
     return asValue;
   }
@@ -28,11 +28,11 @@ public class Select {
   @Override
   public String toString() {
     if(snippet == null){
-      return ""; 
+      return "";
     }
     return snippet.toLowerCase().toString();
   }
-  
+
   @Override
   public boolean equals(Object obj) {
     if(obj instanceof Select && obj != null){
@@ -42,5 +42,5 @@ public class Select {
     }
     return false;
   }
-  
+
 }

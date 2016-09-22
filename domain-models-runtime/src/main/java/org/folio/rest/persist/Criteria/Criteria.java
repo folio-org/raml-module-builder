@@ -9,14 +9,14 @@ import org.folio.rest.persist.PostgresClient;
 
 /**
  * @author shale
- * 
- *         Criteria c = new Criteria(); 
- *         c.field = "'price' -> 'po_currency' ->> 'value'"; 
- *         c.operation = "LIKE"; 
+ *
+ *         Criteria c = new Criteria();
+ *         c.field = "'price' -> 'po_currency' ->> 'value'";
+ *         c.operation = "LIKE";
  *         c.value = "USD";
- *         
- *         c.field = "'rush'"; 
- *         c.operation = "IS TRUE"; 
+ *
+ *         c.field = "'rush'";
+ *         c.operation = "IS TRUE";
  *         c.value = null;
  *
  */
@@ -42,9 +42,9 @@ public class Criteria {
   public static final String   OP_LESS_THAN_EQ    = "<=";
   public static final String   OP_JSON_LESS_THAN_EQ    = "@>";// contains json with json "field" --> [{"field":"'price'","value":{"sum": "150.0"},"op":"@>"}]
   public static final String   OP_NOT             = "NOT"; //[{"field":"'po_line_status'->>'value'","value":"fa(l|t)se","op":"SIMILAR TO"}, {"op":"NOT"}]
-  
+
   private static final String  ARRAY_FROM_CLAUSE  = "jsonb_array_elements";//("jsonb->'fund_distributions'[]->'amount'->>'sum'")
-  
+
   private static final Pattern STRING_PATTERN     = Pattern.compile("\"[^\"]*\"");
   private static final Pattern BOOLEAN_PATTERN    = Pattern.compile("true|false");
   private static final Pattern NUMERIC_PATTERN    = Pattern.compile("^[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?$");
@@ -70,16 +70,16 @@ public class Criteria {
    */
   String                operation;
 
-  From                  from; 
-  Select                select;   
+  From                  from;
+  Select                select;
   /**
    * set this to false if not a jsonb field criteria
    */
   boolean               isJSONB            = true;
-  
+
   boolean               isNotQuery         = false;
   boolean               isArray            = false;
-  
+
   boolean               isJsonOp           = false;
   /**
    * arrays in jsonb are handled differently, need to open up the array
@@ -87,18 +87,18 @@ public class Criteria {
    * needs special handling. need to set the isArray to true and indicate which part of the field
    * in the requested field path is the array
    * for example: 'a'->'b'->'c' - is the path - if 'a' is an array (list) of items - then set this
-   * criteria isArray to true and set the arrayField as 'a' - if no arrayField is set then the 
-   * first field will be extracted and used 
+   * criteria isArray to true and set the arrayField as 'a' - if no arrayField is set then the
+   * first field will be extracted and used
    */
   String                arrayField         = null;
-  
+
   static final int             STRING_TYPE        = 1;
   static final int             BOOLEAN_TYPE       = 2;
   static final int             NUMERIC_TYPE       = 3;
   static final int             NULL_TYPE          = 4;
   int                          valueType          = 1;
-  
-  
+
+
   @Override
   public String toString() {
     return wrapClause();
@@ -106,15 +106,15 @@ public class Criteria {
 
   private String wrapClause(){
     if(operation != null && field != null){
-      
+
       if(JSON_OPS.matcher(operation).find()){
         isJsonOp = true;
       }
-      
+
       setArrayField();
       createSelectSnippet();
       createFromSnippet();
-      
+
       String clause = wrapField() + " " + operation + " " + wrapValue();
       if(isNotQuery){
         return "( "+ OP_NOT +" " + clause + ")";
@@ -123,7 +123,7 @@ public class Criteria {
     }
     return "";
   }
-  
+
   private void setArrayField(){
     if(arrayField == null && isArray){
       //isArray set - assume first field is the array field
@@ -131,7 +131,7 @@ public class Criteria {
       //first instance of un-escaped ''
 /*      Matcher m = FIELD_PATTERN.matcher(field);
       if (m.find()) {
-        //this should be the first field 
+        //this should be the first field
         arrayField = m.group();
       }*/
       arrayField = field.get(0);
@@ -146,7 +146,7 @@ public class Criteria {
       }
     }*/
   }
-  
+
   private void createFromSnippet(){
     if(isArray){
       from = new From();
@@ -155,7 +155,7 @@ public class Criteria {
       from.setAsValue(field.get(0).replaceAll("^'|'$", "")); //remove ''
     }
   }
-  
+
   private void createSelectSnippet(){
     if(isArray){
       select = new Select();
@@ -180,13 +180,13 @@ public class Criteria {
     }
     return field2String();
   }
-  
+
   private String addPrefix() {
-    
+
     String prefix = PostgresClient.DEFAULT_JSONB_FIELD_NAME;
-    
+
     if(from != null){
-      //if from set and has a " AS " clause - use that clause as the field alias to 
+      //if from set and has a " AS " clause - use that clause as the field alias to
       //operate on
       prefix = from.getAsValue();
     }
@@ -216,7 +216,7 @@ public class Criteria {
     StringBuilder sb = new StringBuilder();
     int size = field.size();
     if(size == 1 && isArray){
-      //query where claue should look like - 
+      //query where claue should look like -
       return from.asValue;
     }
     if(size == 1){
@@ -236,7 +236,7 @@ public class Criteria {
           sb.append("->>");
         }
         else{
-          sb.append("->");   
+          sb.append("->");
         }
       }
       else if(i+1 < size){
@@ -246,7 +246,7 @@ public class Criteria {
     }
     return sb.toString();
   }
-  
+
   private int getOperationType() {
     String ret = "";
     if (value == null) {
@@ -283,9 +283,9 @@ public class Criteria {
       }else{
         return " '" + value + "'";
       }
-    } 
+    }
     if (value == null && valueType == STRING_TYPE) {
-      //null is a legit json value, example to check if a string field is null 
+      //null is a legit json value, example to check if a string field is null
       //- so leave it in such a case field a = null
       return null;
     }
@@ -311,7 +311,7 @@ public class Criteria {
     }
     return false;
   }
-  
+
   public List<String> getField() {
     return field;
   }
@@ -368,5 +368,5 @@ public class Criteria {
   public void setArrayField(String arrayField) {
     this.arrayField = arrayField;
   }
-  
+
 }

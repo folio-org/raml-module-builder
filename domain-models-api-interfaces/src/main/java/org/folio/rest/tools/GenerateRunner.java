@@ -25,7 +25,7 @@ public class GenerateRunner {
   private static String outputDirectory = null;
   private static String inputDirectory = null;
   private static Configuration configuration = null;
-  
+
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs";
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
@@ -33,16 +33,16 @@ public class GenerateRunner {
   static final GeneratorProxy generator = new GeneratorProxy();
 
   public static void main(String args[]) throws Exception{
-    
+
     List<GeneratorExtension> extensions = new ArrayList<>();
     extensions.add(new Raml2Java());
-    
+
     String root = System.getProperties().getProperty("project.basedir");
-    
+
     outputDirectory = root + "/src/main/java/";// + PACKAGE_DEFAULT.replace('.', '/');
-    
+
     String outputDirectoryWithPackage = outputDirectory + PACKAGE_DEFAULT.replace('.', '/');
-    
+
     try{
       //this is a dirty hack needed when the project was refactored from com.folio to org.folio
       //the old wrong packaged dir is not deleted sine the package_default has changed - this
@@ -51,17 +51,17 @@ public class GenerateRunner {
       FileUtils.cleanDirectory(new File(root+"/src/main/java/com"));
     }
     catch(Exception e){}
-    
-    
+
+
     if(new File(outputDirectoryWithPackage).exists()){
       FileUtils.cleanDirectory(new File(outputDirectoryWithPackage));
     }else{
       new File(outputDirectoryWithPackage).mkdirs();
     }
-    
+
     //String inputDirectory = "C:\\Git\\raml\\circulation\\";
     //String outputDirectory = "C:\\tools\\raml\\raml";
-    
+
     configuration = new Configuration();
     configuration.setJaxrsVersion(JaxrsVersion.JAXRS_2_0);
     configuration.setUseJsr303Annotations(true);
@@ -70,37 +70,37 @@ public class GenerateRunner {
     configuration.setExtensions(extensions);
 
     //outputDirectory = System.getProperty("output_directory");
-    
+
 /*    if(outputDirectory == null){
       outputDirectory = System.getProperty("java.io.tmpdir");
     }
-    
+
     if(inputDirectory == null){
       throw new Exception("unable to run java generation process without a valid input directory of the raml content");
     }*/
-    
+
     inputDirectory  = System.getProperty("raml_files");
     //inputDirectory  = "C:\\Git\\circulation\\ramls\\circulation";// "C:\\Git\\raml-module-builder\\domain-models-api-interfaces\\src\\main\\resources\\raml";
     if(inputDirectory == null){
-      
+
       inputDirectory = root + SOURCES_DEFAULT;
-      
+
     }
 
-    System.out.println( "Input directory " + inputDirectory);          
+    System.out.println( "Input directory " + inputDirectory);
 
-    
+
     configuration.setOutputDirectory(new File(outputDirectory));
     configuration.setSourceDirectory(new File(inputDirectory));
-    
+
     int numMatches = 0;
-    
+
     if(!new File(inputDirectory).isDirectory()){
-      System.out.println(inputDirectory + " is not a valid directory");          
+      System.out.println(inputDirectory + " is not a valid directory");
     }
-    
+
     File []ramls = new File(inputDirectory).listFiles(new FilenameFilter() {
-      
+
       @Override
       public boolean accept(File dir, String name) {
         if(name.endsWith(".raml")){
@@ -114,37 +114,37 @@ public class GenerateRunner {
       String line=reader.readLine();
       reader.close();
       if(line.startsWith("#%RAML")) {
-        System.out.println("processing " + ramls[i]);          
+        System.out.println("processing " + ramls[i]);
         generator.run(new FileReader(ramls[i]), configuration, ramls[i].getAbsolutePath());
         numMatches++;
       }
       else{
-        System.out.println(ramls[i] + " has a .raml suffix but does not start with #%RAML");          
+        System.out.println(ramls[i] + " has a .raml suffix but does not start with #%RAML");
       }
     }
-    
+
     System.out.println("processed: " + numMatches + " raml files");
 
     return;
     /*    Finder finder = new Finder("*.raml");
     Files.walkFileTree(Paths.get(inputDirectory), finder);
     finder.done();*/
-    
+
     //set output dir for mapping file
     //System.setProperty("file_path", root + RESOURCE_DEFAULT);
     //run AnnotationGrabber
     //AnnotationGrabber.main(new String[]{});
-    
+
     //create a jar from the generated code and mapping file - get param into main for jar name and path
 /*    String jarName = System.getProperty("jar_name");
-    
+
     if(jarName == null){
       jarName = "interface.jar";
     }
 
     new JarHelper().jarDir(new File(outputDirectory), new File(outputDirectory + "/"+ jarName));*/
   }
-  
+
 /*  public static class Finder
   extends SimpleFileVisitor<Path> {
 
@@ -161,7 +161,7 @@ public class GenerateRunner {
   void find(Path file) {
       Path name = file.getFileName();
       if (name != null && matcher.matches(name)) {
-          System.out.println("processing " + file);          
+          System.out.println("processing " + file);
           try {
             BufferedReader reader=new BufferedReader(new FileReader(file.toFile()));
             String line=reader.readLine();
@@ -173,7 +173,7 @@ public class GenerateRunner {
             // file.toAbsolutePath().toString())),
              // configuration, inputDirectory);
             numMatches++;
-          } 
+          }
           catch (Exception e) {
             e.printStackTrace();
           }
@@ -212,5 +212,5 @@ public class GenerateRunner {
       return FileVisitResult.CONTINUE;
   }
 }*/
-  
+
 }

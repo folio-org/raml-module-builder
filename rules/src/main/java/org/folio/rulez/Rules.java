@@ -39,7 +39,7 @@ import org.kie.api.runtime.KieSession;
  * an exception is thrown with an informative message) - the files are added to the ksession.
  * The session can now be used to run drools - see junit tests in this project for an example.
  * dispose() of the session when done
- * 
+ *
  * by default - .drl files placed in the /resources/rules directory of the project will be loaded
  * if no path is passed
  */
@@ -48,26 +48,26 @@ public class Rules {
   public static final String      RULES_DIR_JAR         = "/rules";
   public static final String      RULES_DIR_IDE         = "rules";
 
-  
-  private URI                     externalRulesDir      = null;        
-  
- 
+
+  private URI                     externalRulesDir      = null;
+
+
   public Rules() {
   }
-  
+
   public Rules(String rulesDirPath) {
     if(rulesDirPath != null){
       externalRulesDir =  new File(rulesDirPath).toURI();
     }
   }
-  
+
   /**
-   * Load all .drl files from the specified directory (URI) 
+   * Load all .drl files from the specified directory (URI)
    * create a kiefilesystem (an in memory file system with a key (path) - value (input stream) file system
    * note that the key should have the /src/main/resources prefix
-   * 
+   *
    * if a rule does not compile an exception will be thrown indicating the problem
-   *  
+   *
    * @param path
    * @return - session containing all loaded rules
    * @throws Exception
@@ -90,9 +90,9 @@ public class Rules {
         File file = new File( ruleFiles.get(i) );
         File parent = file.getParentFile();
         if(parent != null){
-          kieFileSystemPath = kieFileSystemPath + "/" + parent.getName() + "/" + file.getName();      
+          kieFileSystemPath = kieFileSystemPath + "/" + parent.getName() + "/" + file.getName();
         }else{
-          kieFileSystemPath = kieFileSystemPath + "/drools/" + file.getName();  
+          kieFileSystemPath = kieFileSystemPath + "/drools/" + file.getName();
         }
         fis = new FileInputStream(file);
       }
@@ -124,7 +124,7 @@ public class Rules {
     }
     return null;
   }
- 
+
   public static List<String> validateRules(InputStream resource) throws Exception {
 
     VerifierBuilder vBuilder = VerifierBuilderFactory.newVerifierBuilder();
@@ -138,14 +138,14 @@ public class Rules {
     return errorList;
   }
 
-  
+
   private ArrayList<String> getRules(URI uri) throws Exception {
 
     System.out.println("Getting rules from " + uri.toString());
     Path rulePath = null;
     ArrayList<String> list = new ArrayList<String>();
     FileSystem fileSystem = null;
-    
+
     //if (!uri.isAbsolute()) {
     fileSystem = null;
     if (uri.getScheme().equals("jar")) {
@@ -156,10 +156,10 @@ public class Rules {
         //e.printStackTrace();
       }
       rulePath = fileSystem.getPath(RULES_DIR_JAR);
-    } 
+    }
     else if(uri.isAbsolute()){
-      rulePath = Paths.get(uri); 
-    }      
+      rulePath = Paths.get(uri);
+    }
     else {
       uri = Rules.class.getClassLoader().getResource(RULES_DIR_IDE).toURI();
       rulePath = Paths.get(uri);

@@ -73,7 +73,7 @@ public class AnnotationGrabber {
   // ^http.*?\/\/.*?\/apis\/([^\/]+)\/([^\/]+)(\?.*)
 
   public static JsonObject generateMappings() throws Exception {
-    
+
     JsonObject globalClassMapping = new JsonObject();
 
     // get classes in generated package

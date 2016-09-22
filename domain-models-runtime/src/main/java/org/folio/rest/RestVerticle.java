@@ -108,13 +108,13 @@ public class RestVerticle extends AbstractVerticle {
 
   private static final Logger       log                             = LoggerFactory.getLogger(className);
 
-  //we look for the class and function in the class that is mapped to a requested url 
-  //since we try to load via reflection an implementation of the class at runtime - better to load once and cache 
+  //we look for the class and function in the class that is mapped to a requested url
+  //since we try to load via reflection an implementation of the class at runtime - better to load once and cache
   //for subsequent calls
   private static Table<String, String, Class<?>> clazzCache       = HashBasedTable.create();
-  
+
   private EventBus eventBus;
-  
+
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
   public static void main(String[] args) {
@@ -123,7 +123,7 @@ public class RestVerticle extends AbstractVerticle {
 
   static {
     //validationFactory used to validate the pojos which are created from the json
-    //passed in the request body in put and post requests. The constraints validated by this factory 
+    //passed in the request body in put and post requests. The constraints validated by this factory
     //are the ones in the json schemas accompanying the raml files
     validationFactory = Validation.buildDefaultValidatorFactory();
 
@@ -170,11 +170,11 @@ public class RestVerticle extends AbstractVerticle {
     // Create a router object.
     Router router = Router.router(vertx);
 
-    
+
     eventBus = vertx.eventBus();
-    
+
     // needed so that we get the body content of the request - note that this
-    // will read the entire body into memory 
+    // will read the entire body into memory
     final BodyHandler handler = BodyHandler.create();
 
     // IMPORTANT!!!
@@ -187,19 +187,19 @@ public class RestVerticle extends AbstractVerticle {
     router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
-    
+
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
     runHook(vv -> {
-      if (((Future<?>) vv).failed()) {        
-        String reason = ((Future<?>) vv).cause().getMessage();        
+      if (((Future<?>) vv).failed()) {
+        String reason = ((Future<?>) vv).cause().getMessage();
         log.error( messages.getMessage("en", MessageConsts.InitializeVerticleFail, reason));
         startFuture.fail(reason);
         vertx.close();
         System.exit(-1);
       } else {
         log.info("init succeeded.......");
-        
+
         try {
           // startup periodic impl if exists
           runPeriodicHook();
@@ -253,7 +253,7 @@ public class RestVerticle extends AbstractVerticle {
 
                 // the url exists but the http method requested does not match a function
                 // meaning url+http method != a function
-                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported), 
+                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported),
                   validRequest);
               }
               Class<?> aClass;
@@ -304,14 +304,14 @@ public class RestVerticle extends AbstractVerticle {
                   checkAcceptContentType(produces, consumes, rc, validRequest);
 
 
-                  // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped 
+                  // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
                   //to the requested URL - array will be populated by parseParams() function
                   Iterator<Map.Entry<String, Object>> paramList = params.iterator();
-                  Object[] paramArray = new Object[params.size()];                                      
+                  Object[] paramArray = new Object[params.size()];
                   parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
 
-                  if (validRequest[0]) {                   
-                    
+                  if (validRequest[0]) {
+
                     // check if we are dealing with a file upload , currently only multipart/form-data content-type support
                     final boolean[] isFileUpload = new boolean[] { false };
                     final int[] uploadParamPosition = new int[] { -1 };
@@ -329,28 +329,28 @@ public class RestVerticle extends AbstractVerticle {
                     if (isFileUpload[0] && handleInternally) {
                       internalUploadService(rc, validRequest);
                     }
-                    
+
                     /**
                      * file upload requested (multipart/form-data) but the url is not to the /apis/admin/upload
-                     * meaning, an implementing module is using its own upload handling, so read the content and 
+                     * meaning, an implementing module is using its own upload handling, so read the content and
                      * pass to implementing function just like any other call
                      */
                     if (isFileUpload[0] && !handleInternally) {
                       //if file upload - set needed handlers
                       // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
                       if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
-                        request.setExpectMultipart(true);       
+                        request.setExpectMultipart(true);
                         MimeMultipart mmp = new MimeMultipart();
                         //place the mmp as an argument to the 'to be called' function - at the correct position
                         paramArray[uploadParamPosition[0]] = mmp;
-                        
+
                         request.uploadHandler(new Handler<io.vertx.core.http.HttpServerFileUpload>() {
-                          
+
                           Buffer content = Buffer.buffer();
 
                           @Override
                           public void handle(HttpServerFileUpload upload) {
-                            
+
                             // called as data comes in
                             upload.handler(new Handler<Buffer>() {
                               @Override
@@ -372,13 +372,13 @@ public class RestVerticle extends AbstractVerticle {
                             upload.endHandler(new Handler<Void>() {
                               @Override
                               public void handle(Void event) {
-                                
+
                                 InternetHeaders headers = new InternetHeaders();
                                 MimeBodyPart mbp = null;
                                 try {
                                   mbp = new MimeBodyPart(headers, content.getBytes());
                                   mbp.setFileName(upload.filename());
-                                  mmp.addBodyPart(mbp);                                  
+                                  mmp.addBodyPart(mbp);
                                   content = null;
                                 } catch (MessagingException e) {
                                   // TODO Auto-generated catch block
@@ -389,10 +389,10 @@ public class RestVerticle extends AbstractVerticle {
                           }
                         });
                       } else {
-                        endRequestWithError(rc, 400, true, messages.getMessage("en", 
+                        endRequestWithError(rc, 400, true, messages.getMessage("en",
                           MessageConsts.ContentTypeError, SUPPORTED_CONTENT_TYPE_FORMDATA, consumes) , validRequest);
                       }
-                    } 
+                    }
                     else{
                       if (validRequest[0] && !handleInternally) {
                         //if request is valid - invoke it
@@ -411,7 +411,7 @@ public class RestVerticle extends AbstractVerticle {
                         }
                       }
                     }
-                                        
+
                     // register handler in case of file uploads - when the body handler is used then the entire body is read
                     // and calling the endhandler will throw an exception since there is nothing to read. so this can only be called
                     //when no body handler is associated with the path - in our case multipart/form-data
@@ -433,7 +433,7 @@ public class RestVerticle extends AbstractVerticle {
                               }
                             }
                           }
-                        } 
+                        }
                       });
                     }
                   }
@@ -448,7 +448,7 @@ public class RestVerticle extends AbstractVerticle {
           }
           if (!validPath) {
             // invalid path
-            endRequestWithError(rc, 400, true, 
+            endRequestWithError(rc, 400, true,
               messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
           }
         } finally {}
@@ -471,7 +471,7 @@ public class RestVerticle extends AbstractVerticle {
          * Set<HttpMethod> corsAllowedMethods = new HashSet<HttpMethod>(); corsAllowedMethods.add(HttpMethod.GET);
          * corsAllowedMethods.add(HttpMethod.OPTIONS); corsAllowedMethods.add(HttpMethod.PUT); corsAllowedMethods.add(HttpMethod.POST);
          * corsAllowedMethods.add(HttpMethod.DELETE);
-         * 
+         *
          * router.route().handler( CorsHandler.create("*").allowedMethods(corsAllowedMethods
          * ).allowedHeader("Authorization").allowedHeader("Content-Type") .allowedHeader("Access-Control-Request-Method").allowedHeader(
          * "Access-Control-Allow-Credentials") .allowedHeader("Access-Control-Allow-Origin"
@@ -558,11 +558,11 @@ public class RestVerticle extends AbstractVerticle {
     }
 
     long end = System.nanoTime();
-    
+
     StringBuffer sb = new StringBuffer();
     if (log.isDebugEnabled()) {
       sb.append(rc.getBodyAsString());
-    } 
+    }
     LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
       rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
       rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), sb.toString());
@@ -1058,14 +1058,14 @@ public class RestVerticle extends AbstractVerticle {
       }
     });
   }
-  
+
   private boolean handleInterally(HttpServerRequest request){
     if(UPLOAD_PATH_TO_HANDLE.equals(request.path())){
       return true;
     }
     return false;
   }
-  
+
   private void internalUploadService(RoutingContext rc, boolean []validRequest){
     HttpServerRequest request = rc.request();
     if(request.getParam("file_name") == null){

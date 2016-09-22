@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A listener that will track all rule firings in a session.
- * 
+ *
  */
 public class RuleTracker extends DefaultAgendaEventListener  {
 
@@ -20,16 +20,16 @@ public class RuleTracker extends DefaultAgendaEventListener  {
 
     private List<Match> matchList = new ArrayList<Match>();
 
-    
-    
+
+
     @Override
     public void afterMatchFired(AfterMatchFiredEvent event) {
       // TODO Auto-generated method stub
       super.afterMatchFired(event);
       Rule rule = event.getMatch().getRule();
-      
+
       String ruleName = rule.getName();
-      
+
       Map<String, Object> ruleMetaDataMap = rule.getMetaData();
 
       matchList.add(event.getMatch());

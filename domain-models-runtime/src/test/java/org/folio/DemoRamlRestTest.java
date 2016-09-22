@@ -31,7 +31,7 @@ public class DemoRamlRestTest {
 
   private Vertx             vertx;
   int port;
-  
+
   /**
    * @param context  the test context.
    */
@@ -56,10 +56,10 @@ public class DemoRamlRestTest {
   public void tearDown(TestContext context) {
     vertx.close(context.asyncAssertSuccess());
   }
-  
+
   /**
    * just send a get request for books api with and without the required author query param
-   * 1. one call should succeed and the other should fail (due to 
+   * 1. one call should succeed and the other should fail (due to
    * validation aspect that should block the call and return 400)
    * 2. test the built in upload functionality
    * @param context - the test context
@@ -73,7 +73,7 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test2.json", Buffer.buffer(getFile("uploadtest.json")), 204);
 
   }
-  
+
   public void checkURLs(TestContext context, String url, int codeExpected) {
     try {
       Async async = context.async();
@@ -103,7 +103,7 @@ public class DemoRamlRestTest {
     } finally {
     }
   }
-  
+
   /**
    * for POST
    */
@@ -122,7 +122,7 @@ public class DemoRamlRestTest {
 
       if (statusCode == errorCode) {
         context.assertTrue(true);
-      } else {        
+      } else {
         response.bodyHandler(responseData -> {
           context.fail("got non 200 response from bosun, error: " + responseData + " code " + statusCode);
         });
@@ -139,7 +139,7 @@ public class DemoRamlRestTest {
     request.write(buffer);
     request.end();
   }
-  
+
   private String getFile(String filename) throws IOException {
     return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
   }
@@ -160,7 +160,7 @@ public class DemoRamlRestTest {
 
     }
     if(closeBody){
-      buffer.appendString("--MyBoundary--\r\n");      
+      buffer.appendString("--MyBoundary--\r\n");
     }
     return buffer;
   }

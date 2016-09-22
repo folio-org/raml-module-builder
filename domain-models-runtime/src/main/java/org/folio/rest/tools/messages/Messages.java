@@ -93,7 +93,7 @@ public class Messages {
       return FileSystems.getFileSystem(uri);
     }
   }
-  
+
   // assume api messages are in English for now!!!
   private void loadMessages(Path messagePath) throws IOException {
 
@@ -153,7 +153,7 @@ public class Messages {
     }
     return getMessageSingle(DEFAULT_LANGUAGE, code);
   }
-  
+
   public String getMessage(String language, MessageEnum consts) {
     String message = getMessageSingle(language, consts.getCode());
     if (message != null) {
@@ -178,7 +178,7 @@ public class Messages {
     }
     return MessageFormat.format(pattern, messageArguments);
   }
-  
+
   public String getMessage(String language, MessageEnum consts, Object... messageArguments) {
     String pattern = getMessage(language, consts.getCode());
     if (pattern == null) {

@@ -10,6 +10,6 @@ rule "java Second rule"
 when
     a : Messages( a.status  == 0)
 then
-	a.setMessage("test");
+    a.setMessage("test");
     //System.out.println(a.message);
 end

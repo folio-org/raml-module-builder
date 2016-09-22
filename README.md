@@ -322,15 +322,15 @@ Create JSON schemas indicating the objects exposed by the module:
 
 ```sh
         <dependency>
-			<groupId>org.folio</groupId>
-			<artifactId>domain-models-api-interfaces</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>org.folio</groupId>
-			<artifactId>domain-models-runtime</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-		</dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>domain-models-api-interfaces</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>domain-models-runtime</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
 ```
 
 ### Step 3: Add the plugins to your pom.xml
@@ -358,146 +358,146 @@ Four plugins should be declared in the pom.xml file:
 Add `ramlfiles_path` property indicating the location of the RAML directory:
 
 ```sh
-	<properties>
-		<ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-	</properties>
+  <properties>
+    <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
+  </properties>
 ```
 
 Add the plugins:
 
 ```sh
 
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.1</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-					<encoding>UTF-8</encoding>
-				</configuration>
-			</plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
 
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
-				<version>1.5.0</version>
-				<executions>
-					<execution>
-						<id>generate_interfaces</id>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>java</goal>
-						</goals>
-						<configuration>
-							<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-							<!-- <executable>java</executable> -->
-							<cleanupDaemonThreads>false</cleanupDaemonThreads>
-							<systemProperties>
-								<systemProperty>
-									<key>project.basedir</key>
-									<value>${basedir}</value>
-								</systemProperty>
-								<systemProperty>
-									<key>raml_files</key>
-									<value>${ramlfiles_path}/circulation</value>
-								</systemProperty>
-							</systemProperties>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.5.0</version>
+        <executions>
+          <execution>
+            <id>generate_interfaces</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
+              <!-- <executable>java</executable> -->
+              <cleanupDaemonThreads>false</cleanupDaemonThreads>
+              <systemProperties>
+                <systemProperty>
+                  <key>project.basedir</key>
+                  <value>${basedir}</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>raml_files</key>
+                  <value>${ramlfiles_path}/circulation</value>
+                </systemProperty>
+              </systemProperties>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>aspectj-maven-plugin</artifactId>
-				<version>1.8</version>
-				<configuration>
-					<verbose>true</verbose>
-					<showWeaveInfo>false</showWeaveInfo>
-					<complianceLevel>1.8</complianceLevel>
-					<includes>
-						<include>**/impl/*.java</include>
-						<include>**/*.aj</include>
-					</includes>
-					<aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
-					<XaddSerialVersionUID>true</XaddSerialVersionUID>
-					<showWeaveInfo>true</showWeaveInfo>
-					<aspectLibraries>
-						<aspectLibrary>
-							<groupId>org.folio</groupId>
-							<artifactId>domain-models-api-aspects</artifactId>
-						</aspectLibrary>
-					</aspectLibraries>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>compile</goal>
-						</goals>
-					</execution>
-				</executions>
-				<dependencies>
-					<dependency>
-						<groupId>org.aspectj</groupId>
-						<artifactId>aspectjrt</artifactId>
-						<version>1.8.9</version>
-					</dependency>
-					<dependency>
-						<groupId>org.aspectj</groupId>
-						<artifactId>aspectjtools</artifactId>
-						<version>1.8.9</version>
-					</dependency>
-				</dependencies>
-			</plugin>
-			<plugin>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>3.0.1</version>
-				<executions>
-					<execution>
-						<id>copy-resources</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>${basedir}/target/classes/apidocs/raml</outputDirectory>
-							<resources>
-								<resource>
-									<directory>${ramlfiles_path}</directory>
-									<filtering>true</filtering>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>aspectj-maven-plugin</artifactId>
+        <version>1.8</version>
+        <configuration>
+          <verbose>true</verbose>
+          <showWeaveInfo>false</showWeaveInfo>
+          <complianceLevel>1.8</complianceLevel>
+          <includes>
+            <include>**/impl/*.java</include>
+            <include>**/*.aj</include>
+          </includes>
+          <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
+          <XaddSerialVersionUID>true</XaddSerialVersionUID>
+          <showWeaveInfo>true</showWeaveInfo>
+          <aspectLibraries>
+            <aspectLibrary>
+              <groupId>org.folio</groupId>
+              <artifactId>domain-models-api-aspects</artifactId>
+            </aspectLibrary>
+          </aspectLibraries>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
+            <version>1.8.9</version>
+          </dependency>
+          <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjtools</artifactId>
+            <version>1.8.9</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.0.1</version>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${basedir}/target/classes/apidocs/raml</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${ramlfiles_path}</directory>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>2.3</version>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>shade</goal>
-						</goals>
-						<configuration>
-							<transformers>
-								<transformer
-									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<manifestEntries>
-										<Main-Class>org.folio.rest.RestLauncher</Main-Class>
-										<Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
-									</manifestEntries>
-								</transformer>
-							</transformers>
-							<artifactSet />
-							<outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <transformers>
+                <transformer
+                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <manifestEntries>
+                    <Main-Class>org.folio.rest.RestLauncher</Main-Class>
+                    <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
+                  </manifestEntries>
+                </transformer>
+              </transformers>
+              <artifactSet />
+              <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 ```
 
 ### Step 4: Build your project
@@ -533,7 +533,7 @@ See an [example](#function-example) of an implemented function.
 ## Adding an init() implementation
 
 It is possible to add custom code that will run once before the application is deployed
-(e.g. to init a DB, create a cache, create static variables, etc.) by implementing 
+(e.g. to init a DB, create a cache, create static variables, etc.) by implementing
 the `InitAPIs` interface. You must implement the
 `init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler)`.
 Currently the implementation should sit in the
@@ -556,7 +556,7 @@ public class InitAPIs implements InitAPI {
   }
 }
 ```
- 
+
 
 ## Adding code to run periodically
 
@@ -648,7 +648,7 @@ To create an api that allows file uploads, do one of the following:
 1. Use the `/apis/admin/upload` url which every module using the platform inherits. This will stream a file to the `java.io.tmpdir` directory and can optionally send a notification when the upload completes via the vertx event bus.
  - The RAML file `/resources/raml/admin.raml` describes the API parameters.
  - Example of a listening service waiting for notifications:
- https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/ProcessUploads.java 
+ https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/ProcessUploads.java
 
 2. The second option is to declare a file upload API in your RAML:
 
@@ -677,7 +677,7 @@ Notice the `/configurations/rules` entry in the RAML
 https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/DemoRamlRestTest.java
 
 
-The body content should look something like this: 
+The body content should look something like this:
 
 
 
@@ -701,7 +701,7 @@ Content-Type: application/octet-stream
 The generated API interface will have a function signiture of:
 
 ```sh
-public void postConfigurationsRules(String authorization, String lang, MimeMultipart entity, 
+public void postConfigurationsRules(String authorization, String lang, MimeMultipart entity,
 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception
 ```
 
@@ -725,12 +725,12 @@ https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/fol
 
 By default an embedded mongoDB is included in the runtime but is not run by
 default. To change that add `embed_mongo=true` to the command line
-(`java -jar circulation-fat.jar embed_mongo=true`). Connection parameters to a 
-non-embedded mongoDB can be placed in `resources/mongo-conf.json` or passed 
+(`java -jar circulation-fat.jar embed_mongo=true`). Connection parameters to a
+non-embedded mongoDB can be placed in `resources/mongo-conf.json` or passed
 via the command line.
 
 The runtime framework exposes a mongoDB async client which offers CRUD
-operations in an ORM type fashion. Please see `/domain-models-runtime/src/main/java/org/folio/rest/persist/MongoCRUD.java` for the available APIs exposed. 
+operations in an ORM type fashion. Please see `/domain-models-runtime/src/main/java/org/folio/rest/persist/MongoCRUD.java` for the available APIs exposed.
 
 Extensive usage examples can be found in the following classes:
 https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/PatronAPI.java
@@ -759,8 +759,8 @@ Currently the expected format is:
 
 ```sh
 create table <schema>.<table_name> (
-	_id SERIAL PRIMARY KEY,
-	jsonb JSONB NOT NULL
+  _id SERIAL PRIMARY KEY,
+  jsonb JSONB NOT NULL
 );
 ```
 
@@ -862,12 +862,12 @@ import org.folio.rest.jaxrs.model.Patron;
 
 rule "Patron needs one ID at the least"
 
-	no-loop
+    no-loop
 
     when
         p : Patron( patronBarcode  == null, patronLocalId == null )
     then
-    	throw new java.lang.Exception("Patron needs one ID field populated at the least");
+        throw new java.lang.Exception("Patron needs one ID field populated at the least");
 end
 ```
 
@@ -881,7 +881,7 @@ your project under the `/resources/messages` directory.
 Note that the format of the file names should be:
 `[lang_2_letters]_messages.yyy - for example: en_messages.prop`
 
-For example: 
+For example:
 In the circulation project, the messages file can be found at `/circulation/src/main/resources/en_messages.prop` with the following content:
 ```sh
 20002=Operation can not be calculated on a Null Amount
@@ -902,7 +902,7 @@ public enum CircMessageConsts implements MessageEnum {
   FinePaidTooMuch("20003"),
   NonRenewable("20004"),
   LoanPeriodError("20005");
-  
+
   private String code;
   private CircMessageConsts(String code){
     this.code = code;
@@ -919,7 +919,7 @@ Usage:
 
 `messages.getMessage(lang, CircMessageConsts.OperationOnNullAmount);`
 
-Note: parameters can also be passed when relevant. The raml-module-builder runtime also exposes generic error message enums which can be found at `/domain-models-runtime/src/main/java/org/folio/rest/tools/messages/MessageConsts.java` 
+Note: parameters can also be passed when relevant. The raml-module-builder runtime also exposes generic error message enums which can be found at `/domain-models-runtime/src/main/java/org/folio/rest/tools/messages/MessageConsts.java`
 
 ## Documentation
 
@@ -936,7 +936,7 @@ http://[host]:[port]/apidocs/index.html?raml=raml/circulation/patrons.raml
 
 As stated earlier (command line options), you can pass a configuration file with logging configurations. However, you may also change log levels via the `/admin` API provided by the framework.
 
-For example: 
+For example:
 
 Change log level of all classes to FINE
 
@@ -949,9 +949,9 @@ Get log level of all classes
 A `java_package` parameter can also be passed to change the log level of a specific package. For Example:
 
  `http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.MongoCRUD`
- 
+
  `http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist`
- 
+
 
 ## A Little More on Validation
 

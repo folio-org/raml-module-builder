@@ -21,7 +21,7 @@ public class LogUtil {
 
     log.info(message1);
   }
-  
+
   public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int ResponseCode, long responseTime,
       long responseSize, String url, String queryParams, String message, String body) {
 
@@ -31,18 +31,18 @@ public class LogUtil {
 
     log.info(message1);
   }
-  
+
   public static void formatLogMessage(String clazz, String funtion, String message) {
     log.info(new StringBuilder(clazz).append(" ").append(funtion).append(" ").append(message));
   }
   public static void formatErrorLogMessage(String clazz, String funtion, String message) {
     log.error(new StringBuilder(clazz).append(" ").append(funtion).append(" ").append(message));
   }
-  
+
   public static void closeLogger() {
     LoggerFactory.removeLogger("LogUtil");
   }
-  
+
   /**
    * Update the log level for all packages / a specific package / a specific class
    * @param packageName - pass "*" for all packages
@@ -50,9 +50,9 @@ public class LogUtil {
    * @return - JsonObject with a list of updated loggers and their levels
    */
   public static JsonObject updateLogConfiguration(String packageName, Level level){
-    
+
     JsonObject updatedLoggers = new JsonObject();
-    
+
     LogManager manager = LogManager.getLogManager();
     Enumeration<String> loggers = manager.getLoggerNames();
     while (loggers.hasMoreElements()) {
@@ -61,21 +61,21 @@ public class LogUtil {
         java.util.logging.Logger logger = manager.getLogger(log);
         if(logger != null){
           logger.setLevel(level);
-          updatedLoggers.put(logger.getName(), logger.getLevel().getName());        
+          updatedLoggers.put(logger.getName(), logger.getLevel().getName());
         }
       }
     }
     return updatedLoggers;
   }
-  
+
   /**
    * Iterate over all loggers and return a json object with them and their log level
    * @return JsonObject
    */
   public static JsonObject getLogConfiguration(){
-    
+
     JsonObject loggers = new JsonObject();
-    
+
     LogManager manager = LogManager.getLogManager();
     Enumeration<String> loggerNames = manager.getLoggerNames();
     while (loggerNames.hasMoreElements()) {
@@ -89,5 +89,5 @@ public class LogUtil {
     }
     return loggers;
   }
-  
+
 }

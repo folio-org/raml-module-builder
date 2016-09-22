@@ -32,56 +32,56 @@ public class RestUtils {
           jObj.put(MongoCRUD.JSON_PROP_ENTITY, mapper.writeValueAsString(entity));
         } catch (JsonProcessingException e) {
           e.printStackTrace();
-        }	
+        }
       }
     }
     return jObj;
   }
 
-  /*	public static OutStream sendRequest(JsonObject jObj) throws ExecutionException, InterruptedException{
+/* public static OutStream sendRequest(JsonObject jObj) throws ExecutionException, InterruptedException{
 
-		OutStream stream = new OutStream();
+    OutStream stream = new OutStream();
 
-		try {
+    try {
 
-			RestVerticle.EVENTBUS.send(RestVerticle.API_BUS_ADDRESS, jObj, reply -> {
-				stream.setData(reply.result().body());
-			});
+      RestVerticle.EVENTBUS.send(RestVerticle.API_BUS_ADDRESS, jObj, reply -> {
+        stream.setData(reply.result().body());
+      });
 
-			//Message<String> reply = Sync.awaitResult(h -> RestVerticle.EVENTBUS.send(RestVerticle.API_BUS_ADDRESS, jObj, h), (EVENT_BUS_REQUEST_TIMEOUT_SEC*1000));
-	    	//stream.setData(reply.body());
+      //Message<String> reply = Sync.awaitResult(h -> RestVerticle.EVENTBUS.send(RestVerticle.API_BUS_ADDRESS, jObj, h), (EVENT_BUS_REQUEST_TIMEOUT_SEC*1000));
+        //stream.setData(reply.body());
 
-		} catch (Throwable e) {
-			e.printStackTrace();
-		}
-		return stream;
-	}
+    } catch (Throwable e) {
+      e.printStackTrace();
+    }
+    return stream;
+  }
    */
-  /*	public void sendRequest(JsonObject jObj, OutStream stream) throws SuspendExecution, ExecutionException, InterruptedException{
-		//OutStream stream =  new OutStream();
-		join( res -> {
+/* public void sendRequest(JsonObject jObj, OutStream stream) throws SuspendExecution, ExecutionException, InterruptedException{
+    //OutStream stream =  new OutStream();
+    join( res -> {
 
-			try {
+      try {
 
-				RestVerticle.EVENTBUS.send(RestVerticle.API_BUS_ADDRESS, jObj, reply -> {
-					stream.setData(reply.result().body());
-				});
+        RestVerticle.EVENTBUS.send(RestVerticle.API_BUS_ADDRESS, jObj, reply -> {
+          stream.setData(reply.result().body());
+        });
 
-				//Message<String> reply = Sync.awaitResult(h -> RestVerticle.EVENTBUS.send(RestVerticle.API_BUS_ADDRESS, jObj, h), (EVENT_BUS_REQUEST_TIMEOUT_SEC*1000));
-		    	//stream.setData(reply.body());
+        //Message<String> reply = Sync.awaitResult(h -> RestVerticle.EVENTBUS.send(RestVerticle.API_BUS_ADDRESS, jObj, h), (EVENT_BUS_REQUEST_TIMEOUT_SEC*1000));
+          //stream.setData(reply.body());
 
-			} catch (Throwable e) {
-				e.printStackTrace();
-			}
-		});
+      } catch (Throwable e) {
+        e.printStackTrace();
+      }
+    });
 
-		//return stream;
-	}
+    //return stream;
+  }
 
-	public void join(Handler<AsyncResult<Void>> resultHandler) {
-	    Context context = RestVerticle.VERTX.getOrCreateContext();
-	    context.runOnContext(v -> {
-	      resultHandler.handle(io.vertx.core.Future.succeededFuture());
-	    });
-	}*/
+  public void join(Handler<AsyncResult<Void>> resultHandler) {
+      Context context = RestVerticle.VERTX.getOrCreateContext();
+      context.runOnContext(v -> {
+        resultHandler.handle(io.vertx.core.Future.succeededFuture());
+      });
+  }*/
 }

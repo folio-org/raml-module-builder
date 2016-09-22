@@ -62,7 +62,7 @@ public class PostgresClient {
   private final static String    RETURNING_IDS            = " RETURNING _id ";
 
   private final static String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
-  
+
   private static PostgresProcess postgresProcess          = null;
 
   private Vertx                  vertx                    = null;
@@ -71,9 +71,9 @@ public class PostgresClient {
   private static String          configPath               = null;
 
   private static int             EMBEDDED_POSTGRES_PORT   = 6000;
-  
+
   private JsonObject postgreSQLClientConfig = null;
-  
+
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
   private final Messages            messages = Messages.getInstance();
@@ -89,11 +89,11 @@ public class PostgresClient {
   public static void setIsEmbedded(boolean embed){
     embeddedMode = embed;
   }
-  
+
   public static boolean isEmbedded(){
     return embeddedMode;
   }
-  
+
   /**
    * must be called before getInstance() for this to take affect
    * @param path
@@ -101,7 +101,7 @@ public class PostgresClient {
   public static void setConfigFilePath(String path){
     configPath = path;
   }
-  
+
   // will return null on exception
   public static PostgresClient getInstance(Vertx vertx) {
     // assumes a single thread vertx model so no sync needed
@@ -154,7 +154,7 @@ public class PostgresClient {
 
   /**
    * end transaction must be called or the connection will remain open
-   * 
+   *
    * @param done
    */
   //@Timer
@@ -217,7 +217,7 @@ public class PostgresClient {
   }
 
   /**
-   * 
+   *
    * @param table
    *          - schema.tablename to save to
    * @param json
@@ -275,7 +275,7 @@ public class PostgresClient {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
   }
-  
+
   //@Timer
   public void update(String table, Object entity, String id, Handler<AsyncResult<String>> replyHandler) throws Exception {
     client.getConnection(res -> {
@@ -303,7 +303,7 @@ public class PostgresClient {
       }
     });
   }
-  
+
   //@Timer
   public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds, Handler<AsyncResult<String>> replyHandler)
       throws Exception {
@@ -345,7 +345,7 @@ public class PostgresClient {
   /**
    * Note that postgrs does not update inplace the json but rather will create a new json with the updated section and then reference the id
    * to that newly created json
-   * 
+   *
    * @param table
    * @param section
    * @param when
@@ -448,7 +448,7 @@ public class PostgresClient {
 
   /**
    * pass in an entity that is fully / partially populated and the query will return all records matching the populated fields in the entity
-   * 
+   *
    * @param table
    * @param entity
    * @param replyHandler
@@ -548,7 +548,7 @@ public class PostgresClient {
     ret[1] = rowCount;
     return ret;
   }
-  
+
   //@Timer
   public void select(String sql, Handler<AsyncResult<io.vertx.ext.sql.ResultSet>> replyHandler) {
 
@@ -576,7 +576,7 @@ public class PostgresClient {
       }
     });
   }
-  
+
   //@Timer
   public void mutate(String sql, Handler<AsyncResult<String>> replyHandler)  {
     long s = System.nanoTime();
@@ -726,46 +726,46 @@ public class PostgresClient {
     }
 
   }
-  
+
   public void importFile(String path, String tableName) {
-  
+
    vertx.<String>executeBlocking(dothis -> {
-  
+
     try {
       String host = postgreSQLClientConfig.getString("host");
       int port = postgreSQLClientConfig.getInteger("port");
       String user = postgreSQLClientConfig.getString("username");
       String pass = postgreSQLClientConfig.getString("password");
       String db = postgreSQLClientConfig.getString("database");
-      
+
       log.info("Connecting to " + db);
-      
+
       Connection con = DriverManager.getConnection(
         "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
- 
+
       log.info("Copying text data rows from stdin");
- 
+
       CopyManager copyManager = new CopyManager((BaseConnection) con);
- 
+
       FileReader fileReader = new FileReader(path);
       copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
-      
+
     } catch (Exception e) {
       log.error(messages.getMessage("en", MessageConsts.ImportFailed), e.getMessage());
       dothis.fail(e.getMessage());
     }
     dothis.complete("Done.");
-    
+
   }, whendone -> {
-    
+
     if(whendone.succeeded()){
-      
+
       log.info("Done importing file: " + path);
     }
     else{
       log.info("Failed importing file: " + path);
     }
-    
+
   });
 
   }

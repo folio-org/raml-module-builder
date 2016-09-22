@@ -18,7 +18,7 @@
 			<property name="hibernate.ogm.datastore.document.association_storage" value="IN_ENTITY" />
 			<property name="hibernate.ogm.datastore.document.map_storage" value="BY_KEY" />
 			<property name="hibernate.ogm.mongodb.connection_timeout" value="10000" />
-			
+
 			 <!-- defines which JTA Transaction we plan to use -->
             <property name="hibernate.transaction.jta.platform"
                       value="org.hibernate.service.jta.platform.internal.JBossStandAloneJtaPlatform"/>

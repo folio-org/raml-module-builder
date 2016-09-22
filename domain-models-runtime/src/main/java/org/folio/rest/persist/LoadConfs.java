@@ -16,7 +16,7 @@ public class LoadConfs {
   public JsonObject loadConfig(String configFile) {
 
     boolean loadDefault = true;
-    
+
     try {
       File file = new File(configFile);
       byte[] jsonData = null;
