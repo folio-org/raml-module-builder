@@ -6,8 +6,8 @@
     <version>0.0.1-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-interface-extensions</artifactId>
-  
-      
+
+
   <dependencies>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -25,5 +25,5 @@
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
   </dependencies>
-	
+
 </project>

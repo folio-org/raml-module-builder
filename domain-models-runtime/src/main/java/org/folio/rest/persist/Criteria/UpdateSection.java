@@ -16,12 +16,12 @@ public class UpdateSection {
 
   ArrayList<String> fieldHierarchy = new ArrayList<>();
   Object value;
-  
-  
+
+
   /**
    * set the field to update - the field are listed in the generated objects
-   * (can be seen from javadocs as well - "@JsonPropertyOrder(value={"sum", "currency"})" 
-   * Note that the root object should not be included here 
+   * (can be seen from javadocs as well - "@JsonPropertyOrder(value={"sum", "currency"})"
+   * Note that the root object should not be included here
    * @param field - in case the field is embedded - add multiple fields in the correct order
    * for example:
    *    Updating the rush section in a Money object - where 'rush' is a field below status (which is a top level field)
@@ -33,17 +33,17 @@ public class UpdateSection {
     fieldHierarchy.add(field);
     return this;
   }
-  
+
   /**
    * @param o - the value to use to replace the existing value as denoted by the field to update (fieldHierarchy)
    * can be a wrapped primitive Integer / String / etc...
-   * can be a JsonObject 
-   * this depends on what value is to be set in the specified field 
+   * can be a JsonObject
+   * this depends on what value is to be set in the specified field
    * can be for example a string:
    *    "SOMETHING_NEW"
    *   or a json (in which case a jsonobject should be passed in)
    *   {"value":"SOMETHING_NEW4","desc":"sent to vendor"}
-   * 
+   *
    */
   public void setValue(Object o){
     value = o;
@@ -54,7 +54,7 @@ public class UpdateSection {
     return "'{" + Joiner.on(", ").join(fieldHierarchy) +"}'";
 
   }
-  
+
   public String getValue() {
     if (value != null) {
       if (value instanceof JsonObject) {

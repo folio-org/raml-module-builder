@@ -17,7 +17,7 @@ import org.folio.rest.annotations.Validate;
  */
 public class BooksDemoAPI implements BooksResource {
 
-  
+
   /**
    * validate to test the validation aspect
    */

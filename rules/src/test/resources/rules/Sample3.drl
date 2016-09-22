@@ -1,4 +1,4 @@
-package rules 
+package rules
 /* package MUST conform to the path of the file!!!!!! */
 
 import org.folio.rulez.Messages;
@@ -12,6 +12,6 @@ dialect "mvel"
 when
       m : Messages( status == Messages.HELLO, message : message )
 then
-      //System.out.println( message ); 
+      //System.out.println( message );
       modify ( m ) { message = "Whatever" };
 end

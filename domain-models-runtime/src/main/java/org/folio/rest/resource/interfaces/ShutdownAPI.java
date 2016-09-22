@@ -8,5 +8,5 @@ import io.vertx.core.Vertx;
 public interface ShutdownAPI {
 
   public void shutdown(Vertx vertx, Context context, Handler<AsyncResult<Void>> handler);
-  
+
 }

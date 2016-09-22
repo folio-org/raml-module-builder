@@ -19,7 +19,7 @@ public class AdminAPI implements AdminResource {
   private static final io.vertx.core.logging.Logger log               = LoggerFactory.getLogger(AdminAPI.class);
 
   private static final String DEFAULT_TEMP_DIR                        = System.getProperty("java.io.tmpdir");
-  
+
   @Validate
   @Override
   public void putAdminLoglevel(String authorization, Level level, String javaPackage, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
@@ -56,14 +56,14 @@ public class AdminAPI implements AdminResource {
   private java.util.logging.Level level2level(Level level) {
     return java.util.logging.Level.parse(level.name());
   }
-  
+
   @Override
   public void postAdminUpload(String authorization, PersistMethod persistMethod, String busAddress, String fileName, MimeMultipart entity,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     /**
      * THIS FUNCTION WILL NEVER BE CALLED - HANDLED IN THE RestVerticle class
-     */    
+     */
   }
 
 }

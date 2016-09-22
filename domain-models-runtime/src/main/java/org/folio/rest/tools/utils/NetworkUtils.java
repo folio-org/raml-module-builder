@@ -28,7 +28,7 @@ public class NetworkUtils {
         }
     }
   }
-  
+
   private static boolean isLocalPortFree(int port) {
       try {
           new ServerSocket(port).close();
@@ -37,12 +37,12 @@ public class NetworkUtils {
           return false;
       }
   }
-  
+
   public static byte[] object2Bytes(Object obj) throws Exception {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutput out = null;
     try {
-      out = new ObjectOutputStream(bos);   
+      out = new ObjectOutputStream(bos);
       out.writeObject(obj);
       byte[] bytes = bos.toByteArray();
       return bytes;
@@ -55,5 +55,5 @@ public class NetworkUtils {
       } catch (IOException ex) {}
     }
   }
-  
+
 }

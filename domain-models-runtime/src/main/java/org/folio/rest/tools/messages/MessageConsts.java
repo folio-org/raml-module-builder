@@ -1,7 +1,7 @@
 package org.folio.rest.tools.messages;
 
 public enum MessageConsts implements MessageEnum {
-  
+
   InitializeVerticleFail("10000"),
   InternalServerError("10001"),
   OperationNotSupported("10002"),
@@ -13,16 +13,16 @@ public enum MessageConsts implements MessageEnum {
   ObjectDoesNotExist("10008"),
   ImportFailed("10009"),
   InvalidURLPath("10010"),
-  FileUploadError("10011"); 
-  
+  FileUploadError("10011");
+
   private String code;
-  
+
   private MessageConsts(String code){
     this.code = code;
   }
-  
+
   public String getCode(){
     return code;
   }
-  
+
 }

@@ -83,7 +83,7 @@ public class Criterion {
    * public Criterion addCriterion(Criterion a, String op, Criteria b){
    * updateSnippet(); snippet = snippet + "(" + addPrefix( a.toString() ) + " "
    * + op + " " + addPrefix( b.toString() ) + ")"; return this; }
-   * 
+   *
    * public Criterion addCriterion(Criterion a, String op, Criterion b){
    * updateSnippet(); snippet = snippet + "(" + addPrefix(a.toString()) + " " +
    * op + " " + addPrefix( b.toString() ) + ")"; return this; }
@@ -244,7 +244,7 @@ public class Criterion {
     /*
      * Criteria a = new Criteria(); a.field = "'rush'"; a.operation = "!=";
      * a.value = "true";
-     * 
+     *
      * Criteria aa = new Criteria(); aa.field = "'rush'"; aa.operation = "=";
      * aa.value = null;
      */

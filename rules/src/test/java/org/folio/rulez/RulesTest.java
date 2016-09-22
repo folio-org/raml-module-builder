@@ -15,9 +15,9 @@ public class RulesTest {
 
   public static final String      RULES_DIR         = "/rules";
   public static final String      RULES_FILE_PATH   = "src/main/resources/rules/";
-  
+
   private KieSession ksession;
-  
+
   @Before
   public void setup(){
     try {
@@ -28,7 +28,7 @@ public class RulesTest {
     }
 
   }
-  
+
   @Test
   public final void checkRule() throws Exception {
     try {
@@ -43,7 +43,7 @@ public class RulesTest {
       throw t;
     }
   }
-  
+
   @Test
   public final void check2ObjectsRule() throws Exception {
     try {
@@ -64,15 +64,15 @@ public class RulesTest {
       throw t;
     }
   }
-  
-  
+
+
   @Test
   public final void checkRuleWithAgenda() throws Exception {
     final Messages message = new Messages();
     message.setMessage("Hello World");
     message.setStatus(Messages.HELLO);
     ksession.insert(message);
-    ksession.fireAllRules(new AgendaFilter() {        
+    ksession.fireAllRules(new AgendaFilter() {
       @Override
       public boolean accept(Match match) {
         if("mvel Third Rule".equals(match.getRule().getName())){
@@ -83,10 +83,10 @@ public class RulesTest {
     });
     Assert.assertEquals("Whatever", message.getMessage());
   }
-  
+
   @After
   public void tearDown(){
-    
+
     if(ksession != null){
       ksession.dispose();
     }

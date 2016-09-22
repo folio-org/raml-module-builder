@@ -6,10 +6,10 @@ package org.folio.rest.persist.Criteria;
  */
 public class From {
 
-  
+
   String snippet;
   String asValue;
-  
+
   public String getSnippet() {
     return snippet;
   }
@@ -25,15 +25,15 @@ public class From {
   public void setAsValue(String asValue) {
     this.asValue = asValue;
   }
-  
+
   @Override
   public String toString() {
     if(snippet == null){
-      return ""; 
+      return "";
     }
     return snippet.toLowerCase().toString();
   }
-  
+
   @Override
   public boolean equals(Object obj) {
     if(obj instanceof From && obj != null){
@@ -43,5 +43,5 @@ public class From {
     }
     return false;
   }
-  
+
 }

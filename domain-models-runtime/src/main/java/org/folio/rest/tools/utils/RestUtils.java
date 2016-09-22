@@ -32,7 +32,7 @@ public class RestUtils {
           jObj.put(MongoCRUD.JSON_PROP_ENTITY, mapper.writeValueAsString(entity));
         } catch (JsonProcessingException e) {
           e.printStackTrace();
-        }	
+        }
       }
     }
     return jObj;

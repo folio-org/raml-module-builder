@@ -29,7 +29,7 @@ import java.util.jar.JarOutputStream;
  * Provides utility services for jarring and unjarring files and directories.
  * Note that a given instance of JarHelper is not threadsafe with respect to
  * multiple jar operations.
- * 
+ *
  * @author Patrick Calahan <pcal@bea.com>
  */
 public class JarHelper {

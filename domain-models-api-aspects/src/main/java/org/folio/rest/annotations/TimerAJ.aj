@@ -23,7 +23,7 @@ public aspect TimerAJ { //pertarget(timerCall1()) { // percflow(timerCall2()){
 
   // aspectj maven plugin <includes> controls compile scope - see projects depending on this one for
   // examples
-  
+
   pointcut timerCall2() : target(io.vertx.core.AsyncResult); // call(* io.vertx.ext.sql.SQLConnection.*(..));
     //target(io.vertx.core.Handler) ; // target(io.vertx.core.AsyncResult) ;
     //   && (call(* io.vertx.core.AsyncResult.failed(..)) || call(* io.vertx.core.AsyncResult.succeeded(..)));
@@ -39,13 +39,13 @@ public aspect TimerAJ { //pertarget(timerCall1()) { // percflow(timerCall2()){
 
     //foo.magic();
   }
-  
+
   before() : timerCall2() {
     id = UUID.randomUUID();
     methodName = thisJoinPoint.getSignature().getName();
     System.out.println("id = " + id + " method " +methodName+ " in timer ------------------->" + timer + " ------------------- " + System.currentTimeMillis() + " location " +thisEnclosingJoinPointStaticPart.getSourceLocation().getLine() );
     timer = System.currentTimeMillis();
-    
+
     //logger.info("in timer ------------------->");
   }
 

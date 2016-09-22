@@ -7,7 +7,7 @@ public class Messages2 {
   public static final int GOODBYE = 1;
   public String          message;
   public int             status =0;
-  
+
   public String getMessage() {
     return message;
   }
@@ -19,6 +19,6 @@ public class Messages2 {
   }
   public void setStatus(int status) {
     this.status = status;
-  } 
-  
+  }
+
 }
