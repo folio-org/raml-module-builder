@@ -5,9 +5,9 @@ baseUri: http://localhost:8081/{version}
 version: v1
 
 traits:
- - log-level: !include log-level.raml
- - upload-handler: !include upload-handler.raml
- - secured: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/auth.raml
+  - log-level: !include log-level.raml
+  - upload-handler: !include upload-handler.raml
+  - secured: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/auth.raml
 
 /admin:
   /upload:
