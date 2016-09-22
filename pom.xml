@@ -160,8 +160,43 @@
           <compilerArgument>-Xlint:unchecked</compilerArgument>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5.3</version>
+        <configuration>
+          <preparationGoals>clean verify</preparationGoals>
+          <tagNameFormat>v@{project.version}</tagNameFormat>
+          <pushChanges>false</pushChanges>
+          <localCheckout>true</localCheckout>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
+
+  <scm>
+    <url>https://github.com/folio-org/raml-module-builder</url>
+    <connection>scm:git:git://github.com:folio-org/raml-module-builder.git</connection>
+    <developerConnection>scm:git:git@github.com:folio-org/raml-module-builder.git</developerConnection>
+  </scm>
+
+  <distributionManagement>
+    <repository>
+      <id>folio-nexus</id>
+      <name>FOLIO Release Repository</name>
+      <url>https://repository.folio.org/repository/maven-releases/</url>
+      <uniqueVersion>false</uniqueVersion>
+      <layout>default</layout>
+    </repository>
+    <snapshotRepository>
+      <id>folio-nexus</id>
+      <name>FOLIO Snapshot Repository</name>
+      <uniqueVersion>true</uniqueVersion>
+      <url>https://repository.folio.org/repository/maven-snapshots/</url>
+      <layout>default</layout>
+    </snapshotRepository>
+  </distributionManagement>
+</project>
 
 
 </project>
