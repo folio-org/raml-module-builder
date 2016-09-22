@@ -110,25 +110,17 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204);
-    
+        
+    List<Object> list = getListOfBooks();
+    bulkInsert(context, list);
+    insertUnqueTest(context, list.get(0));
+
+  }
+  
+  
+  private void bulkInsert(TestContext context, List<Object> list){
     //check bulk insert in MONGO
     Async async = context.async();
-    List<Object> list = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
-      Book b = new Book();
-      b.setStatus(i);
-      b.setSuccess(true);
-      b.setData(null);
-      Data d = new Data();
-      d.setAuthor("a");
-      d.setDatetime(12345);
-      d.setGenre("b");
-      d.setDescription("c");
-      d.setLink("d");
-      d.setTitle("title");
-      b.setData(d);
-      list.add(b);
-    }
     MongoCRUD.getInstance(vertx).bulkInsert("books", list, reply -> {
       if(reply.succeeded()){        
         context.assertEquals(5, reply.result().getInteger("n"), 
@@ -140,14 +132,15 @@ public class DemoRamlRestTest {
       }
       async.complete();
     });
-    
+  }
+  
+  private void insertUnqueTest(TestContext context, Object book){
     //insert fail if id exists test MONGO
     Async async2 = context.async();
-    MongoCRUD.getInstance(vertx).save("books", list.get(0), reply -> {
+    MongoCRUD.getInstance(vertx).save("books", book, reply -> {
       if(reply.succeeded()){        
         String id = reply.result();
-        Book book = (Book)list.get(0);
-        book.setId(id);
+        ((Book)book).setId(id);
         Async async3 = context.async();
         MongoCRUD.getInstance(vertx).save("books", book, true , reply2 -> {
           if(reply2.succeeded()){  
@@ -258,4 +251,23 @@ public class DemoRamlRestTest {
     return buffer;
   }
 
+  private List<Object> getListOfBooks(){
+    List<Object> list = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      Book b = new Book();
+      b.setStatus(i);
+      b.setSuccess(true);
+      b.setData(null);
+      Data d = new Data();
+      d.setAuthor("a");
+      d.setDatetime(12345);
+      d.setGenre("b");
+      d.setDescription("c");
+      d.setLink("d");
+      d.setTitle("title");
+      b.setData(d);
+      list.add(b);
+    }
+    return list;
+  }
 }
