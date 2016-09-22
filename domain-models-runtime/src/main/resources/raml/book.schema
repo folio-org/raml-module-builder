@@ -37,6 +37,9 @@
         "link"
       ]
     },
+    "_id": {
+      "type": "string"
+    },
     "success": {
       "type": "boolean"
     },

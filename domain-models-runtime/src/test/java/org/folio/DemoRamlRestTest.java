@@ -105,11 +105,13 @@ public class DemoRamlRestTest {
     //check GET
     checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
+    
     //check POST
     postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204);
-    //check bullk insert in Mongo
+    
+    //check bulk insert in MONGO
     Async async = context.async();
     List<Object> list = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
@@ -139,6 +141,30 @@ public class DemoRamlRestTest {
       async.complete();
     });
     
+    //insert fail if id exists test MONGO
+    Async async2 = context.async();
+    MongoCRUD.getInstance(vertx).save("books", list.get(0), reply -> {
+      if(reply.succeeded()){        
+        String id = reply.result();
+        Book book = (Book)list.get(0);
+        book.setId(id);
+        Async async3 = context.async();
+        MongoCRUD.getInstance(vertx).save("books", book, true , reply2 -> {
+          if(reply2.succeeded()){  
+            context.fail("save succeeded but should have failed!");
+          }
+          else{
+            context.assertTrue(true);
+          }
+          async3.complete();
+        });
+      }
+      else{
+        context.fail();
+        System.out.println(reply.cause().getMessage());
+      }
+      async2.complete();
+    });
   }
 
   public void checkURLs(TestContext context, String url, int codeExpected) {
