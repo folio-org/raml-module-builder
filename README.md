@@ -322,15 +322,15 @@ Create JSON schemas indicating the objects exposed by the module:
 
 ```sh
         <dependency>
-			<groupId>org.folio</groupId>
-			<artifactId>domain-models-api-interfaces</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>org.folio</groupId>
-			<artifactId>domain-models-runtime</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-		</dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>domain-models-api-interfaces</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>domain-models-runtime</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
 ```
 
 ### Step 3: Add the plugins to your pom.xml
@@ -358,146 +358,146 @@ Four plugins should be declared in the pom.xml file:
 Add `ramlfiles_path` property indicating the location of the RAML directory:
 
 ```sh
-	<properties>
-		<ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-	</properties>
+  <properties>
+    <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
+  </properties>
 ```
 
 Add the plugins:
 
 ```sh
 
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.1</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-					<encoding>UTF-8</encoding>
-				</configuration>
-			</plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
 
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
-				<version>1.5.0</version>
-				<executions>
-					<execution>
-						<id>generate_interfaces</id>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>java</goal>
-						</goals>
-						<configuration>
-							<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-							<!-- <executable>java</executable> -->
-							<cleanupDaemonThreads>false</cleanupDaemonThreads>
-							<systemProperties>
-								<systemProperty>
-									<key>project.basedir</key>
-									<value>${basedir}</value>
-								</systemProperty>
-								<systemProperty>
-									<key>raml_files</key>
-									<value>${ramlfiles_path}/circulation</value>
-								</systemProperty>
-							</systemProperties>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.5.0</version>
+        <executions>
+          <execution>
+            <id>generate_interfaces</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
+              <!-- <executable>java</executable> -->
+              <cleanupDaemonThreads>false</cleanupDaemonThreads>
+              <systemProperties>
+                <systemProperty>
+                  <key>project.basedir</key>
+                  <value>${basedir}</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>raml_files</key>
+                  <value>${ramlfiles_path}/circulation</value>
+                </systemProperty>
+              </systemProperties>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>aspectj-maven-plugin</artifactId>
-				<version>1.8</version>
-				<configuration>
-					<verbose>true</verbose>
-					<showWeaveInfo>false</showWeaveInfo>
-					<complianceLevel>1.8</complianceLevel>
-					<includes>
-						<include>**/impl/*.java</include>
-						<include>**/*.aj</include>
-					</includes>
-					<aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
-					<XaddSerialVersionUID>true</XaddSerialVersionUID>
-					<showWeaveInfo>true</showWeaveInfo>
-					<aspectLibraries>
-						<aspectLibrary>
-							<groupId>org.folio</groupId>
-							<artifactId>domain-models-api-aspects</artifactId>
-						</aspectLibrary>
-					</aspectLibraries>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>compile</goal>
-						</goals>
-					</execution>
-				</executions>
-				<dependencies>
-					<dependency>
-						<groupId>org.aspectj</groupId>
-						<artifactId>aspectjrt</artifactId>
-						<version>1.8.9</version>
-					</dependency>
-					<dependency>
-						<groupId>org.aspectj</groupId>
-						<artifactId>aspectjtools</artifactId>
-						<version>1.8.9</version>
-					</dependency>
-				</dependencies>
-			</plugin>
-			<plugin>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>3.0.1</version>
-				<executions>
-					<execution>
-						<id>copy-resources</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>${basedir}/target/classes/apidocs/raml</outputDirectory>
-							<resources>
-								<resource>
-									<directory>${ramlfiles_path}</directory>
-									<filtering>true</filtering>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>aspectj-maven-plugin</artifactId>
+        <version>1.8</version>
+        <configuration>
+          <verbose>true</verbose>
+          <showWeaveInfo>false</showWeaveInfo>
+          <complianceLevel>1.8</complianceLevel>
+          <includes>
+            <include>**/impl/*.java</include>
+            <include>**/*.aj</include>
+          </includes>
+          <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
+          <XaddSerialVersionUID>true</XaddSerialVersionUID>
+          <showWeaveInfo>true</showWeaveInfo>
+          <aspectLibraries>
+            <aspectLibrary>
+              <groupId>org.folio</groupId>
+              <artifactId>domain-models-api-aspects</artifactId>
+            </aspectLibrary>
+          </aspectLibraries>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
+            <version>1.8.9</version>
+          </dependency>
+          <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjtools</artifactId>
+            <version>1.8.9</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.0.1</version>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${basedir}/target/classes/apidocs/raml</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${ramlfiles_path}</directory>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>2.3</version>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>shade</goal>
-						</goals>
-						<configuration>
-							<transformers>
-								<transformer
-									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<manifestEntries>
-										<Main-Class>org.folio.rest.RestLauncher</Main-Class>
-										<Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
-									</manifestEntries>
-								</transformer>
-							</transformers>
-							<artifactSet />
-							<outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <transformers>
+                <transformer
+                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <manifestEntries>
+                    <Main-Class>org.folio.rest.RestLauncher</Main-Class>
+                    <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
+                  </manifestEntries>
+                </transformer>
+              </transformers>
+              <artifactSet />
+              <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 ```
 
 ### Step 4: Build your project
@@ -759,8 +759,8 @@ Currently the expected format is:
 
 ```sh
 create table <schema>.<table_name> (
-	_id SERIAL PRIMARY KEY,
-	jsonb JSONB NOT NULL
+  _id SERIAL PRIMARY KEY,
+  jsonb JSONB NOT NULL
 );
 ```
 
@@ -862,12 +862,12 @@ import org.folio.rest.jaxrs.model.Patron;
 
 rule "Patron needs one ID at the least"
 
-	no-loop
+    no-loop
 
     when
         p : Patron( patronBarcode  == null, patronLocalId == null )
     then
-    	throw new java.lang.Exception("Patron needs one ID field populated at the least");
+        throw new java.lang.Exception("Patron needs one ID field populated at the least");
 end
 ```
 
