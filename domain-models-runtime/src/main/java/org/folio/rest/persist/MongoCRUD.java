@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.folio.rest.tools.utils.NetworkUtils;
 
 import de.flapdoodle.embed.mongo.Command;
@@ -22,6 +23,7 @@ import de.flapdoodle.embed.process.runtime.Network;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -246,6 +248,36 @@ public class MongoCRUD {
         }
       });
     }
+  }
+  
+  public void saveBinary(String collection, Object entity, Buffer buffer, String binaryObjFieldName, 
+      Handler<AsyncResult<String>> replyHandler){
+    saveBinary(collection, entity, buffer.getBytes(), binaryObjFieldName, replyHandler);
+  }
+  
+  public void saveBinary(String collection, Object entity, byte[] binaryObj, String binaryObjFieldName, 
+      Handler<AsyncResult<String>> replyHandler){
+
+    long start = System.nanoTime();
+    JsonObject jsonObject;
+    if (entity instanceof JsonObject) {
+      jsonObject = (JsonObject) entity;
+    } else {
+      String obj = entity2String(entity);
+      jsonObject = new JsonObject(obj);
+    }    
+    jsonObject.put(binaryObjFieldName, new JsonObject().put("$binary", binaryObj));
+    client.save(collection, jsonObject, res -> {
+      if (res.succeeded()) {
+        String id = res.result();
+        replyHandler.handle(io.vertx.core.Future.succeededFuture(id));
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+      if(log.isDebugEnabled()){
+        elapsedTime("saveBinary() to " + collection, start);
+      }
+    });
   }
 
   /**

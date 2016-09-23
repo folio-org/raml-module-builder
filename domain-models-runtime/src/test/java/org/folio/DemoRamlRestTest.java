@@ -106,13 +106,17 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
     
-    //check POST
+    //check File Uploads
     postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204);
     postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204);
         
     List<Object> list = getListOfBooks();
+    
+    //check bulk insert
     bulkInsert(context, list);
+    
+    //check insert with fail if id exists already
     insertUnqueTest(context, list.get(0));
 
   }
