@@ -815,7 +815,7 @@ An example from the Circulation sample module:
 `http://localhost:8081/apis/patrons?query={"$and":[{"total_loans": { "$lt": 60 } }, { "contact_info.patron_address_local.city": "London" } ]}`
 
 For usage examples, see:
-https://github.com/folio-org/mod-circulation/blob/master/src/main/java/com/folio/rest/impl/PatronAPI.java
+https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/PatronAPI.java
 
 ***For postgreSQL*** backed modules, the following JSON format can be sent:
 `[{"field":"''","value":"","op":""}]`
@@ -836,7 +836,7 @@ http://localhost:8081/apis/po_lines?query=[{"field":"'po_line_status'->>'value'"
 ```
 
 See usage here:
-https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java/com/folio/rest/impl/POLine.java
+https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java/org/folio/rest/impl/POLine.java
 
 ## Drools integration
 
