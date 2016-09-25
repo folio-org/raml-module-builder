@@ -108,11 +108,14 @@ public class DemoRamlRestTest {
     //check GET
     checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
+
+    //update periodic handler (MongoStatsPrinter) with which collection to print stats for and at which interval
+    postData(context, "http://localhost:" + port + "/apis/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, true);
     
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400, false);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204, false);
+    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204, false);
         
     List<Object> list = getListOfBooks();
     
@@ -126,7 +129,37 @@ public class DemoRamlRestTest {
     binaryInsert(context);
     
     //check save and get object with encoded binary base64 field Mongo
+    //calls collection list and collection stats when done
     base64EncTest(context);
+
+  }
+  
+  private void getCollectionStats(TestContext context){
+    Async async = context.async();
+    MongoCRUD.getInstance(vertx).getStatsForCollection("books", reply -> {
+      if(reply.succeeded()){
+        //System.out.println(reply.result().encodePrettily());
+        context.assertEquals(7 ,(reply.result().getInteger("count")));
+      }
+      else{
+        context.fail(reply.cause().getMessage());
+      }
+      async.complete();
+    });
+  }
+  
+  private void getCollectionList(TestContext context){
+    Async async = context.async();
+    MongoCRUD.getInstance(vertx).getListOfCollections(reply -> {
+      if(reply.succeeded()){
+        context.assertEquals(2 , reply.result().size());
+        System.out.println("list of collection success");
+      }
+      else{
+        context.fail(reply.cause().getMessage());
+      }
+      async.complete();
+    });
   }
   
   private void base64EncTest(TestContext context){
@@ -163,6 +196,12 @@ public class DemoRamlRestTest {
                       if(image.length == 2747){
                         context.assertTrue(true);
                         System.out.println("save binary success");
+                        
+                        //check collection stats Mongo
+                        getCollectionStats(context);
+                        
+                        //get list of collections Mongo
+                        getCollectionList(context);
                       }
                       else{
                         context.fail("size of file is incorrect");
@@ -255,6 +294,7 @@ public class DemoRamlRestTest {
 
   }
   
+  
   private void bulkInsert(TestContext context, List<Object> list){
     //check bulk insert in MONGO
     Async async = context.async();
@@ -330,11 +370,16 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private void postData(TestContext context, String url, Buffer buffer, int errorCode) {
+  private void postData(TestContext context, String url, Buffer buffer, int errorCode, boolean isPut) {
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
-    HttpClientRequest request;
-    request = client.postAbs(url);
+    HttpClientRequest request = null;
+    if(isPut){
+      request = client.putAbs(url);
+    }
+    else{
+      request = client.postAbs(url); 
+    }
     request.exceptionHandler(error -> {
       async.complete();
       context.fail(error.getMessage());
@@ -357,8 +402,14 @@ public class DemoRamlRestTest {
     request.setChunked(true);
     request.putHeader("Authorization", "abcdefg");
     request.putHeader("Accept", "application/json,text/plain");
-    request.putHeader("Content-type",
-      "multipart/form-data; boundary=MyBoundary");
+    if(isPut){
+      request.putHeader("Content-type",
+          "application/json");
+    }
+    else{
+      request.putHeader("Content-type",
+          "multipart/form-data; boundary=MyBoundary"); 
+    }
     request.write(buffer);
     request.end();
   }

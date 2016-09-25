@@ -1,8 +1,12 @@
 package org.folio.rest.impl;
 
+import java.io.BufferedReader;
+import java.io.Reader;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -64,6 +68,30 @@ public class AdminAPI implements AdminResource {
     /**
      * THIS FUNCTION WILL NEVER BE CALLED - HANDLED IN THE RestVerticle class
      */
+  }
+
+  @Override
+  public void putAdminCollstats(String authorization, Reader entity, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
+      throws Exception {
+
+    try {
+      BufferedReader br = new BufferedReader(entity);
+      String line;
+      Buffer buffer = Buffer.buffer();
+      while((line = br.readLine()) != null){
+        buffer.appendString(line);
+      }
+      JsonObject job = new JsonObject(buffer.toString("UTF8"));
+      MongoStatsPrinter.addCollection(job);
+      OutStream os = new OutStream();
+      os.setData(MongoStatsPrinter.getCollection());
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminCollstatsResponse.withJsonOK(os)));
+    } catch (Exception e) {
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withPlainInternalServerError("ERROR"
+          + e.getMessage())));
+        log.error(e.getMessage(), e);
+    }
+
   }
 
 }

@@ -40,6 +40,24 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
+  /collstats:
+    put:
+      description: Set collection list to print stats for to the log with interval - min interval is 10 seconds
+      is: [secured]
+      body:
+        application/json:
+          example: "{\"patrons\": 60, \"items\": 120}"
+      responses:
+        200:
+          description: "Returns collections stats will be printed for and interval"
+          body:
+            application/json:
+              example: "{\"collection\" : \"interval\" , \"collection\" : \"interval\"}"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
   /loglevel:
     put:
       description: Set logging level for all loggers in the JVM or just for a specific package / class

@@ -599,6 +599,14 @@ public class MongoCRUD {
   }
 
 
+  /**
+   * 
+   * @param collection - collection of entity to update
+   * @param entity - entity to update
+   * @param query - mongo native query
+   * @param addUpdateDate - whether to have mongo add a date value when the update occurs automatically  
+   * @param replyHandler
+   */
   public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
     update(collection, entity, query, false, addUpdateDate, replyHandler);
@@ -616,6 +624,7 @@ public class MongoCRUD {
    * @param query
    * @param upsert - if the query does not match any records - hence nothing to update - should the entity be inserted
    * @param addUpdateDate - the object must have a last_modified field which will be populated with current timestamp by mongo
+   * the entity must have a last_modified field
    * @param replyHandler
    */
   public void update(String collection, Object entity, JsonObject query,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
@@ -669,7 +678,7 @@ public class MongoCRUD {
 
   /**
    * append items to an array of objects matching the query argument 
-   * @param collection
+   * @param collection - collection to update
    * @param arrayName - name of the array object - for example - a book object with a List of authors as a field will pass the
    * name of the authors field here - for example "authors"
    * @param arrayEntry - a List of items to append to the existing List - for example - if a book object has a list of authors, 
@@ -728,6 +737,45 @@ public class MongoCRUD {
     }
   }
 
+  /**
+   * return statistics for a specific collection - such as:
+   * amount of records, size of collection in kb, average object size, index size, cache info, etc...
+   * @param collection - name of collection to get stats for
+   * @param replyHandler
+   */
+  public void getStatsForCollection(String collection, Handler<AsyncResult<JsonObject>> replyHandler){
+    JsonObject command = new JsonObject()
+    .put("collStats", collection)
+    .put("scale", 1024);
+
+    client.runCommand("collStats", command, res -> {
+      if (res.succeeded()) {
+        replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+    });
+  }
+  
+  /**
+   * Get the Vert.x Mongo client to run additional apis exposed by the Vert.x client
+   * @return MongoClient 
+   */
+  public MongoClient getVertxMongoClient(){
+    return client;
+  }
+  
+  public void getListOfCollections(Handler<AsyncResult<List<String>>> replyHandler){
+    client.getCollections( reply -> {
+      if(reply.succeeded()){
+        replyHandler.handle(io.vertx.core.Future.succeededFuture(reply.result()));
+      }
+      else{
+        log.error(reply.cause().getMessage());
+      }
+    });
+  }
+  
   public void startEmbeddedMongo() throws Exception {
 
     if(mongoProcess == null || !mongoProcess.isProcessRunning()){
