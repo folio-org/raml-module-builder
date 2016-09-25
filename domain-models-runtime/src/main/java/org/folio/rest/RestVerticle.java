@@ -28,6 +28,7 @@ import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.core.eventbus.*;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.Iterator;
@@ -931,7 +932,12 @@ public class RestVerticle extends AbstractVerticle {
             if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context")) {
               // we have special handling for the Result Handler and context
 
-              paramArray[order] = mapper.readValue(rc.getBodyAsString(), entityClazz);
+              if("java.io.Reader".equals(valueType)){
+                paramArray[order] = new StringReader(rc.getBodyAsString());
+              }
+              else{
+                paramArray[order] = mapper.readValue(rc.getBodyAsString(), entityClazz);
+              }
 
               Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray[order]);
               if (validationErrors.size() > 0) {
