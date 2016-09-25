@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -112,7 +113,7 @@ public class RestVerticle extends AbstractVerticle {
   //we look for the class and function in the class that is mapped to a requested url
   //since we try to load via reflection an implementation of the class at runtime - better to load once and cache
   //for subsequent calls
-  private static Table<String, String, Class<?>> clazzCache       = HashBasedTable.create();
+  private static Table<String, String, ArrayList<Class<?>>> clazzCache       = HashBasedTable.create();
 
   private EventBus eventBus;
 
@@ -270,7 +271,7 @@ public class RestVerticle extends AbstractVerticle {
                   //get interface mapped to this url
                   String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
                   // convert from interface to an actual class implementing it, which appears in the impl package
-                  aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, iClazz);
+                  aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
                   Object o = null;
                   // call back the constructor of the class - gives a hook into the class not based on the apis
                   // passing the vertx and context objects in to it.
@@ -440,7 +441,6 @@ public class RestVerticle extends AbstractVerticle {
                 }
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
-                e.printStackTrace();
                 endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(),
                   validRequest);
               }
@@ -630,20 +630,8 @@ public class RestVerticle extends AbstractVerticle {
     return string.substring(0, index) + replacement + string.substring(index + substring.length());
   }
 
-  /**
-   * Return the implementing class.
-   *
-   * @param implDir
-   *          - package name where to search
-   * @param interface2check
-   *          - class name of the required interface
-   * @return implementing class
-   * @throws IOException
-   *           - if the attempt to read class path resources (jar files or directories) failed.
-   * @throws ClassNotFoundException
-   *           - if no class in implDir implements the interface
-   */
-  private static Class<?> convert2Impl(String implDir, String interface2check) throws IOException, ClassNotFoundException {
+
+/*  private static Class<?> convert2Impl(String implDir, String interface2check) throws IOException, ClassNotFoundException {
     Class<?> cachedClazz = clazzCache.get(implDir, interface2check);
     if(cachedClazz != null){
       log.debug("returned class from cache " + cachedClazz.getName());
@@ -671,6 +659,51 @@ public class RestVerticle extends AbstractVerticle {
       }
     }
     if (impl == null) {
+      throw new ClassNotFoundException("Implementation of " + interface2check + " not found in " + implDir);
+    }
+    clazzCache.put(implDir, interface2check, impl);
+    return impl;
+  }*/
+  /**
+   * Return the implementing class.
+   *
+   * @param implDir
+   *          - package name where to search
+   * @param interface2check
+   *          - class name of the required interface
+   * @return implementing class
+   * @throws IOException
+   *           - if the attempt to read class path resources (jar files or directories) failed.
+   * @throws ClassNotFoundException
+   *           - if no class in implDir implements the interface
+   */
+  private static ArrayList<Class<?>> convert2Impl(String implDir, String interface2check, boolean allowMultiple) throws IOException, ClassNotFoundException {
+    ArrayList<Class<?>> impl = new ArrayList<>();
+    ArrayList<Class<?>> cachedClazz = clazzCache.get(implDir, interface2check);
+    if(cachedClazz != null){
+      log.debug("returned " +cachedClazz.size()+" class/es from cache");
+      return cachedClazz;
+    }    
+    ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
+    ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
+    for (ClassPath.ClassInfo info : classes) {
+      try {
+        Class<?> clazz = Class.forName(info.getName());
+        for (Class<?> anInterface : clazz.getInterfaces()) {
+          if (!anInterface.getName().equals(interface2check)) {
+            continue;
+          }
+          if (!allowMultiple && impl.size() > 0) {
+            throw new RuntimeException("Duplicate implementation of " + interface2check + " in " + implDir + ": " + impl.get(0).getName() + ", "
+                + clazz.getName());
+          }
+          impl.add(clazz);          
+        }
+      } catch (ClassNotFoundException e) {
+        log.error(e.getMessage(), e);
+      }
+    }
+    if (impl.size() == 0) {
       throw new ClassNotFoundException("Implementation of " + interface2check + " not found in " + implDir);
     }
     clazzCache.put(implDir, interface2check, impl);
@@ -734,12 +767,14 @@ public class RestVerticle extends AbstractVerticle {
    */
   private void runHook(Handler<AsyncResult<Boolean>> resultHandler) throws Exception {
     try {
-      Class<?> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".InitAPI");
-      Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
-      Method method = aClass.getMethod("init", paramArray);
-      method.invoke(aClass.newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
-      LogUtil.formatLogMessage(getClass().getName(), "runHook",
-        "One time hook called with implemented class " + "named " + aClass.getName());
+      ArrayList<Class<?>> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".InitAPI", true);
+      for (int i = 0; i < aClass.size(); i++) {
+        Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
+        Method method = aClass.get(i).getMethod("init", paramArray);
+        method.invoke(aClass.get(i).newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
+        LogUtil.formatLogMessage(getClass().getName(), "runHook",
+          "One time hook called with implemented class " + "named " + aClass.get(i).getName());
+      }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
       resultHandler.handle(io.vertx.core.Future.succeededFuture(true));
@@ -748,25 +783,27 @@ public class RestVerticle extends AbstractVerticle {
 
   private void runPeriodicHook() throws Exception {
     try {
-      Class<?> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".PeriodicAPI");
-      Class<?>[] paramArray = new Class[] {};
-      Method method = aClass.getMethod("runEvery", paramArray);
-      Object delay = method.invoke(aClass.newInstance());
-      LogUtil.formatLogMessage(getClass().getName(), "runPeriodicHook",
-        "Periodic hook called with implemented class " + "named " + aClass.getName());
-      vertx.setPeriodic(((Long) delay).longValue(), new Handler<Long>() {
-        @Override
-        public void handle(Long aLong) {
-          try {
-            Class<?>[] paramArray1 = new Class[] { Vertx.class, Context.class };
-            Method method1 = aClass.getMethod("run", paramArray1);
-            method1.invoke(aClass.newInstance(), vertx, vertx.getOrCreateContext());
-          } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            e.printStackTrace();
+      ArrayList<Class<?>> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".PeriodicAPI", true);
+      for (int i = 0; i < aClass.size(); i++) {
+        Class<?>[] paramArray = new Class[] {};
+        Method method = aClass.get(i).getMethod("runEvery", paramArray);
+        Object delay = method.invoke(aClass.get(i).newInstance());
+        LogUtil.formatLogMessage(getClass().getName(), "runPeriodicHook",
+          "Periodic hook called with implemented class " + "named " + aClass.get(i).getName());
+        final int j = i;
+        vertx.setPeriodic(((Long) delay).longValue(), new Handler<Long>() {
+          @Override
+          public void handle(Long aLong) {
+            try {
+              Class<?>[] paramArray1 = new Class[] { Vertx.class, Context.class };
+              Method method1 = aClass.get(j).getMethod("run", paramArray1);
+              method1.invoke(aClass.get(j).newInstance(), vertx, vertx.getOrCreateContext());
+            } catch (Exception e) {
+              log.error(e.getMessage(), e);
+            }
           }
-        }
-      });
+        });
+      }      
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
       LogUtil.formatLogMessage(getClass().getName(), "runPeriodicHook", "no periodic implementation found, continuing with deployment");
@@ -775,12 +812,14 @@ public class RestVerticle extends AbstractVerticle {
 
   private void runShutdownHook(Handler<AsyncResult<Void>> resultHandler) throws Exception {
     try {
-      Class<?> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".ShutdownAPI");
-      Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
-      Method method = aClass.getMethod("shutdown", paramArray);
-      method.invoke(aClass.newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
-      LogUtil.formatLogMessage(getClass().getName(), "runShutdownHook",
-        "shutdown hook called with implemented class " + "named " + aClass.getName());
+      ArrayList<Class<?>> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".ShutdownAPI", true);
+      for (int i = 0; i < aClass.size(); i++) {
+        Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
+        Method method = aClass.get(i).getMethod("shutdown", paramArray);
+        method.invoke(aClass.get(i).newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
+        LogUtil.formatLogMessage(getClass().getName(), "runShutdownHook",
+          "shutdown hook called with implemented class " + "named " + aClass.get(i).getName());
+      }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
       LogUtil.formatLogMessage(getClass().getName(), "runShutdownHook", "no shutdown hook implementation found, continuing with shutdown");
