@@ -1,11 +1,15 @@
 package org.folio.rest.persist;
 
+import java.util.ArrayList;
 import java.util.List;
+
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+
 import org.folio.rest.tools.utils.NetworkUtils;
+
 
 import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongodProcess;
@@ -250,23 +254,38 @@ public class MongoCRUD {
     }
   }
   
-  public void saveBinary(String collection, Object entity, Buffer buffer, String binaryObjFieldName, 
+  /**
+   * save an object that also has a binary field - the binary field content and the fields name are passed as 
+   * separate parameters and not within the object itself
+   * @param collection - collection to save object to
+   * @param entity - the entity to save not including the binary field's value
+   * @param binaryObj - the binary value of the binary field (as a Buffer)
+   * @param binaryObjFieldName - binary field name
+   * @param replyHandler
+   */
+  public void saveBinary(String collection, Buffer buffer, String binaryObjFieldName, 
       Handler<AsyncResult<String>> replyHandler){
-    saveBinary(collection, entity, buffer.getBytes(), binaryObjFieldName, replyHandler);
+    saveBinary(collection, buffer.getBytes(), binaryObjFieldName, replyHandler);
   }
   
-  public void saveBinary(String collection, Object entity, byte[] binaryObj, String binaryObjFieldName, 
+  /**
+   * save binary data to a field - the binary field content and the fields name are passed as 
+   * separate parameters 
+   * @param collection - collection to save object to
+   * @param binaryObj - the binary value of the binary field
+   * @param binaryObjFieldName - binary field name
+   * @param replyHandler
+   */
+  public void saveBinary(String collection, byte[] binaryObj, String binaryObjFieldName, 
       Handler<AsyncResult<String>> replyHandler){
 
     long start = System.nanoTime();
-    JsonObject jsonObject;
-    if (entity instanceof JsonObject) {
-      jsonObject = (JsonObject) entity;
-    } else {
-      String obj = entity2String(entity);
-      jsonObject = new JsonObject(obj);
-    }    
-    jsonObject.put(binaryObjFieldName, new JsonObject().put("$binary", binaryObj));
+    JsonObject jsonObject = new JsonObject();    
+    try {
+      jsonObject.put(binaryObjFieldName, new JsonObject().put("$binary", binaryObj));
+    } catch (Exception e) {
+      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+    }
     client.save(collection, jsonObject, res -> {
       if (res.succeeded()) {
         String id = res.result();
@@ -280,6 +299,59 @@ public class MongoCRUD {
     });
   }
 
+  /**
+   * get binary data in mongo
+   * @param collection - collection to query
+   * @param from
+   * @param to
+   * @param binaryField - the field with the binary data
+   * @param replyHandler
+   */
+  public void getBinary(String collection, String binaryField, Integer from, Integer to, Handler<AsyncResult<List<?>>> replyHandler) {
+
+    long start = System.nanoTime();
+
+    try {
+      final JsonObject query = new JsonObject();
+      //get records who have content existing in the requested field
+      query.put(binaryField, new JsonObject("{ \"$exists\": true } "));
+      
+      FindOptions fo = new FindOptions();
+
+      if(to != null){
+        fo.setLimit(to);
+      }
+      if(from != null){
+        fo.setSkip(from);
+      }
+      client.findWithOptions(collection, query, fo, res -> {
+        if (res.succeeded()) {
+          List<byte[]> reply = new ArrayList<>();
+          try {
+            List <JsonObject> binaryList = res.result();
+            int size = binaryList.size();
+            for (int i = 0; i < size; i++) {
+              reply.add(binaryList.get(i).getJsonObject(binaryField).getBinary("$binary"));
+            }
+            replyHandler.handle(io.vertx.core.Future.succeededFuture(reply));
+          } catch (Exception e) {
+            log.error(e);
+            replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          }
+        } else {
+          log.error(res.cause());
+          replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
+        }
+        if(log.isDebugEnabled()){
+          elapsedTime("get() " + collection + " " + query.encode(), start);
+        }
+      });
+    } catch (Throwable e) {
+      log.error(e);
+      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
+    }
+  }
+  
   /**
    * 
    * @param collection
@@ -302,6 +374,12 @@ public class MongoCRUD {
     });
   }
   
+  /**
+   * delete a specific record
+   * @param collection
+   * @param id - id of the record
+   * @param replyHandler
+   */
   public void delete(String collection, String id, Handler<AsyncResult<Void>> replyHandler) {
     long start = System.nanoTime();
 
@@ -327,11 +405,17 @@ public class MongoCRUD {
     }
   }
 
+  /**
+   * delete all records matching native mongo query
+   * @param collection
+   * @param query - mongo query
+   * @param replyHandler
+   */
   public void delete(String collection, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
     long start = System.nanoTime();
 
     try {
-      client.removeDocument(collection, query, res -> {
+      client.removeDocuments(collection, query, res -> {
         if (res.succeeded()) {
           System.out.println("deleted item");
           replyHandler.handle(io.vertx.core.Future.succeededFuture());
@@ -350,6 +434,11 @@ public class MongoCRUD {
     }
   }
 
+  /**
+   * find data in mongo
+   * @param json - call the buildJson function so build a json object to pass to this function
+   * @param replyHandler
+   */
   public void get(JsonObject json, Handler<AsyncResult<List<?>>> replyHandler) {
 
     long start = System.nanoTime();
@@ -406,6 +495,15 @@ public class MongoCRUD {
     }
   }
 
+  /**
+   * find data in mongo
+   * @param clazz - class of the results
+   * @param collection - collection to query
+   * @param from
+   * @param to
+   * @param mongoQueryString - native mongo query to query with
+   * @param replyHandler
+   */
   public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
 
     long start = System.nanoTime();
@@ -453,6 +551,53 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
+  
+  /**
+   * Convenience get to retrieve a specific record via id from mongo
+   * @param clazz - class of object to be returned 
+   * @param collection - collection to query
+   * @param id - id of the object to return
+   * @param replyHandler
+   */
+  public void get(String clazz, String collection, String id, Handler<AsyncResult<Object>> replyHandler) {
+
+    long start = System.nanoTime();
+
+    try {
+      final JsonObject query = new JsonObject();
+      FindOptions fo = new FindOptions();
+
+      query.put("_id", id);
+      Class<?> cls = Class.forName(clazz);
+
+      client.findWithOptions(collection, query, fo, res -> {
+        if (res.succeeded()) {
+          Object reply = null;
+          try {
+            reply = mapper.readValue(res.result().get(0).toString(), cls);
+            if(reply == null){
+              replyHandler.handle(io.vertx.core.Future.failedFuture("Seems like a mapping issue between requested objects and returned objects"));
+            }else{
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(reply));
+            }
+          } catch (Exception e) {
+            log.error(e);
+            replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          }
+        } else {
+          log.error(res.cause());
+          replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
+        }
+        if(log.isDebugEnabled()){
+          elapsedTime("get() " + collection + " " + query.encode(), start);
+        }
+      });
+    } catch (Throwable e) {
+      log.error(e);
+      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
+    }
+  }
+
 
   public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
 
@@ -522,6 +667,16 @@ public class MongoCRUD {
     }
   }
 
+  /**
+   * append items to an array of objects matching the query argument 
+   * @param collection
+   * @param arrayName - name of the array object - for example - a book object with a List of authors as a field will pass the
+   * name of the authors field here - for example "authors"
+   * @param arrayEntry - a List of items to append to the existing List - for example - if a book object has a list of authors, 
+   * adding additional authors would have us pass a List of authors objects here
+   * @param query - native mongo query to get objects to update
+   * @param replyHandler
+   */
   public void addToArray(String collection, String arrayName, Object arrayEntry, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
 
     long start = System.nanoTime();
@@ -627,7 +782,7 @@ public class MongoCRUD {
   }
 
   /**
-   *
+   * helper class that can build a json object to be passed to the get() function
    * @param returnClazz - class of objects expected to be returned - for example passing a Fines class to get()
    * fine objects
    * @param collection - the collection to query from

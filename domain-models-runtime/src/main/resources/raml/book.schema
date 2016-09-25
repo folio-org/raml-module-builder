@@ -43,6 +43,9 @@
     "success": {
       "type": "boolean"
     },
+    "image": {
+	  "type": "string"
+    },
     "status": {
       "type": "integer"
     }

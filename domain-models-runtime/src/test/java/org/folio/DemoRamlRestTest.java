@@ -4,6 +4,8 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
@@ -16,6 +18,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
@@ -113,14 +116,144 @@ public class DemoRamlRestTest {
         
     List<Object> list = getListOfBooks();
     
-    //check bulk insert
+    //check bulk insert Mongo
     bulkInsert(context, list);
     
-    //check insert with fail if id exists already
-    insertUnqueTest(context, list.get(0));
+    //check insert with fail if id exists already Mongo
+    insertUniqueTest(context, list.get(0));
 
+    //check save and get of binary Mongo
+    binaryInsert(context);
+    
+    //check save and get object with encoded binary base64 field Mongo
+    base64EncTest(context);
   }
   
+  private void base64EncTest(TestContext context){
+    Book b = createBook();
+    String file = getClass().getClassLoader().getResource("folio.jpg").getFile();
+    Buffer buffer = Buffer.buffer();
+    Async async = context.async();
+    vertx.fileSystem().open(file, new OpenOptions(), ar -> {
+      if (ar.succeeded()) {
+        AsyncFile rs = ar.result();
+        rs.handler( buf -> {
+          buffer.appendBuffer(buf);
+        });
+        rs.exceptionHandler(t -> {
+          context.fail();
+          async.complete();
+        });
+        rs.endHandler(v -> {
+          ar.result().close(ar2 -> {
+            if (ar2.failed()) {
+              context.fail();
+            }
+            else{
+              Async async2 = context.async();
+              b.setImage(Base64.getEncoder().encodeToString(buffer.getBytes()));
+              MongoCRUD client = MongoCRUD.getInstance(vertx); 
+              client.save("books", b, reply -> {
+                if(reply.succeeded()){
+                  String id = reply.result();
+                  client.get(Book.class.getName(), "books", id, reply2 -> {
+                    Async async3 = context.async();
+                    if(reply2.succeeded()){
+                      byte[] image = Base64.getDecoder().decode(((Book)reply2.result()).getImage());
+                      if(image.length == 2747){
+                        context.assertTrue(true);
+                        System.out.println("save binary success");
+                      }
+                      else{
+                        context.fail("size of file is incorrect");
+                      }
+                      /*try {
+                        org.apache.commons.io.FileUtils.writeByteArrayToFile(new File("test.jpg"), image);
+                      } catch (Exception e) {
+                        e.printStackTrace();
+                      }*/
+                    }else{
+                      context.fail(reply2.cause().getMessage());
+                    }
+                    async3.complete();
+                  });
+                }
+                else{
+                  context.fail(reply.cause().getMessage());
+                }
+                async2.complete();
+              });
+            }
+          });
+          async.complete();
+        });
+      }});
+    
+    
+  }
+  
+  private void binaryInsert(TestContext context){
+    //check binary save in mongo
+    String file = getClass().getClassLoader().getResource("folio.jpg").getFile();
+    Buffer buffer = Buffer.buffer();
+    Async async = context.async();
+    vertx.fileSystem().open(file, new OpenOptions(), ar -> {
+      if (ar.succeeded()) {
+        AsyncFile rs = ar.result();
+        rs.handler( buf -> {
+          buffer.appendBuffer(buf);
+        });
+        rs.exceptionHandler(t -> {
+          context.fail();
+          async.complete();
+        });
+        rs.endHandler(v -> {
+          ar.result().close(ar2 -> {
+            if (ar2.failed()) {
+              context.fail();
+            }
+            else{
+              Async async1 = context.async();
+              MongoCRUD client = MongoCRUD.getInstance(vertx); 
+              client.saveBinary("files", buffer, "images", reply -> {
+                if(reply.succeeded()){        
+                  //context.assertTrue(true, "Binary image file saved successfully");
+                  Async async2 = context.async();
+                  String id = reply.result();                                  
+                  client.getBinary("files","images", 0, 1, res2 -> {
+                    if(res2.succeeded()) {
+
+                      byte[]image = (byte[])((List<?>)res2.result()).get(0);
+                      if(image.length == 2747){
+                        context.assertTrue(true);
+                        System.out.println("save binary success");
+                      }
+                      else{
+                        context.fail("size of file is incorrect");
+                      }
+                    } else {
+                      context.fail(res2.cause().getMessage());
+                    }
+                    async2.complete();
+                  });
+                }
+                else{
+                  context.fail();
+                }
+                async1.complete();
+              });
+            }
+          });
+          async.complete();
+        });
+      } else {
+        context.fail();
+        async.complete();
+      }
+    });
+    
+
+  }
   
   private void bulkInsert(TestContext context, List<Object> list){
     //check bulk insert in MONGO
@@ -138,7 +271,7 @@ public class DemoRamlRestTest {
     });
   }
   
-  private void insertUnqueTest(TestContext context, Object book){
+  private void insertUniqueTest(TestContext context, Object book){
     //insert fail if id exists test MONGO
     Async async2 = context.async();
     MongoCRUD.getInstance(vertx).save("books", book, reply -> {
@@ -258,20 +391,26 @@ public class DemoRamlRestTest {
   private List<Object> getListOfBooks(){
     List<Object> list = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      Book b = new Book();
+      Book b = createBook();
       b.setStatus(i);
-      b.setSuccess(true);
-      b.setData(null);
-      Data d = new Data();
-      d.setAuthor("a");
-      d.setDatetime(12345);
-      d.setGenre("b");
-      d.setDescription("c");
-      d.setLink("d");
-      d.setTitle("title");
-      b.setData(d);
       list.add(b);
     }
     return list;
+  }
+  
+  private Book createBook(){
+    Book b = new Book();
+    b.setStatus(99);
+    b.setSuccess(true);
+    b.setData(null);
+    Data d = new Data();
+    d.setAuthor("a");
+    d.setDatetime(12345);
+    d.setGenre("b");
+    d.setDescription("c");
+    d.setLink("d");
+    d.setTitle("title");
+    b.setData(d);
+    return b;
   }
 }
