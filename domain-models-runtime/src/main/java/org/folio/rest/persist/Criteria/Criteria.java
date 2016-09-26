@@ -40,9 +40,12 @@ public class Criteria {
   public static final String   OP_GREATER_THAN_EQ = ">=";
   public static final String   OP_LESS_THAN       = "<";
   public static final String   OP_LESS_THAN_EQ    = "<=";
-  public static final String   OP_JSON_LESS_THAN_EQ    = "@>";// contains json with json "field" --> [{"field":"'price'","value":{"sum": "150.0"},"op":"@>"}]
+  public static final String   OP_JSON_LESS_THAN_EQ = "@>";// contains json with json "field" 
+                     //field price has json entry matching the value passed in [{"field":"'price'","value":{"sum": "150.0"},"op":"@>"}]
   public static final String   OP_NOT             = "NOT"; //[{"field":"'po_line_status'->>'value'","value":"fa(l|t)se","op":"SIMILAR TO"}, {"op":"NOT"}]
-
+  public static final String   OP_OR              = "OR";
+  public static final String   OP_AND             = "AND";
+  
   private static final String  ARRAY_FROM_CLAUSE  = "jsonb_array_elements";//("jsonb->'fund_distributions'[]->'amount'->>'sum'")
 
   private static final Pattern STRING_PATTERN     = Pattern.compile("\"[^\"]*\"");
@@ -74,6 +77,7 @@ public class Criteria {
   Select                select;
   /**
    * set this to false if not a jsonb field criteria
+   * For example: the _id is not in the jsonb object hence would be false if criteria based on _id
    */
   boolean               isJSONB            = true;
 
@@ -85,10 +89,10 @@ public class Criteria {
    * arrays in jsonb are handled differently, need to open up the array
    * and then compare the value in each slot to the requested value, therefore
    * needs special handling. need to set the isArray to true and indicate which part of the field
-   * in the requested field path is the array
+   * in the requested field path is the array.<br>
    * for example: 'a'->'b'->'c' - is the path - if 'a' is an array (list) of items - then set this
    * criteria isArray to true and set the arrayField as 'a' - if no arrayField is set then the
-   * first field will be extracted and used
+   * first field will be extracted and used as the array field
    */
   String                arrayField         = null;
 

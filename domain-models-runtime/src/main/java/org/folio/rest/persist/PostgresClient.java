@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.tools.messages.MessageConsts;
@@ -254,7 +255,6 @@ public class PostgresClient {
     });
   }
 
-  //@Timer
   @SuppressWarnings("unchecked")
   public void save(Object sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
     System.out.println("save on -----> " + table);
@@ -276,7 +276,14 @@ public class PostgresClient {
     }
   }
 
-  //@Timer
+  /**
+   * update a specific record associated with the key passed in the id arg
+   * @param table - table to save to (must exist)
+   * @param entity - pojo to save
+   * @param id - key of the entitiy being updated
+   * @param replyHandler
+   * @throws Exception
+   */
   public void update(String table, Object entity, String id, Handler<AsyncResult<String>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -304,7 +311,59 @@ public class PostgresClient {
     });
   }
 
-  //@Timer
+  /**
+   * Update 1...n records matching the filter
+   * <br>
+   * Criterion Examples:
+   * <br>
+   * 1. can be mapped from a string in the following format [{"field":"''","value":"","op":""}]
+   * <pre>
+   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"); //denotes funds_distribution is an array of objects
+   *    Criterion a = json2Criterion("[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]");
+   *    (see postgres query syntax for more examples in the read.me
+   * </pre>
+   * 2. Simple Criterion
+   * <pre> 
+   *    Criteria b = new Criteria();
+   *    b.field.add("'note'");
+   *    b.operation = "=";
+   *    b.value = "a";
+   *    b.isArray = true; //denotes that the queried field is an array with multiple values
+   *    Criterion a = new Criterion(b);
+   * </pre>  
+   * 3. For a boolean field called rush = false OR note[] contains 'a'
+   * <pre>
+   *    Criteria d = new Criteria();
+   *    d.field.add("'rush'");
+   *    d.operation = Criteria.OP_IS_FALSE;
+   *    d.value = null;
+   *    Criterion a = new Criterion();
+   *    a.addCriterion(d, Criteria.OP_OR, b);
+   * </pre>   
+   * 4. for the following json:
+   * <pre>
+   *      "price": {
+   *        "sum": "150.0",
+   *         "po_currency": {
+   *           "value": "USD",
+   *           "desc": "US Dollar"
+   *         }
+   *       },
+   * 
+   *    Criteria c = new Criteria();
+   *    c.addField("'price'").addField("'po_currency'").addField("'value'");
+   *    c.operation = Criteria.OP_LIKE;
+   *    c.value = "USD";
+   * 
+   * </pre>
+   * @param table - table to update
+   * @param entity - pojo to set for matching records
+   * @param filter - see example below
+   * @param returnUpdatedIds - return ids of updated records
+   * @param replyHandler
+   * @throws Exception
+   *    
+   */
   public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds, Handler<AsyncResult<String>> replyHandler)
       throws Exception {
     client.getConnection(res -> {
@@ -343,16 +402,40 @@ public class PostgresClient {
   }
 
   /**
-   * Note that postgrs does not update inplace the json but rather will create a new json with the updated section and then reference the id
-   * to that newly created json
-   *
-   * @param table
-   * @param section
-   * @param when
+   * update a section / field / object in the pojo - 
+   * <br>
+   * for example:
+   * <br> if a json called po_line contains the following field
+   * <pre>
+   *     "po_line_status": {
+   *       "value": "SENT",
+   *       "desc": "sent to vendor"
+   *     },
+   * </pre>
+   *  this translates into a po_line_status object within the po_line object - to update the entire object / section
+   *  create an updateSection object pushing into the section the po line status as the field and the value (string / json / etc...) to replace it with 
+   *  <pre>
+   *  a = new UpdateSection(); 
+   *  a.addField("po_line_status");
+   *  a.setValue(new JsonObject("{\"value\":\"SOMETHING_NEW4\",\"desc\":\"sent to vendor again\"}"));
+   *  </pre>
+   * Note that postgres does not update inplace the json but rather will create a new json with the 
+   * updated section and then reference the id to that newly created json
+   * <br>
+   * Queries generated will look something like this:
+   * <pre>
+   * 
+   * update test.po_line set jsonb = jsonb_set(jsonb, '{po_line_status}', '{"value":"SOMETHING_NEW4","desc":"sent to vendor"}') where _id = 19;
+   * update test.po_line set jsonb = jsonb_set(jsonb, '{po_line_status, value}', '"SOMETHING_NEW5"', false) where _id = 15;
+   * </pre>
+   * 
+   * @param table - table to update
+   * @param section - see UpdateSection class
+   * @param when - Criterion object
    * @param replyHandler
    * @throws Exception
+   * 
    */
-  //@Timer
   public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
       Handler<AsyncResult<String>> replyHandler) throws Exception {
     client.getConnection(res -> {
@@ -388,7 +471,13 @@ public class PostgresClient {
     });
   }
 
-  //@Timer
+  /**
+   * Delete based on id of record - the id is not in the json object but is a separate column
+   * @param table
+   * @param id
+   * @param replyHandler
+   * @throws Exception
+   */
   public void delete(String table, String id, Handler<AsyncResult<String>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -415,7 +504,13 @@ public class PostgresClient {
     });
   }
 
-  //@Timer
+  /**
+   * Delete based on filter
+   * @param table
+   * @param filter
+   * @param replyHandler
+   * @throws Exception
+   */
   public void delete(String table, Criterion filter, Handler<AsyncResult<String>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -447,7 +542,8 @@ public class PostgresClient {
   }
 
   /**
-   * pass in an entity that is fully / partially populated and the query will return all records matching the populated fields in the entity
+   * pass in an entity that is fully / partially populated and the query will return all records matching the 
+   * populated fields in the entity
    *
    * @param table
    * @param entity
@@ -485,8 +581,16 @@ public class PostgresClient {
     });
   }
 
-  //@Timer
-  public void get(String table, Class clazz, Criterion filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+  /**
+   * select query
+   * @param table - table to query
+   * @param clazz - class of objects to be returned 
+   * @param filter - see Criterion class
+   * @param returnCount - whether to return the amount of records matching the query
+   * @param replyHandler
+   * @throws Exception
+   */
+  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
       throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -549,7 +653,11 @@ public class PostgresClient {
     return ret;
   }
 
-  //@Timer
+  /**
+   * run a select query against postgres - to update see mutate
+   * @param sql - the sql to run
+   * @param replyHandler
+   */
   public void select(String sql, Handler<AsyncResult<io.vertx.ext.sql.ResultSet>> replyHandler) {
 
     client.getConnection(res -> {
@@ -577,7 +685,11 @@ public class PostgresClient {
     });
   }
 
-  //@Timer
+  /**
+   * update table
+   * @param sql - the sql to run
+   * @param replyHandler
+   */
   public void mutate(String sql, Handler<AsyncResult<String>> replyHandler)  {
     long s = System.nanoTime();
     client.getConnection(res -> {
@@ -609,7 +721,16 @@ public class PostgresClient {
     System.out.println("internal timer: " + (e-s)/1000000);
   }
 
-  //@Timer
+  /**
+   * send a query to update within a transaction
+   * @param conn - connection - see startTx
+   * @param sql - the sql to run
+   * @param replyHandler
+   * Example:
+   *  postgresClient.startTx(beginTx -> {
+   *        try {
+   *          postgresClient.mutate(beginTx, sql, reply -> {... 
+   */
   @SuppressWarnings("unchecked")
   public void mutate(Object conn, String sql, Handler<AsyncResult<String>> replyHandler){
     SQLConnection sqlConnection = (SQLConnection) ((io.vertx.core.Future<SQLConnection>) conn).result();
@@ -667,7 +788,6 @@ public class PostgresClient {
     }
   }
 
-  //@Timer
   public void startEmbeddedPostgres() throws Exception {
     // starting Postgres
     embeddedMode = true;
@@ -727,6 +847,11 @@ public class PostgresClient {
 
   }
 
+  /**
+   * import a tab delimited file to an existing table
+   * @param path - path to the file
+   * @param tableName - name of the table to import the content into
+   */
   public void importFile(String path, String tableName) {
 
    vertx.<String>executeBlocking(dothis -> {

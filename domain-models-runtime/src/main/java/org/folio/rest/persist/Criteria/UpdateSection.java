@@ -24,7 +24,7 @@ public class UpdateSection {
    * Note that the root object should not be included here
    * @param field - in case the field is embedded - add multiple fields in the correct order
    * for example:
-   *    Updating the rush section in a Money object - where 'rush' is a field below status (which is a top level field)
+   *    Updating the rush section in a Money object - where 'rush' is a field found in the 'status' section (which is a top level field)
    *    addField("status").addField("rush"):
    * this gets mapped for use by the jsonb_set function and produces a '{status, rush}' path entry for the function to use
    * @return
