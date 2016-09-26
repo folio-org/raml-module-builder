@@ -736,7 +736,16 @@ Extensive usage examples can be found in the following classes:
 https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/PatronAPI.java
 https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/folio/rest/impl/ConfigAPI.java
 
+#### Collection statistics
+The /admin interface that comes with the runtime framework exposes an api to allow the printing of statistics of specific collections to the log. 
 
+Access the path `/apis/admin/collstats`  via (PUT) with the body containing the collection to print statistics for and at which interval.
+
+For example, passing the following in the body with print stats to the log for the patron and the bib_data collections every minute.
+
+{"bib_data":60, "patron" : 60}
+
+The output of this API call will return all collections registered for stats collection and the interval.
 
 ## PostgreSQL integration
 
@@ -744,11 +753,12 @@ By default an embedded PostgreSQL is included in the runtime, but is not run by
 default. To change that add `embed_postgres=true` to the command line
 (`java -jar circulation-fat.jar embed_postgres=true`).
 Connection parameters to a
-non-embedded mongoDB can be found in `resources/postgres-conf.json` or passed
+non-embedded mongoDB can be placed in `resources/postgres-conf.json` or passed
 via the command line.
 
 The runtime framework exposes a postgreSQL async client which offers CRUD
-operations in an ORM type fashion.
+operations in an ORM type fashion.  
+https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/persist/PostgresClient.java
 
 **Important Note:** The PostgreSQL client currently implemented assumes
 JSONB tables in PostgreSQL. This is not mandatory and developers can work with
@@ -1099,6 +1109,7 @@ http://localhost:8080/apis/patrons
  }
 }
 ```
+
 
 
 

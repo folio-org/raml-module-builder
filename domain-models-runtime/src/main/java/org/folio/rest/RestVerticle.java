@@ -671,7 +671,7 @@ public class RestVerticle extends AbstractVerticle {
    *          - package name where to search
    * @param interface2check
    *          - class name of the required interface
-   * @return implementing class
+   * @return implementing class/es
    * @throws IOException
    *           - if the attempt to read class path resources (jar files or directories) failed.
    * @throws ClassNotFoundException
