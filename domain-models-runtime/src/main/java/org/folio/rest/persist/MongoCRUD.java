@@ -630,7 +630,7 @@ public class MongoCRUD {
    * @param upsert - if the query does not match any records - hence nothing to update - should the entity be inserted
    * @param addUpdateDate - the object must have a last_modified field which will be populated with current timestamp by mongo
    * the entity must have a last_modified field
-   * @param replyHandler
+   * @param replyHandler - returns MongoClientUpdateResult which can be used to check amount of updated records
    */
   public void update(String collection, Object entity, JsonObject query,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
 
@@ -664,7 +664,7 @@ public class MongoCRUD {
       client.updateCollectionWithOptions(collection, query, update, options, res -> {
 
         if (res.succeeded()) {
-          if(res.result().getDocMatched() == 0 || res.result().getDocModified() == 0){
+          if(res.result().getDocModified() == 0){
             log.debug("No records updated for " + jsonObject.encode());
           }
           replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
@@ -756,6 +756,46 @@ public class MongoCRUD {
     .put("scale", 1024);
 
     client.runCommand("collStats", command, res -> {
+      if (res.succeeded()) {
+        replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+    });
+  }
+  
+  public void groupBy(String collection, JsonObject aggrQuery, Handler<AsyncResult<Object>> replyHandler){
+    groupBy(collection, null, aggrQuery, replyHandler);
+  }
+  
+  /**
+   * pass in an aggQuery - for example: 
+   *<pre>
+   *  {
+   *     _id : { month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } },
+   *     totalPrice: { $sum: { $multiply: [ "$price", "$quantity" ] } },
+   *     averageQuantity: { $avg: "$quantity" },
+   *     count: { $sum: 1 }
+   *  }
+   *</pre>
+   * @param collection
+   * @param clazz
+   * @param aggrQuery
+   * @param replyHandler
+   */
+  public void groupBy(String collection, Class<?> clazz, JsonObject aggrQuery, Handler<AsyncResult<Object>> replyHandler){
+    
+    JsonObject group = new JsonObject();
+    group.put("$group", aggrQuery);
+    
+    JsonArray jar = new JsonArray();
+    jar.add(group);
+    
+    JsonObject command = new JsonObject()
+    .put("aggregate", collection)
+    .put("pipeline", jar);
+
+    client.runCommand("aggregate", command, res -> {
       if (res.succeeded()) {
         replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
       } else {
