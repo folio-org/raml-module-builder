@@ -14,3 +14,4 @@
 10009=Import failed, reason: {0}
 10010=Invalid URL path requested {0}
 10011=File uploading failed: {0}
+10012=No records match the query, no records updated

@@ -41,7 +41,7 @@ public class AdminAPI implements AdminResource {
     }
 
   }
-
+  @Validate
   @Override
   public void getAdminLoglevel(String authorization, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
@@ -69,7 +69,7 @@ public class AdminAPI implements AdminResource {
      * THIS FUNCTION WILL NEVER BE CALLED - HANDLED IN THE RestVerticle class
      */
   }
-
+  @Validate
   @Override
   public void putAdminCollstats(String authorization, Reader entity, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
       throws Exception {

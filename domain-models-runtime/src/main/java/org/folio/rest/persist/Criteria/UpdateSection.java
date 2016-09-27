@@ -8,10 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Joiner;
 import com.google.common.primitives.Primitives;
 
-/**
- * @author shale
- *
- */
+
 public class UpdateSection {
 
   ArrayList<String> fieldHierarchy = new ArrayList<>();

@@ -14,10 +14,7 @@ import java.util.Set;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-/**
- * @author shale
- *
- */
+
 public class Criterion {
 
   private static final ObjectMapper mapper           = new ObjectMapper();

@@ -8,7 +8,6 @@ import java.util.regex.Pattern;
 import org.folio.rest.persist.PostgresClient;
 
 /**
- * @author shale
  *
  *         Criteria c = new Criteria();
  *         c.field = "'price' -> 'po_currency' ->> 'value'";

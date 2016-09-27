@@ -4,11 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 
+
 import org.folio.rest.tools.utils.NetworkUtils;
+
 
 
 import de.flapdoodle.embed.mongo.Command;
@@ -34,6 +37,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.mongo.MongoClientUpdateResult;
 import io.vertx.ext.mongo.UpdateOptions;
 
 public class MongoCRUD {
@@ -304,7 +308,8 @@ public class MongoCRUD {
    * @param collection - collection to query
    * @param from
    * @param to
-   * @param binaryField - the field with the binary data
+   * @param binaryField - the field with the binary data (since a single collection can potentially be used to store binary data
+   * of different types existing in different columns
    * @param replyHandler
    */
   public void getBinary(String collection, String binaryField, Integer from, Integer to, Handler<AsyncResult<List<?>>> replyHandler) {
@@ -607,12 +612,12 @@ public class MongoCRUD {
    * @param addUpdateDate - whether to have mongo add a date value when the update occurs automatically  
    * @param replyHandler
    */
-  public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
+  public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
 
     update(collection, entity, query, false, addUpdateDate, replyHandler);
   }
 
-  public void update(String collection, Object entity, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
+  public void update(String collection, Object entity, JsonObject query, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
 
     update(collection, entity, query, false, false, replyHandler);
   }
@@ -627,7 +632,7 @@ public class MongoCRUD {
    * the entity must have a last_modified field
    * @param replyHandler
    */
-  public void update(String collection, Object entity, JsonObject query,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<Void>> replyHandler) {
+  public void update(String collection, Object entity, JsonObject query,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
 
     long start = System.nanoTime();
 
@@ -659,8 +664,10 @@ public class MongoCRUD {
       client.updateCollectionWithOptions(collection, query, update, options, res -> {
 
         if (res.succeeded()) {
-          System.out.println(" replaced !");
-          replyHandler.handle(io.vertx.core.Future.succeededFuture());
+          if(res.result().getDocMatched() == 0 || res.result().getDocModified() == 0){
+            log.debug("No records updated for " + jsonObject.encode());
+          }
+          replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
         } else {
           res.cause().printStackTrace();
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
