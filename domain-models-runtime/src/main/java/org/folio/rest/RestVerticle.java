@@ -1162,9 +1162,8 @@ public class RestVerticle extends AbstractVerticle {
         pump.start();
         request.resume();
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e);
         endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.FileUploadError, e.getMessage()), validRequest);
-
       }
     });
   }

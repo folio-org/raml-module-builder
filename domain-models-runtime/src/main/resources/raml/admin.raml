@@ -87,5 +87,30 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
-
-
+  /jstack:
+    put:
+      description: dumps jstacks every N seconds to a jstack file to find potential bottlenecks. Looking at this |
+        file you can see if there are functions blocking for too long 
+      is: [secured]
+      responses:
+        204:
+          description: "Jstack request successful"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+    get:
+      description: Get stack trace
+      is: [secured]
+      responses:
+        200:
+          description: "Returns the stack trace of all threads in the JVM"
+          body:
+            text/html:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
