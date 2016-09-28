@@ -8,9 +8,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.FileSystem;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerFileUpload;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -20,7 +18,6 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.example.util.Runner;
 import io.vertx.ext.dropwizard.MetricsService;
-import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -101,7 +98,6 @@ public class RestVerticle extends AbstractVerticle {
   private static ValidatorFactory   validationFactory;
   private static KieSession         droolsSession;
   private final Messages            messages                        = Messages.getInstance();
-  private HttpServer                server;
   private static final ObjectMapper mapper                          = new ObjectMapper();
 
   private int                       port                            = -1;
@@ -134,7 +130,7 @@ public class RestVerticle extends AbstractVerticle {
   // https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
   // first match - no q val check
   static String acceptCheck(JsonArray l, String h) {
-    String hl[] = h.split(",");
+    String []hl = h.split(",");
     String hBest = null;
     for (int i = 0; i < hl.length; i++) {
       String mediaRange = hl[i].split(";")[0].trim();
@@ -483,7 +479,7 @@ public class RestVerticle extends AbstractVerticle {
           port = config().getInteger("http.port", 8081);
         }
         Integer p = port;
-        server = vertx.createHttpServer().requestHandler(router::accept)
+        vertx.createHttpServer().requestHandler(router::accept)
         // router object (declared in the beginning of the atrt function accepts request and will pass to next handler for
         // specified path
 
@@ -947,7 +943,7 @@ public class RestVerticle extends AbstractVerticle {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
-    int pathParamsIndex[] = new int[] { pathParams.length };
+    int []pathParamsIndex = new int[] { pathParams.length };
 
     paramList.forEachRemaining(entry -> {
       if (validRequest[0]) {

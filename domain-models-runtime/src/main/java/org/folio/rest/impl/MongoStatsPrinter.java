@@ -40,7 +40,7 @@ public class MongoStatsPrinter implements PeriodicAPI {
     //iterate over the collections and print stats to log for collection when interval is up
     //for the collection - run will be called every 'delay' milli to execute this
     while (iter.hasNext()) {
-      Map.Entry<String,Integer> entry = (Map.Entry<String, Integer>) iter.next();
+      Map.Entry<String,Integer> entry = iter.next();
       String collection = entry.getKey();
       Integer countdown = collectionLastRunMap.get(collection)-(delay/1000);
       if(countdown <= 0){
@@ -78,7 +78,6 @@ public class MongoStatsPrinter implements PeriodicAPI {
       Integer interval = (Integer)i.getValue();
       collectionWhenToRunMap.put(collection, interval);
       collectionLastRunMap.put(collection, interval);
-      //System.out.println(collection + " " + interval);
     });
   }
 

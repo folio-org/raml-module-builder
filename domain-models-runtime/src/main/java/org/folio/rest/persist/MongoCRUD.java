@@ -125,7 +125,6 @@ public class MongoCRUD {
 
   private MongoClient init(Vertx vertx) throws Exception {
     if (embeddedMode) {
-      //mongoHost = "localhost";
       mongoPort = NetworkUtils.nextFreePort();
       JsonObject jsonConf = new JsonObject();
       jsonConf.put("db_name", "indexd_test");

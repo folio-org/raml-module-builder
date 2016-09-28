@@ -25,11 +25,10 @@ public class AdminAPI implements AdminResource {
 
   private static final io.vertx.core.logging.Logger log               = LoggerFactory.getLogger(AdminAPI.class);
 
-  private static final String DEFAULT_TEMP_DIR                        = System.getProperty("java.io.tmpdir");
-
   @Validate
   @Override
-  public void putAdminLoglevel(String authorization, Level level, String javaPackage, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
+  public void putAdminLoglevel(String authorization, Level level, String javaPackage, 
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
       throws Exception {
 
     try {
@@ -38,15 +37,16 @@ public class AdminAPI implements AdminResource {
       os.setData(updatedLoggers);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withJsonOK(os)));
     } catch (Exception e) {
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withPlainInternalServerError("ERROR"
-          + e.getMessage())));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse
+        .withPlainInternalServerError("ERROR" + e.getMessage())));
       log.error(e.getMessage(), e);
     }
 
   }
   @Validate
   @Override
-  public void getAdminLoglevel(String authorization, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void getAdminLoglevel(String authorization, Handler<AsyncResult<Response>> asyncResultHandler, 
+      Context vertxContext) throws Exception {
 
     try {
       JsonObject loggers = LogUtil.getLogConfiguration();
@@ -54,8 +54,8 @@ public class AdminAPI implements AdminResource {
       os.setData(loggers);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withJsonOK(os)));
     } catch (Exception e) {
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withPlainInternalServerError("ERROR"
-          + e.getMessage())));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse
+        .withPlainInternalServerError("ERROR" + e.getMessage())));
       log.error(e.getMessage(), e);
     }
   }
@@ -65,8 +65,8 @@ public class AdminAPI implements AdminResource {
   }
 
   @Override
-  public void postAdminUpload(String authorization, PersistMethod persistMethod, String busAddress, String fileName, MimeMultipart entity,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void postAdminUpload(String authorization, PersistMethod persistMethod, String busAddress, String fileName, 
+      MimeMultipart entity, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     /**
      * THIS FUNCTION WILL NEVER BE CALLED - HANDLED IN THE RestVerticle class
@@ -76,8 +76,8 @@ public class AdminAPI implements AdminResource {
   
   @Validate
   @Override
-  public void putAdminCollstats(String authorization, Reader entity, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
-      throws Exception {
+  public void putAdminCollstats(String authorization, Reader entity, Handler<AsyncResult<Response>> asyncResultHandler, 
+      Context vertxContext) throws Exception {
     /**
      * calls  the MongoStatsPrinter which is a periodic hook that is run periodically to print collection stats to the log based on the collections requested
      * here
@@ -95,8 +95,8 @@ public class AdminAPI implements AdminResource {
       os.setData(MongoStatsPrinter.getCollection());
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminCollstatsResponse.withJsonOK(os)));
     } catch (Exception e) {
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withPlainInternalServerError("ERROR"
-          + e.getMessage())));
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse
+          .withPlainInternalServerError("ERROR" + e.getMessage())));
         log.error(e.getMessage(), e);
     }
 
@@ -120,9 +120,7 @@ public class AdminAPI implements AdminResource {
           final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
           final ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
           for (ThreadInfo threadInfo : threadInfos) {
-            //dump.append('"');
             dump.append(threadInfo.getThreadName());
-            //dump.append("\" ");
             final Thread.State state = threadInfo.getThreadState();
             dump.append("</br>   java.lang.Thread.State: ");
             dump.append(state);
@@ -137,11 +135,12 @@ public class AdminAPI implements AdminResource {
           code.complete(dump);
         } catch (Exception e) {
           log.error(e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.withPlainInternalServerError("ERROR"
-              + e.getMessage())));
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse
+            .withPlainInternalServerError("ERROR" + e.getMessage())));
         }
       }, result -> {     
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.withHtmlOK(result.result().toString())));
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse
+          .withHtmlOK(result.result().toString())));
       });
   }
 
