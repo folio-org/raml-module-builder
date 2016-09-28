@@ -46,7 +46,7 @@ import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.sql.SQLConnection;
 
 /**
- * @author shale currently does not support binary data
+ * @author shale currently does not support binary data unless base64 encoded
  *
  */
 public class PostgresClient {
@@ -55,14 +55,14 @@ public class PostgresClient {
   private AsyncSQLClient         client;
   private static ObjectMapper    mapper                   = new ObjectMapper();
 
-  public final static String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
+  public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
-  public final static String     ID_FIELD                 = "_id";
+  public static final String     ID_FIELD                 = "_id";
 
-  private final static String    COUNT_CLAUSE             = " count(_id) OVER() AS count, ";
-  private final static String    RETURNING_IDS            = " RETURNING _id ";
+  private static final String    COUNT_CLAUSE             = " count(_id) OVER() AS count, ";
+  private static final String    RETURNING_IDS            = " RETURNING _id ";
 
-  private final static String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
+  private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
 
   private static PostgresProcess postgresProcess          = null;
 
@@ -71,7 +71,7 @@ public class PostgresClient {
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
 
-  private static int             EMBEDDED_POSTGRES_PORT   = 6000;
+  private static final int             EMBEDDED_POSTGRES_PORT   = 6000;
 
   private JsonObject postgreSQLClientConfig = null;
 
@@ -79,6 +79,12 @@ public class PostgresClient {
 
   private final Messages            messages = Messages.getInstance();
 
+  private static final String UPDATE = "UPDATE ";
+  private static final String SET = " SET ";
+  private static final String PASSWORD = "password";
+  private static final String USERNAME = "username";
+  
+  
   private PostgresClient(Vertx vertx) throws Exception {
     init(vertx);
   }
@@ -110,7 +116,7 @@ public class PostgresClient {
       try {
         instance = new PostgresClient(vertx);
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e);
       }
     }
     return instance;
@@ -146,7 +152,7 @@ public class PostgresClient {
         try {
           return mapper.writeValueAsString(entity);
         } catch (JsonProcessingException e) {
-          e.printStackTrace();
+          log.error(e);
         }
       }
     }
@@ -175,22 +181,20 @@ public class PostgresClient {
             }
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           if (connection != null) {
             connection.close();
           }
           done.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-
         }
       }
-      ;
     });
   }
 
   //@Timer
   @SuppressWarnings("unchecked")
   public void rollbackTx(Object conn, Handler<Object> done) {
-    SQLConnection sqlConnection = (SQLConnection) ((io.vertx.core.Future<SQLConnection>) conn).result();
+    SQLConnection sqlConnection =  ((io.vertx.core.Future<SQLConnection>) conn).result();
     sqlConnection.rollback(res -> {
       if (res.failed()) {
         sqlConnection.close();
@@ -205,7 +209,7 @@ public class PostgresClient {
   //@Timer
   @SuppressWarnings("unchecked")
   public void endTx(Object conn, Handler<Object> done) {
-    SQLConnection sqlConnection = (SQLConnection) ((io.vertx.core.Future<SQLConnection>) conn).result();
+    SQLConnection sqlConnection = ((io.vertx.core.Future<SQLConnection>) conn).result();
     sqlConnection.commit(res -> {
       if (res.failed()) {
         sqlConnection.close();
@@ -226,7 +230,6 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  //@Timer
   public void save(String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
 
     client.getConnection(res -> {
@@ -241,14 +244,11 @@ public class PostgresClient {
                 replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
               }
               connection.close();
-
             });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-        }
-
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -257,9 +257,9 @@ public class PostgresClient {
 
   @SuppressWarnings("unchecked")
   public void save(Object sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
-    System.out.println("save on -----> " + table);
+    log.debug("save called on " + table);
     // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
-    SQLConnection connection = (SQLConnection) ((io.vertx.core.Future<SQLConnection>) sqlConnection).result();
+    SQLConnection connection = ((io.vertx.core.Future<SQLConnection>) sqlConnection).result();
     try {
       connection.queryWithParams("INSERT INTO " + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
         new JsonArray().add(pojo2json(entity)), query -> {
@@ -271,7 +271,7 @@ public class PostgresClient {
           connection.close();
         });
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
   }
@@ -289,7 +289,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update("UPDATE " + table + " SET " + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' WHERE " + ID_FIELD
+          connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' WHERE " + ID_FIELD
               + "=" + id, query -> {
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -300,11 +300,9 @@ public class PostgresClient {
 
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-        }
-
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -378,10 +376,10 @@ public class PostgresClient {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update("UPDATE " + table + " SET " + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' " + sb.toString()
+          connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' " + sb.toString()
               + " " + returning, query -> {
             if (query.failed()) {
-              query.cause().printStackTrace();
+              log.error(query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toJson().toString()));
@@ -389,10 +387,8 @@ public class PostgresClient {
             connection.close();
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-
         }
 
       } else {
@@ -450,7 +446,7 @@ public class PostgresClient {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update("UPDATE " + table + " SET " + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
+          connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
               + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning, query -> {
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -460,11 +456,9 @@ public class PostgresClient {
             connection.close();
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-        }
-
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -490,14 +484,11 @@ public class PostgresClient {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toJson().toString()));
             }
             connection.close();
-
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-        }
-
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -530,11 +521,9 @@ public class PostgresClient {
 
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-        }
-
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -569,7 +558,7 @@ public class PostgresClient {
             }
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         } finally {
           connection.close();
@@ -617,7 +606,7 @@ public class PostgresClient {
             }
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         } finally {
           connection.close();
@@ -631,7 +620,7 @@ public class PostgresClient {
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
     Object[] ret = new Object[2];
-    List<Object> list = new ArrayList<Object>();
+    List<Object> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
     int rowCount = rs.getNumRows();
     if (rowCount > 0 && count) {
@@ -645,7 +634,7 @@ public class PostgresClient {
         o.getClass().getMethod("setId", new Class[] { String.class }).invoke(o, new String[] { id.toString() });
         list.add(o);
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e);
       }
     }
     ret[0] = list;
@@ -671,14 +660,11 @@ public class PostgresClient {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             connection.close();
-
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-        }
-
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -700,25 +686,19 @@ public class PostgresClient {
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              System.out.println("real timer: " + (System.nanoTime()-s)/1000000);
-
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toString()));
             }
             connection.close();
-
+            log.debug("mutate timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-        }
-
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
     });
-    long e = System.nanoTime();
-    System.out.println("internal timer: " + (e-s)/1000000);
   }
 
   /**
@@ -733,7 +713,7 @@ public class PostgresClient {
    */
   @SuppressWarnings("unchecked")
   public void mutate(Object conn, String sql, Handler<AsyncResult<String>> replyHandler){
-    SQLConnection sqlConnection = (SQLConnection) ((io.vertx.core.Future<SQLConnection>) conn).result();
+    SQLConnection sqlConnection = ((io.vertx.core.Future<SQLConnection>) conn).result();
     try {
       sqlConnection.update(sql, query -> {
         if (query.failed()) {
@@ -744,10 +724,9 @@ public class PostgresClient {
         sqlConnection.close();
       });
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-    } finally {
-    }
+    } 
   }
 
   // JsonNode node =
@@ -755,7 +734,7 @@ public class PostgresClient {
   // printout(node.fields(), new StringBuilder("jsonb"));
   private void printout(Iterator<Entry<String, JsonNode>> node, StringBuilder parent) {
     while (node.hasNext()) {
-      Map.Entry<String, JsonNode> entry = (Map.Entry<String, JsonNode>) node.next();
+      Map.Entry<String, JsonNode> entry = node.next();
 
       StringBuilder sb = new StringBuilder();
       sb.append(parent).append("->").append(entry.getKey());
@@ -767,7 +746,7 @@ public class PostgresClient {
         int i = sb.lastIndexOf("->");
         String a = sb.substring(0, i);
         String b = sb.substring(i + 2);
-        StringBuffer sb1 = new StringBuffer();
+        StringBuilder sb1 = new StringBuilder();
         if (jno.isTextual()) {
           sb1.append("'" + jno.textValue() + "'");
         } else if (jno.isNumber()) {
@@ -799,28 +778,26 @@ public class PostgresClient {
           new ArtifactStoreBuilder().defaults(Command.Postgres).download(new DownloadConfigBuilder().defaultsForCommand(Command.Postgres)
           // .progressListener(new LoggingProgressListener(logger, Level.ALL))
             .build())).build();
-      // PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getDefaultInstance();
       PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
-      // final PostgresConfig config = PostgresConfig.defaultWithDbName("postgres", "username", "password");
 
       final PostgresConfig config = new PostgresConfig(Version.V9_5_0, new AbstractPostgresConfig.Net("127.0.0.1", EMBEDDED_POSTGRES_PORT),
         new AbstractPostgresConfig.Storage("postgres"), new AbstractPostgresConfig.Timeout(20000), new AbstractPostgresConfig.Credentials(
-          "username", "password"));
+          USERNAME, PASSWORD));
 
       postgresProcess = runtime.prepare(config).start();
       postgreSQLClientConfig = new JsonObject();
 
       postgreSQLClientConfig.put("host", postgresProcess.getConfig().net().host());
       postgreSQLClientConfig.put("port", postgresProcess.getConfig().net().port());
-      postgreSQLClientConfig.put("username", postgresProcess.getConfig().credentials().username());
-      postgreSQLClientConfig.put("password", postgresProcess.getConfig().credentials().password());
+      postgreSQLClientConfig.put(USERNAME, postgresProcess.getConfig().credentials().username());
+      postgreSQLClientConfig.put(PASSWORD, postgresProcess.getConfig().credentials().password());
       postgreSQLClientConfig.put("database", postgresProcess.getConfig().storage().dbName());
 
       client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
 
-      LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress started....");
+      log.info("embedded postgress started....");
     } else {
-      LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress is already running...");
+      log.info("embedded postgress is already running...");
     }
   }
 
@@ -833,13 +810,13 @@ public class PostgresClient {
     // starting Postgres
     if (embeddedMode) {
       if (postgresProcess != null && postgresProcess.isProcessRunning()) {
-        LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress import starting....");
+        log.info("embedded postgress import starting....");
 
         postgresProcess.importFromFile(new File(path));
 
-        LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress import complete....");
+        log.info("embedded postgress import complete....");
       } else {
-        LogUtil.formatLogMessage(this.getClass().getName(), "startEmbeddedPostgres", "embedded postgress is not running...");
+        log.info("embedded postgress is not running...");
       }
     } else {
       // TODO
@@ -859,8 +836,8 @@ public class PostgresClient {
     try {
       String host = postgreSQLClientConfig.getString("host");
       int port = postgreSQLClientConfig.getInteger("port");
-      String user = postgreSQLClientConfig.getString("username");
-      String pass = postgreSQLClientConfig.getString("password");
+      String user = postgreSQLClientConfig.getString(USERNAME);
+      String pass = postgreSQLClientConfig.getString(PASSWORD);
       String db = postgreSQLClientConfig.getString("database");
 
       log.info("Connecting to " + db);
@@ -876,7 +853,7 @@ public class PostgresClient {
       copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
 
     } catch (Exception e) {
-      log.error(messages.getMessage("en", MessageConsts.ImportFailed), e.getMessage());
+      log.error(messages.getMessage("en", MessageConsts.ImportFailed), e.getMessage(), e);
       dothis.fail(e.getMessage());
     }
     dothis.complete("Done.");

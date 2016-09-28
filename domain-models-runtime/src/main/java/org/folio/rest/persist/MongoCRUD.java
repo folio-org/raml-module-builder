@@ -2,18 +2,9 @@ package org.folio.rest.persist;
 
 import java.util.ArrayList;
 import java.util.List;
-
-
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-
-
 import org.folio.rest.tools.utils.NetworkUtils;
-
-
-
 import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
@@ -61,8 +52,7 @@ public class MongoCRUD {
   public static final MongodStarter MONGODB                 = getMongodStarter();
   private static MongodProcess mongoProcess;
 
-  public static String MONGO_HOST = null;
-  public static int MONGO_PORT = 27017;
+  private int mongoPort = 27017;
 
   private static ObjectMapper mapper = new ObjectMapper();
 
@@ -134,16 +124,15 @@ public class MongoCRUD {
   }
 
   private MongoClient init(Vertx vertx) throws Exception {
-
     if (embeddedMode) {
-      MONGO_HOST = "localhost";
-      MONGO_PORT = NetworkUtils.nextFreePort();
+      //mongoHost = "localhost";
+      mongoPort = NetworkUtils.nextFreePort();
       JsonObject jsonConf = new JsonObject();
       jsonConf.put("db_name", "indexd_test");
-      jsonConf.put("host", MONGO_HOST);
-      jsonConf.put("port", MONGO_PORT);
+      jsonConf.put("host", "localhost");
+      jsonConf.put("port", mongoPort);
       client = MongoClient.createShared(vertx, jsonConf);
-      log.info("created embedded mongo config on port " + MONGO_PORT);
+      log.info("created embedded mongo config on port " + mongoPort);
     } else {
       String path = "/mongo-conf.json";
       if(configPath != null){
@@ -171,8 +160,7 @@ public class MongoCRUD {
           + example.encodePrettily());
       }
       else{
-        MONGO_HOST = jsonConf.getString("host");
-        MONGO_PORT = jsonConf.getInteger("port");
+        mongoPort = jsonConf.getInteger("port");
         client = MongoClient.createShared(vertx, jsonConf, "MongoConnectionPool");
       }
     }
@@ -826,12 +814,12 @@ public class MongoCRUD {
   public void startEmbeddedMongo() throws Exception {
 
     if(mongoProcess == null || !mongoProcess.isProcessRunning()){
-      IMongodConfig mongodConfig = new MongodConfigBuilder().version(Version.Main.PRODUCTION).net(new Net(MONGO_PORT, Network.localhostIsIPv6()))
+      IMongodConfig mongodConfig = new MongodConfigBuilder().version(Version.Main.PRODUCTION).net(new Net(mongoPort, Network.localhostIsIPv6()))
           .build();
       mongoProcess = MONGODB.prepare(mongodConfig).start();
     }
     else{
-      log.info("Embedded Mongo on port " + MONGO_PORT + " is already running");
+      log.info("Embedded Mongo on port " + mongoPort + " is already running");
     }
   }
 
@@ -930,7 +918,7 @@ public class MongoCRUD {
   }
 
   private void elapsedTime(String info, long start){
-      log.debug(new StringBuffer(info).append(" ").append(((System.nanoTime() - start)/1000000)).append(" ms"));
+      log.debug(new StringBuffer(info).append(" ").append((System.nanoTime() - start)/1000000).append(" ms"));
   }
 
 }
