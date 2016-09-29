@@ -15,7 +15,7 @@ public enum MessageConsts implements MessageEnum {
   InvalidURLPath("10010"),
   FileUploadError("10011"),
   NoRecordsUpdated("10012");
-  
+
   private String code;
 
   private MessageConsts(String code){

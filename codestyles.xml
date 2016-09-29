@@ -2,13 +2,13 @@
 <!DOCTYPE module PUBLIC
   "-//Puppy Crawl//DTD Check Configuration 1.2//EN"
   "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
-  
+
 <module name="Checker">
   <property name="fileExtensions" value="java, xml, json, properties" />
   <module name="NewlineAtEndOfFile"/>
   <module name="FileTabCharacter">
     <property name="eachLine" value="true"/>
-  </module>        
+  </module>
   <module name="TreeWalker">
     <module name="EmptyStatement"/>
     <property name="tabWidth" value="2" />
@@ -36,7 +36,7 @@
       <property name="format" value="^log(ger)?|[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
     </module>
     <module name="DeclarationOrder"/> <!-- Class (static) variables, instance vars, constructors, methods -->
-    <module name="EmptyCatchBlock"> <!-- Checks for empty catch blocks, 
+    <module name="EmptyCatchBlock"> <!-- Checks for empty catch blocks,
                                 except is  if exception's variable name is expected or ignore or there's any comment inside: -->
       <property name="exceptionVariableName" value="expected|ignore"/>
     </module>

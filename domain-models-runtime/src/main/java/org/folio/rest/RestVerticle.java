@@ -75,7 +75,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
-  
+
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/apis/admin/upload";
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
@@ -669,7 +669,7 @@ public class RestVerticle extends AbstractVerticle {
     if(cachedClazz != null){
       log.debug("returned " +cachedClazz.size()+" class/es from cache");
       return cachedClazz;
-    }    
+    }
     ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
     ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
     for (ClassPath.ClassInfo info : classes) {
@@ -683,7 +683,7 @@ public class RestVerticle extends AbstractVerticle {
             throw new RuntimeException("Duplicate implementation of " + interface2check + " in " + implDir + ": " + impl.get(0).getName() + ", "
                 + clazz.getName());
           }
-          impl.add(clazz);          
+          impl.add(clazz);
         }
       } catch (ClassNotFoundException e) {
         log.error(e.getMessage(), e);
@@ -789,7 +789,7 @@ public class RestVerticle extends AbstractVerticle {
             }
           }
         });
-      }      
+      }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
       LogUtil.formatLogMessage(getClass().getName(), "runPeriodicHook", "no periodic implementation found, continuing with deployment");

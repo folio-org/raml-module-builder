@@ -46,13 +46,13 @@ public class MongoCRUD {
   public static final String        JSON_PROP_SORT          = "sort";
   public static final String        JSON_PROP_CLASS         = "clazz";
   public static final MongodStarter MONGODB                 = getMongodStarter();
-  
+
   private static MongodProcess mongoProcess;
   private static ObjectMapper mapper      = new ObjectMapper();
   private static boolean embeddedMode     = false;
   private static String configPath;
   private static MongoCRUD instance;
-  
+
   private static final Logger log         = LoggerFactory.getLogger(MongoCRUD.class);
 
   private int mongoPort                   = 27017;
@@ -164,7 +164,7 @@ public class MongoCRUD {
   /**
    * Save entity into the collection. The id is the _id value of the entity if it is not null,
    * otherwise a new id is created.
-   * If the document has no _id field, it is inserted, otherwise, it is _upserted_. 
+   * If the document has no _id field, it is inserted, otherwise, it is _upserted_.
    * Upserted means it is inserted if it doesn’t already exist, otherwise it is updated.
    * @param collection - where to save into
    * @param entity - the entity to save
@@ -205,9 +205,9 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
-  
+
   /**
-   * 
+   *
    * @param collection
    * @param entity
    * @param failIfExist - if true - if an _id is passed in the entity and that _id already exists then the save will fail
@@ -239,9 +239,9 @@ public class MongoCRUD {
       });
     }
   }
-  
+
   /**
-   * save an object that also has a binary field - the binary field content and the fields name are passed as 
+   * save an object that also has a binary field - the binary field content and the fields name are passed as
    * separate parameters and not within the object itself
    * @param collection - collection to save object to
    * @param entity - the entity to save not including the binary field's value
@@ -249,24 +249,24 @@ public class MongoCRUD {
    * @param binaryObjFieldName - binary field name
    * @param replyHandler
    */
-  public void saveBinary(String collection, Buffer buffer, String binaryObjFieldName, 
+  public void saveBinary(String collection, Buffer buffer, String binaryObjFieldName,
       Handler<AsyncResult<String>> replyHandler){
     saveBinary(collection, buffer.getBytes(), binaryObjFieldName, replyHandler);
   }
-  
+
   /**
-   * save binary data to a field - the binary field content and the fields name are passed as 
-   * separate parameters 
+   * save binary data to a field - the binary field content and the fields name are passed as
+   * separate parameters
    * @param collection - collection to save object to
    * @param binaryObj - the binary value of the binary field
    * @param binaryObjFieldName - binary field name
    * @param replyHandler
    */
-  public void saveBinary(String collection, byte[] binaryObj, String binaryObjFieldName, 
+  public void saveBinary(String collection, byte[] binaryObj, String binaryObjFieldName,
       Handler<AsyncResult<String>> replyHandler){
 
     long start = System.nanoTime();
-    JsonObject jsonObject = new JsonObject();    
+    JsonObject jsonObject = new JsonObject();
     try {
       jsonObject.put(binaryObjFieldName, new JsonObject().put("$binary", binaryObj));
     } catch (Exception e) {
@@ -302,7 +302,7 @@ public class MongoCRUD {
       final JsonObject query = new JsonObject();
       //get records who have content existing in the requested field
       query.put(binaryField, new JsonObject("{ \"$exists\": true } "));
-      
+
       FindOptions fo = new FindOptions();
 
       if(to != null){
@@ -338,20 +338,20 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
-  
+
   /**
-   * 
+   *
    * @param collection
    * @param entities - list of pojos
    * @param replyHandler - will return a json object where the field 'n' can be checked for amount of records inserted
    */
   public void bulkInsert(String collection, List<Object> entities, Handler<AsyncResult<JsonObject>> replyHandler) {
-    
+
     JsonObject command = new JsonObject()
       .put("insert", collection)
       .put("documents", new JsonArray(entity2String(entities)))
       .put("ordered", false);
-  
+
       client.runCommand("insert", command, res -> {
       if (res.succeeded()) {
         replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
@@ -360,7 +360,7 @@ public class MongoCRUD {
       }
     });
   }
-  
+
   /**
    * delete a specific record
    * @param collection
@@ -538,10 +538,10 @@ public class MongoCRUD {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
-  
+
   /**
    * Convenience get to retrieve a specific record via id from mongo
-   * @param clazz - class of object to be returned 
+   * @param clazz - class of object to be returned
    * @param collection - collection to query
    * @param id - id of the object to return
    * @param replyHandler
@@ -587,11 +587,11 @@ public class MongoCRUD {
 
 
   /**
-   * 
+   *
    * @param collection - collection of entity to update
    * @param entity - entity to update
    * @param query - mongo native query
-   * @param addUpdateDate - whether to have mongo add a date value when the update occurs automatically  
+   * @param addUpdateDate - whether to have mongo add a date value when the update occurs automatically
    * @param replyHandler
    */
   public void update(String collection, Object entity, JsonObject query,  boolean addUpdateDate, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
@@ -605,7 +605,7 @@ public class MongoCRUD {
   }
 
   /**
-   * 
+   *
    * @param collection
    * @param entity
    * @param query
@@ -622,7 +622,7 @@ public class MongoCRUD {
     try {
       UpdateOptions options = new UpdateOptions().setUpsert(upsert);
       JsonObject update = new JsonObject();
-      
+
       JsonObject jsonObject;
       if (entity instanceof JsonObject) {
         jsonObject = (JsonObject) entity;
@@ -630,7 +630,7 @@ public class MongoCRUD {
         String obj = entity2String(entity);
         jsonObject = new JsonObject(obj);
       }
-      
+
       update.put("$set", jsonObject);
 
       if(addUpdateDate){
@@ -666,11 +666,11 @@ public class MongoCRUD {
   }
 
   /**
-   * append items to an array of objects matching the query argument 
+   * append items to an array of objects matching the query argument
    * @param collection - collection to update
    * @param arrayName - name of the array object - for example - a book object with a List of authors as a field will pass the
    * name of the authors field here - for example "authors"
-   * @param arrayEntry - a List of items to append to the existing List - for example - if a book object has a list of authors, 
+   * @param arrayEntry - a List of items to append to the existing List - for example - if a book object has a list of authors,
    * adding additional authors would have us pass a List of authors objects here
    * @param query - native mongo query to get objects to update
    * @param replyHandler
@@ -745,13 +745,13 @@ public class MongoCRUD {
       }
     });
   }
-  
+
   public void groupBy(String collection, JsonObject aggrQuery, Handler<AsyncResult<Object>> replyHandler){
     groupBy(collection, null, aggrQuery, replyHandler);
   }
-  
+
   /**
-   * pass in an aggQuery - for example: 
+   * pass in an aggQuery - for example:
    *<pre>
    *  {
    *     _id : { month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } },
@@ -766,13 +766,13 @@ public class MongoCRUD {
    * @param replyHandler
    */
   public void groupBy(String collection, Class<?> clazz, JsonObject aggrQuery, Handler<AsyncResult<Object>> replyHandler){
-    
+
     JsonObject group = new JsonObject();
     group.put("$group", aggrQuery);
-    
+
     JsonArray jar = new JsonArray();
     jar.add(group);
-    
+
     JsonObject command = new JsonObject()
     .put("aggregate", collection)
     .put("pipeline", jar);
@@ -785,15 +785,15 @@ public class MongoCRUD {
       }
     });
   }
-  
+
   /**
    * Get the Vert.x Mongo client to run additional apis exposed by the Vert.x client
-   * @return MongoClient 
+   * @return MongoClient
    */
   public MongoClient getVertxMongoClient(){
     return client;
   }
-  
+
   public void getListOfCollections(Handler<AsyncResult<List<String>>> replyHandler){
     client.getCollections( reply -> {
       if(reply.succeeded()){
@@ -804,7 +804,7 @@ public class MongoCRUD {
       }
     });
   }
-  
+
   public void startEmbeddedMongo() throws Exception {
 
     if(mongoProcess == null || !mongoProcess.isProcessRunning()){
