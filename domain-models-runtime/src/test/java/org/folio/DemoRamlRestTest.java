@@ -152,7 +152,7 @@ public class DemoRamlRestTest {
     Async async = context.async();
     MongoCRUD.getInstance(vertx).getListOfCollections(reply -> {
       if(reply.succeeded()){
-        context.assertEquals(2 , reply.result().size());
+        context.assertInRange(2 , reply.result().size(), 1);
         System.out.println("list of collection success");
       }
       else{
