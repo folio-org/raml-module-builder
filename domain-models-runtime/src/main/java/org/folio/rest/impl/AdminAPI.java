@@ -27,7 +27,7 @@ public class AdminAPI implements AdminResource {
 
   @Validate
   @Override
-  public void putAdminLoglevel(String authorization, Level level, String javaPackage, 
+  public void putAdminLoglevel(String authorization, Level level, String javaPackage,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
       throws Exception {
 
@@ -45,7 +45,7 @@ public class AdminAPI implements AdminResource {
   }
   @Validate
   @Override
-  public void getAdminLoglevel(String authorization, Handler<AsyncResult<Response>> asyncResultHandler, 
+  public void getAdminLoglevel(String authorization, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
     try {
@@ -65,7 +65,7 @@ public class AdminAPI implements AdminResource {
   }
 
   @Override
-  public void postAdminUpload(String authorization, PersistMethod persistMethod, String busAddress, String fileName, 
+  public void postAdminUpload(String authorization, PersistMethod persistMethod, String busAddress, String fileName,
       MimeMultipart entity, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     /**
@@ -76,7 +76,7 @@ public class AdminAPI implements AdminResource {
   
   @Validate
   @Override
-  public void putAdminCollstats(String authorization, Reader entity, Handler<AsyncResult<Response>> asyncResultHandler, 
+  public void putAdminCollstats(String authorization, Reader entity, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
     /**
      * calls  the MongoStatsPrinter which is a periodic hook that is run periodically to print collection stats to the log based on the collections requested

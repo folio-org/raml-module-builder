@@ -1163,5 +1163,4 @@ public class RestVerticle extends AbstractVerticle {
       }
     });
   }
-
 }
