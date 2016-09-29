@@ -73,43 +73,33 @@ import org.folio.rest.tools.messages.Messages;
 public class RestVerticle extends AbstractVerticle {
 
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
-  private static final String       UPLOAD_PATH_TO_HANDLE           = "/apis/admin/upload";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
-
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
-
+  
+  private static final String       UPLOAD_PATH_TO_HANDLE           = "/apis/admin/upload";
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
-
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
   private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept";
-
   private static final String       PACKAGE_OF_IMPLEMENTATIONS      = "org.folio.rest.impl";
   private static final String       PACKAGE_OF_HOOK_INTERFACES      = "org.folio.rest.resource.interfaces";
-
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_STREAMIN = "application/octet-stream";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
   private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
-
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
-
   private static ValidatorFactory   validationFactory;
   private static KieSession         droolsSession;
-  private final Messages            messages                        = Messages.getInstance();
-  private static final ObjectMapper mapper                          = new ObjectMapper();
-
-  private int                       port                            = -1;
-
   private static String             className                       = RestVerticle.class.getName();
-
   private static final Logger       log                             = LoggerFactory.getLogger(className);
-
+  private static final ObjectMapper MAPPER                          = new ObjectMapper();
   //we look for the class and function in the class that is mapped to a requested url
   //since we try to load via reflection an implementation of the class at runtime - better to load once and cache
   //for subsequent calls
   private static Table<String, String, ArrayList<Class<?>>> clazzCache       = HashBasedTable.create();
+  private final Messages            messages                        = Messages.getInstance();
+  private int                       port                            = -1;
 
   private EventBus eventBus;
 
@@ -447,7 +437,7 @@ public class RestVerticle extends AbstractVerticle {
             endRequestWithError(rc, 400, true,
               messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
           }
-        } finally {}
+        } finally {/*do nothing*/}
       } );
         // routes requests on “/assets/*” to resources stored in the “assets”
         // directory.
@@ -544,7 +534,7 @@ public class RestVerticle extends AbstractVerticle {
         entity = ((OutStream) entity).getData();
       }
       if (entity != null) {
-        response.write(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
+        response.write(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -745,7 +735,7 @@ public class RestVerticle extends AbstractVerticle {
     PostgresClient.stopEmbeddedPostgres();
     try {
       droolsSession.dispose();
-    } catch (Exception e) {}
+    } catch (Exception e) {/*ignore*/}
     // removes the .lck file associated with the log file
     LogUtil.closeLogger();
     runShutdownHook(v -> {
@@ -971,7 +961,7 @@ public class RestVerticle extends AbstractVerticle {
                 paramArray[order] = new StringReader(rc.getBodyAsString());
               }
               else{
-                paramArray[order] = mapper.readValue(rc.getBodyAsString(), entityClazz);
+                paramArray[order] = MAPPER.readValue(rc.getBodyAsString(), entityClazz);
               }
 
               Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray[order]);
