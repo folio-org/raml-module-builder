@@ -1,0 +1,47 @@
+<?xml version="1.0" ?>
+<!DOCTYPE module PUBLIC
+  "-//Puppy Crawl//DTD Check Configuration 1.2//EN"
+  "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
+  
+<module name="Checker">
+  <!-- <property name="cacheFile" value="target/cachefile" /> -->
+  <property name="fileExtensions" value="java, xml, json, properties" />
+  <module name="JavadocPackage" />
+  <module name="TreeWalker">
+    <property name="tabWidth" value="2" />
+    <module name="AvoidStarImport" />
+    <module name="EmptyBlock" />
+    <module name="MethodLength">
+      <property name="tokens" value="METHOD_DEF" /> <!-- max lines for a function -->
+      <property name="max" value="200" />
+    </module>
+    <module name="MethodLength">
+      <property name="tokens" value="CTOR_DEF" /> <!-- max lines for a constructor -->
+      <property name="max" value="20" />
+    </module>
+    <module name="AnonInnerLength">
+      <property name="max" value="30"/> <!-- max lines for inner class / lambda - note java spec = 20 -->
+    </module>
+    <module name="AvoidInlineConditionals"/> <!--  Some developers find inline conditionals hard to read -->
+    <module name="AvoidStaticImport"> <!-- avoid static imports as they are confusing, allow the list included below -->
+      <property name="excludes" value="java.lang.System.out,java.lang.Math.*"/>
+    </module>
+    <module name="ClassDataAbstractionCoupling"> <!-- the number of instantiations of other classes within the given class -->
+      <property name="max" value="10"/>
+    </module>
+    <module name="ConstantName"> <!-- Validates identifiers for constants (static, final fields).  -->
+      <property name="format" value="^log(ger)?|[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
+    </module>
+    <module name="DeclarationOrder"/> <!-- Class (static) variables, instance vars, constructors, methods -->
+    <module name="EmptyCatchBlock"> <!-- Checks for empty catch blocks, 
+                                except is  if exception's variable name is expected or ignore or there's any comment inside: -->
+      <property name="exceptionVariableName" value="expected|ignore"/>
+    </module>
+    <module name="VisibilityModifier"> <!-- Checks visibility of class members, allow package visibility of class members that are not
+                                static final, immutable or annotated by specified annotation members may be public -->
+      <property name="packageAllowed" value="true"/>
+    </module>
+    <module name="StaticVariableName"/> <!-- Validates identifiers for static, non-final fields. ^[a-z][a-zA-Z0-9]*$ -->
+    <module name="TypeName" /> <!-- Validates identifiers for classes, interfaces, enums, and annotations.  -->
+  </module>
+</module>
