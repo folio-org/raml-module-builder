@@ -4,9 +4,12 @@
   "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
   
 <module name="Checker">
-  <!-- <property name="cacheFile" value="target/cachefile" /> -->
   <property name="fileExtensions" value="java, xml, json, properties" />
   <module name="JavadocPackage" />
+  <module name="NewlineAtEndOfFile"/>
+  <module name="FileTabCharacter">
+    <property name="eachLine" value="true"/>
+  </module>        
   <module name="TreeWalker">
     <property name="tabWidth" value="2" />
     <module name="AvoidStarImport" />
