@@ -5,12 +5,12 @@
   
 <module name="Checker">
   <property name="fileExtensions" value="java, xml, json, properties" />
-  <module name="JavadocPackage" />
   <module name="NewlineAtEndOfFile"/>
   <module name="FileTabCharacter">
     <property name="eachLine" value="true"/>
   </module>        
   <module name="TreeWalker">
+    <module name="EmptyStatement"/>
     <property name="tabWidth" value="2" />
     <module name="AvoidStarImport" />
     <module name="EmptyBlock" />

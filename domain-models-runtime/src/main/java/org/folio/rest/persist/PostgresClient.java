@@ -51,39 +51,33 @@ import io.vertx.ext.sql.SQLConnection;
  */
 public class PostgresClient {
 
-  private static PostgresClient  instance;
-  private AsyncSQLClient         client;
-  private static ObjectMapper    mapper                   = new ObjectMapper();
-
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
-
   public static final String     ID_FIELD                 = "_id";
 
   private static final String    COUNT_CLAUSE             = " count(_id) OVER() AS count, ";
   private static final String    RETURNING_IDS            = " RETURNING _id ";
 
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
+  private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
+  private static final String   UPDATE = "UPDATE ";
+  private static final String   SET = " SET ";
+  private static final String   PASSWORD = "password";
+  private static final String   USERNAME = "username";
+  
   private static PostgresProcess postgresProcess          = null;
-
-  private Vertx                  vertx                    = null;
-
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
-
-  private static final int             EMBEDDED_POSTGRES_PORT   = 6000;
-
-  private JsonObject postgreSQLClientConfig = null;
-
+  private static PostgresClient  instance                 = null;
+  private static ObjectMapper    mapper                   = new ObjectMapper();
+  
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
-  private final Messages            messages = Messages.getInstance();
+  private Vertx vertx                       = null;
+  private JsonObject postgreSQLClientConfig = null;
+  private final Messages messages           = Messages.getInstance();
 
-  private static final String UPDATE = "UPDATE ";
-  private static final String SET = " SET ";
-  private static final String PASSWORD = "password";
-  private static final String USERNAME = "username";
-  
+  private AsyncSQLClient         client;
   
   private PostgresClient(Vertx vertx) throws Exception {
     init(vertx);

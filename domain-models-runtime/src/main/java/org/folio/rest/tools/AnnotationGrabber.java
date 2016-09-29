@@ -34,11 +34,6 @@ import com.google.common.reflect.ClassPath;
 
 public class AnnotationGrabber {
 
-  private static final String INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
-  private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
-
-  private static final String API_PREFIX             = "/apis/";
-
   public static final String  DELIMITER              = "&!!&";
   public static final String  PATH_MAPPING_FILE      = "API_PATH_MAPPINGS";
   public static final String  PATH_ANNOTATION        = "javax.ws.rs.Path";
@@ -53,21 +48,20 @@ public class AnnotationGrabber {
   public static final String  PRODUCES               = "javax.ws.rs.Produces";
   public static final String  CONSUMES               = "javax.ws.rs.Consumes";
   public static final String  METHOD_PARAMS          = "params";
-
   public static final String  POSSIBLE_HTTP_METHOD   = "javax.ws.rs.PUT|javax.ws.rs.POST|javax.ws.rs.DELETE|javax.ws.rs.GET|"
                                                          + "javax.ws.rs.OPTIONS|javax.ws.rs.HEAD|javax.ws.rs.TRACE|javax.ws.rs.CONNECT";
-
   public static final String  REPLACEMENT_FROM_REGEX = "/\\{.*?\\}/?";
   public static final String  REPLACEMENT_TO_REGEX   = "\\/([^\\/]+)\\/";
-
   public static final String  PATH_PARAM             = "@javax.ws.rs.PathParam";
   public static final String  HEADER_PARAM           = "@javax.ws.rs.HeaderParam";
   public static final String  QUERY_PARAM            = "@javax.ws.rs.QueryParam";
   public static final String  DEFAULT_PARAM          = "@javax.ws.rs.DefaultValue";
   public static final String  NON_ANNOTATED_PARAM    = "NON_ANNOTATED";
-
   public static final String  CONTENT_TYPE           = "Content-Type";
 
+  private static final String INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
+  private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
+  private static final String API_PREFIX             = "/apis/";
   // ^http.*?//.*?/apis/patrons/.*?/fines/.*
   // ^http.*?\/\/.*?\/apis\/patrons\/?(.+?)*
   // ^http.*?\/\/.*?\/apis\/([^\/]+)\/([^\/]+)(\?.*)

@@ -256,7 +256,6 @@
           <failsOnError>false</failsOnError>
           <failOnViolation>false</failOnViolation>
           <logViolationsToConsole>true</logViolationsToConsole>
-          <consoleOutput>true</consoleOutput>
           <configLocation>https://raw.githubusercontent.com/folio-org/raml-module-builder/master/codestyles.xml</configLocation>
           <cacheFile>${basedir}/target/cachefile</cacheFile>
         </configuration>

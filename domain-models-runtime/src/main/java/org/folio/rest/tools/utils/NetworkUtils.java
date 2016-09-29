@@ -49,10 +49,10 @@ public class NetworkUtils {
     } finally {
       try {
         if (out != null) { out.close(); }
-      } catch (IOException ex) {}
+      } catch (IOException ex) {/*ignore*/}
       try {
         bos.close();
-      } catch (IOException ex) {}
+      } catch (IOException ex) {/*ignore*/}
     }
   }
 

@@ -33,10 +33,6 @@ import io.vertx.ext.mongo.UpdateOptions;
 
 public class MongoCRUD {
 
-  private MongoClient               client;
-
-  private static MongoCRUD          instance;
-
   public static final String        JSON_PROP_COLLECTION    = "collection";
   public static final String        JSON_PROP_AUTHORIZATION = "authorization";
   public static final String        JSON_PROP_QUERY         = "query";
@@ -50,18 +46,17 @@ public class MongoCRUD {
   public static final String        JSON_PROP_SORT          = "sort";
   public static final String        JSON_PROP_CLASS         = "clazz";
   public static final MongodStarter MONGODB                 = getMongodStarter();
+  
   private static MongodProcess mongoProcess;
-
-  private int mongoPort = 27017;
-
-  private static ObjectMapper mapper = new ObjectMapper();
-
-  private static boolean embeddedMode = false;
-
+  private static ObjectMapper mapper      = new ObjectMapper();
+  private static boolean embeddedMode     = false;
   private static String configPath;
+  private static MongoCRUD instance;
+  
+  private static final Logger log         = LoggerFactory.getLogger(MongoCRUD.class);
 
-  private static final Logger log = LoggerFactory.getLogger(MongoCRUD.class);
-
+  private int mongoPort                   = 27017;
+  private MongoClient client;
 
   private MongoCRUD(Vertx vertx) throws Exception {
     init(vertx);

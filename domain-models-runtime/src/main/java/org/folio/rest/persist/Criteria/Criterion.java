@@ -17,31 +17,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Criterion {
 
-  private static final ObjectMapper mapper           = new ObjectMapper();
-
-  private String                    snippet          = "";
-
-  private Order                     order            = new Order();
-
-  private Limit                     limit            = new Limit();
-
-  private Offset                    offset           = new Offset();
-
-  private boolean                   whereClauseAdded = false;
+  private static final ObjectMapper MAPPER           = new ObjectMapper();
 
   HashMap<String, Select>           selects          = new HashMap<>();
 
   HashMap<String, From>             froms            = new HashMap<>();
+  
+  private String                    snippet          = "";
+  private Order                     order            = new Order();
+  private Limit                     limit            = new Limit();
+  private Offset                    offset           = new Offset();
+  private boolean                   whereClauseAdded = false;
 
   public Criterion() {
 
-  }
-
-  private void updateSnippet() {
-    if (snippet.length() > 0) {
-      snippet = snippet + " AND "; // default to AND between criterion - make
-                                   // this controllable in the future
-    }
   }
 
   public Criterion(Criteria a) {
@@ -50,6 +39,13 @@ public class Criterion {
     addCriteriaInfo(a);
   }
 
+  private void updateSnippet() {
+    if (snippet.length() > 0) {
+      snippet = snippet + " AND "; // default to AND between criterion - make
+                                   // this controllable in the future
+    }
+  }
+  
   public Criterion addCriterion(Criteria a, String op, Criteria b) {
     updateSnippet();
     snippet = snippet + "(" + a + " " + op + " " + b + ")";
@@ -114,7 +110,7 @@ public class Criterion {
     Criterion cc = new Criterion();
     try {
       if(query != null){
-        JsonNode node = mapper.readTree(query);
+        JsonNode node = MAPPER.readTree(query);
         Iterator<JsonNode> iter = node.elements();
         processQueryIntern(iter, cc);
       }
@@ -207,7 +203,6 @@ public class Criterion {
       Map.Entry<String, From> entry2 = (Map.Entry<String, From>) entry.next();
       From from = entry2.getValue();
       sb.append(from.snippet).append(" ");
-      ;
       if (from.asValue != null) {
         sb.append(" AS ").append(from.asValue).append(" ");
       }

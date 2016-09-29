@@ -54,13 +54,18 @@ public class Criteria {
   private static final Pattern NULL_OPS           = Pattern.compile("IS NOT NULL|IS NULL|ISNULL|NOTNULL",Pattern.CASE_INSENSITIVE);
   private static final Pattern JSON_OPS           = Pattern.compile("@>|#>|#>>|<@",Pattern.CASE_INSENSITIVE);
   private static final Pattern FIELD_PATTERN      = Pattern.compile("'[^']*'");
-
-  private static final Pattern valuePattern       = Pattern.compile("'\\s*?->>\\s*?'");
+  private static final Pattern VALUE_PATTERN      = Pattern.compile("'\\s*?->>\\s*?'");
 
   private static final String  GET_JSON_FIELD     = "->";
   private static final String  GET_VALUE_FIELD    = "->>";
 
-  String                       column;
+  private static final int  STRING_TYPE           = 1;
+  private static final int  BOOLEAN_TYPE          = 2;
+  private static final int  NUMERIC_TYPE          = 3;
+  private static final int  NULL_TYPE             = 4;
+  
+  int valueType                                   = 1;
+  String column;
   /**
    * field - in the format of column_name -> field -> subfield ->>
    * subfield_value for example: "'price' -> 'po_currency' ->> 'value'"
@@ -94,13 +99,6 @@ public class Criteria {
    * first field will be extracted and used as the array field
    */
   String                arrayField         = null;
-
-  static final int             STRING_TYPE        = 1;
-  static final int             BOOLEAN_TYPE       = 2;
-  static final int             NUMERIC_TYPE       = 3;
-  static final int             NULL_TYPE          = 4;
-  int                          valueType          = 1;
-
 
   @Override
   public String toString() {
