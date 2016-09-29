@@ -1,5 +1,5 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>domain-models-runtime</artifactId>
   <description></description>
@@ -23,14 +23,14 @@
     <postgresql.version>9.4.1209</postgresql.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
-  <!-- <dependencyManagement> <dependencies> <dependency> <groupId>org.hibernate.ogm</groupId>
-  <artifactId>hibernate-ogm-bom</artifactId> <type>pom</type> <version>4.2.0.Final</version>
-  <scope>import</scope> </dependency> </dependencies> </dependencyManagement> -->
+  <!-- <dependencyManagement> <dependencies> <dependency> <groupId>org.hibernate.ogm</groupId> 
+    <artifactId>hibernate-ogm-bom</artifactId> <type>pom</type> <version>4.2.0.Final</version> 
+    <scope>import</scope> </dependency> </dependencies> </dependencyManagement> -->
   <dependencies>
-    <!-- <dependency> <groupId>org.hibernate.ogm</groupId> <artifactId>hibernate-ogm-mongodb</artifactId>
-    </dependency> <dependency> <groupId>org.jboss.jbossts</groupId> <artifactId>jbossjta</artifactId>
-    </dependency> <dependency> <groupId>org.hibernate</groupId> <artifactId>hibernate-jpamodelgen</artifactId>
-    <version>5.1.0.Final</version> </dependency> -->
+    <!-- <dependency> <groupId>org.hibernate.ogm</groupId> <artifactId>hibernate-ogm-mongodb</artifactId> 
+      </dependency> <dependency> <groupId>org.jboss.jbossts</groupId> <artifactId>jbossjta</artifactId> 
+      </dependency> <dependency> <groupId>org.hibernate</groupId> <artifactId>hibernate-jpamodelgen</artifactId> 
+      <version>5.1.0.Final</version> </dependency> -->
 
     <dependency>
       <groupId>io.vertx</groupId>
@@ -138,8 +138,8 @@
 
 
   <build>
-    <!-- <extensions> <extension> <groupId>org.hibernate</groupId> <artifactId>hibernate-jpamodelgen</artifactId>
-    <version>5.1.0.Final</version> </extension> </extensions> -->
+    <!-- <extensions> <extension> <groupId>org.hibernate</groupId> <artifactId>hibernate-jpamodelgen</artifactId> 
+      <version>5.1.0.Final</version> </extension> </extensions> -->
     <resources>
       <resource>
         <directory>src/main/resources</directory>
@@ -258,6 +258,20 @@
                 </resource>
               </resources>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

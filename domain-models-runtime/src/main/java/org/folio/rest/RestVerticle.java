@@ -153,7 +153,7 @@ public class RestVerticle extends AbstractVerticle {
 
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
 
-    MetricsService metricsService = MetricsService.create(vertx);
+    /**MetricsService metricsService = MetricsService.create(vertx);*/
 
     // maps paths found in raml to the generated functions to route to when the paths are requested
     MappedClasses mappedURLs = populateConfig();

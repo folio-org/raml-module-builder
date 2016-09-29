@@ -88,7 +88,9 @@ public class FileUploadsUtil {
     int paramCount = 0;
 
     // if the file they are trying to upload is too big, throw an exception
-    if(contentLength > sizeLimit) throw new IOException("File has exceeded size limit.");
+    if(contentLength > sizeLimit) {
+      throw new IOException("File has exceeded size limit.");
+    }
 
     byte[] bytes = buffer.getBytes();
 
