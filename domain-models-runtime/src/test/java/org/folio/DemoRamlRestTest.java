@@ -106,16 +106,16 @@ public class DemoRamlRestTest {
   @Test
   public void test(TestContext context) throws Exception {
     //check GET
-    checkURLs(context, "http://localhost:" + port + "/apis/books?author=me", 200);
-    checkURLs(context, "http://localhost:" + port + "/apis/books", 400);
+    checkURLs(context, "http://localhost:" + port + "/books?author=me", 200);
+    checkURLs(context, "http://localhost:" + port + "/books", 400);
 
     //update periodic handler (MongoStatsPrinter) with which collection to print stats for and at which interval
-    postData(context, "http://localhost:" + port + "/apis/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, true);
+    postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, true);
 
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/apis/admin/upload", getBody("uploadtest.json", true), 400, false);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204, false);
-    postData(context, "http://localhost:" + port + "/apis/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204, false);
+    postData(context, "http://localhost:" + port + "/admin/upload", getBody("uploadtest.json", true), 400, false);
+    postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204, false);
+    postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204, false);
 
     List<Object> list = getListOfBooks();
 
