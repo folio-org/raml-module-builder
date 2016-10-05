@@ -670,7 +670,7 @@ public class RestVerticle extends AbstractVerticle {
     if(cachedClazz != null){
       log.debug("returned " +cachedClazz.size()+" class/es from cache");
       return cachedClazz;
-    }    
+    }
     ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
     ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
     for (ClassPath.ClassInfo info : classes) {
@@ -684,7 +684,7 @@ public class RestVerticle extends AbstractVerticle {
             throw new RuntimeException("Duplicate implementation of " + interface2check + " in " + implDir + ": " + impl.get(0).getName() + ", "
                 + clazz.getName());
           }
-          impl.add(clazz);          
+          impl.add(clazz);
         }
       } catch (ClassNotFoundException e) {
         log.error(e.getMessage(), e);
@@ -790,7 +790,7 @@ public class RestVerticle extends AbstractVerticle {
             }
           }
         });
-      }      
+      }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
       LogUtil.formatLogMessage(getClass().getName(), "runPeriodicHook", "no periodic implementation found, continuing with deployment");

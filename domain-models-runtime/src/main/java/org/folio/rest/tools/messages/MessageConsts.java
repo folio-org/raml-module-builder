@@ -16,6 +16,7 @@ public enum MessageConsts implements MessageEnum {
   FileUploadError("10011"),
   NoRecordsUpdated("10012"),
   Timer("10013");
+
   private String code;
 
   private MessageConsts(String code){
