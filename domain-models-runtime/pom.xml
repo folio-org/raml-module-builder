@@ -23,13 +23,13 @@
     <postgresql.version>9.4.1209</postgresql.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
-  <!-- <dependencyManagement> <dependencies> <dependency> <groupId>org.hibernate.ogm</groupId>
-    <artifactId>hibernate-ogm-bom</artifactId> <type>pom</type> <version>4.2.0.Final</version>
+  <!-- <dependencyManagement> <dependencies> <dependency> <groupId>org.hibernate.ogm</groupId> 
+    <artifactId>hibernate-ogm-bom</artifactId> <type>pom</type> <version>4.2.0.Final</version> 
     <scope>import</scope> </dependency> </dependencies> </dependencyManagement> -->
   <dependencies>
-    <!-- <dependency> <groupId>org.hibernate.ogm</groupId> <artifactId>hibernate-ogm-mongodb</artifactId>
-      </dependency> <dependency> <groupId>org.jboss.jbossts</groupId> <artifactId>jbossjta</artifactId>
-      </dependency> <dependency> <groupId>org.hibernate</groupId> <artifactId>hibernate-jpamodelgen</artifactId>
+    <!-- <dependency> <groupId>org.hibernate.ogm</groupId> <artifactId>hibernate-ogm-mongodb</artifactId> 
+      </dependency> <dependency> <groupId>org.jboss.jbossts</groupId> <artifactId>jbossjta</artifactId> 
+      </dependency> <dependency> <groupId>org.hibernate</groupId> <artifactId>hibernate-jpamodelgen</artifactId> 
       <version>5.1.0.Final</version> </dependency> -->
 
     <dependency>
@@ -138,7 +138,7 @@
 
 
   <build>
-    <!-- <extensions> <extension> <groupId>org.hibernate</groupId> <artifactId>hibernate-jpamodelgen</artifactId>
+    <!-- <extensions> <extension> <groupId>org.hibernate</groupId> <artifactId>hibernate-jpamodelgen</artifactId> 
       <version>5.1.0.Final</version> </extension> </extensions> -->
     <resources>
       <resource>

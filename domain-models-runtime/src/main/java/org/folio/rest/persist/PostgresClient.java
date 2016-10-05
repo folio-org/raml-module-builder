@@ -64,13 +64,13 @@ public class PostgresClient {
   private static final String   SET = " SET ";
   private static final String   PASSWORD = "password";
   private static final String   USERNAME = "username";
-
+  
   private static PostgresProcess postgresProcess          = null;
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
   private static PostgresClient  instance                 = null;
   private static ObjectMapper    mapper                   = new ObjectMapper();
-
+  
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
   private Vertx vertx                       = null;
@@ -78,7 +78,7 @@ public class PostgresClient {
   private final Messages messages           = Messages.getInstance();
 
   private AsyncSQLClient         client;
-
+  
   private PostgresClient(Vertx vertx) throws Exception {
     init(vertx);
   }
@@ -242,7 +242,7 @@ public class PostgresClient {
         } catch (Exception e) {
           log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -296,7 +296,7 @@ public class PostgresClient {
         } catch (Exception e) {
           log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -315,14 +315,14 @@ public class PostgresClient {
    *    (see postgres query syntax for more examples in the read.me
    * </pre>
    * 2. Simple Criterion
-   * <pre>
+   * <pre> 
    *    Criteria b = new Criteria();
    *    b.field.add("'note'");
    *    b.operation = "=";
    *    b.value = "a";
    *    b.isArray = true; //denotes that the queried field is an array with multiple values
    *    Criterion a = new Criterion(b);
-   * </pre>
+   * </pre>  
    * 3. For a boolean field called rush = false OR note[] contains 'a'
    * <pre>
    *    Criteria d = new Criteria();
@@ -331,7 +331,7 @@ public class PostgresClient {
    *    d.value = null;
    *    Criterion a = new Criterion();
    *    a.addCriterion(d, Criteria.OP_OR, b);
-   * </pre>
+   * </pre>   
    * 4. for the following json:
    * <pre>
    *      "price": {
@@ -341,12 +341,12 @@ public class PostgresClient {
    *           "desc": "US Dollar"
    *         }
    *       },
-   *
+   * 
    *    Criteria c = new Criteria();
    *    c.addField("'price'").addField("'po_currency'").addField("'value'");
    *    c.operation = Criteria.OP_LIKE;
    *    c.value = "USD";
-   *
+   * 
    * </pre>
    * @param table - table to update
    * @param entity - pojo to set for matching records
@@ -354,7 +354,7 @@ public class PostgresClient {
    * @param returnUpdatedIds - return ids of updated records
    * @param replyHandler
    * @throws Exception
-   *
+   *    
    */
   public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds, Handler<AsyncResult<String>> replyHandler)
       throws Exception {
@@ -392,7 +392,7 @@ public class PostgresClient {
   }
 
   /**
-   * update a section / field / object in the pojo -
+   * update a section / field / object in the pojo - 
    * <br>
    * for example:
    * <br> if a json called po_line contains the following field
@@ -403,28 +403,28 @@ public class PostgresClient {
    *     },
    * </pre>
    *  this translates into a po_line_status object within the po_line object - to update the entire object / section
-   *  create an updateSection object pushing into the section the po line status as the field and the value (string / json / etc...) to replace it with
+   *  create an updateSection object pushing into the section the po line status as the field and the value (string / json / etc...) to replace it with 
    *  <pre>
-   *  a = new UpdateSection();
+   *  a = new UpdateSection(); 
    *  a.addField("po_line_status");
    *  a.setValue(new JsonObject("{\"value\":\"SOMETHING_NEW4\",\"desc\":\"sent to vendor again\"}"));
    *  </pre>
-   * Note that postgres does not update inplace the json but rather will create a new json with the
+   * Note that postgres does not update inplace the json but rather will create a new json with the 
    * updated section and then reference the id to that newly created json
    * <br>
    * Queries generated will look something like this:
    * <pre>
-   *
+   * 
    * update test.po_line set jsonb = jsonb_set(jsonb, '{po_line_status}', '{"value":"SOMETHING_NEW4","desc":"sent to vendor"}') where _id = 19;
    * update test.po_line set jsonb = jsonb_set(jsonb, '{po_line_status, value}', '"SOMETHING_NEW5"', false) where _id = 15;
    * </pre>
-   *
+   * 
    * @param table - table to update
    * @param section - see UpdateSection class
    * @param when - Criterion object
    * @param replyHandler
    * @throws Exception
-   *
+   * 
    */
   public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
       Handler<AsyncResult<String>> replyHandler) throws Exception {
@@ -452,7 +452,7 @@ public class PostgresClient {
         } catch (Exception e) {
           log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -482,7 +482,7 @@ public class PostgresClient {
         } catch (Exception e) {
           log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -517,7 +517,7 @@ public class PostgresClient {
         } catch (Exception e) {
           log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -525,7 +525,7 @@ public class PostgresClient {
   }
 
   /**
-   * pass in an entity that is fully / partially populated and the query will return all records matching the
+   * pass in an entity that is fully / partially populated and the query will return all records matching the 
    * populated fields in the entity
    *
    * @param table
@@ -567,7 +567,7 @@ public class PostgresClient {
   /**
    * select query
    * @param table - table to query
-   * @param clazz - class of objects to be returned
+   * @param clazz - class of objects to be returned 
    * @param filter - see Criterion class
    * @param returnCount - whether to return the amount of records matching the query
    * @param replyHandler
@@ -658,7 +658,7 @@ public class PostgresClient {
         } catch (Exception e) {
           log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -688,7 +688,7 @@ public class PostgresClient {
         } catch (Exception e) {
           log.error(e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
+        } 
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
@@ -703,7 +703,7 @@ public class PostgresClient {
    * Example:
    *  postgresClient.startTx(beginTx -> {
    *        try {
-   *          postgresClient.mutate(beginTx, sql, reply -> {...
+   *          postgresClient.mutate(beginTx, sql, reply -> {... 
    */
   @SuppressWarnings("unchecked")
   public void mutate(Object conn, String sql, Handler<AsyncResult<String>> replyHandler){
@@ -720,7 +720,7 @@ public class PostgresClient {
     } catch (Exception e) {
       log.error(e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-    }
+    } 
   }
 
   // JsonNode node =

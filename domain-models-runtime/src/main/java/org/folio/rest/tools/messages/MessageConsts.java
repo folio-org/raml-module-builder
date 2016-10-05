@@ -14,7 +14,8 @@ public enum MessageConsts implements MessageEnum {
   ImportFailed("10009"),
   InvalidURLPath("10010"),
   FileUploadError("10011"),
-  NoRecordsUpdated("10012");
+  NoRecordsUpdated("10012"),
+  Timer("10013");
 
   private String code;
 

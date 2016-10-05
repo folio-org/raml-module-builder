@@ -737,7 +737,7 @@ https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio
 https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/folio/rest/impl/ConfigAPI.java
 
 #### Collection statistics
-The /admin interface that comes with the runtime framework exposes an api to allow the printing of statistics of specific collections to the log.
+The /admin interface that comes with the runtime framework exposes an api to allow the printing of statistics of specific collections to the log. 
 
 Access the path `/admin/collstats`  via (PUT) with the body containing the collection to print statistics for and at which interval.
 
@@ -757,7 +757,7 @@ non-embedded mongoDB can be placed in `resources/postgres-conf.json` or passed
 via the command line.
 
 The runtime framework exposes a postgreSQL async client which offers CRUD
-operations in an ORM type fashion.
+operations in an ORM type fashion.  
 https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/persist/PostgresClient.java
 
 **Important Note:** The PostgreSQL client currently implemented assumes

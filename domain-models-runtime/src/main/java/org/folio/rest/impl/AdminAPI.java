@@ -72,8 +72,8 @@ public class AdminAPI implements AdminResource {
      * THIS FUNCTION WILL NEVER BE CALLED - HANDLED IN THE RestVerticle class
      */
   }
-
-
+  
+  
   @Validate
   @Override
   public void putAdminCollstats(String authorization, Reader entity, Handler<AsyncResult<Response>> asyncResultHandler,
@@ -106,7 +106,7 @@ public class AdminAPI implements AdminResource {
   public void putAdminJstack(String authorization, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
       throws Exception {
     // TODO Auto-generated method stub
-
+    
   }
 
   @Override
@@ -130,7 +130,7 @@ public class AdminAPI implements AdminResource {
                 dump.append(stackTraceElement);
             }
             dump.append("</br></br>");
-          }
+          } 
           dump.append("</body></html>");
           code.complete(dump);
         } catch (Exception e) {
@@ -138,7 +138,7 @@ public class AdminAPI implements AdminResource {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse
             .withPlainInternalServerError("ERROR" + e.getMessage())));
         }
-      }, result -> {
+      }, result -> {     
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse
           .withHtmlOK(result.result().toString())));
       });

@@ -30,7 +30,7 @@ public class Messages {
   public static final String      INFRA_MESSAGES_DIR     = "infra-messages";
   public static final String      MESSAGES_DIR           = "messages";
   public static final String      DEFAULT_LANGUAGE       = "en";
-
+  
   private static final Logger log = LoggerFactory.getLogger(Messages.class);
   // language + code = text
   private Map<String, Properties> messageMap       = new HashMap<>();

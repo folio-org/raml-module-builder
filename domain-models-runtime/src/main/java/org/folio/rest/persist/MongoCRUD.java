@@ -266,7 +266,7 @@ public class MongoCRUD {
       Handler<AsyncResult<String>> replyHandler){
 
     long start = System.nanoTime();
-    JsonObject jsonObject = new JsonObject();
+    JsonObject jsonObject = new JsonObject();    
     try {
       jsonObject.put(binaryObjFieldName, new JsonObject().put("$binary", binaryObj));
     } catch (Exception e) {
@@ -491,7 +491,7 @@ public class MongoCRUD {
    * @param mongoQueryString - native mongo query to query with
    * @param replyHandler
    */
-  public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
+  public void get(String clazz, String collection, Integer from, Integer to, JsonObject mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
 
     long start = System.nanoTime();
 
@@ -508,7 +508,7 @@ public class MongoCRUD {
         fo.setSkip(from);
       }
       if(mongoQueryString != null){
-        query.mergeIn(new JsonObject(mongoQueryString));
+        query.mergeIn(mongoQueryString);
       }
       client.findWithOptions(collection, query, fo, res -> {
         if (res.succeeded()) {
@@ -539,6 +539,10 @@ public class MongoCRUD {
     }
   }
 
+  public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
+    get(clazz, collection, from, to, new JsonObject(mongoQueryString), replyHandler);
+  }
+  
   /**
    * Convenience get to retrieve a specific record via id from mongo
    * @param clazz - class of object to be returned

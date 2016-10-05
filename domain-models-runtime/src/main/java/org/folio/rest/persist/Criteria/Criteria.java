@@ -39,12 +39,12 @@ public class Criteria {
   public static final String   OP_GREATER_THAN_EQ = ">=";
   public static final String   OP_LESS_THAN       = "<";
   public static final String   OP_LESS_THAN_EQ    = "<=";
-  public static final String   OP_JSON_LESS_THAN_EQ = "@>";// contains json with json "field"
+  public static final String   OP_JSON_LESS_THAN_EQ = "@>";// contains json with json "field" 
                      //field price has json entry matching the value passed in [{"field":"'price'","value":{"sum": "150.0"},"op":"@>"}]
   public static final String   OP_NOT             = "NOT"; //[{"field":"'po_line_status'->>'value'","value":"fa(l|t)se","op":"SIMILAR TO"}, {"op":"NOT"}]
   public static final String   OP_OR              = "OR";
   public static final String   OP_AND             = "AND";
-
+  
   private static final String  ARRAY_FROM_CLAUSE  = "jsonb_array_elements";//("jsonb->'fund_distributions'[]->'amount'->>'sum'")
 
   private static final Pattern STRING_PATTERN     = Pattern.compile("\"[^\"]*\"");
@@ -63,7 +63,7 @@ public class Criteria {
   private static final int  BOOLEAN_TYPE          = 2;
   private static final int  NUMERIC_TYPE          = 3;
   private static final int  NULL_TYPE             = 4;
-
+  
   int valueType                                   = 1;
   String column;
   /**
