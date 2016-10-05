@@ -29,6 +29,7 @@ import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +76,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
-  
+  public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/apis/admin/upload";
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
@@ -856,6 +857,16 @@ public class RestVerticle extends AbstractVerticle {
           } catch (Exception e) {
             // any problems - print exception and continue
             e.printStackTrace();
+          }
+        }
+        else{
+          //assume module specific cmd line args with '=' separator
+          String []arg = param.split("=");
+          if(arg.length == 2){
+            MODULE_SPECIFIC_ARGS.put(arg[0], arg[1]);
+          }
+          else{
+            log.warn("The following cmd line parameter was skipped, " + param + ". Expected format key=value");
           }
         }
       }
