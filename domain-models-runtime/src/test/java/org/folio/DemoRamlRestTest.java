@@ -347,9 +347,7 @@ public class DemoRamlRestTest {
         @Override
         public void handle(HttpClientResponse httpClientResponse) {
 
-          if (httpClientResponse.statusCode() == codeExpected) {
-            context.assertTrue(true);
-          }
+          context.assertTrue(httpClientResponse.statusCode() == codeExpected);
           async.complete();
         }
       });
