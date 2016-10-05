@@ -2,9 +2,13 @@ package org.folio.rest.persist;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.folio.rest.tools.utils.NetworkUtils;
+
 import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
@@ -88,6 +92,9 @@ public class MongoCRUD {
     if (instance == null) {
       try {
         instance = new MongoCRUD(vertx);
+        //do not fail the mapping between json and objects if there is a missing property in the
+        //object at this point
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
       } catch (Exception e) {
         e.printStackTrace();
       }
@@ -907,6 +914,10 @@ public class MongoCRUD {
     }
   }
 
+  public static JsonObject buildJson(String returnClazz, String collection, JsonObject query, String orderBy, Object order){    
+    return buildJson(returnClazz, collection, query, orderBy, order, -1, -1);
+  }
+  
   public static JsonObject buildJson(String returnClazz, String collection, String query){
     return buildJson(returnClazz, collection, query, null, null, -1 ,-1);
   }
