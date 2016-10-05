@@ -107,12 +107,8 @@ public class AnnotationGrabber {
           // function
           for (Method method : type.getDeclaredMethods()) {
             Object value = method.invoke(annotations[i], (Object[]) null);
-            //System.out.println(" " + method.getName() + ": " + value);
-            // add entry with the actual url to this function - for example:
-            // "url2class": "/apis/bibs/" - this will be concated to any method
-            // url
             if (PATH_ANNOTATION.equals(type.getName())) {
-              classSpecificMapping.put(CLASS_URL, "/" + value);
+              classSpecificMapping.put(CLASS_URL, "^/" + value);
             }
 
           }

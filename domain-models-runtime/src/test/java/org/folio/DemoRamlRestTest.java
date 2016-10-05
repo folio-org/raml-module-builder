@@ -108,6 +108,7 @@ public class DemoRamlRestTest {
     //check GET
     checkURLs(context, "http://localhost:" + port + "/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/books", 400);
+    checkURLs(context, "http://localhost:" + port + "/x/books", 400); // should be 404
 
     //update periodic handler (MongoStatsPrinter) with which collection to print stats for and at which interval
     postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, true);
