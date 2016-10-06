@@ -47,10 +47,10 @@ The framework consists of a number of tools:
    - The runtime framework also exposes hooks that allow developers to
      implement one-time jobs, scheduled tasks, etc.
 
-   - Provides tooling (postgres client, mongodb client, etc.) for developers
+   - Provides tooling (Postgres client, MongoDB client, etc.) for developers
      to use while developing their module.
 
-   - Runtime library runs a vertx verticle.
+   - Runtime library runs a Vert.x verticle.
 
 4. rules - Basic Drools functionality allowing module developers to create
    validation rules via .drl files for objects (JSON schemas).
@@ -113,7 +113,7 @@ Sample projects:
 Clone / download the framework:
 
 - raml-module-builder - this is the core framework that can be used to help
-  developers quickly get a vertx based module up and running. Build via
+  developers quickly get a Vert.x based module up and running. Build via
   `mvn clean install` which will create all the needed jars for the framework.
 
 Clone / download the Circulation sample module -
@@ -153,7 +153,7 @@ To run the circulation module, navigate to the `/target/` directory and do
 - `embed_postgres=true` (Optional - defaults to false)
 
 - `db_connection=[path]` (Optional - path to an external JSON config file with
-  connection parameters to a postgreSQL DB)
+  connection parameters to a PostgreSQL DB)
 
   - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
     "username":"postgres","password":"mysecretpassword", "database":"postgres",
@@ -723,13 +723,13 @@ https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/fol
 
 ## MongoDB integration
 
-By default an embedded mongoDB is included in the runtime but is not run by
+By default an embedded MongoDB is included in the runtime but is not run by
 default. To change that add `embed_mongo=true` to the command line
 (`java -jar circulation-fat.jar embed_mongo=true`). Connection parameters to a
-non-embedded mongoDB can be placed in `resources/mongo-conf.json` or passed
+non-embedded MongoDB can be placed in `resources/mongo-conf.json` or passed
 via the command line.
 
-The runtime framework exposes a mongoDB async client which offers CRUD
+The runtime framework exposes a MongoDB async client which offers CRUD
 operations in an ORM type fashion. Please see `/domain-models-runtime/src/main/java/org/folio/rest/persist/MongoCRUD.java` for the available APIs exposed.
 
 Extensive usage examples can be found in the following classes:
@@ -737,7 +737,7 @@ https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio
 https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/folio/rest/impl/ConfigAPI.java
 
 #### Collection statistics
-The /admin interface that comes with the runtime framework exposes an api to allow the printing of statistics of specific collections to the log. 
+The /admin interface that comes with the runtime framework exposes an api to allow the printing of statistics of specific collections to the log.
 
 Access the path `/apis/admin/collstats`  via (PUT) with the body containing the collection to print statistics for and at which interval.
 
@@ -753,16 +753,16 @@ By default an embedded PostgreSQL is included in the runtime, but is not run by
 default. To change that add `embed_postgres=true` to the command line
 (`java -jar circulation-fat.jar embed_postgres=true`).
 Connection parameters to a
-non-embedded mongoDB can be placed in `resources/postgres-conf.json` or passed
+non-embedded MongoDB can be placed in `resources/postgres-conf.json` or passed
 via the command line.
 
-The runtime framework exposes a postgreSQL async client which offers CRUD
-operations in an ORM type fashion.  
+The runtime framework exposes a PostgreSQL async client which offers CRUD
+operations in an ORM type fashion.
 https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/persist/PostgresClient.java
 
 **Important Note:** The PostgreSQL client currently implemented assumes
 JSONB tables in PostgreSQL. This is not mandatory and developers can work with
-regular postgreSQL tables but will need to implement their own data access
+regular PostgreSQL tables but will need to implement their own data access
 layer.
 
 Currently the expected format is:
@@ -814,11 +814,11 @@ https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java
 
 ## Query Syntax
 
-Note for modules using the built-in mongoDB client / Postgres client support:
-Query syntax varies depending on whether the module is a mongoDB or a
-postgreSQL backed module.
+Note for modules using the built-in MongoDB client / Postgres client support:
+Query syntax varies depending on whether the module is a MongoDB or a
+PostgreSQL backed module.
 
-***For mongoDB*** backed modules, the native mongoDB syntax should be passed in
+***For MongoDB*** backed modules, the native MongoDB syntax should be passed in
 the query string as a parameter.
 
 An example from the Circulation sample module:
@@ -827,7 +827,7 @@ An example from the Circulation sample module:
 For usage examples, see:
 https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/PatronAPI.java
 
-***For postgreSQL*** backed modules, the following JSON format can be sent:
+***For PostgreSQL*** backed modules, the following JSON format can be sent:
 `[{"field":"''","value":"","op":""}]`
 
 Some examples:
