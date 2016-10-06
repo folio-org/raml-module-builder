@@ -61,7 +61,7 @@ public class AnnotationGrabber {
 
   private static final String INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
   private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
-  private static final String API_PREFIX             = "/apis/";
+
   // ^http.*?//.*?/apis/patrons/.*?/fines/.*
   // ^http.*?\/\/.*?\/apis\/patrons\/?(.+?)*
   // ^http.*?\/\/.*?\/apis\/([^\/]+)\/([^\/]+)(\?.*)
@@ -107,12 +107,8 @@ public class AnnotationGrabber {
           // function
           for (Method method : type.getDeclaredMethods()) {
             Object value = method.invoke(annotations[i], (Object[]) null);
-            //System.out.println(" " + method.getName() + ": " + value);
-            // add entry with the actual url to this function - for example:
-            // "url2class": "/apis/bibs/" - this will be concated to any method
-            // url
             if (PATH_ANNOTATION.equals(type.getName())) {
-              classSpecificMapping.put(CLASS_URL, API_PREFIX + value);
+              classSpecificMapping.put(CLASS_URL, "^/" + value);
             }
 
           }

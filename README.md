@@ -649,7 +649,7 @@ To create an api that allows file uploads, do one of the following:
 
 ### Option 1
 
-Use the `/apis/admin/upload` url which every module using the platform inherits. This will stream a file to the `java.io.tmpdir` directory and can optionally send a notification when the upload completes via the vertx event bus.
+Use the `/admin/upload` url which every module using the platform inherits. This will stream a file to the `java.io.tmpdir` directory and can optionally send a notification when the upload completes via the vertx event bus.
 
  - The RAML file `/resources/raml/admin.raml` describes the API parameters.
  - Example of a listening service waiting for notifications:
@@ -747,7 +747,7 @@ Extensive usage examples can be found in the following classes:
 
 The /admin interface that comes with the runtime framework exposes an api to allow the printing of statistics of specific collections to the log.
 
-Access the path `/apis/admin/collstats`  via (PUT) with the body containing the collection to print statistics for and at which interval.
+Access the path `/admin/collstats`  via (PUT) with the body containing the collection to print statistics for and at which interval.
 
 For example, passing the following in the body will print stats to the log for the patron and the bib_data collections every minute.
 
@@ -832,7 +832,7 @@ PostgreSQL backed module.
 the query string as a parameter.
 
 An example from the Circulation sample module:
-`http://localhost:8081/apis/patrons?query={"$and":[{"total_loans": { "$lt": 60 } }, { "contact_info.patron_address_local.city": "London" } ]}`
+`http://localhost:8081/patrons?query={"$and":[{"total_loans": { "$lt": 60 } }, { "contact_info.patron_address_local.city": "London" } ]}`
 
 For usage examples, see:
 https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/PatronAPI.java
@@ -842,7 +842,7 @@ https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio
 
 Some examples:
 ```sh
-http://localhost:8081/apis/po_lines?query=[{"field":"'po_line_status'->>'value'","value":"fa(l|t)se","op":"SIMILAR TO"}]
+http://localhost:8081/po_lines?query=[{"field":"'po_line_status'->>'value'","value":"fa(l|t)se","op":"SIMILAR TO"}]
 
 [{"field":"'fund_distributions'->'amount'->>'sum'","value":120,"op":">"}]
 [{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]
@@ -960,17 +960,17 @@ For example:
 
 Change log level of all classes to FINE
 
-(PUT) `http://localhost:8081/apis/admin/loglevel?level=FINE`
+(PUT) `http://localhost:8081/admin/loglevel?level=FINE`
 
 Get log level of all classes
 
-(GET) `http://localhost:8081/apis/admin/loglevel`
+(GET) `http://localhost:8081/admin/loglevel`
 
 A `java_package` parameter can also be passed to change the log level of a specific package. For Example:
 
- `http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.MongoCRUD`
+ `http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.MongoCRUD`
 
- `http://localhost:8081/apis/admin/loglevel?level=INFO&java_package=org.folio.rest.persist`
+ `http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist`
 
 
 ## A Little More on Validation
@@ -1025,7 +1025,7 @@ Have these in the headers - currently not validated hence not mandatory:
 ### Example 1: Add a fine to a patron (post)
 
 ```
-http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
+http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 {
   "fine_amount": 10,
   "fine_outstanding": 0,
@@ -1045,31 +1045,31 @@ http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
 ### Example 2: Get fines for patron with id
 
 ```
-http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
+http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 ```
 
 ### Example 3: Get a specific patron
 
 ```
-http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba
+http://localhost:8080/patrons/56dbe25ea12958478cec42ba
 ```
 
 ### Example 4: Get all patrons
 
 ```
-http://localhost:8080/apis/patrons
+http://localhost:8080/patrons
 ```
 
 ### Example 5: Delete a patron (delete)
 
 ```
-http://localhost:8080/apis/patrons/56dbe791a129584a506fb41a
+http://localhost:8080/patrons/56dbe791a129584a506fb41a
 ```
 
 ### Example 6: Add a patron (post)
 
 ```
-http://localhost:8080/apis/patrons
+http://localhost:8080/patrons
 {
  "status": "ACTIVE",
  "patron_name": "Smith,John",

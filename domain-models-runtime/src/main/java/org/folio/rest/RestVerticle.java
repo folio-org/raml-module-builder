@@ -77,9 +77,9 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
-  public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
-  private static final String       UPLOAD_PATH_TO_HANDLE           = "/apis/admin/upload";
-  private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
+  public static final HashMap<String, String> MODULE_SPECIFIC_ARGS = new HashMap<>();
+  private static final String UPLOAD_PATH_TO_HANDLE = "/admin/upload";
+  private static final String CORS_ALLOW_HEADER = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
   private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept";
@@ -197,7 +197,7 @@ public class RestVerticle extends AbstractVerticle {
         }
 
         //single handler for all url calls
-        router.route("/apis/*").handler(rc -> {
+        router.route("/*").handler(rc -> {
           long start = System.nanoTime();
           try {
             //list of regex urls created from urls declared in the raml
