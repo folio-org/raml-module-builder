@@ -320,7 +320,7 @@ public class RestVerticle extends AbstractVerticle {
                     }
 
                     /**
-                     * file upload requested (multipart/form-data) but the url is not to the /apis/admin/upload
+                     * file upload requested (multipart/form-data) but the url is not to the /admin/upload
                      * meaning, an implementing module is using its own upload handling, so read the content and
                      * pass to implementing function just like any other call
                      */
