@@ -65,14 +65,14 @@ The framework consists of a number of tools:
 
 ### Implement the interfaces
 
-For example – note the validation annotations generated based on the constraints in the RAML.
+For example, note the validation annotations generated based on the constraints in the RAML.
 
 ![](images/interface_example.png)
 
 - When implementing the interfaces, you must add the @Validate
   annotation to enforce the annotated constraints declared by the interface.
 
-- Note that a Bib entity was passed as a parameter – the runtime framework
+- Note that a Bib entity was passed as a parameter. The runtime framework
   transforms the JSON passed in the body to the correct POJO.
 
 ### Set up your pom.xml
@@ -89,7 +89,7 @@ more maven plugins:
 
 - Add the `maven-shade-plugin` to your pom, indicating the main class to
   run as `RestLauncher` and main verticle as `RestVerticle`. This will create a
-  runnable jar with the runtime’s `RestVerticle` serving as the main class.
+  runnable jar with the runtime's `RestVerticle` serving as the main class.
 
 ### Build and run
 
@@ -340,7 +340,7 @@ Create JSON schemas indicating the objects exposed by the module:
 Four plugins should be declared in the pom.xml file:
 
 - The aspect plugin, which will pre-compile your code with validation aspects
-  provided by the framework - remember the **@Validate** annotation. The
+  provided by the framework - remember the `@Validate` annotation. The
   validation supplied by the framework verifies that headers are passed
   correctly, parameters are of the correct type and contain the correct content
   as indicated by the RAML file.
