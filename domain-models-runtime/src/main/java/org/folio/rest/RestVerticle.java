@@ -68,6 +68,7 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.AnnotationGrabber;
+import org.folio.rest.tools.ReturnStatusConsts;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 
@@ -617,40 +618,6 @@ public class RestVerticle extends AbstractVerticle {
     return string.substring(0, index) + replacement + string.substring(index + substring.length());
   }
 
-
-/*  private static Class<?> convert2Impl(String implDir, String interface2check) throws IOException, ClassNotFoundException {
-    Class<?> cachedClazz = clazzCache.get(implDir, interface2check);
-    if(cachedClazz != null){
-      log.debug("returned class from cache " + cachedClazz.getName());
-      return cachedClazz;
-    }
-    ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
-    ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
-    Class<?> impl = null;
-    for (ClassPath.ClassInfo info : classes) {
-      try {
-        Class<?> clazz = Class.forName(info.getName());
-        for (Class<?> anInterface : clazz.getInterfaces()) {
-          if (!anInterface.getName().equals(interface2check)) {
-            continue;
-          }
-          if (impl != null) {
-            throw new RuntimeException("Duplicate implementation of " + interface2check + " in " + implDir + ": " + impl.getName() + ", "
-                + clazz.getName());
-          }
-          impl = clazz;
-        }
-      } catch (ClassNotFoundException e) {
-        log.error(e.getMessage(), e);
-        e.printStackTrace();
-      }
-    }
-    if (impl == null) {
-      throw new ClassNotFoundException("Implementation of " + interface2check + " not found in " + implDir);
-    }
-    clazzCache.put(implDir, interface2check, impl);
-    return impl;
-  }*/
   /**
    * Return the implementing class.
    *
@@ -1139,12 +1106,21 @@ public class RestVerticle extends AbstractVerticle {
             eventBus.send(address, filename, dOps, rep -> {
               if(rep.succeeded()){
                 log.debug("Delivered Messaged of uploaded file " + filename);
-                request.response().setStatusCode(204);
+                Object returnCode = rep.result().body();
+                if(returnCode != null){
+                  if(ReturnStatusConsts.OK_PROCESSING_STATUS.equals(returnCode)){
+                    request.response().setStatusCode(204);
+                  }
+                  else{
+                    request.response().setStatusCode(400);
+                    request.response().setStatusMessage("File uploaded but there was an error processing request");
+                  }
+                }
                 request.response().end();
               }
               else{
                 log.error("Unable to deliver message of uploaded file " + filename);
-                request.response().setStatusCode(204);
+                request.response().setStatusCode(400);
                 request.response().setStatusMessage("The file was saved, but unable to notify of the upload to listening services");
                 request.response().end();
               }
