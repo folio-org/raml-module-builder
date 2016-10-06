@@ -5,7 +5,9 @@ Copyright (C) 2016 The Open Library Foundation
 This software is distributed under the terms of the Apache License, Version 2.0. See the file ["LICENSE"](https://github.com/folio-org/raml-module-builder/blob/master/LICENSE) for more information.
 
 
-##### This documentation includes information about the Raml-Module-Builder framework
+## Introduction
+
+This documentation includes information about the Raml-Module-Builder framework
 and examples of how to use it.
 
 The goal of the project is to abstract away as much boilerplate functionality as
@@ -55,13 +57,13 @@ The framework consists of a number of tools:
 4. rules - Basic Drools functionality allowing module developers to create
    validation rules via .drl files for objects (JSON schemas).
 
-# The basics
+## The basics
 
 ![](images/build.png)
 ![](images/generate.png)
 ![](images/what.png)
 
-# Implement the interfaces
+### Implement the interfaces
 
 For example – note the validation annotations generated based on the constraints in the RAML.
 
@@ -73,7 +75,7 @@ For example – note the validation annotations generated based on the constrain
 - Note that a Bib entity was passed as a parameter – the runtime framework
   transforms the JSON passed in the body to the correct POJO.
 
-# Set up your pom.xml
+### Set up your pom.xml
 
 After including the maven plugin to generate our sources, we need to add a few
 more maven plugins:
@@ -89,7 +91,7 @@ more maven plugins:
   run as `RestLauncher` and main verticle as `RestVerticle`. This will create a
   runnable jar with the runtime’s `RestVerticle` serving as the main class.
 
-# Build and run
+### Build and run
 
 Do `mvn clean install` ... and run :)
 
@@ -108,7 +110,7 @@ Sample projects:
 - https://github.com/folio-org/mod-acquisitions-postgres
 
 
-# Get started with a sample working module
+## Get started with a sample working module
 
 Clone / download the framework:
 
@@ -141,7 +143,7 @@ https://github.com/folio-org/mod-circulation - Build via `mvn clean install`
 To run the circulation module, navigate to the `/target/` directory and do
 `java -jar circulation-fat.jar`
 
-# Command-line options
+## Command-line options
 
 - `java.util.logging.config.file=C:\Git\circulation\target\classes\vertx-default-jul-logging.properties`
   (Optional - defaults to /target/classes/vertx-default-jul-logging.properties)
@@ -187,7 +189,7 @@ To run the circulation module, navigate to the `/target/` directory and do
 - `-XX:+HeapDumpOnOutOfMemoryError -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
   -Xloggc:C:\Git\circulation\gc.log` (Optional)
 
-# Creating a new module
+## Creating a new module
 
 Pre step 1: Clone / Download the raml-module-builder project and `mvn clean install`
 
@@ -736,7 +738,7 @@ Extensive usage examples can be found in the following classes:
 https://github.com/folio-org/mod-circulation/blob/master/src/main/java/org/folio/rest/impl/PatronAPI.java
 https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/folio/rest/impl/ConfigAPI.java
 
-#### Collection statistics
+### Collection statistics
 The /admin interface that comes with the runtime framework exposes an api to allow the printing of statistics of specific collections to the log.
 
 Access the path `/apis/admin/collstats`  via (PUT) with the body containing the collection to print statistics for and at which interval.
@@ -1012,7 +1014,7 @@ Have these in the headers - currently not validated hence not mandatory:
 - Accept: application/json,text/plain
 - Content-Type: application/json;
 
-Example 1. Add a fine to a patron (post)
+### Example 1: Add a fine to a patron (post)
 
 ```
 http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
@@ -1032,31 +1034,31 @@ http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
 }
 ```
 
-Example 2. get fines for patron with id 56dbe25ea12958478cec42ba
+### Example 2: Get fines for patron with id
 
 ```
 http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba/fines
 ```
 
-Example 3. get a specific patron
+### Example 3: Get a specific patron
 
 ```
 http://localhost:8080/apis/patrons/56dbe25ea12958478cec42ba
 ```
 
-Example 4. get all patrons
+### Example 4: Get all patrons
 
 ```
 http://localhost:8080/apis/patrons
 ```
 
-Example 5. delete a patron (delete)
+### Example 5: Delete a patron (delete)
 
 ```
 http://localhost:8080/apis/patrons/56dbe791a129584a506fb41a
 ```
 
-Example 6. add a patron (post)
+### Example 6: Add a patron (post)
 
 ```
 http://localhost:8080/apis/patrons
