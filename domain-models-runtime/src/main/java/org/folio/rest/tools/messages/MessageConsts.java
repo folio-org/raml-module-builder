@@ -15,7 +15,8 @@ public enum MessageConsts implements MessageEnum {
   InvalidURLPath("10010"),
   FileUploadError("10011"),
   NoRecordsUpdated("10012"),
-  Timer("10013");
+  Timer("10013"),
+  DeletedCountError("10014");
 
   private String code;
 
@@ -23,6 +24,7 @@ public enum MessageConsts implements MessageEnum {
     this.code = code;
   }
 
+  @Override
   public String getCode(){
     return code;
   }

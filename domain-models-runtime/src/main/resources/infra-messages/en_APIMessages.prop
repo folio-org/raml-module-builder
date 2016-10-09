@@ -16,3 +16,4 @@
 10011=File uploading failed: {0}
 10012=No records match the query, no records updated
 10013=Timer for: {0} took {1}
+10014=Number of deleted items is incorrect. Expected {0} record deleted, but there was {1}

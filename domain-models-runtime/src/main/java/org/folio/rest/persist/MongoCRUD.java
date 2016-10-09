@@ -1,13 +1,27 @@
 package org.folio.rest.persist;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.mongo.FindOptions;
+import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.mongo.MongoClientDeleteResult;
+import io.vertx.ext.mongo.MongoClientUpdateResult;
+import io.vertx.ext.mongo.UpdateOptions;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import org.folio.rest.tools.utils.NetworkUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.folio.rest.tools.utils.NetworkUtils;
 
 import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongodProcess;
@@ -22,18 +36,6 @@ import de.flapdoodle.embed.mongo.distribution.Version;
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
 import de.flapdoodle.embed.process.extract.UserTempNaming;
 import de.flapdoodle.embed.process.runtime.Network;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.mongo.FindOptions;
-import io.vertx.ext.mongo.MongoClient;
-import io.vertx.ext.mongo.MongoClientUpdateResult;
-import io.vertx.ext.mongo.UpdateOptions;
 
 public class MongoCRUD {
 
@@ -273,7 +275,7 @@ public class MongoCRUD {
       Handler<AsyncResult<String>> replyHandler){
 
     long start = System.nanoTime();
-    JsonObject jsonObject = new JsonObject();    
+    JsonObject jsonObject = new JsonObject();
     try {
       jsonObject.put(binaryObjFieldName, new JsonObject().put("$binary", binaryObj));
     } catch (Exception e) {
@@ -374,7 +376,7 @@ public class MongoCRUD {
    * @param id - id of the record
    * @param replyHandler
    */
-  public void delete(String collection, String id, Handler<AsyncResult<Void>> replyHandler) {
+  public void delete(String collection, String id, Handler<AsyncResult<MongoClientDeleteResult>> replyHandler) {
     long start = System.nanoTime();
 
     try {
@@ -383,9 +385,9 @@ public class MongoCRUD {
       client.removeDocument(collection, jobj, res -> {
         if (res.succeeded()) {
           System.out.println("deleted item");
-          replyHandler.handle(io.vertx.core.Future.succeededFuture());
+          replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
         } else {
-          res.cause().printStackTrace();
+          log.error(res.cause());
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
         if(log.isDebugEnabled()){
@@ -405,16 +407,15 @@ public class MongoCRUD {
    * @param query - mongo query
    * @param replyHandler
    */
-  public void delete(String collection, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {
+  public void delete(String collection, JsonObject query, Handler<AsyncResult<MongoClientDeleteResult>> replyHandler) {
     long start = System.nanoTime();
 
     try {
       client.removeDocuments(collection, query, res -> {
         if (res.succeeded()) {
-          System.out.println("deleted item");
-          replyHandler.handle(io.vertx.core.Future.succeededFuture());
+          replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
         } else {
-          res.cause().printStackTrace();
+          log.error(res.cause());
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
         if(log.isDebugEnabled()){
@@ -549,7 +550,7 @@ public class MongoCRUD {
   public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
     get(clazz, collection, from, to, new JsonObject(mongoQueryString), replyHandler);
   }
-  
+
   /**
    * Convenience get to retrieve a specific record via id from mongo
    * @param clazz - class of object to be returned
@@ -915,10 +916,10 @@ public class MongoCRUD {
     }
   }
 
-  public static JsonObject buildJson(String returnClazz, String collection, JsonObject query, String orderBy, Object order){    
+  public static JsonObject buildJson(String returnClazz, String collection, JsonObject query, String orderBy, Object order){
     return buildJson(returnClazz, collection, query, orderBy, order, -1, -1);
   }
-  
+
   public static JsonObject buildJson(String returnClazz, String collection, String query){
     return buildJson(returnClazz, collection, query, null, null, -1 ,-1);
   }

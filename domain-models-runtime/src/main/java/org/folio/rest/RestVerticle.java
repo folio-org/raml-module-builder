@@ -8,6 +8,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerFileUpload;
 import io.vertx.core.http.HttpServerRequest;
@@ -17,12 +19,10 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.example.util.Runner;
-import io.vertx.ext.dropwizard.MetricsService;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
-import io.vertx.core.eventbus.*;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -48,29 +48,26 @@ import javax.validation.ValidatorFactory;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
+import org.folio.rest.persist.MongoCRUD;
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.AnnotationGrabber;
+import org.folio.rest.tools.ReturnStatusConsts;
+import org.folio.rest.tools.messages.MessageConsts;
+import org.folio.rest.tools.messages.Messages;
+import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.OutStream;
+import org.folio.rulez.Rules;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.folio.rulez.Rules;
-
 import com.google.common.base.Joiner;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Table;
 import com.google.common.io.ByteStreams;
 import com.google.common.reflect.ClassPath;
-
-import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
-import org.folio.rest.persist.MongoCRUD;
-import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.LogUtil;
-import org.folio.rest.tools.utils.OutStream;
-import org.folio.rest.tools.AnnotationGrabber;
-import org.folio.rest.tools.ReturnStatusConsts;
-import org.folio.rest.tools.messages.MessageConsts;
-import org.folio.rest.tools.messages.Messages;
 
 public class RestVerticle extends AbstractVerticle {
 
@@ -197,7 +194,7 @@ public class RestVerticle extends AbstractVerticle {
         }
 
         //single handler for all url calls other then documentation
-        //which is handled separately 
+        //which is handled separately
         router.routeWithRegex("^(?!.*apidocs).*$").handler(rc -> {
           long start = System.nanoTime();
           try {
@@ -208,207 +205,183 @@ public class RestVerticle extends AbstractVerticle {
             // loop over regex patterns and try to match them against the requested
             // URL if no match is found, then the requested url is not supported by
             // the ramls and we return an error - this has positive security implications as well
-          while (iter.hasNext()) {
-            String regexURL = iter.next();
-            //try to match the requested url to the each regex pattern created from the urls in the raml
-            Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
-            if (m.find()) {
-              validPath = true;
-              // get the function that should be invoked for the requested
-              // path + requested http_method pair
-              JsonObject ret = mappedURLs.getMethodbyPath(regexURL, rc.request().method().toString());
-              // if a valid path was requested but no function was found
-              if (ret == null) {
+            while (iter.hasNext()) {
+              String regexURL = iter.next();
+              //try to match the requested url to the each regex pattern created from the urls in the raml
+              Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
+              if (m.find()) {
+                validPath = true;
+                // get the function that should be invoked for the requested
+                // path + requested http_method pair
+                JsonObject ret = mappedURLs.getMethodbyPath(regexURL, rc.request().method().toString());
+                // if a valid path was requested but no function was found
+                if (ret == null) {
 
-                // if the path is valid and the http method is options
-                // assume a cors request
-                if (rc.request().method() == HttpMethod.OPTIONS) {
-                  // assume cors and return header of preflight
-                  // Access-Control-Allow-Origin
+                  // if the path is valid and the http method is options
+                  // assume a cors request
+                  if (rc.request().method() == HttpMethod.OPTIONS) {
+                    // assume cors and return header of preflight
+                    // Access-Control-Allow-Origin
 
-                  // REMOVE CORS SUPPORT FOR
-                  // NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    // REMOVE CORS SUPPORT FOR
+                    // NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-                  // rc.response().putHeader(CORS_ALLOW_ORIGIN,
-                  // CORS_ALLOW_ORIGIN_VALUE);
-                  // rc.response().putHeader(CORS_ALLOW_HEADER,
-                  // CORS_ALLOW_HEADER_VALUE);
+                    // rc.response().putHeader(CORS_ALLOW_ORIGIN,
+                    // CORS_ALLOW_ORIGIN_VALUE);
+                    // rc.response().putHeader(CORS_ALLOW_HEADER,
+                    // CORS_ALLOW_HEADER_VALUE);
 
-                  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-                  rc.response().end();
+                    rc.response().end();
 
-                  return;
+                    return;
+                  }
+
+                  // the url exists but the http method requested does not match a function
+                  // meaning url+http method != a function
+                  endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported),
+                    validRequest);
                 }
-
-                // the url exists but the http method requested does not match a function
-                // meaning url+http method != a function
-                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported),
-                  validRequest);
-              }
-              Class<?> aClass;
-              try {
-                if (validRequest[0]) {
-                  int groups = m.groupCount();
-                  //pathParams are the place holders in the raml query string
-                  //for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
-                  //they are replaced with actual values and are passed to the function which the url is mapped to
-                  String[] pathParams = new String[groups];
-                  for (int i = 0; i < groups; i++) {
-                    pathParams[i] = m.group(i + 1);
-                  }
-                  //get interface mapped to this url
-                  String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
-                  // convert from interface to an actual class implementing it, which appears in the impl package
-                  aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
-                  Object o = null;
-                  // call back the constructor of the class - gives a hook into the class not based on the apis
-                  // passing the vertx and context objects in to it.
-                  try {
-                    o = aClass.getConstructor(Vertx.class, Context.class).newInstance(vertx, vertx.getOrCreateContext());
-                  } catch (Exception e) {
-                    // if no such constructor was implemented call the
-                    // default no param constructor to create the object to be used to call functions on
-                    o = aClass.newInstance();
-                  }
-                  final Object instance = o;
-                  // function to invoke for the requested url
-                  String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
-                  // parameters for the function to invoke
-                  JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
-                  // all methods in the class whose function is mapped to the called url
-                  // needed so that we can get a reference to the Method object and call it via reflection
-                  Method[] methods = aClass.getMethods();
-                  // what the api will return as output (Accept)
-                  JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
-                  // what the api expects to get (content-type)
-                  JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
-
-                  HttpServerRequest request = rc.request();
-
-                  //whether framework should handle the request here or pass it on to an implementing function
-                  boolean handleInternally = handleInterally(request);
-
-                  //check that the accept and content-types passed in the header of the request
-                  //are as described in the raml
-                  checkAcceptContentType(produces, consumes, rc, validRequest);
-
-
-                  // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
-                  //to the requested URL - array will be populated by parseParams() function
-                  Iterator<Map.Entry<String, Object>> paramList = params.iterator();
-                  Object[] paramArray = new Object[params.size()];
-                  parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
-
+                Class<?> aClass;
+                try {
                   if (validRequest[0]) {
-
-                    // check if we are dealing with a file upload , currently only multipart/form-data content-type support
-                    final boolean[] isFileUpload = new boolean[] { false };
-                    final int[] uploadParamPosition = new int[] { -1 };
-                    params.forEach(param -> {
-                      if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
-                        isFileUpload[0] = true;
-                        uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
-                      }
-                    });
-
-                    /**
-                     * handle uploads requested from the admin interface by streaming them to the disk
-                     * and do not pass to an implementing function
-                     */
-                    if (isFileUpload[0] && handleInternally) {
-                      internalUploadService(rc, validRequest);
+                    int groups = m.groupCount();
+                    //pathParams are the place holders in the raml query string
+                    //for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
+                    //they are replaced with actual values and are passed to the function which the url is mapped to
+                    String[] pathParams = new String[groups];
+                    for (int i = 0; i < groups; i++) {
+                      pathParams[i] = m.group(i + 1);
                     }
-
-                    /**
-                     * file upload requested (multipart/form-data) but the url is not to the /admin/upload
-                     * meaning, an implementing module is using its own upload handling, so read the content and
-                     * pass to implementing function just like any other call
-                     */
-                    if (isFileUpload[0] && !handleInternally) {
-                      //if file upload - set needed handlers
-                      // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
-                      if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
-                        request.setExpectMultipart(true);
-                        MimeMultipart mmp = new MimeMultipart();
-                        //place the mmp as an argument to the 'to be called' function - at the correct position
-                        paramArray[uploadParamPosition[0]] = mmp;
-
-                        request.uploadHandler(new Handler<io.vertx.core.http.HttpServerFileUpload>() {
-
-                          Buffer content = Buffer.buffer();
-
-                          @Override
-                          public void handle(HttpServerFileUpload upload) {
-
-                            // called as data comes in
-                            upload.handler(new Handler<Buffer>() {
-                              @Override
-                              public void handle(Buffer buff) {
-                                if(content == null){
-                                  content = Buffer.buffer();
-                                }
-                                content.appendBuffer(buff);
-                              }
-                            });
-                            upload.exceptionHandler(new Handler<Throwable>() {
-                              @Override
-                              public void handle(Throwable event) {
-                                endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
-                              }
-                            });
-                            // endHandler called when all data completed streaming to server
-                            //called for each part in the multipart - so if uploading 2 files - will be called twice
-                            upload.endHandler(new Handler<Void>() {
-                              @Override
-                              public void handle(Void event) {
-
-                                InternetHeaders headers = new InternetHeaders();
-                                MimeBodyPart mbp = null;
-                                try {
-                                  mbp = new MimeBodyPart(headers, content.getBytes());
-                                  mbp.setFileName(upload.filename());
-                                  mmp.addBodyPart(mbp);
-                                  content = null;
-                                } catch (MessagingException e) {
-                                  // TODO Auto-generated catch block
-                                  e.printStackTrace();
-                                }
-                              }
-                            });
-                          }
-                        });
-                      } else {
-                        endRequestWithError(rc, 400, true, messages.getMessage("en",
-                          MessageConsts.ContentTypeError, SUPPORTED_CONTENT_TYPE_FORMDATA, consumes) , validRequest);
-                      }
+                    //get interface mapped to this url
+                    String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
+                    // convert from interface to an actual class implementing it, which appears in the impl package
+                    aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
+                    Object o = null;
+                    // call back the constructor of the class - gives a hook into the class not based on the apis
+                    // passing the vertx and context objects in to it.
+                    try {
+                      o = aClass.getConstructor(Vertx.class, Context.class).newInstance(vertx, vertx.getOrCreateContext());
+                    } catch (Exception e) {
+                      // if no such constructor was implemented call the
+                      // default no param constructor to create the object to be used to call functions on
+                      o = aClass.newInstance();
                     }
-                    else{
-                      if (validRequest[0] && !handleInternally) {
-                        //if request is valid - invoke it
-                        for (int i = 0; i < methods.length; i++) {
-                          if (methods[i].getName().equals(function)) {
-                            try {
-                              invoke(methods[i], paramArray, instance, rc, v -> {
-                                LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                                sendResponse(rc, v, start);
+                    final Object instance = o;
+                    // function to invoke for the requested url
+                    String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
+                    // parameters for the function to invoke
+                    JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
+                    // all methods in the class whose function is mapped to the called url
+                    // needed so that we can get a reference to the Method object and call it via reflection
+                    Method[] methods = aClass.getMethods();
+                    // what the api will return as output (Accept)
+                    JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
+                    // what the api expects to get (content-type)
+                    JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
+
+                    HttpServerRequest request = rc.request();
+
+                    //whether framework should handle the request here or pass it on to an implementing function
+                    boolean handleInternally = handleInterally(request);
+
+                    //check that the accept and content-types passed in the header of the request
+                    //are as described in the raml
+                    checkAcceptContentType(produces, consumes, rc, validRequest);
+
+
+                    // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
+                    //to the requested URL - array will be populated by parseParams() function
+                    Iterator<Map.Entry<String, Object>> paramList = params.iterator();
+                    Object[] paramArray = new Object[params.size()];
+                    parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
+
+                    if (validRequest[0]) {
+
+                      // check if we are dealing with a file upload , currently only multipart/form-data content-type support
+                      final boolean[] isFileUpload = new boolean[] { false };
+                      final int[] uploadParamPosition = new int[] { -1 };
+                      params.forEach(param -> {
+                        if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
+                          isFileUpload[0] = true;
+                          uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
+                        }
+                      });
+
+                      /**
+                       * handle uploads requested from the admin interface by streaming them to the disk
+                       * and do not pass to an implementing function
+                       */
+                      if (isFileUpload[0] && handleInternally) {
+                        internalUploadService(rc, validRequest);
+                      }
+
+                      /**
+                       * file upload requested (multipart/form-data) but the url is not to the /admin/upload
+                       * meaning, an implementing module is using its own upload handling, so read the content and
+                       * pass to implementing function just like any other call
+                       */
+                      if (isFileUpload[0] && !handleInternally) {
+                        //if file upload - set needed handlers
+                        // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
+                        if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
+                          request.setExpectMultipart(true);
+                          MimeMultipart mmp = new MimeMultipart();
+                          //place the mmp as an argument to the 'to be called' function - at the correct position
+                          paramArray[uploadParamPosition[0]] = mmp;
+
+                          request.uploadHandler(new Handler<io.vertx.core.http.HttpServerFileUpload>() {
+
+                            Buffer content = Buffer.buffer();
+
+                            @Override
+                            public void handle(HttpServerFileUpload upload) {
+
+                              // called as data comes in
+                              upload.handler(new Handler<Buffer>() {
+                                @Override
+                                public void handle(Buffer buff) {
+                                  if(content == null){
+                                    content = Buffer.buffer();
+                                  }
+                                  content.appendBuffer(buff);
+                                }
                               });
-                            } catch (Exception e1) {
-                              log.error(e1.getMessage(), e1);
-                              rc.response().end();
+                              upload.exceptionHandler(new Handler<Throwable>() {
+                                @Override
+                                public void handle(Throwable event) {
+                                  endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
+                                }
+                              });
+                              // endHandler called when all data completed streaming to server
+                              //called for each part in the multipart - so if uploading 2 files - will be called twice
+                              upload.endHandler(new Handler<Void>() {
+                                @Override
+                                public void handle(Void event) {
+
+                                  InternetHeaders headers = new InternetHeaders();
+                                  MimeBodyPart mbp = null;
+                                  try {
+                                    mbp = new MimeBodyPart(headers, content.getBytes());
+                                    mbp.setFileName(upload.filename());
+                                    mmp.addBodyPart(mbp);
+                                    content = null;
+                                  } catch (MessagingException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                  }
+                                }
+                              });
                             }
-                          }
+                          });
+                        } else {
+                          endRequestWithError(rc, 400, true, messages.getMessage("en",
+                            MessageConsts.ContentTypeError, SUPPORTED_CONTENT_TYPE_FORMDATA, consumes) , validRequest);
                         }
                       }
-                    }
-
-                    // register handler in case of file uploads - when the body handler is used then the entire body is read
-                    // and calling the endhandler will throw an exception since there is nothing to read. so this can only be called
-                    //when no body handler is associated with the path - in our case multipart/form-data
-                    //real need for this is in case of bad file upload requests which dont trigger the upload end handler - so this catches is
-                    if (isFileUpload[0] && !handleInternally) {
-                      request.endHandler( a -> {
-                        if (validRequest[0]) {
+                      else{
+                        if (validRequest[0] && !handleInternally) {
                           //if request is valid - invoke it
                           for (int i = 0; i < methods.length; i++) {
                             if (methods[i].getName().equals(function)) {
@@ -424,24 +397,48 @@ public class RestVerticle extends AbstractVerticle {
                             }
                           }
                         }
-                      });
+                      }
+
+                      // register handler in case of file uploads - when the body handler is used then the entire body is read
+                      // and calling the endhandler will throw an exception since there is nothing to read. so this can only be called
+                      //when no body handler is associated with the path - in our case multipart/form-data
+                      //real need for this is in case of bad file upload requests which dont trigger the upload end handler - so this catches is
+                      if (isFileUpload[0] && !handleInternally) {
+                        request.endHandler( a -> {
+                          if (validRequest[0]) {
+                            //if request is valid - invoke it
+                            for (int i = 0; i < methods.length; i++) {
+                              if (methods[i].getName().equals(function)) {
+                                try {
+                                  invoke(methods[i], paramArray, instance, rc, v -> {
+                                    LogUtil.formatLogMessage(className, "start", " invoking " + function);
+                                    sendResponse(rc, v, start);
+                                  });
+                                } catch (Exception e1) {
+                                  log.error(e1.getMessage(), e1);
+                                  rc.response().end();
+                                }
+                              }
+                            }
+                          }
+                        });
+                      }
                     }
                   }
+                } catch (Exception e) {
+                  log.error(e.getMessage(), e);
+                  endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(),
+                    validRequest);
                 }
-              } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(),
-                  validRequest);
               }
             }
-          }
-          if (!validPath) {
-            // invalid path
-            endRequestWithError(rc, 400, true,
-              messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
-          }
-        } finally {/*do nothing*/}
-      } );
+            if (!validPath) {
+              // invalid path
+              endRequestWithError(rc, 400, true,
+                messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
+            }
+          } finally {/*do nothing*/}
+        } );
         // routes requests on “/assets/*” to resources stored in the “assets”
         // directory.
         router.route("/assets/*").handler(StaticHandler.create("assets"));
@@ -488,7 +485,7 @@ public class RestVerticle extends AbstractVerticle {
             } else {
               LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + p + ".");
               LogUtil.formatLogMessage(className, "start", "Documentation available at: " + "http://localhost:" + Integer.toString(p)
-                  + "/apidocs/");
+                + "/apidocs/");
               startFuture.complete();
             }
           });
@@ -997,7 +994,7 @@ public class RestVerticle extends AbstractVerticle {
               // regular string param in query string - just push value
               if (param == null && defaultVal != null) {
                 // no value passed - check if there is a default value
-                paramArray[order] = (String) defaultVal;
+                paramArray[order] = defaultVal;
               } else {
                 paramArray[order] = param;
               }
