@@ -196,8 +196,9 @@ public class RestVerticle extends AbstractVerticle {
           log.error(e2.getMessage(), e2);
         }
 
-        //single handler for all url calls
-        router.route("/*").handler(rc -> {
+        //single handler for all url calls other then documentation
+        //which is handled separately 
+        router.routeWithRegex("^(?!.*apidocs).*$").handler(rc -> {
           long start = System.nanoTime();
           try {
             //list of regex urls created from urls declared in the raml

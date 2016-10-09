@@ -132,6 +132,8 @@ public class DemoRamlRestTest {
     //check save and get object with encoded binary base64 field Mongo
     //calls collection list and collection stats when done
     base64EncTest(context);
+    
+    checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200); // should be 200
 
   }
   
@@ -349,6 +351,7 @@ public class DemoRamlRestTest {
         public void handle(HttpClientResponse httpClientResponse) {
 
           context.assertTrue(httpClientResponse.statusCode() == codeExpected);
+          System.out.println("status " + url + " " + httpClientResponse.statusCode());
           async.complete();
         }
       });
