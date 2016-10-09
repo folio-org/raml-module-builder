@@ -484,7 +484,7 @@ public class MongoCRUD {
         }
       });
     } catch (Throwable e) {
-      e.printStackTrace();
+      log.error(e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
@@ -682,8 +682,9 @@ public class MongoCRUD {
    * @param arrayName - name of the array object - for example - a book object with a List of authors as a field will pass the
    * name of the authors field here - for example "authors"
    * @param arrayEntry - a List of items to append to the existing List - for example - if a book object has a list of authors,
-   * adding additional authors would have us pass a List of authors objects here
-   * @param query - native mongo query to get objects to update
+   * adding additional authors would have us pass a <List> of authors objects here
+   * @param query - native mongo query to get objects to add the array ob objects to - for example, a book collection update
+   * may pass a title of a book as a query and therefore add authors to all books with a specific title
    * @param replyHandler
    */
   public void addToArray(String collection, String arrayName, Object arrayEntry, JsonObject query, Handler<AsyncResult<Void>> replyHandler) {

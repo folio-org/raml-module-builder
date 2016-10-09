@@ -657,7 +657,7 @@ public class RestVerticle extends AbstractVerticle {
         log.error(e.getMessage(), e);
       }
     }
-    if (impl.size() == 0) {
+    if (impl.isEmpty()) {
       throw new ClassNotFoundException("Implementation of " + interface2check + " not found in " + implDir);
     }
     clazzCache.put(implDir, interface2check, impl);

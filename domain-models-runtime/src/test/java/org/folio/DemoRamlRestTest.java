@@ -418,6 +418,14 @@ public class DemoRamlRestTest {
   }
 
 
+  /**
+   * 
+   * @param filename
+   * @param closeBody - if creating a request with multiple parts in the body
+   * close the body once all parts have been added - for example - passing multiple files
+   * in the body - you would close the body after adding the final file
+   * @return
+   */
   private Buffer getBody(String filename, boolean closeBody) {
     Buffer buffer = Buffer.buffer();
     buffer.appendString("--MyBoundary\r\n");
