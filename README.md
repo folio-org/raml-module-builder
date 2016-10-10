@@ -672,11 +672,25 @@ post:
               required: true
               type: file
               example: <<exampleItem>>
+      responses:
+        200:
+          description: "Saved"
+          headers:
+            Location:
+              description: URI to the created <<resourcePathName|!singularize>> item
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "unable to add <<resourcePathName|!singularize>>"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+              
 ```
-
-Please see the https://github.com/folio-org/mod-configuration/blob/master/ramls/configuration/config.raml file for an example.
-Notice the `/configurations/rules` entry in the RAML
-
 
 
 (see a client example call in Java here:)
@@ -684,7 +698,7 @@ Notice the `/configurations/rules` entry in the RAML
 https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/DemoRamlRestTest.java
 
 
-The body content should look something like this:
+The body content would look something like this:
 
 
 
@@ -725,8 +739,7 @@ for (int i = 0; i < parts; i++) {
 
 where each section in the body (separated by the boundary) is a "part".
 
-See an example here:
-https://github.com/folio-org/mod-configuration/blob/master/src/main/java/org/folio/rest/impl/ConfigAPI.java (see `postConfigurationsRules` function)
+
 
 ## MongoDB integration
 
@@ -972,6 +985,9 @@ A `java_package` parameter can also be passed to change the log level of a speci
 
  `http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist`
 
+## Monitoring
+
+The runtime framework via the /admin API exposes (as previously mentioned) some APIs to help monitor the service - (setting log levels, collection statistics) - additional JVM monitoring via the `jstack` command is also available using the /admin/jstack API.
 
 ## A Little More on Validation
 
@@ -1119,10 +1135,3 @@ http://localhost:8080/patrons
  }
 }
 ```
-
-
-
-
-
-
-
