@@ -190,7 +190,7 @@ public class RestVerticle extends AbstractVerticle {
           // startup periodic impl if exists
           runPeriodicHook();
         } catch (Exception e2) {
-          log.error(e2.getMessage(), e2);
+          log.error(e2);
         }
 
         //single handler for all url calls other then documentation
@@ -369,7 +369,7 @@ public class RestVerticle extends AbstractVerticle {
                                     content = null;
                                   } catch (MessagingException e) {
                                     // TODO Auto-generated catch block
-                                    e.printStackTrace();
+                                    log.error(e);
                                   }
                                 }
                               });
@@ -423,6 +423,10 @@ public class RestVerticle extends AbstractVerticle {
                           }
                         });
                       }
+                    }
+                    else{
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
+                        validRequest);
                     }
                   }
                 } catch (Exception e) {
@@ -537,8 +541,7 @@ public class RestVerticle extends AbstractVerticle {
         response.write(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       }
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      e.printStackTrace();
+      log.error(e);
     } finally {
       rc.response().end();
     }
@@ -582,8 +585,7 @@ public class RestVerticle extends AbstractVerticle {
         // response.setChunked(true);
         // response.setStatusCode(((Response)result).getStatus());
       } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        e.printStackTrace();
+        log.error(e);
         String message;
         try {
           // catch exception for now in case of null point and show generic
@@ -603,8 +605,7 @@ public class RestVerticle extends AbstractVerticle {
       byte[] jsonData = ByteStreams.toByteArray(getClass().getClassLoader().getResourceAsStream(configFile));
       return new JsonObject(new String(jsonData));
     } catch (IOException e) {
-      log.error(e.getMessage(), e);
-      e.printStackTrace();
+      log.error(e);
     }
     return new JsonObject();
   }
@@ -668,8 +669,7 @@ public class RestVerticle extends AbstractVerticle {
     try {
       jObjClasses.mergeIn(AnnotationGrabber.generateMappings());
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      e.printStackTrace();
+      log.error(e);
     }
     // loadConfig(JSON_URL_MAPPINGS);
     Set<String> classURLs = jObjClasses.fieldNames();
@@ -821,7 +821,7 @@ public class RestVerticle extends AbstractVerticle {
             System.out.println("Setting path to import DB file....  " + importDataPath);
           } catch (Exception e) {
             // any problems - print exception and continue
-            e.printStackTrace();
+            log.error(e);
           }
         }
         else{
@@ -854,7 +854,7 @@ public class RestVerticle extends AbstractVerticle {
     try {
       droolsSession = new Rules(droolsPath).buildSession();
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e);
     }
   }
 
@@ -963,15 +963,13 @@ public class RestVerticle extends AbstractVerticle {
                   droolsSession.delete(handle);
                 }
               } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                e.printStackTrace();
+                log.error(e);
                 endRequestWithError(rc, 400, true, e.getCause().getMessage(), validRequest);
               }
               // }
             }
           } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            e.printStackTrace();
+            log.error(e);
             endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), validRequest);
 
           }
@@ -1008,6 +1006,14 @@ public class RestVerticle extends AbstractVerticle {
                 }
               } else {
                 paramArray[order] = Integer.valueOf(param).intValue();
+              }
+            } else if (valueType.contains("boolean")) {
+              if (param == null) {
+                if (defaultVal != null) {
+                  paramArray[order] = Boolean.valueOf((String)defaultVal);
+                }
+              } else {
+                paramArray[order] = Boolean.valueOf(param);;
               }
             } else if (valueType.contains("BigDecimal")) {
               // cant pass null to an int type - replace with zero
@@ -1049,15 +1055,13 @@ public class RestVerticle extends AbstractVerticle {
                   }
                 }
               } catch (Exception ee) {
-                log.error(ee.getMessage(), ee);
-                ee.printStackTrace();
+                log.error(ee);
                 validRequest[0] = false;
               }
             }
 
           } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            e.printStackTrace();
+            log.error(e);
             validRequest[0] = false;
           }
         }
