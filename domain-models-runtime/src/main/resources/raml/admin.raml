@@ -7,6 +7,7 @@ version: v1
 traits:
   - log-level: !include log-level.raml
   - upload-handler: !include upload-handler.raml
+  - history: !include history.raml
   - secured: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/auth.raml
 
 /admin:
@@ -108,6 +109,23 @@ traits:
       responses:
         200:
           description: "Returns the stack trace of all threads in the JVM"
+          body:
+            text/html:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /memory:
+    get:
+      description: Get JVM memory info
+      is: [secured,history]
+      body:
+        text/plain
+      responses:
+        200:
+          description: "Returns JVM memory info"
           body:
             text/html:
               example: "Text....."

@@ -3,8 +3,13 @@ package org.folio.rest.impl;
 import java.io.BufferedReader;
 import java.io.Reader;
 import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
+import java.util.Date;
+import java.util.function.BiConsumer;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -18,12 +23,14 @@ import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
+import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
 
 public class AdminAPI implements AdminResource {
 
-  private static final io.vertx.core.logging.Logger log               = LoggerFactory.getLogger(AdminAPI.class);
+  private static final io.vertx.core.logging.Logger log    = LoggerFactory.getLogger(AdminAPI.class);
+  private static LRUCache<Date, String> jvmMemoryHistory   = LRUCache.newInstance(100);
 
   @Validate
   @Override
@@ -70,10 +77,13 @@ public class AdminAPI implements AdminResource {
 
     /**
      * THIS FUNCTION WILL NEVER BE CALLED - HANDLED IN THE RestVerticle class
+     *
+     * http://localhost:8083/admin/upload?file_name=test1&bus_address=circ.uploads.items.imports&persist_method=SAVE_AND_NOTIFY
+     *
      */
   }
-  
-  
+
+
   @Validate
   @Override
   public void putAdminCollstats(String authorization, Reader entity, Handler<AsyncResult<Response>> asyncResultHandler,
@@ -106,7 +116,7 @@ public class AdminAPI implements AdminResource {
   public void putAdminJstack(String authorization, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)
       throws Exception {
     // TODO Auto-generated method stub
-    
+
   }
 
   @Override
@@ -130,7 +140,7 @@ public class AdminAPI implements AdminResource {
                 dump.append(stackTraceElement);
             }
             dump.append("</br></br>");
-          } 
+          }
           dump.append("</body></html>");
           code.complete(dump);
         } catch (Exception e) {
@@ -138,10 +148,76 @@ public class AdminAPI implements AdminResource {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse
             .withPlainInternalServerError("ERROR" + e.getMessage())));
         }
-      }, result -> {     
+      }, result -> {
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse
           .withHtmlOK(result.result().toString())));
       });
   }
 
+  @Override
+  public void getAdminMemory(String authorization, boolean history,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+    final StringBuilder dump = new StringBuilder();
+    vertxContext.owner().executeBlocking( code -> {
+      try {
+        dump.append("<br><table>");
+        for (MemoryPoolMXBean pool :
+          ManagementFactory.getMemoryPoolMXBeans()) {
+          MemoryUsage mem = pool.getCollectionUsage();
+          MemoryUsage curMem = pool.getUsage();
+          MemoryUsage peakMem = pool.getPeakUsage();
+          long usageAfterGC = -1;
+          long currentUsage = -1;
+          double usageAfterGCPercent = -1;
+          double currentUsagePercent = -1;
+          long peakUsage = -1;
+          if(mem != null){
+            usageAfterGC = mem.getUsed()/1024/1024;
+            usageAfterGCPercent = (double)mem.getUsed()/(double)mem.getCommitted(); //Mimic jstat behavior
+          }
+          if(curMem != null){
+            currentUsage = curMem.getUsed()/1024/1024;
+            if(curMem.getMax() > 0){
+              currentUsagePercent = (double)curMem.getUsed()/(double)curMem.getCommitted(); //Mimic jstat behavior
+            }
+          }
+          if(peakMem != null){
+            peakUsage = peakMem.getUsed()/1024/1024;
+          }
+          dump
+            .append("<tr><td>name: ").append(pool.getName()).append("  </td>")
+            .append("<td>memory usage after latest gc: <b>").append(usageAfterGC).append("</b>MB.  </td>")
+            .append("<td>type: ").append(pool.getType()).append("  </td>")
+            .append("<td>estimate of memory usage: <b>").append(currentUsage).append("</b>MB.  </td>")
+            .append("<td>peak usage: ").append(peakUsage).append("MB.  </td>")
+            .append("<td> % used memory after GC: <b>").append(usageAfterGCPercent).append("</b> </td>")
+            .append("<td> % used memory current: <b>").append(currentUsagePercent).append("</b>  </td></tr>");
+        }
+        dump.append("</table><br><br>");
+        final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        final MemoryUsage memInfo = memoryMXBean.getHeapMemoryUsage();
+        long memCommittedToJVMByOS = memInfo.getCommitted();
+        long memUsedByJVM = memInfo.getUsed();
+        dump.append("<b>Totals: </b> Memory: ").append((memUsedByJVM/1024/1024)).append("<br>");
+        if(history){
+          StringBuilder historyMem = new StringBuilder();
+          jvmMemoryHistory.put(new Date(), dump.toString());
+          BiConsumer<Date, String> biConsumer = (key,value) -> historyMem.append(key.toInstant().toString() + "<br>" + value);
+          jvmMemoryHistory.forEach(biConsumer);
+          code.complete(historyMem);
+        }
+        else{
+          jvmMemoryHistory.clear();
+          code.complete(dump);
+        }
+      } catch (Exception e) {
+        log.error(e);
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse
+          .withPlainInternalServerError("ERROR" + e.getMessage())));
+      }
+    }, result -> {
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse
+        .withHtmlOK(result.result().toString())));
+    });
+  }
 }

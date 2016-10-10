@@ -56,7 +56,7 @@ public class DemoRamlRestTest {
       context.fail(e);
     }
   }
-  
+
   private static void startEmbeddedMongo() throws Exception {
     MongoCRUD.setIsEmbedded(true);
     MongoCRUD.getInstance(vertx).startEmbeddedMongo();
@@ -68,7 +68,7 @@ public class DemoRamlRestTest {
     vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions,
             context.asyncAssertSuccess());
   }
-  
+
 
   /**
    * This method, called after our test, just cleanup everything by closing the vert.x instance
@@ -95,7 +95,7 @@ public class DemoRamlRestTest {
         }
     }
   }
-  
+
   /**
    * just send a get request for books api with and without the required author query param
    * 1. one call should succeed and the other should fail (due to
@@ -109,34 +109,36 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/books?author=me", 200);
     checkURLs(context, "http://localhost:" + port + "/books", 400);
     checkURLs(context, "http://localhost:" + port + "/x/books", 400); // should be 404
+    checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
+
 
     //update periodic handler (MongoStatsPrinter) with which collection to print stats for and at which interval
     postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, true);
-    
+
     //check File Uploads
     postData(context, "http://localhost:" + port + "/admin/upload", getBody("uploadtest.json", true), 400, false);
     postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204, false);
     postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204, false);
-        
+
     List<Object> list = getListOfBooks();
-    
+
     //check bulk insert Mongo
     bulkInsert(context, list);
-    
+
     //check insert with fail if id exists already Mongo
     insertUniqueTest(context, list.get(0));
 
     //check save and get of binary Mongo
     binaryInsert(context);
-    
+
     //check save and get object with encoded binary base64 field Mongo
     //calls collection list and collection stats when done
     base64EncTest(context);
-    
+
     checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200); // should be 200
 
   }
-  
+
   private void getCollectionStats(TestContext context){
     Async async = context.async();
     MongoCRUD.getInstance(vertx).getStatsForCollection("books", reply -> {
@@ -150,7 +152,7 @@ public class DemoRamlRestTest {
       async.complete();
     });
   }
-  
+
   private void getCollectionList(TestContext context){
     Async async = context.async();
     MongoCRUD.getInstance(vertx).getListOfCollections(reply -> {
@@ -164,7 +166,7 @@ public class DemoRamlRestTest {
       async.complete();
     });
   }
-  
+
   private void base64EncTest(TestContext context){
     Book b = createBook();
     String file = getClass().getClassLoader().getResource("folio.jpg").getFile();
@@ -188,7 +190,7 @@ public class DemoRamlRestTest {
             else{
               Async async2 = context.async();
               b.setImage(Base64.getEncoder().encodeToString(buffer.getBytes()));
-              MongoCRUD client = MongoCRUD.getInstance(vertx); 
+              MongoCRUD client = MongoCRUD.getInstance(vertx);
               client.save("books", b, reply -> {
                 if(reply.succeeded()){
                   String id = reply.result();
@@ -199,10 +201,10 @@ public class DemoRamlRestTest {
                       if(image.length == 2747){
                         context.assertTrue(true);
                         System.out.println("save binary success");
-                        
+
                         //check collection stats Mongo
                         getCollectionStats(context);
-                        
+
                         //get list of collections Mongo
                         getCollectionList(context);
                       }
@@ -230,10 +232,10 @@ public class DemoRamlRestTest {
           async.complete();
         });
       }});
-    
-    
+
+
   }
-  
+
   private void binaryInsert(TestContext context){
     //check binary save in mongo
     String file = getClass().getClassLoader().getResource("folio.jpg").getFile();
@@ -256,12 +258,12 @@ public class DemoRamlRestTest {
             }
             else{
               Async async1 = context.async();
-              MongoCRUD client = MongoCRUD.getInstance(vertx); 
+              MongoCRUD client = MongoCRUD.getInstance(vertx);
               client.saveBinary("files", buffer, "images", reply -> {
-                if(reply.succeeded()){        
+                if(reply.succeeded()){
                   //context.assertTrue(true, "Binary image file saved successfully");
                   Async async2 = context.async();
-                  String id = reply.result();                                  
+                  String id = reply.result();
                   client.getBinary("files","images", 0, 1, res2 -> {
                     if(res2.succeeded()) {
 
@@ -293,17 +295,17 @@ public class DemoRamlRestTest {
         async.complete();
       }
     });
-    
+
 
   }
-  
-  
+
+
   private void bulkInsert(TestContext context, List<Object> list){
     //check bulk insert in MONGO
     Async async = context.async();
     MongoCRUD.getInstance(vertx).bulkInsert("books", list, reply -> {
-      if(reply.succeeded()){        
-        context.assertEquals(5, reply.result().getInteger("n"), 
+      if(reply.succeeded()){
+        context.assertEquals(5, reply.result().getInteger("n"),
           "bulk insert updated " + reply.result().getInteger("n") + " records instead of 5");
       }
       else{
@@ -313,17 +315,17 @@ public class DemoRamlRestTest {
       async.complete();
     });
   }
-  
+
   private void insertUniqueTest(TestContext context, Object book){
     //insert fail if id exists test MONGO
     Async async2 = context.async();
     MongoCRUD.getInstance(vertx).save("books", book, reply -> {
-      if(reply.succeeded()){        
+      if(reply.succeeded()){
         String id = reply.result();
         ((Book)book).setId(id);
         Async async3 = context.async();
         MongoCRUD.getInstance(vertx).save("books", book, true , reply2 -> {
-          if(reply2.succeeded()){  
+          if(reply2.succeeded()){
             context.fail("save succeeded but should have failed!");
           }
           else{
@@ -341,6 +343,11 @@ public class DemoRamlRestTest {
   }
 
   public void checkURLs(TestContext context, String url, int codeExpected) {
+    String accept = "application/json";
+    checkURLs(context, url, codeExpected, accept);
+  }
+
+  public void checkURLs(TestContext context, String url, int codeExpected, String accept) {
     try {
       Async async = context.async();
       HttpMethod method = HttpMethod.GET;
@@ -360,7 +367,7 @@ public class DemoRamlRestTest {
         async.complete();
       });
       request.headers().add("Authorization", "abcdefg");
-      request.headers().add("Accept", "application/json");
+      request.headers().add("Accept", accept);
       request.setChunked(true);
       request.end();
     } catch (Throwable e) {
@@ -380,7 +387,7 @@ public class DemoRamlRestTest {
       request = client.putAbs(url);
     }
     else{
-      request = client.postAbs(url); 
+      request = client.postAbs(url);
     }
     request.exceptionHandler(error -> {
       async.complete();
@@ -410,7 +417,7 @@ public class DemoRamlRestTest {
     }
     else{
       request.putHeader("Content-type",
-          "multipart/form-data; boundary=MyBoundary"); 
+          "multipart/form-data; boundary=MyBoundary");
     }
     request.write(buffer);
     request.end();
@@ -422,7 +429,7 @@ public class DemoRamlRestTest {
 
 
   /**
-   * 
+   *
    * @param filename
    * @param closeBody - if creating a request with multiple parts in the body
    * close the body once all parts have been added - for example - passing multiple files
@@ -458,7 +465,7 @@ public class DemoRamlRestTest {
     }
     return list;
   }
-  
+
   private Book createBook(){
     Book b = new Book();
     b.setStatus(99);
