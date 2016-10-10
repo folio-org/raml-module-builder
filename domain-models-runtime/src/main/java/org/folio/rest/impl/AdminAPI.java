@@ -8,6 +8,7 @@ import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
+import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.function.BiConsumer;
 
@@ -30,8 +31,9 @@ import org.folio.rest.tools.utils.OutStream;
 public class AdminAPI implements AdminResource {
 
   private static final io.vertx.core.logging.Logger log    = LoggerFactory.getLogger(AdminAPI.class);
+  private static final DecimalFormat DECFORMAT = new DecimalFormat("###.##");
   private static LRUCache<Date, String> jvmMemoryHistory   = LRUCache.newInstance(100);
-
+  
   @Validate
   @Override
   public void putAdminLoglevel(String authorization, Level level, String javaPackage,
@@ -173,32 +175,33 @@ public class AdminAPI implements AdminResource {
           long peakUsage = -1;
           if(mem != null){
             usageAfterGC = mem.getUsed()/1024/1024;
-            usageAfterGCPercent = (double)mem.getUsed()/(double)mem.getCommitted(); //Mimic jstat behavior
+            usageAfterGCPercent = (double)mem.getUsed()/(double)mem.getCommitted()*100; //Mimic jstat behavior
           }
           if(curMem != null){
             currentUsage = curMem.getUsed()/1024/1024;
             if(curMem.getMax() > 0){
-              currentUsagePercent = (double)curMem.getUsed()/(double)curMem.getCommitted(); //Mimic jstat behavior
+              currentUsagePercent = (double)curMem.getUsed()/(double)curMem.getCommitted()*100; //Mimic jstat behavior
             }
           }
           if(peakMem != null){
-            peakUsage = peakMem.getUsed()/1024/1024;
+            peakUsage = peakMem.getUsed()/1024/1024*100;
           }
           dump
-            .append("<tr><td>name: ").append(pool.getName()).append("  </td>")
-            .append("<td>memory usage after latest gc: <b>").append(usageAfterGC).append("</b>MB.  </td>")
-            .append("<td>type: ").append(pool.getType()).append("  </td>")
-            .append("<td>estimate of memory usage: <b>").append(currentUsage).append("</b>MB.  </td>")
-            .append("<td>peak usage: ").append(peakUsage).append("MB.  </td>")
-            .append("<td> % used memory after GC: <b>").append(usageAfterGCPercent).append("</b> </td>")
-            .append("<td> % used memory current: <b>").append(currentUsagePercent).append("</b>  </td></tr>");
+            .append("<tr><td>name: ").append(pool.getName()).append("   </td>")
+            .append("<td>memory usage after latest gc: <b>").append(usageAfterGC).append("</b>MB.   </td>")
+            .append("<td>type: ").append(pool.getType()).append("   </td>")
+            .append("<td>estimate of memory usage: <b>").append(currentUsage).append("</b>MB.   </td>")
+            .append("<td>peak usage: ").append(peakUsage).append("MB.   </td>")
+            .append("<td> % used memory after GC: <b>").append(DECFORMAT.format(usageAfterGCPercent)).append("</b>  </td>")
+            .append("<td> % used memory current: <b>").append(DECFORMAT.format(currentUsagePercent)).append("</b>   </td></tr>");
         }
         dump.append("</table><br><br>");
         final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
         final MemoryUsage memInfo = memoryMXBean.getHeapMemoryUsage();
         long memCommittedToJVMByOS = memInfo.getCommitted();
         long memUsedByJVM = memInfo.getUsed();
-        dump.append("<b>Totals: </b> Memory: ").append((memUsedByJVM/1024/1024)).append("<br>");
+        dump.append("<b>Total: </b> Memory used/available(MB): ").append((memUsedByJVM/1024/1024))
+        .append("/").append(memCommittedToJVMByOS/1024/1024).append("<br>");
         if(history){
           StringBuilder historyMem = new StringBuilder();
           jvmMemoryHistory.put(new Date(), dump.toString());

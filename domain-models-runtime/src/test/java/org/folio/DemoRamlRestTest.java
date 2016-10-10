@@ -359,6 +359,9 @@ public class DemoRamlRestTest {
 
           context.assertTrue(httpClientResponse.statusCode() == codeExpected);
           System.out.println("status " + url + " " + httpClientResponse.statusCode());
+          httpClientResponse.bodyHandler( body -> {
+            System.out.println(body.toString());
+          });
           async.complete();
         }
       });
