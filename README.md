@@ -990,7 +990,7 @@ A `java_package` parameter can also be passed to change the log level of a speci
 
 The runtime framework via the /admin API exposes (as previously mentioned) some APIs to help monitor the service / module - (setting log levels, collection statistics) - additional JVM monitoring via:
  - The `jstack` command is available using the `/admin/jstack` API.
-    - returns stack traces of all threads in the JVM to help find slower / bottlenech methods
+    - returns stack traces of all threads in the JVM to help find slower / bottleneck methods
  - The `memory` command is available using the `/admin/memory` API.
     - returns a jstat type of reply indicating memory usage within the JVM on a per pool basis (survivor, old gen, new gen, metadata, etc..) with usage percentages.
 
