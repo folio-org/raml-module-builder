@@ -829,9 +829,11 @@ public class RestVerticle extends AbstractVerticle {
           String []arg = param.split("=");
           if(arg.length == 2){
             MODULE_SPECIFIC_ARGS.put(arg[0], arg[1]);
+            log.info("module specific argument added: " + arg[0] + " with value " + arg[1]);
           }
           else{
-            log.warn("The following cmd line parameter was skipped, " + param + ". Expected format key=value");
+            log.warn("The following cmd line parameter was skipped, " + param + ". Expected format key=value\nIf this is a "
+                + "JVM argument, pass it before the jar, not after");
           }
         }
       }
