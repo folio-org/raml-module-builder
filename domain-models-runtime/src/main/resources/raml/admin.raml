@@ -8,13 +8,12 @@ traits:
   - log-level: !include traits/log-level.raml
   - upload-handler: !include traits/upload-handler.raml
   - history: !include traits/history.raml
-  - secured: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/auth.raml
 
 /admin:
   /upload:
     description: Uploads a file and saves it to a directory configured on the server
     post:
-      is: [secured, upload-handler]
+      is: [upload-handler]
       description: |
           Uploads a file and saves it to a directory configured on the server
       body:
@@ -46,7 +45,6 @@ traits:
       description: This API allows you to set collection names that you would like to print statistics |
        for to the log. A recurring interval should be indicated as well to indicate how often to print the |
        statistics to the log - min interval is 10 seconds
-      is: [secured]
       body:
         application/json:
           example: "{\"patrons\": 60, \"items\": 120}"
@@ -64,7 +62,7 @@ traits:
   /loglevel:
     put:
       description: Set logging level for all loggers in the JVM or just for a specific package / class
-      is: [secured, log-level]
+      is: [log-level]
       responses:
         200:
           description: "Returns packages with log level of the updated packages"
@@ -78,7 +76,6 @@ traits:
               example: "Internal server error, contact administrator"
     get:
       description: Get the logging level for all loggers in the JVM
-      is: [secured]
       responses:
         200:
           description: "Returns packages with log level"
@@ -94,7 +91,6 @@ traits:
     put:
       description: dumps jstacks every N seconds to a jstack file to find potential bottlenecks. Looking at this |
         file you can see if there are functions blocking for too long
-      is: [secured]
       responses:
         204:
           description: "Jstack request successful"
@@ -105,7 +101,6 @@ traits:
               example: "Internal server error, contact administrator"
     get:
       description: Get stack trace
-      is: [secured]
       responses:
         200:
           description: "Returns the stack trace of all threads in the JVM"
@@ -120,7 +115,7 @@ traits:
   /memory:
     get:
       description: Get JVM memory info
-      is: [secured,history]
+      is: [history]
       body:
         text/plain
       responses:
