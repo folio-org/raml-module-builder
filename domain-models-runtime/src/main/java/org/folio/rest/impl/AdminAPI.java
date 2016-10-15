@@ -37,7 +37,7 @@ public class AdminAPI implements AdminResource {
 
   @Validate
   @Override
-  public void putAdminLoglevel(Level level, String javaPackage,
+  public void putAdminLoglevel(Level level, String javaPackage, java.util.Map<String, String>okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     try {
@@ -55,7 +55,7 @@ public class AdminAPI implements AdminResource {
 
   @Validate
   @Override
-  public void getAdminLoglevel(Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void getAdminLoglevel(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     try {
       JsonObject loggers = LogUtil.getLogConfiguration();
@@ -75,7 +75,7 @@ public class AdminAPI implements AdminResource {
 
   @Override
   public void postAdminUpload(PersistMethod persistMethod, String busAddress,
-      String fileName, MimeMultipart entity, Handler<AsyncResult<Response>> asyncResultHandler,
+      String fileName, MimeMultipart entity, java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
     /**
@@ -88,7 +88,7 @@ public class AdminAPI implements AdminResource {
 
   @Validate
   @Override
-  public void putAdminCollstats(Reader entity,
+  public void putAdminCollstats(Reader entity, java.util.Map<String, String>okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
     /**
      * calls the MongoStatsPrinter which is a periodic hook that is run periodically to print collection stats to the log based on the
@@ -115,13 +115,13 @@ public class AdminAPI implements AdminResource {
   }
 
   @Override
-  public void putAdminJstack(Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void putAdminJstack(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void getAdminJstack(Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void getAdminJstack(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     final StringBuilder dump = new StringBuilder();
     vertxContext.owner().executeBlocking(
@@ -157,7 +157,7 @@ public class AdminAPI implements AdminResource {
   }
 
   @Override
-  public void getAdminMemory(boolean history,
+  public void getAdminMemory(boolean history, java.util.Map<String, String>okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
     final StringBuilder dump = new StringBuilder();
     vertxContext.owner().executeBlocking(
@@ -185,7 +185,7 @@ public class AdminAPI implements AdminResource {
               }
             }
             if (peakMem != null) {
-              peakUsage = peakMem.getUsed() / 1024 / 1024 * 100;
+              peakUsage = peakMem.getUsed() / 1024 / 1024;
             }
             dump.append("<tr><td>name: ").append(pool.getName()).append("   </td>").append(
               "<td>memory usage after latest gc: <b>").append(usageAfterGC).append(

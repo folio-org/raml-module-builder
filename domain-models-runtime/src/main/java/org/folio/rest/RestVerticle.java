@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -93,6 +95,7 @@ public class RestVerticle extends AbstractVerticle {
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = new ObjectMapper();
+  private static final String       OKAPI_HEADER_PREFIX             = "x-okapi";
   //we look for the class and function in the class that is mapped to a requested url
   //since we try to load via reflection an implementation of the class at runtime - better to load once and cache
   //for subsequent calls
@@ -572,13 +575,28 @@ public class RestVerticle extends AbstractVerticle {
   public void invoke(Method method, Object[] params, Object o, RoutingContext rc, Handler<AsyncResult<Response>> resultHandler) {
     Context context = vertx.getOrCreateContext();
     Object[] newArray = new Object[params.length];
-    for (int i = 0; i < params.length - 2; i++) {
+    for (int i = 0; i < params.length - 3; i++) {
       newArray[i] = params[i];
     }
+    
+    //inject call back handler into each function
     newArray[params.length - 2] = resultHandler;
+    
+    //inject vertx context into each function
     newArray[params.length - 1] = getVertx().getOrCreateContext();
-    // newArray[params.length+1] = response;
-    // params =
+    
+    //create okapi headers map and inject into function
+    Map<String, String> headers = new HashMap<>();
+    MultiMap mm = rc.request().headers();
+    Consumer<Map.Entry<String,String>> consumer = entry -> {      
+      if(entry.getKey().startsWith(OKAPI_HEADER_PREFIX)){
+        headers.put(entry.getKey(), entry.getValue());
+      }
+    };
+    mm.forEach(consumer);
+    
+    newArray[params.length - 3] = headers;
+
     context.runOnContext(v -> {
       try {
         method.invoke(o, newArray);
@@ -932,7 +950,8 @@ public class RestVerticle extends AbstractVerticle {
             // this will also validate the json against the pojo created from the schema
             Class<?> entityClazz = Class.forName(valueType);
 
-            if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context")) {
+            if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context") &&
+                !valueType.equals("java.util.Map")) {
               // we have special handling for the Result Handler and context
 
               if("java.io.Reader".equals(valueType)){

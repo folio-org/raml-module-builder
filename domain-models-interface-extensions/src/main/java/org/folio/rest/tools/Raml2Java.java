@@ -19,6 +19,11 @@ public class Raml2Java extends AbstractGeneratorExtension {
 
     super.onAddResourceMethod(method, action, bodyMimeType, uniqueResponseMimeTypes);
 
+    //add okapi headers to all interfaces generated from the raml
+    String genericOKapiMap = "java.util.Map<String, String>";
+    JClass genericOkapiMapRef = getCodeModel().ref(genericOKapiMap);
+    method.param(genericOkapiMapRef, "okapiHeaders");
+    
     // add parameter to all functions
     String genericTypeName = "io.vertx.core.Handler<io.vertx.core.AsyncResult<Response>>";
     JClass genericT = getCodeModel().ref(genericTypeName);
