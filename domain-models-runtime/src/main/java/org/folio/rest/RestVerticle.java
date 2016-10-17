@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -76,9 +75,11 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
-  public static final HashMap<String, String> MODULE_SPECIFIC_ARGS = new HashMap<>();
-  private static final String UPLOAD_PATH_TO_HANDLE = "/admin/upload";
-  private static final String CORS_ALLOW_HEADER = "Access-Control-Allow-Origin";
+  public static final String        OKAPI_HEADER_TENANT             = "x-okapi-tenant";
+
+  public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
+  private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
+  private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
   private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept";
@@ -578,23 +579,31 @@ public class RestVerticle extends AbstractVerticle {
     for (int i = 0; i < params.length - 3; i++) {
       newArray[i] = params[i];
     }
-    
+
     //inject call back handler into each function
     newArray[params.length - 2] = resultHandler;
-    
+
     //inject vertx context into each function
     newArray[params.length - 1] = getVertx().getOrCreateContext();
-    
+
     //create okapi headers map and inject into function
     Map<String, String> headers = new HashMap<>();
     MultiMap mm = rc.request().headers();
-    Consumer<Map.Entry<String,String>> consumer = entry -> {      
-      if(entry.getKey().startsWith(OKAPI_HEADER_PREFIX)){
-        headers.put(entry.getKey(), entry.getValue());
+    String []tenantId = new String[]{null};
+    Consumer<Map.Entry<String,String>> consumer = entry -> {
+      String headerKey = entry.getKey();
+      if(headerKey.startsWith(OKAPI_HEADER_PREFIX)){
+        if(headerKey.equalsIgnoreCase(OKAPI_HEADER_TENANT)){
+          tenantId[0] = entry.getValue();
+        }
+        headers.put(headerKey, entry.getValue());
       }
     };
     mm.forEach(consumer);
-    
+
+    if(tenantId[0] == null){
+      headers.put(OKAPI_HEADER_TENANT, MongoCRUD.DEFAULT_SCHEMA);
+    }
     newArray[params.length - 3] = headers;
 
     context.runOnContext(v -> {

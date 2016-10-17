@@ -15,7 +15,9 @@ import io.vertx.ext.mongo.MongoClientUpdateResult;
 import io.vertx.ext.mongo.UpdateOptions;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.folio.rest.tools.utils.NetworkUtils;
 
@@ -52,20 +54,23 @@ public class MongoCRUD {
   public static final String        JSON_PROP_SORT          = "sort";
   public static final String        JSON_PROP_CLASS         = "clazz";
   public static final MongodStarter MONGODB                 = getMongodStarter();
+  public static final String        DEFAULT_SCHEMA          = "indexd_test";
+  private static MongodProcess      mongoProcess;
+  private static ObjectMapper       mapper                  = new ObjectMapper();
+  private static boolean            embeddedMode            = false;
+  private static String             configPath;
+  private static MongoCRUD          instance;
+  private static Map<String, MongoCRUD> connectionPool      = new HashMap<>();
 
-  private static MongodProcess mongoProcess;
-  private static ObjectMapper mapper      = new ObjectMapper();
-  private static boolean embeddedMode     = false;
-  private static String configPath;
-  private static MongoCRUD instance;
+  private static final Logger       log                     = LoggerFactory.getLogger(MongoCRUD.class);
+  private static int                mongoPort               = 27017;
 
-  private static final Logger log         = LoggerFactory.getLogger(MongoCRUD.class);
-
-  private int mongoPort                   = 27017;
+  //the only non static field - the client is tenant sensitive as  each client
+  //represents a connection to a specific schema
   private MongoClient client;
 
-  private MongoCRUD(Vertx vertx) throws Exception {
-    init(vertx);
+  private MongoCRUD(Vertx vertx, String tenantId) throws Exception {
+    init(vertx, tenantId);
   }
 
   /**
@@ -93,15 +98,31 @@ public class MongoCRUD {
     // assumes a single thread vertx model so no sync needed
     if (instance == null) {
       try {
-        instance = new MongoCRUD(vertx);
+        instance = new MongoCRUD(vertx, DEFAULT_SCHEMA);
         //do not fail the mapping between json and objects if there is a missing property in the
         //object at this point
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
       } catch (Exception e) {
-        e.printStackTrace();
+         log.error(e.getMessage(), e);
       }
     }
     return instance;
+  }
+
+  // will return null on exception
+  public static MongoCRUD getInstance(Vertx vertx, String tenantId) {
+    // assumes a single thread vertx model so no sync needed
+    if(!connectionPool.containsKey(tenantId)){
+      try {
+        connectionPool.put(tenantId, new MongoCRUD(vertx, tenantId));
+        //do not fail the mapping between json and objects if there is a missing property in the
+        //object at this point
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+      }
+    }
+    return connectionPool.get(tenantId);
   }
 
   /**
@@ -127,14 +148,16 @@ public class MongoCRUD {
     return MongodStarter.getInstance(runtimeConfig);
   }
 
-  private MongoClient init(Vertx vertx) throws Exception {
+  private MongoClient init(Vertx vertx, String tenantId) throws Exception {
     if (embeddedMode) {
-      mongoPort = NetworkUtils.nextFreePort();
+      if(mongoProcess == null || !mongoProcess.isProcessRunning()){
+        mongoPort = NetworkUtils.nextFreePort();
+      }
       JsonObject jsonConf = new JsonObject();
-      jsonConf.put("db_name", "indexd_test");
+      jsonConf.put("db_name", tenantId);
       jsonConf.put("host", "localhost");
       jsonConf.put("port", mongoPort);
-      client = MongoClient.createShared(vertx, jsonConf);
+      client = MongoClient.createNonShared(vertx, jsonConf);
       log.info("created embedded mongo config on port " + mongoPort);
     } else {
       String path = "/mongo-conf.json";
@@ -163,8 +186,9 @@ public class MongoCRUD {
           + example.encodePrettily());
       }
       else{
+        jsonConf.put("db_name", tenantId);
         mongoPort = jsonConf.getInteger("port");
-        client = MongoClient.createShared(vertx, jsonConf, "MongoConnectionPool");
+        client = MongoClient.createNonShared(vertx, jsonConf);
       }
     }
     return client;
@@ -210,7 +234,7 @@ public class MongoCRUD {
         }
       });
     } catch (Throwable e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
@@ -241,6 +265,7 @@ public class MongoCRUD {
           replyHandler.handle(io.vertx.core.Future.succeededFuture(id));
         } else {
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+          log.warn(res.cause().getMessage(), res.cause());
         }
         if(log.isDebugEnabled()){
           elapsedTime("save[insert]() to " + collection, start);
@@ -280,6 +305,7 @@ public class MongoCRUD {
       jsonObject.put(binaryObjFieldName, new JsonObject().put("$binary", binaryObj));
     } catch (Exception e) {
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+      log.warn(e.getMessage(), e);
     }
     client.save(collection, jsonObject, res -> {
       if (res.succeeded()) {
@@ -287,6 +313,7 @@ public class MongoCRUD {
         replyHandler.handle(io.vertx.core.Future.succeededFuture(id));
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        log.warn(res.cause().getMessage(), res.cause());
       }
       if(log.isDebugEnabled()){
         elapsedTime("saveBinary() to " + collection, start);
@@ -343,7 +370,7 @@ public class MongoCRUD {
         }
       });
     } catch (Throwable e) {
-      log.error(e);
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
@@ -366,6 +393,7 @@ public class MongoCRUD {
         replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        log.error(res.cause().getMessage(), res.cause());
       }
     });
   }
@@ -395,9 +423,8 @@ public class MongoCRUD {
         }
       });
     } catch (Throwable e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
-
     }
   }
 
@@ -423,9 +450,8 @@ public class MongoCRUD {
         }
       });
     } catch (Throwable e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
-
     }
   }
 
@@ -473,11 +499,11 @@ public class MongoCRUD {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(reply));
             }
           } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e);
             replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
           }
         } else {
-          res.cause().printStackTrace();
+          log.error(res.cause().getMessage(), res.cause());
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
         if(log.isDebugEnabled()){
@@ -530,11 +556,11 @@ public class MongoCRUD {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(reply));
             }
           } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage(),e);
             replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
           }
         } else {
-          res.cause().printStackTrace();
+          log.error(res.cause().getMessage(),res.cause());
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
         if(log.isDebugEnabled()){
@@ -542,7 +568,7 @@ public class MongoCRUD {
         }
       });
     } catch (Throwable e) {
-      e.printStackTrace();
+      log.error(e.getMessage(),e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
@@ -580,11 +606,11 @@ public class MongoCRUD {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(reply));
             }
           } catch (Exception e) {
-            log.error(e);
+            log.error(e.getMessage(), e);
             replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
           }
         } else {
-          log.error(res.cause());
+          log.error(res.cause().getMessage(), res.cause());
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
         if(log.isDebugEnabled()){
@@ -592,7 +618,7 @@ public class MongoCRUD {
         }
       });
     } catch (Throwable e) {
-      log.error(e);
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
     }
   }
@@ -663,7 +689,7 @@ public class MongoCRUD {
           }
           replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
         } else {
-          res.cause().printStackTrace();
+          log.error(res.cause().getMessage(), res.cause());
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
         if(log.isDebugEnabled()){
@@ -671,7 +697,7 @@ public class MongoCRUD {
         }
       });
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
 
     }
@@ -724,7 +750,7 @@ public class MongoCRUD {
             System.out.println(" replaced !");
             replyHandler.handle(io.vertx.core.Future.succeededFuture());
           } else {
-            res.cause().printStackTrace();
+            log.error(res.cause().getMessage(), res.cause());
             replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
           }
           if(log.isDebugEnabled()){
@@ -733,7 +759,7 @@ public class MongoCRUD {
         });
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
 
     }
@@ -795,6 +821,7 @@ public class MongoCRUD {
         replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
       } else {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        log.error(res.cause().getMessage(), res.cause());
       }
     });
   }
