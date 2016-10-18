@@ -149,7 +149,7 @@ To run the circulation module, navigate to the `/target/` directory and do
 - `java.util.logging.config.file=C:\Git\circulation\target\classes\vertx-default-jul-logging.properties`
   (Optional - defaults to /target/classes/vertx-default-jul-logging.properties)
 
-- `embed_mongo=false` (Optional - defaults to false)
+- `embed_mongo=true` (Optional - defaults to false)
 
 - `-Dhttp.port=8080` (Optional - defaults to 8081)
 
@@ -193,7 +193,6 @@ To run the circulation module, navigate to the `/target/` directory and do
 
 ## Creating a new module
 
-Pre step 1: Clone / Download the raml-module-builder project and `mvn clean install`
 
 ### Step 1: Describe the APIs to be exposed by the new module
 
@@ -532,7 +531,7 @@ the `raml` project. So, for the ebook RAML an
 Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
-See an [example](#function-example) of an implemented function.
+See an [example](#function-example) of an implemented function. Notice the use of the MongoCRUD helper class to get a connection to the tenant specific mongo schema.
 
 ## Adding an init() implementation
 
@@ -724,7 +723,7 @@ Content-Type: application/octet-stream
 The generated API interface will have a function signiture of:
 
 ```sh
-public void postConfigurationsRules(String authorization, String lang, MimeMultipart entity,
+public void postConfigurationsRules(String lang, MimeMultipart entity, Map<String, String>okapiHeaders,
 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception
 ```
 
@@ -1009,30 +1008,38 @@ Query parameters and header validation
 
   @Validate
   @Override
-  public void putPatronsByPatronId(String patronId, String authorization, String lang, Patron entity,
+  public void putPatronsByPatronId(String patronId, String lang, Patron entity, Map<String, String>okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context context) throws Exception {
 
     try {
       JsonObject q = new JsonObject();
-      q.put("_id", patronId);
-      System.out.println("sending... putPatronsByPatronId");
+      q.put(ID_FIELD, patronId);
+      log.debug("sending... putPatronsByPatronId");
+      Vertx vertx = context.owner();
+      String tenantId = okapiHeaders.get(OKAPI_HEADER_TENANT);
       context.runOnContext(v -> {
-        MongoCRUD.getInstance(context.owner()).update(Consts.PATRONS_COLLECTION,
-            entity, q,
-            reply -> {
+        MongoCRUD.getInstance(vertx, tenantId).update(Consts.PATRONS_COLLECTION,
+          entity, q, true,
+          reply -> {
+            if(reply.result().getDocModified() == 0){
+              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutPatronsByPatronIdResponse.
+                withPlainNotFound(patronId)));
+            }
+            else{
               try {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutPatronsByPatronIdResponse.withNoContent()));
               } catch (Exception e) {
-                e.printStackTrace();
+                log.error(e);
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutPatronsByPatronIdResponse
-                    .withPlainInternalServerError(messages.getMessage(lang, "10001"))));
+                  .withPlainInternalServerError(messages.getMessage(lang,  MessageConsts.InternalServerError))));
               }
-            });
+            }
+          });
       });
     } catch (Exception e) {
-      e.printStackTrace();
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutPatronsByPatronIdResponse.withPlainInternalServerError(messages
-          .getMessage(lang, "10001"))));
+      log.error(e);
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutPatronsByPatronIdResponse
+        .withPlainInternalServerError(messages.getMessage(lang,  MessageConsts.InternalServerError))));
     }
   }
 ```
@@ -1040,7 +1047,7 @@ Query parameters and header validation
 ## Some REST examples
 
 Have these in the headers - currently not validated hence not mandatory:
-- Authorization: Bearer a2VybWl0Omtlcm1pdA==
+
 - Accept: application/json,text/plain
 - Content-Type: application/json;
 
