@@ -109,6 +109,7 @@ Sample projects:
 - https://github.com/folio-org/mod-acquisitions
 - https://github.com/folio-org/mod-acquisitions-postgres
 
+and other [modules](http://dev.folio.org/source-code/#server-side).
 
 ## Get started with a sample working module
 
@@ -1140,3 +1141,9 @@ http://localhost:8080/patrons
  }
 }
 ```
+
+## Additional information
+
+Other [modules](http://dev.folio.org/source-code/#server-side).
+
+Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
