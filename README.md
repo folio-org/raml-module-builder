@@ -748,7 +748,7 @@ By default an embedded MongoDB is included in the runtime but is not run by
 default. To change that add `embed_mongo=true` to the command line
 (`java -jar circulation-fat.jar embed_mongo=true`). Connection parameters to a
 non-embedded MongoDB can be placed in `resources/mongo-conf.json` or passed
-via the [command-line](#Command-line-options).
+via the [command-line](#command-line-options).
 
 The runtime framework exposes a MongoDB async client which offers CRUD
 operations in an ORM type fashion. Please see `/domain-models-runtime/src/main/java/org/folio/rest/persist/MongoCRUD.java` for the available APIs exposed. Note that you can connect to a specific tenant's schema by getting an instance of a mongoCRUD object for a specific tenant.
