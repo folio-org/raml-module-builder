@@ -301,6 +301,11 @@ public class RestVerticle extends AbstractVerticle {
                     Object[] paramArray = new Object[params.size()];
                     parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
 
+                    //create okapi headers map and inject into function
+                    Map<String, String> okapiHeaders = new HashMap<>();
+                    String []tenantId = new String[]{null};
+                    getOkapiHeaders(rc, okapiHeaders, tenantId);
+                    
                     if (validRequest[0]) {
 
                       // check if we are dealing with a file upload , currently only multipart/form-data content-type support
@@ -389,8 +394,8 @@ public class RestVerticle extends AbstractVerticle {
                           //if request is valid - invoke it
                           for (int i = 0; i < methods.length; i++) {
                             if (methods[i].getName().equals(function)) {
-                              try {
-                                invoke(methods[i], paramArray, instance, rc, v -> {
+                              try {                                
+                                invoke(methods[i], paramArray, instance, rc,  tenantId, okapiHeaders, v -> {
                                   LogUtil.formatLogMessage(className, "start", " invoking " + function);
                                   sendResponse(rc, v, start);
                                 });
@@ -413,8 +418,8 @@ public class RestVerticle extends AbstractVerticle {
                             //if request is valid - invoke it
                             for (int i = 0; i < methods.length; i++) {
                               if (methods[i].getName().equals(function)) {
-                                try {
-                                  invoke(methods[i], paramArray, instance, rc, v -> {
+                                try {                                 
+                                  invoke(methods[i], paramArray, instance, rc, tenantId, okapiHeaders, v -> {
                                     LogUtil.formatLogMessage(className, "start", " invoking " + function);
                                     sendResponse(rc, v, start);
                                   });
@@ -537,6 +542,9 @@ public class RestVerticle extends AbstractVerticle {
         response.headers().add(entry.getKey(), jointValue);
       }
 
+      //forward all headers
+      response.headers().addAll(rc.request().headers());
+      
       Object entity = result.getEntity();
       if (entity instanceof OutStream) {
         entity = ((OutStream) entity).getData();
@@ -573,7 +581,22 @@ public class RestVerticle extends AbstractVerticle {
     isValid[0] = false;
   }
 
-  public void invoke(Method method, Object[] params, Object o, RoutingContext rc, Handler<AsyncResult<Response>> resultHandler) {
+  private void getOkapiHeaders(RoutingContext rc, Map<String, String> headers, String[] tenantId){
+    MultiMap mm = rc.request().headers();    
+    Consumer<Map.Entry<String,String>> consumer = entry -> {
+      String headerKey = entry.getKey();
+      if(headerKey.startsWith(OKAPI_HEADER_PREFIX)){
+        if(headerKey.equalsIgnoreCase(OKAPI_HEADER_TENANT)){
+          tenantId[0] = entry.getValue();
+        }
+        headers.put(headerKey, entry.getValue());
+      }
+    };
+    mm.forEach(consumer);
+  }
+  
+  public void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
+      Map<String,String> headers, Handler<AsyncResult<Response>> resultHandler) {
     Context context = vertx.getOrCreateContext();
     Object[] newArray = new Object[params.length];
     for (int i = 0; i < params.length - 3; i++) {
@@ -585,21 +608,6 @@ public class RestVerticle extends AbstractVerticle {
 
     //inject vertx context into each function
     newArray[params.length - 1] = getVertx().getOrCreateContext();
-
-    //create okapi headers map and inject into function
-    Map<String, String> headers = new HashMap<>();
-    MultiMap mm = rc.request().headers();
-    String []tenantId = new String[]{null};
-    Consumer<Map.Entry<String,String>> consumer = entry -> {
-      String headerKey = entry.getKey();
-      if(headerKey.startsWith(OKAPI_HEADER_PREFIX)){
-        if(headerKey.equalsIgnoreCase(OKAPI_HEADER_TENANT)){
-          tenantId[0] = entry.getValue();
-        }
-        headers.put(headerKey, entry.getValue());
-      }
-    };
-    mm.forEach(consumer);
 
     if(tenantId[0] == null){
       headers.put(OKAPI_HEADER_TENANT, MongoCRUD.DEFAULT_SCHEMA);
