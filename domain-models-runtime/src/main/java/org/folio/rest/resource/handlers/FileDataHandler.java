@@ -92,7 +92,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
       Object toSave = importer.processLine(rows[i]);
 
       if(toSave != null){
-        MongoCRUD.getInstance(vertx).save(importer.getCollection(), toSave, reply -> {
+        MongoCRUD.getInstance(vertx, conf.getInstId()).save(importer.getCollection(), toSave, reply -> {
           if(reply.failed()){
             errorCount[0]++;
             log.error("Error saving object " + reply.cause().getMessage());

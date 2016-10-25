@@ -134,7 +134,9 @@ public class ProcessUploads implements InitAPI {
     String instId = cObj.getInstId();
     
     String jobConfExistsQuery = "{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
-      + "{ \"name\": \""+cObj.getName()+"\"} ]}";
+      + "{ \"name\": \""+cObj.getName()+"\"}, "
+      + "{ \"inst_id\": { \"$exists\": true }},"
+      + "{ \"inst_id\": \"" +instId+ "\"}]}";
     
     JsonObject j = new JsonObject(jobConfExistsQuery);
     // check if there is a job configuration of this type
@@ -157,7 +159,7 @@ public class ProcessUploads implements InitAPI {
               else{
                 String id = reply2.result();//job conf id
                 cObj.setId(id);
-                log.info("Added job configuration entry for module: " + cObj.getModule() + " and name " + cObj.getName());
+                log.info("Added job configuration entry for module: " + cObj.getModule() + " and name " + cObj.getName() + " inst name: " + cObj.getInstId());
                 saveAsPending2DB(cObj, filename, message);
               }
             });
@@ -183,6 +185,7 @@ public class ProcessUploads implements InitAPI {
     job.setStatus(RTFConsts.STATUS_PENDING);
     job.setModule(cObj.getModule());
     job.setName(cObj.getName());
+    job.setInstId(cObj.getInstId());
     Parameter p2 = new Parameter();
     p2.setKey("file");
     p2.setValue(filename);    

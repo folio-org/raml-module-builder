@@ -24,6 +24,9 @@
       "type": "object",
       "$ref" : "last_modified"
     },
+    "inst_id": {
+      "type": "string"
+    },
     "parameters":{
 	  "type": "object",
 	  "$ref" : "parameters"
