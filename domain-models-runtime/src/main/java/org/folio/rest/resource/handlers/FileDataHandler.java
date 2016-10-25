@@ -111,10 +111,10 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
             successCount[0]++;
             log.debug("#" +successCount[0]+ " Saved object " + reply.result());
           }
-          System.out.println("error -------- "+(errorCount[0]));
-          System.out.println("success -------- "+successCount[0]);
-          System.out.println("total so far -------- "+(errorCount[0]+successCount[0]));
-          System.out.println("total -------- "+totalLines[0]);
+          //System.out.println("error -------- "+(errorCount[0]));
+          //System.out.println("success -------- "+successCount[0]);
+          //System.out.println("total so far -------- "+(errorCount[0]+successCount[0]));
+          //System.out.println("total -------- "+totalLines[0]);
           if(status == 1 && totalLines[0] == (errorCount[0]+successCount[0])){
             System.out.println("in the if staement ---- ");
             updateStatus(conf);
