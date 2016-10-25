@@ -82,19 +82,9 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
         lastRowFromPreviousBuffer = null;
       }
       if(i == rows.length-1 && !rows[i].endsWith(LINE_SEPS)){
-        
-        //if(status == 1){
-          //we are in the last buffer and in the last line of that buffer - 
-          //once this completes we can update status in DB of job
-        //  status = 2;
-        //}
-        
         //the last row of a buffer may not be complete - if it doesnt end with a new line
         //it has partial content
-        //if(!rows[i].endsWith(LINE_SEPS)){
-          //we have a partial row in hand in buffer
-          lastRowFromPreviousBuffer = rows[i];
-        //}
+        lastRowFromPreviousBuffer = rows[i];
       }
 
       totalLines[0]++;
@@ -111,10 +101,6 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
             successCount[0]++;
             log.debug("#" +successCount[0]+ " Saved object " + reply.result());
           }
-          //System.out.println("error -------- "+(errorCount[0]));
-          //System.out.println("success -------- "+successCount[0]);
-          //System.out.println("total so far -------- "+(errorCount[0]+successCount[0]));
-          //System.out.println("total -------- "+totalLines[0]);
           if(status == 1 && totalLines[0] == (errorCount[0]+successCount[0])){
             System.out.println("in the if staement ---- ");
             updateStatus(conf);
@@ -122,14 +108,8 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
         });
       }
       else{
-        //System.out.println("NOT i -------- "+rows.length);
-        //System.out.println("NOT error -------- "+bufferRowsProcessedCountError[0]);
         log.error("Error saving object for row " + rows[i]);
         errorCount[0]++;
-        //if(status == 2 && (bufferRowsProcessedCountSuccess[0]+bufferRowsProcessedCountError[0])+1==rows.length){
-        //  System.out.println("in the if staement ---- "+(bufferRowsProcessedCountSuccess[0]+bufferRowsProcessedCountError[0])+1);
-        //  updateStatus(conf);
-        //}
       }
     }
   }
