@@ -66,47 +66,53 @@ public class ProcessUploads implements InitAPI {
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
     this.vertx = vertx;
+    ArrayList<Class<?>> impls = new ArrayList<>();
     try {
       //get all importer implementations in the classpath
-      ArrayList<Class<?>> impls = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, 
+      impls = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, 
         RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".Importer", true);
-      //loop on importer impl, extract the address field and create a event bus handler on each
-      //of the implementation's addresses
-      for (int i = 0; i < impls.size(); i++) {
-        Importer importer = (Importer)impls.get(i).newInstance();
-        String address =  importer.getImportAddress();
-        if(address == null){
-          //throw exception
-        }
-        //cache the importer impl
-        importerCache.put(address, importer);
-        
-        //register each address from each Importer impl on the event bus
-        MessageConsumer<Object> consumer = vertx.eventBus().consumer(address);
-        consumer.handler(message -> {
-          log.debug("Received a message to " + address + ": " + message.body());
-          JobConf cObj = (JobConf) message.body();
-          registerJob(cObj, message);
-        });
-        LogUtil.formatLogMessage(getClass().getName(), "runHook",
-          "One time hook called with implemented class " + "named " + impls.get(i).getName());
-      }
-      // set periodic to query db for pending states and run them if there is an open slot
-      // this is a terrible hack and should be in the periodicAPI hook TODO
-      vertx.setPeriodic(60000, todo -> {
-        try {
-          //kick off the running of the import file process
-          process();
-        } catch (Exception e) {
-          log.error(e);
-        }
-      });
     } catch (Exception e) {
-      log.error(e.getCause().getMessage(), e);
+      //no impl found
+      log.error(e);
     }
+    //loop on importer impl, extract the address field and create a event bus handler on each
+    //of the implementation's addresses
+    for (int i = 0; i < impls.size(); i++) {
+      Importer importer = null;
+      try {
+        importer = (Importer)impls.get(i).newInstance();
+      } catch (Exception e) {
+        log.error(e);
+      }
+      String address =  importer.getImportAddress();
+      if(address == null){
+        //throw exception
+      }
+      //cache the importer impl
+      importerCache.put(address, importer);
+      
+      //register each address from each Importer impl on the event bus
+      MessageConsumer<Object> consumer = vertx.eventBus().consumer(address);
+      consumer.handler(message -> {
+        log.debug("Received a message to " + address + ": " + message.body());
+        JobConf cObj = (JobConf) message.body();
+        registerJob(cObj, message);
+      });
+      LogUtil.formatLogMessage(getClass().getName(), "runHook",
+        "One time hook called with implemented class " + "named " + impls.get(i).getName());
+    }
+    // set periodic to query db for pending states and run them if there is an open slot
+    // this is a terrible hack and should be in the periodicAPI hook TODO
+    vertx.setPeriodic(60000, todo -> {
+      try {
+        //kick off the running of the import file process
+        process();
+      } catch (Exception e) {
+        log.error(e);
+      }
+    });
     resultHandler.handle(io.vertx.core.Future.succeededFuture(true));
   }
-  
   
   /**
    * register a job to run - saved in the folio_shared schema with institution id field.
