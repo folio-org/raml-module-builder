@@ -49,13 +49,17 @@ import javax.validation.ValidatorFactory;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.jaxrs.model.JobConf;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
-import org.folio.rest.tools.ReturnStatusConsts;
+import org.folio.rest.tools.RTFConsts;
+import org.folio.rest.tools.codecs.PojoEventBusCodec;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
+import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rulez.Rules;
@@ -64,14 +68,10 @@ import org.kie.api.runtime.rule.FactHandle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Table;
 import com.google.common.io.ByteStreams;
-import com.google.common.reflect.ClassPath;
 
 public class RestVerticle extends AbstractVerticle {
-
+  
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
@@ -83,8 +83,6 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
   private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept";
-  private static final String       PACKAGE_OF_IMPLEMENTATIONS      = "org.folio.rest.impl";
-  private static final String       PACKAGE_OF_HOOK_INTERFACES      = "org.folio.rest.resource.interfaces";
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_STREAMIN = "application/octet-stream";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
@@ -97,10 +95,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = new ObjectMapper();
   private static final String       OKAPI_HEADER_PREFIX             = "x-okapi";
-  //we look for the class and function in the class that is mapped to a requested url
-  //since we try to load via reflection an implementation of the class at runtime - better to load once and cache
-  //for subsequent calls
-  private static Table<String, String, ArrayList<Class<?>>> clazzCache       = HashBasedTable.create();
+
   private final Messages            messages                        = Messages.getInstance();
   private int                       port                            = -1;
 
@@ -197,6 +192,9 @@ public class RestVerticle extends AbstractVerticle {
           log.error(e2);
         }
 
+        //register codec to be able to pass pojos on the event bus
+        eventBus.registerCodec(new PojoEventBusCodec());
+        
         //single handler for all url calls other then documentation
         //which is handled separately
         router.routeWithRegex("^(?!.*apidocs).*$").handler(rc -> {
@@ -261,7 +259,7 @@ public class RestVerticle extends AbstractVerticle {
                     //get interface mapped to this url
                     String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
                     // convert from interface to an actual class implementing it, which appears in the impl package
-                    aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
+                    aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
                     Object o = null;
                     // call back the constructor of the class - gives a hook into the class not based on the apis
                     // passing the vertx and context objects in to it.
@@ -543,7 +541,7 @@ public class RestVerticle extends AbstractVerticle {
       }
 
       //forward all headers
-      response.headers().addAll(rc.request().headers());
+      //response.headers().addAll(rc.request().headers());
       
       Object entity = result.getEntity();
       if (entity instanceof OutStream) {
@@ -652,52 +650,6 @@ public class RestVerticle extends AbstractVerticle {
     return string.substring(0, index) + replacement + string.substring(index + substring.length());
   }
 
-  /**
-   * Return the implementing class.
-   *
-   * @param implDir
-   *          - package name where to search
-   * @param interface2check
-   *          - class name of the required interface
-   * @return implementing class/es
-   * @throws IOException
-   *           - if the attempt to read class path resources (jar files or directories) failed.
-   * @throws ClassNotFoundException
-   *           - if no class in implDir implements the interface
-   */
-  private static ArrayList<Class<?>> convert2Impl(String implDir, String interface2check, boolean allowMultiple) throws IOException, ClassNotFoundException {
-    ArrayList<Class<?>> impl = new ArrayList<>();
-    ArrayList<Class<?>> cachedClazz = clazzCache.get(implDir, interface2check);
-    if(cachedClazz != null){
-      log.debug("returned " +cachedClazz.size()+" class/es from cache");
-      return cachedClazz;
-    }
-    ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
-    ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
-    for (ClassPath.ClassInfo info : classes) {
-      try {
-        Class<?> clazz = Class.forName(info.getName());
-        for (Class<?> anInterface : clazz.getInterfaces()) {
-          if (!anInterface.getName().equals(interface2check)) {
-            continue;
-          }
-          if (!allowMultiple && impl.size() > 0) {
-            throw new RuntimeException("Duplicate implementation of " + interface2check + " in " + implDir + ": " + impl.get(0).getName() + ", "
-                + clazz.getName());
-          }
-          impl.add(clazz);
-        }
-      } catch (ClassNotFoundException e) {
-        log.error(e.getMessage(), e);
-      }
-    }
-    if (impl.isEmpty()) {
-      throw new ClassNotFoundException("Implementation of " + interface2check + " not found in " + implDir);
-    }
-    clazzCache.put(implDir, interface2check, impl);
-    return impl;
-  }
-
   private MappedClasses populateConfig() {
     MappedClasses mappedURLs = new MappedClasses();
     JsonObject jObjClasses = new JsonObject();
@@ -754,7 +706,7 @@ public class RestVerticle extends AbstractVerticle {
    */
   private void runHook(Handler<AsyncResult<Boolean>> resultHandler) throws Exception {
     try {
-      ArrayList<Class<?>> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".InitAPI", true);
+      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".InitAPI", true);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("init", paramArray);
@@ -770,7 +722,7 @@ public class RestVerticle extends AbstractVerticle {
 
   private void runPeriodicHook() throws Exception {
     try {
-      ArrayList<Class<?>> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".PeriodicAPI", true);
+      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".PeriodicAPI", true);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] {};
         Method method = aClass.get(i).getMethod("runEvery", paramArray);
@@ -799,7 +751,7 @@ public class RestVerticle extends AbstractVerticle {
 
   private void runShutdownHook(Handler<AsyncResult<Void>> resultHandler) throws Exception {
     try {
-      ArrayList<Class<?>> aClass = convert2Impl(PACKAGE_OF_IMPLEMENTATIONS, PACKAGE_OF_HOOK_INTERFACES + ".ShutdownAPI", true);
+      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".ShutdownAPI", true);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("shutdown", paramArray);
@@ -1143,12 +1095,31 @@ public class RestVerticle extends AbstractVerticle {
             }
             DeliveryOptions dOps = new DeliveryOptions();
             dOps.setSendTimeout(5000);
-            eventBus.send(address, filename, dOps, rep -> {
+            dOps.setCodecName("PojoEventBusCodec");
+            JobConf cObj = new JobConf();
+            cObj.setInstId(rc.request().getHeader(OKAPI_HEADER_TENANT));
+            cObj.setEnabled(true);
+            cObj.setDescription("File import job");
+            cObj.setType(RTFConsts.SCHEDULE_TYPE_MANUAL);
+            cObj.setName(address);
+            cObj.setModule(RTFConsts.IMPORT_MODULE);
+            //this is a hack to use the conf object
+            //which is only one for all job instances of this type
+            //to pass the specific file for this job instance to the 
+            //listening service
+            Parameter p1 = new Parameter();
+            p1.setKey("file");
+            p1.setValue(filename);
+            List<Parameter> parameters = new ArrayList<>();
+            parameters.add(p1);
+            cObj.setParameters(parameters);
+            
+            eventBus.send(address, cObj, dOps, rep -> {
               if(rep.succeeded()){
                 log.debug("Delivered Messaged of uploaded file " + filename);
                 Object returnCode = rep.result().body();
                 if(returnCode != null){
-                  if(ReturnStatusConsts.OK_PROCESSING_STATUS.equals(returnCode)){
+                  if(RTFConsts.OK_PROCESSING_STATUS.equals(returnCode)){
                     request.response().setStatusCode(204);
                   }
                   else{

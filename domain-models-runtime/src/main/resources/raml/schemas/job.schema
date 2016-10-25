@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "module": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "creator": {
+      "type": "string"
+    },
+    "job_conf_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "last_modified": {
+      "type": "object",
+      "$ref" : "last_modified"
+    },
+    "parameters":{
+	  "type": "object",
+	  "$ref" : "parameters"
+    }
+  },
+  "required": [
+    "job_conf_id",
+    "creator"
+  ]
+}

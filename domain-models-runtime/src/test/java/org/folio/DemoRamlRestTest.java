@@ -118,7 +118,9 @@ public class DemoRamlRestTest {
     //check File Uploads
     postData(context, "http://localhost:" + port + "/admin/upload", getBody("uploadtest.json", true), 400, false);
     postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204, false);
-    postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", Buffer.buffer(getFile("uploadtest.json")), 204, false);
+    postData(context, "http://localhost:" + port +
+      "/admin/upload?file_name=test.json&bus_address=uploads.import.generic&persist_method=SAVE_AND_NOTIFY",
+      Buffer.buffer(getFile("uploadtest.json")), 204, false);
 
     List<Object> list = getListOfBooks();
 

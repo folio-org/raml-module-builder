@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "module": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "creator": {
+      "type": "string"
+    },
+    "inst_id": {
+      "type": "string"
+    },
+    "lib_id": {
+      "type": "string"
+    },
+    "last_modified": {
+      "type": "object",
+      "$ref": "last_modified"
+    },
+    "parameters":{
+	  	 	"type": "object",
+	  		 "$ref" : "parameters"
+    }
+  },
+  "required": [
+    "module",
+    "name",
+    "type",
+    "enabled",
+    "inst_id"
+  ]
+}

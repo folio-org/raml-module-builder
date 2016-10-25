@@ -54,7 +54,7 @@ public class MongoCRUD {
   public static final String        JSON_PROP_SORT          = "sort";
   public static final String        JSON_PROP_CLASS         = "clazz";
   public static final MongodStarter MONGODB                 = getMongodStarter();
-  public static final String        DEFAULT_SCHEMA          = "indexd_test";
+  public static final String        DEFAULT_SCHEMA          = "folio_shared";
   private static MongodProcess      mongoProcess;
   private static ObjectMapper       mapper                  = new ObjectMapper();
   private static boolean            embeddedMode            = false;

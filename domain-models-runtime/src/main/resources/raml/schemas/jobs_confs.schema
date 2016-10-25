@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "job_confs": {
+      "id": "jobConfs",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref" : "jobs_conf"
+      }
+    },
+    "total_records": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "job_confs",
+    "total_records"
+  ]
+}

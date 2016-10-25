@@ -1,0 +1,14 @@
+{
+  "_id": "987654321",
+  "module": "IMPORT",
+  "name": "Generic file import job",
+  "description": "Import",
+  "type": "MANUAL",
+  "category": "IMPORTS",
+  "enabled": true,
+  "creator": "joe",
+  "parameters": [
+    {"key1": "value"},
+    {"key1": "value"}
+  ]
+}

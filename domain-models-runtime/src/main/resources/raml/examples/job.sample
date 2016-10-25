@@ -1,0 +1,9 @@
+{
+  "_id": "12345678",
+  "job_conf_id": "987654321",
+  "creator": "a",
+    "parameters" : [
+      {"errors":"2"},
+      {"succeeded":"2"}
+    ]
+}
