@@ -8,18 +8,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 /**
- * serialize pojos to pass on the event bus - 
+ * serialize pojos to pass on the event bus -
  * has not been tested on a cluster - only on local messages
  *
  */
 public class PojoEventBusCodec implements MessageCodec<Object, Object> {
-  
+
   private static final ObjectMapper MAPPER  = new ObjectMapper();
-  
-  
+
+
   @Override
   public void encodeToWire(Buffer buffer, Object pojo) {
-    
+
     String value = null;
     try {
       value = MAPPER.writeValueAsString(pojo);
@@ -28,11 +28,11 @@ public class PojoEventBusCodec implements MessageCodec<Object, Object> {
     }
 
     int dataLength = value.getBytes().length;
-    
+
     String clazz = pojo.getClass().getName();
-    
+
     int clazzLength = clazz.getBytes().length;
-    
+
     // Write data into given buffer
     buffer.appendInt(clazzLength);
     buffer.appendString(clazz);

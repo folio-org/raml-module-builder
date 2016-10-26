@@ -23,7 +23,7 @@ public class Raml2Java extends AbstractGeneratorExtension {
     String genericOKapiMap = "java.util.Map<String, String>";
     JClass genericOkapiMapRef = getCodeModel().ref(genericOKapiMap);
     method.param(genericOkapiMapRef, "okapiHeaders");
-    
+
     // add parameter to all functions
     String genericTypeName = "io.vertx.core.Handler<io.vertx.core.AsyncResult<Response>>";
     JClass genericT = getCodeModel().ref(genericTypeName);
