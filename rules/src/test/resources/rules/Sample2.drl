@@ -8,8 +8,8 @@ dialect "java"
 rule "java First rule"
 
 when
-    a : Messages( a.status  == 0)
+  a : Messages( a.status  == 0)
 then
-    a.setStatus(5);
-    //System.out.println(a.message);
+  a.setStatus(5);
+  //System.out.println(a.message);
 end

@@ -10,8 +10,8 @@ no-loop
 dialect "mvel"
 
 when
-      m : Messages( status == Messages.HELLO, message : message )
+  m : Messages( status == Messages.HELLO, message : message )
 then
-      //System.out.println( message );
-      modify ( m ) { message = "Whatever" };
+  //System.out.println( message );
+  modify ( m ) { message = "Whatever" };
 end
