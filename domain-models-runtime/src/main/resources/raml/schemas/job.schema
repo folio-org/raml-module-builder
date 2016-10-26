@@ -27,9 +27,9 @@
     "inst_id": {
       "type": "string"
     },
-    "parameters":{
-	  "type": "object",
-	  "$ref" : "parameters"
+    "parameters": {
+      "type": "object",
+      "$ref" : "parameters"
     }
   },
   "required": [
