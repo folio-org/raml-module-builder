@@ -50,7 +50,7 @@ import org.folio.rest.resource.handlers.FileDataHandler;
  * <br>7. failed items are printed to the log for now
  *
  * <br>The work is split between the ProcessUploads class and an {@code org.folio.rest.resource.interfaces.Importer} interface implementation.
- * The implementation needs to declare some configurations, indicate the line delimiter, and run any processing it needs on a specific line 
+ * The implementation needs to declare some configurations, indicate the line delimiter, and run any processing it needs on a specific line
  * it receives.
  */
 public class ProcessUploads implements InitAPI {
@@ -62,14 +62,14 @@ public class ProcessUploads implements InitAPI {
   private final Messages      messages             = Messages.getInstance();
   private Vertx               vertx;
   private Map<String, Importer> importerCache      = new HashMap<>();
-  
+
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
     this.vertx = vertx;
     ArrayList<Class<?>> impls = new ArrayList<>();
     try {
       //get all importer implementations in the classpath
-      impls = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, 
+      impls = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS,
         RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".Importer", true);
     } catch (Exception e) {
       //no impl found
@@ -90,7 +90,7 @@ public class ProcessUploads implements InitAPI {
       }
       //cache the importer impl
       importerCache.put(address, importer);
-      
+
       //register each address from each Importer impl on the event bus
       MessageConsumer<Object> consumer = vertx.eventBus().consumer(address);
       consumer.handler(message -> {
@@ -113,7 +113,7 @@ public class ProcessUploads implements InitAPI {
     });
     resultHandler.handle(io.vertx.core.Future.succeededFuture(true));
   }
-  
+
   /**
    * register a job to run - saved in the folio_shared schema with institution id field.
    * online access should contain the inst id field to filter on only inst records
@@ -130,14 +130,14 @@ public class ProcessUploads implements InitAPI {
     //but is used in this case to transport this info from the rest verticle to here
     String filename = cObj.getParameters().get(0).getValue();
     cObj.setParameters(null);
-    
+
     String instId = cObj.getInstId();
-    
+
     String jobConfExistsQuery = "{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
       + "{ \"name\": \""+cObj.getName()+"\"}, "
       + "{ \"inst_id\": { \"$exists\": true }},"
       + "{ \"inst_id\": \"" +instId+ "\"}]}";
-    
+
     JsonObject j = new JsonObject(jobConfExistsQuery);
     // check if there is a job configuration of this type
     MongoCRUD.getInstance(vertx).get(
@@ -145,11 +145,11 @@ public class ProcessUploads implements InitAPI {
         if (reply.succeeded()) {
           if(reply.result().size() == 1){
             //there is a job configuration for this job
-            //save an instance of this job to the job collection            
+            //save an instance of this job to the job collection
             saveAsPending2DB((JobConf)reply.result().get(0), filename, message);
           }
           else if(reply.result().size() == 0){
-            //add a job configuration for this job            
+            //add a job configuration for this job
             MongoCRUD.getInstance(vertx).save(RTFConsts.JOB_CONF_COLLECTION, cObj, reply2 -> {
               if (reply2.failed()) {
                 log.error("Unable to save the module " + cObj.getModule() + " with name " + cObj.getName() + " to the job conf"
@@ -173,7 +173,7 @@ public class ProcessUploads implements InitAPI {
         }
       });
   }
-  
+
   /**
    * Save an entry of the path to the uploaded file to mongo in pending state
    * @param message - message to return to the runtime environment with status of the db save
@@ -188,13 +188,13 @@ public class ProcessUploads implements InitAPI {
     job.setInstId(cObj.getInstId());
     Parameter p2 = new Parameter();
     p2.setKey("file");
-    p2.setValue(filename);    
-    
+    p2.setValue(filename);
+
     List<Parameter> jobParams = new ArrayList<>();
     jobParams.add(p2);
-    
+
     job.setParameters(jobParams);
-    
+
     MongoCRUD.getInstance(vertx).save(RTFConsts.JOBS_COLLECTION, job, reply2 -> {
       if (reply2.failed()) {
         log.error("Unable to save uploaded file to jobs collection, it will not be run, " + filename);
@@ -210,8 +210,8 @@ public class ProcessUploads implements InitAPI {
   /**
   * check how many import processes are active - if less then threshold - then go to the mongo queue and
   * pull pending jobs and run them.
-  * read a tab delimited file containing 6 columns representing a basic item and push them into mongo 
-  * reading the file is async if this is * uploaded from a form and contains boundaries - then those 
+  * read a tab delimited file containing 6 columns representing a basic item and push them into mongo
+  * reading the file is async if this is * uploaded from a form and contains boundaries - then those
   * rows should be filtered out by the cols.length==6 - if not for some reason -
   * the validation on the item will filter them out
   */
@@ -222,7 +222,7 @@ public class ProcessUploads implements InitAPI {
    String pendingOrRunningEntries = "{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
        //+ "{\"$and\": [{ \"status\": \"status\"},"
        + "{\"$or\" : [{ \"status\": \"PENDING\"},{ \"status\": \"RUNNING\"}]}]}";
-   
+
    JsonObject j = new JsonObject(pendingOrRunningEntries);
 
    //get running and pending jobs
@@ -263,14 +263,14 @@ public class ProcessUploads implements InitAPI {
    log.debug(messages.getMessage(LOG_LANG, MessageConsts.Timer, "Reading configs for import process",
      end - start));
    });
-   
+
   }
-  
+
   private void updateStatusAndExecute(Job conf){
-    
+
    String file = conf.getParameters().get(0).getValue();
    conf.setStatus(RTFConsts.STATUS_RUNNING);
-   // update status of file                             
+   // update status of file
    MongoCRUD.getInstance(vertx).update(
      RTFConsts.JOBS_COLLECTION,
      conf, new JsonObject("{\"parameters.value\":\""+StringEscapeUtils.escapeJava(file)+"\"}"), false, true,
@@ -309,7 +309,7 @@ public class ProcessUploads implements InitAPI {
             if (ar2.failed()) {
               log.error("Error closing file " + file, ar2.cause());
             }
-          });   
+          });
         });
       } else {
         log.error("Error opening file " + file, ar.cause());
@@ -318,7 +318,7 @@ public class ProcessUploads implements InitAPI {
       }
     });
   }
-  
+
   /**
    * update the conf object in mongo with the object passed in using the code as the key
    * @param conf
@@ -326,7 +326,7 @@ public class ProcessUploads implements InitAPI {
   private void updateStatusDB(Job conf) {
     String file = conf.getParameters().get(0).getValue();
 
-    String query = "{\"parameters.value\":\""+file+"\"}";    
+    String query = "{\"parameters.value\":\""+file+"\"}";
     MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, new JsonObject(query), false, true, reply2 -> {
       if (reply2.failed()) {
         log.error("Unable to save uploaded file to queue, it will not be run, " + file);

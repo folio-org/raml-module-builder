@@ -690,7 +690,7 @@ post:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
-              
+
 ```
 
 

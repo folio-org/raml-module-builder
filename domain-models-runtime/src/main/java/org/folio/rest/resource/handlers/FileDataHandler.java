@@ -15,7 +15,7 @@ import io.vertx.core.logging.LoggerFactory;
 
 
 /**
- * 
+ *
  * this handler is used by the importer mechanism to parse files and calls importer implementations
  * to process a single line in a file. the file should be transformed to an object by the implementations
  * and that object is saved to mongo
@@ -25,47 +25,47 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
 
   private static final Logger log = LoggerFactory.getLogger(FileDataHandler.class);
   private static final String LINE_SEPS = System.getProperty("line.separator");
-  
+
   private Vertx vertx = null;
   private int []successCount = new int[]{0};
   private int []errorCount = new int[]{0};
-  
+
   private String lastRowFromPreviousBuffer = null;
-  
+
   private long fileSize = 0;
   private long bytesRead = 0;
-  
+
   private int []totalLines = new int[]{0};
-  
+
   private Job conf;
   private Importer importer;
   /**
    * 0 - more bytes to read, 1 - reading last buffer in file, 2 - read last row in last buffer
    */
-  private int status = 0; 
+  private int status = 0;
 
-  
+
   public FileDataHandler(Vertx vertx, Job conf, long fileSize, Importer importObj){
     this.vertx = vertx;
     this.fileSize = fileSize;
     this.conf = conf;
     this.importer = importObj;
-    
+
     log.info("Starting processing for file " + conf.getParameters().get(0).getValue() + "\nsize: " + fileSize +
-      "\nBulk size: " + importObj.getBulkSize() + "\nCollection: " + importObj.getCollection() + "\nImport Address:" 
+      "\nBulk size: " + importObj.getBulkSize() + "\nCollection: " + importObj.getCollection() + "\nImport Address:"
         + importObj.getImportAddress());
   }
-  
+
   @Override
   public void handle(Buffer event) {
-    
+
     //keep track of bytes read to know if we are finished reading
     bytesRead = bytesRead + event.getBytes().length;
     if(fileSize <= bytesRead){
       status = 1;
     }
-    
-    //split buffer read into new line delimited rows - keeping the delimiters 
+
+    //split buffer read into new line delimited rows - keeping the delimiters
     //so that we can keep track if we read a complete row or if it was cut off
     String del = importer.getLineDelimiter();
     if(del == null){
@@ -76,7 +76,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     //iterate over the read rows
     for (int i = 0; i < rows.length; i++) {
       if(lastRowFromPreviousBuffer != null && i==0){
-        //previous buffer had a partial row - add its content to the first row of the 
+        //previous buffer had a partial row - add its content to the first row of the
         //next buffer
         rows[i] = lastRowFromPreviousBuffer + rows[i];
         lastRowFromPreviousBuffer = null;
@@ -88,7 +88,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
       }
 
       totalLines[0]++;
-      
+
       Object toSave = importer.processLine(rows[i]);
 
       if(toSave != null){
@@ -113,7 +113,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
       }
     }
   }
-  
+
   private void updateStatus(Job conf){
     //set this job to completed in DB
     String query = "{ \"parameters.value\": \""+StringEscapeUtils.escapeJava(conf.getParameters().get(0).getValue())+"\"}";
@@ -125,7 +125,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     Parameter p2 = new Parameter();
     p2.setKey("errors");
     p2.setValue(String.valueOf(errorCount[0]));
-    
+
     conf.getParameters().add(p1);
     conf.getParameters().add(p2);
     MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, new JsonObject(query), false, true, rep -> {

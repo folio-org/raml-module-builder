@@ -71,7 +71,7 @@ import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
 
 public class RestVerticle extends AbstractVerticle {
-  
+
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
@@ -194,7 +194,7 @@ public class RestVerticle extends AbstractVerticle {
 
         //register codec to be able to pass pojos on the event bus
         eventBus.registerCodec(new PojoEventBusCodec());
-        
+
         //single handler for all url calls other then documentation
         //which is handled separately
         router.routeWithRegex("^(?!.*apidocs).*$").handler(rc -> {
@@ -303,7 +303,7 @@ public class RestVerticle extends AbstractVerticle {
                     Map<String, String> okapiHeaders = new HashMap<>();
                     String []tenantId = new String[]{null};
                     getOkapiHeaders(rc, okapiHeaders, tenantId);
-                    
+
                     if (validRequest[0]) {
 
                       // check if we are dealing with a file upload , currently only multipart/form-data content-type support
@@ -392,7 +392,7 @@ public class RestVerticle extends AbstractVerticle {
                           //if request is valid - invoke it
                           for (int i = 0; i < methods.length; i++) {
                             if (methods[i].getName().equals(function)) {
-                              try {                                
+                              try {
                                 invoke(methods[i], paramArray, instance, rc,  tenantId, okapiHeaders, v -> {
                                   LogUtil.formatLogMessage(className, "start", " invoking " + function);
                                   sendResponse(rc, v, start);
@@ -416,7 +416,7 @@ public class RestVerticle extends AbstractVerticle {
                             //if request is valid - invoke it
                             for (int i = 0; i < methods.length; i++) {
                               if (methods[i].getName().equals(function)) {
-                                try {                                 
+                                try {
                                   invoke(methods[i], paramArray, instance, rc, tenantId, okapiHeaders, v -> {
                                     LogUtil.formatLogMessage(className, "start", " invoking " + function);
                                     sendResponse(rc, v, start);
@@ -542,7 +542,7 @@ public class RestVerticle extends AbstractVerticle {
 
       //forward all headers
       //response.headers().addAll(rc.request().headers());
-      
+
       Object entity = result.getEntity();
       if (entity instanceof OutStream) {
         entity = ((OutStream) entity).getData();
@@ -580,7 +580,7 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   private void getOkapiHeaders(RoutingContext rc, Map<String, String> headers, String[] tenantId){
-    MultiMap mm = rc.request().headers();    
+    MultiMap mm = rc.request().headers();
     Consumer<Map.Entry<String,String>> consumer = entry -> {
       String headerKey = entry.getKey();
       if(headerKey.startsWith(OKAPI_HEADER_PREFIX)){
@@ -592,7 +592,7 @@ public class RestVerticle extends AbstractVerticle {
     };
     mm.forEach(consumer);
   }
-  
+
   public void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
       Map<String,String> headers, Handler<AsyncResult<Response>> resultHandler) {
     Context context = vertx.getOrCreateContext();
@@ -1105,7 +1105,7 @@ public class RestVerticle extends AbstractVerticle {
             cObj.setModule(RTFConsts.IMPORT_MODULE);
             //this is a hack to use the conf object
             //which is only one for all job instances of this type
-            //to pass the specific file for this job instance to the 
+            //to pass the specific file for this job instance to the
             //listening service
             Parameter p1 = new Parameter();
             p1.setKey("file");
@@ -1113,7 +1113,7 @@ public class RestVerticle extends AbstractVerticle {
             List<Parameter> parameters = new ArrayList<>();
             parameters.add(p1);
             cObj.setParameters(parameters);
-            
+
             eventBus.send(address, cObj, dOps, rep -> {
               if(rep.succeeded()){
                 log.debug("Delivered Messaged of uploaded file " + filename);

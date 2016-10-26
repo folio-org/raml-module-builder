@@ -36,9 +36,9 @@
       "type": "object",
       "$ref": "last_modified"
     },
-    "parameters":{
-	  	 	"type": "object",
-	  		 "$ref" : "parameters"
+    "parameters": {
+      "type": "object",
+      "$ref" : "parameters"
     }
   },
   "required": [

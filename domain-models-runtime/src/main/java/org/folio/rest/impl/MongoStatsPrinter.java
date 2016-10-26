@@ -22,21 +22,21 @@ public class MongoStatsPrinter implements PeriodicAPI {
   private static Hashtable<String, Integer> collectionLastRunMap = new Hashtable<>();
 
   private static Integer delay = 10000; //milliseconds
-  
+
   @Override
   public long runEvery() {
     return delay;
   }
 
-  
+
   @Override
   public void run(Vertx vertx, Context context) {
-    
+
     //create a copy of the map with the collections and the interval to run them in
     HashMap<String, Integer> tempMap = new HashMap<>();
     tempMap.putAll(collectionWhenToRunMap);
     Iterator<Map.Entry<String, Integer>> iter = tempMap.entrySet().iterator();
-    
+
     //iterate over the collections and print stats to log for collection when interval is up
     //for the collection - run will be called every 'delay' milli to execute this
     while (iter.hasNext()) {
@@ -53,7 +53,7 @@ public class MongoStatsPrinter implements PeriodicAPI {
       }
     }
   }
-  
+
   /**
    * @param collection
    */
@@ -68,7 +68,7 @@ public class MongoStatsPrinter implements PeriodicAPI {
         collectionLastRunMap.remove(collection);
         collectionWhenToRunMap.remove(collection);
       }
-    });    
+    });
   }
 
 

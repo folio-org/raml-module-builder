@@ -22,7 +22,7 @@ public class Criterion {
   HashMap<String, Select>           selects          = new HashMap<>();
 
   HashMap<String, From>             froms            = new HashMap<>();
-  
+
   private String                    snippet          = "";
   private Order                     order            = new Order();
   private Limit                     limit            = new Limit();
@@ -45,7 +45,7 @@ public class Criterion {
                                    // this controllable in the future
     }
   }
-  
+
   public Criterion addCriterion(Criteria a, String op, Criteria b) {
     updateSnippet();
     snippet = snippet + "(" + a + " " + op + " " + b + ")";
