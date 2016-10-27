@@ -158,6 +158,9 @@ public class RestVerticle extends AbstractVerticle {
 
     eventBus = vertx.eventBus();
 
+    //register codec to be able to pass pojos on the event bus
+    eventBus.registerCodec(new PojoEventBusCodec());
+
     // needed so that we get the body content of the request - note that this
     // will read the entire body into memory
     final BodyHandler handler = BodyHandler.create();
@@ -191,10 +194,6 @@ public class RestVerticle extends AbstractVerticle {
         } catch (Exception e2) {
           log.error(e2);
         }
-
-        //register codec to be able to pass pojos on the event bus
-        eventBus.registerCodec(new PojoEventBusCodec());
-
         //single handler for all url calls other then documentation
         //which is handled separately
         router.routeWithRegex("^(?!.*apidocs).*$").handler(rc -> {
@@ -700,13 +699,14 @@ public class RestVerticle extends AbstractVerticle {
     });
   }
 
-  /*
+  /**
+   * ONLY 1 Impl is allowed currently!
    * implementors of the InitAPI interface must call back the handler in there init() implementation like this:
    * resultHandler.handle(io.vertx.core.Future.succeededFuture(true)); or this will hang
    */
   private void runHook(Handler<AsyncResult<Boolean>> resultHandler) throws Exception {
     try {
-      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".InitAPI", true);
+      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".InitAPI", false);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("init", paramArray);
@@ -749,9 +749,14 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
+  /**
+   * only one impl allowed
+   * @param resultHandler
+   * @throws Exception
+   */
   private void runShutdownHook(Handler<AsyncResult<Void>> resultHandler) throws Exception {
     try {
-      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".ShutdownAPI", true);
+      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".ShutdownAPI", false);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("shutdown", paramArray);
@@ -1130,9 +1135,10 @@ public class RestVerticle extends AbstractVerticle {
                 request.response().end();
               }
               else{
-                log.error("Unable to deliver message of uploaded file " + filename);
+                log.error("Unable to deliver message of uploaded file " + filename + " check if notification address is correct");
                 request.response().setStatusCode(400);
-                request.response().setStatusMessage("The file was saved, but unable to notify of the upload to listening services");
+                request.response().setStatusMessage("The file was saved, but unable to notify of the upload to listening services "
+                    + "check if notification address is correct");
                 request.response().end();
               }
             });

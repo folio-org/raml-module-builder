@@ -1,17 +1,17 @@
 package org.folio.rest.resource.handlers;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.resource.interfaces.Importer;
-import org.folio.rest.tools.RTFConsts;
-
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 
 /**
@@ -39,17 +39,19 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
 
   private Job conf;
   private Importer importer;
+  private Handler<AsyncResult<Job>> replyHandler;
   /**
    * 0 - more bytes to read, 1 - reading last buffer in file, 2 - read last row in last buffer
    */
   private int status = 0;
 
 
-  public FileDataHandler(Vertx vertx, Job conf, long fileSize, Importer importObj){
+  public FileDataHandler(Vertx vertx, Job conf, long fileSize, Importer importObj, Handler<AsyncResult<Job>> replyHandler){
     this.vertx = vertx;
     this.fileSize = fileSize;
     this.conf = conf;
     this.importer = importObj;
+    this.replyHandler = replyHandler;
 
     log.info("Starting processing for file " + conf.getParameters().get(0).getValue() + "\nsize: " + fileSize +
       "\nBulk size: " + importObj.getBulkSize() + "\nCollection: " + importObj.getCollection() + "\nImport Address:"
@@ -72,7 +74,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
       del = LINE_SEPS;
     }
     String []rows = event.toString("UTF8").split("(?<="+del+")");
-
+    totalLines[0] = totalLines[0] + rows.length;
     //iterate over the read rows
     for (int i = 0; i < rows.length; i++) {
       if(lastRowFromPreviousBuffer != null && i==0){
@@ -86,8 +88,6 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
         //it has partial content
         lastRowFromPreviousBuffer = rows[i];
       }
-
-      totalLines[0]++;
 
       Object toSave = importer.processLine(rows[i]);
 
@@ -103,12 +103,17 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
           }
           if(status == 1 && totalLines[0] == (errorCount[0]+successCount[0])){
             updateStatus(conf);
+            replyHandler.handle(io.vertx.core.Future.succeededFuture(conf));
           }
         });
       }
       else{
         log.error("Error saving object for row " + rows[i]);
         errorCount[0]++;
+        if(status == 1 && totalLines[0] == (errorCount[0]+successCount[0])){
+          updateStatus(conf);
+          replyHandler.handle(io.vertx.core.Future.succeededFuture(conf));
+        }
       }
     }
   }
@@ -117,7 +122,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     //set this job to completed in DB
     String query = "{ \"parameters.value\": \""+StringEscapeUtils.escapeJava(conf.getParameters().get(0).getValue())+"\"}";
 
-    conf.setStatus(RTFConsts.STATUS_COMPLETED);
+    //conf.setStatus(RTFConsts.STATUS_COMPLETED);
     Parameter p1 = new Parameter();
     p1.setKey("success");
     p1.setValue(String.valueOf(successCount[0]));
@@ -127,11 +132,12 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
 
     conf.getParameters().add(p1);
     conf.getParameters().add(p2);
-    MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, new JsonObject(query), false, true, rep -> {
+
+/*    MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, new JsonObject(query), false, true, rep -> {
       if(rep.failed()){
         log.error("Unable to update status of job for file " + conf.getParameters().get(0).getValue() +
           " as completed, this should be fixed manually in the database");
       }
-    });
+    });*/
   }
 }

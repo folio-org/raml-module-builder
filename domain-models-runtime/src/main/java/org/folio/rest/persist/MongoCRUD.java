@@ -669,9 +669,15 @@ public class MongoCRUD {
         jsonObject = new JsonObject(obj);
       }
 
+      if(addUpdateDate){
+        //remove previous last_modified if exists
+        jsonObject.remove("last_modified");
+      }
+
       update.put("$set", jsonObject);
 
       if(addUpdateDate){
+        //tell mongo to create the field with current date
         update.put("$currentDate", new JsonObject("{\"last_modified\": true}"));
       }
       if (entity == null){
@@ -883,6 +889,31 @@ public class MongoCRUD {
       }
     }
     return obj;
+  }
+
+  /**
+   * Pojo to json object mapping to query mongo
+   * in an easier way
+   * @param entity - pojo to transform to json object
+   * @return
+   */
+  public static JsonObject entity2Json(Object entity){
+
+    if(entity == null){
+      return null;
+    }
+    try {
+      return new JsonObject( mapper.writeValueAsString(entity) );
+    } catch (JsonProcessingException e) {
+      log.error(e.getMessage(), e);
+    }
+    return null;
+  }
+
+  public static JsonObject entity2JsonNoLastModified(Object entity){
+    JsonObject q = entity2Json(entity);
+    q.remove("last_modified");
+    return q;
   }
 
   public static JsonObject buildJson(String returnClazz, String collection, String query, String orderBy, Object order, int offset, int limit){

@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
@@ -13,58 +12,56 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.JobConf;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.MongoCRUD;
+import org.folio.rest.resource.handlers.FileDataHandler;
 import org.folio.rest.resource.interfaces.Importer;
-import org.folio.rest.resource.interfaces.InitAPI;
-import org.folio.rest.tools.messages.MessageConsts;
+import org.folio.rest.resource.interfaces.JobAPI;
+import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.InterfaceToImpl;
-import org.folio.rest.tools.utils.LogUtil;
-import org.folio.rest.tools.RTFConsts;
-import org.folio.rest.resource.handlers.FileDataHandler;
 
 /**
- * This class implements the InitAPI and therefore is run during verticle deployments.
+ * This class implements the JobAPI therefore is run during verticle deployment by the JobRunner.
  * <br>Its purpose is to handle file uploads.
  * <br>The class registers on the event bus and therefore can get messages from the /admin/upload service when a file
  * <br>was successfully uploaded.
  * <br>The implementation is generic as it listens for import event address notifications and once a message indicating a file has been uploaded
  * <br>into the temp directory - it:
  * <br>1. adds an entry in the config collection with the path to the file with a pending state
- * <br>2. checks in the mongo collection how many imports are currently in the running state
- * <br>3. if less then the threshold (currently hard coded at 2 - should be configurable TODO) - then the
+ * <br> It then uses the JobAPI to manage its lifecycle which -
+ * <br>1. checks in the mongo collection how many imports are currently in the running state
+ * <br>2. if less then the threshold then the
  * entry in the collection is updated for the uploaded file from pending to running
- * <br>4. the file is parsed , validated , and loaded into the appropriate collection
- * <br>5. if there is a critical error the job stops and sets status to ERROR
- * <br>6. if the job completed with failed records the status is updated to COMPLETED with a count of
+ * <br> It then uses the Importer interface:
+ * <br>1. the file is processed by an implementation of the {@code org.folio.rest.resource.interfaces.Importer} interface and
+ * loaded into the appropriate collection by the {@code FileDataHandler}
+ * <br>2. if there is a critical error the job stops and sets status to ERROR
+ *
+ * <br>if the job completed with failed records the status is updated to COMPLETED with a count of
  * successful and count of errors
- * <br>7. failed items are printed to the log for now
+ * <br>failed items are printed to the log for now in debug mode logging
  *
  * <br>The work is split between the ProcessUploads class and an {@code org.folio.rest.resource.interfaces.Importer} interface implementation.
  * The implementation needs to declare some configurations, indicate the line delimiter, and run any processing it needs on a specific line
  * it receives.
  */
-public class ProcessUploads implements InitAPI {
+public class ProcessUploads implements JobAPI {
 
   private static final String LOG_LANG             = "en";
   private static final Logger log                  = LoggerFactory.getLogger(ProcessUploads.class);
-
-  private int                 concurrentImports    = 2;
   private final Messages      messages             = Messages.getInstance();
   private Vertx               vertx;
   private Map<String, Importer> importerCache      = new HashMap<>();
 
   @Override
-  public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
+  public void init(Vertx vertx) {
     this.vertx = vertx;
     ArrayList<Class<?>> impls = new ArrayList<>();
     try {
@@ -79,39 +76,31 @@ public class ProcessUploads implements InitAPI {
     //of the implementation's addresses
     for (int i = 0; i < impls.size(); i++) {
       Importer importer = null;
+      String []address =  new String[]{null};
       try {
         importer = (Importer)impls.get(i).newInstance();
       } catch (Exception e) {
         log.error(e);
       }
-      String address =  importer.getImportAddress();
-      if(address == null){
+      if(importer != null){
+        address[0] =  importer.getImportAddress();
+      }
+
+      if(address[0] == null){
         //throw exception
       }
       //cache the importer impl
-      importerCache.put(address, importer);
+      importerCache.put(address[0], importer);
 
       //register each address from each Importer impl on the event bus
-      MessageConsumer<Object> consumer = vertx.eventBus().consumer(address);
+      MessageConsumer<Object> consumer = vertx.eventBus().consumer(address[0]);
       consumer.handler(message -> {
-        log.debug("Received a message to " + address + ": " + message.body());
+        log.debug("Received a message to " + address[0] + ": " + message.body());
         JobConf cObj = (JobConf) message.body();
         registerJob(cObj, message);
       });
-      LogUtil.formatLogMessage(getClass().getName(), "runHook",
-        "One time hook called with implemented class " + "named " + impls.get(i).getName());
+      log.info("Import Job " + impls.get(i).getName() + " Initialized, registered on address " + address[0]);
     }
-    // set periodic to query db for pending states and run them if there is an open slot
-    // this is a terrible hack and should be in the periodicAPI hook TODO
-    vertx.setPeriodic(60000, todo -> {
-      try {
-        //kick off the running of the import file process
-        process();
-      } catch (Exception e) {
-        log.error(e);
-      }
-    });
-    resultHandler.handle(io.vertx.core.Future.succeededFuture(true));
   }
 
   /**
@@ -120,6 +109,7 @@ public class ProcessUploads implements InitAPI {
    * 1. check if there is a configuration for this job in the job configuration collection
    * 2. if there is none, add one
    * 3. once there is a config for the job , add a job entry in the job collection
+   * This is done via mongo queries instead of using the REST API as external modules may use.
    * @param cObj
    * @param message
    */
@@ -176,6 +166,7 @@ public class ProcessUploads implements InitAPI {
 
   /**
    * Save an entry of the path to the uploaded file to mongo in pending state
+   * This is done via mongo queries instead of using the REST API as external modules may use.
    * @param message - message to return to the runtime environment with status of the db save
    */
   private void saveAsPending2DB(JobConf cObj, String filename, Message<Object> message) {
@@ -207,102 +198,41 @@ public class ProcessUploads implements InitAPI {
     });
   }
 
-  /**
-  * check how many import processes are active - if less then threshold - then go to the mongo queue and
-  * pull pending jobs and run them.
-  * read a tab delimited file containing 6 columns representing a basic item and push them into mongo
-  * reading the file is async if this is * uploaded from a form and contains boundaries - then those
-  * rows should be filtered out by the cols.length==6 - if not for some reason -
-  * the validation on the item will filter them out
-  */
-  private void process() throws Exception {
-
-   long start = System.nanoTime();
-
-   String pendingOrRunningEntries = "{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
-       //+ "{\"$and\": [{ \"status\": \"status\"},"
-       + "{\"$or\" : [{ \"status\": \"PENDING\"},{ \"status\": \"RUNNING\"}]}]}";
-
-   JsonObject j = new JsonObject(pendingOrRunningEntries);
-
-   //get running and pending jobs
-   MongoCRUD.getInstance(vertx).get(
-     MongoCRUD.buildJson(Job.class.getName(), RTFConsts.JOBS_COLLECTION, j,
-       "parameters.file", "asc"), reply -> {
-       if (reply.succeeded()) {
-         int runningCounter = 0;
-         List<Job> runCandidates = new ArrayList<>();
-         List<Job> conf = (List<Job>) reply.result();
-         //check how many jobs in running and collect pending jobs to run in case
-         //there is a slot open
-         for (int i = 0; i < conf.size(); i++) {
-           if (RTFConsts.STATUS_RUNNING.equals(conf.get(i).getStatus())) {//<----FIX must
-             //update counter of running jobs so that we dont start a pending job
-             //if no free run slots are available
-             runningCounter++;
-           }
-           else {
-              // pending state - it is a run candidate - note the asc sort so we deal with earlier uploads before later ones
-              runCandidates.add(conf.get(i));
-           }
-         }
-         if(runCandidates.isEmpty()){
-           return;
-         }
-         // for every available slot set status to running and start handling
-         for (int i = 0; i < Math.min(concurrentImports-runningCounter , runCandidates.size()); i++) {
-           Job torun = runCandidates.get(i);
-           if (torun != null) {
-             updateStatusAndExecute(torun);
-           }
-         }
-   } else {
-     log.error("Unable to get uploaded file queue, nothing will not be run, ", reply.cause());
-   }
-   long end = System.nanoTime();
-   log.debug(messages.getMessage(LOG_LANG, MessageConsts.Timer, "Reading configs for import process",
-     end - start));
-   });
-
+  @Override
+  public String getModule() {
+    return "IMPORTS";
   }
 
-  private void updateStatusAndExecute(Job conf){
-
-   String file = conf.getParameters().get(0).getValue();
-   conf.setStatus(RTFConsts.STATUS_RUNNING);
-   // update status of file
-   MongoCRUD.getInstance(vertx).update(
-     RTFConsts.JOBS_COLLECTION,
-     conf, new JsonObject("{\"parameters.value\":\""+StringEscapeUtils.escapeJava(file)+"\"}"), false, true,
-     reply2 -> {
-       if (reply2.failed()) {
-         log.error("Unable to save uploaded file to queue, it will not be run, "
-             + conf.getParameters().get(0).getValue(), reply2.cause());
-       } else {
-         vertx.fileSystem().props( conf.getParameters().get(0).getValue(),
-           reply3 -> {
-             if (reply3.result() != null) {
-               long fileSize = reply3.result().size();
-               parseFile(fileSize, conf);
-             } else {
-               log.error("Unable to get properties of uploaded file, it will not be run, "
-                   + file);
-             }
-           });
-       }
-     });
+  @Override
+  public String[] getName() {
+    return importerCache.keySet().toArray(new String[]{});
   }
 
-  private void parseFile(long fileSize, Job conf) {
+  @Override
+  public void process(Job job, Handler<AsyncResult<Job>> replyHandler) {
+    vertx.fileSystem().props( job.getParameters().get(0).getValue(),
+      reply3 -> {
+        if (reply3.result() != null) {
+          long fileSize = reply3.result().size();
+          parseFile(fileSize, job, replyHandler);
+        } else {
+          log.error("Unable to get properties of uploaded file, it will not be run, "
+              + job.getParameters().get(0).getValue());
+        }
+      });
+  }
+
+  private void parseFile(long fileSize, Job conf, Handler<AsyncResult<Job>> replyHandler) {
     String file = conf.getParameters().get(0).getValue();
     vertx.fileSystem().open(file, new OpenOptions(), ar -> {
       if (ar.succeeded()) {
         AsyncFile rs = ar.result();
-        rs.handler(new FileDataHandler(vertx, conf, fileSize, importerCache.get(conf.getName())));
+        rs.handler(new FileDataHandler(vertx, conf, fileSize, importerCache.get(conf.getName()), reply -> {
+          replyHandler.handle(io.vertx.core.Future.succeededFuture(reply.result()));
+        }));
         rs.exceptionHandler(t -> {
           log.error("Error reading from file " + file, t);
-          conf.setStatus(RTFConsts.STATUS_ERROR);
-          updateStatusDB(conf);
+          replyHandler.handle(io.vertx.core.Future.failedFuture(RTFConsts.STATUS_ERROR));
         });
         rs.endHandler(v -> {
           rs.close(ar2 -> {
@@ -313,25 +243,18 @@ public class ProcessUploads implements InitAPI {
         });
       } else {
         log.error("Error opening file " + file, ar.cause());
-        conf.setStatus(RTFConsts.STATUS_ERROR);
-        updateStatusDB(conf);
+        replyHandler.handle(io.vertx.core.Future.failedFuture(RTFConsts.STATUS_ERROR));
       }
     });
   }
 
-  /**
-   * update the conf object in mongo with the object passed in using the code as the key
-   * @param conf
-   */
-  private void updateStatusDB(Job conf) {
-    String file = conf.getParameters().get(0).getValue();
-
-    String query = "{\"parameters.value\":\""+file+"\"}";
-    MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, new JsonObject(query), false, true, reply2 -> {
-      if (reply2.failed()) {
-        log.error("Unable to save uploaded file to queue, it will not be run, " + file);
-      }
-    });
+  @Override
+  public int getPriority() {
+    return 10;
   }
 
+  @Override
+  public boolean getRunOffPeakOnly() {
+    return false;
+  }
 }
