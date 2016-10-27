@@ -637,10 +637,37 @@ public class MongoCRUD {
     update(collection, entity, query, false, addUpdateDate, replyHandler);
   }
 
+  /**
+   *
+   * @param collection
+   * @param entity
+   * @param queryAsPojo - can pass a pojo as a query - all the populated fields will be converted into a json object and passed into mongoDB
+   * @param replyHandler
+   */
+  public void update(String collection, Object entity, Object queryAsPojo, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
+
+    update(collection, entity, entity2JsonNoLastModified(queryAsPojo), false, false, replyHandler);
+  }
+
   public void update(String collection, Object entity, JsonObject query, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
 
     update(collection, entity, query, false, false, replyHandler);
   }
+
+  /**
+   *
+   * @param collection
+   * @param entity
+   * @param queryAsPojo - can pass a pojo as a query - all the populated fields will be converted into a json object and passed into mongoDB
+   * @param upsert - if the query does not match any records - hence nothing to update - should the entity be inserted
+   * @param addUpdateDate - the object must have a last_modified field which will be populated with current timestamp by mongo
+   * the entity must have a last_modified field
+   * @param replyHandler - returns MongoClientUpdateResult which can be used to check amount of updated records
+   */
+  public void update(String collection, Object entity, Object queryAsPojo,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
+    update(collection, entity, entity2JsonNoLastModified(queryAsPojo), upsert, addUpdateDate, replyHandler);
+  }
+
 
   /**
    *
