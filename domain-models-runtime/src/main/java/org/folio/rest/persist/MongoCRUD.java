@@ -573,6 +573,19 @@ public class MongoCRUD {
     }
   }
 
+  /**
+   * Get using a pojo as a query
+   * @param clazz
+   * @param collection
+   * @param from
+   * @param to
+   * @param pojoAsQuery - pojo will be converted into a json object and queried with. A partial pojo can be passed in.
+   * @param replyHandler
+   */
+  public void get(String clazz, String collection, Integer from, Integer to, Object pojoAsQuery, Handler<AsyncResult<List<?>>> replyHandler) {
+    get(clazz, collection, from, to, entity2JsonNoLastModified(pojoAsQuery), replyHandler);
+  }
+
   public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
     get(clazz, collection, from, to, new JsonObject(mongoQueryString), replyHandler);
   }
