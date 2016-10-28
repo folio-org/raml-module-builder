@@ -53,7 +53,7 @@ public class MongoCRUD {
   public static final String        JSON_PROP_ENTITY        = "entity";
   public static final String        JSON_PROP_SORT          = "sort";
   public static final String        JSON_PROP_CLASS         = "clazz";
-  public static final MongodStarter MONGODB                 = getMongodStarter();
+  public static final MongodStarter MONGODB                 = MongodStarter.getDefaultInstance();
   public static final String        DEFAULT_SCHEMA          = "folio_shared";
   private static MongodProcess      mongoProcess;
   private static ObjectMapper       mapper                  = new ObjectMapper();
@@ -123,29 +123,6 @@ public class MongoCRUD {
       }
     }
     return connectionPool.get(tenantId);
-  }
-
-  /**
-   * Return a MongodStarter with UserTempNaming() to avoid windows firewall dialog popups.
-   *
-   * Code taken from
-   * https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/blob/d67667f/README.md#usage---custom-mongod-filename
-   *
-   * @return the MongodStarter
-   */
-  private static final MongodStarter getMongodStarter() {
-    Command command = Command.MongoD;
-
-    IRuntimeConfig runtimeConfig = new RuntimeConfigBuilder()
-      .defaults(command)
-      .artifactStore(new ExtractedArtifactStoreBuilder()
-        .defaults(command)
-        .download(new DownloadConfigBuilder()
-          .defaultsForCommand(command).build())
-        .executableNaming(new UserTempNaming()))
-      .build();
-
-    return MongodStarter.getInstance(runtimeConfig);
   }
 
   private MongoClient init(Vertx vertx, String tenantId) throws Exception {
@@ -894,7 +871,9 @@ public class MongoCRUD {
   public void startEmbeddedMongo() throws Exception {
 
     if(mongoProcess == null || !mongoProcess.isProcessRunning()){
-      IMongodConfig mongodConfig = new MongodConfigBuilder().version(Version.Main.PRODUCTION).net(new Net(mongoPort, Network.localhostIsIPv6()))
+      IMongodConfig mongodConfig = new MongodConfigBuilder()
+          .version(Version.Main.PRODUCTION)
+          .net(new Net("localhost", mongoPort, Network.localhostIsIPv6()))
           .build();
       mongoProcess = MONGODB.prepare(mongodConfig).start();
     }
