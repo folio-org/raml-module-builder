@@ -77,6 +77,7 @@ public class DemoRamlRestTest {
    */
   @After
   public void tearDown(TestContext context) {
+    MongoCRUD.stopEmbeddedMongo();
     deleteTempFilesCreated();
     vertx.close(context.asyncAssertSuccess());
   }
