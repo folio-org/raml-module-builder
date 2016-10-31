@@ -8,7 +8,11 @@ import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.resource.interfaces.JobAPI;
 
-
+/**
+ * an example of a job - jobs saved into the jobs collection with module = MY_MODULE and
+ * name = jobs_generic_demo in PENDING state - will be passed to this implementation by the
+ * job runner
+ */
 public class ImportJobRunnerDemo implements JobAPI {
 
   @Override
@@ -18,12 +22,12 @@ public class ImportJobRunnerDemo implements JobAPI {
 
   @Override
   public String getModule() {
-    return "IMPORTS";
+    return "MY_MODULE";
   }
 
   @Override
   public String[] getName() {
-    return new String[]{"uploads.generic.import"};
+    return new String[]{"jobs_generic_demo"};
   }
 
   @Override

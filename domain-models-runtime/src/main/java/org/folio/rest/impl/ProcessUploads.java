@@ -28,6 +28,9 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 
 /**
+ * This is a job that loads importer implementations in the class path and registers their address on the event bus so
+ * that when an event on that address comes in, this job handles calling the correct importer to process the import
+ *
  * This class implements the JobAPI therefore is run during verticle deployment by the JobRunner.
  * <br>Its purpose is to handle file uploads.
  * <br>The class registers on the event bus and therefore can get messages from the /admin/upload service when a file
@@ -62,18 +65,25 @@ public class ProcessUploads implements JobAPI {
 
   @Override
   public void init(Vertx vertx) {
+
     this.vertx = vertx;
+
+    /*
+     * get all importer implementations in the classpath
+     */
     ArrayList<Class<?>> impls = new ArrayList<>();
     try {
-      //get all importer implementations in the classpath
       impls = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS,
         RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".Importer", true);
     } catch (Exception e) {
       //no impl found
       log.error(e);
     }
-    //loop on importer impl, extract the address field and create a event bus handler on each
-    //of the implementation's addresses
+
+    /*
+     * loop on importer impl, extract the address field and create a event bus handler on each
+     * of the implementation's addresses
+     */
     for (int i = 0; i < impls.size(); i++) {
       Importer importer = null;
       String []address =  new String[]{null};
@@ -92,7 +102,9 @@ public class ProcessUploads implements JobAPI {
       //cache the importer impl
       importerCache.put(address[0], importer);
 
-      //register each address from each Importer impl on the event bus
+      /*
+       * register each address from each Importer impl on the event bus
+       */
       MessageConsumer<Object> consumer = vertx.eventBus().consumer(address[0]);
       consumer.handler(message -> {
         log.debug("Received a message to " + address[0] + ": " + message.body());
@@ -205,11 +217,15 @@ public class ProcessUploads implements JobAPI {
 
   @Override
   public String[] getName() {
+    //all Importer implementations' addresses are returned here so that the
+    //job runner knows to call the ProcessUploads class to handle when retrieving
+    //a job from the DB associated with one of those addresses
     return importerCache.keySet().toArray(new String[]{});
   }
 
   @Override
   public void process(Job job, Handler<AsyncResult<Job>> replyHandler) {
+    //start processing the uploaded file by getting props
     vertx.fileSystem().props( job.getParameters().get(0).getValue(),
       reply3 -> {
         if (reply3.result() != null) {
@@ -222,6 +238,14 @@ public class ProcessUploads implements JobAPI {
       });
   }
 
+  /**
+   * Main work done by the FileDataHandler which reads in line by line and passes on that line
+   * to the correct Importer implementation for line processing
+   * @param fileSize
+   * @param conf
+   * @param replyHandler - the handler returns a job object with success and error counter parameters
+   * to be persisted by the job runner
+   */
   private void parseFile(long fileSize, Job conf, Handler<AsyncResult<Job>> replyHandler) {
     String file = conf.getParameters().get(0).getValue();
     vertx.fileSystem().open(file, new OpenOptions(), ar -> {

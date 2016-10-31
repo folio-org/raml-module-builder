@@ -3,7 +3,8 @@ package org.folio.rest.impl;
 import org.folio.rest.resource.interfaces.Importer;
 
 /**
- *
+ * This is a demo importer implementation - used to just print out to console the contents
+ * of an uploaded file - while registering to get indications of the uploaded file on address a.b.c
  */
 public class ImporterDemo implements Importer {
 

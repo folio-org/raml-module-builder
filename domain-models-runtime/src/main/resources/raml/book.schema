@@ -1,34 +1,38 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "properties": {
-    "data": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
+  "$schema":"http://json-schema.org/draft-04/schema#",
+  "type":"object",
+  "properties":{
+    "data":{
+      "type":"object",
+      "properties":{
+        "_id":{
+          "type":"string"
         },
-        "title": {
-          "type": "string"
+        "title":{
+          "type":"string"
         },
-        "description": {
-          "type": "null"
+        "description":{
+          "type":"null"
         },
-        "datetime": {
-          "type": "integer"
+        "datetime":{
+          "type":"object",
+          "properties":{
+            "$date":{
+              "type":"string"
+            }
+          }
         },
-        "genre": {
-          "type": "string"
+        "genre":{
+          "type":"string"
         },
-        "author": {
-          "type": "string"
+        "author":{
+          "type":"string"
         },
-        "link": {
-          "type": "string"
+        "link":{
+          "type":"string"
         }
       },
-      "required": [
-        "id",
+      "required":[
         "title",
         "description",
         "datetime",
@@ -37,20 +41,20 @@
         "link"
       ]
     },
-    "_id": {
-      "type": "string"
+    "_id":{
+      "type":"string"
     },
-    "success": {
-      "type": "boolean"
+    "success":{
+      "type":"boolean"
     },
-    "image": {
-      "type": "string"
+    "image":{
+      "type":"string"
     },
-    "status": {
-      "type": "integer"
+    "status":{
+      "type":"integer"
     }
   },
-  "required": [
+  "required":[
     "data",
     "success",
     "status"

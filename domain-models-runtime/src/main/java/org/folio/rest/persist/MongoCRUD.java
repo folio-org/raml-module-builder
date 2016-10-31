@@ -18,7 +18,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
+import org.folio.rest.persist.mongo.GroupBy;
 import org.folio.rest.tools.utils.NetworkUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -61,7 +64,6 @@ public class MongoCRUD {
   private static String             configPath;
   private static MongoCRUD          instance;
   private static Map<String, MongoCRUD> connectionPool      = new HashMap<>();
-
   private static final Logger       log                     = LoggerFactory.getLogger(MongoCRUD.class);
   private static int                mongoPort               = 27017;
 
@@ -563,6 +565,10 @@ public class MongoCRUD {
     get(clazz, collection, from, to, entity2JsonNoLastModified(pojoAsQuery), replyHandler);
   }
 
+  public void get(String collection, Object pojoAsQuery, Handler<AsyncResult<List<?>>> replyHandler) {
+    get(pojoAsQuery.getClass().getName(), collection, null, null, entity2JsonNoLastModified(pojoAsQuery), replyHandler);
+  }
+
   public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
     get(clazz, collection, from, to, new JsonObject(mongoQueryString), replyHandler);
   }
@@ -808,10 +814,6 @@ public class MongoCRUD {
     });
   }
 
-  public void groupBy(String collection, JsonObject aggrQuery, Handler<AsyncResult<Object>> replyHandler){
-    groupBy(collection, null, aggrQuery, replyHandler);
-  }
-
   /**
    * pass in an aggQuery - for example:
    *<pre>
@@ -827,13 +829,55 @@ public class MongoCRUD {
    * @param aggrQuery
    * @param replyHandler
    */
-  public void groupBy(String collection, Class<?> clazz, JsonObject aggrQuery, Handler<AsyncResult<Object>> replyHandler){
+  public void groupBy(String collection, JsonObject aggrQuery, Handler<AsyncResult<Object>> replyHandler){
 
     JsonObject group = new JsonObject();
     group.put("$group", aggrQuery);
 
     JsonArray jar = new JsonArray();
     jar.add(group);
+
+    JsonObject command = new JsonObject()
+    .put("aggregate", collection)
+    .put("pipeline", jar);
+
+    client.runCommand("aggregate", command, res -> {
+      if (res.succeeded()) {
+        replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        log.error(res.cause().getMessage(), res.cause());
+      }
+    });
+  }
+
+  public void groupBy(String collection, GroupBy groupBy, Object pojoAsQuery, Handler<AsyncResult<Object>> replyHandler){
+
+    JsonArray jar = new JsonArray();
+    if(pojoAsQuery != null){
+      JsonObject matching = new JsonObject().put("$match" , entity2JsonNoLastModified(pojoAsQuery));
+      jar.add(matching);
+    }
+    jar.add(groupBy.toJson());
+
+    JsonObject command = new JsonObject()
+    .put("aggregate", collection)
+    .put("pipeline", jar);
+
+    client.runCommand("aggregate", command, res -> {
+      if (res.succeeded()) {
+        replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        log.error(res.cause().getMessage(), res.cause());
+      }
+    });
+  }
+
+  public void groupBy(String collection, GroupBy groupBy, Handler<AsyncResult<Object>> replyHandler){
+
+    JsonArray jar = new JsonArray();
+    jar.add(groupBy.toJson());
 
     JsonObject command = new JsonObject()
     .put("aggregate", collection)
@@ -911,27 +955,85 @@ public class MongoCRUD {
   }
 
   /**
-   * Pojo to json object mapping to query mongo
-   * in an easier way
-   * @param entity - pojo to transform to json object
+   * transform a pojo to a mongo json query by flattening out the object
+   * for example a list of parameters with a key in the list called 'key' will be transformed into
+   * parameters.key
+   * @param entity pojo to transform into a query
+   * @param removeFields fields starting with this prefix will not be included in the returned json object
    * @return
    */
-  public static JsonObject entity2Json(Object entity){
+  public static JsonObject entity2Json(Object entity, String[] removeFieldsPrefixes){
 
     if(entity == null){
       return null;
     }
+
+    //Create a regex of excluded entries in the json so that the json created from the pojo does not
+    //include them
+    Pattern excludes = null;
+
+    if(removeFieldsPrefixes != null){
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < removeFieldsPrefixes.length; i++) {
+        sb.append( removeFieldsPrefixes[i].replace(".", "\\.") ).append(".*");
+        if(i+1<removeFieldsPrefixes.length){
+          sb.append("|");
+        }
+      }
+      excludes = Pattern.compile(sb.toString(), Pattern.CASE_INSENSITIVE);
+    }
+
     try {
-      return new JsonObject( mapper.writeValueAsString(entity) );
+      JsonObject result = new JsonObject( mapper.writeValueAsString(entity) );
+      JsonObject processed = new JsonObject();
+      entity2JsonInternal(result, "", processed, excludes);
+      return processed;
     } catch (JsonProcessingException e) {
       log.error(e.getMessage(), e);
     }
     return null;
   }
 
+  private static void entity2JsonInternal(Object obj, String key, JsonObject result, Pattern excludes){
+    String prefix = key;
+    Consumer<Map.Entry<String,Object>> consumer = entry -> {
+      String key1 = entry.getKey();
+      Object value1 = entry.getValue();
+      String newPrefix = new StringBuilder(prefix).append(key1).append(".").toString();
+      if(value1 instanceof JsonObject){
+        entity2JsonInternal(value1, newPrefix, result, excludes);
+      }
+      else if (value1 instanceof JsonArray){
+        int size = ((JsonArray)value1).size();
+        for(int i=0; i<size; i++){
+          Object val = ((JsonArray)value1).getValue(i);
+          entity2JsonInternal(val, newPrefix, result, excludes);
+        }
+      }
+      else{
+        String path = prefix+key1;
+        if(!excludes.matcher(path).find()){
+          result.put(path, value1);
+        }
+      }
+    };
+    ((Iterable)obj).forEach(consumer);
+  }
+
+  /**
+   * transform a pojo to a mongo json query by flattening out the object
+   * for example a list of parameters with a key in the list called 'key' will be transformed into
+   * parameters.key
+   * @param entity
+   * @param removeFields fields starting with this prefix will not be included in the returned json object
+   * @return
+   */
+  public static JsonObject entity2Json(Object entity){
+    return entity2Json(entity, null);
+  }
+
   public static JsonObject entity2JsonNoLastModified(Object entity){
-    JsonObject q = entity2Json(entity);
-    q.remove("last_modified");
+    JsonObject q = entity2Json(entity, new String[]{"last_modified"});
     return q;
   }
 

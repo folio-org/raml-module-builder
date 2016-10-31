@@ -17,15 +17,21 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
+import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.persist.MongoCRUD;
+import org.folio.rest.persist.mongo.DateEnum;
+import org.folio.rest.persist.mongo.GroupBy;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -140,6 +146,18 @@ public class DemoRamlRestTest {
 
     checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200); // should be 200
 
+    //group by
+    groupBy(context, "distinct");
+    groupBy(context, "multi");
+    groupBy(context, "max");
+    groupBy(context, "sum");
+    groupBy(context, "avg");
+    groupBy(context, "all");
+    groupBy(context, "pivot"); //for example: return all titles for each genre
+    groupBy(context, null);
+    groupBy(context, "expression");
+    groupBy(context, "date");
+    groupBy(context, "matching");
   }
 
   private void getCollectionStats(TestContext context){
@@ -298,10 +316,80 @@ public class DemoRamlRestTest {
         async.complete();
       }
     });
-
-
   }
 
+  private void groupBy(TestContext context, String op){
+    //check bulk insert in MONGO
+    Async async = context.async();
+    GroupBy gb = new GroupBy();
+    if(op == null){
+      gb = new GroupBy(null);
+    }
+    if("multi".equals(op) || "all".equals(op)){
+      //group by two fields
+      gb.addGroupByField("data.author").addGroupByField("data.genre");
+    }
+    else if("pivot".equals(op)){
+      //show all titles per genre
+      gb.addGroupByField("data.genre", "titles", "data.title");
+    }
+    else if("date".equals(op)){
+      //must pass a valid mongo date field as the second argument
+      gb.addGroupByField("year","data.datetime", DateEnum.YEAR).
+      addGroupByField("month","data.datetime", DateEnum.DAY_OF_MONTH);
+      gb.addCount();
+    }
+    else if(op != null){
+      //group by author
+      gb.addGroupByField("data.author");
+    }
+    if("expression".equals(op)){
+      String expression = "{ \"$sum\": {\"$multiply\": [ \"$status\", \"$status\" ] }}";
+      gb.addConstraint("alias", new JsonObject(expression));
+    }
+    if("sum".equals(op)  || "all".equals(op) || op == null){
+      //add a count value of items in group
+      gb.addCount();
+    }
+    if("avg".equals(op)  || "all".equals(op) || op == null){
+      gb.addAVGForField("average","status");
+    }
+    if("max".equals(op)  || "all".equals(op) || op == null){
+      gb.addMAXForField("max", "status");
+    }
+    if("matching".equals(op)){
+      //remove random values from object and leave only constant values
+      //so that we have a match
+      Book book = createBook();
+      book.getData().setAuthor(null);
+      book.getData().setDatetime(null);
+      book.getData().setTitle(null);
+      book.setStatus(null);
+
+      MongoCRUD.getInstance(vertx).groupBy("books", gb, book, reply -> {
+        if(reply.succeeded()){
+          System.out.println(op + " group by result: "+reply.result());
+        }
+        else{
+          context.fail();
+          System.out.println(reply.cause().getMessage());
+        }
+        async.complete();
+      });
+    }
+    else{
+      MongoCRUD.getInstance(vertx).groupBy("books", gb, reply -> {
+        if(reply.succeeded()){
+          System.out.println(op + " group by result: "+reply.result());
+        }
+        else{
+          context.fail();
+          System.out.println(reply.cause().getMessage());
+        }
+        async.complete();
+      });
+    }
+  }
 
   private void bulkInsert(TestContext context, List<Object> list){
     //check bulk insert in MONGO
@@ -473,17 +561,23 @@ public class DemoRamlRestTest {
   }
 
   private Book createBook(){
+    int ran = ThreadLocalRandom.current().nextInt(0, 11);
     Book b = new Book();
-    b.setStatus(99);
+    b.setStatus(99+ran);
     b.setSuccess(true);
     b.setData(null);
     Data d = new Data();
-    d.setAuthor("a");
-    d.setDatetime(12345);
+    d.setAuthor("a" + ran);
+    Datetime dt = new Datetime();
+
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS\'Z\'");
+    String parsedDate = format.format(new Date());
+    dt.set$date(parsedDate);
+    d.setDatetime(dt);
     d.setGenre("b");
     d.setDescription("c");
     d.setLink("d");
-    d.setTitle("title");
+    d.setTitle("title"+ran);
     b.setData(d);
     return b;
   }

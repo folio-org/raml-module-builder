@@ -195,12 +195,11 @@ public class JobsRunner implements InitAPI {
    * @param conf
    */
   private void updateStatusDB(Job conf) {
-    JsonObject query = MongoCRUD.entity2JsonNoLastModified(conf);
-    query.remove("status");
-    query.remove("parameters");
+    String[] removeFromQuery = new String[]{"last_modified", "status", "parameters"};
+    JsonObject query = MongoCRUD.entity2Json(conf, removeFromQuery);
     MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, query, false, true, reply2 -> {
       if (reply2.failed()) {
-        log.error("Unable to save ujob status for job,, " + query.encodePrettily());
+        log.error("Unable to save job status for job,, " + query.encodePrettily());
       }
     });
   }
