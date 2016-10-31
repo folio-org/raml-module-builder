@@ -46,6 +46,11 @@ public class GroupBy {
     this.idFieldName = idField;
   }
 
+  /**
+   * Add a field to group by - multiple fields can be added
+   * @param field
+   * @return
+   */
   public GroupBy addGroupByField(String field){
     JsonObject idField = groupBy.getJsonObject(GROUP_BY_IDENTIFIER).getJsonObject(this.idFieldName);
     idField.put(field, PREFIX+field);
@@ -80,6 +85,11 @@ public class GroupBy {
 
   /**
    * The field passed in must be of type date
+   * for example:
+   *  _id : { month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } },
+   *  will create groups with the month, day and year as the triplet for each group
+   *  This can be achieved by call addGroupByField three times
+   *  with alias month, field_containing_iso_date, enum indicating which part of the date to use
    * @param alias
    * @param field
    * @param date - use this part of the date (year, month, day, etc...) to group by
@@ -95,6 +105,11 @@ public class GroupBy {
 
   /**
    * The field passed in must be of type date
+   * for example:
+   *  _id : { month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } },
+   *  will create groups with the month, day and year as the triplet for each group
+   *  This can be achieved by call addGroupByField three times
+   *  with alias month, field_containing_iso_date, enum indicating which part of the date to use
    * @param field
    * @param date - use this part of the date (year, month, day, etc...) to group by
    * @return
