@@ -194,7 +194,7 @@ public class JobAPI implements JobsResource {
     try {
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).update(
-          JOBS_CONF_TABLE, entity, query,
+          JOBS_CONF_TABLE, entity, query, false ,true,
           reply -> {
             if (reply.succeeded() && reply.result().getDocMatched() == 0) {
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
@@ -230,7 +230,7 @@ public class JobAPI implements JobsResource {
     try {
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).get(
-          MongoCRUD.buildJson(JOB_CLASS_NAME, JOBS_CONF_TABLE, query, orderBy, order,
+          MongoCRUD.buildJson(JOB_CLASS_NAME, JOBS_TABLE, query, orderBy, order,
           offset, limit), reply -> {
             try {
               List<Job> jobs = (List<Job>) reply.result();
@@ -385,7 +385,7 @@ public class JobAPI implements JobsResource {
     try {
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).update(
-          JOBS_TABLE, entity, query,
+          JOBS_TABLE, entity, query, false, true,
           reply -> {
             if (reply.succeeded() && reply.result().getDocMatched() == 0) {
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
