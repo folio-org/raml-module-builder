@@ -1027,7 +1027,7 @@ public class MongoCRUD {
       }
       else{
         String path = prefix+key1;
-        if(!excludes.matcher(path).find()){
+        if(excludes == null || !excludes.matcher(path).find()){
           result.put(path, value1);
         }
       }
