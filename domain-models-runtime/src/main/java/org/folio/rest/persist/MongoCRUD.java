@@ -28,18 +28,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.DownloadConfigBuilder;
-import de.flapdoodle.embed.mongo.config.ExtractedArtifactStoreBuilder;
 import de.flapdoodle.embed.mongo.config.IMongodConfig;
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
-import de.flapdoodle.embed.mongo.config.RuntimeConfigBuilder;
 import de.flapdoodle.embed.mongo.distribution.Version;
-import de.flapdoodle.embed.process.config.IRuntimeConfig;
-import de.flapdoodle.embed.process.extract.UserTempNaming;
 import de.flapdoodle.embed.process.runtime.Network;
 
 public class MongoCRUD {
@@ -426,6 +420,27 @@ public class MongoCRUD {
         }
         if(log.isDebugEnabled()){
           elapsedTime("delete() " + collection + " " + query.encode(), start);
+        }
+      });
+    } catch (Throwable e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getLocalizedMessage()));
+    }
+  }
+
+  public void delete(String collection, Object pojo, Handler<AsyncResult<MongoClientDeleteResult>> replyHandler) {
+    long start = System.nanoTime();
+
+    try {
+      client.removeDocuments(collection, entity2Json(pojo), res -> {
+        if (res.succeeded()) {
+          replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
+        } else {
+          log.error(res.cause());
+          replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
+        }
+        if(log.isDebugEnabled()){
+          elapsedTime("delete() " + collection + " " + entity2String(pojo), start);
         }
       });
     } catch (Throwable e) {

@@ -118,16 +118,16 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/x/books", 400); // should be 404
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
 
-
     //update periodic handler (MongoStatsPrinter) with which collection to print stats for and at which interval
-    postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, true);
+    postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, true, null);
 
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/admin/upload", getBody("uploadtest.json", true), 400, false);
-    postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", getBody("uploadtest.json", true), 204, false);
+    postData(context, "http://localhost:" + port + "/admin/upload", getBody("uploadtest.json", true), 400, false, null);
+    postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", getBody("uploadtest.json", true),
+      204, false, null);
     postData(context, "http://localhost:" + port +
       "/admin/upload?file_name=test.json&bus_address=uploads.import.generic&persist_method=SAVE_AND_NOTIFY",
-      Buffer.buffer(getFile("uploadtest.json")), 204, false);
+      Buffer.buffer(getFile("uploadtest.json")), 204, false, null);
 
     List<Object> list = getListOfBooks();
 
@@ -158,6 +158,56 @@ public class DemoRamlRestTest {
     groupBy(context, "expression");
     groupBy(context, "date");
     groupBy(context, "matching");
+
+    jobsTest(context);
+  }
+
+  /**
+   * @param context
+   */
+  private void jobsTest(TestContext context) {
+
+    String url = "/jobs/jobconfs";
+    Async async = context.async();
+    HttpClient client = vertx.createHttpClient();
+    HttpClientRequest request = null;
+    request = client.postAbs("http://localhost:" + port + url);
+    request.exceptionHandler(error -> {
+      async.complete();
+      context.fail(error.getMessage());
+    }).handler(response -> {
+      int statusCode = response.statusCode();
+      // is it 2XX
+      System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " for " +
+        "http://localhost:" + port + url);
+
+      if (statusCode == 201) {
+        checkURLs(context, "http://localhost:" + port + url, 200);
+        try {
+          postData(context, "http://localhost:" + port + url + "/" +response.getHeader("Location")+ "/jobs"
+          , Buffer.buffer(getFile("job.json")), 201, false, "application/json");
+        } catch (Exception e) {
+          e.printStackTrace();
+          context.fail();
+        }
+
+      } else {
+        context.fail("got non 200 response");
+      }
+      if(!async.isCompleted()){
+        async.complete();
+      }
+    });
+    request.setChunked(true);
+    request.putHeader("Accept", "application/json,text/plain");
+    request.putHeader("Content-type", "application/json");
+    try {
+      request.write(getFile("job_conf_post.json"));
+    } catch (IOException e) {
+      e.printStackTrace();
+      context.fail("unable to read file");
+    }
+    request.end();
   }
 
   private void getCollectionStats(TestContext context){
@@ -473,7 +523,7 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private void postData(TestContext context, String url, Buffer buffer, int errorCode, boolean isPut) {
+  private void postData(TestContext context, String url, Buffer buffer, int errorCode, boolean isPut, String contenttype) {
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request = null;
@@ -505,13 +555,19 @@ public class DemoRamlRestTest {
     request.setChunked(true);
     request.putHeader("Authorization", "abcdefg");
     request.putHeader("Accept", "application/json,text/plain");
-    if(isPut){
+    if(contenttype != null){
       request.putHeader("Content-type",
-          "application/json");
+        contenttype);
     }
     else{
-      request.putHeader("Content-type",
-          "multipart/form-data; boundary=MyBoundary");
+      if(isPut){
+        request.putHeader("Content-type",
+            "application/json");
+      }
+      else{
+        request.putHeader("Content-type",
+            "multipart/form-data; boundary=MyBoundary");
+      }
     }
     request.write(buffer);
     request.end();
