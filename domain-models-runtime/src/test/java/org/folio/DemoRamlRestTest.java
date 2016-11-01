@@ -119,15 +119,18 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
 
     //update periodic handler (MongoStatsPrinter) with which collection to print stats for and at which interval
-    postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, true, null);
+    postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, 0, null);
 
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/admin/upload", getBody("uploadtest.json", true), 400, false, null);
+    postData(context, "http://localhost:" + port + "/admin/upload", getBody("uploadtest.json", true), 400, 1, null);
     postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", getBody("uploadtest.json", true),
-      204, false, null);
+      204, 1, null);
+
+    //this will create an entry in the job conf and jobs collections as this is done automatically
+    //when param SAVE_AND_NOTIFY is passed.
     postData(context, "http://localhost:" + port +
       "/admin/upload?file_name=test.json&bus_address=uploads.import.generic&persist_method=SAVE_AND_NOTIFY",
-      Buffer.buffer(getFile("uploadtest.json")), 204, false, null);
+      Buffer.buffer(getFile("uploadtest.json")), 204, 1, null);
 
     List<Object> list = getListOfBooks();
 
@@ -177,6 +180,7 @@ public class DemoRamlRestTest {
       context.fail(error.getMessage());
     }).handler(response -> {
       int statusCode = response.statusCode();
+      String location = response.getHeader("Location");
       // is it 2XX
       System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " for " +
         "http://localhost:" + port + url);
@@ -184,15 +188,21 @@ public class DemoRamlRestTest {
       if (statusCode == 201) {
         checkURLs(context, "http://localhost:" + port + url, 200);
         try {
-          postData(context, "http://localhost:" + port + url + "/" +response.getHeader("Location")+ "/jobs"
-          , Buffer.buffer(getFile("job.json")), 201, false, "application/json");
+          postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs"
+          , Buffer.buffer(getFile("job.json")), 201, 1, "application/json");
+          postData(context, "http://localhost:" + port + url + "/" +location
+          , Buffer.buffer(getFile("job_conf_post.json")), 204, 0, null);
+          postData(context, "http://localhost:" + port + url + "/12345"
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null);
+          postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs/12345"
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null);
         } catch (Exception e) {
           e.printStackTrace();
           context.fail();
         }
 
       } else {
-        context.fail("got non 200 response");
+        context.fail("got incorrect response code");
       }
       if(!async.isCompleted()){
         async.complete();
@@ -523,15 +533,18 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private void postData(TestContext context, String url, Buffer buffer, int errorCode, boolean isPut, String contenttype) {
+  private void postData(TestContext context, String url, Buffer buffer, int errorCode, int mode, String contenttype) {
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request = null;
-    if(isPut){
+    if(mode == 0){
       request = client.putAbs(url);
     }
-    else{
+    else if(mode == 1){
       request = client.postAbs(url);
+    }
+    else {
+      request = client.deleteAbs(url);
     }
     request.exceptionHandler(error -> {
       async.complete();
@@ -560,7 +573,7 @@ public class DemoRamlRestTest {
         contenttype);
     }
     else{
-      if(isPut){
+      if(mode == 0 || mode == 2){
         request.putHeader("Content-type",
             "application/json");
       }

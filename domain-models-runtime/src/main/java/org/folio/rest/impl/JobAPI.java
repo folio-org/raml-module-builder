@@ -153,13 +153,22 @@ public class JobAPI implements JobsResource {
         MongoCRUD.getInstance(vertxContext.owner()).delete(
           JOBS_CONF_TABLE, jobconfsId,
           reply -> {
-            try {
-              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                DeleteJobsJobconfsByJobconfsIdResponse.withNoContent()));
-            } catch (Exception e) {
-              log.error(e);
+            if(reply.succeeded()){
+              if(reply.result().getRemovedCount() == 1){
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+                  DeleteJobsJobconfsByJobconfsIdResponse.withNoContent()));
+              }
+              else{
+                String message = messages.getMessage(lang, MessageConsts.DeletedCountError, 1,reply.result().getRemovedCount());
+                log.error(message);
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdResponse
+                  .withPlainNotFound(message)));
+              }
+            }
+            else{
+              log.error(reply.cause());
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdResponse
-                .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+                .withPlainInternalServerError(messages.getMessage(lang,  MessageConsts.InternalServerError))));
             }
           });
       });
@@ -335,13 +344,22 @@ public class JobAPI implements JobsResource {
         MongoCRUD.getInstance(vertxContext.owner()).delete(
           JOBS_TABLE, query,
           reply -> {
-            try {
-              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse.withNoContent()));
-            } catch (Exception e) {
-              log.error(e);
+            if(reply.succeeded()){
+              if(reply.result().getRemovedCount() == 1){
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+                  DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse.withNoContent()));
+              }
+              else{
+                String message = messages.getMessage(lang, MessageConsts.DeletedCountError, 1,reply.result().getRemovedCount());
+                log.error(message);
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse
+                  .withPlainNotFound(message)));
+              }
+            }
+            else{
+              log.error(reply.cause());
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse
-                .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+                .withPlainInternalServerError(messages.getMessage(lang,  MessageConsts.InternalServerError))));
             }
           });
       });
