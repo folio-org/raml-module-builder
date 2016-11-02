@@ -922,7 +922,7 @@ For example:
 In the circulation project, the messages file can be found at `/circulation/src/main/resources/en_messages.prop` with the following content:
 ```sh
 20002=Operation can not be calculated on a Null Amount
-20003=Unable to pay fine, amount is larger then owed
+20003=Unable to pay fine, amount is larger than owed
 20004=The item {0} is not renewable
 20005=Loan period must be greater than 1, period entered: {0}
 ```
