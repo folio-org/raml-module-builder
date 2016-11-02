@@ -7,7 +7,9 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-import org.apache.commons.lang3.StringEscapeUtils;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.MongoCRUD;
@@ -45,6 +47,8 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
    */
   private int status = 0;
 
+  private int bulkSize = 0;
+  private List<Object> bulks = new ArrayList<>();
 
   public FileDataHandler(Vertx vertx, Job conf, long fileSize, Importer importObj, Handler<AsyncResult<Job>> replyHandler){
     this.vertx = vertx;
@@ -52,6 +56,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     this.conf = conf;
     this.importer = importObj;
     this.replyHandler = replyHandler;
+    this.bulkSize = Math.max(importer.getBulkSize() ,1);
 
     log.info("Starting processing for file " + conf.getParameters().get(0).getValue() + "\nsize: " + fileSize +
       "\nBulk size: " + importObj.getBulkSize() + "\nCollection: " + importObj.getCollection() + "\nImport Address:"
@@ -92,20 +97,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
       Object toSave = importer.processLine(rows[i]);
 
       if(toSave != null){
-        MongoCRUD.getInstance(vertx, conf.getInstId()).save(importer.getCollection(), toSave, reply -> {
-          if(reply.failed()){
-            errorCount[0]++;
-            log.error("Error saving object " + reply.cause().getMessage());
-          }
-          else{
-            successCount[0]++;
-            log.debug("#" +successCount[0]+ " Saved object " + reply.result());
-          }
-          if(status == 1 && totalLines[0] == (errorCount[0]+successCount[0])){
-            updateStatus(conf);
-            replyHandler.handle(io.vertx.core.Future.succeededFuture(conf));
-          }
-        });
+        bulks.add(toSave);
       }
       else{
         log.error("Error saving object for row " + rows[i]);
@@ -115,14 +107,31 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
           replyHandler.handle(io.vertx.core.Future.succeededFuture(conf));
         }
       }
+
+      if(bulks.size() == bulkSize || (status == 1 && totalLines[0] == (errorCount[0]+successCount[0]+bulks.size()))){
+        List<Object> persistList = new ArrayList<>(bulks);
+        bulks.clear();
+        MongoCRUD.getInstance(vertx, conf.getInstId()).bulkInsert(importer.getCollection(), persistList, reply -> {
+          if(reply.failed()){
+            errorCount[0] = errorCount[0]+persistList.size(); // <-- this is not correct
+            log.error("Error saving object " + reply.cause().getMessage());
+          }
+          else{
+            successCount[0] = successCount[0] + persistList.size();
+            log.debug("#" +successCount[0]+ " Saved object " + reply.result());
+          }
+          if(status == 1 && totalLines[0] == (errorCount[0]+successCount[0])){
+            updateStatus(conf);
+            replyHandler.handle(io.vertx.core.Future.succeededFuture(conf));
+          }
+        });
+      }
+
     }
   }
 
   private void updateStatus(Job conf){
-    //set this job to completed in DB
-    String query = "{ \"parameters.value\": \""+StringEscapeUtils.escapeJava(conf.getParameters().get(0).getValue())+"\"}";
 
-    //conf.setStatus(RTFConsts.STATUS_COMPLETED);
     Parameter p1 = new Parameter();
     p1.setKey("success");
     p1.setValue(String.valueOf(successCount[0]));
@@ -132,12 +141,5 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
 
     conf.getParameters().add(p1);
     conf.getParameters().add(p2);
-
-/*    MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, new JsonObject(query), false, true, rep -> {
-      if(rep.failed()){
-        log.error("Unable to update status of job for file " + conf.getParameters().get(0).getValue() +
-          " as completed, this should be fixed manually in the database");
-      }
-    });*/
   }
 }

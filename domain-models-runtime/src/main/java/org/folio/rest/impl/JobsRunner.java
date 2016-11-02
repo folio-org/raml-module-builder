@@ -110,7 +110,10 @@ public class JobsRunner implements InitAPI {
 
    long start = System.nanoTime();
 
-   String pendingOrRunningEntries = "{\"$or\" : [{ \"status\": \"PENDING\"},{ \"status\": \"RUNNING\"}]}";
+   String pendingOrRunningEntries =
+       "{\"$or\" : [{ \"status\": \""+RTFConsts.STATUS_PENDING+"\"},"
+           + "{ \"status\": \""+RTFConsts.STATUS_RUNNING+"\"},"
+           + "{ \"type\": \""+ RTFConsts.SCHEDULE_TYPE_MANUAL+"\"}]}";
 
        //"{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
        //+ "{\"$and\": [{ \"status\": \"status\"},"
