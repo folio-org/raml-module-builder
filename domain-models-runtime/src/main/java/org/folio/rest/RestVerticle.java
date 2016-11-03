@@ -581,7 +581,7 @@ public class RestVerticle extends AbstractVerticle {
   private void getOkapiHeaders(RoutingContext rc, Map<String, String> headers, String[] tenantId){
     MultiMap mm = rc.request().headers();
     Consumer<Map.Entry<String,String>> consumer = entry -> {
-      String headerKey = entry.getKey();
+      String headerKey = entry.getKey().toLowerCase();
       if(headerKey.startsWith(OKAPI_HEADER_PREFIX)){
         if(headerKey.equalsIgnoreCase(OKAPI_HEADER_TENANT)){
           tenantId[0] = entry.getValue();
