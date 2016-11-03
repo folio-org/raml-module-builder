@@ -26,24 +26,6 @@ public class ImporterDemo implements Importer {
   }
 
   /* (non-Javadoc)
-   * @see org.folio.rest.resource.interfaces.Importer#getBulkSize()
-   */
-  @Override
-  public int getBulkSize() {
-    // TODO Auto-generated method stub
-    return 1;
-  }
-
-  /* (non-Javadoc)
-   * @see org.folio.rest.resource.interfaces.Importer#getFailPercent()
-   */
-  @Override
-  public double getFailPercent() {
-    // TODO Auto-generated method stub
-    return 0;
-  }
-
-  /* (non-Javadoc)
    * @see org.folio.rest.resource.interfaces.Importer#getImportAddress()
    */
   @Override

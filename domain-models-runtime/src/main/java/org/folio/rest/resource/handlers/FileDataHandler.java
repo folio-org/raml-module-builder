@@ -42,7 +42,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
   private long bytesRead = 0;
   private boolean stopWithError = false;
   private int []totalLines = new int[]{0};
-
+  private double failPercentage = 100.00; //allow all records to fail without stopping the job by default
   private Job conf;
   private Importer importer;
   private Handler<AsyncResult<Job>> replyHandler;
@@ -60,10 +60,12 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     this.conf = conf;
     this.importer = importObj;
     this.replyHandler = replyHandler;
-    this.bulkSize = Math.max(importer.getBulkSize() ,1);
-
+    this.bulkSize = Math.max(conf.getBulkSize() ,1);
+    if(conf.getFailPercentage() > 0.1){
+      this.failPercentage = conf.getFailPercentage();
+    }
     log.info("Starting processing for file " + conf.getParameters().get(0).getValue() + "\nsize: " + fileSize +
-      "\nBulk size: " + importObj.getBulkSize() + "\nCollection: " + importObj.getCollection() + "\nImport Address:"
+      "\nBulk size: " + bulkSize + "\nCollection: " + importObj.getCollection() + "\nImport Address:"
         + importObj.getImportAddress() + "\nInstitution: " + conf.getInstId());
   }
 
@@ -100,7 +102,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     //there is a bug here that if the last buffer pushes the job over the threshold
     //it will still pass TODO
     if(percentOfFileRead > 20){
-      double failPercent = importer.getFailPercent();
+      double failPercent = this.failPercentage;
       double unitsInFile = fileSize/avgRowSize;
       //compare current failure percentage current total errors
       //compared to total estimated records to process

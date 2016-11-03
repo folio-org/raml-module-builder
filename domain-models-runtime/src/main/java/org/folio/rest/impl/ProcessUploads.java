@@ -193,7 +193,8 @@ public class ProcessUploads implements JobAPI {
     Parameter p2 = new Parameter();
     p2.setKey("file");
     p2.setValue(filename);
-
+    job.setBulkSize(cObj.getBulkSize());
+    job.setFailPercentage(cObj.getFailPercentage());
     List<Parameter> jobParams = new ArrayList<>();
     jobParams.add(p2);
 

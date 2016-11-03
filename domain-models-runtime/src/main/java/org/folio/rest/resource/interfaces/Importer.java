@@ -26,19 +26,6 @@ public interface Importer {
   public String[] getFailOnExists();
 
   /**
-   * set the amount of records to be batch saved by the framework. The framework will collect objects returned by the
-   * {@code processLine} and save them in bulk inserts with bulks the size of  the returned value. If a bulk fails, the framework will
-   * attempt to save records individually and will print to log the record that fails
-   */
-  public int getBulkSize();
-
-  /**
-   * Fail the import job (stop processing the file) when the percent of failed inserts reaches this percent. This will be calculated
-   * by failures / line count
-   */
-  public double getFailPercent();
-
-  /**
    * Return Event address that will kickoff the import process. When files are uploaded the framework will start processing a specific
    * {@code Importer} implementation based on the implementation that is registered on the address passed via the upload API
    */

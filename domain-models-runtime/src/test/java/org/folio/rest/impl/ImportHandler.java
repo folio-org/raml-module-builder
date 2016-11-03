@@ -16,16 +16,6 @@ public class ImportHandler implements Importer {
   }
 
   @Override
-  public int getBulkSize() {
-    return 1;
-  }
-
-  @Override
-  public double getFailPercent() {
-    return 100.00;
-  }
-
-  @Override
   public String getImportAddress() {
     return "uploads.import.generic";
   }

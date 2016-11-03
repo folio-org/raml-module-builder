@@ -1109,6 +1109,8 @@ public class RestVerticle extends AbstractVerticle {
             cObj.setName(address);
             cObj.setCreator("system");
             cObj.setModule(RTFConsts.IMPORT_MODULE);
+            cObj.setBulkSize(1000);
+            cObj.setFailPercentage(5.0);
             //this is a hack to use the conf object
             //which is only one for all job instances of this type
             //to pass the specific file for this job instance to the
