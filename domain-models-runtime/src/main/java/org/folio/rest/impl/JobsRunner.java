@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.folio.rest.jaxrs.model.Bulk;
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.resource.interfaces.InitAPI;
@@ -35,10 +36,10 @@ public class JobsRunner implements InitAPI {
 
   private static final String LOG_LANG             = "en";
   private static final Logger log                  = LoggerFactory.getLogger(JobsRunner.class);
+  private static Vertx        vertx;
 
   private int                 concurrentJobs       = 2;
   private final Messages      messages             = Messages.getInstance();
-  private Vertx               vertx;
   private Map<String, JobAPI> jobCache             = new HashMap<>();
 
   private static String MODULE_CLAUSE              = "{ \"module\": \"{0}\"}";
@@ -183,10 +184,10 @@ public class JobsRunner implements InitAPI {
          job.process(conf, reply -> {
            if(reply.succeeded()){
              reply.result().setStatus(RTFConsts.STATUS_COMPLETED);
-             updateStatusDB(reply.result());
+             updateJobStatusDB(reply.result());
            }else{
              conf.setStatus(RTFConsts.STATUS_ERROR);
-             updateStatusDB(conf);
+             updateJobStatusDB(conf);
            }
          });
        }
@@ -197,12 +198,20 @@ public class JobsRunner implements InitAPI {
    * update the conf object in mongo with the object passed in using the code as the key
    * @param conf
    */
-  private void updateStatusDB(Job conf) {
+  public static void updateJobStatusDB(Job conf) {
     String[] removeFromQuery = new String[]{"last_modified", "status", "parameters"};
     JsonObject query = MongoCRUD.entity2Json(conf, removeFromQuery);
     MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, query, false, true, reply2 -> {
       if (reply2.failed()) {
         log.error("Unable to save job status for job,, " + query.encodePrettily());
+      }
+    });
+  }
+
+  public static void addBulkStatusDB(Bulk bulk) {
+    MongoCRUD.getInstance(vertx).save(RTFConsts.BULKS_COLLECTION, bulk, reply2 -> {
+      if (reply2.failed()) {
+        log.error("Unable to save bulk for job,, " + bulk.getJobId());
       }
     });
   }

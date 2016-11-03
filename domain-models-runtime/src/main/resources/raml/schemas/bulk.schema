@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "bulk_id": {
+      "type": "integer"
+    },
+    "error_count": {
+      "type": "integer"
+    },
+    "success_count": {
+      "type": "integer"
+    },
+    "error_ids": {
+      "type": "string"
+    },
+    "last_modified": {
+      "type": "object",
+      "$ref" : "last_modified"
+    },
+    "inst_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "bulk_id",
+    "job_id",
+    "inst_id"
+  ]
+}

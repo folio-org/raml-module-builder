@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bulks": {
+      "id": "bulks",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref" : "bulk"
+      }
+    },
+    "total_records": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "bulks",
+    "total_records"
+  ]
+}

@@ -44,8 +44,11 @@ public class ImportJobRunnerDemo implements JobAPI {
 
   @Override
   public void init(Vertx vertx) {
-    // TODO Auto-generated method stub
+  }
 
+  @Override
+  public boolean isResumable() {
+    return false;
   }
 
 }

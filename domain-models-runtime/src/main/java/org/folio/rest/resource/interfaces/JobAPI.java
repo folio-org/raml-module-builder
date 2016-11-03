@@ -47,4 +47,10 @@ public interface JobAPI {
    * @param vertx
    */
   public void init(Vertx vertx);
+
+  /**
+   * Does this type of job support resume
+   */
+  public boolean isResumable();
+
 }

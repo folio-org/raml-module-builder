@@ -12,7 +12,9 @@ schemas:
   - jobs_confs: !include /schemas/jobs_confs.schema
   - parameters: !include /schemas/parameters.schema
   - parameter: !include /schemas/parameter.schema
-
+  - bulks: !include /schemas/bulks.schema
+  - bulk: !include /schemas/bulk.schema
+  
 traits:
   - orderable: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/orderable.raml
   - pageable:  !include https://raw.githubusercontent.com/folio-org/raml/master/traits/pageable.raml
@@ -65,3 +67,10 @@ resourceTypes:
             collection-item:
               exampleItem: !include /examples/job.sample
               schema: job
+          /bulks:
+            type:
+              collection:
+                exampleCollection: !include /examples/bulk.sample
+                exampleItem: !include /examples/bulk.sample
+                schemaCollection: bulks
+                schemaItem: bulk

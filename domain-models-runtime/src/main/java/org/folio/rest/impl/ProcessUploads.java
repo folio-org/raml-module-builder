@@ -135,7 +135,8 @@ public class ProcessUploads implements JobAPI {
 
     String instId = cObj.getInstId();
 
-    String jobConfExistsQuery = "{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
+    String jobConfExistsQuery =
+      "{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
       + "{ \"name\": \""+cObj.getName()+"\"}, "
       + "{ \"inst_id\": { \"$exists\": true }},"
       + "{ \"inst_id\": \"" +instId+ "\"}]}";
@@ -252,7 +253,15 @@ public class ProcessUploads implements JobAPI {
       if (ar.succeeded()) {
         AsyncFile rs = ar.result();
         rs.handler(new FileDataHandler(vertx, conf, fileSize, importerCache.get(conf.getName()), reply -> {
-          replyHandler.handle(io.vertx.core.Future.succeededFuture(reply.result()));
+          if(reply.failed()){
+            if(reply.cause().getMessage().contains(RTFConsts.STATUS_ERROR_THRESHOLD)){
+              log.error("Stopping import... Error threshold exceeded for file " + file);
+              rs.close();
+            }
+          }
+          else{
+            replyHandler.handle(io.vertx.core.Future.succeededFuture(reply.result()));
+          }
         }));
         rs.exceptionHandler(t -> {
           log.error("Error reading from file " + file, t);
@@ -280,5 +289,10 @@ public class ProcessUploads implements JobAPI {
   @Override
   public boolean getRunOffPeakOnly() {
     return false;
+  }
+
+  @Override
+  public boolean isResumable() {
+    return true;
   }
 }

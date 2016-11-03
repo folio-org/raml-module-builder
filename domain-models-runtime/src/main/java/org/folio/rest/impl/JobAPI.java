@@ -12,12 +12,15 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Bulk;
+import org.folio.rest.jaxrs.model.Bulks;
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.JobConf;
 import org.folio.rest.jaxrs.model.Jobs;
 import org.folio.rest.jaxrs.model.JobsConfs;
 import org.folio.rest.jaxrs.resource.JobsResource;
 import org.folio.rest.persist.MongoCRUD;
+import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.OutStream;
@@ -33,10 +36,8 @@ public class JobAPI implements JobsResource {
   private static final Logger log = LoggerFactory.getLogger(JobAPI.class);
   private final Messages messages = Messages.getInstance();
 
-  private static final String JOBS_CONF_TABLE       = "job_confs";
-  private static final String JOBS_TABLE            = "jobs";
   private static final String JOB_CONF_CLASS_NAME   = JobConf.class.getName();
-  private static final String JOB_CLASS_NAME        = JobConf.class.getName();
+  private static final String JOB_CLASS_NAME        = Job.class.getName();
 
   @Validate
   @Override
@@ -48,7 +49,7 @@ public class JobAPI implements JobsResource {
       System.out.println("sending... getJobsJobconfs");
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).get(
-          MongoCRUD.buildJson(JOB_CONF_CLASS_NAME, JOBS_CONF_TABLE, query, orderBy, order,
+          MongoCRUD.buildJson(JOB_CONF_CLASS_NAME, RTFConsts.JOB_CONF_COLLECTION, query, orderBy, order,
             offset, limit), reply -> {
             try {
               JobsConfs ps = new JobsConfs();
@@ -79,7 +80,7 @@ public class JobAPI implements JobsResource {
     System.out.println("sending... postJobsJobconfs");
     try {
       vertxContext.runOnContext(v -> {
-        MongoCRUD.getInstance(vertxContext.owner()).save(JOBS_CONF_TABLE,
+        MongoCRUD.getInstance(vertxContext.owner()).save(RTFConsts.JOB_CONF_COLLECTION,
           entity,
           reply -> {
             try {
@@ -114,7 +115,7 @@ public class JobAPI implements JobsResource {
     System.out.println("sending... getJobsJobconfsByJobconfsId");
     try {
       vertxContext.runOnContext(v -> {
-        MongoCRUD.getInstance(vertxContext.owner()).get(JOBS_CONF_TABLE, query,
+        MongoCRUD.getInstance(vertxContext.owner()).get(RTFConsts.JOB_CONF_COLLECTION, query,
           reply -> {
             try {
               List<JobConf> confs = (List<JobConf>) reply.result();
@@ -151,7 +152,7 @@ public class JobAPI implements JobsResource {
     try {
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).delete(
-          JOBS_CONF_TABLE, jobconfsId,
+          RTFConsts.JOB_CONF_COLLECTION, jobconfsId,
           reply -> {
             if(reply.succeeded()){
               if(reply.result().getRemovedCount() == 1){
@@ -194,7 +195,7 @@ public class JobAPI implements JobsResource {
     try {
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).update(
-          JOBS_CONF_TABLE, entity, query, false ,true,
+          RTFConsts.JOB_CONF_COLLECTION, entity, query, false ,true,
           reply -> {
             if (reply.succeeded() && reply.result().getDocMatched() == 0) {
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
@@ -230,7 +231,7 @@ public class JobAPI implements JobsResource {
     try {
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).get(
-          MongoCRUD.buildJson(JOB_CLASS_NAME, JOBS_TABLE, query, orderBy, order,
+          MongoCRUD.buildJson(JOB_CLASS_NAME, RTFConsts.JOBS_COLLECTION, query, orderBy, order,
           offset, limit), reply -> {
             try {
               List<Job> jobs = (List<Job>) reply.result();
@@ -265,7 +266,7 @@ public class JobAPI implements JobsResource {
     entity.setJobConfId(jobconfsId);
     try {
       vertxContext.runOnContext(v -> {
-        MongoCRUD.getInstance(vertxContext.owner()).save(JOBS_TABLE,
+        MongoCRUD.getInstance(vertxContext.owner()).save(RTFConsts.JOBS_COLLECTION,
           entity,
           reply -> {
             try {
@@ -300,13 +301,13 @@ public class JobAPI implements JobsResource {
     System.out.println("sending... getJobsJobconfsByJobconfsIdJobsByJobId");
     try {
       vertxContext.runOnContext(v -> {
-        MongoCRUD.getInstance(vertxContext.owner()).get(JOBS_TABLE, query,
+        MongoCRUD.getInstance(vertxContext.owner()).get(RTFConsts.JOBS_COLLECTION, query,
           reply -> {
             try {
               List<Job> job = (List<Job>) reply.result();
               if (job.isEmpty()) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  GetJobsJobconfsByJobconfsIdJobsByJobIdResponse.withPlainNotFound("JobConf "
+                  GetJobsJobconfsByJobconfsIdJobsByJobIdResponse.withPlainNotFound("Job "
                     + messages.getMessage(lang, "10008"))));
                 return;
               }
@@ -342,7 +343,7 @@ public class JobAPI implements JobsResource {
     try {
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).delete(
-          JOBS_TABLE, query,
+          RTFConsts.JOBS_COLLECTION, query,
           reply -> {
             if(reply.succeeded()){
               if(reply.result().getRemovedCount() == 1){
@@ -385,7 +386,7 @@ public class JobAPI implements JobsResource {
     try {
       vertxContext.runOnContext(v -> {
         MongoCRUD.getInstance(vertxContext.owner()).update(
-          JOBS_TABLE, entity, query, false, true,
+          RTFConsts.JOBS_COLLECTION, entity, query, false, true,
           reply -> {
             if (reply.succeeded() && reply.result().getDocMatched() == 0) {
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
@@ -407,6 +408,52 @@ public class JobAPI implements JobsResource {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsByJobconfsIdJobsByJobIdResponse
         .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
+
+  }
+
+
+  @Override
+  public void getJobsJobconfsByJobconfsIdJobsByJobIdBulks(String jobId, String jobconfsId,
+      String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    Bulk query = new Bulk();
+    query.setJobId(jobId);
+
+    System.out.println("sending... getJobsJobconfsByJobconfsIdJobsByJobIdBulks");
+    try {
+      vertxContext.runOnContext(v -> {
+        MongoCRUD.getInstance(vertxContext.owner()).get(RTFConsts.BULKS_COLLECTION, query,
+          reply -> {
+            try {
+              List<Bulk> bulks = (List<Bulk>) reply.result();
+              Bulks bulkList = new Bulks();
+              bulkList.setBulks(bulks);
+              bulkList.setTotalRecords(bulks.size());
+              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+                GetJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse.withJsonOK(bulkList)));
+            } catch (Exception e) {
+              log.error(e);
+              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse
+                .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+            }
+          });
+      });
+    } catch (Exception e) {
+      log.error(e);
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse
+        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+    }
+
+  }
+
+  @Override
+  public void postJobsJobconfsByJobconfsIdJobsByJobIdBulks(String jobId, String jobconfsId,
+      String lang, Bulk entity, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+      PostJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse.withPlainBadRequest("Not implemented yet")));
 
   }
 
