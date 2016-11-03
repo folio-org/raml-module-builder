@@ -124,7 +124,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
         //remove one from the total lines count else this line will be counted twice
         totalLines[0] = totalLines[0]-1;
       }
-      if(i == rows.length-1 && !rows[i].endsWith(LINE_SEPS) && status != 1){
+      if(i == rows.length-1 && !rows[i].endsWith(del) && status != 1){
         //the last row of a buffer may not be complete - if it doesnt end with a new line
         //it has partial content. if we are on the last buffer and the line is not complete
         //process it as an error - hence we should not continue
@@ -132,7 +132,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
         continue;
       }
 
-      Object toSave = importer.processLine(rows[i]);
+      Object toSave = importer.processLine(rows[i].replaceAll(del, ""));
 
       if(toSave != null){
         bulks.add(toSave);
