@@ -97,6 +97,8 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     double avgRowSize = sizeOfBuffer/rows.length;
 
     //start checking after processing at least 20 percent
+    //there is a bug here that if the last buffer pushes the job over the threshold
+    //it will still pass TODO
     if(percentOfFileRead > 20){
       double failPercent = importer.getFailPercent();
       double unitsInFile = fileSize/avgRowSize;
@@ -106,7 +108,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
         stopWithError = true;
         //processUploads class will get this callback and should close the stream to the file
         //immediately
-        replyHandler.handle(io.vertx.core.Future.failedFuture(RTFConsts.STATUS_ERROR_THRESHOLD));
+        updateStatus(conf);
       }
     }
 
@@ -241,8 +243,11 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     conf.getParameters().add(p1);
     conf.getParameters().add(p2);
     conf.getParameters().add(p3);
-    //conf.getParameters().add(p4);
-    replyHandler.handle(io.vertx.core.Future.succeededFuture(conf));
+    if(stopWithError){
+      replyHandler.handle(io.vertx.core.Future.failedFuture(RTFConsts.STATUS_ERROR_THRESHOLD));
+    }
+    else{
+      replyHandler.handle(io.vertx.core.Future.succeededFuture(conf));
+    }
   }
-
 }

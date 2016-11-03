@@ -136,7 +136,7 @@ public class ProcessUploads implements JobAPI {
     String instId = cObj.getInstId();
 
     String jobConfExistsQuery =
-      "{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
+      "{\"$and\": [ { \"module\": \""+cObj.getModule()+"\"}, "
       + "{ \"name\": \""+cObj.getName()+"\"}, "
       + "{ \"inst_id\": { \"$exists\": true }},"
       + "{ \"inst_id\": \"" +instId+ "\"}]}";
@@ -256,7 +256,8 @@ public class ProcessUploads implements JobAPI {
           if(reply.failed()){
             if(reply.cause().getMessage().contains(RTFConsts.STATUS_ERROR_THRESHOLD)){
               log.error("Stopping import... Error threshold exceeded for file " + file);
-              rs.close();
+              rs.pause().close();
+              replyHandler.handle(io.vertx.core.Future.failedFuture(RTFConsts.STATUS_ERROR_THRESHOLD));
             }
           }
           else{

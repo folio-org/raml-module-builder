@@ -20,6 +20,12 @@
     "status": {
       "type": "string"
     },
+    "bulk_size": {
+      "type": "integer"
+    },
+    "fail_percentage": {
+      "type": "number"
+    },
     "last_modified": {
       "type": "object",
       "$ref" : "last_modified"

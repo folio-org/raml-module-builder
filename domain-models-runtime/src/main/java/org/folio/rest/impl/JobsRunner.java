@@ -186,7 +186,7 @@ public class JobsRunner implements InitAPI {
              reply.result().setStatus(RTFConsts.STATUS_COMPLETED);
              updateJobStatusDB(reply.result());
            }else{
-             conf.setStatus(RTFConsts.STATUS_ERROR);
+             conf.setStatus(reply.cause().getMessage());
              updateJobStatusDB(conf);
            }
          });
