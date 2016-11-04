@@ -18,7 +18,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.example.util.Runner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -104,7 +103,8 @@ public class RestVerticle extends AbstractVerticle {
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
   public static void main(String[] args) {
-    Runner.runExample(RestVerticle.class);
+    Vertx vertx = Vertx.vertx();
+    vertx.deployVerticle(new RestVerticle());
   }
 
   static {
