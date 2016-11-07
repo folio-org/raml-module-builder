@@ -69,6 +69,8 @@ import org.kie.api.runtime.rule.FactHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
+import java.io.InputStream;
+import java.util.Properties;
 
 public class RestVerticle extends AbstractVerticle {
 
@@ -137,6 +139,18 @@ public class RestVerticle extends AbstractVerticle {
   @Override
   public void start(Future<Void> startFuture) throws Exception {
 
+    InputStream in = getClass().getClassLoader().getResourceAsStream("git.properties");
+    if (in != null) {
+      try {
+        Properties prop = new Properties();
+        prop.load(in);
+        in.close();
+        log.info("git: " + prop.getProperty("git.remote.origin.url")
+                + " " + prop.getProperty("git.commit.id"));
+      } catch (Exception e) {
+        log.warn(e.getMessage());
+      }
+    }
     //process cmd line arguments
     cmdProcessing();
 
