@@ -23,6 +23,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Method;
@@ -1078,9 +1079,18 @@ public class RestVerticle extends AbstractVerticle {
       endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.FileUploadError, ", file_name can not be null"), validRequest);
       return;
     }
+    String[] instId = new String[]{rc.request().getHeader(OKAPI_HEADER_TENANT)};
+    if(instId[0] == null){
+      instId[0] = "";
+    }
     request.pause();
-    String filename = DEFAULT_TEMP_DIR + "/" + System.currentTimeMillis() + "_" + request.getParam("file_name");
-    vertx.fileSystem().open(filename, new io.vertx.core.file.OpenOptions(), ares -> {
+    String[] filename = new String[]{DEFAULT_TEMP_DIR + "/"};
+    if(!instId[0].equals("")){
+      filename[0] = filename[0] + instId[0] + "/";
+      new File(filename[0]).mkdir();
+    }
+    filename[0] = filename[0] + System.currentTimeMillis() + "_" + request.getParam("file_name");
+    vertx.fileSystem().open(filename[0], new io.vertx.core.file.OpenOptions(), ares -> {
       try {
         io.vertx.core.file.AsyncFile file = ares.result();
         io.vertx.core.streams.Pump pump = io.vertx.core.streams.Pump.pump(request, file);
@@ -1092,7 +1102,7 @@ public class RestVerticle extends AbstractVerticle {
               persistMethod = PersistMethod.valueOf(requestedPersistMethod);
             }
           }
-          System.out.println("Uploaded to " + filename);
+
           if(persistMethod == PersistMethod.SAVE_AND_NOTIFY){
             String address = request.getParam("bus_address");
             if(address == null){
@@ -1102,7 +1112,7 @@ public class RestVerticle extends AbstractVerticle {
             dOps.setSendTimeout(5000);
             dOps.setCodecName("PojoEventBusCodec");
             JobConf cObj = new JobConf();
-            cObj.setInstId(rc.request().getHeader(OKAPI_HEADER_TENANT));
+            cObj.setInstId(instId[0]);
             cObj.setEnabled(true);
             cObj.setDescription("File import job");
             cObj.setType(RTFConsts.SCHEDULE_TYPE_MANUAL);
@@ -1117,7 +1127,7 @@ public class RestVerticle extends AbstractVerticle {
             //listening service
             Parameter p1 = new Parameter();
             p1.setKey("file");
-            p1.setValue(filename);
+            p1.setValue(filename[0]);
             List<Parameter> parameters = new ArrayList<>();
             parameters.add(p1);
             cObj.setParameters(parameters);

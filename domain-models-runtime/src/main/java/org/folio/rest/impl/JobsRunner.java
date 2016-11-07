@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -42,7 +43,7 @@ public class JobsRunner implements InitAPI {
   private final Messages      messages             = Messages.getInstance();
   private Map<String, JobAPI> jobCache             = new HashMap<>();
 
-  private static String MODULE_CLAUSE              = "{ \"module\": \"{0}\"}";
+  private static String QUERY_CLAUSE               = "\"{0}\": \"{1}\"";
 
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
@@ -112,9 +113,10 @@ public class JobsRunner implements InitAPI {
    long start = System.nanoTime();
 
    String pendingOrRunningEntries =
-       "{\"$or\" : [{ \"status\": \""+RTFConsts.STATUS_PENDING+"\"},"
-           + "{ \"status\": \""+RTFConsts.STATUS_RUNNING+"\"},"
-           + "{ \"type\": \""+ RTFConsts.SCHEDULE_TYPE_MANUAL+"\"}]}";
+       "{\"$or\" : [{"
+           +MessageFormat.format(QUERY_CLAUSE, "status", RTFConsts.STATUS_PENDING)+"},{"
+           +MessageFormat.format(QUERY_CLAUSE, "status", RTFConsts.STATUS_RUNNING)+"},{"
+           +MessageFormat.format(QUERY_CLAUSE, "type", RTFConsts.SCHEDULE_TYPE_MANUAL)+"}]}";
 
        //"{\"$and\": [ { \"module\": \""+RTFConsts.IMPORT_MODULE+"\"}, "
        //+ "{\"$and\": [{ \"status\": \"status\"},"
