@@ -46,6 +46,9 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
   private Job conf;
   private Importer importer;
   private Handler<AsyncResult<Job>> replyHandler;
+  private double percentOfFileRead;
+  private double avgRowSize;
+  private boolean jobComplete = false;
   /**
    * 0 - more bytes to read, 1 - reading last buffer in file
    */
@@ -95,24 +98,8 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     //while we check as well, hence this is only a best effort.
     //also assumes the rows are relatively of the same size or at least that the file
     //is distributed evenly across buffers
-    double percentOfFileRead = ((double) bytesRead / fileSize)*100;
-    double avgRowSize = sizeOfBuffer/rows.length;
-
-    //start checking after processing at least 20 percent
-    //there is a bug here that if the last buffer pushes the job over the threshold
-    //it will still pass TODO
-    if(percentOfFileRead > 20){
-      double failPercent = this.failPercentage;
-      double unitsInFile = fileSize/avgRowSize;
-      //compare current failure percentage current total errors
-      //compared to total estimated records to process
-      if((errorCount[0]/unitsInFile)*100 > failPercent){
-        stopWithError = true;
-        //processUploads class will get this callback and should close the stream to the file
-        //immediately
-        updateStatus(conf);
-      }
-    }
+    percentOfFileRead = ((double) bytesRead / fileSize)*100;
+    avgRowSize = sizeOfBuffer/rows.length;
 
     //iterate over the read rows
     for (int i = 0; i < rows.length; i++) {
@@ -216,6 +203,19 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
       //add bulk entry into bulk collection with current bulk info
       JobsRunner.addBulkStatusDB(bInfo);
 
+      //start checking after processing at least 20 percent
+      if(percentOfFileRead > 20){
+        double unitsInFile = fileSize/avgRowSize;
+        //compare current failure percentage current total errors
+        //compared to total estimated records to process
+        if((errorCount[0]/unitsInFile)*100 > this.failPercentage){
+          stopWithError = true;
+          //processUploads class will get this callback and should close the stream to the file
+          //immediately
+          updateStatus(conf);
+        }
+      }
+
       //only way to verify all async call are complete is to compare totals lines to the
       //actual amount of lines processed asynchronously which can be gathered by adding the
       //success and error counts since these are incremented when the handlers are called
@@ -230,6 +230,16 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
    * update after every bulk so that we can resume if a crash occurs
    */
   private void updateStatus(Job conf){
+    //if we are in stopWithError - there is a chance this function
+    //will get called twice, so just as a safety set jobComplete to only
+    //allow one update call
+    if(!jobComplete){
+      jobComplete = true;
+    }
+    else{
+      return;
+    }
+
     Parameter p1 = new Parameter();
     p1.setKey("total_success");
     p1.setValue(String.valueOf(successCount[0]));
