@@ -32,12 +32,10 @@ import org.folio.rest.tools.utils.OutStream;
  */
 public class JobAPI implements JobsResource {
 
-
   private static final Logger log = LoggerFactory.getLogger(JobAPI.class);
-  private final Messages messages = Messages.getInstance();
-
   private static final String JOB_CONF_CLASS_NAME   = JobConf.class.getName();
   private static final String JOB_CLASS_NAME        = Job.class.getName();
+  private final Messages messages = Messages.getInstance();
 
   @Validate
   @Override
