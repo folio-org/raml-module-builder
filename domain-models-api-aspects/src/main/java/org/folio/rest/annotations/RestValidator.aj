@@ -9,6 +9,7 @@ import javax.validation.ValidationException;
 import javax.validation.ValidatorFactory;
 import javax.validation.executable.ExecutableValidator;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.aspectj.lang.annotation.SuppressAjWarnings;
 
 public aspect RestValidator {
 
@@ -27,6 +28,7 @@ public aspect RestValidator {
   /**
    * Validates the method parameters.
    */
+  @SuppressAjWarnings({"adviceDidNotMatch"})
   before() : validatedMethodCall() {
 
     MethodSignature methodSignature = (MethodSignature) thisJoinPoint.getSignature();
