@@ -266,6 +266,52 @@
         <version>3.0.1</version>
         <executions>
           <execution>
+            <!-- Turn off default resource copying -->
+            <id>default-resources</id>
+            <phase />
+          </execution>
+          <execution>
+            <!-- Copy .properties files using ISO-8859-1 encoding. -->
+            <id>filter-properties-files</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <encoding>ISO-8859-1</encoding>
+              <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/resources</directory>
+                  <filtering>true</filtering>
+                  <includes>
+                    <include>**/*.properties</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+          <execution>
+            <!-- Copy files that are not .property files. -->
+            <id>copy-other-resources</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/resources</directory>
+                  <filtering>false</filtering>
+                  <excludes>
+                    <exclude>**/*.properties</exclude>
+                  </excludes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+          <execution>
             <id>copy-resources</id>
             <phase>prepare-package</phase>
             <goals>
