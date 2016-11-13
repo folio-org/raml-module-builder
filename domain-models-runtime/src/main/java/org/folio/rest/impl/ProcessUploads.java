@@ -257,7 +257,12 @@ public class ProcessUploads implements JobAPI {
           if(reply.failed()){
             if(reply.cause().getMessage().contains(RTFConsts.STATUS_ERROR_THRESHOLD)){
               log.error("Stopping import... Error threshold exceeded for file " + file);
-              rs.pause().close();
+              try{
+                //can throw an exception if the error threshold is met at
+                //the last bulk where the endHandler is called before the stop on error is called
+                rs.pause().close();
+              }
+              catch(Exception e){}
               replyHandler.handle(io.vertx.core.Future.failedFuture(RTFConsts.STATUS_ERROR_THRESHOLD));
             }
           }
