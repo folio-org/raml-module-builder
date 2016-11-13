@@ -94,18 +94,25 @@ public class Messages {
     }
   }
 
-  // assume api messages are in English for now!!!
   private void loadMessages(Path messagePath) throws IOException {
 
     Stream<Path> walk = Files.walk(messagePath, 1);
     for (Iterator<Path> it = walk.iterator(); it.hasNext();) {
       Path file = it.next();
       String name = file.getFileName().toString();
+      // APIMessages_de.properties or
+      // de_APIMessages.prop
       int sep = name.indexOf('_');
       if (sep == -1) {
         continue;
       }
-      String lang = name.substring(0, sep);
+      int dot = name.indexOf('.', sep);
+      if (dot == -1) {
+        continue;
+      }
+      String chunk1 = name.substring(0, sep);
+      String chunk2 = name.substring(sep + 1, dot);
+      String lang = chunk1.length() < chunk2.length() ? chunk1 : chunk2;
       String resource = "/" + messagePath.getFileName().toString() + "/" + name;
       log.info("Loading messages from " + resource + " ................................");
       InputStream stream = getClass().getResourceAsStream(resource);
