@@ -1148,7 +1148,7 @@ public class RestVerticle extends AbstractVerticle {
 
             eventBus.send(address, cObj, dOps, rep -> {
               if(rep.succeeded()){
-                log.debug("Delivered Messaged of uploaded file " + filename);
+                log.debug("Delivered Messaged of uploaded file " + filename[0]);
                 Object returnCode = rep.result().body();
                 if(returnCode != null){
                   if(RTFConsts.OK_PROCESSING_STATUS.equals(returnCode)){
@@ -1162,7 +1162,7 @@ public class RestVerticle extends AbstractVerticle {
                 request.response().end();
               }
               else{
-                log.error("Unable to deliver message of uploaded file " + filename + " check if notification address is correct");
+                log.error("Unable to deliver message of uploaded file " + filename[0] + " check if notification address is correct");
                 request.response().setStatusCode(400);
                 request.response().setStatusMessage("The file was saved, but unable to notify of the upload to listening services "
                     + "check if notification address is correct");
@@ -1174,7 +1174,7 @@ public class RestVerticle extends AbstractVerticle {
             request.response().setStatusCode(204);
             request.response().end();
           }
-          log.info("Successfully uploaded file " + filename);
+          log.info("Successfully uploaded file " + filename[0]);
         }));
         pump.start();
         request.resume();
