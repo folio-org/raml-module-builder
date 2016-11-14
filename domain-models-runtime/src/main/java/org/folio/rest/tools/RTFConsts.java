@@ -24,4 +24,10 @@ public class RTFConsts {
   public static final String SCHEDULE_TYPE_SCHEDULED = "SCHEDULED";
   public static final String SCHEDULE_TYPE_MANUAL    = "MANUAL";
 
+  public static final String INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
+  public static final String CLIENT_GEN_PACKAGE     = "org.folio.rest.client";
+
+  public static final String  POSSIBLE_HTTP_METHOD   = "javax.ws.rs.PUT|javax.ws.rs.POST|javax.ws.rs.DELETE|javax.ws.rs.GET|"
+      + "javax.ws.rs.OPTIONS|javax.ws.rs.HEAD|javax.ws.rs.TRACE|javax.ws.rs.CONNECT";
+
 }

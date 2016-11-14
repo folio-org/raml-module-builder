@@ -4,22 +4,16 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.net.URI;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-
 import java.util.List;
 
 import javax.ws.rs.DefaultValue;
@@ -48,8 +42,6 @@ public class AnnotationGrabber {
   public static final String  PRODUCES               = "javax.ws.rs.Produces";
   public static final String  CONSUMES               = "javax.ws.rs.Consumes";
   public static final String  METHOD_PARAMS          = "params";
-  public static final String  POSSIBLE_HTTP_METHOD   = "javax.ws.rs.PUT|javax.ws.rs.POST|javax.ws.rs.DELETE|javax.ws.rs.GET|"
-                                                         + "javax.ws.rs.OPTIONS|javax.ws.rs.HEAD|javax.ws.rs.TRACE|javax.ws.rs.CONNECT";
   public static final String  REPLACEMENT_FROM_REGEX = "/\\{.*?\\}/?";
   public static final String  REPLACEMENT_TO_REGEX   = "\\/([^\\/]+)\\/";
   public static final String  PATH_PARAM             = "@javax.ws.rs.PathParam";
@@ -59,7 +51,6 @@ public class AnnotationGrabber {
   public static final String  NON_ANNOTATED_PARAM    = "NON_ANNOTATED";
   public static final String  CONTENT_TYPE           = "Content-Type";
 
-  private static final String INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
   private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
 
   // ^http.*?//.*?/apis/patrons/.*?/fines/.*
@@ -72,7 +63,7 @@ public class AnnotationGrabber {
 
     // get classes in generated package
     ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
-    ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(INTERFACE_PACKAGE);
+    ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(RTFConsts.INTERFACE_PACKAGE);
     Collection<Object> classNames = Collections2.transform(classes, new Function<ClassPath.ClassInfo, Object>() {
       @Override
       public Object apply(ClassPath.ClassInfo input) {
@@ -84,6 +75,8 @@ public class AnnotationGrabber {
     // loop over all the classes from the package
     classNames.forEach(val -> {
       try {
+
+        ClientGenerator cGen = new ClientGenerator();
 
         // ----------------- class level annotations
         // ---------------------------//
@@ -109,6 +102,7 @@ public class AnnotationGrabber {
             Object value = method.invoke(annotations[i], (Object[]) null);
             if (PATH_ANNOTATION.equals(type.getName())) {
               classSpecificMapping.put(CLASS_URL, "^/" + value);
+              cGen.generateClassMeta(val.toString(), value);
             }
 
           }
@@ -136,7 +130,7 @@ public class AnnotationGrabber {
 
             Class<? extends Annotation> type = methodAn[j].annotationType();
             //System.out.println("Values of " + type.getName());
-            if (POSSIBLE_HTTP_METHOD.contains(type.getName())) {
+            if (RTFConsts.POSSIBLE_HTTP_METHOD.contains(type.getName())) {
               // put the method - get or post, etc..
               methodObj.put(HTTP_METHOD, type.getName());
             }
@@ -166,6 +160,12 @@ public class AnnotationGrabber {
 
             }
           }
+          cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
+            methodObj.getJsonObject(METHOD_PARAMS),
+            methodObj.getString(METHOD_URL),
+            methodObj.getString(HTTP_METHOD),
+            methodObj.getJsonArray(CONSUMES),
+            methodObj.getJsonArray(PRODUCES));
           // if there was no @Path annotation - use the one declared on the
           // class
           if (methodObj.getString(METHOD_URL) == null) {
@@ -187,6 +187,7 @@ public class AnnotationGrabber {
         }
         // System.out.println( val.toString() );
         globalClassMapping.put(classSpecificMapping.getString(CLASS_URL), classSpecificMapping);
+        cGen.generateClass();
       } catch (Exception e) {
         e.printStackTrace();
       }

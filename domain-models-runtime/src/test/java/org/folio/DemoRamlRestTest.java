@@ -163,6 +163,20 @@ public class DemoRamlRestTest {
     groupBy(context, "matching");
 
     jobsTest(context);
+
+/*    AdminClient ac = new AdminClient("localhost", port, "abc");
+    ac.getAdminJstack( response -> {
+      StringBuffer sb = new StringBuffer();
+      response.exceptionHandler( error -> {
+        System.out.println("ERROR -> " + error.getMessage());
+      });
+      response.handler( data -> {
+        sb.append(data);
+      });
+      response.endHandler(endHandler -> {
+        System.out.println("JSTACK" + sb.toString());
+      });
+    });*/
   }
 
   /**
@@ -558,7 +572,7 @@ public class DemoRamlRestTest {
         context.assertTrue(true);
       } else {
         response.bodyHandler(responseData -> {
-          context.fail("got non 200 response from bosun, error: " + responseData + " code " + statusCode);
+          context.fail("got non 200 response, error: " + responseData + " code " + statusCode);
         });
       }
       if(!async.isCompleted()){
