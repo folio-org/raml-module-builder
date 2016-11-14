@@ -11,7 +11,9 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerFileUpload;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
@@ -25,6 +27,7 @@ import io.vertx.ext.web.handler.StaticHandler;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -34,6 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -69,8 +73,6 @@ import org.kie.api.runtime.rule.FactHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
-import java.io.InputStream;
-import java.util.Properties;
 
 public class RestVerticle extends AbstractVerticle {
 
@@ -494,7 +496,14 @@ public class RestVerticle extends AbstractVerticle {
           port = config().getInteger("http.port", 8081);
         }
         Integer p = port;
-        vertx.createHttpServer().requestHandler(router::accept)
+
+        //if client includes an Accept-Encoding header which includes
+        //the supported compressions - deflate or gzip.
+        HttpServerOptions serverOptions = new HttpServerOptions();
+        serverOptions.setCompressionSupported(true);
+
+        HttpServer server = vertx.createHttpServer(serverOptions);
+        server.requestHandler(router::accept)
         // router object (declared in the beginning of the atrt function accepts request and will pass to next handler for
         // specified path
 
@@ -735,6 +744,10 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
+  /**
+   * multiple impl allowed
+   * @throws Exception
+   */
   private void runPeriodicHook() throws Exception {
     try {
       ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".PeriodicAPI", true);
@@ -931,8 +944,8 @@ public class RestVerticle extends AbstractVerticle {
         // validation of query params (other then enums), object in body (not including drools),
         // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
         // handle un-annotated parameters - this is assumed to be
-        // entities in HTTP BODY for post and put requests or the 2 injected params
-        // (vertx context and vertx handler) - file uploads are also not annotated but are not handled here due
+        // entities in HTTP BODY for post and put requests or the 3 injected params
+        // (okapi headers, vertx context and vertx handler) - file uploads are also not annotated but are not handled here due
         // to their async upload - so explicitly skip them
         if (AnnotationGrabber.NON_ANNOTATED_PARAM.equals(paramType) && !FILE_UPLOAD_PARAM.equals(valueType)) {
           try {
@@ -1023,7 +1036,7 @@ public class RestVerticle extends AbstractVerticle {
                   paramArray[order] = Boolean.valueOf((String)defaultVal);
                 }
               } else {
-                paramArray[order] = Boolean.valueOf(param);;
+                paramArray[order] = Boolean.valueOf(param);
               }
             } else if (valueType.contains("BigDecimal")) {
               // cant pass null to an int type - replace with zero
