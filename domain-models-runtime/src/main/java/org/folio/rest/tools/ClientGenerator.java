@@ -127,7 +127,7 @@ public class ClientGenerator {
     boolean addAmp = false;
     for (int i = 0; i < queryParamCount; i++) {
       String qParam = functionSpecificQueryParams.get(i);
-      if(i>0 && i+1<queryParamCount){
+      if(i+1<queryParamCount){
         addAmp = true;
       }
       else{

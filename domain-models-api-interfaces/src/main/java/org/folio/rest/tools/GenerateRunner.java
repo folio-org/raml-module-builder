@@ -14,8 +14,6 @@ import org.raml.jaxrs.codegen.core.Configuration.JaxrsVersion;
 import org.raml.jaxrs.codegen.core.GeneratorProxy;
 import org.raml.jaxrs.codegen.core.ext.GeneratorExtension;
 
-import org.folio.rest.tools.Raml2Java;
-
 /**
  * @author shale
  *
@@ -122,95 +120,10 @@ public class GenerateRunner {
         System.out.println(ramls[i] + " has a .raml suffix but does not start with #%RAML");
       }
     }
-
     System.out.println("processed: " + numMatches + " raml files");
 
     return;
-    /*    Finder finder = new Finder("*.raml");
-    Files.walkFileTree(Paths.get(inputDirectory), finder);
-    finder.done();*/
 
-    //set output dir for mapping file
-    //System.setProperty("file_path", root + RESOURCE_DEFAULT);
-    //run AnnotationGrabber
-    //AnnotationGrabber.main(new String[]{});
-
-    //create a jar from the generated code and mapping file - get param into main for jar name and path
-/*    String jarName = System.getProperty("jar_name");
-
-    if(jarName == null){
-      jarName = "interface.jar";
-    }
-
-    new JarHelper().jarDir(new File(outputDirectory), new File(outputDirectory + "/"+ jarName));*/
   }
-
-/*  public static class Finder
-  extends SimpleFileVisitor<Path> {
-
-  private final PathMatcher matcher;
-  private int numMatches = 0;
-
-  Finder(String pattern) {
-      matcher = FileSystems.getDefault()
-              .getPathMatcher("glob:" + pattern);
-  }
-
-  // Compares the glob pattern against
-  // the file or directory name.
-  void find(Path file) {
-      Path name = file.getFileName();
-      if (name != null && matcher.matches(name)) {
-          System.out.println("processing " + file);
-          try {
-            BufferedReader reader=new BufferedReader(new FileReader(file.toFile()));
-            String line=reader.readLine();
-            reader.close();
-            if(line.startsWith("#%RAML")) {
-              generator.run(new FileReader(file.toFile()), configuration, file.toFile().getAbsolutePath());
-            }
-            //new Generator().run(new InputStreamReader(new FileInputStream(
-            // file.toAbsolutePath().toString())),
-             // configuration, inputDirectory);
-            numMatches++;
-          }
-          catch (Exception e) {
-            e.printStackTrace();
-          }
-      }
-  }
-
-  // Prints the total number of
-  // matches to standard out.
-  void done() {
-      System.out.println("processed: "
-          + numMatches + " raml files");
-  }
-
-  // Invoke the pattern matching
-  // method on each file.
-  @Override
-  public FileVisitResult visitFile(Path file,
-          BasicFileAttributes attrs) {
-      find(file);
-      return FileVisitResult.CONTINUE;
-  }
-
-  // Invoke the pattern matching
-  // method on each directory.
-  @Override
-  public FileVisitResult preVisitDirectory(Path dir,
-          BasicFileAttributes attrs) {
-      find(dir);
-      return FileVisitResult.CONTINUE;
-  }
-
-  @Override
-  public FileVisitResult visitFileFailed(Path file,
-          IOException exc) {
-      System.err.println(exc);
-      return FileVisitResult.CONTINUE;
-  }
-}*/
 
 }
