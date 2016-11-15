@@ -48,6 +48,8 @@ public class ClientGenerator {
 
   private List<String> functionSpecificQueryParams = new ArrayList<>();
 
+  private String className = null;
+
   public static void main(String[] args) throws Exception {
 
     AnnotationGrabber.generateMappings();
@@ -63,8 +65,8 @@ public class ClientGenerator {
 
     try {
       /* Giving Class Name to Generate */
-      className = className.substring(RTFConsts.INTERFACE_PACKAGE.length()+1, className.indexOf("Resource"));
-      jc = jp._class(className+CLIENT_CLASS_SUFFIX);
+      this.className = className.substring(RTFConsts.INTERFACE_PACKAGE.length()+1, className.indexOf("Resource"));
+      jc = jp._class(this.className+CLIENT_CLASS_SUFFIX);
 
       /* class variable to root url path to this interface */
       JFieldVar globalPathVar = jc.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, String.class, "GLOBAL_PATH");
@@ -105,7 +107,10 @@ public class ClientGenerator {
       String httpVerb, JsonArray contentType, JsonArray accepts){
 
     /* Adding method to the Class which is public and returns void */
-    JMethod jmCreate = jc.method(JMod.PUBLIC, void.class, methodName);
+
+    String conciseName = massageMethodName(methodName);
+
+    JMethod jmCreate = jc.method(JMod.PUBLIC, void.class, conciseName);
     JBlock body = jmCreate.body();
 
     /* Adding java doc for method */
@@ -195,6 +200,14 @@ public class ClientGenerator {
     }
     body.directStatement("request.end();");
 
+  }
+
+  /**
+   * @param methodName
+   * @return
+   */
+  private String massageMethodName(String methodName) {
+    return methodName.replaceFirst(this.className, "");
   }
 
   /**
