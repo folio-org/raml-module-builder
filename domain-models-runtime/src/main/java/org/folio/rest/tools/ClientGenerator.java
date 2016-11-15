@@ -119,7 +119,9 @@ public class ClientGenerator {
       String valueName = ((JsonObject) entry.getValue()).getString("value");
       String valueType = ((JsonObject) entry.getValue()).getString("type");
       String paramType = ((JsonObject) entry.getValue()).getString("param_type");
-      bufferUsed[0] = handleParams(jmCreate, paramType, valueType, valueName);
+      if(handleParams(jmCreate, paramType, valueType, valueName)){
+        bufferUsed[0] = true;
+      }
     });
 
     body.directStatement("StringBuilder queryParams = new StringBuilder(\"?\");");
