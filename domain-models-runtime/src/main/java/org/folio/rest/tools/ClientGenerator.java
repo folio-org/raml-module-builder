@@ -156,7 +156,7 @@ public class ClientGenerator {
       /* replace {varName} with "+varName+" so that it will be replaced
        * in the url at runtime with the correct values */
       Matcher m = Pattern.compile("\\{.*?\\}").matcher(url);
-      if(m.find()){
+      while(m.find()){
         String varName = m.group().replace("{","").replace("}", "");
         url = url.replace("{"+varName+"}", "\"+"+varName+"+\"");
       }
