@@ -131,7 +131,7 @@ public class ClientGenerator {
     JBlock body = jmCreate.body();
 
     /* Adding java doc for method */
-    jmCreate.javadoc().add("Method Level Java Docs");
+    jmCreate.javadoc().add("Service endpoint " + url);
 
     /* iterate on function params and add the relevant ones */
     boolean[] bufferUsed = new boolean[]{false};
