@@ -26,7 +26,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.client.AdminClient;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
@@ -165,7 +164,7 @@ public class DemoRamlRestTest {
 
     jobsTest(context);
 
-    AdminClient ac = new AdminClient("localhost", port, "abc");
+/*    AdminClient ac = new AdminClient("localhost", port, "abc");
     ac.getAdminJstack( response -> {
       StringBuffer sb = new StringBuffer();
       response.exceptionHandler( error -> {
@@ -177,7 +176,7 @@ public class DemoRamlRestTest {
       response.endHandler(endHandler -> {
         System.out.println("JSTACK" + sb.toString());
       });
-    });
+    });*/
   }
 
   /**
