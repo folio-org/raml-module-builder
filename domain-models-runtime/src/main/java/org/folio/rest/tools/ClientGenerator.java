@@ -319,7 +319,9 @@ public class ClientGenerator {
 
   public void generateClass() throws IOException{
     /* Building class at given location */
-    jCodeModel.build(new File(PATH_TO_GENERATE_TO));
+    if(new File(PATH_TO_GENERATE_TO).exists()){
+      jCodeModel.build(new File(PATH_TO_GENERATE_TO));
+    }
   }
 
   private static String replaceLast(String string, String substring, String replacement) {
