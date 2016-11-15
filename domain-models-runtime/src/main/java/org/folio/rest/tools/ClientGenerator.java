@@ -11,8 +11,10 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -49,6 +51,21 @@ public class ClientGenerator {
   private List<String> functionSpecificQueryParams = new ArrayList<>();
 
   private String className = null;
+
+  private static Map<String, String> verbs = new HashMap<>();
+
+  static {
+
+    verbs.put("post", "post");
+    verbs.put("get", "get");
+    verbs.put("delete", "delete");
+    verbs.put("put","put");
+    verbs.put("options", "options");
+    verbs.put("head","head");
+    verbs.put("patch","patch");
+    verbs.put("trace","trace");
+
+  }
 
   public static void main(String[] args) throws Exception {
 
@@ -207,7 +224,20 @@ public class ClientGenerator {
    * @return
    */
   private String massageMethodName(String methodName) {
-    return methodName.replaceFirst(this.className, "");
+    int idx = methodName.lastIndexOf("By");
+    if(idx == -1){
+      //just remove the class name from the method
+      //everything else should be concise enough
+      return methodName.replaceFirst(this.className, "");
+    }
+    idx = idx+2;
+    int redundantClassNameInFunction = methodName.indexOf(this.className);
+    if(redundantClassNameInFunction == -1){
+      return methodName;
+    }
+    //maintain the http method
+    String httpVerb = methodName.substring(0, redundantClassNameInFunction);
+    return httpVerb + methodName.substring(idx);
   }
 
   /**
