@@ -16,10 +16,10 @@ schemas:
   - bulk: !include /schemas/bulk.schema
   
 traits:
-  - orderable: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/orderable.raml
-  - pageable:  !include https://raw.githubusercontent.com/folio-org/raml/master/traits/pageable.raml
-  - searchable: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/searchable.raml
-  - language: !include https://raw.githubusercontent.com/folio-org/raml/master/traits/language.raml
+  - orderable: !include ../../../../../raml-util/traits/orderable.raml
+  - pageable:  !include ../../../../../raml-util/traits/pageable.raml
+  - searchable: !include ../../../../../raml-util/traits/searchable.raml
+  - language: !include ../../../../../raml-util/traits/language.raml
 
 resourceTypes:
   - collection: !include https://raw.githubusercontent.com/folio-org/raml/master/rtypes/collection.raml
