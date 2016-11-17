@@ -113,11 +113,14 @@ and other [modules](http://dev.folio.org/source-code/#server-side).
 
 ## Get started with a sample working module
 
-Clone / download the framework:
+Clone / download the framework raml-module-builder
 
-- raml-module-builder - this is the core framework that can be used to help
-  developers quickly get a Vert.x based module up and running. Build via
-  `mvn clean install` which will create all the needed jars for the framework.
+- this is the core framework that can be used to help
+  developers quickly get a Vert.x based module up and running.
+
+- Git users: Use ```git clone --recursive https://github.com/folio-org/raml-module-builder```
+
+- Build via `mvn clean install` which will create all the needed jars for the framework.
 
 Clone / download the Circulation sample module -
 https://github.com/folio-org/mod-circulation - Build via `mvn clean install`
