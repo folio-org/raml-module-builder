@@ -128,9 +128,9 @@ public class DemoRamlRestTest {
 
     //this will create an entry in the job conf and jobs collections as this is done automatically
     //when param SAVE_AND_NOTIFY is passed.
-    postData(context, "http://localhost:" + port +
-      "/admin/upload?file_name=test.json&bus_address=a.b.c&persist_method=SAVE_AND_NOTIFY",
-      Buffer.buffer(getFile("uploadtest.json")), 204, 1, null);
+    //postData(context, "http://localhost:" + port +
+    //  "/admin/upload?file_name=test.json&bus_address=a.b.c&persist_method=SAVE_AND_NOTIFY",
+    //  Buffer.buffer(getFile("uploadtest.json")), 204, 1, null);
 
     List<Object> list = getListOfBooks();
 
@@ -162,7 +162,7 @@ public class DemoRamlRestTest {
     groupBy(context, "date");
     groupBy(context, "matching");
 
-    jobsTest(context);
+    //jobsTest(context);
 
 /*    AdminClient ac = new AdminClient("localhost", port, "abc");
     ac.getAdminJstack( response -> {

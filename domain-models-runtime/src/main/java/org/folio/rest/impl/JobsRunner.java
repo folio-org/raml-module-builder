@@ -17,12 +17,12 @@ import java.util.Map;
 import org.folio.rest.jaxrs.model.Bulk;
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.persist.MongoCRUD;
-import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.rest.resource.interfaces.JobAPI;
 import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.InterfaceToImpl;
+import org.folio.rest.tools.utils.JsonUtils;
 
 /**
  * This class implements the InitAPI and therefore is run during verticle deployments.
@@ -33,7 +33,7 @@ import org.folio.rest.tools.utils.InterfaceToImpl;
  * the module + name
  * <be>sets status to complete / error
  */
-public class JobsRunner implements InitAPI {
+public class JobsRunner {
 
   private static final String LOG_LANG             = "en";
   private static final Logger log                  = LoggerFactory.getLogger(JobsRunner.class);
@@ -45,7 +45,6 @@ public class JobsRunner implements InitAPI {
 
   private static String QUERY_CLAUSE               = "\"{0}\": \"{1}\"";
 
-  @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
 
     /**
@@ -89,15 +88,20 @@ public class JobsRunner implements InitAPI {
     }
 
     // set periodic to query db for pending states and run them if there is an open slot
-    vertx.setPeriodic(60000, todo -> {
-      try {
-        //kick off the processing
-        process();
-      } catch (Exception e) {
-        log.error(e);
-        resultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-      }
-    });
+    try {
+      vertx.setPeriodic(60000, todo -> {
+        try {
+          //kick off the processing
+          process();
+        } catch (Exception e) {
+          log.error(e);
+          resultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+        }
+      });
+    } catch (NullPointerException e) {
+      //no mongo instance config found - so no processing
+      log.error(e.getMessage(), e);
+    }
 
     //return
     resultHandler.handle(io.vertx.core.Future.succeededFuture(true));
@@ -169,7 +173,7 @@ public class JobsRunner implements InitAPI {
 
    String jobType = conf.getModule() + "_" + conf.getName();
    //build query from params then update to running
-   JsonObject query = MongoCRUD.entity2JsonNoLastModified(conf);
+   JsonObject query = JsonUtils.entity2JsonNoLastModified(conf);
 
    conf.setStatus(RTFConsts.STATUS_RUNNING);
    // update status of file
@@ -202,7 +206,7 @@ public class JobsRunner implements InitAPI {
    */
   public static void updateJobStatusDB(Job conf) {
     String[] removeFromQuery = new String[]{"last_modified", "status", "parameters"};
-    JsonObject query = MongoCRUD.entity2Json(conf, removeFromQuery);
+    JsonObject query = JsonUtils.entity2Json(conf, removeFromQuery);
     MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, query, false, true, reply2 -> {
       if (reply2.failed()) {
         log.error("Unable to save job status for job,, " + query.encodePrettily());
