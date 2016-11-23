@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -121,6 +122,15 @@ public class ClientGenerator {
     } catch (Exception e) {
       e.printStackTrace();
     }
+
+  }
+
+  public void generateCloseClient(){
+    JMethod jmCreate = jc.method(JMod.PUBLIC, void.class, "close");
+    jmCreate.javadoc().add("Close the client. Closing will close down any "
+        + "pooled connections. Clients should always be closed after use.");
+    JBlock body = jmCreate.body();
+    body.directStatement("httpClient.close();");
 
   }
 
@@ -312,6 +322,14 @@ public class ClientGenerator {
             methodBody.directStatement( "if(reader != null){buffer.appendString(org.apache.commons.io.IOUtils.toString(reader));}" );
           }
           else if("java.io.InputStream".equals(valueType)){
+            method.param(InputStream.class, "inputStream");
+            methodBody.directStatement( "ByteArrayOutputStream result = new ByteArrayOutputStream();"+
+              "byte[] buffer = new byte[1024];"+
+              "int length;"+
+              "while ((length = inputStream.read(buffer)) != -1) {"+
+                  "result.write(buffer, 0, length);"+
+              "}"
+              + "buffer.appendBytes(result.toByteArray());");
 
           }
           else{
@@ -378,6 +396,7 @@ public class ClientGenerator {
   public void generateClass() throws IOException{
     /* Building class at given location */
     if(new File(PATH_TO_GENERATE_TO).exists()){
+      generateCloseClient();
       jCodeModel.build(new File(PATH_TO_GENERATE_TO));
     }
   }
