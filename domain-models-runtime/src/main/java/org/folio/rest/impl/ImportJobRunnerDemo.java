@@ -5,8 +5,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 
 import org.folio.rest.jaxrs.model.Job;
-import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.resource.interfaces.JobAPI;
+import org.folio.rest.tools.utils.JsonUtils;
 
 /**
  * an example of a job - jobs saved into the jobs collection with module = MY_MODULE and
@@ -38,7 +38,7 @@ public class ImportJobRunnerDemo implements JobAPI {
 
   @Override
   public void process(Job job, Handler<AsyncResult<Job>> replyHandler) {
-    System.out.print(MongoCRUD.entity2Json(job).encodePrettily());
+    System.out.print(JsonUtils.entity2Json(job).encodePrettily());
     replyHandler.handle(io.vertx.core.Future.succeededFuture(job));
   }
 

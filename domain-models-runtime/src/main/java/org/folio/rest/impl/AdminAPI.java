@@ -1,5 +1,12 @@
 package org.folio.rest.impl;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.Reader;
 import java.lang.management.ManagementFactory;
@@ -11,13 +18,6 @@ import java.lang.management.ThreadMXBean;
 import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.function.BiConsumer;
-
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
 
 import javax.mail.internet.MimeMultipart;
 import javax.ws.rs.core.Response;

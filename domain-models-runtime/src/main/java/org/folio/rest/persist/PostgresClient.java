@@ -1,5 +1,15 @@
 package org.folio.rest.persist;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.asyncsql.AsyncSQLClient;
+import io.vertx.ext.sql.SQLConnection;
+
 import java.io.File;
 import java.io.FileReader;
 import java.sql.Connection;
@@ -9,6 +19,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.Criteria.UpdateSection;
+import org.folio.rest.tools.messages.MessageConsts;
+import org.folio.rest.tools.messages.Messages;
+import org.folio.rest.tools.utils.LogUtil;
+import org.postgresql.copy.CopyManager;
+import org.postgresql.core.BaseConnection;
 
 import ru.yandex.qatools.embed.postgresql.Command;
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
@@ -25,25 +43,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.folio.rest.persist.Criteria.Criteria;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.Criteria.UpdateSection;
-import org.folio.rest.tools.messages.MessageConsts;
-import org.folio.rest.tools.messages.Messages;
-import org.folio.rest.tools.utils.LogUtil;
-import org.postgresql.copy.CopyManager;
-import org.postgresql.core.BaseConnection;
-
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.asyncsql.AsyncSQLClient;
-import io.vertx.ext.sql.SQLConnection;
 
 /**
  * @author shale currently does not support binary data unless base64 encoded
@@ -103,6 +103,13 @@ public class PostgresClient {
     configPath = path;
   }
 
+  public static String getConfigFilePath(){
+    if(configPath == null){
+      configPath = POSTGRES_LOCALHOST_CONFIG;
+    }
+    return configPath;
+  }
+
   // will return null on exception
   public static PostgresClient getInstance(Vertx vertx) {
     // assumes a single thread vertx model so no sync needed
@@ -119,12 +126,8 @@ public class PostgresClient {
   private void init(Vertx vertx) throws Exception {
     this.vertx = vertx;
     if (!embeddedMode) {
-      String path = POSTGRES_LOCALHOST_CONFIG;
-      if(configPath != null){
-        path = configPath;
-        log.info("Loading PostgreSQL configuration from " + configPath);
-      }
-      postgreSQLClientConfig = new LoadConfs().loadConfig(path);
+      log.info("Loading PostgreSQL configuration from " + configPath);
+      postgreSQLClientConfig = new LoadConfs().loadConfig(configPath);
       if(postgreSQLClientConfig == null){
         //not in embedded mode but there is no conf file found
         throw new Exception("No postgres-conf.json file found and not in embedded mode, can not connect to any db store");
@@ -819,12 +822,13 @@ public class PostgresClient {
   }
 
   /**
-   * import a tab delimited file to an existing table
+   * import data in a tab delimited file into columns of an existing table
    * @param path - path to the file
    * @param tableName - name of the table to import the content into
    */
   public void importFile(String path, String tableName) {
 
+   long recordsImported[] = new long[]{-1};
    vertx.<String>executeBlocking(dothis -> {
 
     try {
@@ -844,7 +848,7 @@ public class PostgresClient {
       CopyManager copyManager = new CopyManager((BaseConnection) con);
 
       FileReader fileReader = new FileReader(path);
-      copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
+      recordsImported[0] = copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
 
     } catch (Exception e) {
       log.error(messages.getMessage("en", MessageConsts.ImportFailed), e.getMessage(), e);
@@ -856,7 +860,7 @@ public class PostgresClient {
 
     if(whendone.succeeded()){
 
-      log.info("Done importing file: " + path);
+      log.info("Done importing file: " + path + ". Number of records imported: " + recordsImported[0]);
     }
     else{
       log.info("Failed importing file: " + path);

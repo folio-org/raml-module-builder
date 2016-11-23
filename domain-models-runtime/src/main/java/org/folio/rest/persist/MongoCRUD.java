@@ -18,13 +18,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 import org.folio.rest.persist.mongo.GroupBy;
+import org.folio.rest.tools.utils.JsonUtils;
 import org.folio.rest.tools.utils.NetworkUtils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -185,7 +183,7 @@ public class MongoCRUD {
       if (entity instanceof JsonObject) {
         jsonObject = (JsonObject) entity;
       } else {
-        String obj = entity2String(entity);
+        String obj = JsonUtils.entity2String(entity);
         jsonObject = new JsonObject(obj);
       }
       client.save(collection, jsonObject, res1 -> {
@@ -229,7 +227,7 @@ public class MongoCRUD {
       if (entity instanceof JsonObject) {
         jsonObject = (JsonObject) entity;
       } else {
-        String obj = entity2String(entity);
+        String obj = JsonUtils.entity2String(entity);
         jsonObject = new JsonObject(obj);
       }
       client.insert(collection, jsonObject, res -> {
@@ -358,7 +356,7 @@ public class MongoCRUD {
 
     JsonObject command = new JsonObject()
       .put("insert", collection)
-      .put("documents", new JsonArray(entity2String(entities)))
+      .put("documents", new JsonArray(JsonUtils.entity2String(entities)))
       .put("ordered", false);
 
       client.runCommand("insert", command, res -> {
@@ -432,7 +430,7 @@ public class MongoCRUD {
     long start = System.nanoTime();
 
     try {
-      client.removeDocuments(collection, entity2Json(pojo), res -> {
+      client.removeDocuments(collection, JsonUtils.entity2Json(pojo), res -> {
         if (res.succeeded()) {
           replyHandler.handle(io.vertx.core.Future.succeededFuture(res.result()));
         } else {
@@ -440,7 +438,7 @@ public class MongoCRUD {
           replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().toString()));
         }
         if(log.isDebugEnabled()){
-          elapsedTime("delete() " + collection + " " + entity2String(pojo), start);
+          elapsedTime("delete() " + collection + " " + JsonUtils.entity2String(pojo), start);
         }
       });
     } catch (Throwable e) {
@@ -577,11 +575,11 @@ public class MongoCRUD {
    * @param replyHandler
    */
   public void get(String clazz, String collection, Integer from, Integer to, Object pojoAsQuery, Handler<AsyncResult<List<?>>> replyHandler) {
-    get(clazz, collection, from, to, entity2JsonNoLastModified(pojoAsQuery), replyHandler);
+    get(clazz, collection, from, to, JsonUtils.entity2JsonNoLastModified(pojoAsQuery), replyHandler);
   }
 
   public void get(String collection, Object pojoAsQuery, Handler<AsyncResult<List<?>>> replyHandler) {
-    get(pojoAsQuery.getClass().getName(), collection, null, null, entity2JsonNoLastModified(pojoAsQuery), replyHandler);
+    get(pojoAsQuery.getClass().getName(), collection, null, null, JsonUtils.entity2JsonNoLastModified(pojoAsQuery), replyHandler);
   }
 
   public void get(String clazz, String collection, Integer from, Integer to, String mongoQueryString, Handler<AsyncResult<List<?>>> replyHandler) {
@@ -657,7 +655,7 @@ public class MongoCRUD {
    */
   public void update(String collection, Object entity, Object queryAsPojo, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
 
-    update(collection, entity, entity2JsonNoLastModified(queryAsPojo), false, false, replyHandler);
+    update(collection, entity, JsonUtils.entity2JsonNoLastModified(queryAsPojo), false, false, replyHandler);
   }
 
   public void update(String collection, Object entity, JsonObject query, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
@@ -676,7 +674,7 @@ public class MongoCRUD {
    * @param replyHandler - returns MongoClientUpdateResult which can be used to check amount of updated records
    */
   public void update(String collection, Object entity, Object queryAsPojo,  boolean upsert, boolean addUpdateDate, Handler<AsyncResult<MongoClientUpdateResult>> replyHandler) {
-    update(collection, entity, entity2JsonNoLastModified(queryAsPojo), upsert, addUpdateDate, replyHandler);
+    update(collection, entity, JsonUtils.entity2JsonNoLastModified(queryAsPojo), upsert, addUpdateDate, replyHandler);
   }
 
 
@@ -703,7 +701,7 @@ public class MongoCRUD {
       if (entity instanceof JsonObject) {
         jsonObject = (JsonObject) entity;
       } else {
-        String obj = entity2String(entity);
+        String obj = JsonUtils.entity2String(entity);
         jsonObject = new JsonObject(obj);
       }
 
@@ -778,11 +776,11 @@ public class MongoCRUD {
       }
       else{
         if(((List)arrayEntry).size() == 1){
-          array.put(arrayName, new JsonObject(entity2String(((List)arrayEntry).get(0))));
+          array.put(arrayName, new JsonObject(JsonUtils.entity2String(((List)arrayEntry).get(0))));
         }
         else{
           JsonObject each = new JsonObject();
-          each.put("$each", new JsonArray( entity2String(arrayEntry)));
+          each.put("$each", new JsonArray( JsonUtils.entity2String(arrayEntry)));
           array.put(arrayName,  each );
         }
 
@@ -870,7 +868,7 @@ public class MongoCRUD {
 
     JsonArray jar = new JsonArray();
     if(pojoAsQuery != null){
-      JsonObject matching = new JsonObject().put("$match" , entity2JsonNoLastModified(pojoAsQuery));
+      JsonObject matching = new JsonObject().put("$match" , JsonUtils.entity2JsonNoLastModified(pojoAsQuery));
       jar.add(matching);
     }
     jar.add(groupBy.toJson());
@@ -945,111 +943,6 @@ public class MongoCRUD {
     if (mongoProcess != null) {
       mongoProcess.stop();
     }
-  }
-
-  private String entity2String(Object entity){
-    String obj = null;
-    if(entity != null){
-      if(entity instanceof JsonObject){
-        //json object
-        obj = ((JsonObject) entity).encode();
-      }
-      else if(entity instanceof List<?>){
-        obj =  new JsonArray((List)entity).encode();
-      }
-      else{
-        try {
-          //pojo
-          obj = mapper.writeValueAsString(entity);
-        } catch (JsonProcessingException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-    return obj;
-  }
-
-  /**
-   * transform a pojo to a mongo json query by flattening out the object
-   * for example a list of parameters with a key in the list called 'key' will be transformed into
-   * parameters.key
-   * @param entity pojo to transform into a query
-   * @param removeFields fields starting with this prefix will not be included in the returned json object
-   * @return
-   */
-  public static JsonObject entity2Json(Object entity, String[] removeFieldsPrefixes){
-
-    if(entity == null){
-      return null;
-    }
-
-    //Create a regex of excluded entries in the json so that the json created from the pojo does not
-    //include them
-    Pattern excludes = null;
-
-    if(removeFieldsPrefixes != null){
-      StringBuilder sb = new StringBuilder();
-      for (int i = 0; i < removeFieldsPrefixes.length; i++) {
-        sb.append( removeFieldsPrefixes[i].replace(".", "\\.") ).append(".*");
-        if(i+1<removeFieldsPrefixes.length){
-          sb.append("|");
-        }
-      }
-      excludes = Pattern.compile(sb.toString(), Pattern.CASE_INSENSITIVE);
-    }
-
-    try {
-      JsonObject result = new JsonObject( mapper.writeValueAsString(entity) );
-      JsonObject processed = new JsonObject();
-      entity2JsonInternal(result, "", processed, excludes);
-      return processed;
-    } catch (JsonProcessingException e) {
-      log.error(e.getMessage(), e);
-    }
-    return null;
-  }
-
-  private static void entity2JsonInternal(Object obj, String key, JsonObject result, Pattern excludes){
-    String prefix = key;
-    Consumer<Map.Entry<String,Object>> consumer = entry -> {
-      String key1 = entry.getKey();
-      Object value1 = entry.getValue();
-      String newPrefix = new StringBuilder(prefix).append(key1).append(".").toString();
-      if(value1 instanceof JsonObject){
-        entity2JsonInternal(value1, newPrefix, result, excludes);
-      }
-      else if (value1 instanceof JsonArray){
-        int size = ((JsonArray)value1).size();
-        for(int i=0; i<size; i++){
-          Object val = ((JsonArray)value1).getValue(i);
-          entity2JsonInternal(val, newPrefix, result, excludes);
-        }
-      }
-      else{
-        String path = prefix+key1;
-        if(excludes == null || !excludes.matcher(path).find()){
-          result.put(path, value1);
-        }
-      }
-    };
-    ((Iterable)obj).forEach(consumer);
-  }
-
-  /**
-   * transform a pojo to a mongo json query by flattening out the object
-   * for example a list of parameters with a key in the list called 'key' will be transformed into
-   * parameters.key
-   * @param entity
-   * @param removeFields fields starting with this prefix will not be included in the returned json object
-   * @return
-   */
-  public static JsonObject entity2Json(Object entity){
-    return entity2Json(entity, null);
-  }
-
-  public static JsonObject entity2JsonNoLastModified(Object entity){
-    JsonObject q = entity2Json(entity, new String[]{"last_modified"});
-    return q;
   }
 
   public static JsonObject buildJson(String returnClazz, String collection, String query, String orderBy, Object order, int offset, int limit){
