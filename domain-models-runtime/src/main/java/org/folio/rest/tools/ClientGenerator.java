@@ -50,9 +50,6 @@ public class ClientGenerator {
 
   private String globalPath = null;
 
-  private List<String> functionSpecificQueryParamsPrimitives = new ArrayList<>();
-  private List<String> functionSpecificQueryParamsEnums = new ArrayList<>();
-
   private List<String> functionSpecificHeaderParams = new ArrayList<>();
 
   private String className = null;
@@ -103,21 +100,31 @@ public class ClientGenerator {
       /* class variable to http client */
       jc.field(JMod.PRIVATE, HttpClient.class, "httpClient");
 
-      /* constructor, init the httpClient */
+      /* constructor, init the httpClient - allow to pass keep alive option */
       JMethod consructor = jc.constructor(JMod.PUBLIC);
       consructor.param(String.class, "host");
       consructor.param(int.class, "port");
       consructor.param(String.class, "tenantId");
+      consructor.param(boolean.class, "keepAlive");
 
       /* populate constructor */
       JBlock conBody = consructor.body();
       conBody.directStatement("this.tenantId = tenantId;");
       conBody.directStatement("options = new HttpClientOptions();");
       conBody.directStatement("options.setLogActivity(true);");
-      conBody.directStatement("options.setKeepAlive(true);");
+      conBody.directStatement("options.setKeepAlive(keepAlive);");
       conBody.directStatement("options.setDefaultHost(host);");
       conBody.directStatement("options.setDefaultPort(port);");
       conBody.directStatement("httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);");
+
+      /* constructor, init the httpClient */
+      JMethod consructor2 = jc.constructor(JMod.PUBLIC);
+      consructor2.param(String.class, "host");
+      consructor2.param(int.class, "port");
+      consructor2.param(String.class, "tenantId");
+      JBlock conBody2 = consructor2.body();
+      conBody2.directStatement("this(host, port, tenantId, true);");
+
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -147,68 +154,9 @@ public class ClientGenerator {
     /* Adding java doc for method */
     jmCreate.javadoc().add("Service endpoint " + url);
 
-    /* iterate on function params and add the relevant ones
-     * --> functionSpecificQueryParamsPrimitives is populated by query parameters that are primitives
-     * --> functionSpecificHeaderParams (used later on) is populated by header params
-     * --> functionSpecificQueryParamsEnums is populated by query parameters that are enums */
-    boolean[] bufferUsed = new boolean[]{false};
-    Iterator<Entry<String, Object>> paramList = params.iterator();
-    functionSpecificQueryParamsPrimitives = new ArrayList<>();
-    functionSpecificQueryParamsEnums = new ArrayList<>();
-    paramList.forEachRemaining(entry -> {
-      String valueName = ((JsonObject) entry.getValue()).getString("value");
-      String valueType = ((JsonObject) entry.getValue()).getString("type");
-      String paramType = ((JsonObject) entry.getValue()).getString("param_type");
-      if(handleParams(jmCreate, paramType, valueType, valueName)){
-        bufferUsed[0] = true;
-      }
-    });
-
-    //////---- build a StringBuilder out of the primitive params that are not null ----//////////
-
+    /* create the query parameter string builder */
     body.directStatement("StringBuilder queryParams = new StringBuilder(\"?\");");
-    int queryParamCount = functionSpecificQueryParamsPrimitives.size();
-    boolean addAmp = false;
-    for (int i = 0; i < queryParamCount; i++) {
-      String qParam = functionSpecificQueryParamsPrimitives.get(i);
-      if(i+1<queryParamCount){
-        addAmp = true;
-      }
-      else{
-        addAmp = false;
-      }
-      body.directStatement("if(((Object)"+qParam+").getClass().isPrimitive()) {queryParams.append(\""+qParam+"=\"+"+qParam+");");
-      //    + "else{}");
-      if(addAmp){
-        body.directStatement("queryParams.append(\"&\");");
-      }
-      body.directStatement("}");
-      body.directStatement("else if((Object)"+ qParam +" != null) {queryParams.append(\""+qParam+"=\"+"+qParam+");");
-      //body.directStatement("if(!"+ qParam +" instancof Object) {queryParams.append(\""+qParam+"=\"+"+qParam+");}");
-      if(addAmp){
-        body.directStatement("queryParams.append(\"&\");");
-      }
-      body.directStatement("}");
-    }
 
-    //////---- build a StringBuilder out of the enums params that are not null ----//////////
-
-    queryParamCount = functionSpecificQueryParamsEnums.size();
-    addAmp = false;
-    for (int i = 0; i < queryParamCount; i++) {
-      String qParam = functionSpecificQueryParamsEnums.get(i);
-      if(i+1<queryParamCount){
-        addAmp = true;
-      }
-      else{
-        addAmp = false;
-      }
-      body.directStatement("if("+ qParam +" != null) {queryParams.append(\""+qParam+"=\"+"+qParam+".toString());");
-      if(addAmp){
-        body.directStatement("queryParams.append(\"&\");");
-      }
-      body.directStatement("}");
-    }
 
     ////////////////////////---- Handle place holders in the url  ----//////////////////
     /* create request */
@@ -230,22 +178,25 @@ public class ClientGenerator {
       url = "\""+url.substring(1)+"\"+queryParams.toString()";
     }
 
-    //////////////////////////////////////////////////////////////////////////////////////
-
-
+    /* create the http client request object */
     body.directStatement("io.vertx.core.http.HttpClientRequest request = httpClient."+
         httpVerb.substring(httpVerb.lastIndexOf(".")+1).toLowerCase()+"("+url+");");
-
     body.directStatement("request.handler(responseHandler);");
 
-    /* add params coming from header */
-    functionSpecificHeaderParams = new ArrayList<>();
+    /* iterate on function params and add the relevant ones
+     * --> functionSpecificQueryParamsPrimitives is populated by query parameters that are primitives
+     * --> functionSpecificHeaderParams (used later on) is populated by header params
+     * --> functionSpecificQueryParamsEnums is populated by query parameters that are enums */
+    Iterator<Entry<String, Object>> paramList = params.iterator();
 
-    int headerParamCount = functionSpecificHeaderParams.size();
-    for (int i = 0; i < headerParamCount; i++) {
-      String hParam = functionSpecificHeaderParams.get(i);
-      body.directStatement("request.putHeader(\""+hParam+"\", "+hParam+");");
-    }
+    paramList.forEachRemaining(entry -> {
+      String valueName = ((JsonObject) entry.getValue()).getString("value");
+      String valueType = ((JsonObject) entry.getValue()).getString("type");
+      String paramType = ((JsonObject) entry.getValue()).getString("param_type");
+      handleParams(jmCreate, paramType, valueType, valueName);
+    });
+
+    //////////////////////////////////////////////////////////////////////////////////////
 
     /* add content and accept headers if relevant */
     if(contentType != null){
@@ -265,10 +216,6 @@ public class ClientGenerator {
     JClass handler = jCodeModel.ref(Handler.class).narrow(HttpClientResponse.class);
     jmCreate.param(handler, "responseHandler");
 
-    if(bufferUsed[0]){
-      body.directStatement("request.write(buffer);");
-      body.directStatement("request.setChunked(true);");
-    }
     body.directStatement("request.end();");
 
   }
@@ -298,9 +245,9 @@ public class ClientGenerator {
    * @param paramType
    * @param valueType
    */
-  private boolean handleParams(JMethod method, String paramType, String valueType, String valueName) {
+  private void handleParams(JMethod method, String paramType, String valueType, String valueName) {
 
-    boolean bufferUsed = false;
+    JBlock methodBody = method.body();
 
     if (AnnotationGrabber.NON_ANNOTATED_PARAM.equals(paramType) /*&& !FILE_UPLOAD_PARAM.equals(valueType)*/) {
       try {
@@ -313,32 +260,35 @@ public class ClientGenerator {
           /* this is a post or put since our only options here are receiving a reader (data in body) or
            * entity - which is also data in body - but we can only have one since a multi part body
            * should be indicated by a multipart object ? TODO add input stream support */
-          JBlock methodBody = method.body();
           methodBody.directStatement( "io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();" );
 
           if("java.io.Reader".equals(valueType)){
             method.param(Reader.class, "reader");
             method._throws(Exception.class);
             methodBody.directStatement( "if(reader != null){buffer.appendString(org.apache.commons.io.IOUtils.toString(reader));}" );
+            methodBody.directStatement("request.write(buffer);");
+            methodBody.directStatement("request.setChunked(true);");
           }
           else if("java.io.InputStream".equals(valueType)){
             method.param(InputStream.class, "inputStream");
-            methodBody.directStatement( "ByteArrayOutputStream result = new ByteArrayOutputStream();"+
-              "byte[] buffer = new byte[1024];"+
-              "int length;"+
-              "while ((length = inputStream.read(buffer)) != -1) {"+
-                  "result.write(buffer, 0, length);"+
-              "}"
-              + "buffer.appendBytes(result.toByteArray());");
-
+            methodBody.directStatement( "java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();");
+            methodBody.directStatement( "byte[] buffer1 = new byte[1024];");
+            methodBody.directStatement( "int length;\n");
+            methodBody.directStatement( "while ((length = inputStream.read(buffer1)) != -1) {");
+            methodBody.directStatement( "result.write(buffer1, 0, length);");
+            methodBody.directStatement( "}");
+            methodBody.directStatement( "buffer.appendBytes(result.toByteArray());");
+            method._throws(IOException.class);
+            methodBody.directStatement("request.write(buffer);");
+            methodBody.directStatement("request.setChunked(true);");
           }
           else{
             methodBody.directStatement( "buffer.appendString("
                 + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+entityClazz.getSimpleName()+").encode());");
             method.param(entityClazz, entityClazz.getSimpleName());
+            methodBody.directStatement("request.write(buffer);");
+            methodBody.directStatement("request.setChunked(true);");
           }
-
-          bufferUsed = true;
 
         }
       } catch (Exception e) {
@@ -351,26 +301,30 @@ public class ClientGenerator {
     }
     else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
       method.param(String.class, valueName);
-      functionSpecificHeaderParams.add(valueName);
+      methodBody.directStatement("request.putHeader(\""+valueName+"\", "+valueName+");");
     }
     else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
       // support enum, numbers or strings as query parameters
       try {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
-          functionSpecificQueryParamsPrimitives.add(valueName);
+          methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+");}");
+          methodBody.directStatement("queryParams.append(\"&\");");
 
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
-          functionSpecificQueryParamsPrimitives.add(valueName);
+          methodBody.directStatement("queryParams.append(\""+valueName+"=\"+"+valueName+");");
+          methodBody.directStatement("queryParams.append(\"&\");");
 
         } else if (valueType.contains("boolean")) {
           method.param(boolean.class, valueName);
-          functionSpecificQueryParamsPrimitives.add(valueName);
+          methodBody.directStatement("queryParams.append(\""+valueName+"=\"+"+valueName+");");
+          methodBody.directStatement("queryParams.append(\"&\");");
 
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
-          functionSpecificQueryParamsPrimitives.add(valueName);
+          methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+");}");
+          methodBody.directStatement("queryParams.append(\"&\");");
 
         } else { // enum object type
           try {
@@ -378,7 +332,9 @@ public class ClientGenerator {
             Class<?> enumClazz1 = Class.forName(enumClazz);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
-              functionSpecificQueryParamsEnums.add(valueName);
+              methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+".toString());}");
+              methodBody.directStatement("queryParams.append(\"&\");");
+
             }
           } catch (Exception ee) {
             ee.printStackTrace();
@@ -389,8 +345,6 @@ public class ClientGenerator {
         e.printStackTrace();
       }
     }
-
-    return bufferUsed;
   }
 
   public void generateClass() throws IOException{
