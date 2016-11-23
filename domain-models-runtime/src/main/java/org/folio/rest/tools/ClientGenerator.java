@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Reader;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,7 +49,10 @@ public class ClientGenerator {
 
   private String globalPath = null;
 
-  private List<String> functionSpecificQueryParams = new ArrayList<>();
+  private List<String> functionSpecificQueryParamsPrimitives = new ArrayList<>();
+  private List<String> functionSpecificQueryParamsEnums = new ArrayList<>();
+
+  private List<String> functionSpecificHeaderParams = new ArrayList<>();
 
   private String className = null;
 
@@ -133,10 +137,14 @@ public class ClientGenerator {
     /* Adding java doc for method */
     jmCreate.javadoc().add("Service endpoint " + url);
 
-    /* iterate on function params and add the relevant ones */
+    /* iterate on function params and add the relevant ones
+     * --> functionSpecificQueryParamsPrimitives is populated by query parameters that are primitives
+     * --> functionSpecificHeaderParams (used later on) is populated by header params
+     * --> functionSpecificQueryParamsEnums is populated by query parameters that are enums */
     boolean[] bufferUsed = new boolean[]{false};
     Iterator<Entry<String, Object>> paramList = params.iterator();
-    functionSpecificQueryParams = new ArrayList<>();
+    functionSpecificQueryParamsPrimitives = new ArrayList<>();
+    functionSpecificQueryParamsEnums = new ArrayList<>();
     paramList.forEachRemaining(entry -> {
       String valueName = ((JsonObject) entry.getValue()).getString("value");
       String valueType = ((JsonObject) entry.getValue()).getString("type");
@@ -146,11 +154,13 @@ public class ClientGenerator {
       }
     });
 
+    //////---- build a StringBuilder out of the primitive params that are not null ----//////////
+
     body.directStatement("StringBuilder queryParams = new StringBuilder(\"?\");");
-    int queryParamCount = functionSpecificQueryParams.size();
+    int queryParamCount = functionSpecificQueryParamsPrimitives.size();
     boolean addAmp = false;
     for (int i = 0; i < queryParamCount; i++) {
-      String qParam = functionSpecificQueryParams.get(i);
+      String qParam = functionSpecificQueryParamsPrimitives.get(i);
       if(i+1<queryParamCount){
         addAmp = true;
       }
@@ -170,6 +180,27 @@ public class ClientGenerator {
       }
       body.directStatement("}");
     }
+
+    //////---- build a StringBuilder out of the enums params that are not null ----//////////
+
+    queryParamCount = functionSpecificQueryParamsEnums.size();
+    addAmp = false;
+    for (int i = 0; i < queryParamCount; i++) {
+      String qParam = functionSpecificQueryParamsEnums.get(i);
+      if(i+1<queryParamCount){
+        addAmp = true;
+      }
+      else{
+        addAmp = false;
+      }
+      body.directStatement("if("+ qParam +" != null) {queryParams.append(\""+qParam+"=\"+"+qParam+".toString());");
+      if(addAmp){
+        body.directStatement("queryParams.append(\"&\");");
+      }
+      body.directStatement("}");
+    }
+
+    ////////////////////////---- Handle place holders in the url  ----//////////////////
     /* create request */
     if(url == null){
       //if there is no path associated with a function
@@ -177,7 +208,8 @@ public class ClientGenerator {
       url = globalPath;
     }
     else{
-      /* replace {varName} with "+varName+" so that it will be replaced
+      /* Handle place holders in the URL
+       * replace {varName} with "+varName+" so that it will be replaced
        * in the url at runtime with the correct values */
       Matcher m = Pattern.compile("\\{.*?\\}").matcher(url);
       while(m.find()){
@@ -188,10 +220,22 @@ public class ClientGenerator {
       url = "\""+url.substring(1)+"\"+queryParams.toString()";
     }
 
+    //////////////////////////////////////////////////////////////////////////////////////
+
+
     body.directStatement("io.vertx.core.http.HttpClientRequest request = httpClient."+
         httpVerb.substring(httpVerb.lastIndexOf(".")+1).toLowerCase()+"("+url+");");
 
     body.directStatement("request.handler(responseHandler);");
+
+    /* add params coming from header */
+    functionSpecificHeaderParams = new ArrayList<>();
+
+    int headerParamCount = functionSpecificHeaderParams.size();
+    for (int i = 0; i < headerParamCount; i++) {
+      String hParam = functionSpecificHeaderParams.get(i);
+      body.directStatement("request.putHeader(\""+hParam+"\", "+hParam+");");
+    }
 
     /* add content and accept headers if relevant */
     if(contentType != null){
@@ -258,17 +302,21 @@ public class ClientGenerator {
 
           /* this is a post or put since our only options here are receiving a reader (data in body) or
            * entity - which is also data in body - but we can only have one since a multi part body
-           * should be indicated by a multipart object ? */
+           * should be indicated by a multipart object ? TODO add input stream support */
           JBlock methodBody = method.body();
           methodBody.directStatement( "io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();" );
 
           if("java.io.Reader".equals(valueType)){
-            method.param(String.class, "arg0");
-            methodBody.directStatement( "buffer.appendString(arg0);" );
+            method.param(Reader.class, "reader");
+            method._throws(Exception.class);
+            methodBody.directStatement( "if(reader != null){buffer.appendString(org.apache.commons.io.IOUtils.toString(reader));}" );
+          }
+          else if("java.io.InputStream".equals(valueType)){
+
           }
           else{
             methodBody.directStatement( "buffer.appendString("
-                + "org.folio.rest.persist.MongoCRUD.entity2Json("+entityClazz.getSimpleName()+").encode());");
+                + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+entityClazz.getSimpleName()+").encode());");
             method.param(entityClazz, entityClazz.getSimpleName());
           }
 
@@ -281,33 +329,43 @@ public class ClientGenerator {
     }
     else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
       method.param(String.class, valueName);
+
     }
     else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
       method.param(String.class, valueName);
+      functionSpecificHeaderParams.add(valueName);
     }
     else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
       // support enum, numbers or strings as query parameters
       try {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
+          functionSpecificQueryParamsPrimitives.add(valueName);
+
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
+          functionSpecificQueryParamsPrimitives.add(valueName);
+
         } else if (valueType.contains("boolean")) {
           method.param(boolean.class, valueName);
+          functionSpecificQueryParamsPrimitives.add(valueName);
+
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
+          functionSpecificQueryParamsPrimitives.add(valueName);
+
         } else { // enum object type
           try {
             String enumClazz = replaceLast(valueType, ".", "$");
             Class<?> enumClazz1 = Class.forName(enumClazz);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
+              functionSpecificQueryParamsEnums.add(valueName);
             }
           } catch (Exception ee) {
             ee.printStackTrace();
           }
         }
-        functionSpecificQueryParams.add(valueName);
       }
       catch(Exception e){
         e.printStackTrace();
