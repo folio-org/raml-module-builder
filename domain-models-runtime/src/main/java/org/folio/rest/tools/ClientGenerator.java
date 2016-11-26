@@ -21,6 +21,9 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMultipart;
+
 import org.folio.rest.RestVerticle;
 
 import com.sun.codemodel.JBlock;
@@ -201,7 +204,12 @@ public class ClientGenerator {
     /* add content and accept headers if relevant */
     if(contentType != null){
       String cType = contentType.toString().replace("\"", "").replace("[", "").replace("]", "");
-      body.directStatement("request.putHeader(\"Content-type\", \""+cType+"\");");
+      if(contentType.contains("multipart/form-data")){
+        body.directStatement("request.putHeader(\"Content-type\", \""+cType+"; boundary=--BOUNDARY\");");
+      }
+      else{
+        body.directStatement("request.putHeader(\"Content-type\", \""+cType+"\");");
+      }
     }
     if(accepts != null){
       String aType = accepts.toString().replace("\"", "").replace("[", "").replace("]", "");
@@ -266,8 +274,9 @@ public class ClientGenerator {
             method.param(Reader.class, "reader");
             method._throws(Exception.class);
             methodBody.directStatement( "if(reader != null){buffer.appendString(org.apache.commons.io.IOUtils.toString(reader));}" );
-            methodBody.directStatement("request.write(buffer);");
+            methodBody.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
             methodBody.directStatement("request.setChunked(true);");
+            methodBody.directStatement("request.write(buffer);");
           }
           else if("java.io.InputStream".equals(valueType)){
             method.param(InputStream.class, "inputStream");
@@ -279,17 +288,40 @@ public class ClientGenerator {
             methodBody.directStatement( "}");
             methodBody.directStatement( "buffer.appendBytes(result.toByteArray());");
             method._throws(IOException.class);
-            methodBody.directStatement("request.write(buffer);");
+            methodBody.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
             methodBody.directStatement("request.setChunked(true);");
+            methodBody.directStatement("request.write(buffer);");
+          }
+          else if("javax.mail.internet.MimeMultipart".equals(valueType)){
+            method.param(MimeMultipart.class, "mimeMultipart");
+            method._throws(MessagingException.class);
+            method._throws(IOException.class);
+            methodBody.directStatement("if(mimeMultipart != null) {int parts = mimeMultipart.getCount();");
+            methodBody.directStatement("StringBuilder sb = new StringBuilder();");
+            methodBody.directStatement("for (int i = 0; i < parts; i++){");
+            methodBody.directStatement("javax.mail.BodyPart bp = mimeMultipart.getBodyPart(i);");
+            methodBody.directStatement("sb.append(\"----BOUNDARY\\r\\n\")");
+            methodBody.directStatement(".append(\"Content-Disposition: \").append(bp.getDisposition()).append(\"; name=\\\"\").append(bp.getFileName())");
+             //   + " {sb.append(mimeMultipart.getBodyPart(i).toString());}");
+            methodBody.directStatement(".append(\"\\\"; filename=\\\"\").append(bp.getFileName()).append(\"\\\"\\r\\n\")");
+            methodBody.directStatement(".append(\"Content-Type: application/octet-stream\\r\\n\")");
+            methodBody.directStatement(".append(\"Content-Transfer-Encoding: binary\\r\\n\")");
+            methodBody.directStatement(".append(\"\\r\\n\").append( bp.getContent() ).append(\"\\r\\n\\r\\n\");}");
+            methodBody.directStatement("buffer.appendString(sb.append(\"----BOUNDARY\\r\\n\").toString());");
+            methodBody.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
+            methodBody.directStatement("request.setChunked(true);}");
+            methodBody.directStatement("request.write(buffer);");
+
           }
           else{
             methodBody.directStatement( "buffer.appendString("
                 + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+entityClazz.getSimpleName()+").encode());");
             method.param(entityClazz, entityClazz.getSimpleName());
-            methodBody.directStatement("request.write(buffer);");
+            methodBody.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
             methodBody.directStatement("request.setChunked(true);");
-          }
+            methodBody.directStatement("request.write(buffer);");
 
+          }
         }
       } catch (Exception e) {
         e.printStackTrace();
