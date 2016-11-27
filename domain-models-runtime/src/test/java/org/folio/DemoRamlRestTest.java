@@ -122,9 +122,9 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, 0, null);
 
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/admin/upload", getBody("uploadtest.json", true), 400, 1, null);
-    postData(context, "http://localhost:" + port + "/admin/upload?file_name=test.json", getBody("uploadtest.json", true),
-      204, 1, null);
+    postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null);
+    postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
+      200, 1, null);
 
     //this will create an entry in the job conf and jobs collections as this is done automatically
     //when param SAVE_AND_NOTIFY is passed.

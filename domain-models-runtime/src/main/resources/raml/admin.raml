@@ -11,7 +11,7 @@ traits:
   - secured: !include ../../../../../raml-util/traits/auth.raml
 
 /admin:
-  /upload:
+  /uploadmultipart:
     description: Uploads a file and saves it to a directory configured on the server
     post:
       is: [secured, upload-handler]
@@ -24,6 +24,31 @@ traits:
               description: The file to be uploaded
               required: true
               type: file
+      responses:
+        200:
+          description: "Saved"
+          headers:
+            Location:
+              description: URI to the created <<resourcePathName|!singularize>> item
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "unable to add <<resourcePathName|!singularize>>"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /uploadbinary:
+    description: Uploads a file and saves it to a directory configured on the server
+    post:
+      is: [secured, upload-handler]
+      description: |
+          Uploads a file and saves it to a directory configured on the server
+      body:
+        application/octet-stream:
       responses:
         200:
           description: "Saved"

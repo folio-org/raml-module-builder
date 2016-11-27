@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.Reader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -17,8 +18,10 @@ import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.text.DecimalFormat;
 import java.util.Date;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
+import javax.mail.BodyPart;
 import javax.mail.internet.MimeMultipart;
 import javax.ws.rs.core.Response;
 
@@ -71,19 +74,6 @@ public class AdminAPI implements AdminResource {
 
   private java.util.logging.Level level2level(Level level) {
     return java.util.logging.Level.parse(level.name());
-  }
-
-  @Override
-  public void postAdminUpload(PersistMethod persistMethod, String busAddress,
-      String fileName, MimeMultipart entity, java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) throws Exception {
-
-    /**
-     * THIS FUNCTION WILL NEVER BE CALLED - HANDLED IN THE RestVerticle class
-     *
-     * http://localhost:8083/admin/upload?file_name=test1&bus_address=circ.uploads.items.imports&persist_method=SAVE_AND_NOTIFY
-     *
-     */
   }
 
   @Validate
@@ -224,5 +214,49 @@ public class AdminAPI implements AdminResource {
       result -> {
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.withHtmlOK(result.result().toString())));
       });
+  }
+
+  @Validate
+  @Override
+  public void postAdminUploadmultipart(PersistMethod persistMethod, String busAddress,
+      String fileName, MimeMultipart entity, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    if(entity != null){
+      int parts = entity.getCount();
+      for (int i = 0; i < parts; i++) {
+        BodyPart bp = entity.getBodyPart(i);
+        System.out.println(bp.getFileName());
+        System.out.println(bp.getContent());
+        System.out.println("-----------------------------------------");
+      }
+    }
+    String name = "";
+    try{
+      if(fileName == null){
+        name = entity.getBodyPart(0).getFileName();
+      }
+      else{
+        name = fileName;
+      }
+    }
+    catch(Exception e){}
+
+    System.out.println("aqwsderfgt " + name);
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadmultipartResponse.withOK("TODO"
+        )));
+
+  }
+
+  @Validate
+  @Override
+  public void postAdminUploadbinary(PersistMethod persistMethod, String busAddress,
+      String fileName, InputStream entity, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    //echo
+    System.out.println(org.apache.commons.io.IOUtils.toString(entity, "UTF8"));
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadbinaryResponse.withOK("TODO"
+        )));
   }
 }

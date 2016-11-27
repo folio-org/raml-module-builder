@@ -13,6 +13,7 @@
           default: "admin.uploaded.files"
         file_name:
           description: |
-            name of the file - a timpstamp in milliseconds prefixes eah saved file
+            name of the file - a timpstamp in milliseconds prefixes each saved file - if not passed will |
+            be pulled from the header, Content-Disposition attachment; filename="fname.ext" - any path must be ignored
           type: string
-          required: true
+          required: false
