@@ -43,7 +43,7 @@ public class ClientGenerator {
 
   public static final String  PATH_ANNOTATION        = "javax.ws.rs.Path";
   public static final String  CLIENT_CLASS_SUFFIX    = "Client";
-  public static final String  PATH_TO_GENERATE_TO    = "src/main/java/";
+  public static final String  PATH_TO_GENERATE_TO    = "/src/main/java/";
 
   /* Creating java code model classes */
   JCodeModel jCodeModel = new JCodeModel();
@@ -154,9 +154,6 @@ public class ClientGenerator {
     JMethod jmCreate = jc.method(JMod.PUBLIC, void.class, conciseName);
     JBlock body = jmCreate.body();
 
-    /* Adding java doc for method */
-    jmCreate.javadoc().add("Service endpoint " + url);
-
     /* create the query parameter string builder */
     body.directStatement("StringBuilder queryParams = new StringBuilder(\"?\");");
 
@@ -181,10 +178,9 @@ public class ClientGenerator {
       url = "\""+url.substring(1)+"\"+queryParams.toString()";
     }
 
-    /* create the http client request object */
-    body.directStatement("io.vertx.core.http.HttpClientRequest request = httpClient."+
-        httpVerb.substring(httpVerb.lastIndexOf(".")+1).toLowerCase()+"("+url+");");
-    body.directStatement("request.handler(responseHandler);");
+    /* Adding java doc for method */
+    jmCreate.javadoc().add("Service endpoint " + url);
+
 
     /* iterate on function params and add the relevant ones
      * --> functionSpecificQueryParamsPrimitives is populated by query parameters that are primitives
@@ -192,14 +188,29 @@ public class ClientGenerator {
      * --> functionSpecificQueryParamsEnums is populated by query parameters that are enums */
     Iterator<Entry<String, Object>> paramList = params.iterator();
 
+    boolean bodyContentExists[] = new boolean[]{false};
     paramList.forEachRemaining(entry -> {
       String valueName = ((JsonObject) entry.getValue()).getString("value");
       String valueType = ((JsonObject) entry.getValue()).getString("type");
       String paramType = ((JsonObject) entry.getValue()).getString("param_type");
-      handleParams(jmCreate, paramType, valueType, valueName);
+      if(handleParams(jmCreate, paramType, valueType, valueName)){
+        bodyContentExists[0] = true;
+      }
     });
 
     //////////////////////////////////////////////////////////////////////////////////////
+
+    /* create the http client request object */
+    body.directStatement("io.vertx.core.http.HttpClientRequest request = httpClient."+
+        httpVerb.substring(httpVerb.lastIndexOf(".")+1).toLowerCase()+"("+url+");");
+    body.directStatement("request.handler(responseHandler);");
+
+    /* add headers to request */
+    functionSpecificHeaderParams.forEach( val -> {
+      body.directStatement(val);
+    });
+    //reset for next method usage
+    functionSpecificHeaderParams = new ArrayList<String>();
 
     /* add content and accept headers if relevant */
     if(contentType != null){
@@ -223,6 +234,13 @@ public class ClientGenerator {
     /* add response handler to each function */
     JClass handler = jCodeModel.ref(Handler.class).narrow(HttpClientResponse.class);
     jmCreate.param(handler, "responseHandler");
+
+    /* if we need to pass data in the body */
+    if(bodyContentExists[0]){
+      body.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
+      body.directStatement("request.setChunked(true);");
+      body.directStatement("request.write(buffer);");
+    }
 
     body.directStatement("request.end();");
 
@@ -253,7 +271,7 @@ public class ClientGenerator {
    * @param paramType
    * @param valueType
    */
-  private void handleParams(JMethod method, String paramType, String valueType, String valueName) {
+  private boolean handleParams(JMethod method, String paramType, String valueType, String valueName) {
 
     JBlock methodBody = method.body();
 
@@ -267,16 +285,13 @@ public class ClientGenerator {
 
           /* this is a post or put since our only options here are receiving a reader (data in body) or
            * entity - which is also data in body - but we can only have one since a multi part body
-           * should be indicated by a multipart object ? TODO add input stream support */
+           * should be indicated by a multipart objector input stream in the body */
           methodBody.directStatement( "io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();" );
 
           if("java.io.Reader".equals(valueType)){
             method.param(Reader.class, "reader");
             method._throws(Exception.class);
             methodBody.directStatement( "if(reader != null){buffer.appendString(org.apache.commons.io.IOUtils.toString(reader));}" );
-            methodBody.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
-            methodBody.directStatement("request.setChunked(true);");
-            methodBody.directStatement("request.write(buffer);");
           }
           else if("java.io.InputStream".equals(valueType)){
             method.param(InputStream.class, "inputStream");
@@ -288,9 +303,6 @@ public class ClientGenerator {
             methodBody.directStatement( "}");
             methodBody.directStatement( "buffer.appendBytes(result.toByteArray());");
             method._throws(IOException.class);
-            methodBody.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
-            methodBody.directStatement("request.setChunked(true);");
-            methodBody.directStatement("request.write(buffer);");
           }
           else if("javax.mail.internet.MimeMultipart".equals(valueType)){
             method.param(MimeMultipart.class, "mimeMultipart");
@@ -307,21 +319,14 @@ public class ClientGenerator {
             methodBody.directStatement(".append(\"Content-Type: application/octet-stream\\r\\n\")");
             methodBody.directStatement(".append(\"Content-Transfer-Encoding: binary\\r\\n\")");
             methodBody.directStatement(".append(\"\\r\\n\").append( bp.getContent() ).append(\"\\r\\n\\r\\n\");}");
-            methodBody.directStatement("buffer.appendString(sb.append(\"----BOUNDARY\\r\\n\").toString());");
-            methodBody.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
-            methodBody.directStatement("request.setChunked(true);}");
-            methodBody.directStatement("request.write(buffer);");
-
+            methodBody.directStatement("buffer.appendString(sb.append(\"----BOUNDARY\\r\\n\").toString());}");
           }
           else{
             methodBody.directStatement( "buffer.appendString("
                 + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+entityClazz.getSimpleName()+").encode());");
             method.param(entityClazz, entityClazz.getSimpleName());
-            methodBody.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
-            methodBody.directStatement("request.setChunked(true);");
-            methodBody.directStatement("request.write(buffer);");
-
           }
+          return true;
         }
       } catch (Exception e) {
         e.printStackTrace();
@@ -333,7 +338,7 @@ public class ClientGenerator {
     }
     else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
       method.param(String.class, valueName);
-      methodBody.directStatement("request.putHeader(\""+valueName+"\", "+valueName+");");
+      functionSpecificHeaderParams.add("request.putHeader(\""+valueName+"\", "+valueName+");");
     }
     else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
       // support enum, numbers or strings as query parameters
@@ -377,13 +382,16 @@ public class ClientGenerator {
         e.printStackTrace();
       }
     }
+    return false;
   }
 
   public void generateClass() throws IOException{
     /* Building class at given location */
-    if(new File(PATH_TO_GENERATE_TO).exists()){
+    String genPath = System.getProperty("project.basedir") + PATH_TO_GENERATE_TO;
+    System.out.println("generate to " + genPath);
+    if(new File(genPath).exists()){
       generateCloseClient();
-      jCodeModel.build(new File(PATH_TO_GENERATE_TO));
+      jCodeModel.build(new File(genPath));
     }
   }
 
