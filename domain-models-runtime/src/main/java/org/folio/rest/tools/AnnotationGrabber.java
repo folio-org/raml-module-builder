@@ -53,12 +53,22 @@ public class AnnotationGrabber {
 
   private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
 
+  private static boolean generateClient = false;
+
   // ^http.*?//.*?/apis/patrons/.*?/fines/.*
   // ^http.*?\/\/.*?\/apis\/patrons\/?(.+?)*
   // ^http.*?\/\/.*?\/apis\/([^\/]+)\/([^\/]+)(\?.*)
 
   public static JsonObject generateMappings() throws Exception {
 
+    /* this class is one of the drivers for the client generation
+     * check if the plugin set the system property in the pom and only if
+     * so generate */
+    String clientGen = System.getProperty("client.generate");
+    if(clientGen != null){
+      generateClient = true;
+    }
+    System.out.println("client generate: " + clientGen);
     JsonObject globalClassMapping = new JsonObject();
 
     // get classes in generated package
@@ -187,7 +197,9 @@ public class AnnotationGrabber {
         }
         // System.out.println( val.toString() );
         globalClassMapping.put(classSpecificMapping.getString(CLASS_URL), classSpecificMapping);
-        cGen.generateClass();
+        if(generateClient){
+          cGen.generateClass();
+        }
       } catch (Exception e) {
         e.printStackTrace();
       }

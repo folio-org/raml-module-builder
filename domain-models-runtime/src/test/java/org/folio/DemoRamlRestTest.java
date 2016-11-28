@@ -24,11 +24,17 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import javax.mail.BodyPart;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMultipart;
+
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.client.AdminClient;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
+import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.persist.mongo.DateEnum;
 import org.folio.rest.persist.mongo.GroupBy;
@@ -149,6 +155,9 @@ public class DemoRamlRestTest {
 
     checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200); // should be 200
 
+    //use generated client
+    checkClientCode(context);
+
     //group by
     groupBy(context, "distinct");
     groupBy(context, "multi");
@@ -177,6 +186,48 @@ public class DemoRamlRestTest {
         System.out.println("JSTACK" + sb.toString());
       });
     });*/
+  }
+
+  /**
+   * @param context
+   *
+   */
+  private void checkClientCode(TestContext context) {
+    Async async = context.async(2);
+    System.out.println("checkClientCode test");
+    try {
+      MimeMultipart mmp = new MimeMultipart();
+      BodyPart bp = new MimeBodyPart(getClass().getClassLoader().getResourceAsStream("job.json"));
+      bp.setDisposition("form-data");
+      bp.setFileName("abc.raml");
+      BodyPart bp2 = new MimeBodyPart(getClass().getClassLoader().getResourceAsStream("job.json"));
+      bp2.setDisposition("form-data");
+      bp2.setFileName("abcd.raml");
+      mmp.addBodyPart(bp);
+      mmp.addBodyPart(bp2);
+      new AdminClient("localhost", port, "abc", false).postUploadmultipart(PersistMethod.SAVE, null, "abc",
+        mmp, reply -> {
+        if(reply.statusCode() != 200){
+          context.fail();
+        }
+        System.out.println("checkClientCode statusCode 1 " + reply.statusCode());
+        async.countDown();
+      });
+
+      new AdminClient("localhost", port, "abc", false).postUploadbinary(PersistMethod.SAVE, null, "abc",
+        getClass().getClassLoader().getResourceAsStream("folio.jpg"), reply -> {
+          if(reply.statusCode() != 200){
+            context.fail();
+          }
+          System.out.println("checkClientCode statusCode 2 " + reply.statusCode());
+          async.countDown();
+      });
+    }
+    catch (Exception e) {
+      context.fail();
+      System.out.println(e.getMessage());
+      e.printStackTrace();
+    }
   }
 
   /**
