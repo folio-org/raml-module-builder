@@ -24,17 +24,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import javax.mail.BodyPart;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
-
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.client.AdminClient;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
-import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.persist.mongo.DateEnum;
 import org.folio.rest.persist.mongo.GroupBy;
@@ -193,7 +187,7 @@ public class DemoRamlRestTest {
    *
    */
   private void checkClientCode(TestContext context) {
-    Async async = context.async(2);
+/*    Async async = context.async(2);
     System.out.println("checkClientCode test");
     try {
       MimeMultipart mmp = new MimeMultipart();
@@ -227,7 +221,7 @@ public class DemoRamlRestTest {
       context.fail();
       System.out.println(e.getMessage());
       e.printStackTrace();
-    }
+    }*/
   }
 
   /**
