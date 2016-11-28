@@ -227,8 +227,8 @@ public class AdminAPI implements AdminResource {
       for (int i = 0; i < parts; i++) {
         BodyPart bp = entity.getBodyPart(i);
         System.out.println(bp.getFileName());
-        System.out.println(bp.getContent());
-        System.out.println("-----------------------------------------");
+        //System.out.println(bp.getContent());
+        //System.out.println("-----------------------------------------");
       }
     }
     String name = "";
@@ -242,7 +242,6 @@ public class AdminAPI implements AdminResource {
     }
     catch(Exception e){}
 
-    System.out.println("aqwsderfgt " + name);
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadmultipartResponse.withOK("TODO"
         )));
 
@@ -255,7 +254,7 @@ public class AdminAPI implements AdminResource {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     //echo
-    System.out.println(org.apache.commons.io.IOUtils.toString(entity, "UTF8"));
+    //System.out.println(org.apache.commons.io.IOUtils.toString(entity, "UTF8"));
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadbinaryResponse.withOK("TODO"
         )));
   }
