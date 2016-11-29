@@ -402,6 +402,27 @@
       </plugin>
 
       <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>prepare-package</phase>
+            <configuration>
+              <tasks>
+                <replace token="../../../../../raml-util"
+                  value="../raml-util"
+                  dir="${basedir}/target/classes/apidocs/raml">
+                  <include name="**/*.raml" />
+                </replace>
+              </tasks>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <version>2.4</version>
