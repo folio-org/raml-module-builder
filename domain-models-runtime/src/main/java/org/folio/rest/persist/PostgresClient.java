@@ -15,6 +15,7 @@ import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,7 @@ import de.flapdoodle.embed.process.config.IRuntimeConfig;
  */
 public class PostgresClient {
 
+  public static final String     DEFAULT_SCHEMA           = "folio_shared";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
   public static final String     ID_FIELD                 = "_id";
 
@@ -70,6 +72,7 @@ public class PostgresClient {
   private static String          configPath               = null;
   private static PostgresClient  instance                 = null;
   private static ObjectMapper    mapper                   = new ObjectMapper();
+  private static Map<String, PostgresClient> connectionPool = new HashMap<>();
 
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
@@ -79,8 +82,8 @@ public class PostgresClient {
 
   private AsyncSQLClient         client;
 
-  private PostgresClient(Vertx vertx) throws Exception {
-    init(vertx);
+  private PostgresClient(Vertx vertx, String tenantId) throws Exception {
+    init(vertx, tenantId);
   }
 
   /**
@@ -115,30 +118,56 @@ public class PostgresClient {
     // assumes a single thread vertx model so no sync needed
     if (instance == null) {
       try {
-        instance = new PostgresClient(vertx);
+        instance = new PostgresClient(vertx, DEFAULT_SCHEMA);
       } catch (Exception e) {
-        log.error(e);
+        log.error(e.getMessage(), e);
       }
     }
     return instance;
   }
 
-  private void init(Vertx vertx) throws Exception {
-    this.vertx = vertx;
-    if (!embeddedMode) {
-      log.info("Loading PostgreSQL configuration from " + configPath);
-      postgreSQLClientConfig = new LoadConfs().loadConfig(configPath);
-      if(postgreSQLClientConfig == null){
-        //not in embedded mode but there is no conf file found
-        throw new Exception("No postgres-conf.json file found and not in embedded mode, can not connect to any db store");
-      }
-      else{
-        client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
+  // will return null on exception
+  public static PostgresClient getInstance(Vertx vertx, String tenantId) {
+    // assumes a single thread vertx model so no sync needed
+    if(!connectionPool.containsKey(tenantId)){
+      try {
+        connectionPool.put(tenantId, new PostgresClient(vertx, tenantId));
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
       }
     }
+    return connectionPool.get(tenantId);
   }
 
-  private String pojo2json(Object entity) throws Exception {
+  private void init(Vertx vertx, String tenantId) throws Exception {
+    this.vertx = vertx;
+    log.info("Loading PostgreSQL configuration from " + getConfigFilePath());
+    postgreSQLClientConfig = new LoadConfs().loadConfig(getConfigFilePath());
+    if(postgreSQLClientConfig == null){
+      if (embeddedMode) {
+        //embedded mode, if no config passed use defaults
+        postgreSQLClientConfig.put(USERNAME, USERNAME);
+        postgreSQLClientConfig.put(PASSWORD, PASSWORD);
+        postgreSQLClientConfig.put("host", "127.0.0.1");
+        postgreSQLClientConfig.put("port", 6000);
+        postgreSQLClientConfig.put("database", DEFAULT_SCHEMA);
+      }
+      else{
+        //not in embedded mode but there is no conf file found
+        throw new Exception("No postgres-conf.json file found and not in embedded mode, can not connect to any database");
+      }
+    }
+    else{
+      postgreSQLClientConfig.put("database", tenantId);
+    }
+    client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
+  }
+
+  public JsonObject getConnectionConfig(){
+    return postgreSQLClientConfig;
+  }
+
+  public static String pojo2json(Object entity) throws Exception {
     // SimpleModule module = new SimpleModule();
     // module.addSerializer(entity.getClass(), new PoJoJsonSerializer());
     // mapper.registerModule(module);
@@ -610,6 +639,7 @@ public class PostgresClient {
         }
 
       } else {
+        log.error(res.cause().getMessage(), res.cause());
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
     });
@@ -777,20 +807,16 @@ public class PostgresClient {
             .build())).build();
       PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
 
-      final PostgresConfig config = new PostgresConfig(Version.V9_5_0, new AbstractPostgresConfig.Net("127.0.0.1", EMBEDDED_POSTGRES_PORT),
-        new AbstractPostgresConfig.Storage("postgres"), new AbstractPostgresConfig.Timeout(20000), new AbstractPostgresConfig.Credentials(
-          USERNAME, PASSWORD));
+      int port = postgreSQLClientConfig.getInteger("port");
+      String username = postgreSQLClientConfig.getString(USERNAME);
+      String password = postgreSQLClientConfig.getString(PASSWORD);
+      String database = postgreSQLClientConfig.getString("database");
+
+      final PostgresConfig config = new PostgresConfig(Version.V9_5_0, new AbstractPostgresConfig.Net("127.0.0.1", port),
+        new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000), new AbstractPostgresConfig.Credentials(
+          username, password));
 
       postgresProcess = runtime.prepare(config).start();
-      postgreSQLClientConfig = new JsonObject();
-
-      postgreSQLClientConfig.put("host", postgresProcess.getConfig().net().host());
-      postgreSQLClientConfig.put("port", postgresProcess.getConfig().net().port());
-      postgreSQLClientConfig.put(USERNAME, postgresProcess.getConfig().credentials().username());
-      postgreSQLClientConfig.put(PASSWORD, postgresProcess.getConfig().credentials().password());
-      postgreSQLClientConfig.put("database", postgresProcess.getConfig().storage().dbName());
-
-      client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
 
       log.info("embedded postgress started....");
     } else {
