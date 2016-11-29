@@ -361,11 +361,12 @@ Four plugins should be declared in the pom.xml file:
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
 
-Add `ramlfiles_path` property indicating the location of the RAML directory:
+Add `ramlfiles_path` properties indicating the location of the RAML directories:
 
 ```sh
   <properties>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
+    <ramlfiles_util_path>${basedir}/raml-util</ramlfiles_util_path>
   </properties>
 ```
 
@@ -470,6 +471,22 @@ Add the plugins:
               <resources>
                 <resource>
                   <directory>${ramlfiles_path}</directory>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>copy-resources-2</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${basedir}/target/classes/apidocs/raml-util</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${ramlfiles_util_path}</directory>
                   <filtering>true</filtering>
                 </resource>
               </resources>
