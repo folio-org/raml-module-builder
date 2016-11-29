@@ -5,15 +5,15 @@ baseUri: http://localhost:8081/v1
 version: v1
 
 schemas:
-  - last_modified: !include /schemas/last_modified.schema
-  - jobs: !include /schemas/jobs.schema
-  - job: !include /schemas/job.schema
-  - jobs_conf: !include /schemas/jobs_conf.schema
-  - jobs_confs: !include /schemas/jobs_confs.schema
-  - parameters: !include /schemas/parameters.schema
-  - parameter: !include /schemas/parameter.schema
-  - bulks: !include /schemas/bulks.schema
-  - bulk: !include /schemas/bulk.schema
+  - last_modified: !include schemas/last_modified.schema
+  - jobs: !include schemas/jobs.schema
+  - job: !include schemas/job.schema
+  - jobs_conf: !include schemas/jobs_conf.schema
+  - jobs_confs: !include schemas/jobs_confs.schema
+  - parameters: !include schemas/parameters.schema
+  - parameter: !include schemas/parameter.schema
+  - bulks: !include schemas/bulks.schema
+  - bulk: !include schemas/bulk.schema
   
 traits:
   - orderable: !include ../../../../../raml-util/traits/orderable.raml
@@ -32,8 +32,8 @@ resourceTypes:
     description: Jobs services
     type:
       collection:
-        exampleCollection: !include /examples/jobs_conf.sample
-        exampleItem: !include /examples/jobs_conf.sample
+        exampleCollection: !include examples/jobs_conf.sample
+        exampleItem: !include examples/jobs_conf.sample
         schemaCollection: jobs_confs
         schemaItem: jobs_conf
     get:
@@ -48,13 +48,13 @@ resourceTypes:
     /{jobconfsId}:
       type:
         collection-item:
-          exampleItem: !include /examples/jobs_conf.sample
+          exampleItem: !include examples/jobs_conf.sample
           schema: jobs_conf
       /jobs:
         type:
           collection:
-            exampleCollection: !include /examples/job.sample
-            exampleItem: !include /examples/job.sample
+            exampleCollection: !include examples/job.sample
+            exampleItem: !include examples/job.sample
             schemaCollection: jobs
             schemaItem: job
         get:
@@ -66,12 +66,12 @@ resourceTypes:
         /{jobId}:
           type:
             collection-item:
-              exampleItem: !include /examples/job.sample
+              exampleItem: !include examples/job.sample
               schema: job
           /bulks:
             type:
               collection:
-                exampleCollection: !include /examples/bulk.sample
-                exampleItem: !include /examples/bulk.sample
+                exampleCollection: !include examples/bulk.sample
+                exampleItem: !include examples/bulk.sample
                 schemaCollection: bulks
                 schemaItem: bulk
