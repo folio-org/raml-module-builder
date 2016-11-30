@@ -4,7 +4,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 
 /**
- * 
+ *
  * Hook allowing code to run periodically by the framework. All plugins implementing this interface will
  * be loaded at verticle startup and scheduled at that point.
  *
