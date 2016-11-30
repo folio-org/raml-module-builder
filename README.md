@@ -823,7 +823,7 @@ create table <schema>.<table_name> (
 
 Dates (creation / updated) maybe added later on.
 
-Credentials when running in embedded mode:
+Credentials when running in embedded mode are read from `resources/postgres-conf.json`. If a file is not found the following configuration will be used by default:
 
 ```
 port: 6000
@@ -936,6 +936,8 @@ language specific. In order to add your own message files, place the files in
 your project under the `/resources/messages` directory.
 
 Note that the format of the file names should be:
+either:
+`[name]_[lang_2_letters].properties - for example: APIMessages_de.properties`
 `[lang_2_letters]_messages.yyy - for example: en_messages.prop`
 
 For example:
@@ -1016,6 +1018,67 @@ The runtime framework via the /admin API exposes (as previously mentioned) some 
     - returns stack traces of all threads in the JVM to help find slower / bottleneck methods
  - The `memory` command is available using the `/admin/memory` API.
     - returns a jstat type of reply indicating memory usage within the JVM on a per pool basis (survivor, old gen, new gen, metadata, etc..) with usage percentages.
+
+## Client Generator
+
+The framework can generate a Client class for every raml file with a function for every API endpoint in the raml.
+
+To generate a client API from your raml add the following plugin to your pom.xml
+
+```sh
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.5.0</version>
+        <executions>
+          <execution>
+            <id>generate_client</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
+              <cleanupDaemonThreads>false</cleanupDaemonThreads>
+              <systemProperties>
+                <systemProperty>
+                  <key>client.generate</key>
+                  <value>true</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>project.basedir</key>
+                  <value>${basedir}</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>json.type</key>
+                  <value>postgres</value>
+                </systemProperty>
+              </systemProperties>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+```
+
+For the monitoring APIs exposed by the runtime framework, changing the log level via the client would look like this:
+
+```sh
+    AdminClient aClient = new AdminClient("localhost", 8083, "myuniversityId");
+    aClient.putLoglevel(Level.FINE, "org.folio",  apiResponse -> {
+      System.out.println(apiResponse.statusCode());
+    });
+```
+
+Requesting a stack trace would look like this:
+
+```sh
+    AdminClient aClient = new AdminClient("localhost", 8083, "myuniversityId");
+    aClient.getJstack( trace -> {
+      trace.bodyHandler( content -> {
+        System.out.println(content);
+      });
+    });
+```
 
 ## A Little More on Validation
 
