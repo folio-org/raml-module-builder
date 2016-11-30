@@ -146,6 +146,7 @@ public class PostgresClient {
     if(postgreSQLClientConfig == null){
       if (embeddedMode) {
         //embedded mode, if no config passed use defaults
+        postgreSQLClientConfig = new JsonObject();
         postgreSQLClientConfig.put(USERNAME, USERNAME);
         postgreSQLClientConfig.put(PASSWORD, PASSWORD);
         postgreSQLClientConfig.put("host", "127.0.0.1");
