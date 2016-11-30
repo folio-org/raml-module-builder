@@ -238,6 +238,10 @@
                   <key>project.basedir</key>
                   <value>${basedir}</value>
                 </systemProperty>
+                <systemProperty>
+                  <key>json.type</key>
+                  <value>mongo</value>
+                </systemProperty>
               </systemProperties>
             </configuration>
           </execution>

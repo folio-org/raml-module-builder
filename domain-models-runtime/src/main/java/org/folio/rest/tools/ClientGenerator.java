@@ -57,6 +57,8 @@ public class ClientGenerator {
 
   private String className = null;
 
+  private String mappingType = "postgres";
+
   private static Map<String, String> verbs = new HashMap<>();
 
   static {
@@ -80,6 +82,12 @@ public class ClientGenerator {
 
   public void generateClassMeta(String className, Object globalPath){
 
+    String mapType = System.getProperty("json.type");
+    if(mapType != null){
+      if(mapType.equals("mongo")){
+        mappingType = "mongo";
+      }
+    }
     this.globalPath = "GLOBAL_PATH";
 
     /* Adding packages here */
@@ -322,8 +330,14 @@ public class ClientGenerator {
             methodBody.directStatement("buffer.appendString(sb.append(\"----BOUNDARY\\r\\n\").toString());}");
           }
           else{
-            methodBody.directStatement( "buffer.appendString("
-                + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+entityClazz.getSimpleName()+").encode());");
+            if(mappingType.equals("postgres")){
+              method._throws(Exception.class);
+              methodBody.directStatement( "buffer.appendString("
+                  + "org.folio.rest.persist.PostgresClient.pojo2json("+entityClazz.getSimpleName()+"));");
+            }else{
+              methodBody.directStatement( "buffer.appendString("
+                  + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+entityClazz.getSimpleName()+").encode());");
+            }
             method.param(entityClazz, entityClazz.getSimpleName());
           }
           return true;
