@@ -2,14 +2,13 @@ package org.folio.rest.persist.Criteria;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Queue;
 import java.util.Set;
+
+import org.folio.rest.persist.Criteria.GroupedCriterias.Pairs;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,11 +38,32 @@ public class Criterion {
     addCriteriaInfo(a);
   }
 
-  private void updateSnippet() {
+  private void updateSnippet(String op) {
     if (snippet.length() > 0) {
-      snippet = snippet + " AND "; // default to AND between criterion - make
+      snippet = snippet + " " +op+ " "; // default to AND between criterion - make
                                    // this controllable in the future
     }
+  }
+
+  private void updateSnippet() {
+    updateSnippet("AND");
+  }
+
+  /**
+   *
+   * @param a
+   * @param op - operation between the two criterias
+   * @param b
+   * @param queryOp - operation of the created criterion, for example (a OR b) in relation to the entire query
+   * for example: (a OR b) OR (b AND c)
+   * @return
+   */
+  public Criterion addCriterion(Criteria a, String op, Criteria b, String queryOp) {
+    updateSnippet(queryOp);
+    snippet = snippet + "(" + a + " " + op + " " + b + ")";
+    addCriteriaInfo(a);
+    addCriteriaInfo(b);
+    return this;
   }
 
   public Criterion addCriterion(Criteria a, String op, Criteria b) {
@@ -54,10 +74,37 @@ public class Criterion {
     return this;
   }
 
+  public Criterion addCriterion(Criteria a, String queryOp) {
+    updateSnippet(queryOp);
+    snippet = snippet + a;
+    addCriteriaInfo(a);
+    return this;
+  }
+
   public Criterion addCriterion(Criteria a) {
     updateSnippet();
     snippet = snippet + a;
     addCriteriaInfo(a);
+    return this;
+  }
+
+  public Criterion addGroupOfCriterias(GroupedCriterias groupOfCriterias) {
+    int size = groupOfCriterias.criterias.size();
+    for (int i = 0; i < size; i++) {
+      Pairs p = groupOfCriterias.criterias.get(i);
+      if(i==0){
+        String adjustedOp = groupOfCriterias.groupOp;
+        if("NOT".equals(adjustedOp)){
+          adjustedOp = "AND NOT";
+        }
+        snippet = snippet + " " + adjustedOp + " (";
+        p.op = ""; //first op is ignored ( AND ...) doesn't make sense
+      }
+      addCriterion(p.criteria, p.op);
+      if(i==size-1){
+        snippet = snippet + ") ";
+      }
+    }
     return this;
   }
 
@@ -179,7 +226,7 @@ public class Criterion {
     int count = 0;
     int size = selects.size();
     while (entry.hasNext()) {
-      Map.Entry<String, Select> entry2 = (Map.Entry<String, Select>) entry.next();
+      Map.Entry<String, Select> entry2 = entry.next();
       Select select = entry2.getValue();
       sb.append(select.snippet).append(" ");
       if (select.asValue != null) {
@@ -200,7 +247,7 @@ public class Criterion {
     int count = 0;
     int size = froms.size();
     while (entry.hasNext()) {
-      Map.Entry<String, From> entry2 = (Map.Entry<String, From>) entry.next();
+      Map.Entry<String, From> entry2 = entry.next();
       From from = entry2.getValue();
       sb.append(from.snippet).append(" ");
       if (from.asValue != null) {
@@ -215,7 +262,7 @@ public class Criterion {
 
   public static void main(String args[]) {
 
-    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]");
+    Criterion a =  json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]");
     // System.out.println(a.toString());
     Criteria b = new Criteria();
     b.field.add("'note'");
@@ -233,6 +280,11 @@ public class Criterion {
     d.field.add("'rush'");
     d.operation = Criteria.OP_IS_FALSE;
     d.value = null;
+
+    Criteria aa = new Criteria();
+    aa.field.add("'rush'");
+    aa.operation = "!=";
+    aa.value = "true";
     /*
      * Criteria a = new Criteria(); a.field = "'rush'"; a.operation = "!=";
      * a.value = "true";
@@ -245,8 +297,19 @@ public class Criterion {
     // cc.addCriterion(aa);
     // cc.addCriterion(c, "OR", b);
     // cc.addCriterion(a);
-    a.addCriterion(c, "OR", b);
-    a.addCriterion(d);
+/*    a.addCriterion(c, "OR", b, "AND");
+    a.addCriterion(d, "OR");
+    a.addCriterion(d, "AND");
+    a.addCriterion(d, "OR");*/
+
+    //a.addCriterion(c, "OR", b);
+    //a.addCriterion(c, "OR", b);
+    GroupedCriterias gc = new GroupedCriterias();
+    GroupedCriterias gc1 = new GroupedCriterias();
+    gc1.addCriteria(c, "OR");
+    gc1.addCriteria(b);
+    gc1.setGroupOp("NOT");
+    a.addGroupOfCriterias( gc.addCriteria(b).addCriteria(c, "OR").addCriteria(d, "AND")).addCriterion(aa).addGroupOfCriterias( gc1 );
     /*
      * Criterion bb = new Criterion(); bb.addCriterion(cc, "AND", a);
      */
