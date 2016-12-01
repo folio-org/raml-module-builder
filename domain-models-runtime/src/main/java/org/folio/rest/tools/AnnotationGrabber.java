@@ -53,7 +53,7 @@ public class AnnotationGrabber {
 
   private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
 
-  private static boolean generateClient = false;
+  private static boolean generateClient = true;
 
   // ^http.*?//.*?/apis/patrons/.*?/fines/.*
   // ^http.*?\/\/.*?\/apis\/patrons\/?(.+?)*
@@ -197,8 +197,9 @@ public class AnnotationGrabber {
         }
         // System.out.println( val.toString() );
         globalClassMapping.put(classSpecificMapping.getString(CLASS_URL), classSpecificMapping);
+
         if(generateClient){
-          cGen.generateClass();
+          cGen.generateClass(classSpecificMapping);
         }
       } catch (Exception e) {
         e.printStackTrace();
@@ -324,5 +325,7 @@ public class AnnotationGrabber {
     regexPath = regexPath.concat("$");
     return regexPath;
   }
+
+
 
 }
