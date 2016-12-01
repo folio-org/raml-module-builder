@@ -9,6 +9,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.UpdateResult;
 
 import java.io.File;
 import java.io.FileReader;
@@ -311,7 +312,7 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void update(String table, Object entity, String id, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -321,7 +322,7 @@ public class PostgresClient {
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toJson().toString()));
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             connection.close();
 
@@ -389,7 +390,7 @@ public class PostgresClient {
    * @throws Exception
    *
    */
-  public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds, Handler<AsyncResult<String>> replyHandler)
+  public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
       throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -409,7 +410,7 @@ public class PostgresClient {
               log.error(query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toJson().toString()));
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             connection.close();
           });
@@ -460,7 +461,7 @@ public class PostgresClient {
    *
    */
   public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
-      Handler<AsyncResult<String>> replyHandler) throws Exception {
+      Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -478,7 +479,7 @@ public class PostgresClient {
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toJson().toString()));
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             connection.close();
           });
@@ -499,7 +500,7 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void delete(String table, String id, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -508,7 +509,7 @@ public class PostgresClient {
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toJson().toString()));
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             connection.close();
           });
@@ -529,7 +530,7 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void delete(String table, Criterion filter, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void delete(String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -542,7 +543,7 @@ public class PostgresClient {
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toJson().toString()));
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             connection.close();
 
