@@ -369,8 +369,8 @@ public class ClientGenerator {
       try {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
-          methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+");}");
-          methodBody.directStatement("queryParams.append(\"&\");");
+          methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+");");
+          methodBody.directStatement("queryParams.append(\"&\");}");
 
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
@@ -384,8 +384,8 @@ public class ClientGenerator {
 
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
-          methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+");}");
-          methodBody.directStatement("queryParams.append(\"&\");");
+          methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+");");
+          methodBody.directStatement("queryParams.append(\"&\");}");
 
         } else { // enum object type
           try {
@@ -393,8 +393,8 @@ public class ClientGenerator {
             Class<?> enumClazz1 = Class.forName(enumClazz);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
-              methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+".toString());}");
-              methodBody.directStatement("queryParams.append(\"&\");");
+              methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+".toString());");
+              methodBody.directStatement("queryParams.append(\"&\");}");
 
             }
           } catch (Exception ee) {
