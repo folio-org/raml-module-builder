@@ -196,7 +196,11 @@ public class Criterion {
               fieldList.remove(field2remove);
             }
             crit.field = fieldList;
-            crit.value = jsonNode.get("value");
+            if("STRING".equals(jsonNode.get("value").getNodeType().name())){
+              crit.value = jsonNode.get("value").textValue();
+            }else{
+              crit.value = jsonNode.get("value");
+            }
             crit.operation = jsonNode.get("op").textValue();
             c[pos++] = crit;
           }
