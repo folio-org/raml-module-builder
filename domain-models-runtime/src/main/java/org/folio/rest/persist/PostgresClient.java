@@ -558,6 +558,31 @@ public class PostgresClient {
     });
   }
 
+  public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+    client.getConnection(res -> {
+      if (res.succeeded()) {
+        SQLConnection connection = res.result();
+        try {
+          connection.update("DELETE FROM " + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
+            + "@>'" + pojo2json(entity) + "' ", query -> {
+            if (query.failed()) {
+              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+            } else {
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+            }
+            connection.close();
+
+          });
+        } catch (Exception e) {
+          log.error(e);
+          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+        }
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+    });
+  }
+
   /**
    * pass in an entity that is fully / partially populated and the query will return all records matching the
    * populated fields in the entity
