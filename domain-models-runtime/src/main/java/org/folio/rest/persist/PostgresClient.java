@@ -15,6 +15,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -783,6 +785,143 @@ public class PostgresClient {
     }
   }
 
+  /**
+   *
+   * Will connect to a specific database and execute the commands in the .sql file
+   * against that database
+   *
+   * @param sqlFile - reader to sql file with executable statements
+   * @param newDB - if creating a new database is included in the file - include the name of the db as after running the
+   * create database command appearing in the file, there will be a new connection created to the
+   * newDB and all subsequent commands will be executed against the newly created newDB name
+   * @param stopOnError - stop on first error
+   * @param timeout - in seconds
+   * @param replyHandler - list of statements that failed - if any
+   */
+  public void runSQLFile(String sqlFile, String newDB, boolean stopOnError,
+      Handler<AsyncResult<List<String>>> replyHandler){
+    if(sqlFile == null){
+      log.error("sqlFile value is null");
+      replyHandler.handle(io.vertx.core.Future.failedFuture("sqlFile value is null"));
+      return;
+    }
+    try {
+      StringBuilder singleStatement = new StringBuilder();
+      String[] allLines = sqlFile.split("(\r\n|\r|\n)");
+      List<String> execStatements = new ArrayList<>();
+      for (int i = 0; i < allLines.length; i++) {
+        if(allLines[i].startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].startsWith("-- ")){
+          //this is an sql comment, skip
+          continue;
+        }
+        else if(allLines[i].endsWith(";")){
+          execStatements.add( singleStatement.append(allLines[i]).toString() );
+          singleStatement = new StringBuilder();
+        }
+        else {
+          singleStatement.append(allLines[i]);
+        }
+      }
+      execute(execStatements.toArray(new String[]{}), newDB, stopOnError, replyHandler);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+    }
+  }
+
+  private Connection getStandaloneConnection(String newDB) throws SQLException {
+    String host = postgreSQLClientConfig.getString("host");
+    int port = postgreSQLClientConfig.getInteger("port");
+    String user = postgreSQLClientConfig.getString(USERNAME);
+    String pass = postgreSQLClientConfig.getString(PASSWORD);
+    String db = postgreSQLClientConfig.getString("database");
+
+    if(newDB != null){
+      db = newDB;
+    }
+    return DriverManager.getConnection(
+      "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
+  }
+
+  private void execute(String[] sql, String newDBName, boolean stopOnError,
+      Handler<AsyncResult<List<String>>> replyHandler){
+
+    long s = System.nanoTime();
+    log.info("Executing multiple statements with id " + sql.hashCode());
+    List<String> results = new ArrayList<>();
+    vertx.executeBlocking(dothis -> {
+      Connection connection = null;
+      Statement statement = null;
+      boolean error = false;
+      try {
+
+        connection = getStandaloneConnection(null);
+        connection.setAutoCommit(true);
+        statement = connection.createStatement();
+
+        for (int j = 0; j < sql.length; j++) {
+          try {
+            statement.executeUpdate(sql[j]);
+            log.info("Successfully executed: " + sql[j]);
+            if(sql[j].startsWith("CREATE DATABASE ")){
+
+              log.info("Closing connection and reconnecting");
+              try{
+                statement.close();
+                connection.close();
+
+                connection = getStandaloneConnection(newDBName);
+                connection.setAutoCommit(false);
+                statement = connection.createStatement();
+              }
+              catch(Exception e){
+                log.error(e.getMessage(), e);
+              }
+            }
+          } catch (Exception e) {
+            error = true;
+            log.error(e.getMessage(),e);
+            if(stopOnError){
+              break;
+            }
+          }
+        }
+        try {
+          connection.commit();
+          log.info("Successfully committed: " + sql.hashCode());
+        } catch (Exception e) {
+          error = true;
+          log.error("Commit failed " + sql.hashCode() + " " + e.getMessage(), e);
+        }
+      }
+      catch(Exception e){
+        log.error(e.getMessage(), e);
+        error = true;
+      }
+      finally {
+        try {
+          if(statement != null) statement.close();
+        } catch (Exception e) {
+          log.error(e.getMessage(), e);
+        }
+        try {
+          if(connection != null) connection.close();
+        } catch (Exception e) {
+          log.error(e.getMessage(), e);
+        }
+        if(error){
+          dothis.fail("error");
+        }
+        else{
+          dothis.complete();
+        }
+      }
+    }, done -> {
+      log.debug("execute timer for: " + sql.hashCode() + " took " + (System.nanoTime()-s)/1000000);
+
+    });
+
+  }
+
   // JsonNode node =
   // mapper.readTree(PostgresJSONBCRUD.getInstance(vertxContext.owner()).pojo2json(entity));
   // printout(node.fields(), new StringBuilder("jsonb"));
@@ -875,6 +1014,7 @@ public class PostgresClient {
   }
 
   /**
+   * This is a blocking call - run in an execBlocking statement
    * import data in a tab delimited file into columns of an existing table
    * @param path - path to the file
    * @param tableName - name of the table to import the content into
