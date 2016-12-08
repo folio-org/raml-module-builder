@@ -793,7 +793,12 @@ public class PostgresClient {
    * @param sqlFile - reader to sql file with executable statements
    * @param newDB - if creating a new database is included in the file - include the name of the db as after running the
    * create database command appearing in the file, there will be a new connection created to the
-   * newDB and all subsequent commands will be executed against the newly created newDB name
+   * newDB and all subsequent commands will be executed against the newly created newDB name. the user / password of
+   * the connection is currently hard coded to the value of newDB - so the .sql file which is creating the DB
+   * should do something like this:
+        CREATE DATABASE myuniversity
+            WITH OWNER = myuniversity
+            PASSWORD = myuniversity
    * @param stopOnError - stop on first error
    * @param timeout - in seconds
    * @param replyHandler - list of statements that failed - if any
@@ -828,7 +833,7 @@ public class PostgresClient {
     }
   }
 
-  private Connection getStandaloneConnection(String newDB) throws SQLException {
+  private Connection getStandaloneConnection(String newDB, boolean superUser) throws SQLException {
     String host = postgreSQLClientConfig.getString("host");
     int port = postgreSQLClientConfig.getInteger("port");
     String user = postgreSQLClientConfig.getString(USERNAME);
@@ -837,6 +842,10 @@ public class PostgresClient {
 
     if(newDB != null){
       db = newDB;
+      if(!superUser){
+        pass = newDB;
+        user = newDB;
+      }
     }
     return DriverManager.getConnection(
       "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
@@ -854,28 +863,51 @@ public class PostgresClient {
       boolean error = false;
       try {
 
-        connection = getStandaloneConnection(null);
+        /* this should be  super user account that is in the config file */
+        connection = getStandaloneConnection(null, false);
         connection.setAutoCommit(true);
         statement = connection.createStatement();
 
         for (int j = 0; j < sql.length; j++) {
           try {
-            statement.executeUpdate(sql[j]);
-            log.info("Successfully executed: " + sql[j]);
-            if(sql[j].startsWith("CREATE DATABASE ")){
-
+            if(sql[j].startsWith("CREATE EXTENSION ")){
+              //this should happen after the database is created
+              //creating an extension happens per db and can only be
+              //done with a super user account
+              Connection connection3 = getStandaloneConnection(newDBName, true);
+              connection3.setAutoCommit(true);
+              Statement statement3 = connection3.createStatement();
+              statement3.executeUpdate(sql[j]);
+              log.info("Successfully executed: " + sql[j]);
               log.info("Closing connection and reconnecting");
               try{
-                statement.close();
-                connection.close();
-
-                connection = getStandaloneConnection(newDBName);
-                connection.setAutoCommit(false);
-                statement = connection.createStatement();
+                statement3.close();
+                connection3.close();
               }
               catch(Exception e){
                 log.error(e.getMessage(), e);
               }
+            }
+            else if(sql[j].startsWith("CREATE DATABASE ")){
+
+              log.info("Closing connection and reconnecting");
+              try{
+                statement.executeUpdate(sql[j]);
+
+                statement.close();
+                connection.close();
+
+                connection = getStandaloneConnection(newDBName, false);
+                connection.setAutoCommit(false);
+                statement = connection.createStatement();
+
+              }
+              catch(Exception e){
+                log.error(e.getMessage(), e);
+              }
+            }
+            else {
+              statement.executeUpdate(sql[j]);
             }
           } catch (Exception e) {
             error = true;
