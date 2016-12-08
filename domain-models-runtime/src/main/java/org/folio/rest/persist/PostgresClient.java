@@ -162,8 +162,10 @@ public class PostgresClient {
       }
     }
     else{
+      log.info("Using database: " + tenantId);
       postgreSQLClientConfig.put("database", tenantId);
     }
+    log.info("Creating client with configuration:" + postgreSQLClientConfig.encode());
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
   }
 
@@ -635,6 +637,20 @@ public class PostgresClient {
    * @throws Exception
    */
   public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+    throws Exception {
+    get(table, clazz, filter, returnCount, true, replyHandler);
+  }
+  /**
+   * select query
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - see Criterion class
+   * @param returnCount - whether to return the amount of records matching the query
+   * @param setId - whether to automatically set the "id" field of the returned object
+   * @param replyHandler
+   * @throws Exception
+   */
+  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
       throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -657,7 +673,7 @@ public class PostgresClient {
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount)));
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
             }
           });
         } catch (Exception e) {
@@ -675,6 +691,10 @@ public class PostgresClient {
   }
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
+    return processResult(rs, clazz, count, true);
+  }
+  
+  private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count, boolean setId) {
     Object[] ret = new Object[2];
     List<Object> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
@@ -687,7 +707,9 @@ public class PostgresClient {
         Object jo = tempList.get(i).getValue(DEFAULT_JSONB_FIELD_NAME);
         Object id = tempList.get(i).getValue(ID_FIELD);
         Object o = mapper.readValue(jo.toString(), clazz);
-        o.getClass().getMethod("setId", new Class[] { String.class }).invoke(o, new String[] { id.toString() });
+        if(setId) {
+          o.getClass().getMethod("setId", new Class[] { String.class }).invoke(o, new String[] { id.toString() });
+        }
         list.add(o);
       } catch (Exception e) {
         log.error(e);
