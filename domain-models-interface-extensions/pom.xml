@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1-mongo</version>
   </parent>
   <artifactId>domain-models-interface-extensions</artifactId>
 
@@ -22,7 +22,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-api-aspects</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
+      <version>0.0.1-mongo</version>
     </dependency>
   </dependencies>
 
