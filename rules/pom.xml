@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>0.0.1-mongo</version>
+    <version>1.1.1-SNAPSHOT</version>
     <!-- <relativePath>../domain-models-poc</relativePath> -->
   </parent>
   <artifactId>rules</artifactId>
