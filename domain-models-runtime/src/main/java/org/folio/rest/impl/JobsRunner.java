@@ -11,15 +11,12 @@ import io.vertx.core.logging.LoggerFactory;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.folio.rest.jaxrs.model.Bulk;
 import org.folio.rest.jaxrs.model.Job;
-import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.resource.interfaces.JobAPI;
 import org.folio.rest.tools.RTFConsts;
-import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
@@ -129,7 +126,7 @@ public class JobsRunner {
    JsonObject j = new JsonObject(pendingOrRunningEntries);
 
    //get running and pending jobs
-   MongoCRUD.getInstance(vertx).get(
+/*   MongoCRUD.getInstance(vertx).get(
      MongoCRUD.buildJson(Job.class.getName(), RTFConsts.JOBS_COLLECTION, j,
        "last_modified", "asc"), reply -> {
        if (reply.succeeded()) {
@@ -165,7 +162,7 @@ public class JobsRunner {
    long end = System.nanoTime();
    log.debug(messages.getMessage(LOG_LANG, MessageConsts.Timer, "Reading jobs to process from mongo ",
      end - start));
-   });
+   });*/
 
   }
 
@@ -177,7 +174,7 @@ public class JobsRunner {
 
    conf.setStatus(RTFConsts.STATUS_RUNNING);
    // update status of file
-   MongoCRUD.getInstance(vertx).update(
+/*   MongoCRUD.getInstance(vertx).update(
      RTFConsts.JOBS_COLLECTION,
      conf, query, false, true,
      reply2 -> {
@@ -197,7 +194,7 @@ public class JobsRunner {
            }
          });
        }
-     });
+     });*/
   }
 
   /**
@@ -207,19 +204,19 @@ public class JobsRunner {
   public static void updateJobStatusDB(Job conf) {
     String[] removeFromQuery = new String[]{"last_modified", "status", "parameters"};
     JsonObject query = JsonUtils.entity2Json(conf, removeFromQuery);
-    MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, query, false, true, reply2 -> {
+/*    MongoCRUD.getInstance(vertx).update(RTFConsts.JOBS_COLLECTION, conf, query, false, true, reply2 -> {
       if (reply2.failed()) {
         log.error("Unable to save job status for job,, " + query.encodePrettily());
       }
-    });
+    });*/
   }
 
   public static void addBulkStatusDB(Bulk bulk) {
-    MongoCRUD.getInstance(vertx).save(RTFConsts.BULKS_COLLECTION, bulk, reply2 -> {
+/*    MongoCRUD.getInstance(vertx).save(RTFConsts.BULKS_COLLECTION, bulk, reply2 -> {
       if (reply2.failed()) {
         log.error("Unable to save bulk for job,, " + bulk.getJobId());
       }
-    });
+    });*/
   }
 
 }

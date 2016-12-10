@@ -3,13 +3,10 @@ package org.folio.rest.impl;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.Reader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryPoolMXBean;
@@ -74,34 +71,6 @@ public class AdminAPI implements AdminResource {
 
   private java.util.logging.Level level2level(Level level) {
     return java.util.logging.Level.parse(level.name());
-  }
-
-  @Validate
-  @Override
-  public void putAdminCollstats(Reader entity, java.util.Map<String, String>okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
-    /**
-     * calls the MongoStatsPrinter which is a periodic hook that is run periodically to print collection stats to the log based on the
-     * collections requested here
-     */
-    try {
-      BufferedReader br = new BufferedReader(entity);
-      String line;
-      Buffer buffer = Buffer.buffer();
-      while ((line = br.readLine()) != null) {
-        buffer.appendString(line);
-      }
-      JsonObject job = new JsonObject(buffer.toString("UTF8"));
-      MongoStatsPrinter.addCollection(job);
-      OutStream os = new OutStream();
-      os.setData(MongoStatsPrinter.getCollection());
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminCollstatsResponse.withJsonOK(os)));
-    } catch (Exception e) {
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withPlainInternalServerError("ERROR"
-          + e.getMessage())));
-      log.error(e.getMessage(), e);
-    }
-
   }
 
   @Override

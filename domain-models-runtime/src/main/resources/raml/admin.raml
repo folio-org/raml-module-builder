@@ -66,26 +66,6 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
-  /collstats:
-    put:
-      description: This API allows you to set collection names that you would like to print statistics |
-       for to the log. A recurring interval should be indicated as well to indicate how often to print the |
-       statistics to the log - min interval is 10 seconds
-      is: [secured]
-      body:
-        application/json:
-          example: "{\"patrons\": 60, \"items\": 120}"
-      responses:
-        200:
-          description: "Returns collections stats will be printed for and interval"
-          body:
-            application/json:
-              example: "{\"collection\" : \"interval\" , \"collection\" : \"interval\"}"
-        500:
-          description: "Internal server error, e.g. due to misconfiguration"
-          body:
-            text/plain:
-              example: "Internal server error, contact administrator"
   /loglevel:
     put:
       description: Set logging level for all loggers in the JVM or just for a specific package / class

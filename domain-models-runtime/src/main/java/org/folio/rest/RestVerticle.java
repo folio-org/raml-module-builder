@@ -59,7 +59,6 @@ import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.JobConf;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
-import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.RTFConsts;
@@ -104,6 +103,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = new ObjectMapper();
   private static final String       OKAPI_HEADER_PREFIX             = "x-okapi";
+  private static final String       DEFAULT_SCHEMA                  = "folio_shared";
 
   private final Messages            messages                        = Messages.getInstance();
   private int                       port                            = -1;
@@ -804,7 +804,7 @@ public class RestVerticle extends AbstractVerticle {
     newArray[params.length - 1] = getVertx().getOrCreateContext();
 
     if(tenantId[0] == null){
-      headers.put(OKAPI_HEADER_TENANT, MongoCRUD.DEFAULT_SCHEMA);
+      headers.put(OKAPI_HEADER_TENANT, DEFAULT_SCHEMA);
     }
     newArray[params.length - 3] = headers;
 
@@ -880,7 +880,6 @@ public class RestVerticle extends AbstractVerticle {
   public void stop(Future<Void> stopFuture) throws Exception {
     // TODO Auto-generated method stub
     super.stop();
-    MongoCRUD.stopEmbeddedMongo();
     PostgresClient.stopEmbeddedPostgres();
     try {
       droolsSession.dispose();
@@ -981,9 +980,8 @@ public class RestVerticle extends AbstractVerticle {
     if (cmdParams != null) {
       for (Iterator iterator = cmdParams.iterator(); iterator.hasNext();) {
         String param = (String) iterator.next();
-        if (param.startsWith("embed_mongo=true")) {
-          MongoCRUD.setIsEmbedded(true);
-        } else if (param.startsWith("-Dhttp.port=")) {
+
+        if (param.startsWith("-Dhttp.port=")) {
           port = Integer.parseInt(param.split("=")[1]);
           LogUtil.formatLogMessage(className, "cmdProcessing", "port to listen on " + port);
         } else if (param.startsWith("drools_dir=")) {
@@ -1002,13 +1000,8 @@ public class RestVerticle extends AbstractVerticle {
           // this blocks
           PostgresClient.setIsEmbedded(true);
           PostgresClient.setConfigFilePath(null);
-        } else if (param.startsWith("mongo_connection=")) {
-          String dbconnection = param.split("=")[1];
-          MongoCRUD.setConfigFilePath(dbconnection);
-          MongoCRUD.setIsEmbedded(false);
-          LogUtil.formatLogMessage(className, "cmdProcessing", "Setting path to mongo config file....  " + dbconnection);
-
-        } else if (param != null && param.startsWith("postgres_import_path=")) {
+        }
+        else if (param != null && param.startsWith("postgres_import_path=")) {
           try {
             importDataPath = param.split("=")[1];
             System.out.println("Setting path to import DB file....  " + importDataPath);
@@ -1033,10 +1026,6 @@ public class RestVerticle extends AbstractVerticle {
 
       if (PostgresClient.isEmbedded() || importDataPath != null) {
         PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-      }
-
-      if (MongoCRUD.isEmbedded()) {
-        MongoCRUD.getInstance(vertx).startEmbeddedMongo();
       }
 
       if (importDataPath != null) {

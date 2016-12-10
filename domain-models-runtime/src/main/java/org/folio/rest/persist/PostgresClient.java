@@ -693,7 +693,7 @@ public class PostgresClient {
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
     return processResult(rs, clazz, count, true);
   }
-  
+
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count, boolean setId) {
     Object[] ret = new Object[2];
     List<Object> list = new ArrayList<>();

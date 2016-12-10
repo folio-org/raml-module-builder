@@ -4,8 +4,6 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.AsyncFile;
-import io.vertx.core.file.OpenOptions;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
@@ -19,7 +17,6 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -29,9 +26,6 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
-import org.folio.rest.persist.MongoCRUD;
-import org.folio.rest.persist.mongo.DateEnum;
-import org.folio.rest.persist.mongo.GroupBy;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -46,6 +40,7 @@ public class DemoRamlRestTest {
 
   private static Vertx vertx;
   private static int port;
+
 
   /**
    * @param context  the test context.
@@ -64,8 +59,8 @@ public class DemoRamlRestTest {
   }
 
   private static void startEmbeddedMongo() throws Exception {
-    MongoCRUD.setIsEmbedded(true);
-    MongoCRUD.getInstance(vertx).startEmbeddedMongo();
+/*    MongoCRUD.setIsEmbedded(true);
+    MongoCRUD.getInstance(vertx).startEmbeddedMongo();*/
   }
 
   private static void deployRestVerticle(TestContext context) {
@@ -83,7 +78,7 @@ public class DemoRamlRestTest {
    */
   @After
   public void tearDown(TestContext context) {
-    MongoCRUD.stopEmbeddedMongo();
+    //MongoCRUD.stopEmbeddedMongo();
     deleteTempFilesCreated();
     vertx.close(context.asyncAssertSuccess());
   }
@@ -119,7 +114,7 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
 
     //update periodic handler (MongoStatsPrinter) with which collection to print stats for and at which interval
-    postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, 0, null);
+    //postData(context, "http://localhost:" + port + "/admin/collstats", Buffer.buffer("{\"books\": 30}"), 200, 0, null);
 
     //check File Uploads
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null);
@@ -134,11 +129,11 @@ public class DemoRamlRestTest {
 
     List<Object> list = getListOfBooks();
 
-    //check bulk insert Mongo
+/*    //check bulk insert Mongo
     bulkInsert(context, list);
 
     //check insert with fail if id exists already Mongo
-    insertUniqueTest(context, list.get(0));
+    insertUniqueTest(context, list.get(0));*/
 
     //check save and get of binary Mongo
     binaryInsert(context);
@@ -153,7 +148,7 @@ public class DemoRamlRestTest {
     checkClientCode(context);
 
     //group by
-    groupBy(context, "distinct");
+/*    groupBy(context, "distinct");
     groupBy(context, "multi");
     groupBy(context, "max");
     groupBy(context, "sum");
@@ -163,7 +158,7 @@ public class DemoRamlRestTest {
     groupBy(context, null);
     groupBy(context, "expression");
     groupBy(context, "date");
-    groupBy(context, "matching");
+    groupBy(context, "matching");*/
 
     //jobsTest(context);
 
@@ -280,7 +275,7 @@ public class DemoRamlRestTest {
   }
 
   private void getCollectionStats(TestContext context){
-    Async async = context.async();
+/*    Async async = context.async();
     MongoCRUD.getInstance(vertx).getStatsForCollection("books", reply -> {
       if(reply.succeeded()){
         //System.out.println(reply.result().encodePrettily());
@@ -290,11 +285,11 @@ public class DemoRamlRestTest {
         context.fail(reply.cause().getMessage());
       }
       async.complete();
-    });
+    });*/
   }
 
   private void getCollectionList(TestContext context){
-    Async async = context.async();
+/*    Async async = context.async();
     MongoCRUD.getInstance(vertx).getListOfCollections(reply -> {
       if(reply.succeeded()){
         context.assertInRange(2 , reply.result().size(), 1);
@@ -304,11 +299,11 @@ public class DemoRamlRestTest {
         context.fail(reply.cause().getMessage());
       }
       async.complete();
-    });
+    });*/
   }
 
   private void base64EncTest(TestContext context){
-    Book b = createBook();
+/*    Book b = createBook();
     String file = getClass().getClassLoader().getResource("folio.jpg").getFile();
     Buffer buffer = Buffer.buffer();
     Async async = context.async();
@@ -351,11 +346,11 @@ public class DemoRamlRestTest {
                       else{
                         context.fail("size of file is incorrect");
                       }
-                      /*try {
+                      try {
                         org.apache.commons.io.FileUtils.writeByteArrayToFile(new File("test.jpg"), image);
                       } catch (Exception e) {
                         e.printStackTrace();
-                      }*/
+                      }
                     }else{
                       context.fail(reply2.cause().getMessage());
                     }
@@ -371,14 +366,14 @@ public class DemoRamlRestTest {
           });
           async.complete();
         });
-      }});
+      }});*/
 
 
   }
 
   private void binaryInsert(TestContext context){
     //check binary save in mongo
-    String file = getClass().getClassLoader().getResource("folio.jpg").getFile();
+/*    String file = getClass().getClassLoader().getResource("folio.jpg").getFile();
     Buffer buffer = Buffer.buffer();
     Async async = context.async();
     vertx.fileSystem().open(file, new OpenOptions(), ar -> {
@@ -434,10 +429,10 @@ public class DemoRamlRestTest {
         context.fail();
         async.complete();
       }
-    });
+    });*/
   }
 
-  private void groupBy(TestContext context, String op){
+/*  private void groupBy(TestContext context, String op){
     //check bulk insert in MONGO
     Async async = context.async();
     GroupBy gb = new GroupBy();
@@ -550,7 +545,7 @@ public class DemoRamlRestTest {
       }
       async2.complete();
     });
-  }
+  }*/
 
   public void checkURLs(TestContext context, String url, int codeExpected) {
     String accept = "application/json";

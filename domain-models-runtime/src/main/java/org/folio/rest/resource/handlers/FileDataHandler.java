@@ -4,19 +4,14 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.folio.rest.impl.JobsRunner;
-import org.folio.rest.jaxrs.model.Bulk;
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.resource.interfaces.Importer;
 import org.folio.rest.tools.RTFConsts;
 
@@ -145,7 +140,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
   }
 
   private void flush(List<Object> persistList, int bulkId){
-    MongoCRUD.getInstance(vertx, conf.getInstId()).bulkInsert(importer.getCollection(), persistList, reply -> {
+/*    MongoCRUD.getInstance(vertx, conf.getInstId()).bulkInsert(importer.getCollection(), persistList, reply -> {
       Bulk bInfo = new Bulk();
       bInfo.setInstId(conf.getInstId());
       bInfo.setJobId(conf.getId());
@@ -223,7 +218,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
       if(status == 1 && totalLines[0] == (errorCount[0]+successCount[0])){
         updateStatus(conf);
       }
-    });
+    });*/
   }
 
   /**

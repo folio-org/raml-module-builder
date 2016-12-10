@@ -79,10 +79,6 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-mongo-client</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-api-interfaces</artifactId>
       <version>1.1.1-SNAPSHOT</version>
@@ -107,12 +103,6 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-dropwizard-metrics</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>de.flapdoodle.embed</groupId>
-      <artifactId>de.flapdoodle.embed.mongo</artifactId>
-      <version>1.50.5</version>
     </dependency>
     <dependency>
       <groupId>ru.yandex.qatools.embed</groupId>

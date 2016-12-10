@@ -13,13 +13,10 @@ import io.vertx.core.logging.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.JobConf;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.persist.MongoCRUD;
 import org.folio.rest.resource.handlers.FileDataHandler;
 import org.folio.rest.resource.interfaces.Importer;
 import org.folio.rest.resource.interfaces.JobAPI;
@@ -143,7 +140,7 @@ public class ProcessUploads implements JobAPI {
 
     JsonObject j = new JsonObject(jobConfExistsQuery);
     // check if there is a job configuration of this type
-    MongoCRUD.getInstance(vertx).get(
+/*    MongoCRUD.getInstance(vertx).get(
       MongoCRUD.buildJson(JobConf.class.getName(), RTFConsts.JOB_CONF_COLLECTION, j), reply -> {
         if (reply.succeeded()) {
           if(reply.result().size() == 1){
@@ -174,7 +171,7 @@ public class ProcessUploads implements JobAPI {
               " has more then one configurations associated with it, can not continue processing");
           }
         }
-      });
+      });*/
   }
 
   /**
@@ -184,7 +181,7 @@ public class ProcessUploads implements JobAPI {
    */
   private void saveAsPending2DB(JobConf cObj, String filename, Message<Object> message) {
 
-    Job job = new Job();
+/*    Job job = new Job();
     job.setJobConfId(cObj.getId());
     job.setStatus(RTFConsts.STATUS_PENDING);
     job.setModule(cObj.getModule());
@@ -209,7 +206,7 @@ public class ProcessUploads implements JobAPI {
         log.info("Set job to pending state for file: " + filename);
         message.reply(RTFConsts.OK_PROCESSING_STATUS);
       }
-    });
+    });*/
   }
 
   @Override
