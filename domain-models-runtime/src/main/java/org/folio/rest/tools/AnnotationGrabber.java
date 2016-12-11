@@ -110,7 +110,7 @@ public class AnnotationGrabber {
           // function
           for (Method method : type.getDeclaredMethods()) {
             Object value = method.invoke(annotations[i], (Object[]) null);
-            if (PATH_ANNOTATION.equals(type.getName())) {
+            if (PATH_ANNOTATION.equals(type.getName()) && generateClient) {
               classSpecificMapping.put(CLASS_URL, "^/" + value);
               cGen.generateClassMeta(val.toString(), value);
             }
@@ -170,12 +170,14 @@ public class AnnotationGrabber {
 
             }
           }
-          cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
-            methodObj.getJsonObject(METHOD_PARAMS),
-            methodObj.getString(METHOD_URL),
-            methodObj.getString(HTTP_METHOD),
-            methodObj.getJsonArray(CONSUMES),
-            methodObj.getJsonArray(PRODUCES));
+          if(generateClient){
+            cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
+              methodObj.getJsonObject(METHOD_PARAMS),
+              methodObj.getString(METHOD_URL),
+              methodObj.getString(HTTP_METHOD),
+              methodObj.getJsonArray(CONSUMES),
+              methodObj.getJsonArray(PRODUCES));
+          }
           // if there was no @Path annotation - use the one declared on the
           // class
           if (methodObj.getString(METHOD_URL) == null) {

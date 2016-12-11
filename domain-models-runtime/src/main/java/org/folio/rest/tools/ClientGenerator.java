@@ -16,7 +16,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -63,21 +62,6 @@ public class ClientGenerator {
   private String className = null;
 
   private String mappingType = "postgres";
-
-  private static Map<String, String> verbs = new HashMap<>();
-
-  static {
-
-    verbs.put("post", "post");
-    verbs.put("get", "get");
-    verbs.put("delete", "delete");
-    verbs.put("put","put");
-    verbs.put("options", "options");
-    verbs.put("head","head");
-    verbs.put("patch","patch");
-    verbs.put("trace","trace");
-
-  }
 
   public static void main(String[] args) throws Exception {
 
@@ -442,6 +426,8 @@ public class ClientGenerator {
       generate = true;
     }
     String genPath = System.getProperty("project.basedir") + PATH_TO_GENERATE_TO;
+
+    System.out.println("generate to " + genPath + "  " + (new File(genPath).exists() && generate));
     if(new File(genPath).exists() && generate){
       /* Building class at given location */
       System.out.println("generate to " + genPath);
