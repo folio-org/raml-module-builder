@@ -270,15 +270,18 @@ public class PostgresClient {
         try {
           connection.queryWithParams("INSERT INTO " + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
             new JsonArray().add(pojo2json(entity)), query -> {
+              connection.close();
               if (query.failed()) {
                 replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
               } else {
                 replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
               }
-              connection.close();
             });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
       } else {
@@ -300,10 +303,12 @@ public class PostgresClient {
           } else {
             replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
-          connection.close();
         });
     } catch (Exception e) {
-      log.error(e);
+      if(connection != null){
+        connection.close();
+      }
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
   }
@@ -323,16 +328,18 @@ public class PostgresClient {
         try {
           connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' WHERE " + ID_FIELD
               + "=" + id, query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
-            connection.close();
-
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
       } else {
@@ -410,16 +417,19 @@ public class PostgresClient {
         try {
           connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' " + sb.toString()
               + " " + returning, query -> {
+            connection.close();
             if (query.failed()) {
               log.error(query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
-            connection.close();
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
 
@@ -480,15 +490,18 @@ public class PostgresClient {
         try {
           connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
               + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning, query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
-            connection.close();
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
       } else {
@@ -510,15 +523,18 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         try {
           connection.update("DELETE FROM " + table + " WHERE " + ID_FIELD + "=" + id, query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
-            connection.close();
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
       } else {
@@ -544,16 +560,18 @@ public class PostgresClient {
         }
         try {
           connection.update("DELETE FROM " + table + sb.toString(), query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
-            connection.close();
-
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
       } else {
@@ -569,16 +587,18 @@ public class PostgresClient {
         try {
           connection.update("DELETE FROM " + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
             + "@>'" + pojo2json(entity) + "' ", query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
-            connection.close();
-
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
       } else {
@@ -608,6 +628,7 @@ public class PostgresClient {
           }
           connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
               + "@>'" + pojo2json(entity) + "' ", query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
@@ -615,10 +636,11 @@ public class PostgresClient {
             }
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-          connection.close();
         }
 
       } else {
@@ -670,6 +692,7 @@ public class PostgresClient {
             select = select + COUNT_CLAUSE;
           }
           connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + table + fromClauseFromCriteria + sb, query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
@@ -677,12 +700,12 @@ public class PostgresClient {
             }
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        } finally {
-          connection.close();
         }
-
       } else {
         log.error(res.cause().getMessage(), res.cause());
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
@@ -732,15 +755,18 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         try {
           connection.query(sql, query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
-            connection.close();
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
       } else {
@@ -761,16 +787,19 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         try {
           connection.update(sql, query -> {
+            connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toString()));
             }
-            connection.close();
             log.debug("mutate timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
           });
         } catch (Exception e) {
-          log.error(e);
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
       } else {
@@ -799,10 +828,9 @@ public class PostgresClient {
         } else {
           replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toString()));
         }
-        sqlConnection.close();
       });
     } catch (Exception e) {
-      log.error(e);
+      log.error(e.getMessage(), e);
       replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
   }
@@ -932,6 +960,7 @@ public class PostgresClient {
               statement.executeUpdate(sql[j]);
             }
           } catch (Exception e) {
+            results.add(sql[j]);
             error = true;
             log.error(e.getMessage(),e);
             if(stopOnError){
@@ -971,7 +1000,7 @@ public class PostgresClient {
       }
     }, done -> {
       log.debug("execute timer for: " + sql.hashCode() + " took " + (System.nanoTime()-s)/1000000);
-
+      replyHandler.handle(io.vertx.core.Future.succeededFuture(results));
     });
 
   }
