@@ -8,6 +8,7 @@ traits:
   - log-level: !include traits/log-level.raml
   - upload-handler: !include traits/upload-handler.raml
   - history: !include traits/history.raml
+  - dbname: !include traits/dbname.raml
   - secured: !include ../../../../../raml-util/traits/auth.raml
 
 /admin:
@@ -131,6 +132,80 @@ traits:
           description: "Returns JVM memory info"
           body:
             text/html:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /postgres_active_sessions:
+    get:
+      description: Get active PostgreSQL sessions
+      is: [secured, dbname]
+      responses:
+        200:
+          description: |
+            Returns active sessions with the following information. |
+              process ID of the currently connected user to the database. |
+              name of the database to which the user is currently connected. |
+              the full text of the SQL query that is being executed by the client. |
+              etc...
+          body:
+            application/json:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /postgres_load:
+    get:
+      description: Get load information on PostgreSQL
+      is: [secured, dbname]
+      responses:
+        200:
+          description: |
+            Returns load with the following information. |
+              Number of active connections. |
+              Number of rollbacks and commits issued. |
+              Number of blocks read ( block = an 8kb segment information the file storing the table. ). |
+              Number of buffer hits (cache) |
+              Note that the function calls SELECT pg_stat_reset(); to clear stats, waits 10 seconds, and |
+              then returns with the info collected during those 10 seconds
+          body:
+            application/json:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /postgres_table_access_stats:
+    get:
+      description: Get access stats on the PostgreSQL tables
+      is: [secured]
+      responses:
+        200:
+          description: |
+            Returns info about how the tables are being accessed either sequential or index scans
+          body:
+            application/json:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /postgres_table_size:
+    get:
+      description: amount of disk usage for a specific database and its associated tables and indexes.
+      is: [secured, dbname]
+      responses:
+        200:
+          description: |
+            Returns info for every table in format - table | table size | index size 
+          body:
+            application/json:
               example: "Text....."
         500:
           description: "Internal server error"

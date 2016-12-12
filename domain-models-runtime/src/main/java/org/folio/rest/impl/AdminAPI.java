@@ -24,6 +24,7 @@ import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
@@ -226,5 +227,119 @@ public class AdminAPI implements AdminResource {
     //System.out.println(org.apache.commons.io.IOUtils.toString(entity, "UTF8"));
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadbinaryResponse.withOK("TODO"
         )));
+  }
+
+  @Validate
+  @Override
+  public void getAdminPostgresActiveSessions(String dbname, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    PostgresClient.getInstance(vertxContext.owner(), "postgres").select("SELECT pid , usename, "
+        + "application_name, client_addr, client_hostname, "
+        + "query, state from pg_stat_activity where datname='"+dbname+"'", reply -> {
+
+          if(reply.succeeded()){
+
+            OutStream stream = new OutStream();
+            stream.setData(reply.result().toJson());
+
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresActiveSessionsResponse.
+              withJsonOK(stream)));
+          }
+          else{
+            log.error(reply.cause().getMessage(), reply.cause());
+            asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+          }
+        });
+  }
+
+  @Validate
+  @Override
+  public void getAdminPostgresLoad(String dbname, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    PostgresClient.getInstance(vertxContext.owner(), "postgres").select("SELECT pg_stat_reset()", reply -> {
+
+          if(reply.succeeded()){
+            /* wait 10 seconds for stats to gather and then query stats table for info */
+            vertxContext.owner().setTimer(10000, new Handler<Long>() {
+              @Override
+              public void handle(Long timerID) {
+                PostgresClient.getInstance(vertxContext.owner(), "postgres").select(
+                    "SELECT numbackends as CONNECTIONS, xact_commit as TX_COMM, xact_rollback as "
+                    + "TX_RLBCK, blks_read + blks_hit as READ_TOTAL, "
+                    + "blks_hit * 100 / (blks_read + blks_hit) "
+                    + "as BUFFER_HIT_PERCENT FROM pg_stat_database WHERE datname = '"+dbname+"'", reply2 -> {
+                  if(reply2.succeeded()){
+                    OutStream stream = new OutStream();
+                    stream.setData(reply2.result().toJson());
+                    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresLoadResponse.
+                      withJsonOK(stream)));
+                  }
+                  else{
+                    log.error(reply2.cause().getMessage(), reply2.cause());
+                    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresLoadResponse.
+                      withPlainInternalServerError(reply2.cause().getMessage())));
+                  }
+                });
+              }
+            });
+          }
+          else{
+            log.error(reply.cause().getMessage(), reply.cause());
+            asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+          }
+        });
+  }
+
+  @Validate
+  @Override
+  public void getAdminPostgresTableAccessStats(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    PostgresClient.getInstance(vertxContext.owner(), "postgres").select(
+        "SELECT schemaname,relname,seq_scan,idx_scan,cast(idx_scan "
+        + "AS numeric) / (idx_scan + seq_scan) AS idx_scan_pct "
+        + "FROM pg_stat_user_tables WHERE (idx_scan + seq_scan)>0 "
+        + "ORDER BY idx_scan_pct;", reply -> {
+
+          if(reply.succeeded()){
+
+            OutStream stream = new OutStream();
+            stream.setData(reply.result().toJson());
+
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresTableAccessStatsResponse.
+              withJsonOK(stream)));
+          }
+          else{
+            log.error(reply.cause().getMessage(), reply.cause());
+            asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+          }
+        });
+  }
+
+  @Validate
+  @Override
+  public void getAdminPostgresTableSize(String dbname, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    PostgresClient.getInstance(vertxContext.owner(), "postgres").select(
+      "SELECT relname as \"Table\", pg_size_pretty(pg_relation_size(relid)) As \" Table Size\","
+      + " pg_size_pretty(pg_total_relation_size(relid) - pg_relation_size(relid)) as \"Index Size\""
+      + " FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC;", reply -> {
+        if(reply.succeeded()){
+
+          OutStream stream = new OutStream();
+          stream.setData(reply.result().toJson());
+
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresTableAccessStatsResponse.
+            withJsonOK(stream)));
+        }
+        else{
+          log.error(reply.cause().getMessage(), reply.cause());
+          asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+        }
+      });
+
   }
 }

@@ -90,7 +90,8 @@ public class PostgresClient {
   }
 
   /**
-   * must be called before getInstance() for this to take affect
+   * only affect is of setting this is that it sets default connection params
+   * in the init() in case the postgres json config isnt found.
    * @param embed - whether to use an embedded postgres instance
    */
   public static void setIsEmbedded(boolean embed){
