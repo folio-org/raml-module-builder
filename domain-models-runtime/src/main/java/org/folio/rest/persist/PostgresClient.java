@@ -55,7 +55,7 @@ import de.flapdoodle.embed.process.config.IRuntimeConfig;
  */
 public class PostgresClient {
 
-  public static final String     DEFAULT_SCHEMA           = "folio_shared";
+  public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
   public static final String     ID_FIELD                 = "_id";
 
@@ -84,6 +84,8 @@ public class PostgresClient {
   private final Messages messages           = Messages.getInstance();
 
   private AsyncSQLClient         client;
+
+  private String tenantId;
 
   private PostgresClient(Vertx vertx, String tenantId) throws Exception {
     init(vertx, tenantId);
@@ -144,6 +146,7 @@ public class PostgresClient {
   }
 
   private void init(Vertx vertx, String tenantId) throws Exception {
+    this.tenantId = tenantId;
     this.vertx = vertx;
     log.info("Loading PostgreSQL configuration from " + getConfigFilePath());
     postgreSQLClientConfig = new LoadConfs().loadConfig(getConfigFilePath());
@@ -155,16 +158,21 @@ public class PostgresClient {
         postgreSQLClientConfig.put(PASSWORD, PASSWORD);
         postgreSQLClientConfig.put("host", "127.0.0.1");
         postgreSQLClientConfig.put("port", 6000);
-        postgreSQLClientConfig.put("database", DEFAULT_SCHEMA);
+        postgreSQLClientConfig.put("database", "postgres");
       }
       else{
         //not in embedded mode but there is no conf file found
         throw new Exception("No postgres-conf.json file found and not in embedded mode, can not connect to any database");
       }
     }
+    else if(tenantId.equals(DEFAULT_SCHEMA)){
+      postgreSQLClientConfig.put(USERNAME, postgreSQLClientConfig.getString(USERNAME));
+      postgreSQLClientConfig.put(PASSWORD, postgreSQLClientConfig.getString(PASSWORD));
+    }
     else{
-      log.info("Using database: " + tenantId);
-      postgreSQLClientConfig.put("database", tenantId);
+      log.info("Using schema: " + tenantId);
+      postgreSQLClientConfig.put(USERNAME, tenantId);
+      postgreSQLClientConfig.put(PASSWORD, tenantId);
     }
     log.info("Creating client with configuration:" + postgreSQLClientConfig.encode());
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
@@ -269,7 +277,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.queryWithParams("INSERT INTO " + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
+          connection.queryWithParams("INSERT INTO " + tenantId + "." + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
             new JsonArray().add(pojo2json(entity)), query -> {
               connection.close();
               if (query.failed()) {
@@ -297,7 +305,7 @@ public class PostgresClient {
     // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
     SQLConnection connection = ((io.vertx.core.Future<SQLConnection>) sqlConnection).result();
     try {
-      connection.queryWithParams("INSERT INTO " + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
+      connection.queryWithParams("INSERT INTO " + tenantId + "." + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
         new JsonArray().add(pojo2json(entity)), query -> {
           if (query.failed()) {
             replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -327,7 +335,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' WHERE " + ID_FIELD
+          connection.update(UPDATE + tenantId + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' WHERE " + ID_FIELD
               + "=" + id, query -> {
             connection.close();
             if (query.failed()) {
@@ -416,7 +424,7 @@ public class PostgresClient {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' " + sb.toString()
+          connection.update(UPDATE + tenantId + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' " + sb.toString()
               + " " + returning, query -> {
             connection.close();
             if (query.failed()) {
@@ -489,7 +497,7 @@ public class PostgresClient {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update(UPDATE + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
+          connection.update(UPDATE + tenantId + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
               + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning, query -> {
             connection.close();
             if (query.failed()) {
@@ -523,7 +531,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update("DELETE FROM " + table + " WHERE " + ID_FIELD + "=" + id, query -> {
+          connection.update("DELETE FROM " + tenantId + "." + table + " WHERE " + ID_FIELD + "=" + id, query -> {
             connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -560,7 +568,7 @@ public class PostgresClient {
           sb.append(filter.toString());
         }
         try {
-          connection.update("DELETE FROM " + table + sb.toString(), query -> {
+          connection.update("DELETE FROM " + tenantId + "." + table + sb.toString(), query -> {
             connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -586,7 +594,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update("DELETE FROM " + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
+          connection.update("DELETE FROM " + tenantId + "." + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
             + "@>'" + pojo2json(entity) + "' ", query -> {
             connection.close();
             if (query.failed()) {
@@ -627,7 +635,7 @@ public class PostgresClient {
           if (returnCount) {
             select = select + COUNT_CLAUSE;
           }
-          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
+          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + tenantId + "." + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
               + "@>'" + pojo2json(entity) + "' ", query -> {
             connection.close();
             if (query.failed()) {
@@ -692,7 +700,7 @@ public class PostgresClient {
           if (returnCount) {
             select = select + COUNT_CLAUSE;
           }
-          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + table + fromClauseFromCriteria + sb, query -> {
+          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + tenantId + "." + table + fromClauseFromCriteria + sb, query -> {
             connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -865,12 +873,27 @@ public class PostgresClient {
       StringBuilder singleStatement = new StringBuilder();
       String[] allLines = sqlFile.split("(\r\n|\r|\n)");
       List<String> execStatements = new ArrayList<>();
+      boolean inFunction = false;
       for (int i = 0; i < allLines.length; i++) {
-        if(allLines[i].startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].startsWith("-- ")){
+        if(allLines[i].startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].startsWith("--")){
           //this is an sql comment, skip
           continue;
         }
-        else if(allLines[i].endsWith(";")){
+        else if(allLines[i].toUpperCase().matches("^(CREATE OR REPLACE FUNCTION|CREATE FUNCTION).*")){
+          singleStatement.append(allLines[i]);
+          inFunction = true;
+        }
+        else if (inFunction && allLines[i].toUpperCase().startsWith("END;")){
+          singleStatement.append(allLines[i]);
+          if(i+1<allLines.length && allLines[i+1].startsWith("$$")){
+            singleStatement.append(allLines[i+1]);
+            i=i+1;
+          }
+          inFunction = false;
+          execStatements.add( singleStatement.toString() );
+          singleStatement = new StringBuilder();
+        }
+        else if(allLines[i].endsWith(";") && !inFunction){
           execStatements.add( singleStatement.append(allLines[i]).toString() );
           singleStatement = new StringBuilder();
         }
@@ -921,45 +944,9 @@ public class PostgresClient {
 
         for (int j = 0; j < sql.length; j++) {
           try {
-            if(sql[j].startsWith("CREATE EXTENSION ")){
-              //this should happen after the database is created
-              //creating an extension happens per db and can only be
-              //done with a super user account
-              Connection connection3 = getStandaloneConnection(newDBName, true);
-              connection3.setAutoCommit(true);
-              Statement statement3 = connection3.createStatement();
-              statement3.executeUpdate(sql[j]);
-              log.info("Successfully executed: " + sql[j]);
-              log.info("Closing connection and reconnecting");
-              try{
-                statement3.close();
-                connection3.close();
-              }
-              catch(Exception e){
-                log.error(e.getMessage(), e);
-              }
-            }
-            else if(sql[j].startsWith("CREATE DATABASE ")){
-
-              log.info("Closing connection and reconnecting");
-              try{
-                statement.executeUpdate(sql[j]);
-
-                statement.close();
-                connection.close();
-
-                connection = getStandaloneConnection(newDBName, false);
-                connection.setAutoCommit(false);
-                statement = connection.createStatement();
-
-              }
-              catch(Exception e){
-                log.error(e.getMessage(), e);
-              }
-            }
-            else {
-              statement.executeUpdate(sql[j]);
-            }
+            log.info("trying to execute: " + sql[j]);
+            statement.executeUpdate(sql[j]);
+            log.info("Successfully executed: " + sql[j]);
           } catch (Exception e) {
             results.add(sql[j]);
             error = true;
@@ -970,7 +957,7 @@ public class PostgresClient {
           }
         }
         try {
-          connection.commit();
+          //connection.commit();
           log.info("Successfully committed: " + sql.hashCode());
         } catch (Exception e) {
           error = true;

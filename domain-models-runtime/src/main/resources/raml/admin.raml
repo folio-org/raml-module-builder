@@ -42,10 +42,10 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
-  /uploadbinary:
+  /importSQL:
     description: Uploads a file and saves it to a directory configured on the server
     post:
-      is: [secured, upload-handler]
+      is: [secured]
       description: |
           Uploads a file and saves it to a directory configured on the server
       body:

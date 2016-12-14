@@ -170,14 +170,12 @@ public class AnnotationGrabber {
 
             }
           }
-          if(generateClient){
-            cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
-              methodObj.getJsonObject(METHOD_PARAMS),
-              methodObj.getString(METHOD_URL),
-              methodObj.getString(HTTP_METHOD),
-              methodObj.getJsonArray(CONSUMES),
-              methodObj.getJsonArray(PRODUCES));
-          }
+          cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
+            methodObj.getJsonObject(METHOD_PARAMS),
+            methodObj.getString(METHOD_URL),
+            methodObj.getString(HTTP_METHOD),
+            methodObj.getJsonArray(CONSUMES),
+            methodObj.getJsonArray(PRODUCES));
           // if there was no @Path annotation - use the one declared on the
           // class
           if (methodObj.getString(METHOD_URL) == null) {

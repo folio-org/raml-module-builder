@@ -57,6 +57,7 @@ public class DemoRamlRestTest {
     port = NetworkUtils.nextFreePort();
 
     try {
+      setupPostgres();
       deployRestVerticle(context);
     } catch (Exception e) {
       context.fail(e);
@@ -70,6 +71,10 @@ public class DemoRamlRestTest {
             context.asyncAssertSuccess());
   }
 
+  private static void setupPostgres() throws Exception {
+    //PostgresClient.setIsEmbedded(true);
+    //PostgresClient.getInstance(vertx).startEmbeddedPostgres();
+  }
 
   /**
    * This method, called after our test, just cleanup everything by closing the vert.x instance
@@ -78,7 +83,6 @@ public class DemoRamlRestTest {
    */
   @After
   public void tearDown(TestContext context) {
-    //MongoCRUD.stopEmbeddedMongo();
     deleteTempFilesCreated();
     vertx.close(context.asyncAssertSuccess());
   }
@@ -132,7 +136,7 @@ public class DemoRamlRestTest {
    *
    */
   private void checkClientCode(TestContext context) {
-    Async async = context.async(2);
+    Async async = context.async(1);
     System.out.println("checkClientCode test");
     try {
       MimeMultipart mmp = new MimeMultipart();
@@ -153,15 +157,14 @@ public class DemoRamlRestTest {
         System.out.println("checkClientCode statusCode 1 " + reply.statusCode());
         async.countDown();
       });
-
-      aClient.postUploadbinary(PersistMethod.SAVE, null, "abc",
-        getClass().getClassLoader().getResourceAsStream("folio.jpg"), reply -> {
+/*      aClient.postImportSQL(
+        getClass().getClassLoader().getResourceAsStream("create_config.sql"), reply -> {
           if(reply.statusCode() != 200){
             context.fail();
           }
           System.out.println("checkClientCode statusCode 2 " + reply.statusCode());
           async.countDown();
-      });
+      });*/
     }
     catch (Exception e) {
       context.fail();
