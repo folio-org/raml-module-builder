@@ -230,9 +230,10 @@ public class ClientGenerator {
     }
 
     /* push tenant id into x-okapi-tenant and authorization headers for now */
-    body.directStatement("request.putHeader(\"Authorization\", tenantId);");
-    body.directStatement("request.putHeader(\""+RestVerticle.OKAPI_HEADER_TENANT+"\", tenantId);");
-
+    body.directStatement("if(tenantId != null){");
+    body.directStatement(" request.putHeader(\"Authorization\", tenantId);");
+    body.directStatement(" request.putHeader(\""+RestVerticle.OKAPI_HEADER_TENANT+"\", tenantId);");
+    body.directStatement("}");
     /* add response handler to each function */
     JClass handler = jCodeModel.ref(Handler.class).narrow(HttpClientResponse.class);
     jmCreate.param(handler, "responseHandler");

@@ -40,14 +40,23 @@ public class BooksClient {
      * Service endpoint GLOBAL_PATH
      * 
      */
-    public void put(BigDecimal access_token, Handler<HttpClientResponse> responseHandler) {
+    public void get(String author, BigDecimal publicationYear, BigDecimal rating, String isbn, Handler<HttpClientResponse> responseHandler) {
         StringBuilder queryParams = new StringBuilder("?");
-        if(access_token != null) {queryParams.append("access_token="+access_token);}
-        queryParams.append("&");
-        io.vertx.core.http.HttpClientRequest request = httpClient.put(GLOBAL_PATH);
+        if(author != null) {queryParams.append("author="+author);
+        queryParams.append("&");}
+        if(publicationYear != null) {queryParams.append("publicationYear="+publicationYear);
+        queryParams.append("&");}
+        if(rating != null) {queryParams.append("rating="+rating);
+        queryParams.append("&");}
+        if(isbn != null) {queryParams.append("isbn="+isbn);
+        queryParams.append("&");}
+        io.vertx.core.http.HttpClientRequest request = httpClient.get(GLOBAL_PATH);
         request.handler(responseHandler);
-        request.putHeader("Authorization", tenantId);
-        request.putHeader("x-okapi-tenant", tenantId);
+        request.putHeader("Accept", "application/json");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
         request.end();
     }
 
@@ -55,21 +64,16 @@ public class BooksClient {
      * Service endpoint GLOBAL_PATH
      * 
      */
-    public void get(String author, BigDecimal publicationYear, BigDecimal rating, String isbn, Handler<HttpClientResponse> responseHandler) {
+    public void put(BigDecimal access_token, Handler<HttpClientResponse> responseHandler) {
         StringBuilder queryParams = new StringBuilder("?");
-        if(author != null) {queryParams.append("author="+author);}
-        queryParams.append("&");
-        if(publicationYear != null) {queryParams.append("publicationYear="+publicationYear);}
-        queryParams.append("&");
-        if(rating != null) {queryParams.append("rating="+rating);}
-        queryParams.append("&");
-        if(isbn != null) {queryParams.append("isbn="+isbn);}
-        queryParams.append("&");
-        io.vertx.core.http.HttpClientRequest request = httpClient.get(GLOBAL_PATH);
+        if(access_token != null) {queryParams.append("access_token="+access_token);
+        queryParams.append("&");}
+        io.vertx.core.http.HttpClientRequest request = httpClient.put(GLOBAL_PATH);
         request.handler(responseHandler);
-        request.putHeader("Accept", "application/json");
-        request.putHeader("Authorization", tenantId);
-        request.putHeader("x-okapi-tenant", tenantId);
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
         request.end();
     }
 

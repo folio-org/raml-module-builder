@@ -39,13 +39,15 @@ public class TenantClient {
      * Service endpoint GLOBAL_PATH
      * 
      */
-    public void delete(Handler<HttpClientResponse> responseHandler) {
+    public void post(Handler<HttpClientResponse> responseHandler) {
         StringBuilder queryParams = new StringBuilder("?");
-        io.vertx.core.http.HttpClientRequest request = httpClient.delete(GLOBAL_PATH);
+        io.vertx.core.http.HttpClientRequest request = httpClient.post(GLOBAL_PATH);
         request.handler(responseHandler);
-        request.putHeader("Accept", "text/html,text/plain");
-        request.putHeader("Authorization", tenantId);
-        request.putHeader("x-okapi-tenant", tenantId);
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
         request.end();
     }
 
@@ -53,13 +55,15 @@ public class TenantClient {
      * Service endpoint GLOBAL_PATH
      * 
      */
-    public void post(Handler<HttpClientResponse> responseHandler) {
+    public void delete(Handler<HttpClientResponse> responseHandler) {
         StringBuilder queryParams = new StringBuilder("?");
-        io.vertx.core.http.HttpClientRequest request = httpClient.post(GLOBAL_PATH);
+        io.vertx.core.http.HttpClientRequest request = httpClient.delete(GLOBAL_PATH);
         request.handler(responseHandler);
         request.putHeader("Accept", "application/json,text/plain");
-        request.putHeader("Authorization", tenantId);
-        request.putHeader("x-okapi-tenant", tenantId);
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
         request.end();
     }
 
@@ -71,9 +75,11 @@ public class TenantClient {
         StringBuilder queryParams = new StringBuilder("?");
         io.vertx.core.http.HttpClientRequest request = httpClient.get(GLOBAL_PATH);
         request.handler(responseHandler);
-        request.putHeader("Accept", "text/html,text/plain");
-        request.putHeader("Authorization", tenantId);
-        request.putHeader("x-okapi-tenant", tenantId);
+        request.putHeader("Accept", "text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
         request.end();
     }
 
@@ -86,7 +92,7 @@ public class TenantClient {
     }
 
     public String checksum() {
-        return "078254be438fe1a9f471811cc01b9046";
+        return "e4d0df9ff7fa6ef89fed79f477df63b3";
     }
 
 }
