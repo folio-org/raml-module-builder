@@ -264,7 +264,7 @@ public class AdminAPI implements AdminResource {
   public void getAdminPostgresLoad(String dbname, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
-    PostgresClient.getInstance(vertxContext.owner(), "public").select("SELECT pg_stat_reset()", reply -> {
+    PostgresClient.getInstance(vertxContext.owner()).select("SELECT pg_stat_reset()", reply -> {
 
           if(reply.succeeded()){
             /* wait 10 seconds for stats to gather and then query stats table for info */
@@ -303,7 +303,7 @@ public class AdminAPI implements AdminResource {
   public void getAdminPostgresTableAccessStats(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
-    PostgresClient.getInstance(vertxContext.owner(), "public").select(
+    PostgresClient.getInstance(vertxContext.owner()).select(
         "SELECT schemaname,relname,seq_scan,idx_scan,cast(idx_scan "
         + "AS numeric) / (idx_scan + seq_scan) AS idx_scan_pct "
         + "FROM pg_stat_user_tables WHERE (idx_scan + seq_scan)>0 "
@@ -329,7 +329,7 @@ public class AdminAPI implements AdminResource {
   public void getAdminPostgresTableSize(String dbname, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
-    PostgresClient.getInstance(vertxContext.owner(), "public").select(
+    PostgresClient.getInstance(vertxContext.owner()).select(
       "SELECT relname as \"Table\", pg_size_pretty(pg_relation_size(relid)) As \" Table Size\","
       + " pg_size_pretty(pg_total_relation_size(relid) - pg_relation_size(relid)) as \"Index Size\""
       + " FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC;", reply -> {
