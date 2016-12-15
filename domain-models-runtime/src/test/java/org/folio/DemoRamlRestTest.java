@@ -157,14 +157,7 @@ public class DemoRamlRestTest {
         System.out.println("checkClientCode statusCode 1 " + reply.statusCode());
         async.countDown();
       });
-/*      aClient.postImportSQL(
-        getClass().getClassLoader().getResourceAsStream("create_config.sql"), reply -> {
-          if(reply.statusCode() != 200){
-            context.fail();
-          }
-          System.out.println("checkClientCode statusCode 2 " + reply.statusCode());
-          async.countDown();
-      });*/
+
     }
     catch (Exception e) {
       context.fail();
