@@ -862,7 +862,7 @@ public class PostgresClient {
    * @param timeout - in seconds
    * @param replyHandler - list of statements that failed - if any
    */
-  public void runSQLFile(String sqlFile, String newDB, boolean stopOnError,
+  public void runSQLFile(String sqlFile, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
     if(sqlFile == null){
       log.error("sqlFile value is null");
@@ -901,7 +901,7 @@ public class PostgresClient {
           singleStatement.append(allLines[i]);
         }
       }
-      execute(execStatements.toArray(new String[]{}), newDB, stopOnError, replyHandler);
+      execute(execStatements.toArray(new String[]{}), stopOnError, replyHandler);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
@@ -925,7 +925,7 @@ public class PostgresClient {
       "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
   }
 
-  private void execute(String[] sql, String newDBName, boolean stopOnError,
+  private void execute(String[] sql, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
 
     long s = System.nanoTime();

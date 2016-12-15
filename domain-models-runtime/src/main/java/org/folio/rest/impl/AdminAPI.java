@@ -223,7 +223,7 @@ public class AdminAPI implements AdminResource {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     String sqlFile = IOUtils.toString(entity, "UTF8");
-    PostgresClient.getInstance(vertxContext.owner()).runSQLFile(sqlFile, null, false, reply -> {
+    PostgresClient.getInstance(vertxContext.owner()).runSQLFile(sqlFile, false, reply -> {
       if(reply.succeeded()){
         reply.result();
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.withOK("")));
