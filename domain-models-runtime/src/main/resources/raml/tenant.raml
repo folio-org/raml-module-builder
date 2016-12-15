@@ -28,7 +28,7 @@ traits:
       200:
         description: "true or false indicator"
         body:
-          text/html:
+          text/plain:
             example: "Text....."
       500:
         description: "Internal server error"
@@ -39,11 +39,10 @@ traits:
     description: drop tenant id
     is: [secured]
     responses:
-      201:
+      200:
         description: "true or false indicator"
         body:
-          text/html:
-            example: "Text....."
+            application/json:
       500:
         description: "Internal server error"
         body:
