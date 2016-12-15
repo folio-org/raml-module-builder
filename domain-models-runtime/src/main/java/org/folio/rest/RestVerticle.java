@@ -103,7 +103,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = new ObjectMapper();
   private static final String       OKAPI_HEADER_PREFIX             = "x-okapi";
-  private static final String       DEFAULT_SCHEMA                  = "folio_shared";
+  private static final String       DEFAULT_SCHEMA                  = "public";
 
   private final Messages            messages                        = Messages.getInstance();
   private int                       port                            = -1;
@@ -803,9 +803,9 @@ public class RestVerticle extends AbstractVerticle {
     //inject vertx context into each function
     newArray[params.length - 1] = getVertx().getOrCreateContext();
 
-    if(tenantId[0] == null){
+/*    if(tenantId[0] == null){
       headers.put(OKAPI_HEADER_TENANT, DEFAULT_SCHEMA);
-    }
+    }*/
     newArray[params.length - 3] = headers;
 
     context.runOnContext(v -> {
