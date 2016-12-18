@@ -77,6 +77,10 @@ public class PostgresClient {
   private static ObjectMapper    mapper                   = new ObjectMapper();
   private static Map<String, PostgresClient> connectionPool = new HashMap<>();
 
+  private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
+      +"CALLED ON NULL INPUT|RETURNS NULL ON NULL INPUT|STRICT|"
+      +"SECURITY INVOKER|SECURITY DEFINER|SET\\s.*|AS\\s.*|COST\\s\\d.*|ROWS\\s.*";
+
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
   private Vertx vertx                       = null;
@@ -874,6 +878,7 @@ public class PostgresClient {
       String[] allLines = sqlFile.split("(\r\n|\r|\n)");
       List<String> execStatements = new ArrayList<>();
       boolean inFunction = false;
+      boolean funcCompleteAddFuncAttributes = false;
       for (int i = 0; i < allLines.length; i++) {
         if(allLines[i].startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].startsWith("--")){
           //this is an sql comment, skip
@@ -883,22 +888,32 @@ public class PostgresClient {
           singleStatement.append(allLines[i]);
           inFunction = true;
         }
-        else if (inFunction && allLines[i].toUpperCase().startsWith("END;")){
-          singleStatement.append(allLines[i]);
-          if(i+1<allLines.length && allLines[i+1].startsWith("$$")){
-            singleStatement.append(allLines[i+1]);
-            i=i+1;
+        else if (inFunction && allLines[i].trim().toUpperCase().matches(".*\\s*LANGUAGE .*")){
+          singleStatement.append(" " + allLines[i]);
+          if(!allLines[i].trim().endsWith(";")){
+            int j=0;
+            if(i+1<allLines.length){
+              for (j = i+1; j < allLines.length; j++) {
+                if(allLines[j].trim().toUpperCase().trim().matches(CLOSE_FUNCTION_POSTGRES)){
+                  singleStatement.append(" " + allLines[j]);
+                }
+                else{
+                  break;
+                }
+              }
+            }
+            i = j;
           }
           inFunction = false;
           execStatements.add( singleStatement.toString() );
           singleStatement = new StringBuilder();
         }
-        else if(allLines[i].endsWith(";") && !inFunction){
-          execStatements.add( singleStatement.append(allLines[i]).toString() );
+        else if(allLines[i].trim().endsWith(";") && !inFunction){
+          execStatements.add( singleStatement.append(" " + allLines[i]).toString() );
           singleStatement = new StringBuilder();
         }
         else {
-          singleStatement.append(allLines[i]);
+          singleStatement.append(" " + allLines[i]);
         }
       }
       execute(execStatements.toArray(new String[]{}), stopOnError, replyHandler);

@@ -30,7 +30,7 @@ public class Test {
     bp2.setFileName("abcd.raml");
     mmp.addBodyPart(bp);
     mmp.addBodyPart(bp2);
-    AdminClient aClient = new AdminClient("localhost", 8888, "postgres", false);
+    AdminClient aClient = new AdminClient("localhost", 8888, null, false);
     aClient.postUploadmultipart(PersistMethod.SAVE, null, "abc",
       mmp, reply -> {
       reply.statusCode();
@@ -46,7 +46,7 @@ public class Test {
       });
     });
 
-    TenantClient tc = new TenantClient("localhost", 8888, "harvard2");
+    TenantClient tc = new TenantClient("localhost", 8888, "harvard");
     tc.post( response -> {
       response.bodyHandler( body -> {
         System.out.println(body.toString());

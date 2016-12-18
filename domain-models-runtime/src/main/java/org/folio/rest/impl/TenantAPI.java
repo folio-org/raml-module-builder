@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.io.InputStream;
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
@@ -86,7 +87,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
         String sqlFile = IOUtils.toString(
           TenantAPI.class.getClassLoader().getResourceAsStream("create_tenant.sql"));
 
-        final String sql2run = sqlFile.replaceAll("myuniversity", tenantId);
+        String sql2run = sqlFile.replaceAll("myuniversity", tenantId);
 
         /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
         PostgresClient.getInstance(context.owner()).select(
@@ -96,9 +97,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 String res = "";
                 if(reply.succeeded()){
                 }
-                OutStream os = new OutStream();
-                os.setData(res);
-                //handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse.withJsonOK(os)));
+                handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse.withPlainOK("")));
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
@@ -132,17 +131,46 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
         final String sql2run = sqlFile.replaceAll("myuniversity", tenantId);
 
+        /* is there an audit .sql file to load */
+        InputStream audit = TenantAPI.class.getClassLoader().getResourceAsStream("create_audit.sql");
+        StringBuffer auditContent = new StringBuffer();
+        if(audit != null){
+          auditContent.append(IOUtils.toString(audit).replace("myuniversity", tenantId));
+        }
+
         /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
         PostgresClient.getInstance(context.owner()).runSQLFile(sql2run, false,
             reply -> {
               try {
-                String res = "";
+                StringBuffer res = new StringBuffer();
                 if(reply.succeeded()){
-                  res = new JsonArray(reply.result()).encodePrettily();
+                  res.append(new JsonArray(reply.result()).encodePrettily());
+                  OutStream os = new OutStream();
+
+                  if(audit != null){
+                    PostgresClient.getInstance(context.owner()).runSQLFile(auditContent.toString(), false, reply2 -> {
+                      if(reply2.succeeded()){
+                        String auditRes = new JsonArray(reply2.result()).encodePrettily();
+                        os.setData(res + auditRes);
+                        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                      }
+                      else{
+                        log.error(reply2.cause().getMessage(), reply2.cause());
+                        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+                          .withPlainInternalServerError("Created tenant without auditing: " + reply2.cause().getMessage())));
+                      }
+                    });
+                  }
+                  else{
+                    os.setData(res);
+                    handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                  }
                 }
-                OutStream os = new OutStream();
-                os.setData(res);
-                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                else{
+                  log.error(reply.cause().getMessage(), reply.cause());
+                  handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+                    .withPlainInternalServerError(reply.cause().getMessage())));
+                }
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
