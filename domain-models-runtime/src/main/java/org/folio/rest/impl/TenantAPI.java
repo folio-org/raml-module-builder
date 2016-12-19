@@ -27,6 +27,12 @@ import org.folio.rest.tools.utils.TenantTool;
  */
 public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
+  private static final String       CREATE_TENANT_TEMPLATE = "template_create_tenant.sql";
+  private static final String       DELETE_TENANT_TEMPLATE = "template_delete_tenant.sql";
+  private static final String       AUDIT_TENANT_TEMPLATE  = "template_audit.sql";
+  private static final String       TEMPLATE_PLACEHOLDER   = "myuniversity";
+
+
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
   private final Messages            messages          = Messages.getInstance();
 
@@ -43,9 +49,9 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
         String tenantId = TenantTool.calculateTenantId( headers.get(OKAPI_HEADER_TENANT) );
 
         String sqlFile = IOUtils.toString(
-          TenantAPI.class.getClassLoader().getResourceAsStream("delete_tenant.sql"));
+          TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_TENANT_TEMPLATE));
 
-        final String sql2run = sqlFile.replaceAll("myuniversity", tenantId);
+        final String sql2run = sqlFile.replaceAll(TEMPLATE_PLACEHOLDER, tenantId);
 
         /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
         PostgresClient.getInstance(context.owner()).runSQLFile(sql2run, false,
@@ -85,9 +91,9 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
         String tenantId = TenantTool.calculateTenantId( headers.get(OKAPI_HEADER_TENANT) );
 
         String sqlFile = IOUtils.toString(
-          TenantAPI.class.getClassLoader().getResourceAsStream("create_tenant.sql"));
+          TenantAPI.class.getClassLoader().getResourceAsStream(CREATE_TENANT_TEMPLATE));
 
-        String sql2run = sqlFile.replaceAll("myuniversity", tenantId);
+        String sql2run = sqlFile.replaceAll(TEMPLATE_PLACEHOLDER, tenantId);
 
         /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
         PostgresClient.getInstance(context.owner()).select(
@@ -127,15 +133,15 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
         String tenantId = TenantTool.calculateTenantId( headers.get(OKAPI_HEADER_TENANT) );
 
         String sqlFile = IOUtils.toString(
-          TenantAPI.class.getClassLoader().getResourceAsStream("create_tenant.sql"));
+          TenantAPI.class.getClassLoader().getResourceAsStream(CREATE_TENANT_TEMPLATE));
 
-        final String sql2run = sqlFile.replaceAll("myuniversity", tenantId);
+        final String sql2run = sqlFile.replaceAll(TEMPLATE_PLACEHOLDER, tenantId);
 
         /* is there an audit .sql file to load */
-        InputStream audit = TenantAPI.class.getClassLoader().getResourceAsStream("create_audit.sql");
+        InputStream audit = TenantAPI.class.getClassLoader().getResourceAsStream(AUDIT_TENANT_TEMPLATE);
         StringBuffer auditContent = new StringBuffer();
         if(audit != null){
-          auditContent.append(IOUtils.toString(audit).replace("myuniversity", tenantId));
+          auditContent.append(IOUtils.toString(audit).replace(TEMPLATE_PLACEHOLDER, tenantId));
         }
 
         /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */

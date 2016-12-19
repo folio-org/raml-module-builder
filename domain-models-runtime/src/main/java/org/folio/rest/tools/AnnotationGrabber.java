@@ -280,27 +280,6 @@ public class AnnotationGrabber {
     return retObject;
   }
 
-  // return the implementing class
-  private static String convert2Impl(String implDir, String interface2check) throws Exception {
-    ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
-    ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
-    StringBuffer sb = new StringBuffer();
-    classes.forEach(info -> {
-      Class<?>[] interfaces;
-      try {
-        interfaces = Class.forName(info.getName()).getInterfaces();
-        for (int i = 0; i < interfaces.length; i++) {
-          if (interfaces[i].getName().equals(interface2check)) {
-            sb.append(info.getName());
-          }
-        }
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    });
-    return sb.toString();
-  }
-
   public static void writeMappings(JsonObject json) throws Exception {
 
     Path path = Paths.get(System.getProperty("file_path") + "/" + PATH_MAPPING_FILE);

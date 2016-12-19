@@ -229,7 +229,7 @@
                 </systemProperty>
                 <systemProperty>
                   <key>json.type</key>
-                  <value>mongo</value>
+                  <value>postgres</value>
                 </systemProperty>
               </systemProperties>
             </configuration>
