@@ -175,7 +175,7 @@ public class PostgresClient {
     }
     else{
       log.info("Using schema: " + tenantId);
-      postgreSQLClientConfig.put(USERNAME, tenantId);
+      postgreSQLClientConfig.put(USERNAME, convertToPsqlStandard(tenantId));
       postgreSQLClientConfig.put(PASSWORD, tenantId);
     }
     log.info("Creating client with configuration:" + postgreSQLClientConfig.encode());
@@ -281,7 +281,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.queryWithParams("INSERT INTO " + tenantId + "." + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
+          connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
             new JsonArray().add(pojo2json(entity)), query -> {
               connection.close();
               if (query.failed()) {
@@ -309,7 +309,7 @@ public class PostgresClient {
     // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
     SQLConnection connection = ((io.vertx.core.Future<SQLConnection>) sqlConnection).result();
     try {
-      connection.queryWithParams("INSERT INTO " + tenantId + "." + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
+      connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
         new JsonArray().add(pojo2json(entity)), query -> {
           if (query.failed()) {
             replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -339,7 +339,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update(UPDATE + tenantId + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' WHERE " + ID_FIELD
+          connection.update(UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' WHERE " + ID_FIELD
               + "=" + id, query -> {
             connection.close();
             if (query.failed()) {
@@ -428,7 +428,7 @@ public class PostgresClient {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update(UPDATE + tenantId + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' " + sb.toString()
+          connection.update(UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' " + sb.toString()
               + " " + returning, query -> {
             connection.close();
             if (query.failed()) {
@@ -501,7 +501,7 @@ public class PostgresClient {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update(UPDATE + tenantId + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
+          connection.update(UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
               + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning, query -> {
             connection.close();
             if (query.failed()) {
@@ -535,7 +535,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update("DELETE FROM " + tenantId + "." + table + " WHERE " + ID_FIELD + "=" + id, query -> {
+          connection.update("DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " WHERE " + ID_FIELD + "=" + id, query -> {
             connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -572,7 +572,7 @@ public class PostgresClient {
           sb.append(filter.toString());
         }
         try {
-          connection.update("DELETE FROM " + tenantId + "." + table + sb.toString(), query -> {
+          connection.update("DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + sb.toString(), query -> {
             connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -598,7 +598,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update("DELETE FROM " + tenantId + "." + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
+          connection.update("DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
             + "@>'" + pojo2json(entity) + "' ", query -> {
             connection.close();
             if (query.failed()) {
@@ -639,7 +639,7 @@ public class PostgresClient {
           if (returnCount) {
             select = select + COUNT_CLAUSE;
           }
-          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + tenantId + "." + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
+          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
               + "@>'" + pojo2json(entity) + "' ", query -> {
             connection.close();
             if (query.failed()) {
@@ -704,7 +704,7 @@ public class PostgresClient {
           if (returnCount) {
             select = select + COUNT_CLAUSE;
           }
-          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + tenantId + "." + table + fromClauseFromCriteria + sb, query -> {
+          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + convertToPsqlStandard(tenantId) + "." + table + fromClauseFromCriteria + sb, query -> {
             connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -1155,6 +1155,10 @@ public class PostgresClient {
       postgresProcess.stop();
       embeddedMode = false;
     }
+  }
+
+  public static String convertToPsqlStandard(String tenantId){
+    return tenantId.toLowerCase();
   }
 
 }
