@@ -20,7 +20,13 @@ public class JobsClient {
         options.setKeepAlive(keepAlive);
         options.setDefaultHost(host);
         options.setDefaultPort(port);
-        httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);
+        io.vertx.core.Context context = io.vertx.core.Vertx.currentContext();
+        if(context == null){
+          httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);
+        }
+        else{
+          httpClient = io.vertx.core.Vertx.currentContext().owner().createHttpClient(options);
+        }
     }
 
     public JobsClient(String host, int port, String tenantId) {
@@ -36,75 +42,17 @@ public class JobsClient {
     }
 
     /**
-     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+"/bulks"+queryParams.toString()
+     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+""+queryParams.toString()
      * 
      */
-    public void postJobIdBulks(String jobId, String jobconfsId, String lang, org.folio.rest.jaxrs.model.Bulk Bulk, Handler<HttpClientResponse> responseHandler) {
+    public void putJobId(String jobId, String jobconfsId, String lang, org.folio.rest.jaxrs.model.Job Job, Handler<HttpClientResponse> responseHandler)
+        throws Exception
+    {
         StringBuilder queryParams = new StringBuilder("?");
         if(lang != null) {queryParams.append("lang="+lang);
         queryParams.append("&");}
         io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
-        buffer.appendString(org.folio.rest.tools.utils.JsonUtils.entity2Json(Bulk).encode());
-        io.vertx.core.http.HttpClientRequest request = httpClient.post("/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+"/bulks"+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Content-type", "application/json");
-        request.putHeader("Accept", "application/json,text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.putHeader("Content-Length", buffer.length()+"");
-        request.setChunked(true);
-        request.write(buffer);
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+""+queryParams.toString()
-     * 
-     */
-    public void getJobId(String jobId, String jobconfsId, String lang, Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        if(lang != null) {queryParams.append("lang="+lang);
-        queryParams.append("&");}
-        io.vertx.core.http.HttpClientRequest request = httpClient.get("/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+""+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Accept", "application/json,text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+"/bulks"+queryParams.toString()
-     * 
-     */
-    public void getJobIdBulks(String jobId, String jobconfsId, String lang, Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        if(lang != null) {queryParams.append("lang="+lang);
-        queryParams.append("&");}
-        io.vertx.core.http.HttpClientRequest request = httpClient.get("/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+"/bulks"+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Accept", "application/json,text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+""+queryParams.toString()
-     * 
-     */
-    public void putJobId(String jobId, String jobconfsId, String lang, org.folio.rest.jaxrs.model.Job Job, Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        if(lang != null) {queryParams.append("lang="+lang);
-        queryParams.append("&");}
-        io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
-        buffer.appendString(org.folio.rest.tools.utils.JsonUtils.entity2Json(Job).encode());
+        buffer.appendString(org.folio.rest.persist.PostgresClient.pojo2json(Job));
         io.vertx.core.http.HttpClientRequest request = httpClient.put("/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+""+queryParams.toString());
         request.handler(responseHandler);
         request.putHeader("Content-type", "application/json");
@@ -138,15 +86,61 @@ public class JobsClient {
     }
 
     /**
-     * Service endpoint "/jobs/jobconfs"+queryParams.toString()
+     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+"/bulks"+queryParams.toString()
      * 
      */
-    public void postJobconfs(String lang, org.folio.rest.jaxrs.model.JobConf JobConf, Handler<HttpClientResponse> responseHandler) {
+    public void postJobIdBulks(String jobId, String jobconfsId, String lang, org.folio.rest.jaxrs.model.Bulk Bulk, Handler<HttpClientResponse> responseHandler)
+        throws Exception
+    {
         StringBuilder queryParams = new StringBuilder("?");
         if(lang != null) {queryParams.append("lang="+lang);
         queryParams.append("&");}
         io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
-        buffer.appendString(org.folio.rest.tools.utils.JsonUtils.entity2Json(JobConf).encode());
+        buffer.appendString(org.folio.rest.persist.PostgresClient.pojo2json(Bulk));
+        io.vertx.core.http.HttpClientRequest request = httpClient.post("/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+"/bulks"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Content-type", "application/json");
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.putHeader("Content-Length", buffer.length()+"");
+        request.setChunked(true);
+        request.write(buffer);
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+"/bulks"+queryParams.toString()
+     * 
+     */
+    public void getJobIdBulks(String jobId, String jobconfsId, String lang, Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        if(lang != null) {queryParams.append("lang="+lang);
+        queryParams.append("&");}
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+"/bulks"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/jobs/jobconfs"+queryParams.toString()
+     * 
+     */
+    public void postJobconfs(String lang, org.folio.rest.jaxrs.model.JobConf JobConf, Handler<HttpClientResponse> responseHandler)
+        throws Exception
+    {
+        StringBuilder queryParams = new StringBuilder("?");
+        if(lang != null) {queryParams.append("lang="+lang);
+        queryParams.append("&");}
+        io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
+        buffer.appendString(org.folio.rest.persist.PostgresClient.pojo2json(JobConf));
         io.vertx.core.http.HttpClientRequest request = httpClient.post("/jobs/jobconfs"+queryParams.toString());
         request.handler(responseHandler);
         request.putHeader("Content-type", "application/json");
@@ -190,6 +184,68 @@ public class JobsClient {
     }
 
     /**
+     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+""+queryParams.toString()
+     * 
+     */
+    public void getJobId(String jobId, String jobconfsId, String lang, Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        if(lang != null) {queryParams.append("lang="+lang);
+        queryParams.append("&");}
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/jobs/jobconfs/"+jobconfsId+"/jobs/"+jobId+""+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs"+queryParams.toString()
+     * 
+     */
+    public void postJobconfsIdJobs(String jobconfsId, String lang, org.folio.rest.jaxrs.model.Job Job, Handler<HttpClientResponse> responseHandler)
+        throws Exception
+    {
+        StringBuilder queryParams = new StringBuilder("?");
+        if(lang != null) {queryParams.append("lang="+lang);
+        queryParams.append("&");}
+        io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
+        buffer.appendString(org.folio.rest.persist.PostgresClient.pojo2json(Job));
+        io.vertx.core.http.HttpClientRequest request = httpClient.post("/jobs/jobconfs/"+jobconfsId+"/jobs"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Content-type", "application/json");
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.putHeader("Content-Length", buffer.length()+"");
+        request.setChunked(true);
+        request.write(buffer);
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/jobs/jobconfs/"+jobconfsId+""+queryParams.toString()
+     * 
+     */
+    public void deleteJobconfsId(String jobconfsId, String lang, Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        if(lang != null) {queryParams.append("lang="+lang);
+        queryParams.append("&");}
+        io.vertx.core.http.HttpClientRequest request = httpClient.delete("/jobs/jobconfs/"+jobconfsId+""+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
      * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs"+queryParams.toString()
      * 
      */
@@ -221,58 +277,18 @@ public class JobsClient {
      * Service endpoint "/jobs/jobconfs/"+jobconfsId+""+queryParams.toString()
      * 
      */
-    public void deleteJobconfsId(String jobconfsId, String lang, Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        if(lang != null) {queryParams.append("lang="+lang);
-        queryParams.append("&");}
-        io.vertx.core.http.HttpClientRequest request = httpClient.delete("/jobs/jobconfs/"+jobconfsId+""+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Accept", "text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/jobs/jobconfs/"+jobconfsId+""+queryParams.toString()
-     * 
-     */
-    public void putJobconfsId(String jobconfsId, String lang, org.folio.rest.jaxrs.model.JobConf JobConf, Handler<HttpClientResponse> responseHandler) {
+    public void putJobconfsId(String jobconfsId, String lang, org.folio.rest.jaxrs.model.JobConf JobConf, Handler<HttpClientResponse> responseHandler)
+        throws Exception
+    {
         StringBuilder queryParams = new StringBuilder("?");
         if(lang != null) {queryParams.append("lang="+lang);
         queryParams.append("&");}
         io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
-        buffer.appendString(org.folio.rest.tools.utils.JsonUtils.entity2Json(JobConf).encode());
+        buffer.appendString(org.folio.rest.persist.PostgresClient.pojo2json(JobConf));
         io.vertx.core.http.HttpClientRequest request = httpClient.put("/jobs/jobconfs/"+jobconfsId+""+queryParams.toString());
         request.handler(responseHandler);
         request.putHeader("Content-type", "application/json");
         request.putHeader("Accept", "text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.putHeader("Content-Length", buffer.length()+"");
-        request.setChunked(true);
-        request.write(buffer);
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/jobs/jobconfs/"+jobconfsId+"/jobs"+queryParams.toString()
-     * 
-     */
-    public void postJobconfsIdJobs(String jobconfsId, String lang, org.folio.rest.jaxrs.model.Job Job, Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        if(lang != null) {queryParams.append("lang="+lang);
-        queryParams.append("&");}
-        io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
-        buffer.appendString(org.folio.rest.tools.utils.JsonUtils.entity2Json(Job).encode());
-        io.vertx.core.http.HttpClientRequest request = httpClient.post("/jobs/jobconfs/"+jobconfsId+"/jobs"+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Content-type", "application/json");
-        request.putHeader("Accept", "application/json,text/plain");
         if(tenantId != null){
          request.putHeader("Authorization", tenantId);
          request.putHeader("x-okapi-tenant", tenantId);

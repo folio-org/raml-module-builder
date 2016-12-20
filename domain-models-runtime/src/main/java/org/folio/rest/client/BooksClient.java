@@ -21,7 +21,13 @@ public class BooksClient {
         options.setKeepAlive(keepAlive);
         options.setDefaultHost(host);
         options.setDefaultPort(port);
-        httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);
+        io.vertx.core.Context context = io.vertx.core.Vertx.currentContext();
+        if(context == null){
+          httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);
+        }
+        else{
+          httpClient = io.vertx.core.Vertx.currentContext().owner().createHttpClient(options);
+        }
     }
 
     public BooksClient(String host, int port, String tenantId) {

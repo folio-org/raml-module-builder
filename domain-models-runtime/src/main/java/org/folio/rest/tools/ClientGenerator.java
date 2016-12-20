@@ -115,7 +115,14 @@ public class ClientGenerator {
       conBody.directStatement("options.setKeepAlive(keepAlive);");
       conBody.directStatement("options.setDefaultHost(host);");
       conBody.directStatement("options.setDefaultPort(port);");
-      conBody.directStatement("httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);");
+
+      conBody.directStatement("io.vertx.core.Context context = io.vertx.core.Vertx.currentContext();");
+      conBody.directStatement("if(context == null){");
+      conBody.directStatement("  httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);");
+      conBody.directStatement("}");
+      conBody.directStatement("else{");
+      conBody.directStatement("  httpClient = io.vertx.core.Vertx.currentContext().owner().createHttpClient(options);");
+      conBody.directStatement("}");
 
       /* constructor, init the httpClient */
       JMethod consructor2 = jc.constructor(JMod.PUBLIC);
