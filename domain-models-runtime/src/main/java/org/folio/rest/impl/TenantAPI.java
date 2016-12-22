@@ -162,6 +162,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               }
               else{
                 handlers.handle(io.vertx.core.Future.failedFuture(h.cause().getMessage()));
+                log.error(h.cause().getMessage(), h.cause());
                 return;
               }
               String sqlFile = IOUtils.toString(TenantAPI.class.getClassLoader().getResourceAsStream(

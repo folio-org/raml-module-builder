@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
+import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.LogUtil;
@@ -335,30 +336,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        try {
-          connection.update(UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' WHERE " + ID_FIELD
-              + "=" + id, query -> {
-            connection.close();
-            if (query.failed()) {
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
-            } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
-      } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
-      }
-    });
+    update(table, entity, DEFAULT_JSONB_FIELD_NAME, " WHERE " + ID_FIELD + "=" + id, false, replyHandler);
   }
 
   /**
@@ -416,19 +394,37 @@ public class PostgresClient {
    */
   public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
       throws Exception {
+    String where = null;
+    if(filter != null){
+      where = filter.toString();
+    }
+    update(table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
+  }
+
+  public void update(String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
+      throws Exception {
+    String where = "";
+    if(filter != null){
+      where = " WHERE " + filter.toString();
+    }
+    update(table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
+  }
+
+  public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
+      throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         StringBuilder sb = new StringBuilder();
-        if (filter != null) {
-          sb.append(filter.toString());
+        if (whereClause != null) {
+          sb.append(whereClause);
         }
         StringBuilder returning = new StringBuilder();
         if (returnUpdatedIds) {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update(UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = '" + pojo2json(entity) + "' " + sb.toString()
+          connection.update(UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = '" + pojo2json(entity) + "' " + whereClause
               + " " + returning, query -> {
             connection.close();
             if (query.failed()) {
@@ -523,6 +519,14 @@ public class PostgresClient {
     });
   }
 
+  public void delete(String table, CQLWrapper cql, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+    String where = "";
+    if(cql != null){
+      where = " WHERE " + cql.toString();
+    }
+    delete(table, where, false, replyHandler);
+  }
+
   /**
    * Delete based on id of record - the id is not in the json object but is a separate column
    * @param table
@@ -531,29 +535,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        try {
-          connection.update("DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " WHERE " + ID_FIELD + "=" + id, query -> {
-            connection.close();
-            if (query.failed()) {
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
-            } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
-      } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
-      }
-    });
+    delete(table, " WHERE " + ID_FIELD + "=" + id, false, replyHandler);
   }
 
   /**
@@ -564,15 +546,23 @@ public class PostgresClient {
    * @throws Exception
    */
   public void delete(String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+    StringBuilder sb = new StringBuilder();
+    if (filter != null) {
+      sb.append(filter.toString());
+    }
+    delete(table, sb.toString(), false, replyHandler);
+  }
+
+  public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+    delete(table, " WHERE " + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo2json(entity) + "' ", false, replyHandler);
+  }
+
+  private void delete(String table, String where, boolean dbPrefix, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        StringBuilder sb = new StringBuilder();
-        if (filter != null) {
-          sb.append(filter.toString());
-        }
         try {
-          connection.update("DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + sb.toString(), query -> {
+          connection.update("DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where, query -> {
             connection.close();
             if (query.failed()) {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -593,18 +583,24 @@ public class PostgresClient {
     });
   }
 
-  public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+  public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update("DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
-            + "@>'" + pojo2json(entity) + "' ", query -> {
+          String select = "SELECT ";
+          if (returnCount) {
+            select = select + COUNT_CLAUSE;
+          }
+          connection.query(select + fieldName + "," + ID_FIELD + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where,
+            query -> {
             connection.close();
             if (query.failed()) {
+              log.error(query.cause().getMessage(), query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount)));
             }
           });
         } catch (Exception e) {
@@ -614,7 +610,9 @@ public class PostgresClient {
           log.error(e.getMessage(), e);
           replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
         }
+
       } else {
+        log.error(res.cause().getMessage(), res.cause());
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
     });
@@ -631,35 +629,8 @@ public class PostgresClient {
    */
   //@Timer
   public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        try {
-          String select = "SELECT ";
-          if (returnCount) {
-            select = select + COUNT_CLAUSE;
-          }
-          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " WHERE " + DEFAULT_JSONB_FIELD_NAME
-              + "@>'" + pojo2json(entity) + "' ", query -> {
-            connection.close();
-            if (query.failed()) {
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
-            } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), entity.getClass(), returnCount)));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
-
-      } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
-      }
-    });
+    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
+      + "@>'" + pojo2json(entity) + "' ", returnCount, true, replyHandler);
   }
 
   /**
@@ -675,6 +646,16 @@ public class PostgresClient {
     throws Exception {
     get(table, clazz, filter, returnCount, true, replyHandler);
   }
+
+  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+      throws Exception {
+    String where = "";
+    if(filter != null){
+      where = " WHERE " + filter.toString();
+    }
+    get(table, clazz, DEFAULT_JSONB_FIELD_NAME, where, returnCount, true, replyHandler);
+  }
+
   /**
    * select query
    * @param table - table to query
@@ -685,45 +666,20 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
-      throws Exception {
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        StringBuilder sb = new StringBuilder();
-        StringBuilder fromClauseFromCriteria = new StringBuilder();
-        if (filter != null) {
-          sb.append(filter.toString());
-          fromClauseFromCriteria.append(filter.from2String());
-          if (fromClauseFromCriteria.length() > 0) {
-            fromClauseFromCriteria.insert(0, ",");
-          }
-        }
-        try {
-          String select = "SELECT ";
-          if (returnCount) {
-            select = select + COUNT_CLAUSE;
-          }
-          connection.query(select + DEFAULT_JSONB_FIELD_NAME + "," + ID_FIELD + " FROM " + convertToPsqlStandard(tenantId) + "." + table + fromClauseFromCriteria + sb, query -> {
-            connection.close();
-            if (query.failed()) {
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
-            } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-        }
-      } else {
-        log.error(res.cause().getMessage(), res.cause());
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+
+    StringBuilder sb = new StringBuilder();
+    StringBuilder fromClauseFromCriteria = new StringBuilder();
+    if (filter != null) {
+      sb.append(filter.toString());
+      fromClauseFromCriteria.append(filter.from2String());
+      if (fromClauseFromCriteria.length() > 0) {
+        fromClauseFromCriteria.insert(0, ",");
       }
-    });
+    }
+    get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
+      returnCount, setId, replyHandler);
   }
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {

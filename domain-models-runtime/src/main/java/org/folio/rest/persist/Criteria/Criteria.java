@@ -326,24 +326,27 @@ public class Criteria {
     return value;
   }
 
-  public void setValue(Object value) {
+  public Criteria setValue(Object value) {
     this.value = value;
+    return this;
   }
 
   public String getOperation() {
     return operation;
   }
 
-  public void setOperation(String operation) {
+  public Criteria setOperation(String operation) {
     this.operation = operation;
+    return this;
   }
 
   public boolean isJSONB() {
     return isJSONB;
   }
 
-  public void setJSONB(boolean isJSONB) {
+  public Criteria setJSONB(boolean isJSONB) {
     this.isJSONB = isJSONB;
+    return this;
   }
 
   public boolean isNotQuery() {
