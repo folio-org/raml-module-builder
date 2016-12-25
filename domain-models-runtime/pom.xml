@@ -3,7 +3,6 @@
   <artifactId>domain-models-runtime</artifactId>
   <description />
 
-
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
@@ -11,7 +10,14 @@
     <!-- <relativePath>../domain-models-poc</relativePath> -->
   </parent>
 
-
+  <repositories>
+    <repository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </repository>
+  </repositories>
+  
   <properties>
     <droolsVersion>6.4.0.Final</droolsVersion>
     <log_path>${basedir}/logs/api.log</log_path>
