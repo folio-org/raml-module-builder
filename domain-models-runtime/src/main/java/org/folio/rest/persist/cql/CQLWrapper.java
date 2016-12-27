@@ -45,9 +45,14 @@ public class CQLWrapper {
     this.offset = offset;
     return this;
   }
+
   @Override
   public String toString() {
-    return field.cql2pgJson(query) + " " + offset.toString() + " " + limit.toString();
+    String q = "";
+    if(query != null && field != null){
+      q = " WHERE " + field.cql2pgJson(query);
+    }
+    return  q + " " + offset.toString() + " " + limit.toString();
   }
 
 }

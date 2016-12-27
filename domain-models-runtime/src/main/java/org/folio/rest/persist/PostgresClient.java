@@ -406,7 +406,7 @@ public class PostgresClient {
       throws Exception {
     String where = "";
     if(filter != null){
-      where = " WHERE " + filter.toString();
+      where = filter.toString();
     }
     update(table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
   }
@@ -538,7 +538,7 @@ public class PostgresClient {
   public void delete(String table, CQLWrapper cql, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
     String where = "";
     if(cql != null){
-      where = " WHERE " + cql.toString();
+      where = cql.toString();
     }
     delete(table, where, false, replyHandler);
   }
@@ -685,7 +685,7 @@ public class PostgresClient {
       throws Exception {
     String where = "";
     if(filter != null){
-      where = " WHERE " + filter.toString();
+      where = filter.toString();
     }
     String fieldsStr = Arrays.toString(fields);
     get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, setId, replyHandler);
@@ -777,8 +777,11 @@ public class PostgresClient {
          * as well - also support the audit mode descrbed above. Note that currently only string valued columns
          * are supported - NOTE that the query must request any field it wants to get populated into the jsonb obj*/
         for (int j = 0; j < columnNamesCount; j++) {
-          if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME)) && !columnNames.get(j).equals(ID_FIELD) &&
-              !columnNames.get(j).equals("count")){
+          if(columnNames.get(j).equals("count")){
+            rowCount = tempList.get(i).getLong(columnNames.get(j)).intValue();
+          }
+          else if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME))
+              && !columnNames.get(j).equals(ID_FIELD)){
             try {
               o.getClass().getMethod(columnNametoCamelCaseWithset(columnNames.get(j)),
                 new Class[] { String.class }).invoke(o, new String[] { tempList.get(i).getString(columnNames.get(j)) });
@@ -793,7 +796,7 @@ public class PostgresClient {
         }
         list.add(o);
       } catch (Exception e) {
-        log.error(e);
+        log.error(e.getMessage(), e);
       }
     }
     ret[0] = list;
