@@ -18,6 +18,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -412,6 +413,7 @@ public class PostgresClient {
 
   public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
       throws Exception {
+    long start = System.nanoTime();
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -424,14 +426,20 @@ public class PostgresClient {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update(UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = '" + pojo2json(entity) + "' " + whereClause
-              + " " + returning, query -> {
+          String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = '" + pojo2json(entity) + "' " + whereClause
+              + " " + returning;
+          log.debug("query = " + q);
+          connection.update(q, query -> {
             connection.close();
             if (query.failed()) {
-              log.error(query.cause());
+              log.error(query.cause().getMessage(),query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+            }
+            long end = System.nanoTime();
+            if(log.isDebugEnabled()){
+              log.debug("timer: get " +q+ " (ns) " + (end-start));
             }
           });
         } catch (Exception e) {
@@ -485,6 +493,7 @@ public class PostgresClient {
    */
   public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
       Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+    long start = System.nanoTime();
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -497,13 +506,20 @@ public class PostgresClient {
           returning.append(RETURNING_IDS);
         }
         try {
-          connection.update(UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
-              + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning, query -> {
+          String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
+              + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning;
+          log.debug("query = " + q);
+          connection.update(q, query -> {
             connection.close();
             if (query.failed()) {
+              log.error(query.cause().getMessage(), query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+            }
+            long end = System.nanoTime();
+            if(log.isDebugEnabled()){
+              log.debug("timer: get " +q+ " (ns) " + (end-start));
             }
           });
         } catch (Exception e) {
@@ -558,16 +574,24 @@ public class PostgresClient {
   }
 
   private void delete(String table, String where, boolean dbPrefix, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+    long start = System.nanoTime();
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          connection.update("DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where, query -> {
+          String q = "DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+          log.debug("query = " + q);
+          connection.update(q, query -> {
             connection.close();
             if (query.failed()) {
+              log.error(query.cause().getMessage(), query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+            }
+            long end = System.nanoTime();
+            if(log.isDebugEnabled()){
+              log.debug("timer: get " +q+ " (ns) " + (end-start));
             }
           });
         } catch (Exception e) {
@@ -585,6 +609,8 @@ public class PostgresClient {
 
   public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean setId,
       Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+    long start = System.nanoTime();
+
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -593,7 +619,9 @@ public class PostgresClient {
           if (returnCount) {
             select = select + COUNT_CLAUSE;
           }
-          connection.query(select + fieldName + "," + ID_FIELD + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where,
+          String q = select + fieldName + "," + ID_FIELD + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+          log.debug("query = " + q);
+          connection.query(q,
             query -> {
             connection.close();
             if (query.failed()) {
@@ -601,6 +629,10 @@ public class PostgresClient {
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount)));
+            }
+            long end = System.nanoTime();
+            if(log.isDebugEnabled()){
+              log.debug("timer: get " +q+ " (ns) " + (end-start));
             }
           });
         } catch (Exception e) {
@@ -617,6 +649,8 @@ public class PostgresClient {
       }
     });
   }
+
+
 
   /**
    * pass in an entity that is fully / partially populated and the query will return all records matching the
@@ -647,13 +681,29 @@ public class PostgresClient {
     get(table, clazz, filter, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
       throws Exception {
     String where = "";
     if(filter != null){
       where = " WHERE " + filter.toString();
     }
-    get(table, clazz, DEFAULT_JSONB_FIELD_NAME, where, returnCount, true, replyHandler);
+    String fieldsStr = Arrays.toString(fields);
+    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, setId, replyHandler);
+  }
+
+  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+      throws Exception {
+    get(table, clazz, fields, filter, returnCount, true, replyHandler);
+  }
+
+  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+      throws Exception {
+    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, true, replyHandler);
+  }
+
+  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
+      throws Exception {
+    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, replyHandler);
   }
 
   /**
@@ -687,19 +737,58 @@ public class PostgresClient {
   }
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count, boolean setId) {
+    long start = System.nanoTime();
     Object[] ret = new Object[2];
     List<Object> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
+    List<String> columnNames = rs.getColumnNames();
+    int columnNamesCount = columnNames.size();
     int rowCount = rs.getNumRows();
     if (rowCount > 0 && count) {
       rowCount = rs.getResults().get(0).getInteger(0);
     }
+    /* an exception to having the jsonb column get mapped to the corresponding clazz is a case where the
+     * clazz has an jsonb field, for example an audit class which contains a field called
+     * jsonb - meaning it encapsulates the real object for example for auditing purposes
+     * (contains the jsonb object as well as some other fields). In such a
+     * case, do not map the clazz to the content of the jsonb - but rather set the jsonb named field of the clazz
+     * with the jsonb column value */
+    boolean isAuditFlavored = false;
+    try{
+      clazz.getField(DEFAULT_JSONB_FIELD_NAME);
+      isAuditFlavored = true;
+    }catch(NoSuchFieldException nse){}
+
     for (int i = 0; i < tempList.size(); i++) {
       try {
         Object jo = tempList.get(i).getValue(DEFAULT_JSONB_FIELD_NAME);
         Object id = tempList.get(i).getValue(ID_FIELD);
-        Object o = mapper.readValue(jo.toString(), clazz);
-        if(setId) {
+        Object o = null;
+        if(!isAuditFlavored){
+          o = mapper.readValue(jo.toString(), clazz);
+        }
+        else{
+          o = clazz.newInstance();
+        }
+        /* attempt to populate jsonb object with values from external columns - for example:
+         * if there is an update_date column in the record - try to populate a field updateDate in the
+         * jsonb object - this allows to use the DB for things like triggers to populate the update_date
+         * automatically, but still push them into the jsonb object - the json schema must declare this field
+         * as well - also support the audit mode descrbed above. Note that currently only string valued columns
+         * are supported - NOTE that the query must request any field it wants to get populated into the jsonb obj*/
+        for (int j = 0; j < columnNamesCount; j++) {
+          if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME)) && !columnNames.get(j).equals(ID_FIELD) &&
+              !columnNames.get(j).equals("count")){
+            try {
+              o.getClass().getMethod(columnNametoCamelCaseWithset(columnNames.get(j)),
+                new Class[] { String.class }).invoke(o, new String[] { tempList.get(i).getString(columnNames.get(j)) });
+            } catch (Exception e) {
+              log.warn("Unable to populate field " + columnNametoCamelCaseWithset(columnNames.get(j))
+                + " for object of type " + clazz.getName());
+            }
+          }
+        }
+        if(setId){
           o.getClass().getMethod("setId", new Class[] { String.class }).invoke(o, new String[] { id.toString() });
         }
         list.add(o);
@@ -709,6 +798,10 @@ public class PostgresClient {
     }
     ret[0] = list;
     ret[1] = rowCount;
+    long end = System.nanoTime();
+    if(log.isDebugEnabled()){
+      log.debug("timer: process results (ns) " + (end-start));
+    }
     return ret;
   }
 
@@ -1115,6 +1208,24 @@ public class PostgresClient {
 
   public static String convertToPsqlStandard(String tenantId){
     return tenantId.toLowerCase();
+  }
+
+  /**
+   * assumes column cames are all lower case with multi word column names
+   * separated by an '_'
+   * @param str
+   * @return
+   */
+  private String columnNametoCamelCaseWithset(String str){
+    StringBuilder sb = new StringBuilder(str);
+    sb.replace(0, 1, String.valueOf(Character.toUpperCase(sb.charAt(0))));
+    for (int i = 0; i < sb.length(); i++) {
+        if (sb.charAt(i) == '_') {
+            sb.deleteCharAt(i);
+            sb.replace(i, i+1, String.valueOf(Character.toUpperCase(sb.charAt(i))));
+        }
+    }
+    return "set"+sb.toString();
   }
 
 }
