@@ -654,7 +654,8 @@ public class PostgresClient {
 
   /**
    * pass in an entity that is fully / partially populated and the query will return all records matching the
-   * populated fields in the entity
+   * populated fields in the entity - note that this queries the jsonb object, so should not be used to query external
+   * fields
    *
    * @param table
    * @param entity

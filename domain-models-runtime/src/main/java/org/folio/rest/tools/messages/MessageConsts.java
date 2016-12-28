@@ -16,7 +16,9 @@ public enum MessageConsts implements MessageEnum {
   FileUploadError("10011"),
   NoRecordsUpdated("10012"),
   Timer("10013"),
-  DeletedCountError("10014");
+  DeletedCountError("10014"),
+  MissingFileName("10015"),
+  UnauthorizedUser("10016");
 
   private String code;
 
