@@ -17,7 +17,7 @@
       <url>https://repository.folio.org/repository/maven-folio</url>
     </repository>
   </repositories>
-  
+
   <properties>
     <droolsVersion>6.4.0.Final</droolsVersion>
     <log_path>${basedir}/logs/api.log</log_path>
