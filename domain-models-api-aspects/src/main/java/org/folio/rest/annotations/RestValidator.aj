@@ -1,5 +1,8 @@
 package org.folio.rest.annotations;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.Set;
 
@@ -8,13 +11,15 @@ import javax.validation.Validation;
 import javax.validation.ValidationException;
 import javax.validation.ValidatorFactory;
 import javax.validation.executable.ExecutableValidator;
+
 import org.aspectj.lang.reflect.MethodSignature;
 import org.aspectj.lang.annotation.SuppressAjWarnings;
 
 public aspect RestValidator {
 
   static private ValidatorFactory factory;
-
+  static final Logger log = LoggerFactory.getLogger(RestValidator.class);
+  
   static {
     factory = Validation.buildDefaultValidatorFactory();
   }
@@ -33,17 +38,15 @@ public aspect RestValidator {
 
     MethodSignature methodSignature = (MethodSignature) thisJoinPoint.getSignature();
 
-    System.out.println("Validating call: with args " + methodSignature.getMethod() + Arrays.toString(thisJoinPoint.getArgs()));
-
     String[] params = methodSignature.getParameterNames();
 
     Set<? extends ConstraintViolation<?>> validationErrors = getMethodValidator().validateParameters(thisJoinPoint.getThis(),
         methodSignature.getMethod(), thisJoinPoint.getArgs());
 
     if (validationErrors.isEmpty()) {
-      System.out.println("Valid call......");
+      log.debug("Valid call: with args " + methodSignature.getMethod() + Arrays.toString(thisJoinPoint.getArgs()));
     } else {
-      System.out.println("Invalid call......");
+      log.debug("Invalid call: with args " + methodSignature.getMethod() + Arrays.toString(thisJoinPoint.getArgs()));
       RuntimeException ex = buildValidationException(validationErrors, params);
       throw ex;
     }
