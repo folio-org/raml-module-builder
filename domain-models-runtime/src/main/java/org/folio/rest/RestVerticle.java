@@ -519,8 +519,13 @@ public class RestVerticle extends AbstractVerticle {
 
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         if (port == -1) {
+          /** we are here if port was not passed via cmd line */
           port = config().getInteger("http.port", 8081);
         }
+
+        /** in anycase set the port so it is available to others via the config() */
+        config().put("http.port", port);
+
         Integer p = port;
 
         //if client includes an Accept-Encoding header which includes
@@ -543,6 +548,15 @@ public class RestVerticle extends AbstractVerticle {
             if (result.failed()) {
               startFuture.fail(result.cause());
             } else {
+              try {
+                runPostDeployHook( res2 -> {
+                  if(!res2.succeeded()){
+                    log.error(res2.cause().getMessage(), res2.cause());
+                  }
+                });
+              } catch (Exception e) {
+                log.error(e.getMessage(), e);
+              }
               LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + p + ".");
               LogUtil.formatLogMessage(className, "start", "Documentation available at: " + "http://localhost:" + Integer.toString(p)
                 + "/apidocs/");
@@ -950,6 +964,26 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   /**
+   * ONE impl allowed
+   * @throws Exception
+   */
+  private void runPostDeployHook(Handler<AsyncResult<Boolean>> resultHandler) throws Exception {
+    try {
+      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".PostDeployVerticle", true);
+      for (int i = 0; i < aClass.size(); i++) {
+        Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
+        Method method = aClass.get(i).getMethod("init", paramArray);
+        method.invoke(aClass.get(i).newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
+        LogUtil.formatLogMessage(getClass().getName(), "runHook",
+          "One time hook called with implemented class " + "named " + aClass.get(i).getName());
+      }
+    } catch (ClassNotFoundException e) {
+      // no hook implemented, this is fine, just startup normally then
+      LogUtil.formatLogMessage(getClass().getName(), "runPostDeployHook", "no Post Deploy Hook implementation found, continuing with deployment");
+    }
+  }
+
+  /**
    * only one impl allowed
    * @param resultHandler
    * @throws Exception
@@ -984,15 +1018,18 @@ public class RestVerticle extends AbstractVerticle {
         if (param.startsWith("-Dhttp.port=")) {
           port = Integer.parseInt(param.split("=")[1]);
           LogUtil.formatLogMessage(className, "cmdProcessing", "port to listen on " + port);
-        } else if (param.startsWith("drools_dir=")) {
+        }
+        else if (param.startsWith("drools_dir=")) {
           droolsPath = param.split("=")[1];
           LogUtil.formatLogMessage(className, "cmdProcessing", "Drools rules file dir set to " + droolsPath);
-        } else if (param.startsWith("db_connection=")) {
+        }
+        else if (param.startsWith("db_connection=")) {
           String dbconnection = param.split("=")[1];
           PostgresClient.setConfigFilePath(dbconnection);
           PostgresClient.setIsEmbedded(false);
           LogUtil.formatLogMessage(className, "cmdProcessing", "Setting path to db config file....  " + dbconnection);
-        } else if (param.startsWith("embed_postgres=true")) {
+        }
+        else if (param.startsWith("embed_postgres=true")) {
           // allow setting config() from unit test mode which runs embedded
 
           LogUtil.formatLogMessage(className, "cmdProcessing", "Using embedded postgres... starting... ");
