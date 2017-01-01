@@ -10,7 +10,8 @@ traits:
   - history: !include traits/history.raml
   - dbname: !include traits/dbname.raml
   - secured: !include ../../../../../raml-util/traits/auth.raml
-
+  - secret-key: !include traits/secret-key.raml
+  
 /admin:
   /uploadmultipart:
     description: Uploads a file and saves it to a directory configured on the server
@@ -212,3 +213,11 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
+  /set_AES_key:
+    post:
+      description: Sets the AES secret key that the postgres config file password was encrypted with. The key will only be checked |
+        when the configuration file is read in and the DB connection is created
+      is: [secured, secret-key]
+      responses:
+        204:
+          description: "Secret key set"

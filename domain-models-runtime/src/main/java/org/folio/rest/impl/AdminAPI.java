@@ -26,6 +26,7 @@ import org.apache.commons.io.IOUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
@@ -348,5 +349,15 @@ public class AdminAPI implements AdminResource {
       });
 
   }
+
+  @Validate
+  @Override
+  public void postAdminSetAESKey(String key, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    AES.setSecretKey(key);
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminSetAESKeyResponse.withNoContent()));
+  }
+
 
 }

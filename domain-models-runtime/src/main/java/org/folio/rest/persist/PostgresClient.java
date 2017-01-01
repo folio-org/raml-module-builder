@@ -25,9 +25,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import javax.crypto.SecretKey;
+
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.security.AES;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.LogUtil;
@@ -151,6 +154,19 @@ public class PostgresClient {
     return connectionPool.get(tenantId);
   }
 
+  /* if the password in the config file is encrypted then use the secret key
+   * that should have been set via the admin api to decode it and use that to connect */
+  private String decodePassword(String password) throws Exception {
+    String key = AES.getSecretKey();
+    if(key != null){
+      SecretKey sk = AES.getSecretKeyObject(key);
+      String decoded = AES.decryptPassword(password, sk);
+      return decoded;
+    }
+    /* no key , so nothing to decode */
+    return password;
+  }
+
   private void init(Vertx vertx, String tenantId) throws Exception {
     this.tenantId = tenantId;
     this.vertx = vertx;
@@ -173,7 +189,7 @@ public class PostgresClient {
     }
     else if(tenantId.equals(DEFAULT_SCHEMA)){
       postgreSQLClientConfig.put(USERNAME, postgreSQLClientConfig.getString(USERNAME));
-      postgreSQLClientConfig.put(PASSWORD, postgreSQLClientConfig.getString(PASSWORD));
+      postgreSQLClientConfig.put(PASSWORD, decodePassword( postgreSQLClientConfig.getString(PASSWORD) ));
     }
     else{
       log.info("Using schema: " + tenantId);
