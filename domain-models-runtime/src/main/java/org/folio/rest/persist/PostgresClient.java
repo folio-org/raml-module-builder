@@ -24,6 +24,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
@@ -169,6 +171,22 @@ public class PostgresClient {
     return password;
   }
 
+  /** this function is intended to receive the tenant id as a password
+   * encrypt the tenant id with the secret key and use the encrypted
+   * password as the actual password for the tenant user in the DB.
+   * In order to then know the password - you need to take the tenant id
+   * and encrypt it with the secret key and then you have the tenant's password */
+  private String createPassword(String password) throws Exception {
+    String key = AES.getSecretKey();
+    if(key != null){
+      SecretKey sk = AES.getSecretKeyObject(key);
+      String newPassword = AES.encryptPasswordAsBase64(password, sk);
+      return newPassword;
+    }
+    /** no key , so nothing to encrypt, the password will be the tenant id */
+    return password;
+  }
+
   private void init(Vertx vertx, String tenantId) throws Exception {
 
     /** check if in pom.xml this prop is declared in order to work with encrypted
@@ -204,7 +222,8 @@ public class PostgresClient {
     else{
       log.info("Using schema: " + tenantId);
       postgreSQLClientConfig.put(USERNAME, convertToPsqlStandard(tenantId));
-      postgreSQLClientConfig.put(PASSWORD, tenantId);
+      postgreSQLClientConfig.put(PASSWORD, createPassword(tenantId));
+
     }
     log.info("Creating client with configuration:" + postgreSQLClientConfig.encode());
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
@@ -959,11 +978,20 @@ public class PostgresClient {
       boolean inFunction = false;
       boolean funcCompleteAddFuncAttributes = false;
       for (int i = 0; i < allLines.length; i++) {
+        if(allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
+          final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
+          final Matcher matcher = pattern.matcher(allLines[i]);
+          if(matcher.find()){
+            /** password argument indicated in the create user / role statement */
+            String newPassword = createPassword(matcher.group(1));
+            allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
+          }
+        }
         if(allLines[i].startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].startsWith("--")){
           //this is an sql comment, skip
           continue;
         }
-        else if(allLines[i].toUpperCase().matches("^(CREATE OR REPLACE FUNCTION|CREATE FUNCTION).*")){
+        else if(allLines[i].toUpperCase().matches("^\\s*(CREATE OR REPLACE FUNCTION|CREATE FUNCTION).*")){
           singleStatement.append(allLines[i]);
           inFunction = true;
         }
