@@ -155,7 +155,9 @@ public class PostgresClient {
   }
 
   /* if the password in the config file is encrypted then use the secret key
-   * that should have been set via the admin api to decode it and use that to connect */
+   * that should have been set via the admin api to decode it and use that to connect
+   * note that in embedded mode (such as unit tests) the postgres embedded is started before the
+   * verticle is deployed*/
   private String decodePassword(String password) throws Exception {
     String key = AES.getSecretKey();
     if(key != null){
@@ -168,6 +170,14 @@ public class PostgresClient {
   }
 
   private void init(Vertx vertx, String tenantId) throws Exception {
+
+    /** check if in pom.xml this prop is declared in order to work with encrypted
+     * passwords for postgres embedded - this is a dev mode only feature */
+    String secretKey = System.getProperty("postgres_secretkey_4_embeddedmode");
+    if(secretKey != null){
+      AES.setSecretKey(secretKey);
+    }
+
     this.tenantId = tenantId;
     this.vertx = vertx;
     log.info("Loading PostgreSQL configuration from " + getConfigFilePath());
