@@ -23,6 +23,7 @@ import javax.mail.internet.MimeMultipart;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
+import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
@@ -30,6 +31,7 @@ import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
+import org.folio.rest.tools.utils.TenantTool;
 
 public class AdminAPI implements AdminResource {
 
@@ -357,6 +359,30 @@ public class AdminAPI implements AdminResource {
 
     AES.setSecretKey(key);
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminSetAESKeyResponse.withNoContent()));
+  }
+
+  @Override
+  public void postAdminGetPassword(String key, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT) );
+
+    if(tenantId == null){
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+        PostAdminGetPasswordResponse.withPlainBadRequest("Tenant id is null")));
+    }
+    else{
+      try {
+        String password = AES.encryptPasswordAsBase64(tenantId, AES.getSecretKeyObject(key));
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminGetPasswordResponse.withPlainOK(password)));
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+          PostAdminGetPasswordResponse.withPlainInternalServerError(e.getMessage())));
+      }
+
+    }
+
   }
 
 

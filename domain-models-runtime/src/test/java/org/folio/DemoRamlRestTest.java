@@ -21,6 +21,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import javax.crypto.SecretKey;
 import javax.mail.BodyPart;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
@@ -32,6 +33,7 @@ import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
+import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -135,7 +137,7 @@ public class DemoRamlRestTest {
    * @param context
    *
    */
-  private void checkClientCode(TestContext context) {
+  private void checkClientCode(TestContext context)  {
     Async async = context.async(1);
     System.out.println("checkClientCode test");
     try {
@@ -155,7 +157,27 @@ public class DemoRamlRestTest {
           context.fail();
         }
         System.out.println("checkClientCode statusCode 1 " + reply.statusCode());
-        async.countDown();
+        String key;
+        try {
+          SecretKey sk = AES.generateSecretKey();
+          key = AES.convertSecretKeyToString(sk);
+          final String expected = AES.encryptPasswordAsBase64("abc", sk);
+          aClient.postGetPassword(key, reply2 -> {
+            reply2.bodyHandler(bodyHandler -> {
+              if(!expected.equals(bodyHandler.toString())){
+                context.fail("expected : " + expected + " got " + bodyHandler.toString());
+              }
+              else{
+                System.out.println("received expected password: " + expected);
+              }
+              async.countDown();
+            });
+
+          });
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+
       });
 
     }

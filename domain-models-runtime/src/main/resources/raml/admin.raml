@@ -221,3 +221,25 @@ traits:
       responses:
         204:
           description: "Secret key set"
+  /get_password:
+    post:
+      description: The API takes the secret key passed in and the x-okapi-tenant header and returns the DB password generated for |
+        that tenant's schema
+      is: [secured, secret-key]
+      responses:
+        200:
+          description: "returned password"
+          body:
+            text/plain:
+              example: "as35235+df+df/ggr"
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "unable to add <<resourcePathName|!singularize>>"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
