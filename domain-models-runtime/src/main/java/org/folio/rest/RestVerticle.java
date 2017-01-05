@@ -76,13 +76,13 @@ import org.kie.api.runtime.rule.FactHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
+import org.folio.rest.tools.ClientGenerator;
 
 public class RestVerticle extends AbstractVerticle {
 
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
-  public static final String        OKAPI_HEADER_TENANT             = "x-okapi-tenant";
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
@@ -781,7 +781,7 @@ public class RestVerticle extends AbstractVerticle {
     Consumer<Map.Entry<String,String>> consumer = entry -> {
       String headerKey = entry.getKey().toLowerCase();
       if(headerKey.startsWith(OKAPI_HEADER_PREFIX)){
-        if(headerKey.equalsIgnoreCase(OKAPI_HEADER_TENANT)){
+        if(headerKey.equalsIgnoreCase(ClientGenerator.OKAPI_HEADER_TENANT)){
           tenantId[0] = entry.getValue();
         }
         headers.put(headerKey, entry.getValue());
@@ -1307,7 +1307,7 @@ public class RestVerticle extends AbstractVerticle {
       endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.FileUploadError, ", file_name can not be null"), validRequest);
       return;
     }
-    String[] instId = new String[]{rc.request().getHeader(OKAPI_HEADER_TENANT)};
+    String[] instId = new String[]{rc.request().getHeader(ClientGenerator.OKAPI_HEADER_TENANT)};
     if(instId[0] == null){
       instId[0] = "";
     }

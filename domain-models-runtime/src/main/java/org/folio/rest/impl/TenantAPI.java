@@ -1,6 +1,6 @@
 package org.folio.rest.impl;
 
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.rest.tools.ClientGenerator.OKAPI_HEADER_TENANT;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;

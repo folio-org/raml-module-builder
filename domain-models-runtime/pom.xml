@@ -188,36 +188,13 @@
         <version>1.5.0</version>
         <executions>
           <execution>
-            <id>generate_interfaces</id>
+            <id>generate_client</id>
             <phase>generate-sources</phase>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-              <!-- <executable>java</executable> -->
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>raml_files</key>
-                  <value>${ramlfiles_path}</value>
-                </systemProperty>
-              </systemProperties>
-            </configuration>
-          </execution>
-          <execution>
-            <id>generate_client</id>
-            <phase>process-classes</phase>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
               <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
-              <!-- <executable>java</executable> -->
               <cleanupDaemonThreads>false</cleanupDaemonThreads>
               <systemProperties>
                 <systemProperty>
@@ -275,7 +252,6 @@
             <aspectLibrary>
               <groupId>org.folio</groupId>
               <artifactId>domain-models-api-aspects</artifactId>
-
             </aspectLibrary>
           </aspectLibraries>
         </configuration>

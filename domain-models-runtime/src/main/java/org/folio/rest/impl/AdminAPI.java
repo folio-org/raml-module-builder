@@ -28,6 +28,7 @@ import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.security.AES;
+import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
@@ -365,7 +366,7 @@ public class AdminAPI implements AdminResource {
   public void postAdminGetPassword(String key, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
-    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT) );
+    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
 
     if(tenantId == null){
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
