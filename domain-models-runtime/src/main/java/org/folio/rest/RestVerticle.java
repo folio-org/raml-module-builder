@@ -305,13 +305,9 @@ public class RestVerticle extends AbstractVerticle {
 
                     HttpServerRequest request = rc.request();
 
-                    //whether framework should handle the request here or pass it on to an implementing function
-                    boolean handleInternally = false; // handleInterally(request);
-
                     //check that the accept and content-types passed in the header of the request
                     //are as described in the raml
                     checkAcceptContentType(produces, consumes, rc, validRequest);
-
 
                     // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
                     //to the requested URL - array will be populated by parseParams() function
@@ -338,8 +334,7 @@ public class RestVerticle extends AbstractVerticle {
 
                     if (validRequest[0]) {
 
-                      // check if we are dealing with a file upload , currently only multipart/form-data content-type support
-                      // or a function which requested data streamed to it - currently assume that application/octet is used
+                      // check if we are dealing with a file upload , currently only multipart/form-data and application/octet
                       //in the raml definition for such a function
                       final boolean[] isContentUpload = new boolean[] { false };
                       final int[] uploadParamPosition = new int[] { -1 };
@@ -359,19 +354,11 @@ public class RestVerticle extends AbstractVerticle {
                       });
 
                       /**
-                       * handle uploads requested from the admin interface by streaming them to the disk
-                       * and do not pass to an implementing function
-                       */
-                      if (isContentUpload[0] && handleInternally) {
-                        internalUploadService(rc, validRequest);
-                      }
-
-                      /**
                        * file upload requested (multipart/form-data) but the url is not to the /admin/upload
                        * meaning, an implementing module is using its own upload handling, so read the content and
                        * pass to implementing function just like any other call
                        */
-                      if (isContentUpload[0] && !handleInternally && !streamData) {
+                      if (isContentUpload[0] && !streamData) {
 
                         //if file upload - set needed handlers
                         // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
@@ -438,7 +425,7 @@ public class RestVerticle extends AbstractVerticle {
 
                       }
                       else{
-                        if (validRequest[0] && !handleInternally) {
+                        if (validRequest[0]) {
                           //if request is valid - invoke it
                           try {
                             invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
@@ -975,7 +962,7 @@ public class RestVerticle extends AbstractVerticle {
         Method method = aClass.get(i).getMethod("init", paramArray);
         method.invoke(aClass.get(i).newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
         LogUtil.formatLogMessage(getClass().getName(), "runHook",
-          "One time hook called with implemented class " + "named " + aClass.get(i).getName());
+          "Post Deploy Hook called with implemented class " + "named " + aClass.get(i).getName());
       }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
