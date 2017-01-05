@@ -21,6 +21,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import javax.crypto.SecretKey;
 import javax.mail.BodyPart;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
@@ -32,6 +33,7 @@ import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
+import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -155,7 +157,7 @@ public class DemoRamlRestTest {
           context.fail();
         }
         System.out.println("checkClientCode statusCode 1 " + reply.statusCode());
-/*        String key;
+        String key;
         try {
           SecretKey sk = AES.generateSecretKey();
           key = AES.convertSecretKeyToString(sk);
@@ -174,7 +176,7 @@ public class DemoRamlRestTest {
           });
         } catch (Exception e) {
           e.printStackTrace();
-        }*/
+        }
         async.countDown();
 
       });
