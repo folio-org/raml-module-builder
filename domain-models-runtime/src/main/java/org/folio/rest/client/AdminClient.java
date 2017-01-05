@@ -46,12 +46,29 @@ public class AdminClient {
     }
 
     /**
-     * Service endpoint "/admin/postgres_table_access_stats"+queryParams.toString()
+     * Service endpoint "/admin/set_AES_key"+queryParams.toString()
      * 
      */
-    public void getPostgresTableAccessStats(Handler<HttpClientResponse> responseHandler) {
+    public void postSetAESKey(String key, Handler<HttpClientResponse> responseHandler) {
         StringBuilder queryParams = new StringBuilder("?");
-        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/postgres_table_access_stats"+queryParams.toString());
+        if(key != null) {queryParams.append("key="+key);
+        queryParams.append("&");}
+        io.vertx.core.http.HttpClientRequest request = httpClient.post("/admin/set_AES_key"+queryParams.toString());
+        request.handler(responseHandler);
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/admin/cache_hit_rates"+queryParams.toString()
+     * 
+     */
+    public void getCacheHitRates(Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/cache_hit_rates"+queryParams.toString());
         request.handler(responseHandler);
         request.putHeader("Accept", "application/json,text/plain");
         if(tenantId != null){
@@ -72,6 +89,89 @@ public class AdminClient {
         io.vertx.core.http.HttpClientRequest request = httpClient.post("/admin/get_password"+queryParams.toString());
         request.handler(responseHandler);
         request.putHeader("Accept", "text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/admin/table_index_usage"+queryParams.toString()
+     * 
+     */
+    public void getTableIndexUsage(Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/table_index_usage"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/admin/slow_queries"+queryParams.toString()
+     * 
+     */
+    public void getSlowQueries(int querytimerunning, Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        queryParams.append("querytimerunning="+querytimerunning);
+        queryParams.append("&");
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/slow_queries"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/admin/importSQL"+queryParams.toString()
+     * 
+     */
+    public void postImportSQL(InputStream inputStream, Handler<HttpClientResponse> responseHandler)
+        throws IOException
+    {
+        StringBuilder queryParams = new StringBuilder("?");
+        io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
+        java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
+        byte[] buffer1 = new byte[1024];
+        int length;
+
+        while ((length = inputStream.read(buffer1)) != -1) {
+        result.write(buffer1, 0, length);
+        }
+        buffer.appendBytes(result.toByteArray());
+        io.vertx.core.http.HttpClientRequest request = httpClient.post("/admin/importSQL"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Content-type", "application/octet-stream");
+        request.putHeader("Accept", "text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.putHeader("Content-Length", buffer.length()+"");
+        request.setChunked(true);
+        request.write(buffer);
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/admin/postgres_table_size"+queryParams.toString()
+     * 
+     */
+    public void getPostgresTableSize(String dbname, Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        if(dbname != null) {queryParams.append("dbname="+dbname);
+        queryParams.append("&");}
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/postgres_table_size"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "application/json,text/plain");
         if(tenantId != null){
          request.putHeader("Authorization", tenantId);
          request.putHeader("x-okapi-tenant", tenantId);
@@ -120,55 +220,6 @@ public class AdminClient {
     }
 
     /**
-     * Service endpoint "/admin/postgres_load"+queryParams.toString()
-     * 
-     */
-    public void getPostgresLoad(String dbname, Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        if(dbname != null) {queryParams.append("dbname="+dbname);
-        queryParams.append("&");}
-        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/postgres_load"+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Accept", "application/json,text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/admin/importSQL"+queryParams.toString()
-     * 
-     */
-    public void postImportSQL(InputStream inputStream, Handler<HttpClientResponse> responseHandler)
-        throws IOException
-    {
-        StringBuilder queryParams = new StringBuilder("?");
-        io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();
-        java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();
-        byte[] buffer1 = new byte[1024];
-        int length;
-
-        while ((length = inputStream.read(buffer1)) != -1) {
-        result.write(buffer1, 0, length);
-        }
-        buffer.appendBytes(result.toByteArray());
-        io.vertx.core.http.HttpClientRequest request = httpClient.post("/admin/importSQL"+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Content-type", "application/octet-stream");
-        request.putHeader("Accept", "text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.putHeader("Content-Length", buffer.length()+"");
-        request.setChunked(true);
-        request.write(buffer);
-        request.end();
-    }
-
-    /**
      * Service endpoint "/admin/postgres_active_sessions"+queryParams.toString()
      * 
      */
@@ -187,83 +238,30 @@ public class AdminClient {
     }
 
     /**
-     * Service endpoint "/admin/postgres_table_size"+queryParams.toString()
+     * Service endpoint "/admin/postgres_table_access_stats"+queryParams.toString()
      * 
      */
-    public void getPostgresTableSize(String dbname, Handler<HttpClientResponse> responseHandler) {
+    public void getPostgresTableAccessStats(Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/postgres_table_access_stats"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/admin/postgres_load"+queryParams.toString()
+     * 
+     */
+    public void getPostgresLoad(String dbname, Handler<HttpClientResponse> responseHandler) {
         StringBuilder queryParams = new StringBuilder("?");
         if(dbname != null) {queryParams.append("dbname="+dbname);
         queryParams.append("&");}
-        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/postgres_table_size"+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Accept", "application/json,text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/admin/set_AES_key"+queryParams.toString()
-     * 
-     */
-    public void postSetAESKey(String key, Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        if(key != null) {queryParams.append("key="+key);
-        queryParams.append("&");}
-        io.vertx.core.http.HttpClientRequest request = httpClient.post("/admin/set_AES_key"+queryParams.toString());
-        request.handler(responseHandler);
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/admin/jstack"+queryParams.toString()
-     * 
-     */
-    public void putJstack(Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        io.vertx.core.http.HttpClientRequest request = httpClient.put("/admin/jstack"+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Accept", "text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/admin/loglevel"+queryParams.toString()
-     * 
-     */
-    public void getLoglevel(Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/loglevel"+queryParams.toString());
-        request.handler(responseHandler);
-        request.putHeader("Accept", "application/json,text/plain");
-        if(tenantId != null){
-         request.putHeader("Authorization", tenantId);
-         request.putHeader("x-okapi-tenant", tenantId);
-        }
-        request.end();
-    }
-
-    /**
-     * Service endpoint "/admin/loglevel"+queryParams.toString()
-     * 
-     */
-    public void putLoglevel(org.folio.rest.jaxrs.resource.AdminResource.Level level, String java_package, Handler<HttpClientResponse> responseHandler) {
-        StringBuilder queryParams = new StringBuilder("?");
-        if(level != null) {queryParams.append("level="+level.toString());
-        queryParams.append("&");}
-        if(java_package != null) {queryParams.append("java_package="+java_package);
-        queryParams.append("&");}
-        io.vertx.core.http.HttpClientRequest request = httpClient.put("/admin/loglevel"+queryParams.toString());
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/postgres_load"+queryParams.toString());
         request.handler(responseHandler);
         request.putHeader("Accept", "application/json,text/plain");
         if(tenantId != null){
@@ -308,6 +306,58 @@ public class AdminClient {
     }
 
     /**
+     * Service endpoint "/admin/loglevel"+queryParams.toString()
+     * 
+     */
+    public void getLoglevel(Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        io.vertx.core.http.HttpClientRequest request = httpClient.get("/admin/loglevel"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/admin/jstack"+queryParams.toString()
+     * 
+     */
+    public void putJstack(Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        io.vertx.core.http.HttpClientRequest request = httpClient.put("/admin/jstack"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
+     * Service endpoint "/admin/loglevel"+queryParams.toString()
+     * 
+     */
+    public void putLoglevel(org.folio.rest.jaxrs.resource.AdminResource.Level level, String java_package, Handler<HttpClientResponse> responseHandler) {
+        StringBuilder queryParams = new StringBuilder("?");
+        if(level != null) {queryParams.append("level="+level.toString());
+        queryParams.append("&");}
+        if(java_package != null) {queryParams.append("java_package="+java_package);
+        queryParams.append("&");}
+        io.vertx.core.http.HttpClientRequest request = httpClient.put("/admin/loglevel"+queryParams.toString());
+        request.handler(responseHandler);
+        request.putHeader("Accept", "application/json,text/plain");
+        if(tenantId != null){
+         request.putHeader("Authorization", tenantId);
+         request.putHeader("x-okapi-tenant", tenantId);
+        }
+        request.end();
+    }
+
+    /**
      * Close the client. Closing will close down any pooled connections. Clients should always be closed after use.
      * 
      */
@@ -316,7 +366,7 @@ public class AdminClient {
     }
 
     public String checksum() {
-        return "0c62495f2bbfb3318379bccb2e998f42";
+        return "6964bb3035b128a7179367c2f918f5f9";
     }
 
 }

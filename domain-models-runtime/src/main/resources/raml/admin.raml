@@ -11,6 +11,7 @@ traits:
   - dbname: !include traits/dbname.raml
   - secured: !include ../../../../../raml-util/traits/auth.raml
   - secret-key: !include traits/secret-key.raml
+  - slow-query: !include traits/slow-query.raml
   
 /admin:
   /uploadmultipart:
@@ -205,6 +206,54 @@ traits:
         200:
           description: |
             Returns info for every table in format - table | table size | index size
+          body:
+            application/json:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /table_index_usage:
+    get:
+      description: table index usage rates per table
+      is: [secured]
+      responses:
+        200:
+          description: |
+            Returns index usage info for every table
+          body:
+            application/json:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /cache_hit_rates:
+    get:
+      description: cache hit rates
+      is: [secured]
+      responses:
+        200:
+          description: |
+            cache hit rates
+          body:
+            application/json:
+              example: "Text....."
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /slow_queries:
+    get:
+      description: Check for currently running queries that have been executing longer than X seconds
+      is: [secured, slow-query]
+      responses:
+        200:
+          description: |
+            List of slow queries
           body:
             application/json:
               example: "Text....."
