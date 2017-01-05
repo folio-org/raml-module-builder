@@ -11,24 +11,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
-
-import org.apache.commons.codec.digest.DigestUtils;
-import org.folio.rest.RestVerticle;
 
 import com.sun.codemodel.JBlock;
 import com.sun.codemodel.JClass;
@@ -48,6 +40,7 @@ public class ClientGenerator {
   public static final String  PATH_ANNOTATION        = "javax.ws.rs.Path";
   public static final String  CLIENT_CLASS_SUFFIX    = "Client";
   public static final String  PATH_TO_GENERATE_TO    = "/src/main/java/";
+  public static final String  OKAPI_HEADER_TENANT = "x-okapi-tenant";
 
   /* Creating java code model classes */
   JCodeModel jCodeModel = new JCodeModel();
@@ -239,7 +232,7 @@ public class ClientGenerator {
     /* push tenant id into x-okapi-tenant and authorization headers for now */
     body.directStatement("if(tenantId != null){");
     body.directStatement(" request.putHeader(\"Authorization\", tenantId);");
-    body.directStatement(" request.putHeader(\""+RestVerticle.OKAPI_HEADER_TENANT+"\", tenantId);");
+    body.directStatement(" request.putHeader(\""+OKAPI_HEADER_TENANT+"\", tenantId);");
     body.directStatement("}");
     /* add response handler to each function */
     JClass handler = jCodeModel.ref(Handler.class).narrow(HttpClientResponse.class);
@@ -402,77 +395,8 @@ public class ClientGenerator {
   }
 
   public void generateClass(JsonObject classSpecificMapping) throws IOException{
-
-    Map masterMap = sortJson(classSpecificMapping);
-
-    String checksum = checksum(masterMap);
-
-    /* add a close client function */
-    generateCloseClient();
-
-    /* add checksum function to the class */
-    createCheckSum(checksum);
-
-    /* check if the class has been changed - if not do not generate */
-    boolean generate = false;
-    try {
-      /* look for an existing class and check its checksum to see if changes were made */
-      Class previousClazz = Class.forName("org.folio.rest.client."+this.className+CLIENT_CLASS_SUFFIX);
-      Object o = previousClazz.newInstance();
-      Method m = previousClazz.getDeclaredMethod("checksum", null);
-      Object returnedChecksum = m.invoke(o, (Object[]) null);
-      if(((String)returnedChecksum).equals(checksum)){
-        generate = false;
-      }
-      else{
-        generate = true;
-        System.out.println("Original checksum: "+(String)returnedChecksum + ", new checksum: "+ checksum);
-      }
-    }
-    catch(Exception ee){
-      //old version of class
-      generate = true;
-    }
     String genPath = System.getProperty("project.basedir") + PATH_TO_GENERATE_TO;
-
-    System.out.println("generate to " + genPath + "  " + (new File(genPath).exists() && generate));
-    if(new File(genPath).exists() && generate){
-      /* Building class at given location */
-      System.out.println("generate to " + genPath);
-      jCodeModel.build(new File(genPath));
-    }
-  }
-
-  /**
-   * @param classSpecificMapping
-   * @return
-   */
-  private Map sortJson(JsonObject classSpecificMapping) {
-    Map masterMap = new TreeMap();
-    Map<String, Object> treeMap = new TreeMap<String, Object>(classSpecificMapping.getMap());
-    /* sort top level elements in json */
-    Iterator<Entry<String, Object>> it2 = treeMap.entrySet().iterator();
-    while (it2.hasNext()) {
-      Map.Entry<java.lang.String, java.lang.Object> entry1 = it2.next();
-      if(entry1.getValue() instanceof JsonArray){
-        List list = ((JsonArray)entry1.getValue()).getList();
-        Collections.sort(list, comperator);
-        masterMap.put(entry1.getKey(), list);
-      }
-      else{
-        masterMap.put(entry1.getKey(), entry1.getValue());
-      }
-    }
-    return masterMap;
-  }
-
-  /**
-   * @param checksum
-   */
-  private void createCheckSum(String checksum) {
-    JMethod jmCreate = jc.method(JMod.PUBLIC, String.class, "checksum");
-    JBlock body = jmCreate.body();
-    body.directStatement("return \"" +checksum+ "\";");
+    jCodeModel.build(new File(genPath));   
   }
 
   private static String replaceLast(String string, String substring, String replacement) {
@@ -481,21 +405,4 @@ public class ClientGenerator {
       return string;
     return string.substring(0, index) + replacement + string.substring(index + substring.length());
   }
-
-  private static <K, V> String checksum(Map<K, V> map) {
-    StringBuilder sb = new StringBuilder();
-    for (Map.Entry<K, V> entry : map.entrySet()) {
-      sb.append(entry.getKey()).append(entry.getValue());
-    }
-    return DigestUtils.md5Hex(sb.toString());
-  }
-
-  public static Comparator<JsonObject> comperator = new Comparator<JsonObject>() {
-
-    @Override
-    public int compare(JsonObject st1, JsonObject st2) {
-      return (st1.getString("function").compareTo(st2.getString("function")));
-    }
-  };
-
 }

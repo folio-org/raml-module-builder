@@ -24,7 +24,7 @@
     <aspectj.version>1.8.9</aspectj.version>
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
-    <ramlfiles_path>${basedir}/../domain-models-api-interfaces/src/main/resources/raml</ramlfiles_path>
+    <ramlfiles_path>${basedir}/../domain-models-runtime/src/main/resources/raml</ramlfiles_path>
     <!-- not supported yet the interface package is currently hard coded when
     scanning a project to find the interface implementation -->
     <interface_package>com.folio.rest.jaxrs</interface_package>
