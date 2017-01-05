@@ -161,6 +161,32 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>1.4.1</version>
+        <executions>
+          <execution>
+            <id>enforce-java</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                 <requireMavenVersion>
+                  <message>Maven >= 3.3 required</message>
+                  <version>3.3</version>
+                </requireMavenVersion>
+                <requireJavaVersion>
+                  <message>JDK >= 1.8.0-111 required for Let's Encrypt certificate of https://repository.folio.org/ :
+                    https://stackoverflow.com/questions/34110426/does-java-support-lets-encrypt-certificates</message>
+                  <version>1.8.0-111</version>
+                </requireJavaVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
         <version>2.5.3</version>
         <configuration>
