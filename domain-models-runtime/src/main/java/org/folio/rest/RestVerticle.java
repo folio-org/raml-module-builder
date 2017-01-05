@@ -83,6 +83,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
+  public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
