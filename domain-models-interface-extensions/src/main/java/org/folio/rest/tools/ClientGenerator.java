@@ -249,6 +249,25 @@ public class ClientGenerator {
 
   }
 
+  private void addParameter(JBlock methodBody, String valueName, Boolean encode, Boolean simple) {
+    if (!simple) {
+      methodBody.directStatement("if (" + valueName + " != null) {");
+    }
+    methodBody.directStatement("  queryParams.append(\"" + valueName + "=\");");
+    if (encode) {
+      methodBody.directStatement("  try {");
+      methodBody.directStatement("    queryParams.append(java.net.URLEncoder.encode(" + valueName + ", \"UTF-8\"));");
+      methodBody.directStatement("  } catch (Exception e) {");
+      methodBody.directStatement("  }");
+    } else {
+      methodBody.directStatement("  queryParams.append(" + valueName + ");");
+    }
+    methodBody.directStatement("  queryParams.append(\"&\");");
+    if (!simple) {
+      methodBody.directStatement("}");
+    }
+  }
+
   /**
    * @param methodName
    * @return
@@ -354,40 +373,29 @@ public class ClientGenerator {
       try {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
-          methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+");");
-          methodBody.directStatement("queryParams.append(\"&\");}");
-
+          addParameter(methodBody, valueName, true, false);
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
-          methodBody.directStatement("queryParams.append(\""+valueName+"=\"+"+valueName+");");
-          methodBody.directStatement("queryParams.append(\"&\");");
-
+          addParameter(methodBody, valueName, false, true);
         } else if (valueType.contains("boolean")) {
           method.param(boolean.class, valueName);
-          methodBody.directStatement("queryParams.append(\""+valueName+"=\"+"+valueName+");");
-          methodBody.directStatement("queryParams.append(\"&\");");
-
+          addParameter(methodBody, valueName, false, true);
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
-          methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+");");
-          methodBody.directStatement("queryParams.append(\"&\");}");
-
+          addParameter(methodBody, valueName, false, false);
         } else { // enum object type
           try {
             String enumClazz = replaceLast(valueType, ".", "$");
             Class<?> enumClazz1 = Class.forName(enumClazz);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
-              methodBody.directStatement("if("+valueName+" != null) {queryParams.append(\""+valueName+"=\"+"+valueName+".toString());");
-              methodBody.directStatement("queryParams.append(\"&\");}");
-
+              addParameter(methodBody, valueName, false, false);
             }
           } catch (Exception ee) {
             ee.printStackTrace();
           }
         }
-      }
-      catch(Exception e){
+      } catch (Exception e) {
         e.printStackTrace();
       }
     }
