@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import com.google.common.io.ByteStreams;
 
 import io.vertx.core.json.JsonObject;
+import java.io.InputStream;
 
 public class LoadConfs {
 
@@ -27,7 +28,12 @@ public class LoadConfs {
         }
       }
       if(loadDefault){
-        jsonData = ByteStreams.toByteArray(getClass().getResourceAsStream(configFile));
+          InputStream is = getClass().getResourceAsStream(configFile);
+          if(is != null) {
+            jsonData = ByteStreams.toByteArray(is);
+          } else {
+            return null;
+          }
       }
       return new JsonObject(new String(jsonData));
     } catch (Exception e) {
