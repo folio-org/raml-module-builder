@@ -176,9 +176,11 @@
                   <version>3.3</version>
                 </requireMavenVersion>
                 <requireJavaVersion>
-                  <message>JDK >= 1.8.0-111 required for Let's Encrypt certificate of https://repository.folio.org/ :
-                    https://stackoverflow.com/questions/34110426/does-java-support-lets-encrypt-certificates</message>
-                  <version>1.8.0-111</version>
+                  <message>
+                    JDK >= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
+                    http://dev.folio.org/doc/troubleshooting#missing-certificate-authority-for-lets-encrypt
+                  </message>
+                  <version>1.8.0-101</version>
                 </requireJavaVersion>
               </rules>
             </configuration>
