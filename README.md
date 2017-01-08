@@ -858,9 +858,50 @@ user: username
 password: password
 ```
 
-### Tenant API
+### Securing DB Configuration file
 
-The Postgres Client support in the RMB is schema specific, meaning, it expects every tenant to be represented by its own schema. The RMB exposes 3 APIs to facilitate the creation of schemas per tenant. Post, Delete, and 'check existance' of a tenant schema.
+As previously mentioned, the Postgres Client supplied by the RMB looks for a file called `postgres-conf.json`. However, leaving a file which contains the DB password to a superuser in plain text on the server is not a good idea. It is possible to encrypt the password in the file. The encryption should be an AES encryption (symmetric block cipher). This encryption is done with a secret key. 
+
+Meaning password in plain text + secret key = encrypted password
+
+The RMB comes with an AES class that allows generating secret keys, encrypting and decrypting them, https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/security/AES.java 
+
+Note the use of this class is optional, a module can:
+ -  Generate a key
+ -  Encrypt a password
+ - Include that password in the config file
+
+To work with an encrypted password the RMB exposes an API that can be used to set the secret key (stored only in memory). When creating the DB connection the RMB will check to see if the secret key has been set. If the secret key has been set the RMB will decrypt the password with the secret key, and use the decrypted password to connect to the DB with. Otherwise it will assume an un-encrypted password, and will connect using that password as is.
+A module can also set the secret key via the static method `AES.setSecretKey(mykey)`
+
+A good way for a module to set the secret key is by using the post deployment hook interface in the RMB.
+
+```sh
+public class InitConfigService implements PostDeployVerticle {
+  @Override
+  public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {
+    System.out.println("Getting secret key to decode DB password.");
+    //** hard code the secret key  - in production env - read from a secure place *//
+    String secretKey = "b2%2BS%2BX4F/NFys/0jMaEG1A";
+    int port = context.config().getInteger("http.port");
+    AdminClient ac = new AdminClient("localhost", port, null);
+    ac.postSetAESKey(secretKey, reply -> {
+      if(reply.statusCode() == 204){
+        handler.handle(io.vertx.core.Future.succeededFuture(true));
+      }
+      else{
+        handler.handle(io.vertx.core.Future.failedFuture(reply.statusCode() + ", " + reply.statusMessage()));
+      }
+    });
+    handler.handle(io.vertx.core.Future.succeededFuture(true));
+  }
+}
+```
+
+
+## Tenant API
+
+The Postgres Client support in the RMB is schema specific, meaning, it expects every tenant to be represented by its own schema. The RMB exposes 3 APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existance' of a tenant schema. Note that the use of this API is optional. 
 
 The RAML defining the API:
 
@@ -874,6 +915,20 @@ An example of such a file can be found in the configuration module:
 https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/resources/template_create_tenant.sql
 
 Notice the *myuniversity* placeholders in the file. The x-okapi-tenant header passed in to the API call will be used to get the tenant id. That tenant id will replace the *myuniversity* placeholder. Additional placeholders may be added in the future.
+
+##### Encrypting Tenant passwords
+
+As of now (this may change in the future), securing a tenant's connection to the database via an encrypted password can be accomplished in the following way:
+
+ - Set the secret key (as described in the Securing DB Configuration file section)
+ - When creating a user / role for the tenant in your .sql file include the following:
+   - `CREATE USER myuniversity WITH ENCRYPTED PASSWORD 'myuniversity';`
+
+  *myuniversity* PASSWORD will be replaced with the following:
+  encrypt(tenant id with secrey key) = **tenant's password**
+  The **tenant's password** will replace the *myuniversity* PASSWORD value
+  The RMB Postrges client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you usee the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
+
 
 It is also possible to create a **template_audit.sql** file. If the Post tenant API finds this file in the classpath, it will be run as well.
 
@@ -909,7 +964,7 @@ https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-ser
 
 Examples:
 
-Saving a POJO:
+Saving a POJO within a transaction:
 
 ```sh
 PoLine poline = new PoLine();
@@ -922,16 +977,12 @@ postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...
 Querying for similar POJOs in the DB (with or without additional criteria):
 
 ```sh
-Criterion criterion = Criterion.json2Criterion(query);
+Criterion c = new Criterion(new Criteria().addField("_id").setJSONB(false).setOperation("=").setValue("'"+entryId+"'"));
 
-criterion.setLimit(new Limit(limit)).setOffset(new Offset(offset));
-
-postgresClient.get(TABLE_NAME_POLINE, PoLine.class, criterion,
+postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
               reply -> {...
 ```
 
-Usage examples:
-https://github.com/folio-org/mod-acquisitions-postgres/blob/master/src/main/java/org/folio/rest/impl/POLine.java
 
 
 ## Query Syntax
