@@ -114,18 +114,6 @@ Sample projects:
 
 and other [modules](http://dev.folio.org/source-code/#server-side).
 
-##### Fastest way to see some working code
-Check out the mod-configuration module. 
-
-The RAML file documenting the API
-
-https://github.com/folio-org/mod-configuration/blob/master/ramls/configuration/config.raml
-
-When building, this file is used to generate Pojos from the referenced schemas as well as functions for each API endpoint declared in the RAML file; see an implementation of the generated interface:
-
-https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/java/org/folio/rest/impl/ConfigAPI.java
-
-Notice that the ConfigAPI.java contains all the code for the entire module. All handling of URLs, validations, objects, etc... is all either in the RAML-Module-Builder (aka RMB) jars, or generated for the configuration module by the RMB at build time.
 
 ## Get started with a sample working module
 
@@ -138,7 +126,7 @@ https://github.com/folio-org/mod-configuration - Build via `mvn clean install`
 
 - Open the pom.xml in the configuration server module - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and pojo generating tool via a maven exec plugin. The tool generates source files within the configuration server project. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
 
-- Open the `https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/java/org/folio/rest/impl/ConfigAPI.java` class and notice that there is a function representing each declared endpoint in the raml file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer.
+- Open the https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/java/org/folio/rest/impl/ConfigAPI.java class and notice that there is a function representing each declared endpoint in the raml file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the ConfigAPI.java contains all the code for the entire module. All handling of URLs, validations, objects, etc... is all either in the RAML-Module-Builder (aka RMB) jars, or generated for the configuration module by the RMB at build time.
 
 - **IMPORTANT NOTE:** Every interface implementation - by any module -
   must reside in package `org.folio.rest.impl`. This is the package that is
