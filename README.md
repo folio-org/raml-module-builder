@@ -298,12 +298,12 @@ Create JSON schemas indicating the objects exposed by the module:
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-api-interfaces</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
+      <version>2.2.2-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
+      <version>2.2.2-SNAPSHOT</version>
     </dependency>
 ```
 
@@ -717,8 +717,8 @@ Content-Type: application/octet-stream
 
 ------WebKitFormBoundaryNKJKWHABrxY1AdmG
 ```
-The `MimeMultipart` parameter can be used to retrieve the contents in the
-following manner:
+There will be a `MimeMultipart` parameter passed into the generated interfaces. An implementing 
+module can access its conect in the following manner:
 
 ```sh
 int parts = entity.getCount();
@@ -741,7 +741,8 @@ where each section in the body (separated by the boundary) is a "part".
       body:
         application/octet-stream:
 ```
-The interfaces generated from the above will contain a parameter of either `javax.mail.internet.MimeMultipart` or `java.io.InputStream` representing the uploaded file.
+The interfaces generated from the above will contain a parameter of type `java.io.InputStream` 
+representing the uploaded file.
 
 
 ### Option 2
@@ -752,7 +753,8 @@ For example, if i would like to upload a large file without having to save it al
  - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
  - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
 
-The RMB will then call the function every time a chunk of data is received. This means that a new Object is instantiated by the RMB for each chunk of data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
+The RMB will then call the function every time a chunk of data is received. This means that a new Object is 
+instantiated by the RMB for each chunk of data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
 
 
 ## PostgreSQL integration
@@ -780,7 +782,7 @@ create table <schema>.<table_name> (
 );
 ```
 
-This means that all the fields in the json schema (representing the json object) **are** the jsonb object (column) in the Postgres table.
+This means that all the fields in the json schema (representing the json object) **are** the jsonb (column) in the Postgres table.
 
 There is one exception to this. Lets take an example of an auditing table which wants to store changes to a specific table. Every row in the audit table will contain the operation, date and the current content (jsonb) in the table being audited.
 
@@ -850,17 +852,22 @@ password: password
 
 As previously mentioned, the Postgres Client supplied by the RMB looks for a file called `postgres-conf.json`. However, leaving a file which contains the DB password to a superuser in plain text on the server is not a good idea. It is possible to encrypt the password in the file. The encryption should be an AES encryption (symmetric block cipher). This encryption is done with a secret key. 
 
-Meaning password in plain text + secret key = encrypted password
+Meaning: password in plain text + secret key = encrypted password
 
-The RMB comes with an AES class that allows generating secret keys, encrypting and decrypting them, https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/security/AES.java 
 
-Note the use of this class is optional, a module can:
- -  Generate a key
- -  Encrypt a password
- - Include that password in the config file
+The RMB comes with an AES class that supports generating secret keys, encrypting and decrypting them, https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/security/AES.java 
+
+Note the use of this class is optional.
 
 To work with an encrypted password the RMB exposes an API that can be used to set the secret key (stored only in memory). When creating the DB connection the RMB will check to see if the secret key has been set. If the secret key has been set the RMB will decrypt the password with the secret key, and use the decrypted password to connect to the DB with. Otherwise it will assume an un-encrypted password, and will connect using that password as is.
 A module can also set the secret key via the static method `AES.setSecretKey(mykey)`
+
+The needed steps are:
+
+ -  Generate a key
+ -  Encrypt a password
+ -  Include that password in the config file
+ -  Either call `AES.setSecretKey(mykey)` or the `admin/set_AES_key` API - (to load the secret key into memory)
 
 A good way for a module to set the secret key is by using the post deployment hook interface in the RMB.
 
@@ -913,9 +920,9 @@ As of now (this may change in the future), securing a tenant's connection to the
    - `CREATE USER myuniversity WITH ENCRYPTED PASSWORD 'myuniversity';`
 
   *myuniversity* PASSWORD will be replaced with the following:
-  encrypt(tenant id with secrey key) = **tenant's password**
-  The **tenant's password** will replace the *myuniversity* PASSWORD value
-  The RMB Postrges client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you usee the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
+  encrypt(tenant id with secrey key) = **new tenant's password**
+  The **new tenant's password** will replace the *myuniversity* PASSWORD value
+  The RMB Postrges client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
 
 
 It is also possible to create a **template_audit.sql** file. If the Post tenant API finds this file in the classpath, it will be run as well.
@@ -1118,11 +1125,18 @@ A `java_package` parameter can also be passed to change the log level of a speci
 
 ## Monitoring
 
-The runtime framework via the /admin API exposes (as previously mentioned) some APIs to help monitor the service / module - (setting log levels, collection statistics) - additional JVM monitoring via:
+The runtime framework via the /admin API exposes (as previously mentioned) some APIs to help monitor the service / module - (setting log levels, DB information):
  - The `jstack` command is available using the `/admin/jstack` API.
     - returns stack traces of all threads in the JVM to help find slower / bottleneck methods
  - The `memory` command is available using the `/admin/memory` API.
     - returns a jstat type of reply indicating memory usage within the JVM on a per pool basis (survivor, old gen, new gen, metadata, etc..) with usage percentages.
+ - `/slow_queries` returns queries taking longer then X seconds
+ - `/cache_hit_rates` returns cache hit rates in Postgres
+ - `/table_index_usage` returns index usage per table
+ - `/postgres_table_size` disk space used per table
+ - `/postgres_table_access_stats` returns information about how tables are being accessed
+ - `/postgres_load` returns load information in Postgres
+ - `/postgres_active_sessions` returns active  sessions in Postgres
 
 ## Client Generator
 
