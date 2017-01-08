@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>2.2.1-SNAPSHOT</version>
+    <version>2.2.2-SNAPSHOT</version>
     <!-- <relativePath>../domain-models-poc</relativePath> -->
   </parent>
   <artifactId>domain-models-api-interfaces</artifactId>
@@ -11,13 +11,7 @@
     <jaxrsVersion>2.0</jaxrsVersion>
   </properties>
 
-  <!-- <dependencyManagement> <dependencies> <dependency> <groupId>org.hibernate.ogm</groupId>
-  <artifactId>hibernate-ogm-bom</artifactId> <type>pom</type> <version>4.2.0.Final</version>
-  <scope>import</scope> </dependency> </dependencies> </dependencyManagement> -->
   <dependencies>
-    <!-- <dependency> <groupId>org.hibernate.ogm</groupId> <artifactId>hibernate-ogm-mongodb</artifactId>
-    </dependency> <dependency> <groupId>org.jboss.jbossts</groupId> <artifactId>jbossjta</artifactId>
-    </dependency> -->
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
@@ -64,12 +58,12 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-api-aspects</artifactId>
-      <version>2.2.1-SNAPSHOT</version>
+      <version>${project.parent.version}</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-interface-extensions</artifactId>
-      <version>2.2.1-SNAPSHOT</version>
+      <version>${project.parent.version}</version>
     </dependency>
     <dependency>
       <groupId>org.raml</groupId>
@@ -81,31 +75,31 @@
       <groupId>xerces</groupId>
       <artifactId>xmlParserAPIs</artifactId>
       <version>2.6.2</version>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.sun.codemodel</groupId>
       <artifactId>codemodel</artifactId>
       <version>2.6</version>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.sun.xml.bind</groupId>
       <artifactId>jaxb-xjc</artifactId>
       <version>2.1.6</version>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>javax.ws.rs</groupId>
       <artifactId>jsr311-api</artifactId>
       <version>1.1.1</version>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>commons-collections</groupId>
       <artifactId>commons-collections</artifactId>
       <version>2.1</version>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 
@@ -147,33 +141,34 @@
         </configuration>
       </plugin>
 
-
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.4</version>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.5.0</version>
         <executions>
           <execution>
-            <phase>package</phase>
+            <id>generate_interfaces</id>
+            <phase>generate-sources</phase>
             <goals>
-              <goal>shade</goal>
+              <goal>java</goal>
             </goals>
             <configuration>
-              <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <manifestEntries>
-                    <Main-Class>org.folio.rest.RestLauncher</Main-Class>
-                    <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
-                  </manifestEntries>
-                </transformer>
-              </transformers>
-              <artifactSet />
-              <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
+              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
+              <cleanupDaemonThreads>false</cleanupDaemonThreads>
+              <systemProperties>
+                <systemProperty>
+                  <key>project.basedir</key>
+                  <value>${basedir}</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>raml_files</key>
+                  <value>${ramlfiles_path}</value>
+                </systemProperty>
+              </systemProperties>
             </configuration>
           </execution>
         </executions>
       </plugin>
-
     </plugins>
   </build>
 </project>

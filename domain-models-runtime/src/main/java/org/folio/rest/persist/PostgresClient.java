@@ -673,7 +673,7 @@ public class PostgresClient {
               log.error(query.cause().getMessage(), query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount)));
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
             }
             long end = System.nanoTime();
             if(log.isDebugEnabled()){
