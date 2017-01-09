@@ -23,7 +23,6 @@ import javax.mail.internet.MimeMultipart;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
-import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
@@ -463,5 +462,22 @@ public class AdminAPI implements AdminResource {
         }
       });
   }
+/*
+  @Override
+  public void getAdminHealth(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminHealthResponse.withOK()));
+
+  }
+
+  @Override
+  public void getAdminModuleStats(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    asyncResultHandler.handle(
+      io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.withPlainOK(StatsTracker.spillAllStats())));
+
+  }*/
 
 }

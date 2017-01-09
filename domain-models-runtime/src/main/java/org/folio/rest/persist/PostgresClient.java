@@ -35,6 +35,7 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
+import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.LogUtil;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
@@ -76,6 +77,8 @@ public class PostgresClient {
   private static final String   SET = " SET ";
   private static final String   PASSWORD = "password";
   private static final String   USERNAME = "username";
+
+  private static final String    STATS_KEY                = PostgresClient.class.getName();
 
   private static PostgresProcess postgresProcess          = null;
   private static boolean         embeddedMode             = false;
@@ -323,6 +326,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void save(String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+    long start = System.nanoTime();
 
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -336,6 +340,8 @@ public class PostgresClient {
               } else {
                 replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
               }
+              long end = System.nanoTime();
+              StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
             });
         } catch (Exception e) {
           if(connection != null){
@@ -352,6 +358,8 @@ public class PostgresClient {
 
   @SuppressWarnings("unchecked")
   public void save(Object sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+    long start = System.nanoTime();
+
     log.debug("save called on " + table);
     // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
     SQLConnection connection = ((io.vertx.core.Future<SQLConnection>) sqlConnection).result();
@@ -363,6 +371,8 @@ public class PostgresClient {
           } else {
             replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
+          long end = System.nanoTime();
+          StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
         });
     } catch (Exception e) {
       if(connection != null){
@@ -483,6 +493,7 @@ public class PostgresClient {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             long end = System.nanoTime();
+            StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
             if(log.isDebugEnabled()){
               log.debug("timer: get " +q+ " (ns) " + (end-start));
             }
@@ -563,6 +574,7 @@ public class PostgresClient {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             long end = System.nanoTime();
+            StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
             if(log.isDebugEnabled()){
               log.debug("timer: get " +q+ " (ns) " + (end-start));
             }
@@ -635,6 +647,7 @@ public class PostgresClient {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
             }
             long end = System.nanoTime();
+            StatsTracker.addStatElement(STATS_KEY+".delete", (end-start));
             if(log.isDebugEnabled()){
               log.debug("timer: get " +q+ " (ns) " + (end-start));
             }
@@ -676,6 +689,7 @@ public class PostgresClient {
               replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
             }
             long end = System.nanoTime();
+            StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
             if(log.isDebugEnabled()){
               log.debug("timer: get " +q+ " (ns) " + (end-start));
             }
@@ -848,6 +862,7 @@ public class PostgresClient {
     ret[0] = list;
     ret[1] = rowCount;
     long end = System.nanoTime();
+    StatsTracker.addStatElement(STATS_KEY+".processResult", (end-start));
     if(log.isDebugEnabled()){
       log.debug("timer: process results (ns) " + (end-start));
     }
