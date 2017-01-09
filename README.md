@@ -836,7 +836,7 @@ For example: json schema representing the entire auditing table row
 ```
 where the jsonb field references a json schema that will exist in the jsonb column in the table.
 
-The example above refers to querying only. As of now, saving a record will only save the jsonb and id fields (the above example uses triggers to populate the operation, creation data and original id)
+The example above refers to querying only. As of now, saving a record will only save the jsonb and id fields (the above example uses triggers to populate the operation, creation data and original id).
 
 #### Credentials 
 Credentials when running in embedded mode are read from `resources/postgres-conf.json`. If a file is not found the following configuration will be used by default:
@@ -896,7 +896,7 @@ public class InitConfigService implements PostDeployVerticle {
 
 ## Tenant API
 
-The Postgres Client support in the RMB is schema specific, meaning, it expects every tenant to be represented by its own schema. The RMB exposes 3 APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existance' of a tenant schema. Note that the use of this API is optional. 
+The Postgres Client support in the RMB is schema specific, meaning, it expects every tenant to be represented by its own schema. The RMB exposes 3 APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existence' of a tenant schema. Note that the use of this API is optional. 
 
 The RAML defining the API:
 
@@ -984,7 +984,7 @@ postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
 
 The RMB can receive parameters of different types. Modules can declare a query parameter and receive it as a string parameter in the generated API functions.
 
-The RMB exposes an easy way to with with CQL (https://github.com/folio-org/cql2pgjson-java). Allowing a seamless integration from the query parameters to a prepared where clause to query with.
+The RMB exposes an easy way to query, using CQL (https://github.com/folio-org/cql2pgjson-java). This enables a seamless integration from the query parameters to a prepared where clause to query with.
 
 ```sh
 //create object on table.field
@@ -1130,13 +1130,13 @@ The runtime framework via the /admin API exposes (as previously mentioned) some 
     - returns stack traces of all threads in the JVM to help find slower / bottleneck methods
  - The `memory` command is available using the `/admin/memory` API.
     - returns a jstat type of reply indicating memory usage within the JVM on a per pool basis (survivor, old gen, new gen, metadata, etc..) with usage percentages.
- - `/slow_queries` returns queries taking longer then X seconds
+ - `/slow_queries` returns queries taking longer than X seconds
  - `/cache_hit_rates` returns cache hit rates in Postgres
  - `/table_index_usage` returns index usage per table
  - `/postgres_table_size` disk space used per table
  - `/postgres_table_access_stats` returns information about how tables are being accessed
  - `/postgres_load` returns load information in Postgres
- - `/postgres_active_sessions` returns active  sessions in Postgres
+ - `/postgres_active_sessions` returns active sessions in Postgres
 
 ## Client Generator
 
