@@ -28,6 +28,7 @@ import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.ClientGenerator;
+import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
@@ -462,7 +463,7 @@ public class AdminAPI implements AdminResource {
         }
       });
   }
-/*
+
   @Override
   public void getAdminHealth(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
@@ -478,6 +479,6 @@ public class AdminAPI implements AdminResource {
     asyncResultHandler.handle(
       io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.withPlainOK(StatsTracker.spillAllStats())));
 
-  }*/
+  }
 
 }
