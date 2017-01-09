@@ -42,18 +42,49 @@ public class InterfaceToImpl {
     }
     ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
     ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
+    Class<?> userImpl = null;
+    /** iterate over all classes in the org.folio.rest.impl package to find the one implementing the
+     * requested interface */
     for (ClassPath.ClassInfo info : classes) {
+      if(userImpl != null && impl.size() == 1){
+        /** we found a user impl that matches the interface2check, we are done, since we can only have one of these */
+        break;
+      }
       try {
         Class<?> clazz = Class.forName(info.getName());
+        if(!clazz.getSuperclass().getName().equals("java.lang.Object")){
+          /** user defined class which overrides one of the out of the box RMB implementations
+           * set the clazz to the interface. find the correct implementation below */
+          userImpl = clazz;
+          clazz = clazz.getSuperclass();
+        }
+        /** loop over all interfaces the class implements */
         for (Class<?> anInterface : clazz.getInterfaces()) {
           if (!anInterface.getName().equals(interface2check)) {
+            /**if userImpl != null here then a user impl exists but does not match the requested interface, so set to null*/
+            userImpl = null;
+            /** class doesnt implement the requested package, continue to check if it implements other packages */
             continue;
           }
-          if (!allowMultiple && impl.size() > 0) {
+          if(userImpl != null){
+            /** we are here if we found a user impl (extends) of an RMB existing interface implementation
+             *  load the user implementation and remove previous impl if it was added in previous loop iterations
+             * there can only be one impl of an override, but we dont know the order we will get from the classloader
+             * will the default RMB impl be passed in here or the user implementation - so once we hit a class whose
+             * super class extends a generated interface - clear out the previous impl if any from the array and add
+             * the user's impl - once found we are done */
+            impl.clear();
+            impl.add(userImpl);
+            break;
+          }
+          else if (!allowMultiple && impl.size() > 0) {
             throw new RuntimeException("Duplicate implementation of " + interface2check + " in " + implDir + ": " + impl.get(0).getName() + ", "
                 + clazz.getName());
           }
-          impl.add(clazz);
+          else{
+            /** return the class found that implements the requested package */
+            impl.add(clazz);
+          }
         }
       } catch (ClassNotFoundException e) {
         log.error(e.getMessage(), e);
