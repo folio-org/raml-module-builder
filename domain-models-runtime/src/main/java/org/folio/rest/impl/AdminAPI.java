@@ -23,12 +23,12 @@ import javax.mail.internet.MimeMultipart;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
-import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.ClientGenerator;
+import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
@@ -462,6 +462,23 @@ public class AdminAPI implements AdminResource {
           asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
         }
       });
+  }
+
+  @Override
+  public void getAdminHealth(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminHealthResponse.withOK()));
+
+  }
+
+  @Override
+  public void getAdminModuleStats(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    asyncResultHandler.handle(
+      io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.withPlainOK(StatsTracker.spillAllStats())));
+
   }
 
 }
