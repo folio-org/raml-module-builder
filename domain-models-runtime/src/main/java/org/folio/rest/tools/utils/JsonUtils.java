@@ -84,6 +84,7 @@ public class JsonUtils {
     return null;
   }
 
+  @SuppressWarnings("unchecked")
   private static void entity2JsonInternal(Object obj, String key, JsonObject result, Pattern excludes){
     String prefix = key;
     Consumer<Map.Entry<String,Object>> consumer = entry -> {
