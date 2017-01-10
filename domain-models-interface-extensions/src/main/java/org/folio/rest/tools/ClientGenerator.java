@@ -23,16 +23,21 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
 
 import com.sun.codemodel.JBlock;
+import com.sun.codemodel.JCatchBlock;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JCodeModel;
 import com.sun.codemodel.JConditional;
 import com.sun.codemodel.JDefinedClass;
 import com.sun.codemodel.JDocComment;
 import com.sun.codemodel.JExpr;
+import com.sun.codemodel.JExpression;
 import com.sun.codemodel.JFieldVar;
 import com.sun.codemodel.JMethod;
 import com.sun.codemodel.JMod;
 import com.sun.codemodel.JPackage;
+import com.sun.codemodel.JTryBlock;
+import com.sun.codemodel.JVar;
+import java.io.UnsupportedEncodingException;
 
 /**
  *
@@ -261,15 +266,17 @@ public class ClientGenerator {
     }
     b.invoke(JExpr.ref("queryParams"), "append").arg(JExpr.lit(valueName + "="));
     if (encode) {
-      b.directStatement("  try {");
-      b.directStatement("    queryParams.append(java.net.URLEncoder.encode(" + valueName + ", \"UTF-8\"));");
-      b.directStatement("  } catch (java.io.UnsupportedEncodingException e) {");
-      b.directStatement("    e.printStackTrace();");
-      b.directStatement("  }");
+      JTryBlock tb = b._try();
+      JExpression expr = JExpr.direct("java.net.URLEncoder.encode(" + valueName + ", \"UTF-8\")");
+      tb.body().invoke(JExpr.ref("queryParams"), "append").arg(expr);
+      JClass jc1 = jCodeModel.ref(UnsupportedEncodingException.class);
+      JCatchBlock cb2 = tb._catch(jc1);
+      JVar e_var = cb2.param("e");
+      cb2.body().invoke(JExpr.ref("e"), "printStackTrace");
     } else {
-      b.directStatement("  queryParams.append(" + valueName + ");");
+      b.invoke(JExpr.ref("queryParams"), "append").arg(JExpr.ref(valueName));
     }
-    b.directStatement("  queryParams.append(\"&\");");
+    b.invoke(JExpr.ref("queryParams"), "append").arg(JExpr.lit("&"));
   }
 
   /**
@@ -408,7 +415,7 @@ public class ClientGenerator {
 
   public void generateClass(JsonObject classSpecificMapping) throws IOException{
     String genPath = System.getProperty("project.basedir") + PATH_TO_GENERATE_TO;
-    jCodeModel.build(new File(genPath));   
+    jCodeModel.build(new File(genPath));
   }
 
   private static String replaceLast(String string, String substring, String replacement) {
