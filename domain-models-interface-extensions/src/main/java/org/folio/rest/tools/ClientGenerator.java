@@ -22,6 +22,8 @@ import java.util.regex.Pattern;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
 
+import org.apache.commons.io.FileUtils;
+
 import com.sun.codemodel.JBlock;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JCodeModel;
@@ -41,7 +43,7 @@ public class ClientGenerator {
 
   public static final String  PATH_ANNOTATION        = "javax.ws.rs.Path";
   public static final String  CLIENT_CLASS_SUFFIX    = "Client";
-  public static final String  PATH_TO_GENERATE_TO    = "/src/main/java/";
+  public static final String  PATH_TO_GENERATE_TO    = "/target/generated-sources/jaxrs/";
   public static final String  OKAPI_HEADER_TENANT = "x-okapi-tenant";
 
   /* Creating java code model classes */
@@ -59,9 +61,27 @@ public class ClientGenerator {
   private String mappingType = "postgres";
 
   public static void main(String[] args) throws Exception {
+    String dir = System.getProperties().getProperty("project.basedir")
+        + ClientGenerator.PATH_TO_GENERATE_TO
+        + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
+
+    makeCleanDir(dir);
 
     AnnotationGrabber.generateMappings();
+  }
 
+  /**
+   * Create the dirPath if it does not exists, or clean it if it exists.
+   * @param dirPath - directory to create or clean.
+   * @throws IOException  - in case cleaning is unsuccessful
+   */
+  public static void makeCleanDir(String dirPath) throws IOException {
+    File dir = new File(dirPath);
+    if (dir.exists()) {
+      FileUtils.cleanDirectory(dir);
+    } else {
+      dir.mkdirs();
+    }
   }
 
   public void generateClassMeta(String className, Object globalPath){
@@ -408,7 +428,7 @@ public class ClientGenerator {
 
   public void generateClass(JsonObject classSpecificMapping) throws IOException{
     String genPath = System.getProperty("project.basedir") + PATH_TO_GENERATE_TO;
-    jCodeModel.build(new File(genPath));   
+    jCodeModel.build(new File(genPath));
   }
 
   private static String replaceLast(String string, String substring, String replacement) {

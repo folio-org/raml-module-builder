@@ -7,7 +7,6 @@ import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
 import org.folio.rest.tools.Raml2Java;
 import org.jsonschema2pojo.AnnotationStyle;
 import org.raml.jaxrs.codegen.core.Configuration;
@@ -27,8 +26,6 @@ public class GenerateRunner {
 
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs";
   private static final String SOURCES_DEFAULT = "/ramls/";
-  private static final String RESOURCE_DEFAULT = "/target/classes";
-
   static final GeneratorProxy generator = new GeneratorProxy();
 
   public static void main(String args[]) throws Exception{
@@ -36,30 +33,13 @@ public class GenerateRunner {
     List<GeneratorExtension> extensions = new ArrayList<>();
     extensions.add(new Raml2Java());
 
-    String root = System.getProperties().getProperty("project.basedir");
+    String basedir = System.getProperties().getProperty("project.basedir");
 
-    outputDirectory = root + "/src/main/java/";// + PACKAGE_DEFAULT.replace('.', '/');
+    outputDirectory = basedir + ClientGenerator.PATH_TO_GENERATE_TO;
 
     String outputDirectoryWithPackage = outputDirectory + PACKAGE_DEFAULT.replace('.', '/');
 
-    try{
-      //this is a dirty hack needed when the project was refactored from com.folio to org.folio
-      //the old wrong packaged dir is not deleted sine the package_default has changed - this
-      //can be removed probably within a month - 9/7/2016
-      System.out.println("------------------------>--------------------------->"+new File(root+"/src/main/java/com").getAbsolutePath());
-      FileUtils.cleanDirectory(new File(root+"/src/main/java/com"));
-    }
-    catch(Exception e){}
-
-
-    if(new File(outputDirectoryWithPackage).exists()){
-      FileUtils.cleanDirectory(new File(outputDirectoryWithPackage));
-    }else{
-      new File(outputDirectoryWithPackage).mkdirs();
-    }
-
-    //String inputDirectory = "C:\\Git\\raml\\circulation\\";
-    //String outputDirectory = "C:\\tools\\raml\\raml";
+    ClientGenerator.makeCleanDir(outputDirectoryWithPackage);
 
     configuration = new Configuration();
     configuration.setJaxrsVersion(JaxrsVersion.JAXRS_2_0);
@@ -82,7 +62,7 @@ public class GenerateRunner {
     //inputDirectory  = "C:\\Git\\circulation\\ramls\\circulation";// "C:\\Git\\raml-module-builder\\domain-models-api-interfaces\\src\\main\\resources\\raml";
     if(inputDirectory == null){
 
-      inputDirectory = root + SOURCES_DEFAULT;
+      inputDirectory = basedir + SOURCES_DEFAULT;
 
     }
 
