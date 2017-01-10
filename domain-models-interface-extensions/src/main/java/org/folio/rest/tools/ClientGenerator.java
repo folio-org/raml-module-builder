@@ -27,7 +27,9 @@ import org.apache.commons.io.FileUtils;
 import com.sun.codemodel.JBlock;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JCodeModel;
+import com.sun.codemodel.JConditional;
 import com.sun.codemodel.JDefinedClass;
+import com.sun.codemodel.JDocComment;
 import com.sun.codemodel.JExpr;
 import com.sun.codemodel.JFieldVar;
 import com.sun.codemodel.JMethod;
@@ -87,6 +89,8 @@ public class ClientGenerator {
       /* Giving Class Name to Generate */
       this.className = className.substring(RTFConsts.INTERFACE_PACKAGE.length()+1, className.indexOf("Resource"));
       jc = jp._class(this.className+CLIENT_CLASS_SUFFIX);
+      JDocComment com = jc.javadoc();
+      com.add("Auto-generated code - based on class " + className);
 
       /* class variable to root url path to this interface */
       JFieldVar globalPathVar = jc.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, String.class, "GLOBAL_PATH");
@@ -267,22 +271,22 @@ public class ClientGenerator {
   }
 
   private void addParameter(JBlock methodBody, String valueName, Boolean encode, Boolean simple) {
+    JBlock b = methodBody;
     if (!simple) {
-      methodBody.directStatement("if (" + valueName + " != null) {");
+      JConditional _if = methodBody._if(JExpr.ref(valueName).ne(JExpr._null()));
+      b = _if._then();
     }
-    methodBody.directStatement("  queryParams.append(\"" + valueName + "=\");");
+    b.invoke(JExpr.ref("queryParams"), "append").arg(JExpr.lit(valueName + "="));
     if (encode) {
-      methodBody.directStatement("  try {");
-      methodBody.directStatement("    queryParams.append(java.net.URLEncoder.encode(" + valueName + ", \"UTF-8\"));");
-      methodBody.directStatement("  } catch (Exception e) {");
-      methodBody.directStatement("  }");
+      b.directStatement("  try {");
+      b.directStatement("    queryParams.append(java.net.URLEncoder.encode(" + valueName + ", \"UTF-8\"));");
+      b.directStatement("  } catch (java.io.UnsupportedEncodingException e) {");
+      b.directStatement("    e.printStackTrace();");
+      b.directStatement("  }");
     } else {
-      methodBody.directStatement("  queryParams.append(" + valueName + ");");
+      b.directStatement("  queryParams.append(" + valueName + ");");
     }
-    methodBody.directStatement("  queryParams.append(\"&\");");
-    if (!simple) {
-      methodBody.directStatement("}");
-    }
+    b.directStatement("  queryParams.append(\"&\");");
   }
 
   /**
