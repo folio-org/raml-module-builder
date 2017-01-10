@@ -7,8 +7,6 @@ import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
-import org.folio.rest.tools.Raml2Java;
 import org.jsonschema2pojo.AnnotationStyle;
 import org.raml.jaxrs.codegen.core.Configuration;
 import org.raml.jaxrs.codegen.core.Configuration.JaxrsVersion;
@@ -42,24 +40,7 @@ public class GenerateRunner {
 
     String outputDirectoryWithPackage = outputDirectory + PACKAGE_DEFAULT.replace('.', '/');
 
-    try{
-      //this is a dirty hack needed when the project was refactored from com.folio to org.folio
-      //the old wrong packaged dir is not deleted sine the package_default has changed - this
-      //can be removed probably within a month - 9/7/2016
-      System.out.println("------------------------>--------------------------->"+new File(root+"/src/main/java/com").getAbsolutePath());
-      FileUtils.cleanDirectory(new File(root+"/src/main/java/com"));
-    }
-    catch(Exception e){}
-
-
-    if(new File(outputDirectoryWithPackage).exists()){
-      FileUtils.cleanDirectory(new File(outputDirectoryWithPackage));
-    }else{
-      new File(outputDirectoryWithPackage).mkdirs();
-    }
-
-    //String inputDirectory = "C:\\Git\\raml\\circulation\\";
-    //String outputDirectory = "C:\\tools\\raml\\raml";
+    ClientGenerator.makeCleanDir(outputDirectoryWithPackage);
 
     configuration = new Configuration();
     configuration.setJaxrsVersion(JaxrsVersion.JAXRS_2_0);

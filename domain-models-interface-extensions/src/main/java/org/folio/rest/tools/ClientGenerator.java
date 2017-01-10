@@ -22,6 +22,8 @@ import java.util.regex.Pattern;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
 
+import org.apache.commons.io.FileUtils;
+
 import com.sun.codemodel.JBlock;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JCodeModel;
@@ -57,6 +59,12 @@ public class ClientGenerator {
   private String mappingType = "postgres";
 
   public static void main(String[] args) throws Exception {
+
+    String dir = System.getProperties().getProperty("project.basedir")
+      + ClientGenerator.PATH_TO_GENERATE_TO
+      + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
+
+    makeCleanDir(dir);
 
     AnnotationGrabber.generateMappings();
 
@@ -144,6 +152,15 @@ public class ClientGenerator {
     JBlock body = jmCreate.body();
     body.directStatement("httpClient.close();");
 
+  }
+
+  public static void makeCleanDir(String dirPath) throws IOException {
+    File dir = new File(dirPath);
+    if (dir.exists()) {
+      FileUtils.cleanDirectory(dir);
+    } else {
+      dir.mkdirs();
+    }
   }
 
   public void generateMethodMeta(String methodName, JsonObject params, String url,
@@ -347,7 +364,7 @@ public class ClientGenerator {
             if(mappingType.equals("postgres")){
               method._throws(Exception.class);
               methodBody.directStatement( "buffer.appendString("
-                  + "org.folio.rest.persist.PostgresClient.pojo2json("+entityClazz.getSimpleName()+"));");
+                  + "org.folio.rest.tools.ClientHelpers.pojo2json("+entityClazz.getSimpleName()+"));");
             }else{
               methodBody.directStatement( "buffer.appendString("
                   + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+entityClazz.getSimpleName()+").encode());");
@@ -404,7 +421,7 @@ public class ClientGenerator {
 
   public void generateClass(JsonObject classSpecificMapping) throws IOException{
     String genPath = System.getProperty("project.basedir") + PATH_TO_GENERATE_TO;
-    jCodeModel.build(new File(genPath));   
+    jCodeModel.build(new File(genPath));
   }
 
   private static String replaceLast(String string, String substring, String replacement) {
