@@ -1146,6 +1146,37 @@ For example:
 To override the `/health` API to return a relevant business logic health check for a specific module do the following:
 
 1. `extend` the AdminAPI class that comes with the RMB framework - `public class CustomHealthCheck extends AdminAPI` and over ride the `getAdminHealth` function. The RMB will route the URL endpoint associated with the function to the custom module's implementation.
+
+Example:
+
+```sh
+public class CustomHealthCheck extends AdminAPI {
+
+  @Override
+  public void getAdminHealth(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    super.getAdminHealth(okapiHeaders,  res -> {
+      System.out.println(" --- this is an over ride of the health API by the config module "+res.result().getStatus());
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminHealthResponse.withOK()));
+    }, vertxContext);
+  }
+
+  @Override
+  public void getAdminModuleStats(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    super.getAdminModuleStats(okapiHeaders,  res -> {
+
+      JsonObject o = new JsonObject(res.result().getEntity().toString());
+
+      System.out.println(" --- this is an over ride of the Module Stats API by the config module ");
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.
+        withPlainOK( o.encodePrettily() )));
+    }, vertxContext);
+  }
+}
+```
  
 ## Client Generator
 
