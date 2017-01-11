@@ -62,6 +62,7 @@ public class JobAPI implements JobsResource {
           PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.JOB_CONF_COLLECTION, JobConf.class,
             criterion, true, reply -> {
                 JobsConfs ps = new JobsConfs();
+                @SuppressWarnings("unchecked")
                 List<JobConf> jobConfs = (List<JobConf>) reply.result()[0];
                 ps.setJobConfs(jobConfs);
                 ps.setTotalRecords(jobConfs.size());
@@ -131,6 +132,7 @@ public class JobAPI implements JobsResource {
         try {
           PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.JOB_CONF_COLLECTION, JobConf.class,
             new Criterion(c), true, reply -> {
+              @SuppressWarnings("unchecked")
               List<JobConf> confs = (List<JobConf>) reply.result()[0];
               if (confs.isEmpty()) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
@@ -267,6 +269,7 @@ public class JobAPI implements JobsResource {
           PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.JOBS_COLLECTION, Job.class, criterion,
             true, reply -> {
               try {
+                @SuppressWarnings("unchecked")
                 List<Job> jobs = (List<Job>) reply.result()[0];
                 Jobs jobList = new Jobs();
                 jobList.setJobs(jobs);
@@ -349,6 +352,7 @@ public class JobAPI implements JobsResource {
           PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.JOBS_COLLECTION, query, true,
             reply -> {
               try {
+                @SuppressWarnings("unchecked")
                 List<Job> job = (List<Job>) reply.result()[0];
                 if (job.isEmpty()) {
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
@@ -494,6 +498,7 @@ public class JobAPI implements JobsResource {
           PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.BULKS_COLLECTION, query, true,
             reply -> {
               try {
+                @SuppressWarnings("unchecked")
                 List<Bulk> bulks = (List<Bulk>) reply.result()[0];
                 Bulks bulkList = new Bulks();
                 bulkList.setBulks(bulks);
