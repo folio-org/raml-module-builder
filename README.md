@@ -1137,7 +1137,16 @@ The runtime framework via the /admin API exposes (as previously mentioned) some 
  - `/postgres_table_access_stats` returns information about how tables are being accessed
  - `/postgres_load` returns load information in Postgres
  - `/postgres_active_sessions` returns active sessions in Postgres
+ - `/health` returns status code 200 as long as service is up
+ - `/module_stats` currently returns summary statistics (count, sum, min, max, average) of all select / update / delete / insert DB queries in the last 2 minutes.
 
+## Overriding Out of The Box RMB APIs
+It is possible to over ride APIs that the RMB provides with custom implementations. 
+For example:
+To override the `/health` API to return a relevant business logic health check for a specific module do the following:
+
+1. `extend` the AdminAPI class that comes with the RMB framework - `public class CustomHealthCheck extends AdminAPI` and over ride the `getAdminHealth` function. The RMB will route the URL endpoint associated with the function to the custom module's implementation.
+ 
 ## Client Generator
 
 The framework can generate a Client class for every raml file with a function for every API endpoint in the raml.
@@ -1372,4 +1381,5 @@ http://localhost:8080/patrons
 Other [modules](http://dev.folio.org/source-code/#server-side).
 
 Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
+
 
