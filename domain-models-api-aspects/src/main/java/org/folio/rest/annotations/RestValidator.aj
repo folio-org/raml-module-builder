@@ -19,7 +19,7 @@ public aspect RestValidator {
 
   static private ValidatorFactory factory;
   static final Logger log = LoggerFactory.getLogger(RestValidator.class);
-  
+
   static {
     factory = Validation.buildDefaultValidatorFactory();
   }

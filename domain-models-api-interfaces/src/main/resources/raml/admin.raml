@@ -12,7 +12,7 @@ traits:
   - secured: !include ../../../../../raml-util/traits/auth.raml
   - secret-key: !include traits/secret-key.raml
   - slow-query: !include traits/slow-query.raml
-  
+
 /admin:
   /uploadmultipart:
     description: Uploads a file and saves it to a directory configured on the server
@@ -332,4 +332,4 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
-              
+

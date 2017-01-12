@@ -157,8 +157,8 @@ To run the configuration module, navigate to the `/target/` directory in the con
 
 - Module specific arguments can be passed via the command line in the format key=value. These will be accessable to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
 
-- `-XX:+HeapDumpOnOutOfMemoryError 
--XX:+PrintGCDetails 
+- `-XX:+HeapDumpOnOutOfMemoryError
+-XX:+PrintGCDetails
 -XX:+PrintGCTimeStamps
   -Xloggc:C:\Git\circulation\gc.log` (or any other Optional JVM argument should be passed before the -jar argument)
 
@@ -520,7 +520,7 @@ the `raml` project. So, for the ebook RAML an
 Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
-See an [example](#function-example) of an implemented function. 
+See an [example](#function-example) of an implemented function.
 
 ## Adding an init() implementation
 
@@ -679,7 +679,7 @@ Note that when implementing the generated interfaces it is possible to add a con
 
 ## Implementing file uploads
 
-The RMB (RAML-Module-Builder) supports several methods to upload file / data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request. 
+The RMB (RAML-Module-Builder) supports several methods to upload file / data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
 
 ### Option 1
 
@@ -717,7 +717,7 @@ Content-Type: application/octet-stream
 
 ------WebKitFormBoundaryNKJKWHABrxY1AdmG
 ```
-There will be a `MimeMultipart` parameter passed into the generated interfaces. An implementing 
+There will be a `MimeMultipart` parameter passed into the generated interfaces. An implementing
 module can access its conect in the following manner:
 
 ```sh
@@ -741,7 +741,7 @@ where each section in the body (separated by the boundary) is a "part".
       body:
         application/octet-stream:
 ```
-The interfaces generated from the above will contain a parameter of type `java.io.InputStream` 
+The interfaces generated from the above will contain a parameter of type `java.io.InputStream`
 representing the uploaded file.
 
 
@@ -753,7 +753,7 @@ For example, if i would like to upload a large file without having to save it al
  - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
  - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
 
-The RMB will then call the function every time a chunk of data is received. This means that a new Object is 
+The RMB will then call the function every time a chunk of data is received. This means that a new Object is
 instantiated by the RMB for each chunk of data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
 
 
@@ -793,12 +793,12 @@ _id| orig_id | operation | jsonb | creation_date
 ------------ | -------------  | -------------  | -------------  | -------------  |
  |  |
 12345| 11111 | insert | {json with current data} | 1/1/2010
-67890| 22222 | delete | {json with previous data} | 1/1/2010 
+67890| 22222 | delete | {json with previous data} | 1/1/2010
 12321| 11111 | update | {json with current data} | 1/1/2010
 
 When querying such a table, you would want to get back all columns, not just the id and the jsonb columns.
 
-To achieve this, the declared json schema would need to contain a jsonb field. 
+To achieve this, the declared json schema would need to contain a jsonb field.
 For example: json schema representing the entire auditing table row
 
 ```sh
@@ -838,7 +838,7 @@ where the jsonb field references a json schema that will exist in the jsonb colu
 
 The example above refers to querying only. As of now, saving a record will only save the jsonb and id fields (the above example uses triggers to populate the operation, creation data and original id).
 
-#### Credentials 
+#### Credentials
 Credentials when running in embedded mode are read from `resources/postgres-conf.json`. If a file is not found the following configuration will be used by default:
 
 ```
@@ -850,12 +850,12 @@ password: password
 
 ### Securing DB Configuration file
 
-As previously mentioned, the Postgres Client supplied by the RMB looks for a file called `postgres-conf.json`. However, leaving a file which contains the DB password to a superuser in plain text on the server is not a good idea. It is possible to encrypt the password in the file. The encryption should be an AES encryption (symmetric block cipher). This encryption is done with a secret key. 
+As previously mentioned, the Postgres Client supplied by the RMB looks for a file called `postgres-conf.json`. However, leaving a file which contains the DB password to a superuser in plain text on the server is not a good idea. It is possible to encrypt the password in the file. The encryption should be an AES encryption (symmetric block cipher). This encryption is done with a secret key.
 
 Meaning: password in plain text + secret key = encrypted password
 
 
-The RMB comes with an AES class that supports generating secret keys, encrypting and decrypting them, https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/security/AES.java 
+The RMB comes with an AES class that supports generating secret keys, encrypting and decrypting them, https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/security/AES.java
 
 Note the use of this class is optional.
 
@@ -896,7 +896,7 @@ public class InitConfigService implements PostDeployVerticle {
 
 ## Tenant API
 
-The Postgres Client support in the RMB is schema specific, meaning, it expects every tenant to be represented by its own schema. The RMB exposes 3 APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existence' of a tenant schema. Note that the use of this API is optional. 
+The Postgres Client support in the RMB is schema specific, meaning, it expects every tenant to be represented by its own schema. The RMB exposes 3 APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existence' of a tenant schema. Note that the use of this API is optional.
 
 The RAML defining the API:
 
@@ -1141,7 +1141,7 @@ The runtime framework via the /admin API exposes (as previously mentioned) some 
  - `/module_stats` currently returns summary statistics (count, sum, min, max, average) of all select / update / delete / insert DB queries in the last 2 minutes.
 
 ## Overriding Out of The Box RMB APIs
-It is possible to over ride APIs that the RMB provides with custom implementations. 
+It is possible to over ride APIs that the RMB provides with custom implementations.
 For example:
 To override the `/health` API to return a relevant business logic health check for a specific module do the following:
 
@@ -1177,7 +1177,7 @@ public class CustomHealthCheck extends AdminAPI {
   }
 }
 ```
- 
+
 ## Client Generator
 
 The framework can generate a Client class for every raml file with a function for every API endpoint in the raml.
