@@ -401,7 +401,16 @@
                   </manifestEntries>
                 </transformer>
               </transformers>
-              <artifactSet />
+              <artifactSet/>
+              <filters>
+                <filter>
+                  <!-- exclude classes from jaxb-xjc that already exist in com.sun.codemodel:codemodel -->
+                  <artifact>com.sun.xml.bind:jaxb-xjc</artifact>
+                  <excludes>
+                    <exclude>com/sun/codemodel/**</exclude>
+                  </excludes>
+                </filter>
+              </filters>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
             </configuration>
           </execution>
