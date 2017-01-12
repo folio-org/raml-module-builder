@@ -369,11 +369,11 @@
           <execution>
             <phase>prepare-package</phase>
             <configuration>
-              <tasks>
+              <target>
                 <replace token="../../../../../raml-util" value="../raml-util" dir="${basedir}/target/classes/apidocs/raml">
                   <include name="**/*.raml" />
                 </replace>
-              </tasks>
+              </target>
             </configuration>
             <goals>
               <goal>run</goal>
