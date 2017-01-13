@@ -117,8 +117,8 @@ public class ClientGenerator {
       conBody.invoke(options, "setKeepAlive").arg(keepAlive);
       conBody.invoke(options, "setDefaultHost").arg(host);
       conBody.invoke(options, "setDefaultPort").arg(port);
-      // conBody.decl(jCodeModel._class("io.vertx.core.Context"), "context", JExpr._null());
-      conBody.directStatement("io.vertx.core.Context context = io.vertx.core.Vertx.currentContext();");
+      conBody.decl(jCodeModel._ref(io.vertx.core.Context.class), "context",
+              JExpr.direct("io.vertx.core.Vertx.currentContext()"));
       conBody.directStatement("if(context == null){");
       conBody.directStatement("  httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);");
       conBody.directStatement("}");
