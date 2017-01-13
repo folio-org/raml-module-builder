@@ -88,36 +88,36 @@ public class ClientGenerator {
       jc = jp._class(this.className+CLIENT_CLASS_SUFFIX);
       JDocComment com = jc.javadoc();
       com.add("Auto-generated code - based on class " + className);
-
+      
       /* class variable to root url path to this interface */
       JFieldVar globalPathVar = jc.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, String.class, "GLOBAL_PATH");
       globalPathVar.init(JExpr.lit("/" + (String)globalPath));
 
       /* class variable tenant id */
-      jc.field(JMod.PRIVATE, String.class, "tenantId");
+      JFieldVar tenantId = jc.field(JMod.PRIVATE, String.class, "tenantId");
 
       /* class variable to http options */
-      jc.field(JMod.PRIVATE, HttpClientOptions.class, "options");
+      JFieldVar options = jc.field(JMod.PRIVATE, HttpClientOptions.class, "options");
 
       /* class variable to http client */
       jc.field(JMod.PRIVATE, HttpClient.class, "httpClient");
 
       /* constructor, init the httpClient - allow to pass keep alive option */
       JMethod consructor = jc.constructor(JMod.PUBLIC);
-      consructor.param(String.class, "host");
-      consructor.param(int.class, "port");
-      consructor.param(String.class, "tenantId");
-      consructor.param(boolean.class, "keepAlive");
+      JVar host = consructor.param(String.class, "host");
+      JVar port = consructor.param(int.class, "port");
+      JVar param = consructor.param(String.class, "tenantId");
+      JVar keepAlive = consructor.param(boolean.class, "keepAlive");
 
-      /* populate constructor */
-      JBlock conBody = consructor.body();
-      conBody.directStatement("this.tenantId = tenantId;");
-      conBody.directStatement("options = new HttpClientOptions();");
-      conBody.directStatement("options.setLogActivity(true);");
-      conBody.directStatement("options.setKeepAlive(keepAlive);");
-      conBody.directStatement("options.setDefaultHost(host);");
-      conBody.directStatement("options.setDefaultPort(port);");
-
+     /* populate constructor */
+      JBlock conBody=  consructor.body();
+      conBody.assign(JExpr._this().ref(tenantId), param);
+      conBody.assign(options, JExpr._new(jCodeModel.ref(HttpClientOptions.class)));
+      conBody.invoke(options, "setLogActivity").arg(JExpr.TRUE);
+      conBody.invoke(options, "setKeepAlive").arg(keepAlive);
+      conBody.invoke(options, "setDefaultHost").arg(host);
+      conBody.invoke(options, "setDefaultPort").arg(port);
+      // conBody.decl(jCodeModel._class("io.vertx.core.Context"), "context", JExpr._null());
       conBody.directStatement("io.vertx.core.Context context = io.vertx.core.Vertx.currentContext();");
       conBody.directStatement("if(context == null){");
       conBody.directStatement("  httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);");
