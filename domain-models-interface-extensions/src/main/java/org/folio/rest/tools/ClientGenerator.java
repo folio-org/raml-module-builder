@@ -88,7 +88,7 @@ public class ClientGenerator {
       jc = jp._class(this.className+CLIENT_CLASS_SUFFIX);
       JDocComment com = jc.javadoc();
       com.add("Auto-generated code - based on class " + className);
-      
+
       /* class variable to root url path to this interface */
       JFieldVar globalPathVar = jc.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, String.class, "GLOBAL_PATH");
       globalPathVar.init(JExpr.lit("/" + (String)globalPath));
@@ -100,7 +100,7 @@ public class ClientGenerator {
       JFieldVar options = jc.field(JMod.PRIVATE, HttpClientOptions.class, "options");
 
       /* class variable to http client */
-      jc.field(JMod.PRIVATE, HttpClient.class, "httpClient");
+      JFieldVar httpClient = jc.field(JMod.PRIVATE, HttpClient.class, "httpClient");
 
       /* constructor, init the httpClient - allow to pass keep alive option */
       JMethod consructor = jc.constructor(JMod.PUBLIC);
@@ -117,14 +117,16 @@ public class ClientGenerator {
       conBody.invoke(options, "setKeepAlive").arg(keepAlive);
       conBody.invoke(options, "setDefaultHost").arg(host);
       conBody.invoke(options, "setDefaultPort").arg(port);
-      conBody.decl(jCodeModel._ref(io.vertx.core.Context.class), "context",
-              JExpr.direct("io.vertx.core.Vertx.currentContext()"));
-      conBody.directStatement("if(context == null){");
-      conBody.directStatement("  httpClient = io.vertx.core.Vertx.vertx().createHttpClient(options);");
-      conBody.directStatement("}");
-      conBody.directStatement("else{");
-      conBody.directStatement("  httpClient = io.vertx.core.Vertx.currentContext().owner().createHttpClient(options);");
-      conBody.directStatement("}");
+
+      JExpression x2 = jCodeModel.ref(io.vertx.core.Vertx.class).staticInvoke("currentContext");
+      JVar context = conBody.decl(jCodeModel._ref(io.vertx.core.Context.class), "context", x2);
+      JVar vertxVar = conBody.decl(jCodeModel._ref(io.vertx.core.Vertx.class), "vertx");
+
+      JConditional _if = conBody._if(context.eq(JExpr._null()));
+      _if._then().assign(vertxVar, jCodeModel.ref(io.vertx.core.Vertx.class).staticInvoke("vertx"));
+      _if._else().assign(vertxVar, context.invoke("owner"));
+
+      conBody.assign(httpClient, vertxVar.invoke("createHttpClient").arg(options));
 
       /* constructor, init the httpClient */
       JMethod consructor2 = jc.constructor(JMod.PUBLIC);
