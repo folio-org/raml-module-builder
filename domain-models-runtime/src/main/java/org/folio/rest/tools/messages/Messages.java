@@ -112,7 +112,10 @@ public class Messages {
       }
       String chunk1 = name.substring(0, sep);
       String chunk2 = name.substring(sep + 1, dot);
-      String lang = chunk1.length() < chunk2.length() ? chunk1 : chunk2;
+      String lang = chunk2;
+      if(chunk1.length() < chunk2.length()){
+        lang = chunk1;
+      }
       String resource = "/" + messagePath.getFileName().toString() + "/" + name;
       log.info("Loading messages from " + resource + " ................................");
       InputStream stream = getClass().getResourceAsStream(resource);

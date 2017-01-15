@@ -4,7 +4,6 @@
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
     <version>2.3.2-SNAPSHOT</version>
-    <!-- <relativePath>../domain-models-poc</relativePath> -->
   </parent>
   <artifactId>domain-models-api-aspects</artifactId>
 

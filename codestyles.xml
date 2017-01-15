@@ -17,6 +17,7 @@
     <module name="MethodLength">
       <property name="tokens" value="METHOD_DEF" /> <!-- max lines for a function -->
       <property name="max" value="200" />
+      <property name="countEmpty" value="false"/>
     </module>
     <module name="MethodLength">
       <property name="tokens" value="CTOR_DEF" /> <!-- max lines for a constructor -->

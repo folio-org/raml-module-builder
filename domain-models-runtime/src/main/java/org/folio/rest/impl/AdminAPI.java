@@ -215,7 +215,9 @@ public class AdminAPI implements AdminResource {
         name = fileName;
       }
     }
-    catch(Exception e){}
+    catch(Exception e){
+      log.error(e.getMessage(), e);
+    }
 
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadmultipartResponse.withOK("TODO"
         )));

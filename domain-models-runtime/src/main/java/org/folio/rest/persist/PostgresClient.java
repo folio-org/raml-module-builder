@@ -20,10 +20,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -52,7 +50,6 @@ import ru.yandex.qatools.embed.postgresql.distribution.Version;
 import ru.yandex.qatools.embed.postgresql.ext.ArtifactStoreBuilder;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
@@ -817,7 +814,11 @@ public class PostgresClient {
     try{
       clazz.getField(DEFAULT_JSONB_FIELD_NAME);
       isAuditFlavored = true;
-    }catch(NoSuchFieldException nse){}
+    }catch(NoSuchFieldException nse){
+      if(log.isDebugEnabled()){
+        log.debug("non audit table, no "+ DEFAULT_JSONB_FIELD_NAME + " found in json");
+      }
+    }
 
     for (int i = 0; i < tempList.size(); i++) {
       try {
@@ -1127,45 +1128,6 @@ public class PostgresClient {
       log.debug("execute timer for: " + sql.hashCode() + " took " + (System.nanoTime()-s)/1000000);
       replyHandler.handle(io.vertx.core.Future.succeededFuture(results));
     });
-
-  }
-
-  // JsonNode node =
-  // mapper.readTree(PostgresJSONBCRUD.getInstance(vertxContext.owner()).pojo2json(entity));
-  // printout(node.fields(), new StringBuilder("jsonb"));
-  private void printout(Iterator<Entry<String, JsonNode>> node, StringBuilder parent) {
-    while (node.hasNext()) {
-      Map.Entry<String, JsonNode> entry = node.next();
-
-      StringBuilder sb = new StringBuilder();
-      sb.append(parent).append("->").append(entry.getKey());
-      JsonNode jno = entry.getValue();
-
-      if (jno.isContainerNode()) {
-        printout(jno.fields(), sb);
-      } else {
-        int i = sb.lastIndexOf("->");
-        String a = sb.substring(0, i);
-        String b = sb.substring(i + 2);
-        StringBuilder sb1 = new StringBuilder();
-        if (jno.isTextual()) {
-          sb1.append("'" + jno.textValue() + "'");
-        } else if (jno.isNumber()) {
-          sb1.append(jno.numberValue());
-        } else if (jno.isNull()) {
-          sb1.append("null");
-        } else if (jno.isBoolean()) {
-          sb1.append(jno.booleanValue());
-        } else {
-          // TODO handle binary data???
-        }
-        sb = new StringBuilder(a).append("->>").append(b);
-        if (sb1.length() > 2) {
-          sb.append("=").append(sb1);
-          System.out.println(sb.toString());
-        }
-      }
-    }
   }
 
   public void startEmbeddedPostgres() throws Exception {
@@ -1215,8 +1177,6 @@ public class PostgresClient {
       } else {
         log.info("embedded postgress is not running...");
       }
-    } else {
-      // TODO
     }
 
   }

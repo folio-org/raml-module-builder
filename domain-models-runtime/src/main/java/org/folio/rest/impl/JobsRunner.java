@@ -34,13 +34,13 @@ public class JobsRunner {
 
   private static final String LOG_LANG             = "en";
   private static final Logger log                  = LoggerFactory.getLogger(JobsRunner.class);
+  private static final String QUERY_CLAUSE               = "\"{0}\": \"{1}\"";
+
   private static Vertx        vertx;
 
   private int                 concurrentJobs       = 2;
   private final Messages      messages             = Messages.getInstance();
   private Map<String, JobAPI> jobCache             = new HashMap<>();
-
-  private static String QUERY_CLAUSE               = "\"{0}\": \"{1}\"";
 
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
 

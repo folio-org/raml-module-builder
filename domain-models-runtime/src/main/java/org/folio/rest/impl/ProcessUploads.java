@@ -87,28 +87,31 @@ public class ProcessUploads implements JobAPI {
       try {
         importer = (Importer)impls.get(i).newInstance();
       } catch (Exception e) {
-        log.error(e);
+        log.error(e.getMessage(), e);
       }
       if(importer != null){
         address[0] =  importer.getImportAddress();
-      }
 
-      if(address[0] == null){
-        //throw exception
-      }
-      //cache the importer impl
-      importerCache.put(address[0], importer);
+        if(address[0] == null){
+          //throw exception
+          log.error("Notification address is null, can not register job ");
+        }
+        else{
+          //cache the importer impl
+          importerCache.put(address[0], importer);
 
-      /*
-       * register each address from each Importer impl on the event bus
-       */
-      MessageConsumer<Object> consumer = vertx.eventBus().consumer(address[0]);
-      consumer.handler(message -> {
-        log.debug("Received a message to " + address[0] + ": " + message.body());
-        JobConf cObj = (JobConf) message.body();
-        registerJob(cObj, message);
-      });
-      log.info("Import Job " + impls.get(i).getName() + " Initialized, registered on address " + address[0]);
+          /*
+           * register each address from each Importer impl on the event bus
+           */
+          MessageConsumer<Object> consumer = vertx.eventBus().consumer(address[0]);
+          consumer.handler(message -> {
+            log.debug("Received a message to " + address[0] + ": " + message.body());
+            JobConf cObj = (JobConf) message.body();
+            registerJob(cObj, message);
+          });
+          log.info("Import Job " + impls.get(i).getName() + " Initialized, registered on address " + address[0]);
+        }
+      }
     }
   }
 
@@ -259,7 +262,9 @@ public class ProcessUploads implements JobAPI {
                 //the last bulk where the endHandler is called before the stop on error is called
                 rs.pause().close();
               }
-              catch(Exception e){}
+              catch(Exception e){
+                log.error("Error threshold hit on last block of data ", e);
+              }
               replyHandler.handle(io.vertx.core.Future.failedFuture(RTFConsts.STATUS_ERROR_THRESHOLD));
             }
           }

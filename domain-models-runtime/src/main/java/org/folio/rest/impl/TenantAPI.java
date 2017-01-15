@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import static org.folio.rest.tools.ClientGenerator.OKAPI_HEADER_TENANT;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
@@ -16,6 +15,7 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -46,7 +46,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
       try {
 
         System.out.println("sending... deleteTenant");
-        String tenantId = TenantTool.calculateTenantId( headers.get(OKAPI_HEADER_TENANT) );
+        String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
 
         String sqlFile = IOUtils.toString(
           TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_TENANT_TEMPLATE));
@@ -108,7 +108,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
       try {
 
         System.out.println("sending... postTenant");
-        String tenantId = TenantTool.calculateTenantId( headers.get(OKAPI_HEADER_TENANT) );
+        String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
 
         tenantExists(context, tenantId, res -> {
           boolean exists = false;
@@ -141,7 +141,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
      */
     context.runOnContext(v -> {
       System.out.println("sending... postTenant");
-      String tenantId = TenantTool.calculateTenantId(headers.get(OKAPI_HEADER_TENANT));
+      String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
       try {
         tenantExists(context, tenantId,

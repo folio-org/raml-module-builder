@@ -23,6 +23,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import javax.crypto.SecretKey;
 import javax.mail.BodyPart;
+import javax.mail.internet.InternetHeaders;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 
@@ -142,12 +143,15 @@ public class DemoRamlRestTest {
     System.out.println("checkClientCode test");
     try {
       MimeMultipart mmp = new MimeMultipart();
-      BodyPart bp = new MimeBodyPart(getClass().getClassLoader().getResourceAsStream("job.json"));
+      BodyPart bp = new MimeBodyPart(new InternetHeaders(),
+        IOUtils.toByteArray(getClass().getClassLoader().getResourceAsStream("job.json")));
       bp.setDisposition("form-data");
       bp.setFileName("abc.raml");
-      BodyPart bp2 = new MimeBodyPart(getClass().getClassLoader().getResourceAsStream("job.json"));
+      BodyPart bp2 = new MimeBodyPart(new InternetHeaders(),
+        IOUtils.toByteArray(getClass().getClassLoader().getResourceAsStream("job.json")));
       bp2.setDisposition("form-data");
       bp2.setFileName("abcd.raml");
+      System.out.println("--- bp content --- "+bp.getContent());
       mmp.addBodyPart(bp);
       mmp.addBodyPart(bp2);
       AdminClient aClient = new AdminClient("localhost", port, "abc", false);

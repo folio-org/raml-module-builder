@@ -61,6 +61,7 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
+import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.codecs.PojoEventBusCodec;
 import org.folio.rest.tools.messages.MessageConsts;
@@ -76,7 +77,6 @@ import org.kie.api.runtime.rule.FactHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
-import org.folio.rest.tools.ClientGenerator;
 
 public class RestVerticle extends AbstractVerticle {
 
@@ -147,18 +147,8 @@ public class RestVerticle extends AbstractVerticle {
   @Override
   public void start(Future<Void> startFuture) throws Exception {
 
-    InputStream in = getClass().getClassLoader().getResourceAsStream("git.properties");
-    if (in != null) {
-      try {
-        Properties prop = new Properties();
-        prop.load(in);
-        in.close();
-        log.info("git: " + prop.getProperty("git.remote.origin.url")
-                + " " + prop.getProperty("git.commit.id"));
-      } catch (Exception e) {
-        log.warn(e.getMessage());
-      }
-    }
+    readInGitProps();
+
     //process cmd line arguments
     cmdProcessing();
 
@@ -209,7 +199,6 @@ public class RestVerticle extends AbstractVerticle {
         System.exit(-1);
       } else {
         log.info("init succeeded.......");
-
         try {
           // startup periodic impl if exists
           runPeriodicHook();
@@ -230,7 +219,7 @@ public class RestVerticle extends AbstractVerticle {
             // the ramls and we return an error - this has positive security implications as well
             while (iter.hasNext()) {
               String regexURL = iter.next();
-              //try to match the requested url to the each regex pattern created from the urls in the raml
+              //try to match the requested url to each regex pattern created from the urls in the raml
               Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
               if (m.find()) {
                 validPath = true;
@@ -243,18 +232,6 @@ public class RestVerticle extends AbstractVerticle {
                   // if the path is valid and the http method is options
                   // assume a cors request
                   if (rc.request().method() == HttpMethod.OPTIONS) {
-                    // assume cors and return header of preflight
-                    // Access-Control-Allow-Origin
-
-                    // REMOVE CORS SUPPORT FOR
-                    // NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-                    // rc.response().putHeader(CORS_ALLOW_ORIGIN,
-                    // CORS_ALLOW_ORIGIN_VALUE);
-                    // rc.response().putHeader(CORS_ALLOW_HEADER,
-                    // CORS_ALLOW_HEADER_VALUE);
-
-                    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                     rc.response().end();
 
@@ -354,11 +331,10 @@ public class RestVerticle extends AbstractVerticle {
                         }
                       });
 
-                      /**
-                       * file upload requested (multipart/form-data) but the url is not to the /admin/upload
-                       * meaning, an implementing module is using its own upload handling, so read the content and
-                       * pass to implementing function just like any other call
-                       */
+                      //
+                      // file upload requested (multipart/form-data) but the url is not to the /admin/upload
+                      // meaning, an implementing module is using its own upload handling, so read the content and
+                      // pass to implementing function just like any other call
                       if (isContentUpload[0] && !streamData) {
 
                         //if file upload - set needed handlers
@@ -390,39 +366,8 @@ public class RestVerticle extends AbstractVerticle {
                       }
                       else if(streamData){
 
-                        request.handler(new Handler<Buffer>() {
-                          @Override
-                          public void handle(Buffer buff) {
-                            try {
-                              StreamStatus stat = new StreamStatus();
-                              stat.status = 0;
-                              paramArray[uploadParamPosition[0]] =
-                                  new ByteArrayInputStream( buff.getBytes() );
-                              invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
-                                LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                              });
-                            } catch (Exception e1) {
-                              log.error(e1.getMessage(), e1);
-                              rc.response().end();
-                            }
-                          }
-                        });
-                        request.endHandler( e -> {
-
-                          StreamStatus stat = new StreamStatus();
-                          stat.status = 1;
-                          invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
-                            LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                            //all data has been stored in memory - not necessarily all processed
-                            sendResponse(rc, v, start);
-                          });
-
-                        });
-                        request.exceptionHandler(new Handler<Throwable>(){
-                          @Override
-                          public void handle(Throwable event) {
-                            endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
-                          }});
+                        handleStream(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
+                          uploadParamPosition, paramArray, validRequest, start);
 
                       }
                       else{
@@ -439,27 +384,6 @@ public class RestVerticle extends AbstractVerticle {
                           }
                         }
                       }
-
-                      //real need for this is in case of bad file upload requests which dont trigger the upload end handler - so this catches is
-                      // register handler - in case of file uploads - when the body handler is used then the entire body is read
-                      // and calling the endhandler will throw an exception since there is nothing to read. so this can only be called
-                      //when no body handler is associated with the path - in our case multipart/form-data
-/*                      if (isContentUpload[0] && !handleInternally) {
-                        request.endHandler( a -> {
-                          if (validRequest[0]) {
-                            //if request is valid - invoke it
-                            try {
-                              invoke(method2Run[0], paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
-                                LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                                sendResponse(rc, v, start);
-                              });
-                            } catch (Exception e1) {
-                              log.error(e1.getMessage(), e1);
-                              rc.response().end();
-                            }
-                          }
-                        });
-                      }*/
                     }
                     else{
                       endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
@@ -478,7 +402,9 @@ public class RestVerticle extends AbstractVerticle {
               endRequestWithError(rc, 400, true,
                 messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
             }
-          } finally {/*do nothing*/}
+          } catch (Exception e) {
+              log.error(e.getMessage(), e);
+            }
         } );
         // routes requests on “/assets/*” to resources stored in the “assets”
         // directory.
@@ -490,28 +416,12 @@ public class RestVerticle extends AbstractVerticle {
         // http://localhost:8181/apidocs/index.html?raml=raml/_patrons.raml
         router.route("/apidocs/*").handler(StaticHandler.create("apidocs"));
         // startup http server on port 8181 to serve documentation
-
-        // CHANGED FOR NOW _ REMOVE CORS
-        // SUPPORT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        /*
-         * Set<HttpMethod> corsAllowedMethods = new HashSet<HttpMethod>(); corsAllowedMethods.add(HttpMethod.GET);
-         * corsAllowedMethods.add(HttpMethod.OPTIONS); corsAllowedMethods.add(HttpMethod.PUT); corsAllowedMethods.add(HttpMethod.POST);
-         * corsAllowedMethods.add(HttpMethod.DELETE);
-         *
-         * router.route().handler( CorsHandler.create("*").allowedMethods(corsAllowedMethods
-         * ).allowedHeader("Authorization").allowedHeader("Content-Type") .allowedHeader("Access-Control-Request-Method").allowedHeader(
-         * "Access-Control-Allow-Credentials") .allowedHeader("Access-Control-Allow-Origin"
-         * ).allowedHeader("Access-Control-Allow-Headers"));
-         */
-
-        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         if (port == -1) {
-          /** we are here if port was not passed via cmd line */
+          // we are here if port was not passed via cmd line
           port = config().getInteger("http.port", 8081);
         }
 
-        /** in anycase set the port so it is available to others via the config() */
+        // in anycase set the port so it is available to others via the config()
         config().put("http.port", port);
 
         Integer p = port;
@@ -526,12 +436,11 @@ public class RestVerticle extends AbstractVerticle {
         // router object (declared in the beginning of the atrt function accepts request and will pass to next handler for
         // specified path
 
-        .listen(
+        .listen(p,
           // Retrieve the port from the configuration file - file needs to
           // be passed as arg to command line,
           // for example: -conf src/main/conf/my-application-conf.json
           // default to 8181.
-          p,
           result -> {
             if (result.failed()) {
               startFuture.fail(result.cause());
@@ -555,6 +464,43 @@ public class RestVerticle extends AbstractVerticle {
     });
   }
 
+  private void handleStream(Method method2Run, RoutingContext rc, HttpServerRequest request,
+      Object instance, String[] tenantId, Map<String, String> okapiHeaders,
+      int[] uploadParamPosition, Object[] paramArray, boolean[] validRequest, long start){
+    request.handler(new Handler<Buffer>() {
+      @Override
+      public void handle(Buffer buff) {
+        try {
+          StreamStatus stat = new StreamStatus();
+          stat.setStatus(0);
+          paramArray[uploadParamPosition[0]] =
+              new ByteArrayInputStream( buff.getBytes() );
+          invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
+            LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
+          });
+        } catch (Exception e1) {
+          log.error(e1.getMessage(), e1);
+          rc.response().end();
+        }
+      }
+    });
+    request.endHandler( e -> {
+
+      StreamStatus stat = new StreamStatus();
+      stat.setStatus(1);
+      invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
+        LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
+        //all data has been stored in memory - not necessarily all processed
+        sendResponse(rc, v, start);
+      });
+
+    });
+    request.exceptionHandler(new Handler<Throwable>(){
+      @Override
+      public void handle(Throwable event) {
+        endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
+      }});
+  }
   /**
    * @param method2Run
    * @param rc
@@ -601,6 +547,21 @@ public class RestVerticle extends AbstractVerticle {
 
   }
 
+  private void readInGitProps(){
+    InputStream in = getClass().getClassLoader().getResourceAsStream("git.properties");
+    if (in != null) {
+      try {
+        Properties prop = new Properties();
+        prop.load(in);
+        in.close();
+        log.info("git: " + prop.getProperty("git.remote.origin.url")
+                + " " + prop.getProperty("git.commit.id"));
+      } catch (Exception e) {
+        log.warn(e.getMessage());
+      }
+    }
+  }
+
   /**
    * @param request
    * @param uploadParamPosition
@@ -613,51 +574,56 @@ public class RestVerticle extends AbstractVerticle {
     MimeMultipart mmp = new MimeMultipart();
     //place the mmp as an argument to the 'to be called' function - at the correct position
     paramArray[uploadParamPosition[0]] = mmp;
+    request.uploadHandler(new MultiPartHandler(rc, mmp, validRequest));
+  }
 
-    request.uploadHandler(new Handler<io.vertx.core.http.HttpServerFileUpload>() {
+  class MultiPartHandler implements Handler<io.vertx.core.http.HttpServerFileUpload> {
 
-      Buffer content = Buffer.buffer();
+    MimeMultipart mmp;
+    RoutingContext rc;
+    boolean[] validRequest;
+    Buffer content = Buffer.buffer();
 
-      @Override
-      public void handle(HttpServerFileUpload upload) {
+    public MultiPartHandler(RoutingContext rc, MimeMultipart mmp, boolean[] validRequest){
+      this.rc = rc;
+      this.mmp = mmp;
+      this.validRequest = validRequest;
+    }
 
-        // called as data comes in
-        upload.handler(new Handler<Buffer>() {
-          @Override
-          public void handle(Buffer buff) {
-            if(content == null){
-              content = Buffer.buffer();
-            }
-            content.appendBuffer(buff);
+    @Override
+    public void handle(HttpServerFileUpload upload) {
+      upload.handler(new Handler<Buffer>() {
+        @Override
+        public void handle(Buffer buff) { /** called as data comes in */
+          if(content == null){
+            content = Buffer.buffer();
           }
-        });
-        upload.exceptionHandler(new Handler<Throwable>() {
-          @Override
-          public void handle(Throwable event) {
-            endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
+          content.appendBuffer(buff);
+        }
+      });
+      upload.exceptionHandler(new Handler<Throwable>() {
+        @Override
+        public void handle(Throwable event) {
+          endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
+        }
+      });
+      /** endHandler called for each part in the multipart, so if uploading 2 files - will be called twice */
+      upload.endHandler(new Handler<Void>() {
+        @Override
+        public void handle(Void event) {
+          InternetHeaders headers = new InternetHeaders();
+          MimeBodyPart mbp = null;
+          try {
+            mbp = new MimeBodyPart(headers, content.getBytes());
+            mbp.setFileName(upload.filename());
+            mmp.addBodyPart(mbp);
+            content = null;
+          } catch (MessagingException e) {
+            log.error(e);
           }
-        });
-        // endHandler called when all data completed streaming to server
-        //called for each part in the multipart - so if uploading 2 files - will be called twice
-        upload.endHandler(new Handler<Void>() {
-          @Override
-          public void handle(Void event) {
-
-            InternetHeaders headers = new InternetHeaders();
-            MimeBodyPart mbp = null;
-            try {
-              mbp = new MimeBodyPart(headers, content.getBytes());
-              mbp.setFileName(upload.filename());
-              mmp.addBodyPart(mbp);
-              content = null;
-            } catch (MessagingException e) {
-              // TODO Auto-generated catch block
-              log.error(e);
-            }
-          }
-        });
-      }
-    });
+        }
+      });
+    }
   }
 
   /**
@@ -1389,7 +1355,13 @@ public class RestVerticle extends AbstractVerticle {
 
   class StreamStatus {
 
-    public int status = -1;
+    private int status = -1;
 
+    public int getStatus() {
+      return status;
+    }
+    public void setStatus(int status) {
+      this.status = status;
+    }
   }
 }
