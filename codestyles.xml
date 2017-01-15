@@ -32,6 +32,8 @@
     </module>
     <module name="ClassDataAbstractionCoupling"> <!-- the number of instantiations of other classes within the given class -->
       <property name="max" value="10"/>
+      <!-- since cannot pass RMB generated objects as a package with wildcard, thershold may be exceeded, changing this to warning -->
+      <property name="severity" value="warning"/>
     </module>
     <module name="ConstantName"> <!-- Validates identifiers for constants (static, final fields).  -->
       <property name="format" value="^log(ger)?|[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
