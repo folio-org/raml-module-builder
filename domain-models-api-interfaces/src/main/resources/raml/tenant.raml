@@ -1,0 +1,49 @@
+#%RAML 0.8
+
+title: Tenant API
+baseUri: http://localhost:8081/{version}
+version: v1
+
+traits:
+
+/_/tenant:
+  post:
+    description: Add the needed DB schema for this new tenant
+    is: [secured]
+    responses:
+      200:
+        description: "tenant id added successfully, returns a list of commands that have failed while initializing the tenant"
+        body:
+            application/json:
+      500:
+        description: "Internal server error"
+        body:
+          text/plain:
+            example: "Internal server error, contact administrator"
+  get:
+    description: Does tenant id already exist
+    is: [secured]
+    responses:
+      200:
+        description: "true or false indicator"
+        body:
+          text/plain:
+            example: "Text....."
+      500:
+        description: "Internal server error"
+        body:
+          text/plain:
+            example: "Internal server error, contact administrator"
+  delete:
+    description: drop tenant id
+    is: [secured]
+    responses:
+      200:
+        description: "true or false indicator"
+        body:
+            application/json:
+      500:
+        description: "Internal server error"
+        body:
+          text/plain:
+            example: "Internal server error, contact administrator"
