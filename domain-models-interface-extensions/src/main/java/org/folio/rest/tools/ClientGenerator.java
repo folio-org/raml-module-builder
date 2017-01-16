@@ -10,6 +10,7 @@ import io.vertx.core.json.JsonObject;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -32,11 +33,14 @@ import com.sun.codemodel.JDocComment;
 import com.sun.codemodel.JExpr;
 import com.sun.codemodel.JExpression;
 import com.sun.codemodel.JFieldVar;
+import com.sun.codemodel.JForLoop;
 import com.sun.codemodel.JMethod;
 import com.sun.codemodel.JMod;
 import com.sun.codemodel.JPackage;
 import com.sun.codemodel.JTryBlock;
+import com.sun.codemodel.JType;
 import com.sun.codemodel.JVar;
+import com.sun.codemodel.JWhileLoop;
 import java.io.UnsupportedEncodingException;
 
 /**
@@ -62,6 +66,9 @@ public class ClientGenerator {
   private String className = null;
 
   private String mappingType = "postgres";
+
+  private JFieldVar tenantId;
+  private JFieldVar httpClient;
 
   public static void main(String[] args) throws Exception {
 
@@ -94,13 +101,13 @@ public class ClientGenerator {
       globalPathVar.init(JExpr.lit("/" + (String)globalPath));
 
       /* class variable tenant id */
-      JFieldVar tenantId = jc.field(JMod.PRIVATE, String.class, "tenantId");
+      tenantId = jc.field(JMod.PRIVATE, String.class, "tenantId");
 
       /* class variable to http options */
       JFieldVar options = jc.field(JMod.PRIVATE, HttpClientOptions.class, "options");
 
       /* class variable to http client */
-      JFieldVar httpClient = jc.field(JMod.PRIVATE, HttpClient.class, "httpClient");
+      httpClient = jc.field(JMod.PRIVATE, HttpClient.class, "httpClient");
 
       /* constructor, init the httpClient - allow to pass keep alive option */
       JMethod consructor = jc.constructor(JMod.PUBLIC);
@@ -130,16 +137,17 @@ public class ClientGenerator {
 
       /* constructor, init the httpClient */
       JMethod consructor2 = jc.constructor(JMod.PUBLIC);
-      consructor2.param(String.class, "host");
-      consructor2.param(int.class, "port");
-      consructor2.param(String.class, "tenantId");
+      JVar hostVar = consructor2.param(String.class, "host");
+      JVar portVar = consructor2.param(int.class, "port");
+      JVar tenantIdVar = consructor2.param(String.class, "tenantId");
       JBlock conBody2 = consructor2.body();
-      conBody2.directStatement("this(host, port, tenantId, true);");
+      conBody2.invoke("this").arg(hostVar).arg(portVar).arg(tenantIdVar).arg(JExpr.TRUE);
 
       /* constructor, init the httpClient */
       JMethod consructor3 = jc.constructor(JMod.PUBLIC);
       JBlock conBody3 = consructor3.body();
-      conBody3.directStatement("this(\"localhost\", 8081, \"folio_demo\", false);");
+
+      conBody3.invoke("this").arg("localhost").arg(JExpr.lit(8081)).arg("folio_demo").arg(JExpr.FALSE);
       consructor3.javadoc().add("Convenience constructor for tests ONLY!<br>Connect to localhost on 8081 as folio_demo tenant.");
 
     } catch (Exception e) {
@@ -153,8 +161,8 @@ public class ClientGenerator {
     jmCreate.javadoc().add("Close the client. Closing will close down any "
         + "pooled connections. Clients should always be closed after use.");
     JBlock body = jmCreate.body();
-    body.directStatement("httpClient.close();");
 
+    body.directStatement("httpClient.close();");
   }
 
   public void generateMethodMeta(String methodName, JsonObject params, String url,
@@ -168,7 +176,8 @@ public class ClientGenerator {
     JBlock body = jmCreate.body();
 
     /* create the query parameter string builder */
-    body.directStatement("StringBuilder queryParams = new StringBuilder(\"?\");");
+    JVar queryParams = body.decl(jCodeModel._ref(StringBuilder.class), "queryParams",
+            JExpr._new(jCodeModel.ref(StringBuilder.class)).arg("?"));
 
 
     ////////////////////////---- Handle place holders in the url  ----//////////////////
@@ -206,7 +215,7 @@ public class ClientGenerator {
       String valueName = ((JsonObject) entry.getValue()).getString("value");
       String valueType = ((JsonObject) entry.getValue()).getString("type");
       String paramType = ((JsonObject) entry.getValue()).getString("param_type");
-      if(handleParams(jmCreate, paramType, valueType, valueName)){
+      if(handleParams(jmCreate, queryParams, paramType, valueType, valueName)){
         bodyContentExists[0] = true;
       }
     });
@@ -241,10 +250,9 @@ public class ClientGenerator {
     }
 
     /* push tenant id into x-okapi-tenant and authorization headers for now */
-    body.directStatement("if(tenantId != null){");
-    body.directStatement(" request.putHeader(\"Authorization\", tenantId);");
-    body.directStatement(" request.putHeader(\""+OKAPI_HEADER_TENANT+"\", tenantId);");
-    body.directStatement("}");
+    JConditional _if = body._if(tenantId.ne(JExpr._null()));
+    _if._then().directStatement("request.putHeader(\"Authorization\", tenantId);");
+    _if._then().directStatement("request.putHeader(\""+OKAPI_HEADER_TENANT+"\", tenantId);");
     /* add response handler to each function */
     JClass handler = jCodeModel.ref(Handler.class).narrow(HttpClientResponse.class);
     jmCreate.param(handler, "responseHandler");
@@ -260,25 +268,25 @@ public class ClientGenerator {
 
   }
 
-  private void addParameter(JBlock methodBody, String valueName, Boolean encode, Boolean simple) {
+  private void addParameter(JBlock methodBody, JVar queryParams, String valueName, Boolean encode, Boolean simple) {
     JBlock b = methodBody;
     if (!simple) {
       JConditional _if = methodBody._if(JExpr.ref(valueName).ne(JExpr._null()));
       b = _if._then();
     }
-    b.invoke(JExpr.ref("queryParams"), "append").arg(JExpr.lit(valueName + "="));
+    b.invoke(queryParams, "append").arg(JExpr.lit(valueName + "="));
     if (encode) {
       JTryBlock tb = b._try();
-      JExpression expr = JExpr.direct("java.net.URLEncoder.encode(" + valueName + ", \"UTF-8\")");
-      tb.body().invoke(JExpr.ref("queryParams"), "append").arg(expr);
+      JExpression expr = jCodeModel.ref(java.net.URLEncoder.class).staticInvoke("encode").arg(JExpr.ref(valueName)).arg("UTF-8");
+      tb.body().invoke(queryParams, "append").arg(expr);
       JClass jc1 = jCodeModel.ref(UnsupportedEncodingException.class);
       JCatchBlock cb2 = tb._catch(jc1);
       JVar e_var = cb2.param("e");
       cb2.body().invoke(JExpr.ref("e"), "printStackTrace");
     } else {
-      b.invoke(JExpr.ref("queryParams"), "append").arg(JExpr.ref(valueName));
+      b.invoke(queryParams, "append").arg(JExpr.ref(valueName));
     }
-    b.invoke(JExpr.ref("queryParams"), "append").arg(JExpr.lit("&"));
+    b.invoke(queryParams, "append").arg(JExpr.lit("&"));
   }
 
   /**
@@ -306,7 +314,7 @@ public class ClientGenerator {
    * @param paramType
    * @param valueType
    */
-  private boolean handleParams(JMethod method, String paramType, String valueType, String valueName) {
+  private boolean handleParams(JMethod method, JVar queryParams, String paramType, String valueType, String valueName) {
 
     JBlock methodBody = method.body();
 
@@ -321,40 +329,55 @@ public class ClientGenerator {
           /* this is a post or put since our only options here are receiving a reader (data in body) or
            * entity - which is also data in body - but we can only have one since a multi part body
            * should be indicated by a multipart objector input stream in the body */
-          methodBody.directStatement( "io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();" );
+          JExpression jexpr = jCodeModel.ref(io.vertx.core.buffer.Buffer.class).staticInvoke("buffer");
+          JVar buffer = methodBody.decl(jCodeModel.ref(io.vertx.core.buffer.Buffer.class), "buffer", jexpr);
+          // methodBody.directStatement( "io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();" );
 
-          if("java.io.Reader".equals(valueType)){
-            method.param(Reader.class, "reader");
+          if ("java.io.Reader".equals(valueType)){
+            JVar reader = method.param(Reader.class, "reader");
             method._throws(Exception.class);
-            methodBody.directStatement( "if(reader != null){buffer.appendString(org.apache.commons.io.IOUtils.toString(reader));}" );
+            JConditional _if = methodBody._if(reader.ne(JExpr._null()));
+           _if._then().directStatement( "buffer.appendString(org.apache.commons.io.IOUtils.toString(reader));" );
           }
           else if("java.io.InputStream".equals(valueType)){
-            method.param(InputStream.class, "inputStream");
-            methodBody.directStatement( "java.io.ByteArrayOutputStream result = new java.io.ByteArrayOutputStream();");
-            methodBody.directStatement( "byte[] buffer1 = new byte[1024];");
-            methodBody.directStatement( "int length;\n");
-            methodBody.directStatement( "while ((length = inputStream.read(buffer1)) != -1) {");
-            methodBody.directStatement( "result.write(buffer1, 0, length);");
-            methodBody.directStatement( "}");
-            methodBody.directStatement( "buffer.appendBytes(result.toByteArray());");
+            JVar inputStream = method.param(InputStream.class, "inputStream");
+            JVar result = methodBody.decl(jCodeModel.ref(ByteArrayOutputStream.class), "result", JExpr._new(jCodeModel.ref(ByteArrayOutputStream.class)));
+            JVar byteA = methodBody.decl(jCodeModel.BYTE.array(), "buffer1", JExpr.newArray(jCodeModel.BYTE, 1024));
+            JVar length = methodBody.decl(jCodeModel.INT, "length");
+            // http://stackoverflow.com/questions/26037015/how-do-i-force-enclose-a-codemodel-expression-in-brackets
+            JWhileLoop _while = methodBody._while(JExpr.TRUE);
+            _while.body().assign(length, inputStream.invoke("read").arg(byteA));
+            _while.body()._if(length.eq(JExpr.lit(-1)))._then()._break();
+            _while.body().add(result.invoke("write").arg(byteA).arg(JExpr.lit(0)).arg(length));
+            methodBody.add(buffer.invoke("appendBytes").arg(result.invoke("toByteArray")));
             method._throws(IOException.class);
           }
           else if("javax.mail.internet.MimeMultipart".equals(valueType)){
-            method.param(MimeMultipart.class, "mimeMultipart");
+            JVar mimeMultiPart = method.param(MimeMultipart.class, "mimeMultipart");
             method._throws(MessagingException.class);
             method._throws(IOException.class);
-            methodBody.directStatement("if(mimeMultipart != null) {int parts = mimeMultipart.getCount();");
-            methodBody.directStatement("StringBuilder sb = new StringBuilder();");
-            methodBody.directStatement("for (int i = 0; i < parts; i++){");
-            methodBody.directStatement("javax.mail.BodyPart bp = mimeMultipart.getBodyPart(i);");
-            methodBody.directStatement("sb.append(\"----BOUNDARY\\r\\n\")");
-            methodBody.directStatement(".append(\"Content-Disposition: \").append(bp.getDisposition()).append(\"; name=\\\"\").append(bp.getFileName())");
-             //   + " {sb.append(mimeMultipart.getBodyPart(i).toString());}");
-            methodBody.directStatement(".append(\"\\\"; filename=\\\"\").append(bp.getFileName()).append(\"\\\"\\r\\n\")");
-            methodBody.directStatement(".append(\"Content-Type: application/octet-stream\\r\\n\")");
-            methodBody.directStatement(".append(\"Content-Transfer-Encoding: binary\\r\\n\")");
-            methodBody.directStatement(".append(\"\\r\\n\").append( bp.getContent() ).append(\"\\r\\n\\r\\n\");}");
-            methodBody.directStatement("buffer.appendString(sb.append(\"----BOUNDARY\\r\\n\").toString());}");
+            JBlock b1 = methodBody._if(mimeMultiPart.ne(JExpr._null()))._then();
+            JVar parts = b1.decl(jCodeModel.INT, "parts", mimeMultiPart.invoke("getCount"));
+            JVar sb = b1.decl(jCodeModel._ref(StringBuilder.class), "sb",
+                    JExpr._new(jCodeModel.ref(StringBuilder.class)));
+            JForLoop _for = b1._for();
+            JVar i_var = _for.init(jCodeModel._ref(int.class), "i", JExpr.lit(0));
+            _for.test(i_var.lt(parts));
+            _for.update(i_var.incr());
+            JBlock fBody = _for.body();
+            JVar bp = fBody.decl(jCodeModel.ref(javax.mail.BodyPart.class), "bp", mimeMultiPart.invoke("getBodyPart").arg(i_var));
+            fBody.add(sb.invoke("append").arg("----BOUNDARY\r\n"));
+            fBody.add(sb.invoke("append").arg("Content-Disposition: \""));
+            fBody.add(sb.invoke("append").arg(bp.invoke("getDisposition")));
+            fBody.add(sb.invoke("append").arg("\"; name=\""));
+            fBody.add(sb.invoke("append").arg(bp.invoke("getFileName")));
+            fBody.add(sb.invoke("append").arg("\"; filename=\")"));
+            fBody.add(sb.invoke("append").arg(bp.invoke("getFileName")));
+            fBody.add(sb.invoke("append").arg("\"\r\n"));
+            fBody.add(sb.invoke("append").arg("Content-Type: application/octet-stream\r\n"));
+            fBody.add(sb.invoke("append").arg("Content-Transfer-Encoding: binary\r\n"));
+            b1.add(sb.invoke("append").arg("----BOUNDARY\r\n"));
+            b1.add(buffer.invoke("appendString").arg(sb.invoke("toString")));
           }
           else{
             if(mappingType.equals("postgres")){
@@ -386,23 +409,23 @@ public class ClientGenerator {
       try {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
-          addParameter(methodBody, valueName, true, false);
+          addParameter(methodBody, queryParams, valueName, true, false);
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
-          addParameter(methodBody, valueName, false, true);
+          addParameter(methodBody, queryParams, valueName, false, true);
         } else if (valueType.contains("boolean")) {
           method.param(boolean.class, valueName);
-          addParameter(methodBody, valueName, false, true);
+          addParameter(methodBody, queryParams, valueName, false, true);
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
-          addParameter(methodBody, valueName, false, false);
+          addParameter(methodBody, queryParams, valueName, false, false);
         } else { // enum object type
           try {
             String enumClazz = replaceLast(valueType, ".", "$");
             Class<?> enumClazz1 = Class.forName(enumClazz);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
-              addParameter(methodBody, valueName, false, false);
+              addParameter(methodBody, queryParams, valueName, false, false);
             }
           } catch (Exception ee) {
             ee.printStackTrace();
