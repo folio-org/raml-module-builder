@@ -253,7 +253,7 @@ public class AdminAPI implements AdminResource {
           if(reply.succeeded()){
 
             OutStream stream = new OutStream();
-            stream.setData(reply.result().toJson());
+            stream.setData(reply.result().getRows());
 
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresActiveSessionsResponse.
               withJsonOK(stream)));
@@ -284,7 +284,7 @@ public class AdminAPI implements AdminResource {
                     + "as BUFFER_HIT_PERCENT FROM pg_stat_database WHERE datname = '"+dbname+"'", reply2 -> {
                   if(reply2.succeeded()){
                     OutStream stream = new OutStream();
-                    stream.setData(reply2.result().toJson());
+                    stream.setData(reply2.result().getRows());
                     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresLoadResponse.
                       withJsonOK(stream)));
                   }
@@ -318,7 +318,7 @@ public class AdminAPI implements AdminResource {
           if(reply.succeeded()){
 
             OutStream stream = new OutStream();
-            stream.setData(reply.result().toJson());
+            stream.setData(reply.result().getRows());
 
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresTableAccessStatsResponse.
               withJsonOK(stream)));
@@ -342,7 +342,7 @@ public class AdminAPI implements AdminResource {
         if(reply.succeeded()){
 
           OutStream stream = new OutStream();
-          stream.setData(reply.result().toJson());
+          stream.setData(reply.result().getRows());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresTableAccessStatsResponse.
             withJsonOK(stream)));
@@ -399,7 +399,7 @@ public class AdminAPI implements AdminResource {
         if(reply.succeeded()){
 
           OutStream stream = new OutStream();
-          stream.setData(reply.result().toJson());
+          stream.setData(reply.result().getRows());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminTableIndexUsageResponse.
             withJsonOK(stream)));
@@ -423,7 +423,7 @@ public class AdminAPI implements AdminResource {
           if(reply.succeeded()){
 
             OutStream stream = new OutStream();
-            stream.setData(reply.result().toJson());
+            stream.setData(reply.result().getRows());
 
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminCacheHitRatesResponse.
               withJsonOK(stream)));
@@ -454,7 +454,7 @@ public class AdminAPI implements AdminResource {
         if(reply.succeeded()){
 
           OutStream stream = new OutStream();
-          stream.setData(reply.result().toJson());
+          stream.setData(reply.result().getRows());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminSlowQueriesResponse.
             withJsonOK(stream)));

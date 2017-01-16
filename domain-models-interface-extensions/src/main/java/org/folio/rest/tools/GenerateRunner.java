@@ -49,61 +49,50 @@ public class GenerateRunner {
     configuration.setBasePackageName(PACKAGE_DEFAULT);
     configuration.setExtensions(extensions);
 
-    //outputDirectory = System.getProperty("output_directory");
-
-/*    if(outputDirectory == null){
-      outputDirectory = System.getProperty("java.io.tmpdir");
+    String ramlsDir = System.getProperty("raml_files");
+    if(ramlsDir == null) {
+      ramlsDir = root + SOURCES_DEFAULT;
     }
+    String []dirs = ramlsDir.split(",");
+    for (int i = 0; i < dirs.length; i++) {
+      inputDirectory = dirs[i];
 
-    if(inputDirectory == null){
-      throw new Exception("unable to run java generation process without a valid input directory of the raml content");
-    }*/
+      System.out.println( "Input directory " + inputDirectory);
 
-    inputDirectory  = System.getProperty("raml_files");
-    //inputDirectory  = "C:\\Git\\circulation\\ramls\\circulation";// "C:\\Git\\raml-module-builder\\domain-models-api-interfaces\\src\\main\\resources\\raml";
-    if(inputDirectory == null){
+      configuration.setOutputDirectory(new File(outputDirectory));
+      configuration.setSourceDirectory(new File(inputDirectory));
 
-      inputDirectory = root + SOURCES_DEFAULT;
+      int numMatches = 0;
 
-    }
+      if(!new File(inputDirectory).isDirectory()){
+        System.out.println(inputDirectory + " is not a valid directory");
+      }
 
-    System.out.println( "Input directory " + inputDirectory);
+      File []ramls = new File(inputDirectory).listFiles(new FilenameFilter() {
 
-
-    configuration.setOutputDirectory(new File(outputDirectory));
-    configuration.setSourceDirectory(new File(inputDirectory));
-
-    int numMatches = 0;
-
-    if(!new File(inputDirectory).isDirectory()){
-      System.out.println(inputDirectory + " is not a valid directory");
-    }
-
-    File []ramls = new File(inputDirectory).listFiles(new FilenameFilter() {
-
-      @Override
-      public boolean accept(File dir, String name) {
-        if(name.endsWith(".raml")){
-          return true;
+        @Override
+        public boolean accept(File dir, String name) {
+          if(name.endsWith(".raml")){
+            return true;
+          }
+          return false;
         }
-        return false;
+      });
+      for (int j = 0; j < ramls.length; j++) {
+        BufferedReader reader=new BufferedReader(new FileReader(ramls[j]));
+        String line=reader.readLine();
+        reader.close();
+        if(line.startsWith("#%RAML")) {
+          System.out.println("processing " + ramls[j]);
+          generator.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
+          numMatches++;
+        }
+        else{
+          System.out.println(ramls[j] + " has a .raml suffix but does not start with #%RAML");
+        }
       }
-    });
-    for (int i = 0; i < ramls.length; i++) {
-      BufferedReader reader=new BufferedReader(new FileReader(ramls[i]));
-      String line=reader.readLine();
-      reader.close();
-      if(line.startsWith("#%RAML")) {
-        System.out.println("processing " + ramls[i]);
-        generator.run(new FileReader(ramls[i]), configuration, ramls[i].getAbsolutePath());
-        numMatches++;
-      }
-      else{
-        System.out.println(ramls[i] + " has a .raml suffix but does not start with #%RAML");
-      }
+      System.out.println("processed: " + numMatches + " raml files");
     }
-    System.out.println("processed: " + numMatches + " raml files");
-
     return;
 
   }

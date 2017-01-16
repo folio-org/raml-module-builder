@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>2.3.3-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
     <!-- <relativePath>../domain-models-poc</relativePath> -->
   </parent>
   <artifactId>domain-models-api-interfaces</artifactId>
@@ -162,7 +162,7 @@
                 </systemProperty>
                 <systemProperty>
                   <key>raml_files</key>
-                  <value>${ramlfiles_path}</value>
+                  <value>${ramlfiles_path},${basedir}/../raml-util/ramls</value>
                 </systemProperty>
               </systemProperties>
             </configuration>
