@@ -5,6 +5,7 @@ baseUri: http://localhost:8081/{version}
 version: v1
 
 traits:
+  - secured: !include ../../../../../raml-util/traits/auth.raml
 
 /_/tenant:
   post:
