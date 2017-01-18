@@ -198,8 +198,7 @@ public class PostgresClient {
 
     this.tenantId = tenantId;
     this.vertx = vertx;
-    log.info("Loading PostgreSQL configuration from " + getConfigFilePath());
-    postgreSQLClientConfig = new LoadConfs().loadConfig(getConfigFilePath());
+    postgreSQLClientConfig = LoadConfs.loadConfig(getConfigFilePath());
     if(postgreSQLClientConfig == null){
       if (embeddedMode) {
         //embedded mode, if no config passed use defaults
