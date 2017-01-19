@@ -7,11 +7,12 @@ import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -40,10 +41,8 @@ import com.sun.codemodel.JMethod;
 import com.sun.codemodel.JMod;
 import com.sun.codemodel.JPackage;
 import com.sun.codemodel.JTryBlock;
-import com.sun.codemodel.JType;
 import com.sun.codemodel.JVar;
 import com.sun.codemodel.JWhileLoop;
-import java.io.UnsupportedEncodingException;
 
 /**
  *
@@ -472,6 +471,9 @@ public class ClientGenerator {
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
           addParameter(methodBody, queryParams, valueName, false, false);
+        } else if (valueType.contains("Integer")) {
+            method.param(Integer.class, valueName);
+            addParameter(methodBody, queryParams, valueName, false, false);
         } else { // enum object type
           try {
             String enumClazz = replaceLast(valueType, ".", "$");

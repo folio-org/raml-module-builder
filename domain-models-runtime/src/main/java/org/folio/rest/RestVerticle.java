@@ -1174,7 +1174,7 @@ public class RestVerticle extends AbstractVerticle {
               } else {
                 paramArray[order] = param;
               }
-            } else if (valueType.contains("int")) {
+            } else if (valueType.contains("int") || valueType.contains("Integer")) {
               // cant pass null to an int type - replace with zero
               if (param == null) {
                 if (defaultVal != null) {
@@ -1194,7 +1194,6 @@ public class RestVerticle extends AbstractVerticle {
                 paramArray[order] = Boolean.valueOf(param);
               }
             } else if (valueType.contains("BigDecimal")) {
-              // cant pass null to an int type - replace with zero
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = new BigDecimal((String) defaultVal);
