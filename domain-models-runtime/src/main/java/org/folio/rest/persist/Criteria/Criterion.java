@@ -27,6 +27,7 @@ public class Criterion {
   private Limit                     limit            = new Limit();
   private Offset                    offset           = new Offset();
   private boolean                   whereClauseAdded = false;
+  private boolean                   isJoinCriterion  = false;
 
   public Criterion() {
 
@@ -97,6 +98,9 @@ public class Criterion {
         if("NOT".equals(adjustedOp)){
           adjustedOp = "AND NOT";
         }
+        if(snippet.length() == 0){
+          adjustedOp = "";
+        }
         snippet = snippet + " " + adjustedOp + " (";
         p.op = ""; //first op is ignored ( AND ...) doesn't make sense
       }
@@ -115,6 +119,9 @@ public class Criterion {
       }
       if (a.select != null) {
         selects.put(a.select.snippet, a.select);
+      }
+      if(a.isJoinON()){
+        this.isJoinCriterion = true;
       }
     }
   }
@@ -147,7 +154,11 @@ public class Criterion {
   @Override
   public String toString() {
     if (!whereClauseAdded && snippet.length() > 0) {
-      snippet = " WHERE " + snippet;
+      String where = " WHERE ";
+      if(isJoinCriterion){
+        where = " ON ";
+      }
+      snippet = where + snippet;
       whereClauseAdded = true;
     }
     return snippet + " " + order.toString() + " " + offset.toString() + " " + limit.toString();

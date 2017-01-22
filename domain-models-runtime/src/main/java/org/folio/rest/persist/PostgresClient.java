@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 
@@ -27,9 +28,11 @@ import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
+import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.persist.helpers.JoinBy;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
@@ -316,20 +319,33 @@ public class PostgresClient {
   /**
    *
    * @param table
-   *          - schema.tablename to save to
-   * @param json
+   *          - tablename to save to
+   * @param entity
    *          - this must be a json object
    * @param replyHandler
    * @throws Exception
    */
   public void save(String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+    save(table, null, entity, replyHandler);
+  }
+
+  public void save(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
     long start = System.nanoTime();
 
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
+
+        StringBuilder clientIdField = new StringBuilder("");
+        StringBuilder clientId = new StringBuilder("");
+        if(id != null){
+          clientId.append("'").append(id).append("',");
+          clientIdField.append(ID_FIELD).append(",");
+        }
         try {
-          connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
+          connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+            " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
+            ") VALUES ("+clientId+"?::JSON) RETURNING _id",
             new JsonArray().add(pojo2json(entity)), query -> {
               connection.close();
               if (query.failed()) {
@@ -788,6 +804,154 @@ public class PostgresClient {
     get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
       returnCount, setId, replyHandler);
   }
+
+
+  /**
+   * run simple join queries between two tables
+   *
+   * for example, to generate the following query:
+   * SELECT  c1.* , c2.* FROM nyu.config_data c1
+   *  INNER JOIN nyu.config_data c2 ON ((c1.jsonb->>'code') = (c2.jsonb->'scope'->>'library_id'))
+   *    WHERE (c2.jsonb->>'default')::boolean IS TRUE  AND (c2.jsonb->>'default')::boolean IS TRUE
+   *
+   * Create a criteria representing a join column for each of the tables
+   * Create two JoinBy objects containing the:
+   *   1. The table to join from and to,
+   *   2. An alias for the tables,
+   *   3. The Fields to return
+   *   4. The column to join on (using the criteria object)
+   *
+   * @param  JoinBy jb1= new JoinBy("config_data","c1",
+   *   new Criteria().addField("'code'"), new String[]{"count(c1._id)"});
+   *
+   * @param  JoinBy jb2= new JoinBy("config_data","c2",
+   *   new Criteria().addField("'scope'").addField("'library_id'"),  new String[]{"avg(length(c2.description))"});
+   *
+   * Passing "*" to the fields to return may be used as well (or a list of aliased column names)
+   *
+   * @param operation what operation to use when comparing the two columns. For example:
+   * setting this to equals would yeild something like:
+   *
+   * ((c1.jsonb->>'code') = (c2.jsonb->'scope'->>'library_id'))
+   *
+   * @param joinType - for example: INNER JOIN, LEFT JOIN,
+   * some prepared COnsts can be found: JoinBy.RIGHT_JOIN
+   *
+   * @param cr criterion to use to further filter results per table. can be used to also sort results
+   * new Criterion().setOrder(new Order("c2._id", ORDER.DESC))
+   * But can be used to create a more complex where clause if needed
+   *
+   * For example:
+   * GroupedCriterias gc = new GroupedCriterias();
+   *  gc.addCriteria(new Criteria().setAlias("c2").addField("'default'")
+   *    .setOperation(Criteria.OP_IS_TRUE));
+   *  gc.addCriteria(new Criteria().setAlias("c2").addField("'enabled'")
+   *    .setOperation(Criteria.OP_IS_TRUE) , "OR");
+   *  gc.setGroupOp("AND");
+   *
+   *  NOTE that to use sorting with a combination of functions - group by is needed - not currently implemented
+   *
+   *  Criterion cr =
+   *      new Criterion().addGroupOfCriterias(gc).addGroupOfCriterias(gc1).setOrder(new Order("c1._id", ORDER.DESC));
+   *
+   * */
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, Criterion cr
+      ,Handler<AsyncResult<ResultSet>> replyHandler){
+    long start = System.nanoTime();
+
+    client.getConnection(res -> {
+      if (res.succeeded()) {
+        SQLConnection connection = res.result();
+        try {
+          String select = "SELECT ";
+
+          StringBuffer joinon = new StringBuffer();
+          StringBuffer tables = new StringBuffer();
+          StringBuffer selectFields = new StringBuffer();
+
+          String filter = "";
+          if(cr != null){
+            filter = cr.toString();
+          }
+
+          selectFields.append(from.getSelectFields());
+          selectFields.append(",").append(to.getSelectFields());
+
+          tables.append(convertToPsqlStandard("nyu") + "." + from.getTableName() + " " + from.getAlias() + " ");
+
+          joinon.append(joinType + " " + convertToPsqlStandard("nyu") + "." + to.getTableName() + " " + to.getAlias() + " ");
+
+          String q = select + selectFields.toString() + " FROM " + tables.toString() + joinon.toString() +
+              new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter;
+          System.out.println(q);
+          log.debug("query = " + q);
+          connection.query(q,
+            query -> {
+            connection.close();
+            if (query.failed()) {
+              log.error(query.cause().getMessage(), query.cause());
+              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+            } else {
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+            }
+            long end = System.nanoTime();
+            StatsTracker.addStatElement(STATS_KEY+".join", (end-start));
+            if(log.isDebugEnabled()){
+              log.debug("timer: get " +q+ " (ns) " + (end-start));
+            }
+          });
+        } catch (Exception e) {
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
+          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+        }
+      } else {
+        log.error(res.cause().getMessage(), res.cause());
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+    });
+
+  }
+
+  public static void main(String []args){
+
+
+
+/*
+
+    GroupedCriterias gc = new GroupedCriterias();
+    gc.addCriteria(new Criteria().setAlias("c2").addField("'default'")
+      .setOperation(Criteria.OP_IS_TRUE));
+    gc.addCriteria(new Criteria().setAlias("c2").addField("'enabled'")
+      .setOperation(Criteria.OP_IS_TRUE) , "OR");
+    gc.setGroupOp("AND");
+
+    GroupedCriterias gc1 = new GroupedCriterias();
+    gc1.addCriteria(new Criteria().addField("'default'")
+      .setOperation(Criteria.OP_IS_TRUE).setAlias("c1"));
+    gc1.setGroupOp("AND");
+
+    Criterion cr =
+        new Criterion().addGroupOfCriterias(gc).addGroupOfCriterias(gc1).setOrder(new Order("c1._id", ORDER.DESC));
+
+    join(new JoinByPair[]{new JoinByPair(jb1, jb2, "=", JoinByPair.INNER_JOIN), new JoinByPair(jb1, jb2, "=", JoinByPair.LEFT_JOIN)},
+      cr);
+      */
+
+    JoinBy jb1= new JoinBy("config_data","c1",
+      new Criteria().addField("'code'"), new String[]{"*", "count(c1._id)"});
+
+    JoinBy jb2= new JoinBy("config_data","c2",
+      new Criteria().addField("'scope'").addField("'library_id'"),  new String[]{"*", "avg(len(c2.description))"});
+
+    //join(jb1, jb2, "=", JoinByPair.INNER_JOIN, new Criterion().setOrder(new Order("c2._id", ORDER.DESC)));
+
+
+  }
+
+
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
     return processResult(rs, clazz, count, true);

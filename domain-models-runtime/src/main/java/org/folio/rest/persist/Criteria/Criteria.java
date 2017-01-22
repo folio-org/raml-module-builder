@@ -64,6 +64,19 @@ public class Criteria {
   private static final int  NUMERIC_TYPE          = 3;
   private static final int  NULL_TYPE             = 4;
 
+  /** prefix the criteria with an alias - for example,
+   * if the query does something like FROM table1 t1
+   * then we need to prefix the jsonb for example like
+   * t1.jsonb */
+  String alias                                = null;
+
+  /**
+   * if set to true, this criteria is being used to create a criteria to
+   * compare to another criteria to join on
+   * in this generate an ON instead of a WHERE
+   * */
+  boolean joinON                                  = false;
+
   int valueType                                   = 1;
   String column;
   /**
@@ -112,9 +125,7 @@ public class Criteria {
         isJsonOp = true;
       }
 
-      setArrayField();
-      createSelectSnippet();
-      createFromSnippet();
+      populateSnippet();
 
       String clause = wrapField() + " " + operation + " " + wrapValue();
       if(isNotQuery){
@@ -122,7 +133,17 @@ public class Criteria {
       }
       return clause;
     }
+    else if(alias != null){
+      populateSnippet();
+      return wrapField();
+    }
     return "";
+  }
+
+  private void populateSnippet(){
+    setArrayField();
+    createSelectSnippet();
+    createFromSnippet();
   }
 
   private void setArrayField(){
@@ -179,12 +200,19 @@ public class Criteria {
       }
       return "(" + addPrefix() + field2String() + ")";
     }
+    else if(alias != null){
+      return alias + "." + field2String();
+    }
     return field2String();
   }
 
   private String addPrefix() {
 
     String prefix = PostgresClient.DEFAULT_JSONB_FIELD_NAME;
+
+    if(alias != null){
+      prefix = alias + "." + prefix;
+    }
 
     if(from != null){
       //if from set and has a " AS " clause - use that clause as the field alias to
@@ -277,6 +305,7 @@ public class Criteria {
   }
 
   private Object wrapValue() {
+
     // value may be null for example - field IS NOT NULL criteria
     if (value != null && valueType == STRING_TYPE && isJSONB) {
       if(isArray){
@@ -340,6 +369,15 @@ public class Criteria {
     return this;
   }
 
+  public Criteria setAlias(String alias){
+    this.alias = alias;
+    return this;
+  }
+
+  public String getAlias(){
+    return this.alias;
+  }
+
   public boolean isJSONB() {
     return isJSONB;
   }
@@ -371,6 +409,15 @@ public class Criteria {
 
   public void setArrayField(String arrayField) {
     this.arrayField = arrayField;
+  }
+
+  public boolean isJoinON() {
+    return joinON;
+  }
+
+  public Criteria setJoinON(boolean joinON) {
+    this.joinON = joinON;
+    return this;
   }
 
 }
