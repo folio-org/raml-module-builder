@@ -474,7 +474,10 @@ public class ClientGenerator {
         } else if (valueType.contains("Integer")) {
             method.param(Integer.class, valueName);
             addParameter(methodBody, queryParams, valueName, false, false);
-        } else { // enum object type
+        } else if (valueType.contains("Boolean")) {
+            method.param(Boolean.class, valueName);
+            addParameter(methodBody, queryParams, valueName, false, false);
+        }else { // enum object type
           try {
             String enumClazz = replaceLast(valueType, ".", "$");
             Class<?> enumClazz1 = Class.forName(enumClazz);

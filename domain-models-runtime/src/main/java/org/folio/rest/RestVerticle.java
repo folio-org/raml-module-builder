@@ -1185,7 +1185,7 @@ public class RestVerticle extends AbstractVerticle {
               } else {
                 paramArray[order] = Integer.valueOf(param).intValue();
               }
-            } else if (valueType.contains("boolean")) {
+            } else if (valueType.contains("boolean") || valueType.contains("Boolean")) {
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = Boolean.valueOf((String)defaultVal);
