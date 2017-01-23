@@ -28,7 +28,6 @@ import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
-import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -810,8 +809,8 @@ public class PostgresClient {
    * run simple join queries between two tables
    *
    * for example, to generate the following query:
-   * SELECT  c1.* , c2.* FROM nyu.config_data c1
-   *  INNER JOIN nyu.config_data c2 ON ((c1.jsonb->>'code') = (c2.jsonb->'scope'->>'library_id'))
+   * SELECT  c1.* , c2.* FROM univeristy.config_data c1
+   *  INNER JOIN univeristy.config_data c2 ON ((c1.jsonb->>'code') = (c2.jsonb->'scope'->>'library_id'))
    *    WHERE (c2.jsonb->>'default')::boolean IS TRUE  AND (c2.jsonb->>'default')::boolean IS TRUE
    *
    * Create a criteria representing a join column for each of the tables
@@ -828,6 +827,9 @@ public class PostgresClient {
    *   new Criteria().addField("'scope'").addField("'library_id'"),  new String[]{"avg(length(c2.description))"});
    *
    * Passing "*" to the fields to return may be used as well (or a list of aliased column names)
+   *
+   * JoinBy jb1= new JoinBy("config_data","c1",
+   *  new Criteria().addField("'code'"), new String[]{"*"});
    *
    * @param operation what operation to use when comparing the two columns. For example:
    * setting this to equals would yeild something like:
@@ -877,9 +879,9 @@ public class PostgresClient {
           selectFields.append(from.getSelectFields());
           selectFields.append(",").append(to.getSelectFields());
 
-          tables.append(convertToPsqlStandard("nyu") + "." + from.getTableName() + " " + from.getAlias() + " ");
+          tables.append(convertToPsqlStandard(tenantId) + "." + from.getTableName() + " " + from.getAlias() + " ");
 
-          joinon.append(joinType + " " + convertToPsqlStandard("nyu") + "." + to.getTableName() + " " + to.getAlias() + " ");
+          joinon.append(joinType + " " + convertToPsqlStandard(tenantId) + "." + to.getTableName() + " " + to.getAlias() + " ");
 
           String q = select + selectFields.toString() + " FROM " + tables.toString() + joinon.toString() +
               new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter;
@@ -912,46 +914,7 @@ public class PostgresClient {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
     });
-
   }
-
-  public static void main(String []args){
-
-
-
-/*
-
-    GroupedCriterias gc = new GroupedCriterias();
-    gc.addCriteria(new Criteria().setAlias("c2").addField("'default'")
-      .setOperation(Criteria.OP_IS_TRUE));
-    gc.addCriteria(new Criteria().setAlias("c2").addField("'enabled'")
-      .setOperation(Criteria.OP_IS_TRUE) , "OR");
-    gc.setGroupOp("AND");
-
-    GroupedCriterias gc1 = new GroupedCriterias();
-    gc1.addCriteria(new Criteria().addField("'default'")
-      .setOperation(Criteria.OP_IS_TRUE).setAlias("c1"));
-    gc1.setGroupOp("AND");
-
-    Criterion cr =
-        new Criterion().addGroupOfCriterias(gc).addGroupOfCriterias(gc1).setOrder(new Order("c1._id", ORDER.DESC));
-
-    join(new JoinByPair[]{new JoinByPair(jb1, jb2, "=", JoinByPair.INNER_JOIN), new JoinByPair(jb1, jb2, "=", JoinByPair.LEFT_JOIN)},
-      cr);
-      */
-
-    JoinBy jb1= new JoinBy("config_data","c1",
-      new Criteria().addField("'code'"), new String[]{"*", "count(c1._id)"});
-
-    JoinBy jb2= new JoinBy("config_data","c2",
-      new Criteria().addField("'scope'").addField("'library_id'"),  new String[]{"*", "avg(len(c2.description))"});
-
-    //join(jb1, jb2, "=", JoinByPair.INNER_JOIN, new Criterion().setOrder(new Order("c2._id", ORDER.DESC)));
-
-
-  }
-
-
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
     return processResult(rs, clazz, count, true);
