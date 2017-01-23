@@ -2,21 +2,24 @@ package org.folio.rest.persist;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import com.google.common.io.ByteStreams;
 
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
 import java.io.InputStream;
 
-public class LoadConfs {
+public final class LoadConfs {
+  private static final Logger log = LoggerFactory.getLogger(LoadConfs.class);
 
-  public JsonObject loadConfig(String configFile) {
+  private LoadConfs() throws IllegalAccessException {
+    throw new IllegalAccessException("Cannot instantiate a utility class");
+  }
 
-    boolean loadDefault = true;
+  public static JsonObject loadConfig(String configFile) {
+    boolean loadResource = true;
 
     try {
       File file = new File(configFile);
@@ -24,22 +27,25 @@ public class LoadConfs {
       if (file.isAbsolute()) {
         if (file.exists()) {
           jsonData = ByteStreams.toByteArray(new FileInputStream(file));
-          loadDefault = false;
+          loadResource = false;
+          log.info("File has been loaded: " + configFile);
+        } else {
+          log.error("File does not exist: " + configFile);
         }
       }
-      if(loadDefault){
-          InputStream is = getClass().getResourceAsStream(configFile);
-          if(is != null) {
-            jsonData = ByteStreams.toByteArray(is);
-          } else {
+      if (loadResource) {
+          InputStream is = LoadConfs.class.getResourceAsStream(configFile);
+          if (is == null) {
+            log.error("Resource does not exist: " + configFile);
             return null;
           }
+          log.info("Resource has been loaded: " + configFile);
+          jsonData = ByteStreams.toByteArray(is);
       }
       return new JsonObject(new String(jsonData));
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(configFile, e);
     }
     return null;
   }
-
 }
