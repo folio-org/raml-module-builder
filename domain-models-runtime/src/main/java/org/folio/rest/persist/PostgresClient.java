@@ -395,6 +395,69 @@ public class PostgresClient {
     }
   }
 
+  /***
+   * save a list of pojos.
+   * pojos are converted to json and saved in a single sql call. the generated IDs of the inserted records are returned
+   * in the result set
+   * @param table
+   * @param entities
+   * @param replyHandler
+   * @throws Exception
+   */
+  public void saveBatch(String table, List<Object> entities, Handler<AsyncResult<ResultSet>> replyHandler) throws Exception {
+    long start = System.nanoTime();
+
+    int size = entities.size();
+
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < size; i++) {
+      sb.append("('").append( pojo2json(entities.get(i)) ).append("')");
+      if(i+1 < size){
+        sb.append(",");
+      }
+    }
+
+    client.getConnection(res -> {
+      if (res.succeeded()) {
+        SQLConnection connection = res.result();
+        try {
+          //connection.setAutoCommit(false,  res2 -> {
+            try {
+              connection.query("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+                " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES "+sb.toString()+" RETURNING _id",
+                query -> {
+                  connection.close();
+                  if (query.failed()) {
+                    replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+                  } else {
+                      //connection.commit( res3 -> {
+                      long end = System.nanoTime();
+                      StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
+                      replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+                    //});
+                  }
+                });
+            } catch (Exception e) {
+              if(connection != null){
+                connection.close();
+              }
+              log.error(e.getMessage(), e);
+              replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+            }
+          //});
+        } catch (Exception e) {
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
+          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+        }
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+    });
+  }
+
   /**
    * update a specific record associated with the key passed in the id arg
    * @param table - table to save to (must exist)
