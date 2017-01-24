@@ -145,13 +145,25 @@ public class AnnotationGrabber {
               // put the method - get or post, etc..
               methodObj.put(HTTP_METHOD, type.getName());
             }
+            boolean replaceAccept = false;
+            if(PRODUCES.equals(type.getName())){
+              //this is the accept header, right now can not send */*
+              //so if accept header equals any/ - change this to */*
+              replaceAccept = true;
+            }
             for (Method method : type.getDeclaredMethods()) {
               Object value = method.invoke(methodAn[j], (Object[]) null);
               if (value.getClass().isArray()) {
                 List<Object> retList = new ArrayList<Object>();
                 for (int k = 0; k < Array.getLength(value); k++) {
-                  //System.out.println(Array.get(value, k));
-                  retList.add(Array.get(value, k));
+                  if(replaceAccept){
+                    //replace any/any with */* to allow declaring accpet */* which causes compilation issues
+                    //when declared in raml. so declare any/any in raml instead and replaced here
+                    retList.add(((String)Array.get(value, k)).replaceAll("any/any", ""));
+                  }
+                  else{
+                    retList.add(Array.get(value, k));
+                  }
                 }
                 // put generically things like consumes, produces as arrays
                 // since they can have multi values
@@ -246,7 +258,6 @@ public class AnnotationGrabber {
       for (Annotation a : annotation) {
         JsonObject obj = null;
         if (a instanceof HeaderParam) {
-          ((HeaderParam) a).value();
           obj = new JsonObject();
           obj.put("value", ((HeaderParam) a).value());
           obj.put("type", parameterType.getCanonicalName());

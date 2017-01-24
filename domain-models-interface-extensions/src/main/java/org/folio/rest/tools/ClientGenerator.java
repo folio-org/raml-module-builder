@@ -298,6 +298,9 @@ public class ClientGenerator {
     }
     if(accepts != null){
       String aType = accepts.toString().replace("\"", "").replace("[", "").replace("]", "");
+      //replace any/any with */* to allow declaring accpet */* which causes compilation issues
+      //when declared in raml. so declare any/any in raml instead and replaced here
+      aType = aType.replaceAll("any/any", "");
       body.directStatement("request.putHeader(\"Accept\", \""+aType+"\");");
     }
 
