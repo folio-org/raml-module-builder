@@ -42,8 +42,8 @@ public class JoinBy {
           fields = fields + ", ";
         }
       }
-    } else{
-       fields = " * ";
+    }else{
+      fields = " * ";
     }
   }
 
