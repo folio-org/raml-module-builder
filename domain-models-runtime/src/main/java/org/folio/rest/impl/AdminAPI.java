@@ -23,6 +23,7 @@ import javax.mail.internet.MimeMultipart;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
+import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
@@ -480,8 +481,15 @@ public class AdminAPI implements AdminResource {
   public void getAdminModuleStats(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
+    //vertx.http.servers.open-connections
+    //vertx.eventbus
+    //vertx.event-loop-size
+    //vertx.pools
+    io.vertx.core.json.JsonObject metrics = RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.net.servers" /* vertxContext.owner() */);
+    metrics.mergeIn(RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.pools")).mergeIn(new JsonObject(StatsTracker.spillAllStats()));
     asyncResultHandler.handle(
-      io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.withPlainOK(StatsTracker.spillAllStats())));
+      io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.withPlainOK(
+        metrics.encodePrettily())));
 
   }
 

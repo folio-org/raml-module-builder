@@ -8,7 +8,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
@@ -20,13 +19,13 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.dropwizard.MetricsService;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
@@ -56,9 +55,6 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Stream;
-import org.folio.rest.jaxrs.model.JobConf;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.ClientGenerator;
@@ -87,6 +83,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
+
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
@@ -98,6 +95,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
   private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
+  private static MetricsService     serverMetrics                   = null;
   private static ValidatorFactory   validationFactory;
   private static KieSession         droolsSession;
   private static String             className                       = RestVerticle.class.getName();
@@ -154,7 +152,7 @@ public class RestVerticle extends AbstractVerticle {
 
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
 
-    /**MetricsService metricsService = MetricsService.create(vertx);*/
+    serverMetrics = MetricsService.create(vertx);
 
     // maps paths found in raml to the generated functions to route to when the paths are requested
     MappedClasses mappedURLs = populateConfig();
@@ -1246,110 +1244,8 @@ public class RestVerticle extends AbstractVerticle {
     });
   }
 
-  private boolean handleInterally(HttpServerRequest request){
-    if(UPLOAD_PATH_TO_HANDLE.equals(request.path())){
-      return true;
-    }
-    return false;
-  }
-
-  private void internalUploadService(RoutingContext rc, boolean []validRequest){
-    HttpServerRequest request = rc.request();
-    if(request.getParam("file_name") == null){
-      //handle validation manually since not using the built in framework for validation
-      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.FileUploadError, ", file_name can not be null"), validRequest);
-      return;
-    }
-    String[] instId = new String[]{rc.request().getHeader(ClientGenerator.OKAPI_HEADER_TENANT)};
-    if(instId[0] == null){
-      instId[0] = "";
-    }
-    request.pause();
-    String[] filename = new String[]{DEFAULT_TEMP_DIR + "/"};
-    if(!instId[0].equals("")){
-      filename[0] = filename[0] + instId[0] + "/";
-      new File(filename[0]).mkdir();
-    }
-    filename[0] = filename[0] + System.currentTimeMillis() + "_" + request.getParam("file_name");
-    vertx.fileSystem().open(filename[0], new io.vertx.core.file.OpenOptions(), ares -> {
-      try {
-        io.vertx.core.file.AsyncFile file = ares.result();
-        io.vertx.core.streams.Pump pump = io.vertx.core.streams.Pump.pump(request, file);
-        request.endHandler(v1 -> file.close(v2 -> {
-          PersistMethod persistMethod = PersistMethod.SAVE;
-          String requestedPersistMethod = request.getParam("persist_method");
-          if(requestedPersistMethod != null){
-            if(PersistMethod.valueOf(requestedPersistMethod) != null){
-              persistMethod = PersistMethod.valueOf(requestedPersistMethod);
-            }
-          }
-
-          if(persistMethod == PersistMethod.SAVE_AND_NOTIFY){
-            String address = request.getParam("bus_address");
-            if(address == null){
-              address = DEFAULT_UPLOAD_BUS_ADDRS;
-            }
-            DeliveryOptions dOps = new DeliveryOptions();
-            dOps.setSendTimeout(5000);
-            dOps.setCodecName("PojoEventBusCodec");
-            JobConf cObj = new JobConf();
-            cObj.setInstId(instId[0]);
-            cObj.setEnabled(true);
-            cObj.setDescription("File import job");
-            cObj.setType(RTFConsts.SCHEDULE_TYPE_MANUAL);
-            cObj.setName(address);
-            cObj.setCreator("system");
-            cObj.setModule(RTFConsts.IMPORT_MODULE);
-            cObj.setBulkSize(1000);
-            cObj.setFailPercentage(5.0);
-            //this is a hack to use the conf object
-            //which is only one for all job instances of this type
-            //to pass the specific file for this job instance to the
-            //listening service
-            Parameter p1 = new Parameter();
-            p1.setKey("file");
-            p1.setValue(filename[0]);
-            List<Parameter> parameters = new ArrayList<>();
-            parameters.add(p1);
-            cObj.setParameters(parameters);
-
-            eventBus.send(address, cObj, dOps, rep -> {
-              if(rep.succeeded()){
-                log.debug("Delivered Messaged of uploaded file " + filename[0]);
-                Object returnCode = rep.result().body();
-                if(returnCode != null){
-                  if(RTFConsts.OK_PROCESSING_STATUS.equals(returnCode)){
-                    request.response().setStatusCode(204);
-                  }
-                  else{
-                    request.response().setStatusCode(400);
-                    request.response().setStatusMessage("File uploaded but there was an error processing request");
-                  }
-                }
-                request.response().end();
-              }
-              else{
-                log.error("Unable to deliver message of uploaded file " + filename[0] + " check if notification address is correct");
-                request.response().setStatusCode(400);
-                request.response().setStatusMessage("The file was saved, but unable to notify of the upload to listening services "
-                    + "check if notification address is correct");
-                request.response().end();
-              }
-            });
-          }
-          else{
-            request.response().setStatusCode(204);
-            request.response().end();
-          }
-          log.info("Successfully uploaded file " + filename[0]);
-        }));
-        pump.start();
-        request.resume();
-      } catch (Exception e) {
-        log.error(e);
-        endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.FileUploadError, e.getMessage()), validRequest);
-      }
-    });
+  public static MetricsService getServerMetrics(){
+    return serverMetrics;
   }
 
   class StreamStatus {
