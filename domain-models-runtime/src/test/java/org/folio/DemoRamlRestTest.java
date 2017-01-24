@@ -173,16 +173,19 @@ public class DemoRamlRestTest {
               }
               else{
                 System.out.println("received expected password: " + expected);
+                aClient.getModuleStats( r -> {
+                  r.bodyHandler( br -> {
+                    System.out.println("received: " + br.toString());
+                  });
+                  async.countDown();
+                });
               }
-              async.countDown();
             });
 
           });
         } catch (Exception e) {
           e.printStackTrace();
         }
-        async.countDown();
-
       });
 
     }

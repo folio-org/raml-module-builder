@@ -485,11 +485,15 @@ public class AdminAPI implements AdminResource {
     //vertx.eventbus
     //vertx.event-loop-size
     //vertx.pools
-    io.vertx.core.json.JsonObject metrics = RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.net.servers" /* vertxContext.owner() */);
-    metrics.mergeIn(RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.pools")).mergeIn(new JsonObject(StatsTracker.spillAllStats()));
+    JsonObject o = new JsonObject(StatsTracker.spillAllStats());
+    JsonObject metrics = RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.net.servers" /* vertxContext.owner() */);
+    if(metrics != null) {
+      metrics.mergeIn(RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.pools"));
+      o.mergeIn(metrics);
+    }
     asyncResultHandler.handle(
       io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.withPlainOK(
-        metrics.encodePrettily())));
+        o.encodePrettily())));
 
   }
 
