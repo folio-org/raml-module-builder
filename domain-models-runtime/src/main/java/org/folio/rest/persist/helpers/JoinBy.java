@@ -26,14 +26,10 @@ public class JoinBy {
   private Criteria joinColumn;
   private String alias = "";
   private String fields = "";
-  //private boolean selectFromThisTable = false;
-
   public JoinBy(String tableName, String alias, Criteria joinColumn, String []selectedFields) {
     this.tableName = tableName;
-    this.joinColumn = joinColumn;
+    this.joinColumn = joinColumn.setAlias(this.alias).setJoinON(true);
     this.alias = alias;
-    this.joinColumn.setAlias(this.alias);
-    this.joinColumn.setJoinON(true);
     if(selectedFields != null){
       for (int i = 0; i < selectedFields.length; i++) {
         if(SQLFunctions.contains(selectedFields[i])){
@@ -46,11 +42,9 @@ public class JoinBy {
           fields = fields + ", ";
         }
       }
+    } else{
+       fields = " * ";
     }
-    else{
-      fields = " * ";
-    }
-
   }
 
   public String getTableName() {
@@ -77,3 +71,4 @@ public class JoinBy {
   }
 
 }
+
