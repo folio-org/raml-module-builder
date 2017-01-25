@@ -1152,9 +1152,133 @@ public class PostgresClient {
   }
 
   /**
+   * For queries where you only want to populate the where clause
+   * <br/>
+   * See {@link #persistentlyCacheResult(String, String, Handler) }
+   * @param cacheName
+   * @param tableName
+   * @param filter
+   * @param replyHandler
+   */
+  public void persistentlyCacheResult(String cacheName, String tableName, CQLWrapper filter, Handler<AsyncResult<Integer>> replyHandler){
+    String where = "";
+    if(filter != null){
+      where = filter.toString();
+    }
+    String q =
+        "SELECT * FROM " + convertToPsqlStandard(tenantId) + "." + tableName + " " + where;
+    persistentlyCacheResult(cacheName, q, replyHandler);
+  }
+
+  /**
+   * For queries where you only want to populate the where clause
+   * <br/>
+   * See {@link #persistentlyCacheResult(String, String, Handler) }
+   * @param cacheName
+   * @param tableName
+   * @param filter
+   * @param replyHandler
+   */
+  public void persistentlyCacheResult(String cacheName, String tableName, Criterion filter, Handler<AsyncResult<Integer>> replyHandler){
+    String where = "";
+    if(filter != null){
+      where = filter.toString();
+    }
+    String q =
+        "SELECT * FROM " + convertToPsqlStandard(tenantId) + "." + tableName + " " + where;
+    persistentlyCacheResult(cacheName, q, replyHandler);
+  }
+
+  /**
+   * Create a table, a type of materialized view, with the results of a specific query.
+   * This can be very helpful when the query is complex and the data is relatively static.
+   * This will create a table populated with the results from the query (sql2cache).
+   * Further queries can then be run on this table (cacheName) instead of re-executing the complex
+   * sql query over and over again.
+   * <br/>
+   * 1. The table will not track subsequent changes to the source tables
+   * <br/>
+   * 2. The table should be DROPPED when not needed anymore
+   * <br/>
+   * 3. To Refresh the table, DROP and Re-call this function
+   * <br/>
+   * Use carefully, index support on created table to be added
+   * @param cacheName - name of the table holding the results of the query
+   * @param sql2cache - the sql query to use to populate the table
+   * @param replyHandler
+   */
+  public void persistentlyCacheResult(String cacheName, String sql2cache, Handler<AsyncResult<Integer>> replyHandler){
+    long start = System.nanoTime();
+    client.getConnection(res -> {
+      if (res.succeeded()) {
+        SQLConnection connection = res.result();
+        try {
+          String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
+              + convertToPsqlStandard(tenantId) + "." + cacheName +" AS " + sql2cache;
+          System.out.println(q);
+          connection.update(q,
+            query -> {
+            connection.close();
+            if (query.failed()) {
+              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+            } else {
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getUpdated()));
+            }
+            long end = System.nanoTime();
+            StatsTracker.addStatElement(STATS_KEY+".persistentlyCacheResult", (end-start));
+            log.debug("CREATE TABLE AS timer: " + q + " took " + (end-start)/1000000);
+          });
+        } catch (Exception e) {
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
+          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+        }
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+    });
+  }
+
+  public void removePersistentCacheResult(String cacheName, Handler<AsyncResult<Integer>> replyHandler){
+    long start = System.nanoTime();
+    client.getConnection(res -> {
+      if (res.succeeded()) {
+        SQLConnection connection = res.result();
+        try {
+          connection.update("DROP TABLE "
+              + convertToPsqlStandard(tenantId) + "." + cacheName,
+            query -> {
+            connection.close();
+            if (query.failed()) {
+              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+            } else {
+              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getUpdated()));
+            }
+            long end = System.nanoTime();
+            StatsTracker.addStatElement(STATS_KEY+".removePersistentCacheResult", (end-start));
+            log.debug("DROP TABLE timer: " + cacheName + " took " + (end-start)/1000000);
+          });
+        } catch (Exception e) {
+          if(connection != null){
+            connection.close();
+          }
+          log.error(e.getMessage(), e);
+          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+        }
+      } else {
+        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+      }
+    });
+  }
+
+  /**
    *
    * Will connect to a specific database and execute the commands in the .sql file
-   * against that database
+   * against that database  -
+   *
+   * NOTE: NOT tested on all types of statements - but on a lot
    *
    * @param sqlFile - reader to sql file with executable statements
    * @param newDB - if creating a new database is included in the file - include the name of the db as after running the
@@ -1373,6 +1497,7 @@ public class PostgresClient {
   /**
    * This is a blocking call - run in an execBlocking statement
    * import data in a tab delimited file into columns of an existing table
+   * Using only default values of the COPY FROM STDIN Postgres command
    * @param path - path to the file
    * @param tableName - name of the table to import the content into
    */
