@@ -497,4 +497,61 @@ public class AdminAPI implements AdminResource {
 
   }
 
+  @Override
+  public void getAdminTotalDbSize(String dbname, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+    PostgresClient.getInstance(vertxContext.owner()).select(
+      "select pg_size_pretty(pg_database_size('"+dbname+"')) as db_size", reply -> {
+        if(reply.succeeded()){
+
+          OutStream stream = new OutStream();
+          stream.setData(reply.result().getRows());
+
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminTotalDbSizeResponse.
+            withJsonOK(stream)));
+        }
+        else{
+          log.error(reply.cause().getMessage(), reply.cause());
+          asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+        }
+      });
+  }
+
+  @Override
+  public void getAdminDbCacheSummary(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    PostgresClient.getInstance(vertxContext.owner()).select(
+      "CREATE EXTENSION IF NOT EXISTS \"pg_buffercache\"", reply1 -> {
+        if(reply1.succeeded()){
+          PostgresClient.getInstance(vertxContext.owner()).select(
+            "SELECT c.relname, pg_size_pretty(count(*) * 8192) as buffered, round(100.0 * count(*) / "+
+                "(SELECT setting FROM pg_settings WHERE name='shared_buffers')::integer,1) AS buffers_percent,"+
+                "round(100.0 * count(*) * 8192 / pg_relation_size(c.oid),1) AS percent_of_relation FROM pg_class c " +
+                "INNER JOIN pg_buffercache b ON b.relfilenode = c.relfilenode INNER JOIN pg_database d "+
+                "ON (b.reldatabase = d.oid AND d.datname = current_database()) GROUP BY c.oid,c.relname "+
+                "ORDER BY 3 DESC LIMIT 20;", reply2 -> {
+              if(reply2.succeeded()){
+
+                OutStream stream = new OutStream();
+                stream.setData(reply2.result().getRows());
+
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminDbCacheSummaryResponse.
+                  withJsonOK(stream)));
+              }
+              else{
+                log.error(reply2.cause().getMessage(), reply2.cause());
+                asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply2.cause().getMessage()));
+              }
+            });
+        }
+        else{
+          log.error(reply1.cause().getMessage(), reply1.cause());
+          asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply1.cause().getMessage()));
+        }
+      });
+
+
+  }
+
 }

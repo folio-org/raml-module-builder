@@ -262,6 +262,39 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
+  /total_db_size:
+    get:
+      description: Returns the size of the entire database for example, db_size = 711 MB
+      is: [secured, dbname]
+      responses:
+        200:
+          description: |
+            Returns the size of the entire database
+          body:
+            application/json:
+              example: "{\"db_size\" : \"711 MB\"}"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /db_cache_summary:
+    get:
+      description: Returns a list of the tables / indexes in the shared_buffers (cache) and their size. This is |
+        an expensive API from a DB resource perspective and should not run frequently (every few hours should suffice)
+      is: [secured]
+      responses:
+        200:
+          description: |
+            Returns a list of the tables / indexes in the shared_buffers
+          body:
+            application/json:
+              example: "{\"db_size\" : \"711 MB\"}"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
   /set_AES_key:
     post:
       description: Sets the AES secret key that the postgres config file password was encrypted with. The key will only be checked |
