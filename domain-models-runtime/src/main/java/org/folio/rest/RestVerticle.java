@@ -846,7 +846,6 @@ public class RestVerticle extends AbstractVerticle {
   public void stop(Future<Void> stopFuture) throws Exception {
     // TODO Auto-generated method stub
     super.stop();
-    PostgresClient.stopEmbeddedPostgres();
     try {
       droolsSession.dispose();
     } catch (Exception e) {/*ignore*/}

@@ -189,6 +189,12 @@ public class PostgresClient {
     return password;
   }
 
+  public void closeClient(Handler<AsyncResult<Void>> whenDone){
+    if(client != null){
+      client.close(whenDone);
+    }
+  }
+
   private void init(Vertx vertx, String tenantId) throws Exception {
 
     /** check if in pom.xml this prop is declared in order to work with encrypted
@@ -1461,9 +1467,20 @@ public class PostgresClient {
       String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString("database");
 
-      final PostgresConfig config = new PostgresConfig(Version.V9_5_0, new AbstractPostgresConfig.Net("127.0.0.1", port),
-        new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000), new AbstractPostgresConfig.Credentials(
-          username, password));
+      final PostgresConfig config = new PostgresConfig(Version.Main.PRODUCTION, new AbstractPostgresConfig.Net("127.0.0.1", port),
+        new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
+        new AbstractPostgresConfig.Credentials(username, password));
+
+      String locale = "en_US.UTF-8";
+      String OS = System.getProperty("os.name").toLowerCase();
+      if(OS.indexOf("win") >= 0){
+        locale = "american_usa";
+      }
+
+      config.getAdditionalInitDbParams().addAll(Arrays.asList(
+        "-E", "UTF-8",
+        "--locale", locale
+      ));
 
       postgresProcess = runtime.prepare(config).start();
 
