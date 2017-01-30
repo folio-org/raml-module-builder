@@ -122,6 +122,7 @@ public class AdminAPI implements AdminResource {
       });
   }
 
+  @Validate
   @Override
   public void getAdminMemory(boolean history, java.util.Map<String, String>okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
@@ -365,6 +366,7 @@ public class AdminAPI implements AdminResource {
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminSetAESKeyResponse.withNoContent()));
   }
 
+  @Validate
   @Override
   public void postAdminGetPassword(String key, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
@@ -497,6 +499,7 @@ public class AdminAPI implements AdminResource {
 
   }
 
+  @Validate
   @Override
   public void getAdminTotalDbSize(String dbname, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
@@ -550,7 +553,59 @@ public class AdminAPI implements AdminResource {
           asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply1.cause().getMessage()));
         }
       });
+  }
 
+  @Validate
+  @Override
+  public void getAdminListLockingQueries(String dbname, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    PostgresClient.getInstance(vertxContext.owner()).select(
+      "SELECT blockedq.pid AS blocked_pid, blockedq.query as blocked_query, "
+      + "blockingq.pid AS blocking_pid, blockingq.query as blocking_query FROM pg_catalog.pg_locks blocked "
+      + "JOIN pg_stat_activity blockedq ON blocked.pid = blockedq.pid "
+      + "JOIN pg_catalog.pg_locks blocking ON (blocking.transactionid=blocked.transactionid AND blocked.pid != blocking.pid) "
+      + "JOIN pg_stat_activity blockingq ON blocking.pid = blockingq.pid "
+      + "WHERE NOT blocked.granted AND blockingq.datname='"+dbname+"';",
+      reply -> {
+        if(reply.succeeded()){
+
+          OutStream stream = new OutStream();
+          stream.setData(reply.result().getResults());
+          System.out.println("locking q -> " + new io.vertx.core.json.JsonArray( reply.result().getResults() ).encode());
+
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminListLockingQueriesResponse.
+            withJsonOK(stream)));
+        }
+        else{
+          log.error(reply.cause().getMessage(), reply.cause());
+          asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+        }
+    });
+  }
+
+  @Validate
+  @Override
+  public void deleteAdminKillQuery(String pid, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    PostgresClient.getInstance(vertxContext.owner()).select(
+      "SELECT pg_terminate_backend('"+pid+"');", reply -> {
+        if(reply.succeeded()){
+          System.out.println("locking q -> " + reply.result().getResults().get(0).getBoolean(0));
+
+          if(false == (reply.result().getResults().get(0).getBoolean(0))){
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteAdminKillQueryResponse.withPlainNotFound(pid)));
+          }
+          else{
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteAdminKillQueryResponse.withNoContent()));
+          }
+        }
+        else{
+          log.error(reply.cause().getMessage(), reply.cause());
+          asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+        }
+    });
 
   }
 

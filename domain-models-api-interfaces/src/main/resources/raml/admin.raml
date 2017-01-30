@@ -12,7 +12,8 @@ traits:
   - secured: !include ../../../../../raml-util/traits/auth.raml
   - secret-key: !include traits/secret-key.raml
   - slow-query: !include traits/slow-query.raml
-
+  - pid: !include traits/pid.raml
+  
 /admin:
   /uploadmultipart:
     description: Uploads a file and saves it to a directory configured on the server
@@ -289,7 +290,40 @@ traits:
             Returns a list of the tables / indexes in the shared_buffers
           body:
             application/json:
-              example: "{\"db_size\" : \"711 MB\"}"
+              example: ""
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /list_locking_queries:
+    get:
+      description: Returns a list of queries in transactions that are blocking other queries. The result includes 
+        the blocking query, the query being blocked, and their pids
+      is: [secured, dbname]
+      responses:
+        200:
+          body:
+            application/json:
+              example: ""
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /kill_query:
+    delete:
+      description: Stops a query from running based on its PID using the pg_terminate_backend command
+      is: [secured, pid]
+      responses:
+        204:
+          description: "Query terminated successfully"
+        404:
+          description: "PID not found"
+          body:
+            text/plain:
+              example: |
+                "<<resourcePathName|!singularize>> not found"
         500:
           description: "Internal server error"
           body:
