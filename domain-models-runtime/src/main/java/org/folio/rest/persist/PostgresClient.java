@@ -426,22 +426,57 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          //connection.setAutoCommit(false,  res2 -> {
             try {
-              connection.query("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
-                " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES "+sb.toString()+" RETURNING _id",
-                query -> {
+              connection.query("BEGIN;", begin -> {
+                if(begin.succeeded()){
+                  connection.query("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+                    " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES "+sb.toString()+" RETURNING _id;",
+                    query -> {
+                      if (query.failed()) {
+                        log.error("query saveBatch failed, attempting rollback", query.cause());
+                        connection.query("ROLLBACK;", rollbackres -> {
+                          if(rollbackres.failed()){
+                            log.error("query saveBatch failed, unable to rollback", rollbackres.cause().getLocalizedMessage());
+                          }
+                          else {
+                            log.info("rollback success. " + new JsonArray(rollbackres.result().getResults()).encodePrettily());
+                          }
+                          connection.close();
+                          replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+                        });
+                      } else {
+                          connection.query("COMMIT;", commit -> {
+                            if(commit.succeeded()){
+                              long end = System.nanoTime();
+                              StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
+                              connection.close();
+                              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+                            }
+                            else {
+                              log.error("query saveBatch failed to commit, attempting rollback ",
+                                commit.cause());
+                              connection.query("ROLLBACK;", rollbackres -> {
+                                if(rollbackres.failed()){
+                                  log.error("query saveBatch failed, unable to rollback", rollbackres.cause().getLocalizedMessage());
+                                }
+                                else{
+                                  log.info("rollback success. " + new JsonArray(rollbackres.result().getResults()).encodePrettily());
+                                }
+                                connection.close();
+                                replyHandler.handle(io.vertx.core.Future.failedFuture(commit.cause().getMessage()));
+                              });
+                            }
+                          });
+                      }
+                    });
+                }
+                else{
                   connection.close();
-                  if (query.failed()) {
-                    replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
-                  } else {
-                      //connection.commit( res3 -> {
-                      long end = System.nanoTime();
-                      StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
-                      replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
-                    //});
-                  }
-                });
+                  log.error("query saveBatch failed", begin.cause());
+                  replyHandler.handle(io.vertx.core.Future.failedFuture(begin.cause().getMessage()));
+                }
+              });
+
             } catch (Exception e) {
               if(connection != null){
                 connection.close();
