@@ -60,10 +60,20 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 String res = "";
                 if(reply.succeeded()){
                   res = new JsonArray(reply.result()).encodePrettily();
+                  if(reply.result().size() > 0){
+                    handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withPlainBadRequest(res)));
+                  }
+                  else {
+                    OutStream os = new OutStream();
+                    os.setData(res);
+                    handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withJsonOK(os)));
+                  }
                 }
-                OutStream os = new OutStream();
-                os.setData(res);
-                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withJsonOK(os)));
+                else {
+                  log.error(reply.cause().getMessage(), reply.cause());
+                  handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                    .withPlainInternalServerError(reply.cause().getMessage())));
+                }
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
@@ -183,18 +193,33 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                   try {
                     StringBuffer res = new StringBuffer();
                     if (reply.succeeded()) {
+                      boolean failuresExist = false;
+                      if(reply.result().size() > 0){
+                        failuresExist = true;
+                      }
                       res.append(new JsonArray(reply.result()).encodePrettily());
                       OutStream os = new OutStream();
 
-                      if (audit != null) {
+                      if (audit != null && !failuresExist) {
                         PostgresClient.getInstance(context.owner()).runSQLFile(
                           auditContent.toString(),
                           false,
                           reply2 -> {
                             if (reply2.succeeded()) {
+                              boolean failuresExistAudit = false;
+                              if(reply2.result().size() > 0){
+                                failuresExistAudit = true;
+                              }
                               String auditRes = new JsonArray(reply2.result()).encodePrettily();
                               os.setData(res + auditRes);
-                              handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                              if(failuresExistAudit){
+                                handlers.handle(io.vertx.core.Future.succeededFuture(
+                                  PostTenantResponse.withPlainBadRequest(auditRes)));
+                              }
+                              else{
+                                os.setData(res);
+                                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                              }
                             } else {
                               log.error(reply2.cause().getMessage(), reply2.cause());
                               handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
@@ -203,8 +228,14 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                             }
                           });
                       } else {
-                        os.setData(res);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                        if(failuresExist){
+                          handlers.handle(io.vertx.core.Future.succeededFuture(
+                            PostTenantResponse.withPlainBadRequest(res.toString())));
+                        }
+                        else{
+                          os.setData(res);
+                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                        }
                       }
                     } else {
                       log.error(reply.cause().getMessage(), reply.cause());
