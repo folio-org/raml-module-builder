@@ -86,7 +86,6 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
           .withPlainInternalServerError(e.getMessage())));
       }
     });
-
   }
 
   private void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
