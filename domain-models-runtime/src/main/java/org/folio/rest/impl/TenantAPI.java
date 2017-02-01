@@ -27,10 +27,11 @@ import org.folio.rest.tools.utils.TenantTool;
  */
 public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
-  private static final String       CREATE_TENANT_TEMPLATE = "template_create_tenant.sql";
-  private static final String       DELETE_TENANT_TEMPLATE = "template_delete_tenant.sql";
-  private static final String       AUDIT_TENANT_TEMPLATE  = "template_audit.sql";
-  private static final String       TEMPLATE_PLACEHOLDER   = "myuniversity";
+  public static final String       CREATE_TENANT_TEMPLATE = "template_create_tenant.sql";
+  public static final String       DELETE_TENANT_TEMPLATE = "template_delete_tenant.sql";
+  public static final String       AUDIT_TENANT_TEMPLATE  = "template_audit.sql";
+  private static final String      TEMPLATE_TENANT_PLACEHOLDER   = "myuniversity";
+  private static final String      TEMPLATE_MODULE_PLACEHOLDER   = "mymodule";
 
 
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
@@ -51,8 +52,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
         String sqlFile = IOUtils.toString(
           TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_TENANT_TEMPLATE));
 
-        final String sql2run = sqlFile.replaceAll(TEMPLATE_PLACEHOLDER, tenantId);
-
+        String sql2run = sqlFile.replaceAll(TEMPLATE_TENANT_PLACEHOLDER, tenantId);
+        sql2run = sql2run.replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
         /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
         PostgresClient.getInstance(context.owner()).runSQLFile(sql2run, false,
             reply -> {
@@ -177,14 +178,16 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               String sqlFile = IOUtils.toString(TenantAPI.class.getClassLoader().getResourceAsStream(
                 CREATE_TENANT_TEMPLATE));
 
-              final String sql2run = sqlFile.replaceAll(TEMPLATE_PLACEHOLDER, tenantId);
+              String sql2run = sqlFile.replaceAll(TEMPLATE_TENANT_PLACEHOLDER, tenantId);
+              sql2run = sql2run.replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
 
               /* is there an audit .sql file to load */
               InputStream audit = TenantAPI.class.getClassLoader().getResourceAsStream(
                 AUDIT_TENANT_TEMPLATE);
               StringBuffer auditContent = new StringBuffer();
               if (audit != null) {
-                auditContent.append(IOUtils.toString(audit).replace(TEMPLATE_PLACEHOLDER, tenantId));
+                auditContent.append(IOUtils.toString(audit).replace(TEMPLATE_TENANT_PLACEHOLDER, tenantId)
+                  .replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName()));
               }
               /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
               PostgresClient.getInstance(context.owner()).runSQLFile(sql2run, false,

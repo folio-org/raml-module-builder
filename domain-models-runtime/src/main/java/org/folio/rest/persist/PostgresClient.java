@@ -28,6 +28,8 @@ import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -85,6 +87,7 @@ public class PostgresClient {
   private static PostgresClient  instance                 = null;
   private static ObjectMapper    mapper                   = new ObjectMapper();
   private static Map<String, PostgresClient> connectionPool = new HashMap<>();
+  private static String moduleName                        = null;
 
   private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
       +"CALLED ON NULL INPUT|RETURNS NULL ON NULL INPUT|STRICT|"
@@ -95,9 +98,7 @@ public class PostgresClient {
   private Vertx vertx                       = null;
   private JsonObject postgreSQLClientConfig = null;
   private final Messages messages           = Messages.getInstance();
-
   private AsyncSQLClient         client;
-
   private String tenantId;
 
   private PostgresClient(Vertx vertx, String tenantId) throws Exception {
@@ -200,6 +201,9 @@ public class PostgresClient {
     /** check if in pom.xml this prop is declared in order to work with encrypted
      * passwords for postgres embedded - this is a dev mode only feature */
     String secretKey = System.getProperty("postgres_secretkey_4_embeddedmode");
+
+    loadModuleName();
+    System.out.println("----------------------------> " + moduleName);
     if(secretKey != null){
       AES.setSecretKey(secretKey);
     }
@@ -228,12 +232,25 @@ public class PostgresClient {
     }
     else{
       log.info("Using schema: " + tenantId);
-      postgreSQLClientConfig.put(USERNAME, convertToPsqlStandard(tenantId));
+      postgreSQLClientConfig.put(USERNAME, tenantId.toLowerCase());
       postgreSQLClientConfig.put(PASSWORD, createPassword(tenantId));
 
     }
     log.info("Creating client with configuration:" + postgreSQLClientConfig.encode());
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
+  }
+
+
+  private void loadModuleName() {
+    try {
+      MavenXpp3Reader mavenreader = new MavenXpp3Reader();
+      File pomFile = new File("pom.xml");
+      Model model = mavenreader.read(new FileReader(pomFile));
+      moduleName = model.getArtifactId();
+      moduleName = moduleName.replaceAll("-", "_");
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+    }
   }
 
   public JsonObject getConnectionConfig(){
@@ -1606,7 +1623,11 @@ public class PostgresClient {
   }
 
   public static String convertToPsqlStandard(String tenantId){
-    return tenantId.toLowerCase();
+    return tenantId.toLowerCase() + "_" + moduleName;
+  }
+
+  public static String getModuleName(){
+    return moduleName;
   }
 
   /**
