@@ -232,7 +232,7 @@ public class PostgresClient {
     }
     else{
       log.info("Using schema: " + tenantId);
-      postgreSQLClientConfig.put(USERNAME, tenantId.toLowerCase());
+      postgreSQLClientConfig.put(USERNAME, convertToPsqlStandard(tenantId));
       postgreSQLClientConfig.put(PASSWORD, createPassword(tenantId));
 
     }
