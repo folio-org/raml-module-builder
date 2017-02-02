@@ -56,6 +56,9 @@ import ru.yandex.qatools.embed.postgresql.ext.ArtifactStoreBuilder;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.reflect.ClassPath;
+import com.google.common.reflect.ClassPath.ResourceInfo;
 
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
 
@@ -246,20 +249,41 @@ public class PostgresClient {
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
   }
 
-
+  //temp fix, resolve fully needed soon!
   private void loadModuleName() {
     try {
+      System.out.println("Attempting to read in the module name....");
       MavenXpp3Reader mavenreader = new MavenXpp3Reader();
-      File pomFile = new File("pom.xml");
-      Model model = mavenreader.read(new FileReader(pomFile));
-      if(model.getParent() != null){
-        moduleName = model.getParent().getArtifactId();
+      Model model = null;
+      if(moduleName == null){
+        String currentRunningJar =
+            PostgresClient.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+        if(currentRunningJar != null && currentRunningJar.contains("domain-models-runtime")){
+          //this is build time - not runtime, so just use the pom
+          File pomFile = new File("pom.xml");
+          model = mavenreader.read(new FileReader(pomFile));
+        }
+        else{
+          //this is runtime,
+          ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
+          ImmutableSet<ResourceInfo> resources = classPath.getResources();
+          for (ResourceInfo info : resources) {
+            if(info.getResourceName().endsWith("pom.xml") || info.getResourceName().endsWith("pom.properties")){
+              //maven sets the classpath order according to the pom, so the poms project will be the first entry
+              model = mavenreader.read(getClass().getResourceAsStream("/"+info.getResourceName()));
+              break;
+            }
+          }
+        }
+        if(model.getParent() != null){
+          moduleName = model.getParent().getArtifactId();
+        }
+        else{
+          moduleName = model.getArtifactId();
+        }
+        moduleName = moduleName.replaceAll("-", "_");
+        log.info("Module name: " + moduleName);
       }
-      else{
-        moduleName = model.getArtifactId();
-      }
-      moduleName = moduleName.replaceAll("-", "_");
-      log.info("Module name: " + moduleName);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
