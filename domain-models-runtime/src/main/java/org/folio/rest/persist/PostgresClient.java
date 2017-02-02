@@ -203,7 +203,6 @@ public class PostgresClient {
     String secretKey = System.getProperty("postgres_secretkey_4_embeddedmode");
 
     loadModuleName();
-    System.out.println("----------------------------> " + moduleName);
     if(secretKey != null){
       AES.setSecretKey(secretKey);
     }
@@ -246,8 +245,14 @@ public class PostgresClient {
       MavenXpp3Reader mavenreader = new MavenXpp3Reader();
       File pomFile = new File("pom.xml");
       Model model = mavenreader.read(new FileReader(pomFile));
-      moduleName = model.getArtifactId();
+      if(model.getParent() != null){
+        moduleName = model.getParent().getArtifactId();
+      }
+      else{
+        moduleName = model.getArtifactId();
+      }
       moduleName = moduleName.replaceAll("-", "_");
+      log.info("Module name " + moduleName);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
