@@ -38,6 +38,7 @@ import org.folio.rest.security.AES;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
+import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
@@ -209,7 +210,12 @@ public class PostgresClient {
 
     this.tenantId = tenantId;
     this.vertx = vertx;
-    postgreSQLClientConfig = LoadConfs.loadConfig(getConfigFilePath());
+    postgreSQLClientConfig = Envs.allDBConfs();
+    if(postgreSQLClientConfig.size() == 0){
+      //no env variables passed in, read for module's config file
+      log.info("No DB environment variables passed in, attemping to read from config file");
+      postgreSQLClientConfig = LoadConfs.loadConfig(getConfigFilePath());
+    }
     if(postgreSQLClientConfig == null){
       if (embeddedMode) {
         //embedded mode, if no config passed use defaults
@@ -235,6 +241,7 @@ public class PostgresClient {
       postgreSQLClientConfig.put(PASSWORD, createPassword(tenantId));
 
     }
+    //remove log message before production
     log.info("Creating client with configuration:" + postgreSQLClientConfig.encode());
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
   }
@@ -252,7 +259,7 @@ public class PostgresClient {
         moduleName = model.getArtifactId();
       }
       moduleName = moduleName.replaceAll("-", "_");
-      log.info("Module name " + moduleName);
+      log.info("Module name: " + moduleName);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
