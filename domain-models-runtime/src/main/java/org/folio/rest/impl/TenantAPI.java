@@ -204,8 +204,15 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 log.error(h.cause().getMessage(), h.cause());
                 return;
               }
-              String sqlFile = IOUtils.toString(TenantAPI.class.getClassLoader().getResourceAsStream(
-                CREATE_TENANT_TEMPLATE));
+              InputStream stream = TenantAPI.class.getClassLoader().getResourceAsStream(
+                CREATE_TENANT_TEMPLATE);
+              if(stream == null){
+                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
+                  withPlainInternalServerError("No Create tenant template found, can not create tenant")));
+                log.error("No Create tenant template found, can not create tenant " + tenantId);
+                return;
+              }
+              String sqlFile = IOUtils.toString(stream);
 
               String sql2run = sqlFile.replaceAll(TEMPLATE_TENANT_PLACEHOLDER, tenantId);
               sql2run = sql2run.replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
