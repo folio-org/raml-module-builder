@@ -450,7 +450,7 @@ public class AdminAPI implements AdminResource {
     /** the queries returned are of this backend's most recent query. If state is active this field shows the currently
      * executing query. In all other states, it shows the last query that was executed.*/
     PostgresClient.getInstance(vertxContext.owner()).select(
-      "SELECT EXTRACT(EPOCH FROM now() - query_start) as runtime, client_addr, usename, datname, waiting, state, query "+
+      "SELECT EXTRACT(EPOCH FROM now() - query_start) as runtime, client_addr, usename, datname, state, query "+
       "FROM  pg_stat_activity " +
       "WHERE now() - query_start > '"+querytimerunning+" seconds'::interval "+
       "ORDER BY runtime DESC;", reply -> {
