@@ -49,38 +49,67 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
         System.out.println("sending... deleteTenant");
         String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
 
-        String sqlFile = IOUtils.toString(
-          TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_TENANT_TEMPLATE));
-
-        String sql2run = sqlFile.replaceAll(TEMPLATE_TENANT_PLACEHOLDER, tenantId);
-        sql2run = sql2run.replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
-        /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-        PostgresClient.getInstance(context.owner()).runSQLFile(sql2run, false,
-            reply -> {
-              try {
-                String res = "";
-                if(reply.succeeded()){
-                  res = new JsonArray(reply.result()).encodePrettily();
-                  if(reply.result().size() > 0){
-                    handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withPlainBadRequest(res)));
-                  }
-                  else {
-                    OutStream os = new OutStream();
-                    os.setData(res);
-                    handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withJsonOK(os)));
-                  }
-                }
-                else {
-                  log.error(reply.cause().getMessage(), reply.cause());
-                  handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
-                    .withPlainInternalServerError(reply.cause().getMessage())));
-                }
-              } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
-                  .withPlainInternalServerError(e.getMessage())));
+        tenantExists(context, tenantId,
+          h -> {
+            boolean exists = false;
+            if(h.succeeded()){
+              exists = h.result();
+              if(!exists){
+                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
+                  withPlainInternalServerError("Tenant does not exist: " + tenantId)));
+                log.error("Can not delete. Tenant does not exist: " + tenantId);
+                return;
               }
-            });
+              else{
+                log.info("Deleting tenant " + tenantId);
+              }
+            }
+            else{
+              handlers.handle(io.vertx.core.Future.failedFuture(h.cause().getMessage()));
+              log.error(h.cause().getMessage(), h.cause());
+              return;
+            }
+
+            String sqlFile = null;
+            try {
+              sqlFile = IOUtils.toString(
+                TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_TENANT_TEMPLATE));
+            } catch (Exception e1) {
+              handlers.handle(io.vertx.core.Future.failedFuture(e1.getMessage()));
+              log.error(e1.getMessage(), e1);
+              return;
+            }
+
+            String sql2run = sqlFile.replaceAll(TEMPLATE_TENANT_PLACEHOLDER, tenantId);
+            sql2run = sql2run.replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
+            /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
+            PostgresClient.getInstance(context.owner()).runSQLFile(sql2run, false,
+                reply -> {
+                  try {
+                    String res = "";
+                    if(reply.succeeded()){
+                      res = new JsonArray(reply.result()).encodePrettily();
+                      if(reply.result().size() > 0){
+                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withPlainBadRequest(res)));
+                      }
+                      else {
+                        OutStream os = new OutStream();
+                        os.setData(res);
+                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withJsonOK(os)));
+                      }
+                    }
+                    else {
+                      log.error(reply.cause().getMessage(), reply.cause());
+                      handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                        .withPlainInternalServerError(reply.cause().getMessage())));
+                    }
+                  } catch (Exception e) {
+                    log.error(e.getMessage(), e);
+                    handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                      .withPlainInternalServerError(e.getMessage())));
+                  }
+                });
+          });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
