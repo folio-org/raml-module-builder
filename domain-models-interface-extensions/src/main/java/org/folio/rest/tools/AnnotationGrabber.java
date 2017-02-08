@@ -14,7 +14,12 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiConsumer;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.HeaderParam;
@@ -54,6 +59,9 @@ public class AnnotationGrabber {
   private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
 
   private static boolean generateClient = false;
+  private static boolean generateModDescrptor = false;
+
+  private static Map<String, Set<String>> mdUrl2Verbs = null;
 
   // ^http.*?//.*?/apis/patrons/.*?/fines/.*
   // ^http.*?\/\/.*?\/apis\/patrons\/?(.+?)*
@@ -65,8 +73,13 @@ public class AnnotationGrabber {
      * check if the plugin set the system property in the pom and only if
      * so generate */
     String clientGen = System.getProperty("client.generate");
+    String modDescr = System.getProperty("modDescrptor.generate");
+
     if(clientGen != null){
       generateClient = true;
+    }
+    if(modDescr != null){
+      generateModDescrptor = true;
     }
     JsonObject globalClassMapping = new JsonObject();
 
@@ -87,8 +100,8 @@ public class AnnotationGrabber {
 
         ClientGenerator cGen = new ClientGenerator();
 
-        // ----------------- class level annotations
-        // ---------------------------//
+        // ----------------- class level annotations -----------------------//
+        // -----------------------------------------------------------------//
 
         // will contain all mappings for a specific class in the package
         JsonObject classSpecificMapping = new JsonObject();
@@ -114,13 +127,26 @@ public class AnnotationGrabber {
               if(generateClient){
                 cGen.generateClassMeta(val.toString(), value);
               }
+              if(generateModDescrptor && classSpecificMapping.getString(CLASS_URL) != null){
+                MDGenerator.ProvidesEntry pe = MDGenerator.INSTANCE.new ProvidesEntry();
+                String url = classSpecificMapping.getString(CLASS_URL).substring(2);
+                if(url.contains("_/tenant")){
+                  url = "_tenant";
+                }
+                pe.setId(url);
+                MDGenerator.INSTANCE.addProvidesEntry(pe);
+              }
             }
 
           }
         }
 
-        // ----------------- method level annotations
-        // -----------------------------//
+        // ----------------- method level annotations ------------ //
+        // ------------------------------------------------------- //
+
+        /** will be used only if ModuleDescriptor generation is turned on
+         * maps all http verbs to a single url */
+        mdUrl2Verbs = new HashMap<>();
 
         JsonArray methodsInAPath;
         // iterate over all functions in the class
@@ -176,11 +202,9 @@ public class AnnotationGrabber {
                   methodObj.put(METHOD_URL, path);
                   // put regex path to function
                   methodObj.put(REGEX_URL, regexPath);
-
                 }
                 //System.out.println(" " + method.getName() + ": " + value.toString());
               }
-
             }
           }
           if(generateClient){
@@ -196,6 +220,25 @@ public class AnnotationGrabber {
           if (methodObj.getString(METHOD_URL) == null) {
             methodObj.put(METHOD_URL, classSpecificMapping.getString(CLASS_URL));
             methodObj.put(REGEX_URL, getRegexForPath(classSpecificMapping.getString(CLASS_URL)));
+          }
+
+
+          if(generateModDescrptor){
+            String verb = methodObj.getString(HTTP_METHOD);
+            verb = verb.substring(verb.lastIndexOf(".")+1);
+            String rootURL4Service = classSpecificMapping.getString(CLASS_URL).substring(1);
+            /*if(mdUrl2Verbs.get(path.substring(1)) != null){
+              mdUrl2Verbs.get(path.substring(1)).add(verb);
+            } else {
+              mdUrl2Verbs.put(path.substring(1), new JsonArray());
+              mdUrl2Verbs.get(path.substring(1)).add(verb);
+            }*/
+            if(mdUrl2Verbs.get(rootURL4Service) != null){
+              mdUrl2Verbs.get(rootURL4Service).add(verb);
+            } else {
+              mdUrl2Verbs.put(rootURL4Service, new HashSet<String>());
+              mdUrl2Verbs.get(rootURL4Service).add(verb);
+            }
           }
 
           // this is the key - the regex path is the key to the functions
@@ -216,12 +259,30 @@ public class AnnotationGrabber {
         if(generateClient){
           cGen.generateClass(classSpecificMapping);
         }
+        if(generateModDescrptor){
+          BiConsumer<String, Set<String>> biConsumer = (key, value) -> {
+            if(!key.contains("_/tenant")){
+              MDGenerator.RoutingEntry re = MDGenerator.INSTANCE.new RoutingEntry();
+              JsonArray ja = new JsonArray();
+              value.forEach( verb -> {
+                ja.add(verb);
+              });
+              re.setMethods(ja);
+              re.setEntryPath(key);
+              re.setLevel("30");
+              re.setType("request-response");
+              MDGenerator.INSTANCE.addRoutingEntry( re );
+            }
+          };
+          mdUrl2Verbs.forEach( biConsumer );
+          MDGenerator.INSTANCE.generateMD();
+        }
       } catch (Exception e) {
         e.printStackTrace();
       }
     });
-    return globalClassMapping;
     //writeMappings(globalClassMapping);
+    return globalClassMapping;
   }
 
   public static JsonObject getParameterNames(Method method) throws Exception {
