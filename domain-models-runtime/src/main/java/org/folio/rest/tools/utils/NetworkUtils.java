@@ -1,10 +1,13 @@
 package org.folio.rest.tools.utils;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
+import java.net.URL;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -53,6 +56,28 @@ public class NetworkUtils {
       try {
         bos.close();
       } catch (IOException ex) {/*ignore*/}
+    }
+  }
+
+  public static String readURL(String path) throws Exception {
+    URL url = new URL(path);
+    BufferedReader in = new BufferedReader(
+    new InputStreamReader(url.openStream()));
+    StringBuffer content = new StringBuffer();
+    String input;
+    while ((input = in.readLine()) != null)
+      content.append(input);
+    in.close();
+    return content.toString();
+  }
+
+  public static boolean isValidURL(String path){
+    try {
+      new URL(path);
+      return true;
+    }
+    catch(Exception e){
+      return false;
     }
   }
 

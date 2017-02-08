@@ -1,15 +1,16 @@
 package org.folio.rest.persist;
 
-import java.io.File;
-import java.io.FileInputStream;
-
-import com.google.common.io.ByteStreams;
-
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
+
+import org.folio.rest.tools.utils.NetworkUtils;
+
+import com.google.common.io.ByteStreams;
 
 public final class LoadConfs {
   private static final Logger log = LoggerFactory.getLogger(LoadConfs.class);
@@ -22,6 +23,14 @@ public final class LoadConfs {
     boolean loadResource = true;
 
     try {
+      if(NetworkUtils.isValidURL(configFile)){
+        try {
+          return new JsonObject(NetworkUtils.readURL(configFile));
+        } catch (Exception e) {
+          log.error(e.getMessage(), e);
+          return null;
+        }
+      }
       File file = new File(configFile);
       byte[] jsonData = null;
       if (file.isAbsolute()) {
