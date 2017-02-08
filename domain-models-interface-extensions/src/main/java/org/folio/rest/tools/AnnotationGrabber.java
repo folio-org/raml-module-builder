@@ -78,7 +78,7 @@ public class AnnotationGrabber {
     if(clientGen != null){
       generateClient = true;
     }
-    if(modDescr != null){
+    if("true".equals(modDescr)){
       generateModDescrptor = true;
     }
     JsonObject globalClassMapping = new JsonObject();
@@ -276,7 +276,14 @@ public class AnnotationGrabber {
           };
           mdUrl2Verbs.forEach( biConsumer );
           MDGenerator.INSTANCE.generateMD();
+          //this is needed when the MDGenerator is used to generate
+          //partial MDs in submodules. the system variable is maintained
+          //across the sub module builds and if not reset will generate a
+          //partial MD for all sub modules
+          System.setProperty("modDescrptor.generate", "false");
+
         }
+
       } catch (Exception e) {
         e.printStackTrace();
       }
