@@ -679,7 +679,8 @@ public class RestVerticle extends AbstractVerticle {
       //sent as part of an upload. passing this back will confuse clients as they
       //will think they are getting back a stream of data which may not be the case
       rc.request().headers().remove("Content-type");
-      response.headers().addAll(rc.request().headers());
+
+      mergeIntoResponseHeadersDistinct(response.headers(), rc.request().headers());
 
       Object entity = result.getEntity();
 
@@ -714,6 +715,16 @@ public class RestVerticle extends AbstractVerticle {
     LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
       rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
       rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), sb.toString());
+  }
+
+  private void mergeIntoResponseHeadersDistinct(MultiMap responseHeaders, MultiMap requestHeaders){
+    Consumer<Map.Entry<String,String>> consumer = entry -> {
+      String headerName = entry.getKey().toLowerCase();
+      if(!responseHeaders.contains(headerName)){
+        responseHeaders.add(headerName, entry.getValue());
+      }
+    };
+    requestHeaders.forEach(consumer);
   }
 
   private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message,  boolean[] isValid) {
