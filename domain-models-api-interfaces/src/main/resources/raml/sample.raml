@@ -7,58 +7,58 @@ version: v1
 schemas:
   - book: !include book.schema
 
-
-/books:
-  /{bookTitle}:
-  get:
-    queryParameters:
-      author:
-        displayName: Author
-        type: string
-        description: An author's full name
-        example: Mary Roach
-        required: true
-      publicationYear:
-        displayName: Pub Year
-        type: number
-        description: The year released for the first time in the US
-        example: 1984
-        required: false
-      rating:
-        displayName: Rating
-        type: number
-        description: Average rating (1-5) submitted by users
-        example: 3.14
-        required: false
-      isbn:
-        displayName: ISBN
-        type: string
-        minLength: 10
-        example: 0321736079?
-    responses:
-      200:
-       body:
-         application/json:
-          schema: book
-          example: |
-             {
-               "data": {
-                 "id": "SbBGk",
-                 "title": "Stiff: The Curious Lives of Human Cadavers",
-                 "description": null,
-                 "datetime": 1341533193,
-                 "genre": "science",
-                 "author": "Mary Roach",
-                 "link": "http://e-bookmobile.com/books/Stiff",
-               },
-               "success": true,
-               "status": 200
-             }
-
-  put:
-    queryParameters:
-      access_token:
-        displayName: Access Token
-        type: number
-        description: Token giving you permission to make call
-        required: true
+/rmbtests:
+  /books:
+    /{bookTitle}:
+    get:
+      queryParameters:
+        author:
+          displayName: Author
+          type: string
+          description: An author's full name
+          example: Mary Roach
+          required: true
+        publicationYear:
+          displayName: Pub Year
+          type: number
+          description: The year released for the first time in the US
+          example: 1984
+          required: false
+        rating:
+          displayName: Rating
+          type: number
+          description: Average rating (1-5) submitted by users
+          example: 3.14
+          required: false
+        isbn:
+          displayName: ISBN
+          type: string
+          minLength: 10
+          example: 0321736079?
+      responses:
+        200:
+         body:
+           application/json:
+            schema: book
+            example: |
+               {
+                 "data": {
+                   "id": "SbBGk",
+                   "title": "Stiff: The Curious Lives of Human Cadavers",
+                   "description": null,
+                   "datetime": 1341533193,
+                   "genre": "science",
+                   "author": "Mary Roach",
+                   "link": "http://e-bookmobile.com/books/Stiff",
+                 },
+                 "success": true,
+                 "status": 200
+               }
+  
+    put:
+      queryParameters:
+        access_token:
+          displayName: Access Token
+          type: number
+          description: Token giving you permission to make call
+          required: true

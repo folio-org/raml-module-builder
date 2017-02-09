@@ -115,9 +115,9 @@ public class DemoRamlRestTest {
   @Test
   public void test(TestContext context) throws Exception {
     //check GET
-    checkURLs(context, "http://localhost:" + port + "/books?author=me", 200);
-    checkURLs(context, "http://localhost:" + port + "/books", 400);
-    checkURLs(context, "http://localhost:" + port + "/x/books", 400); // should be 404
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?author=me", 200);
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books", 400);
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/x/books", 400); // should be 404
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
     //checkURLs(context, "http://localhost:" + port + "/admin/postgres_active_sessions?dbname=postgres", 200, "application/json");
 

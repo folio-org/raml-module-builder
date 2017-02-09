@@ -128,16 +128,17 @@ public class AnnotationGrabber {
                 cGen.generateClassMeta(val.toString(), value);
               }
               if(generateModDescrptor && classSpecificMapping.getString(CLASS_URL) != null){
-                MDGenerator.ProvidesEntry pe = MDGenerator.INSTANCE.new ProvidesEntry();
                 String url = classSpecificMapping.getString(CLASS_URL).substring(2);
-                if(url.contains("_/tenant")){
-                  url = "_tenant";
+                if(!url.contains("rmbtests")){
+                  MDGenerator.ProvidesEntry pe = MDGenerator.INSTANCE.new ProvidesEntry();
+                  if(url.contains("_/tenant")){
+                    url = "_tenant";
+                  }
+                  pe.setId(url);
+                  MDGenerator.INSTANCE.addProvidesEntry(pe);
                 }
-                pe.setId(url);
-                MDGenerator.INSTANCE.addProvidesEntry(pe);
               }
             }
-
           }
         }
 
@@ -261,7 +262,7 @@ public class AnnotationGrabber {
         }
         if(generateModDescrptor){
           BiConsumer<String, Set<String>> biConsumer = (key, value) -> {
-            if(!key.contains("_/tenant")){
+            if(!key.contains("_/tenant") && !key.contains("rmbtests")){
               MDGenerator.RoutingEntry re = MDGenerator.INSTANCE.new RoutingEntry();
               JsonArray ja = new JsonArray();
               value.forEach( verb -> {
