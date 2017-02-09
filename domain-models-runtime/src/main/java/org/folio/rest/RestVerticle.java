@@ -53,6 +53,7 @@ import javax.validation.Validation;
 import javax.validation.ValidatorFactory;
 import javax.ws.rs.core.Response;
 
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.persist.PostgresClient;
@@ -292,7 +293,7 @@ public class RestVerticle extends AbstractVerticle {
                     parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
 
                     //create okapi headers map and inject into function
-                    Map<String, String> okapiHeaders = new HashMap<>();
+                    Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
                     String []tenantId = new String[]{null};
                     getOkapiHeaders(rc, okapiHeaders, tenantId);
 
