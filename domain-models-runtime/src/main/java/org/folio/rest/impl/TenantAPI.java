@@ -95,7 +95,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                       else {
                         OutStream os = new OutStream();
                         os.setData(res);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withJsonOK(os)));
+                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withNoContent()));
                       }
                     }
                     else {
@@ -190,8 +190,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               if(h.succeeded()){
                 exists = h.result();
                 if(exists){
-                  handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                    withPlainInternalServerError("Tenant already exists: " + tenantId)));
+                  handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+                    .withNoContent()));
                   log.error("Tenant already exists: " + tenantId);
                   return;
                 }
@@ -256,7 +256,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                               }
                               else{
                                 os.setData(res);
-                                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
+                                  withJsonCreated(os)));
                               }
                             } else {
                               log.error(reply2.cause().getMessage(), reply2.cause());
@@ -272,7 +273,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                         }
                         else{
                           os.setData(res);
-                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonOK(os)));
+                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonCreated(os)));
                         }
                       }
                     } else {

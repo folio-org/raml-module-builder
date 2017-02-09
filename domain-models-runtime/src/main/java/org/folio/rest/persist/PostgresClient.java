@@ -215,7 +215,7 @@ public class PostgresClient {
     postgreSQLClientConfig = Envs.allDBConfs();
     if(postgreSQLClientConfig.size() == 0){
       //no env variables passed in, read for module's config file
-      log.info("No DB environment variables passed in, attemping to read from config file");
+      log.info("No DB environment variables passed in, attempting to read from config file");
       postgreSQLClientConfig = LoadConfs.loadConfig(getConfigFilePath());
     }
     if(postgreSQLClientConfig == null){
