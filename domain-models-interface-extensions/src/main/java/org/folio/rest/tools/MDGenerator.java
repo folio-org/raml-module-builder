@@ -7,6 +7,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
+import org.folio.rest.tools.utils.Envs;
+
 import com.google.common.io.Files;
 
 /**
@@ -63,13 +65,6 @@ public enum MDGenerator {
   private static final String ID              = "id";
   private static final String NAME            = "name";
 
-  private static final String DB_HOST = "db.host";
-  private static final String DB_PORT = "db.port";
-  private static final String DB_DBNAME = "db.database";
-  private static final String DB_PASSWORD = "db.password";
-  private static final String DB_CHARSET = "db.charset";
-  private static final String DB_TO = "db.queryTimeout";
-
   private JsonObject md = new JsonObject();
   private JsonArray rEntries = new JsonArray();
   private JsonArray provides = new JsonArray();
@@ -86,12 +81,14 @@ public enum MDGenerator {
 
   private void setEnvs() {
     JsonArray envs = new JsonArray();
-    envs.add(new JsonObject().put("name", DB_HOST));
-    envs.add(new JsonObject().put("name", DB_PORT));
-    envs.add(new JsonObject().put("name", DB_DBNAME));
-    envs.add(new JsonObject().put("name", DB_PASSWORD));
-    envs.add(new JsonObject().put("name", DB_CHARSET));
-    envs.add(new JsonObject().put("name", DB_TO));
+    envs.add(new JsonObject().put("name", Envs.DB_HOST));
+    envs.add(new JsonObject().put("name", Envs.DB_PORT));
+    envs.add(new JsonObject().put("name", Envs.DB_DATABASE));
+    envs.add(new JsonObject().put("name", Envs.DB_PASSWORD));
+    envs.add(new JsonObject().put("name", Envs.DB_CHARSET));
+    envs.add(new JsonObject().put("name", Envs.DB_USER));
+    envs.add(new JsonObject().put("name", Envs.DB_TIMEOUT));
+    envs.add(new JsonObject().put("name", Envs.DB_MAXPOOL));
     md.put("env", envs);
   }
 

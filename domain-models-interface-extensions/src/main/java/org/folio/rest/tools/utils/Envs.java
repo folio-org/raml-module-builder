@@ -17,6 +17,7 @@ public enum Envs {
   public static final String DB_DATABASE = "db.database";
   public static final String DB_TIMEOUT = "db.queryTimeout";
   public static final String DB_CHARSET = "db.charset";
+  public static final String DB_MAXPOOL = "db.maxPoolSize";
 
   private static Map<String, String> envs = null;
 
@@ -36,7 +37,7 @@ public enum Envs {
       String key = entry.getKey();
       if(key.startsWith("db.")){
         String value = entry.getValue();
-        if(key.equals(DB_PORT) || key.equals(DB_TIMEOUT)){
+        if(key.equals(DB_PORT) || key.equals(DB_TIMEOUT) || key.equals(DB_MAXPOOL)){
           obj.put(key.substring(3), Integer.valueOf(value).intValue());
         }
         else {
