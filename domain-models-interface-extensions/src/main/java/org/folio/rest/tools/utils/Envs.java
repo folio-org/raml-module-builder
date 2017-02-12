@@ -37,11 +37,13 @@ public enum Envs {
       String key = entry.getKey();
       if(key.startsWith("db.")){
         String value = entry.getValue();
-        if(key.equals(DB_PORT) || key.equals(DB_TIMEOUT) || key.equals(DB_MAXPOOL)){
-          obj.put(key.substring(3), Integer.valueOf(value).intValue());
-        }
-        else {
-          obj.put(key.substring(3), value);
+        if(value != null){
+          if(key.equals(DB_PORT) || key.equals(DB_TIMEOUT) || key.equals(DB_MAXPOOL)){
+            obj.put(key.substring(3), Integer.valueOf(value).intValue());
+          }
+          else {
+            obj.put(key.substring(3), value);
+          }
         }
       }
     }
