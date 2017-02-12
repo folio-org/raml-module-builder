@@ -100,6 +100,7 @@ public class PostgresClient {
   private final Messages messages           = Messages.getInstance();
   private AsyncSQLClient         client;
   private String tenantId;
+  private static int embeddedPort           = -1;
 
   private PostgresClient(Vertx vertx, String tenantId) throws Exception {
     init(vertx, tenantId);
@@ -112,6 +113,10 @@ public class PostgresClient {
    */
   public static void setIsEmbedded(boolean embed){
     embeddedMode = embed;
+  }
+
+  public static void setEmbeddedPort(int port){
+    embeddedPort = port;
   }
 
   public static boolean isEmbedded(){
@@ -241,10 +246,19 @@ public class PostgresClient {
       log.info("Using schema: " + tenantId);
       postgreSQLClientConfig.put(USERNAME, convertToPsqlStandard(tenantId));
       postgreSQLClientConfig.put(PASSWORD, createPassword(tenantId));
-
     }
+
+    if(embeddedPort != -1 && embeddedMode){
+      //over ride the declared default port - coming from the config file and use the
+      //passed in port as well. useful when multiple modules start up an embedded postgres
+      //in a single server.
+      postgreSQLClientConfig.remove("port");
+      postgreSQLClientConfig.put("port", embeddedPort);
+    }
+
     //remove log message before production
     log.info("Creating client with configuration:" + postgreSQLClientConfig.encode());
+
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
   }
 
