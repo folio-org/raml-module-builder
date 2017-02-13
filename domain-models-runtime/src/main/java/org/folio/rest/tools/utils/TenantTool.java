@@ -4,7 +4,10 @@ package org.folio.rest.tools.utils;
  * @author shale
  *
  */
-public class TenantTool {
+public final class TenantTool {
+  private TenantTool() {
+    throw new UnsupportedOperationException("Cannot instantiate utility class.");
+  }
 
   public static String calculateTenantId(String tenantId){
     if(tenantId == null){
