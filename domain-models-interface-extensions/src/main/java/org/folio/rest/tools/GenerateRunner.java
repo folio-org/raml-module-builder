@@ -42,6 +42,15 @@ public class GenerateRunner {
 
     ClientGenerator.makeCleanDir(outputDirectoryWithPackage);
 
+    //if we are generating interfaces, we need to remove any generated client code
+    //as if the interfaces have changed in a way (pojos removed, etc...) that causes
+    //the client generated code to cause compilation errors
+    String clientDir = System.getProperties().getProperty("project.basedir")
+        + ClientGenerator.PATH_TO_GENERATE_TO
+        + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
+    ClientGenerator.makeCleanDir(clientDir);
+
+
     configuration = new Configuration();
     configuration.setJaxrsVersion(JaxrsVersion.JAXRS_2_0);
     configuration.setUseJsr303Annotations(true);
