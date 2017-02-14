@@ -162,6 +162,21 @@ To run the configuration module, navigate to the `/target/` directory in the con
 -XX:+PrintGCTimeStamps
   -Xloggc:C:\Git\circulation\gc.log` (or any other Optional JVM argument should be passed before the -jar argument)
 
+## Environment Variables
+
+RMB implementing modules expect a set of environment variables to be passed in at module startup. The environment variables expected by RMB modules are:
+
+ - db.host 
+ - db.port
+ - db.username 
+ - db.password 
+ - db.database 
+ - db.queryTimeout
+ - db.charset 
+ - db.maxPoolSize
+
+See https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables for more information on how to deploy environment variables to RMB modules via Okapi.
+
 ## Creating a new module
 
 
@@ -1412,5 +1427,6 @@ http://localhost:8080/patrons
 Other [modules](http://dev.folio.org/source-code/#server-side).
 
 Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
+
 
 
