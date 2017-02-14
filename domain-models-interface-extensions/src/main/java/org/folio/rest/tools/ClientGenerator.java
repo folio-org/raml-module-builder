@@ -27,7 +27,6 @@ import javax.mail.internet.MimeMultipart;
 import org.apache.commons.io.FileUtils;
 
 import com.sun.codemodel.JBlock;
-import com.sun.codemodel.JCatchBlock;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JCodeModel;
 import com.sun.codemodel.JConditional;
@@ -40,7 +39,6 @@ import com.sun.codemodel.JForLoop;
 import com.sun.codemodel.JMethod;
 import com.sun.codemodel.JMod;
 import com.sun.codemodel.JPackage;
-import com.sun.codemodel.JTryBlock;
 import com.sun.codemodel.JVar;
 import com.sun.codemodel.JWhileLoop;
 
@@ -331,13 +329,8 @@ public class ClientGenerator {
     }
     b.invoke(queryParams, "append").arg(JExpr.lit(valueName + "="));
     if (encode) {
-      JTryBlock tb = b._try();
       JExpression expr = jCodeModel.ref(java.net.URLEncoder.class).staticInvoke("encode").arg(JExpr.ref(valueName)).arg("UTF-8");
-      tb.body().invoke(queryParams, "append").arg(expr);
-      JClass jc1 = jCodeModel.ref(UnsupportedEncodingException.class);
-      JCatchBlock cb2 = tb._catch(jc1);
-      JVar e_var = cb2.param("e");
-      cb2.body().invoke(JExpr.ref("e"), "printStackTrace");
+      b.invoke(queryParams, "append").arg(expr);
     } else {
       b.invoke(queryParams, "append").arg(JExpr.ref(valueName));
     }
@@ -435,13 +428,17 @@ public class ClientGenerator {
             b1.add(buffer.invoke("appendString").arg(sb.invoke("toString")));
           }
           else{
+            String objParamName = entityClazz.getSimpleName();
+            JConditional _if = methodBody._if(JExpr.ref(objParamName).ne(JExpr._null()));
+            JBlock b = methodBody;
+            b = _if._then();
             if(mappingType.equals("postgres")){
               method._throws(Exception.class);
-              methodBody.directStatement( "buffer.appendString("
-                  + "org.folio.rest.tools.ClientHelpers.pojo2json("+entityClazz.getSimpleName()+"));");
+              b.directStatement("buffer.appendString("
+                  + "org.folio.rest.tools.ClientHelpers.pojo2json("+objParamName+"));");
             }else{
-              methodBody.directStatement( "buffer.appendString("
-                  + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+entityClazz.getSimpleName()+").encode());");
+              b.directStatement( "buffer.appendString("
+                  + "org.folio.rest.tools.utils.JsonUtils.entity2Json("+objParamName+").encode());");
             }
             method.param(entityClazz, entityClazz.getSimpleName());
           }
@@ -461,36 +458,41 @@ public class ClientGenerator {
     }
     else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
       // support enum, numbers or strings as query parameters
+      boolean encode = false;
       try {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
-          addParameter(methodBody, queryParams, valueName, true, false);
+          encode = true;
+          addParameter(methodBody, queryParams, valueName, encode, false);
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
-          addParameter(methodBody, queryParams, valueName, false, true);
+          addParameter(methodBody, queryParams, valueName, encode, true);
         } else if (valueType.contains("boolean")) {
           method.param(boolean.class, valueName);
-          addParameter(methodBody, queryParams, valueName, false, true);
+          addParameter(methodBody, queryParams, valueName, encode, true);
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
-          addParameter(methodBody, queryParams, valueName, false, false);
+          addParameter(methodBody, queryParams, valueName, encode, false);
         } else if (valueType.contains("Integer")) {
             method.param(Integer.class, valueName);
-            addParameter(methodBody, queryParams, valueName, false, false);
+            addParameter(methodBody, queryParams, valueName, encode, false);
         } else if (valueType.contains("Boolean")) {
             method.param(Boolean.class, valueName);
-            addParameter(methodBody, queryParams, valueName, false, false);
+            addParameter(methodBody, queryParams, valueName, encode, false);
         }else { // enum object type
           try {
             String enumClazz = replaceLast(valueType, ".", "$");
             Class<?> enumClazz1 = Class.forName(enumClazz);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
-              addParameter(methodBody, queryParams, valueName, false, false);
+              addParameter(methodBody, queryParams, valueName, encode, false);
             }
           } catch (Exception ee) {
             ee.printStackTrace();
           }
+        }
+        if(encode){
+          method._throws(UnsupportedEncodingException.class);
         }
       } catch (Exception e) {
         e.printStackTrace();
