@@ -859,8 +859,9 @@ Credentials when running in embedded mode are read from `resources/postgres-conf
 ```
 port: 6000
 host: 127.0.0.1
-user: username
+username: username
 password: password
+database: postgres
 ```
 
 ### Securing DB Configuration file
