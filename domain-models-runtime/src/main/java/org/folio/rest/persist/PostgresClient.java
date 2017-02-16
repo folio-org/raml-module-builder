@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
+import org.apache.commons.lang3.text.StrSubstitutor;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -66,10 +67,6 @@ public class PostgresClient {
 
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
-  public static final String     ID_FIELD                 = "_id";
-
-  private static final String    COUNT_CLAUSE             = " count(_id) OVER() AS count, ";
-  private static final String    RETURNING_IDS            = " RETURNING _id ";
 
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
@@ -100,12 +97,25 @@ public class PostgresClient {
   private final Messages messages           = Messages.getInstance();
   private AsyncSQLClient         client;
   private String tenantId;
-  private static int embeddedPort           = -1;
+  private static int embeddedPort            = -1;
+  private String idField                     = "_id";
+  private String countClauseTemplate         = " count(${id}) OVER() AS count, ";
+  private String returningIdTemplate         = " RETURNING ${id} ";
+  private String countClause                 = " count(_id) OVER() AS count, ";
+  private String returningId                 = " RETURNING _id ";
 
   private PostgresClient(Vertx vertx, String tenantId) throws Exception {
     init(vertx, tenantId);
   }
 
+  public void setIdField(String id){
+    idField = id;
+    Map<String, String> replaceMapping = new HashMap<String, String>();
+    replaceMapping.put("id", idField);
+    StrSubstitutor sub = new StrSubstitutor(replaceMapping);
+    countClause = sub.replace(countClauseTemplate);
+    returningId = sub.replace(returningIdTemplate);
+  }
   /**
    * only affect is of setting this is that it sets default connection params
    * in the init() in case the postgres json config isnt found.
@@ -217,6 +227,7 @@ public class PostgresClient {
 
     this.tenantId = tenantId;
     this.vertx = vertx;
+
     postgreSQLClientConfig = Envs.allDBConfs();
     if(postgreSQLClientConfig.size() == 0){
       //no env variables passed in, read for module's config file
@@ -370,12 +381,12 @@ public class PostgresClient {
         StringBuilder clientId = new StringBuilder("");
         if(id != null){
           clientId.append("'").append(id).append("',");
-          clientIdField.append(ID_FIELD).append(",");
+          clientIdField.append(idField).append(",");
         }
         try {
           connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
-            ") VALUES ("+clientId+"?::JSON) RETURNING _id",
+            ") VALUES ("+clientId+"?::JSON) RETURNING " + idField,
             new JsonArray().add(pojo2json(entity)), query -> {
               connection.close();
               if (query.failed()) {
@@ -407,7 +418,8 @@ public class PostgresClient {
     // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
     SQLConnection connection = ((io.vertx.core.Future<SQLConnection>) sqlConnection).result();
     try {
-      connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table + " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING _id",
+      connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+        " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
         new JsonArray().add(pojo2json(entity)), query -> {
           if (query.failed()) {
             replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
@@ -456,7 +468,7 @@ public class PostgresClient {
               connection.query("BEGIN;", begin -> {
                 if(begin.succeeded()){
                   connection.query("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
-                    " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES "+sb.toString()+" RETURNING _id;",
+                    " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES "+sb.toString()+" RETURNING " + idField + ";",
                     query -> {
                       if (query.failed()) {
                         log.error("query saveBatch failed, attempting rollback", query.cause());
@@ -533,7 +545,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    update(table, entity, DEFAULT_JSONB_FIELD_NAME, " WHERE " + ID_FIELD + "=" + id, false, replyHandler);
+    update(table, entity, DEFAULT_JSONB_FIELD_NAME, " WHERE " + idField + "=" + id, false, replyHandler);
   }
 
   /**
@@ -619,7 +631,7 @@ public class PostgresClient {
         }
         StringBuilder returning = new StringBuilder();
         if (returnUpdatedIds) {
-          returning.append(RETURNING_IDS);
+          returning.append(returningId);
         }
         try {
           String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = '" + pojo2json(entity) + "' " + whereClause
@@ -700,7 +712,7 @@ public class PostgresClient {
         }
         StringBuilder returning = new StringBuilder();
         if (returnUpdatedIdsCount) {
-          returning.append(RETURNING_IDS);
+          returning.append(returningId);
         }
         try {
           String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
@@ -749,7 +761,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    delete(table, " WHERE " + ID_FIELD + "=" + id, false, replyHandler);
+    delete(table, " WHERE " + idField + "=" + id, false, replyHandler);
   }
 
   /**
@@ -816,10 +828,10 @@ public class PostgresClient {
         try {
           String select = "SELECT ";
           if (returnCount) {
-            select = select + COUNT_CLAUSE;
+            select = select + countClause;
           }
-          String q = select + fieldName + "," + ID_FIELD + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
-          log.debug("query = " + q);
+          String q = select + fieldName + "," + idField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+          log.info("query = " + q);
           connection.query(q,
             query -> {
             connection.close();
@@ -1079,7 +1091,7 @@ public class PostgresClient {
     for (int i = 0; i < tempList.size(); i++) {
       try {
         Object jo = tempList.get(i).getValue(DEFAULT_JSONB_FIELD_NAME);
-        Object id = tempList.get(i).getValue(ID_FIELD);
+        Object id = tempList.get(i).getValue(idField);
         Object o = null;
         if(!isAuditFlavored){
           o = mapper.readValue(jo.toString(), clazz);
@@ -1098,7 +1110,7 @@ public class PostgresClient {
             rowCount = tempList.get(i).getLong(columnNames.get(j)).intValue();
           }
           else if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME))
-              && !columnNames.get(j).equals(ID_FIELD)){
+              && !columnNames.get(j).equals(idField)){
             try {
               o.getClass().getMethod(columnNametoCamelCaseWithset(columnNames.get(j)),
                 new Class[] { String.class }).invoke(o, new String[] { tempList.get(i).getString(columnNames.get(j)) });
@@ -1109,7 +1121,8 @@ public class PostgresClient {
           }
         }
         if(setId){
-          o.getClass().getMethod("setId", new Class[] { String.class }).invoke(o, new String[] { id.toString() });
+          o.getClass().getMethod(columnNametoCamelCaseWithset(idField),
+            new Class[] { String.class }).invoke(o, new String[] { id.toString() });
         }
         list.add(o);
       } catch (Exception e) {

@@ -253,6 +253,12 @@ public class RestVerticle extends AbstractVerticle {
                     for (int i = 0; i < groups; i++) {
                       pathParams[i] = m.group(i + 1);
                     }
+
+                    //create okapi headers map and inject into function
+                    Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
+                    String []tenantId = new String[]{null};
+                    getOkapiHeaders(rc, okapiHeaders, tenantId);
+
                     //get interface mapped to this url
                     String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
                     // convert from interface to an actual class implementing it, which appears in the impl package
@@ -261,7 +267,7 @@ public class RestVerticle extends AbstractVerticle {
                     // call back the constructor of the class - gives a hook into the class not based on the apis
                     // passing the vertx and context objects in to it.
                     try {
-                      o = aClass.getConstructor(Vertx.class, Context.class).newInstance(vertx, vertx.getOrCreateContext());
+                      o = aClass.getConstructor(Vertx.class, String.class).newInstance(vertx, tenantId[0]);
                     } catch (Exception e) {
                       // if no such constructor was implemented call the
                       // default no param constructor to create the object to be used to call functions on
@@ -291,11 +297,6 @@ public class RestVerticle extends AbstractVerticle {
                     Iterator<Map.Entry<String, Object>> paramList = params.iterator();
                     Object[] paramArray = new Object[params.size()];
                     parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
-
-                    //create okapi headers map and inject into function
-                    Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
-                    String []tenantId = new String[]{null};
-                    getOkapiHeaders(rc, okapiHeaders, tenantId);
 
                     //Get method in class to be run for this requested API endpoint
                     Method[] method2Run = new Method[]{null};
@@ -1119,14 +1120,15 @@ public class RestVerticle extends AbstractVerticle {
               // we have special handling for the Result Handler and context, it is also assumed that
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
-
-              if("java.io.Reader".equals(valueType)){
-                paramArray[order] = new StringReader(rc.getBodyAsString());
+              String bodyContent = rc.getBodyAsString();
+              if(bodyContent != null){
+                if("java.io.Reader".equals(valueType)){
+                  paramArray[order] = new StringReader(bodyContent);
+                }
+                else if(bodyContent.length() > 0) {
+                  paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
+                }
               }
-              else{
-                paramArray[order] = MAPPER.readValue(rc.getBodyAsString(), entityClazz);
-              }
-
               Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray[order]);
               if (validationErrors.size() > 0) {
                 StringBuffer sb = new StringBuffer();

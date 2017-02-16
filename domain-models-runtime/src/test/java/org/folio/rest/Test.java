@@ -47,7 +47,7 @@ public class Test {
     });
 
     TenantClient tc = new TenantClient("localhost", 8888, "harvard");
-    tc.post( response -> {
+    tc.post(null, response -> {
       response.bodyHandler( body -> {
         System.out.println(body.toString());
         tc.delete( reply -> {
