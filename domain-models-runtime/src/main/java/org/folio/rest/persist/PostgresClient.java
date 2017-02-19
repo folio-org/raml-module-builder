@@ -831,7 +831,7 @@ public class PostgresClient {
             select = select + countClause;
           }
           String q = select + fieldName + "," + idField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
-          log.info("query = " + q);
+          log.debug("query = " + q);
           connection.query(q,
             query -> {
             connection.close();

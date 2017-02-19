@@ -56,6 +56,7 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Stream;
+import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.ClientGenerator;
@@ -1126,24 +1127,29 @@ public class RestVerticle extends AbstractVerticle {
                   paramArray[order] = new StringReader(bodyContent);
                 }
                 else if(bodyContent.length() > 0) {
+                  log.debug(" -------- bodyContent -------- " + bodyContent);
                   paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
                 }
               }
-              Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray[order]);
-              if (validationErrors.size() > 0) {
-                StringBuffer sb = new StringBuffer();
-                for (ConstraintViolation<?> cv : validationErrors) {
-                  sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
-                }
-                endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString(), validRequest);
-              }
 
+              if(!allowEmptyObject(entityClazz, bodyContent)){
+                //right now - because no way in raml to make body optional - do not validate
+                //TenantAttributes object as it may be empty
+                Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray[order]);
+                if (validationErrors.size() > 0) {
+                  StringBuffer sb = new StringBuffer();
+                  for (ConstraintViolation<?> cv : validationErrors) {
+                    sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
+                  }
+                  endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString() , validRequest);
+                }
+              }
               // complex rules validation here (drools) - after simpler validation rules pass -
               try {
                 // if no /rules exist then drools session will be null
                 // TODO support adding .drl files dynamically to db / dir
                 // and having them picked up
-                if (droolsSession != null) {
+                if (droolsSession != null && paramArray[order] != null && validRequest[0]) {
                   // add object to validate to session
                   FactHandle handle = droolsSession.insert(paramArray[order]);
                   // run all rules in session on object
@@ -1255,6 +1261,17 @@ public class RestVerticle extends AbstractVerticle {
         }
       }
     });
+  }
+
+  private boolean allowEmptyObject(Class clazz, String bodyContent){
+    if(clazz.getName().equals(TenantAttributes.class.getName())){
+      //right now - because no way in raml to make body optional - do not validate
+      //TenantAttributes object if it is empty - since this is allowed
+      if(bodyContent == null || bodyContent.length() == 0){
+        return true;
+      }
+    }
+    return false;
   }
 
   public static MetricsService getServerMetrics(){

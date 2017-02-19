@@ -9,9 +9,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 import java.io.InputStream;
-import java.io.Reader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +18,7 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.messages.Messages;
@@ -37,7 +36,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
   public static final String       UPDATE_TENANT_TEMPLATE = "template_update_tenant.sql";
   public static final String       DELETE_TENANT_TEMPLATE = "template_delete_tenant.sql";
   public static final String       AUDIT_TENANT_TEMPLATE  = "template_audit.sql";
-  public static final String       UPDATE_AUDIT_TENANT_TEMPLATE  = "template_audit.sql";
+  public static final String       UPDATE_AUDIT_TENANT_TEMPLATE  = "template_update_audit.sql";
   private static final String      TEMPLATE_TENANT_PLACEHOLDER   = "myuniversity";
   private static final String      TEMPLATE_MODULE_PLACEHOLDER   = "mymodule";
   private static final String      UPGRADE_FROM_VERSION          = "module_from";
@@ -183,7 +182,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
   @Validate
   @Override
-  public void postTenant(Reader entity, Map<String, String> headers,
+  public void postTenant(TenantAttributes entity, Map<String, String> headers,
       Handler<AsyncResult<Response>> handlers, Context context) throws Exception {
 
     /**
@@ -195,20 +194,16 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
       try {
-
-        Map<String, String> params = new HashMap<String, String>();
         List<String> additionalPlaceholder = new ArrayList<String>();
         List<String> additionalPlaceholderValues = new ArrayList<String>();
-        //body is optional so that the Key-Val needs tp be parsed out of the entity reader object
+        boolean isUpdateMode[] = new boolean[]{false};
+        //body is optional so that the TenantAttributes
         if(entity != null){
+          log.debug("upgrade from " + entity.getModuleFrom() + " to " + entity.getModuleTo());
           try {
-            String content = IOUtils.toString(entity);
-            if(content.length() > 0){
-              JsonObject jar = new JsonObject(content);
-              if(jar != null && jar.getMap() != null){
-                validateJson(jar);
-                toMap(jar, params, additionalPlaceholder, additionalPlaceholderValues);
-              }
+            toMap(entity, additionalPlaceholder, additionalPlaceholderValues);
+            if(entity.getModuleFrom() != null){
+              isUpdateMode[0] = true;
             }
           } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -217,7 +212,6 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
             return;
           }
         }
-        boolean updateTenant = params.containsKey(UPGRADE_FROM_VERSION);
 
         tenantExists(context, tenantId,
           h -> {
@@ -225,7 +219,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               boolean tenantExists = false;
               if(h.succeeded()){
                 tenantExists = h.result();
-                if(tenantExists && !updateTenant){
+                if(tenantExists && !isUpdateMode[0]){
                   //tenant exists and a create tenant request was made, then this should do nothing
                   //if tenant exists then only update tenant request is acceptable
                   handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
@@ -233,7 +227,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                   log.warn("Tenant already exists: " + tenantId);
                   return;
                 }
-                else if(!tenantExists && updateTenant){
+                else if(!tenantExists && isUpdateMode[0]){
                   //update requested for a non-existant tenant
                   log.error("Can not update non-existant tenant " + tenantId);
                   handlers.handle(io.vertx.core.Future.succeededFuture(
@@ -251,13 +245,16 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 return;
               }
               String createTenantFile = CREATE_TENANT_TEMPLATE;
-              if(updateTenant){
+              if(isUpdateMode[0]){
                 createTenantFile = UPDATE_TENANT_TEMPLATE;
               }
+
+              log.debug("Using " + createTenantFile + " for tenant " + tenantId);
+
               InputStream stream = TenantAPI.class.getClassLoader().getResourceAsStream(
                 createTenantFile);
               if(stream == null) {
-                if(!updateTenant){
+                if(!isUpdateMode[0]){
                   handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
                     withPlainInternalServerError("No Create tenant template found, can not create tenant")));
                   log.error("No Create tenant template found, can not create tenant " + tenantId);
@@ -282,7 +279,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
               /* is there an audit .sql file to load */
               String createAuditFile = AUDIT_TENANT_TEMPLATE;
-              if(params.containsKey(UPGRADE_FROM_VERSION)){
+              if(isUpdateMode[0]){
                 createAuditFile = UPDATE_AUDIT_TENANT_TEMPLATE;
               }
               InputStream audit = TenantAPI.class.getClassLoader().getResourceAsStream(
@@ -381,22 +378,15 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     }
   }
 
-  private void toMap(JsonObject jar, Map<String, String> map, List<String> placeHolders, List<String> values){
+  private void toMap(TenantAttributes jar, List<String> placeHolders, List<String> values){
     try {
-      //if(jar != null){
-       // jar.forEach( entry -> {
-       //   JsonObject j = new JsonObject(entry.toString());
-          jar.forEach( entry2 -> {
-            String key = entry2.getKey();
-            Object value = entry2.getValue();
-            map.put(key, value.toString());
-            placeHolders.add(key);
-            values.add(value.toString());
-          } );
-        //});
-      //}
+      placeHolders.add(UPGRADE_FROM_VERSION);
+      placeHolders.add(UPGRADE_TO_VERSION);
+      values.add(jar.getModuleFrom());
+      values.add(jar.getModuleTo());
     } catch (Exception e) {
       log.warn("Unable to parse body", e);
     }
   }
+
 }
