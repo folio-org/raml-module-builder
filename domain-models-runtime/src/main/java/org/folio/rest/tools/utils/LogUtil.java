@@ -1,12 +1,12 @@
 package org.folio.rest.tools.utils;
 
-import java.util.Enumeration;
-import java.util.logging.Level;
-import java.util.logging.LogManager;
-
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
+import java.util.Enumeration;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
 
 public class LogUtil {
 
@@ -23,11 +23,11 @@ public class LogUtil {
   }
 
   public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int ResponseCode, long responseTime,
-      long responseSize, String url, String queryParams, String message, String body) {
+      long responseSize, String url, String queryParams, String message, String tenantId, String body) {
 
     String message1 = new StringBuilder(clientIP).append(" ").append(httpMethod).append(" ").append(url).append(" ").append(queryParams)
         .append(" ").append(httpVersion).append(" ").append(ResponseCode).append(" ").append(responseSize).append(" ").append(responseTime)
-        .append(" ").append(message).append(" ").append(body).toString();
+        .append(" tid=").append(tenantId).append(" ").append(message).append(" ").append(body).toString();
 
     log.info(message1);
   }
@@ -56,7 +56,7 @@ public class LogUtil {
     LogManager manager = LogManager.getLogManager();
     Enumeration<String> loggers = manager.getLoggerNames();
     while (loggers.hasMoreElements()) {
-      String log = (String) loggers.nextElement();
+      String log = loggers.nextElement();
       if(log != null && packageName != null && (log.startsWith(packageName) || "*".equals(packageName)) ){
         java.util.logging.Logger logger = manager.getLogger(log);
         if(logger != null){
@@ -79,7 +79,7 @@ public class LogUtil {
     LogManager manager = LogManager.getLogManager();
     Enumeration<String> loggerNames = manager.getLoggerNames();
     while (loggerNames.hasMoreElements()) {
-      String log = (String) loggerNames.nextElement();
+      String log = loggerNames.nextElement();
       if(log != null){
         java.util.logging.Logger logger = manager.getLogger(log);
         if(logger != null && logger.getLevel() != null && logger.getName() != null){

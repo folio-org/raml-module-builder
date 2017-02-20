@@ -349,7 +349,7 @@ public class RestVerticle extends AbstractVerticle {
                               try {
                                 invoke(method2Run[0], paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
                                   LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                                  sendResponse(rc, v, start);
+                                  sendResponse(rc, v, start, tenantId[0]);
                                 });
                               } catch (Exception e1) {
                                 log.error(e1.getMessage(), e1);
@@ -377,7 +377,7 @@ public class RestVerticle extends AbstractVerticle {
                           try {
                             invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
                               LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                              sendResponse(rc, v, start);
+                              sendResponse(rc, v, start, tenantId[0]);
                             });
                           } catch (Exception e1) {
                             log.error(e1.getMessage(), e1);
@@ -492,7 +492,7 @@ public class RestVerticle extends AbstractVerticle {
       invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
         LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
         //all data has been stored in memory - not necessarily all processed
-        sendResponse(rc, v, start);
+        sendResponse(rc, v, start, tenantId[0]);
       });
 
     });
@@ -531,7 +531,7 @@ public class RestVerticle extends AbstractVerticle {
       try {
         invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
           LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
-          sendResponse(rc, v, start);
+          sendResponse(rc, v, start, tenantId[0]);
         });
       } catch (Exception e1) {
         log.error(e1.getMessage(), e1);
@@ -650,7 +650,7 @@ public class RestVerticle extends AbstractVerticle {
    * @param start
    *          - request's start time, using JVM's high-resolution time source, in nanoseconds
    */
-  private void sendResponse(RoutingContext rc, AsyncResult<Response> v, long start) {
+  private void sendResponse(RoutingContext rc, AsyncResult<Response> v, long start, String tenantId) {
     Response result = ((Response) ((AsyncResult<?>) v).result());
     if (result == null) {
       // catch all
@@ -717,7 +717,7 @@ public class RestVerticle extends AbstractVerticle {
     }
     LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
       rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
-      rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), sb.toString());
+      rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), tenantId, sb.toString());
   }
 
   private void mergeIntoResponseHeadersDistinct(MultiMap responseHeaders, MultiMap requestHeaders){
