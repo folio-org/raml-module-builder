@@ -389,12 +389,14 @@ public class RestVerticle extends AbstractVerticle {
                     else{
                       endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
                         validRequest);
+                      return;
                     }
                   }
                 } catch (Exception e) {
                   log.error(e.getMessage(), e);
                   endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(),
                     validRequest);
+                  return;
                 }
               }
             }
@@ -735,7 +737,9 @@ public class RestVerticle extends AbstractVerticle {
       log.error(rc.request().absoluteURI() + " [ERROR] " + message);
       rc.response().setChunked(chunked);
       rc.response().setStatusCode(status);
-      rc.response().write(message);
+      if(message != null){
+        rc.response().write(message);
+      }
       rc.response().end();
     }
     // once we are here the call is not valid
@@ -858,7 +862,6 @@ public class RestVerticle extends AbstractVerticle {
 
   @Override
   public void stop(Future<Void> stopFuture) throws Exception {
-    // TODO Auto-generated method stub
     super.stop();
     try {
       droolsSession.dispose();
@@ -1105,6 +1108,7 @@ public class RestVerticle extends AbstractVerticle {
         int order = ((JsonObject) entry.getValue()).getInteger("order");
         Object defaultVal = ((JsonObject) entry.getValue()).getValue("default_value");
 
+        boolean emptyNumeircParam = false;
         // validation of query params (other then enums), object in body (not including drools),
         // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
         // handle un-annotated parameters - this is assumed to be
@@ -1192,14 +1196,18 @@ public class RestVerticle extends AbstractVerticle {
                 paramArray[order] = param;
               }
             } else if (valueType.contains("int") || valueType.contains("Integer")) {
-              // cant pass null to an int type - replace with zero
+              // cant pass null to an int type
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = Integer.valueOf((String) defaultVal);
                 } else {
                   paramArray[order] = 0;
                 }
-              } else {
+              }
+              else if("".equals(param)) {
+                emptyNumeircParam = true;
+              }
+              else {
                 paramArray[order] = Integer.valueOf(param).intValue();
               }
             } else if (valueType.contains("boolean") || valueType.contains("Boolean")) {
@@ -1215,9 +1223,13 @@ public class RestVerticle extends AbstractVerticle {
                 if (defaultVal != null) {
                   paramArray[order] = new BigDecimal((String) defaultVal);
                 } else {
-                  paramArray[order] = new BigDecimal(0);
+                  paramArray[order] = null;
                 }
-              } else {
+              }
+              else if ("".equals(param)) {
+                emptyNumeircParam = true;
+              }
+              else {
                 paramArray[order] = new BigDecimal(param.replaceAll(",", "")); // big decimal can contain ","
               }
             } else { // enum object type
@@ -1249,14 +1261,17 @@ public class RestVerticle extends AbstractVerticle {
                   }
                 }
               } catch (Exception ee) {
-                log.error(ee);
-                validRequest[0] = false;
+                log.error(ee.getMessage(), ee);
+                endRequestWithError(rc, 400, true, ee.getMessage(), validRequest);
               }
             }
-
+            if(emptyNumeircParam){
+              endRequestWithError(rc, 400, true, valueName + " does not have a default value in the RAML and has been passed empty",
+                validRequest);
+            }
           } catch (Exception e) {
-            log.error(e);
-            validRequest[0] = false;
+            log.error(e.getMessage(), e);
+            endRequestWithError(rc, 400, true, e.getMessage(), validRequest);
           }
         }
       }
