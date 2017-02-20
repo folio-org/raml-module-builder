@@ -5,7 +5,6 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.impl.CompositeFutureImpl;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -87,7 +86,6 @@ public class PostgresClient {
   private static PostgresProcess postgresProcess          = null;
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
-  private static PostgresClient  instance                 = null;
   private static ObjectMapper    mapper                   = new ObjectMapper();
   private static Map<String, PostgresClient> connectionPool = new HashMap<>();
   private static String moduleName                        = null;
