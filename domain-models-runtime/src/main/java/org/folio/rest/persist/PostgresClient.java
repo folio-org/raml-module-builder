@@ -95,12 +95,13 @@ public class PostgresClient {
 
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
+  private static int embeddedPort            = -1;
+
   private Vertx vertx                       = null;
   private JsonObject postgreSQLClientConfig = null;
   private final Messages messages           = Messages.getInstance();
   private AsyncSQLClient         client;
   private String tenantId;
-  private static int embeddedPort            = -1;
   private String idField                     = "_id";
   private String countClauseTemplate         = " count(${id}) OVER() AS count, ";
   private String returningIdTemplate         = " RETURNING ${id} ";
