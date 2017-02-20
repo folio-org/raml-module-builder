@@ -1,6 +1,7 @@
 package org.folio.rest.persist;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -151,30 +152,52 @@ public class PostgresClient {
     return configPath;
   }
 
-  // will return null on exception
-  public static PostgresClient getInstance(Vertx vertx) {
+  /**
+   * Instance for the tenantId from connectionPool or created and
+   * added to connectionPool.
+   * @param vertx the Vertx to use
+   * @param tenantId the tenantId the instance is for
+   * @return the PostgresClient instance, or null on error
+   */
+  private static PostgresClient getInstanceInternal(Vertx vertx, String tenantId) {
     // assumes a single thread vertx model so no sync needed
-    if (instance == null) {
-      try {
-        instance = new PostgresClient(vertx, DEFAULT_SCHEMA);
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
+    PostgresClient postgresClient = connectionPool.get(tenantId);
+    try {
+      if (postgresClient == null) {
+        postgresClient = new PostgresClient(vertx, tenantId);
+        connectionPool.put(tenantId, postgresClient);
       }
+      if (postgresClient.client == null) {
+        // in connectionPool, but closeClient() has been invoked
+        postgresClient.init(vertx, tenantId);
+      }
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
     }
-    return instance;
+    return postgresClient;
   }
 
-  // will return null on exception
+  /**
+   * Instance for the Postgres' default schema public.
+   * @param vertx the Vertx to use
+   * @return the PostgresClient instance, or null on error
+   */
+  public static PostgresClient getInstance(Vertx vertx) {
+    return getInstanceInternal(vertx, DEFAULT_SCHEMA);
+  }
+
+  /**
+   * Instance for the tenantId.
+   * @param vertx the Vertx to use
+   * @param tenantId the tenantId the instance is for
+   * @return the PostgresClient instance, or null on error
+   * @throws IllegalArgumentException when tenantId equals {@link DEFAULT_SCHEMA}
+   */
   public static PostgresClient getInstance(Vertx vertx, String tenantId) {
-    // assumes a single thread vertx model so no sync needed
-    if(!connectionPool.containsKey(tenantId)){
-      try {
-        connectionPool.put(tenantId, new PostgresClient(vertx, tenantId));
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-      }
+    if (DEFAULT_SCHEMA.equals(tenantId)) {
+      throw new IllegalArgumentException("tenantId must not be default schema " + DEFAULT_SCHEMA);
     }
-    return connectionPool.get(tenantId);
+    return getInstanceInternal(vertx, tenantId);
   }
 
   /* if the password in the config file is encrypted then use the secret key
@@ -208,10 +231,25 @@ public class PostgresClient {
     return password;
   }
 
+  /**
+   * @return this instance's AsyncSQLClient that can connect to Postgres
+   */
+  AsyncSQLClient getClient() {
+    return client;
+  }
+
+  /**
+   * Close the SQL client of this PostgresClient instance.
+   * @param whenDone invoked with the close result; additional close invocations
+   *                 are always successful.
+   */
   public void closeClient(Handler<AsyncResult<Void>> whenDone){
-    if(client != null){
-      client.close(whenDone);
+    if (client == null) {
+      whenDone.handle(Future.succeededFuture());
+      return;
     }
+    client.close(whenDone);
+    client = null;
   }
 
   private void init(Vertx vertx, String tenantId) throws Exception {
