@@ -20,12 +20,19 @@ public class PostgresClientTest {
   public Timeout rule = Timeout.seconds(6);
 
   @BeforeClass
-  public static void setUpClass() {
+  public static void setUpClass() throws Exception {
     vertx = Vertx.vertx();
+
+    String embed = System.getProperty("embed_postgres", "").toLowerCase().trim();
+    if ("true".equals(embed)) {
+      PostgresClient.setIsEmbedded(true);
+      PostgresClient.getInstance(vertx).startEmbeddedPostgres();
+    }
   }
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
+    PostgresClient.stopEmbeddedPostgres();
     vertx.close(context.asyncAssertSuccess());
   }
 

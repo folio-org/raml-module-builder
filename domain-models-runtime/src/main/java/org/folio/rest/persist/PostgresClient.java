@@ -1,9 +1,11 @@
 package org.folio.rest.persist;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.CompositeFutureImpl;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -243,13 +245,28 @@ public class PostgresClient {
    * @param whenDone invoked with the close result; additional close invocations
    *                 are always successful.
    */
-  public void closeClient(Handler<AsyncResult<Void>> whenDone){
+  public void closeClient(Handler<AsyncResult<Void>> whenDone) {
     if (client == null) {
       whenDone.handle(Future.succeededFuture());
       return;
     }
     client.close(whenDone);
     client = null;
+  }
+
+  /**
+   * Close all SQL clients stored in the connection pool.
+   */
+  public static void closeAllClients() {
+    @SuppressWarnings("rawtypes")
+    List<Future> list = new ArrayList<>(connectionPool.size());
+    for (PostgresClient client : connectionPool.values()) {
+      Future<Object> future = Future.future();
+      list.add(future);
+      client.closeClient(f -> future.complete());
+    }
+
+    CompositeFuture.join(list);
   }
 
   private void init(Vertx vertx, String tenantId) throws Exception {
@@ -1688,6 +1705,7 @@ public class PostgresClient {
 
   public static void stopEmbeddedPostgres() {
     if (postgresProcess != null) {
+      closeAllClients();
       LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
       postgresProcess.stop();
       embeddedMode = false;
