@@ -75,6 +75,9 @@ public class PostgresClient {
   private static final String   SET = " SET ";
   private static final String   PASSWORD = "password";
   private static final String   USERNAME = "username";
+  private static final String   HOST     = "host";
+  private static final String   PORT     = "port";
+  private static final String   DATABASE = "database";
 
   private static final String    STATS_KEY                = PostgresClient.class.getName();
 
@@ -240,9 +243,9 @@ public class PostgresClient {
         postgreSQLClientConfig = new JsonObject();
         postgreSQLClientConfig.put(USERNAME, USERNAME);
         postgreSQLClientConfig.put(PASSWORD, PASSWORD);
-        postgreSQLClientConfig.put("host", "127.0.0.1");
-        postgreSQLClientConfig.put("port", 6000);
-        postgreSQLClientConfig.put("database", "postgres");
+        postgreSQLClientConfig.put(HOST, "127.0.0.1");
+        postgreSQLClientConfig.put(PORT, 6000);
+        postgreSQLClientConfig.put(DATABASE, "postgres");
       }
       else{
         //not in embedded mode but there is no conf file found
@@ -263,14 +266,23 @@ public class PostgresClient {
       //over ride the declared default port - coming from the config file and use the
       //passed in port as well. useful when multiple modules start up an embedded postgres
       //in a single server.
-      postgreSQLClientConfig.remove("port");
-      postgreSQLClientConfig.put("port", embeddedPort);
+      postgreSQLClientConfig.put(PORT, embeddedPort);
     }
 
-    //remove log message before production
-    log.info("Creating client with configuration:" + postgreSQLClientConfig.encode());
-
+    logPostgresConfig();
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
+  }
+
+  /**
+   * Log postgreSQLClientConfig
+   */
+  private void logPostgresConfig() {
+    if (! log.isInfoEnabled()) {
+      return;
+    }
+    JsonObject passwordRedacted = postgreSQLClientConfig.copy();
+    passwordRedacted.put(PASSWORD, "...");
+    log.info("postgreSQLClientConfig = " + passwordRedacted.encode());
   }
 
   public JsonObject getConnectionConfig(){
@@ -1439,11 +1451,11 @@ public class PostgresClient {
   }
 
   private Connection getStandaloneConnection(String newDB, boolean superUser) throws SQLException {
-    String host = postgreSQLClientConfig.getString("host");
-    int port = postgreSQLClientConfig.getInteger("port");
+    String host = postgreSQLClientConfig.getString(HOST);
+    int port = postgreSQLClientConfig.getInteger(PORT);
     String user = postgreSQLClientConfig.getString(USERNAME);
     String pass = postgreSQLClientConfig.getString(PASSWORD);
-    String db = postgreSQLClientConfig.getString("database");
+    String db = postgreSQLClientConfig.getString(DATABASE);
 
     if(newDB != null){
       db = newDB;
@@ -1536,10 +1548,10 @@ public class PostgresClient {
             .build())).build();
       PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
 
-      int port = postgreSQLClientConfig.getInteger("port");
+      int port = postgreSQLClientConfig.getInteger(PORT);
       String username = postgreSQLClientConfig.getString(USERNAME);
       String password = postgreSQLClientConfig.getString(PASSWORD);
-      String database = postgreSQLClientConfig.getString("database");
+      String database = postgreSQLClientConfig.getString(DATABASE);
 
       final PostgresConfig config = new PostgresConfig(Version.Main.PRODUCTION, new AbstractPostgresConfig.Net("127.0.0.1", port),
         new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
@@ -1598,11 +1610,11 @@ public class PostgresClient {
    vertx.<String>executeBlocking(dothis -> {
 
     try {
-      String host = postgreSQLClientConfig.getString("host");
-      int port = postgreSQLClientConfig.getInteger("port");
+      String host = postgreSQLClientConfig.getString(HOST);
+      int port = postgreSQLClientConfig.getInteger(PORT);
       String user = postgreSQLClientConfig.getString(USERNAME);
       String pass = postgreSQLClientConfig.getString(PASSWORD);
-      String db = postgreSQLClientConfig.getString("database");
+      String db = postgreSQLClientConfig.getString(DATABASE);
 
       log.info("Connecting to " + db);
 
