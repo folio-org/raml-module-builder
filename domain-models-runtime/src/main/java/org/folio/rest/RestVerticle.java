@@ -170,8 +170,21 @@ public class RestVerticle extends AbstractVerticle {
 
     eventBus = vertx.eventBus();
 
-    //register codec to be able to pass pojos on the event bus
-    eventBus.registerCodec(new PojoEventBusCodec());
+    log.info(context.getInstanceCount() + " verticles deployed ");
+    try {
+      //register codec to be able to pass pojos on the event bus
+      eventBus.registerCodec(new PojoEventBusCodec());
+    } catch (Exception e3) {
+      if(context.getInstanceCount() != 1){
+        //needed in case we run multiple verticle instances
+        //in this vertx instace - re-registering the same codec twice throws an
+        //exception
+        log.info("Attempt to register PojoEventBusCodec again... this is acceptable ");
+      }
+      else{
+        throw e3;
+      }
+    }
 
     // needed so that we get the body content of the request - note that this
     // will read the entire body into memory
