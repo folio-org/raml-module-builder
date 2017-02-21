@@ -2,16 +2,14 @@ package org.folio.rest.tools.monitor;
 
 import io.vertx.core.json.JsonObject;
 
-import java.util.DoubleSummaryStatistics;
-import java.util.Hashtable;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SlidingTimeWindowReservoir;
+import com.codahale.metrics.Snapshot;
 
 /**
  * @author shale
@@ -19,47 +17,49 @@ import com.google.common.cache.CacheBuilder;
  */
 public class StatsTracker {
 
-  private static Map<String, Cache<Long, Long>> registeredStatRequesters =
-      new Hashtable<String, Cache<Long, Long>>();
+  private static Set<String> registeredStatRequesters =
+      new HashSet<String>();
+
+  private static final MetricRegistry metrics = new MetricRegistry();
 
   private StatsTracker(){}
 
   /** add a metric (time) to a specific resource - for example
    * type = PostgresClient.get
    * time = single operation time in nanoseconds
-   * Note: assumes single thread access by vertx so not synced */
+   */
   public static void addStatElement(String type, long time){
-    Cache<Long, Long> statRepo = registeredStatRequesters.get(type);
-    if(statRepo == null){
-      registeredStatRequesters.put(type, CacheBuilder.newBuilder()
-          .maximumSize(1000)
-          .expireAfterWrite(2, TimeUnit.MINUTES)
-          .build());
-      statRepo = registeredStatRequesters.get(type);
+    if(!registeredStatRequesters.contains(type)){
+      metrics.register(type, new Histogram(new SlidingTimeWindowReservoir(60,
+        TimeUnit.SECONDS)));
+      registeredStatRequesters.add(type);
     }
-    statRepo.put(System.nanoTime(), (time/1000000));
+    metrics.histogram(type).update(time/1000000);
   }
 
-  public static String calculateStatsFor(String type){
-    Cache<Long, Long> statRepo =registeredStatRequesters.get(type);
-    if(statRepo != null){
-      DoubleSummaryStatistics stats =
-          statRepo.asMap().values().stream().collect(Collectors.summarizingDouble(l -> l));
-      return stats.toString();
+  public static JsonObject calculateStatsFor(String type){
+    JsonObject j = new JsonObject();
+    Snapshot snap = metrics.histogram(type).getSnapshot();
+    if(snap != null){
+      j.put("entryCount", snap.size());
+      j.put("min", snap.getMin());
+      j.put("max", snap.getMax());
+      j.put("mean", snap.getMean());
+      j.put("median", snap.getMedian());
+      j.put("75th", snap.get75thPercentile());
+      j.put("95th", snap.get95thPercentile());
+      j.put("99th", snap.get99thPercentile());
+      j.put("stdDev", snap.getStdDev());
     }
-    return null;
+    return j;
   }
 
-  public static String spillAllStats(){
-    Set<Entry<String, Cache<Long, Long>>> all = registeredStatRequesters.entrySet();
-    StringBuilder sb = new StringBuilder();
-    JsonObject job = new JsonObject();
-    all.forEach( stat -> {
-      job.put(stat.getKey(),
-        stat.getValue().asMap().values().stream().collect(Collectors.summarizingDouble(l -> l)).toString());
-
+  public static JsonObject spillAllStats(){
+    JsonObject j = new JsonObject();
+    registeredStatRequesters.forEach( stat -> {
+      j.put(stat, calculateStatsFor(stat));
     });
-    return job.encodePrettily();
+    return j;
   }
 
 }
