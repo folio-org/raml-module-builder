@@ -249,8 +249,10 @@ public class PostgresClient {
       whenDone.handle(Future.succeededFuture());
       return;
     }
-    client.close(whenDone);
+    AsyncSQLClient clientToClose = client;
     client = null;
+    connectionPool.remove(tenantId);  // remove (tenantId, this) entry
+    clientToClose.close(whenDone);
   }
 
   /**
@@ -259,7 +261,8 @@ public class PostgresClient {
   public static void closeAllClients() {
     @SuppressWarnings("rawtypes")
     List<Future> list = new ArrayList<>(connectionPool.size());
-    for (PostgresClient client : connectionPool.values()) {
+    // copy of values() because closeClient will delete them from connectionPool
+    for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
       Future<Object> future = Future.future();
       list.add(future);
       client.closeClient(f -> future.complete());
