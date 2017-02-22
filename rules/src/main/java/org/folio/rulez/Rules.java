@@ -79,10 +79,10 @@ public class Rules {
     List<String> ruleFiles = getRules(path);
     for (int i = 0; i < ruleFiles.size(); i++) {
       InputStream fis = null;
-      String kieFileSystemPath = "/src/main/resources";
+      String kieFileSystemPath = "src/main/resources";
       if (path.getScheme().equals("jar")) {
         fis = getClass().getResourceAsStream(RULES_DIR_JAR + "/" + ruleFiles.get(i));
-        kieFileSystemPath = ruleFiles.get(i);
+        kieFileSystemPath = kieFileSystemPath + RULES_DIR_JAR + "/" + ruleFiles.get(i);
       }else{
         /* build a virtual path in the kie file system to each drools drl file by taking the
          * name of the drool file and the name of the parent directory of the drool file and
