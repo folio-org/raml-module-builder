@@ -20,7 +20,7 @@ public class StatsTracker {
   private static Set<String> registeredStatRequesters =
       new HashSet<String>();
 
-  private static final MetricRegistry metrics = new MetricRegistry();
+  private static final MetricRegistry METRICS = new MetricRegistry();
 
   private StatsTracker(){}
 
@@ -30,16 +30,16 @@ public class StatsTracker {
    */
   public static void addStatElement(String type, long time){
     if(!registeredStatRequesters.contains(type)){
-      metrics.register(type, new Histogram(new SlidingTimeWindowReservoir(60,
+      METRICS.register(type, new Histogram(new SlidingTimeWindowReservoir(60,
         TimeUnit.SECONDS)));
       registeredStatRequesters.add(type);
     }
-    metrics.histogram(type).update(time/1000000);
+    METRICS.histogram(type).update(time/1000000);
   }
 
   public static JsonObject calculateStatsFor(String type){
     JsonObject j = new JsonObject();
-    Snapshot snap = metrics.histogram(type).getSnapshot();
+    Snapshot snap = METRICS.histogram(type).getSnapshot();
     if(snap != null){
       j.put("entryCount", snap.size());
       j.put("min", snap.getMin());
