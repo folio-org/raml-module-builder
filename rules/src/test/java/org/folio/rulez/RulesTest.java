@@ -21,7 +21,8 @@ public class RulesTest {
   @Before
   public void setup(){
     try {
-      ksession = new Rules().buildSession(RulesTest.class.getResource(RULES_DIR).toURI());
+      //ksession = new Rules().buildSession(new File("C:\\Git\\raml-module-builder\\rules\\src\\test\\resources\\rules").toURI());
+      ksession = new Rules().buildSession();
     }  catch (Exception e) {
       e.printStackTrace();
       Assert.fail("can't create drools session....");

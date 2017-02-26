@@ -3,6 +3,7 @@ package org.folio.rulez;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 import org.kie.api.definition.rule.Rule;
 import org.kie.api.event.rule.AfterMatchFiredEvent;
 import org.kie.api.event.rule.DefaultAgendaEventListener;
@@ -21,28 +22,28 @@ public class RuleTracker extends DefaultAgendaEventListener  {
     private List<Match> matchList = new ArrayList<Match>();
 
 
-
     @Override
     public void afterMatchFired(AfterMatchFiredEvent event) {
-      // TODO Auto-generated method stub
-      super.afterMatchFired(event);
-      Rule rule = event.getMatch().getRule();
+      if(log.isDebugEnabled()){
+        super.afterMatchFired(event);
+        Rule rule = event.getMatch().getRule();
 
-      String ruleName = rule.getName();
+        String ruleName = rule.getName();
 
-      Map<String, Object> ruleMetaDataMap = rule.getMetaData();
+        Map<String, Object> ruleMetaDataMap = rule.getMetaData();
 
-      matchList.add(event.getMatch());
-      StringBuilder sb = new StringBuilder("Rule fired: " + ruleName);
+        matchList.add(event.getMatch());
+        StringBuilder sb = new StringBuilder("Rule fired: " + ruleName);
 
-      if (ruleMetaDataMap.size() > 0) {
-          sb.append("\n  With [" + ruleMetaDataMap.size() + "] meta-data:");
-          for (String key : ruleMetaDataMap.keySet()) {
-              sb.append("\n    key=" + key + ", value="
-                      + ruleMetaDataMap.get(key));
-          }
+        if (ruleMetaDataMap.size() > 0) {
+            sb.append("\n  With [" + ruleMetaDataMap.size() + "] meta-data:");
+            for (String key : ruleMetaDataMap.keySet()) {
+                sb.append("\n    key=" + key + ", value="
+                        + ruleMetaDataMap.get(key));
+            }
+        }
+        log.debug(sb.toString());
       }
-      log.debug(sb.toString());
     }
 
     public boolean isRuleFired(String ruleName) {

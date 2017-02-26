@@ -2,6 +2,7 @@ package org.folio.rulez;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -16,6 +17,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.apache.commons.io.IOUtils;
 import org.drools.core.io.impl.InputStreamResource;
 import org.drools.verifier.Verifier;
 import org.drools.verifier.builder.VerifierBuilder;
@@ -48,13 +50,26 @@ public class Rules {
   public static final String      RULES_DIR_JAR         = "/rules";
   public static final String      RULES_DIR_IDE         = "rules";
 
-
+  private String                  kieFileSystemPath     = "src/main/resources";
   private URI                     externalRulesDir      = null;
+  private KieContainer            kieContainer          = null;
+  private KieSession              ksession              = null;
+  private KieServices             kieServices           = null;
+  private KieFileSystem           kfs                   = null;
+  private KieBuilder              kieBuilder            = null;
 
+  private List<String>            rules                 = null;
 
+  /**
+   * will look for rules in the default /resources/rules path in the jar
+   */
   public Rules() {
   }
 
+  /**
+   * will set rules to a directory on the file system
+   * @param rulesDirPath
+   */
   public Rules(String rulesDirPath) {
     if(rulesDirPath != null){
       externalRulesDir =  new File(rulesDirPath).toURI();
@@ -62,9 +77,17 @@ public class Rules {
   }
 
   /**
-   * Load all .drl files from the specified directory (URI)
-   * create a kiefilesystem (an in memory file system with a key (path) - value (input stream) file system
-   * note that the key should have the /src/main/resources prefix
+   * Each String in the list should be a valid .drl file
+   * the entire list will be loaded into the new session.
+   * this can be used to read rules saved in the DB
+   * @param ruleContent
+   */
+  public Rules(List<String> ruleContent) {
+    rules = ruleContent;
+  }
+
+  /**
+   * Load all .drl files
    *
    * if a rule does not compile an exception will be thrown indicating the problem
    *
@@ -72,57 +95,73 @@ public class Rules {
    * @return - session containing all loaded rules
    * @throws Exception
    */
-  public KieSession buildSession(URI path) throws Exception {
-    KieServices kieServices = KieServices.Factory.get();
+  public KieSession buildSession() throws Exception {
+    kieServices = KieServices.Factory.get();
     KieRepository kr = kieServices.getRepository();
-    KieFileSystem kfs = kieServices.newKieFileSystem();
-    List<String> ruleFiles = getRules(path);
-    for (int i = 0; i < ruleFiles.size(); i++) {
-      InputStream fis = null;
-      String kieFileSystemPath = "src/main/resources";
-      if (path.getScheme().equals("jar")) {
-        fis = getClass().getResourceAsStream(RULES_DIR_JAR + "/" + ruleFiles.get(i));
-        kieFileSystemPath = kieFileSystemPath + RULES_DIR_JAR + "/" + ruleFiles.get(i);
-      }else{
-        /* build a virtual path in the kie file system to each drools drl file by taking the
-         * name of the drool file and the name of the parent directory of the drool file and
-         * putting them together abc/def.drl <- low potential of rule collision - handle better TODO */
-        File file = new File( ruleFiles.get(i) );
-        File parent = file.getParentFile();
-        if(parent != null){
-          kieFileSystemPath = kieFileSystemPath + "/" + parent.getName() + "/" + file.getName();
-        }else{
-          kieFileSystemPath = kieFileSystemPath + "/drools/" + file.getName();
-        }
-        fis = new FileInputStream(file);
-      }
-      kfs.write( kieFileSystemPath , kieServices.getResources().newInputStreamResource( fis ) );
-      System.out.println("loading " + ruleFiles.get(i));
+    kfs = kieServices.newKieFileSystem();
+    if(rules != null){
+      loadFromList();
     }
-    KieBuilder kieBuilder = kieServices.newKieBuilder( kfs ).buildAll();
+    else{
+      loadFromFiles();
+    }
+    kieBuilder = kieServices.newKieBuilder( kfs ).buildAll();
     Results results = kieBuilder.getResults();
     if( results.hasMessages( Message.Level.ERROR ) ){
         System.out.println( results.getMessages() );
         throw new IllegalStateException( results.getMessages() + "" );
     }
-    KieContainer kieContainer =
+    kieContainer =
         kieServices.newKieContainer( kr.getDefaultReleaseId() );
-    KieSession ksession = kieContainer.newKieSession();
+    ksession = kieContainer.newKieSession();
     ksession.addEventListener(new RuleTracker());
     return ksession;
   }
 
-  public KieSession buildSession() throws Exception {
+  /**
+   * @throws IOException
+   *
+   */
+  private void loadFromList() throws IOException {
+    int size = rules.size();
+    for (int i = 0; i < size; i++) {
+      kieFileSystemPath = kieFileSystemPath + RULES_DIR_JAR + "/" + i + ".drl";
+      kfs.write( kieFileSystemPath , kieServices.getResources().newInputStreamResource(
+        IOUtils.toInputStream( rules.get(i), "UTF-8") ));
+    }
+  }
+
+  private void loadFromFiles() throws Exception {
     try {
       if(externalRulesDir == null){
         externalRulesDir = Rules.class.getResource(RULES_DIR_JAR).toURI();
       }
-      return buildSession(externalRulesDir);
+      List<String> ruleFiles = getRules(externalRulesDir);
+      for (int i = 0; i < ruleFiles.size(); i++) {
+        InputStream fis = null;
+        if (externalRulesDir.getScheme().equals("jar")) {
+          fis = getClass().getResourceAsStream(RULES_DIR_JAR + "/" + ruleFiles.get(i));
+          kieFileSystemPath = kieFileSystemPath + RULES_DIR_JAR + "/" + ruleFiles.get(i);
+        }else{
+          /* build a virtual path in the kie file system to each drools drl file by taking the
+           * name of the drool file and the name of the parent directory of the drool file and
+           * putting them together abc/def.drl <- low potential of rule collision - handle better TODO */
+          File file = new File( ruleFiles.get(i) );
+          File parent = file.getParentFile();
+          if(parent != null){
+            kieFileSystemPath = kieFileSystemPath + "/" + parent.getName() + "/" + file.getName();
+          }else{
+            kieFileSystemPath = kieFileSystemPath + "/drools/" + file.getName();
+          }
+          fis = new FileInputStream(file);
+        }
+        kfs.write( kieFileSystemPath , kieServices.getResources().newInputStreamResource( fis ) );
+        System.out.println("loading " + ruleFiles.get(i));
+      }
     } catch (NullPointerException e) {
       //TODO log this!
        System.out.println("no rules directory found, continuing...");
     }
-    return null;
   }
 
   public static List<String> validateRules(InputStream resource) throws Exception {
