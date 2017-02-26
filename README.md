@@ -1025,11 +1025,15 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Drools integration
 
-The framework scans the `/resources/rules` path in an implemented project for
-`*.drl` files. A directory can also be passed via the command line. Those files are
-loaded and are applied automatically to all objects passed in the body (post,
-put) by the runtime framework. This allows for more complex validation of
-passed objects.
+The RMB framework automatically scans the `/resources/rules` path in an implemented project for
+`*.drl` files. A directory can also be passed via the command line `drools_dir`. The rule files are loaded and are applied automatically to all objects passed in the body (post,
+put) by the runtime framework. This works in the following manner:
+ - a POST / PUT request comes in with a body
+ - The body for the request is mapped to a generated Pojo
+ - The Pojo is inserted into the RMBs Drools session
+ - All rules are run against the Pojo
+
+This allows for more complex validation of objects.
 
 - For example, if two specific fields can logically be null, but not at the
   same time - that can easily be implemented with a Drool, as those types of
@@ -1054,6 +1058,21 @@ rule "Patron needs one ID at the least"
     then
         throw new java.lang.Exception("Patron needs one ID field populated at the least");
 end
+```
+
+It is also possible to create a Drools session in your code, and load rules into the session in a more dynamic way.
+For example:
+```
+import org.folio.rulez.Rules;
+...
+List<String> ruleList = generateDummyRule();
+Rules rules = new Rules(ruleList);
+ksession = rules.buildSession();
+...
+Messages message = new Messages();
+ksession.insert(message);
+ksession.fireAllRules();
+Assert.assertEquals("THIS IS A TEST", message.getMessage());
 ```
 
 ## Messages
