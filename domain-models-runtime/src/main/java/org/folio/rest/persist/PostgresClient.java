@@ -436,10 +436,18 @@ public class PostgresClient {
    * @throws Exception
    */
   public void save(String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
-    save(table, null, entity, replyHandler);
+    save(table, null, entity, true, replyHandler);
+  }
+
+  public void save(String table, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) throws Exception {
+    save(table, null, entity, returnId, replyHandler);
   }
 
   public void save(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+    save(table, id, entity, true, replyHandler);
+  }
+
+  public void save(String table, String id, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) throws Exception {
     long start = System.nanoTime();
 
     client.getConnection(res -> {
@@ -452,10 +460,14 @@ public class PostgresClient {
           clientId.append("'").append(id).append("',");
           clientIdField.append(idField).append(",");
         }
+        String returning = "";
+        if(returnId){
+          returning = " RETURNING " + idField;
+        }
         try {
           connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
-            ") VALUES ("+clientId+"?::JSON) RETURNING " + idField,
+            ") VALUES ("+clientId+"?::JSON)"+ returning,
             new JsonArray().add(pojo2json(entity)), query -> {
               connection.close();
               if (query.failed()) {
@@ -973,6 +985,25 @@ public class PostgresClient {
     get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, setId, replyHandler);
   }
 
+  public void get(String table, Class<?> clazz, String[] fields, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
+      throws Exception {
+    String where = "";
+    if(filter != null){
+      where = filter;
+    }
+    String fieldsStr = Arrays.toString(fields);
+    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, setId, replyHandler);
+  }
+
+  public void get(String table, Class<?> clazz, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
+      throws Exception {
+    String where = "";
+    if(filter != null){
+      where = filter;
+    }
+    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, where, returnCount, setId, replyHandler);
+  }
+
   public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
       throws Exception {
     get(table, clazz, fields, filter, returnCount, true, replyHandler);
@@ -1067,7 +1098,7 @@ public class PostgresClient {
    *      new Criterion().addGroupOfCriterias(gc).addGroupOfCriterias(gc1).setOrder(new Order("c1._id", ORDER.DESC));
    *
    * */
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, Criterion cr
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr
       ,Handler<AsyncResult<ResultSet>> replyHandler){
     long start = System.nanoTime();
 
@@ -1083,7 +1114,7 @@ public class PostgresClient {
 
           String filter = "";
           if(cr != null){
-            filter = cr.toString();
+            filter = cr;
           }
 
           selectFields.append(from.getSelectFields());
@@ -1124,6 +1155,24 @@ public class PostgresClient {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
     });
+  }
+
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, Criterion cr
+      ,Handler<AsyncResult<ResultSet>> replyHandler){
+    String filter = "";
+    if(cr != null){
+      filter = cr.toString();
+    }
+    join(from, to, operation, joinType, filter, replyHandler);
+  }
+
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, CQLWrapper cr
+      ,Handler<AsyncResult<ResultSet>> replyHandler){
+    String filter = "";
+    if(cr != null){
+      filter = cr.toString();
+    }
+    join(from, to, operation, joinType, filter, replyHandler);
   }
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
