@@ -312,13 +312,8 @@ Create JSON schemas indicating the objects exposed by the module:
 ```sh
     <dependency>
       <groupId>org.folio</groupId>
-      <artifactId>domain-models-api-interfaces</artifactId>
-      <version>2.2.2-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>2.2.2-SNAPSHOT</version>
+      <version>8.0.0-SNAPSHOT</version>
     </dependency>
 ```
 
