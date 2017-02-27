@@ -473,7 +473,12 @@ public class PostgresClient {
               if (query.failed()) {
                 replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
               } else {
-                replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
+                List<JsonArray> resList = query.result().getResults();
+                String response = "";
+                if(resList.size() > 0){
+                  response = resList.get(0).getValue(0).toString();
+                }
+                replyHandler.handle(io.vertx.core.Future.succeededFuture(response));
               }
               long end = System.nanoTime();
               StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
