@@ -26,7 +26,20 @@ public class JoinBy {
   private Criteria joinColumn;
   private String alias = "";
   private String fields = "";
+
+  public JoinBy(String tableName, String alias, Criteria joinColumn, Criteria []selectedFields) {
+    String []sFields = new String[selectedFields.length];
+    for (int i = 0; i < selectedFields.length; i++) {
+      sFields[i] = selectedFields[i].setAlias(alias).toString();
+    }
+    init(tableName, alias, joinColumn, sFields, false);
+  }
+
   public JoinBy(String tableName, String alias, Criteria joinColumn, String []selectedFields) {
+    init(tableName, alias, joinColumn, selectedFields, true);
+  }
+
+  private void init(String tableName, String alias, Criteria joinColumn, String []selectedFields, boolean appendAlias2SelectFields) {
     this.tableName = tableName;
     this.alias = alias;
     this.joinColumn = joinColumn.setAlias(this.alias).setJoinON(true);

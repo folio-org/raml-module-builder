@@ -64,30 +64,10 @@ public class Criteria {
   private static final int  NUMERIC_TYPE          = 3;
   private static final int  NULL_TYPE             = 4;
 
-  /** prefix the criteria with an alias - for example,
-   * if the query does something like FROM table1 t1
-   * then we need to prefix the jsonb for example like
-   * t1.jsonb */
   String alias                                = null;
 
-  /**
-   * if set to true, this criteria is being used to create a criteria to
-   * compare to another criteria to join on
-   * in this generate an ON instead of a WHERE
-   * */
   boolean joinON                                  = false;
 
-  /**
-   * force cast is needed when using the criteria as part of a
-   * join statement - for example, in a case where we compare the id
-   * of records (not a jsonb field) to another table where the id is in
-   * a jsonb field (as a number, varchar (uuid), etc.) then we need
-   * to force cast the id from the non-jsonb field to the appropriate type
-   * so that the comparison will work
-   * generate the "varchar" part of the statement below:
-   *  ON groups._id::"varchar" = (join_table.jsonb->>'groupId')
-   *  in the above forceCast = varchar
-   */
   String forceCast                               = null;
 
   int valueType                                   = 1;
@@ -99,32 +79,19 @@ public class Criteria {
    */
   List<String>                 field = new ArrayList<String>();
   Object                       value;
-  /**
-   * operation - in the format of "=" or "like"
-   */
+
   String                operation;
 
   From                  from;
   Select                select;
-  /**
-   * set this to false if not a jsonb field criteria
-   * For example: the _id is not in the jsonb object hence would be false if criteria based on _id
-   */
+
   boolean               isJSONB            = true;
 
   boolean               isNotQuery         = false;
   boolean               isArray            = false;
 
   boolean               isJsonOp           = false;
-  /**
-   * arrays in jsonb are handled differently, need to open up the array
-   * and then compare the value in each slot to the requested value, therefore
-   * needs special handling. need to set the isArray to true and indicate which part of the field
-   * in the requested field path is the array.<br>
-   * for example: 'a'->'b'->'c' - is the path - if 'a' is an array (list) of items - then set this
-   * criteria isArray to true and set the arrayField as 'a' - if no arrayField is set then the
-   * first field will be extracted and used as the array field
-   */
+
   String                arrayField         = null;
 
   @Override
@@ -381,11 +348,18 @@ public class Criteria {
     return operation;
   }
 
+  /**
+   * operation - in the format of "=" or "like"
+   */
   public Criteria setOperation(String operation) {
     this.operation = operation;
     return this;
   }
 
+  /** prefix the criteria with an alias - for example,
+   * if the query does something like FROM table1 t1
+   * then we need to prefix the jsonb for example like
+   * t1.jsonb */
   public Criteria setAlias(String alias){
     this.alias = alias;
     return this;
@@ -399,6 +373,10 @@ public class Criteria {
     return isJSONB;
   }
 
+  /**
+   * set this to false if not a jsonb field criteria
+   * For example: the _id is not in the jsonb object hence would be false if criteria based on _id
+   */
   public Criteria setJSONB(boolean isJSONB) {
     this.isJSONB = isJSONB;
     return this;
@@ -424,6 +402,15 @@ public class Criteria {
     return arrayField;
   }
 
+  /**
+   * arrays in jsonb are handled differently, need to open up the array
+   * and then compare the value in each slot to the requested value, therefore
+   * needs special handling. need to set the isArray to true and indicate which part of the field
+   * in the requested field path is the array.<br>
+   * for example: 'a'->'b'->'c' - is the path - if 'a' is an array (list) of items - then set this
+   * criteria isArray to true and set the arrayField as 'a' - if no arrayField is set then the
+   * first field will be extracted and used as the array field
+   */
   public void setArrayField(String arrayField) {
     this.arrayField = arrayField;
   }
@@ -432,6 +419,11 @@ public class Criteria {
     return joinON;
   }
 
+  /**
+   * if set to true, this criteria is being used to create a criteria to
+   * compare to another criteria to join on
+   * in this generate an ON instead of a WHERE
+   * */
   public Criteria setJoinON(boolean joinON) {
     this.joinON = joinON;
     return this;
@@ -441,6 +433,17 @@ public class Criteria {
     return forceCast;
   }
 
+  /**
+   * force cast is needed when using the criteria as part of a
+   * join statement - for example, in a case where we compare the id
+   * of records (not a jsonb field) to another table where the id is in
+   * a jsonb field (as a number, varchar (uuid), etc.) then we need
+   * to force cast the id from the non-jsonb field to the appropriate type
+   * so that the comparison will work
+   * generate the "varchar" part of the statement below:
+   *  ON groups._id::"varchar" = (join_table.jsonb->>'groupId')
+   *  in the above forceCast = varchar
+   */
   public Criteria setForceCast(String forceCast) {
     this.forceCast = forceCast;
     return this;

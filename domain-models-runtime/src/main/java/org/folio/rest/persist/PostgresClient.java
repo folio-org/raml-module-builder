@@ -631,7 +631,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    update(table, entity, DEFAULT_JSONB_FIELD_NAME, " WHERE " + idField + "=" + id, false, replyHandler);
+    update(table, entity, DEFAULT_JSONB_FIELD_NAME, " WHERE " + idField + "='" + id + "'", false, replyHandler);
   }
 
   /**
@@ -1103,15 +1103,15 @@ public class PostgresClient {
    *      new Criterion().addGroupOfCriterias(gc).addGroupOfCriterias(gc1).setOrder(new Order("c1._id", ORDER.DESC));
    *
    * */
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr
-      ,Handler<AsyncResult<ResultSet>> replyHandler){
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr, Class<?> returnedClass,
+      Handler<AsyncResult<?>> replyHandler){
     long start = System.nanoTime();
 
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          String select = "SELECT ";
+          String select = "SELECT " + countClause + " ";
 
           StringBuffer joinon = new StringBuffer();
           StringBuffer tables = new StringBuffer();
@@ -1124,11 +1124,16 @@ public class PostgresClient {
 
           String selectFromTable = from.getSelectFields();
           String selectToTable = to.getSelectFields();
+          boolean addComma = false;
           if(selectFromTable != null && selectFromTable.length() > 0){
             selectFields.append(from.getSelectFields());
+            addComma = true;
           }
           if(selectToTable != null && selectToTable.length() > 0){
-            selectFields.append(",").append(to.getSelectFields());
+            if(addComma){
+              selectFields.append(",");
+            }
+            selectFields.append(to.getSelectFields());
           }
 
           tables.append(convertToPsqlStandard(tenantId) + "." + from.getTableName() + " " + from.getAlias() + " ");
@@ -1146,7 +1151,13 @@ public class PostgresClient {
               log.error(query.cause().getMessage(), query.cause());
               replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+              if(returnedClass != null){
+                replyHandler.handle(io.vertx.core.Future.succeededFuture(
+                  processResult(query.result(), returnedClass, true, false)));
+              }
+              else{
+                replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+              }
             }
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".join", (end-start));
@@ -1169,21 +1180,30 @@ public class PostgresClient {
   }
 
   public void join(JoinBy from, JoinBy to, String operation, String joinType, Criterion cr
-      ,Handler<AsyncResult<ResultSet>> replyHandler){
+      ,Handler<AsyncResult<?>> replyHandler){
     String filter = "";
     if(cr != null){
       filter = cr.toString();
     }
-    join(from, to, operation, joinType, filter, replyHandler);
+    join(from, to, operation, joinType, filter, null, replyHandler);
   }
 
   public void join(JoinBy from, JoinBy to, String operation, String joinType, CQLWrapper cr
-      ,Handler<AsyncResult<ResultSet>> replyHandler){
+      ,Handler<AsyncResult<?>> replyHandler){
     String filter = "";
     if(cr != null){
       filter = cr.toString();
     }
-    join(from, to, operation, joinType, filter, replyHandler);
+    join(from, to, operation, joinType, filter, null, replyHandler);
+  }
+
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, Class<?> returnedClazz, CQLWrapper cr
+      ,Handler<AsyncResult<?>> replyHandler){
+    String filter = "";
+    if(cr != null){
+      filter = cr.toString();
+    }
+    join(from, to, operation, joinType, filter, returnedClazz, replyHandler);
   }
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
