@@ -28,8 +28,8 @@ public class JoinBy {
   private String fields = "";
   public JoinBy(String tableName, String alias, Criteria joinColumn, String []selectedFields) {
     this.tableName = tableName;
-    this.joinColumn = joinColumn.setAlias(this.alias).setJoinON(true);
     this.alias = alias;
+    this.joinColumn = joinColumn.setAlias(this.alias).setJoinON(true);
     if(selectedFields != null){
       for (int i = 0; i < selectedFields.length; i++) {
         if(SQLFunctions.contains(selectedFields[i])){

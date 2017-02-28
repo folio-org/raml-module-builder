@@ -77,7 +77,21 @@ public class Criteria {
    * */
   boolean joinON                                  = false;
 
+  /**
+   * force cast is needed when using the criteria as part of a
+   * join statement - for example, in a case where we compare the id
+   * of records (not a jsonb field) to another table where the id is in
+   * a jsonb field (as a number, varchar (uuid), etc.) then we need
+   * to force cast the id from the non-jsonb field to the appropriate type
+   * so that the comparison will work
+   * generate the "varchar" part of the statement below:
+   *  ON groups._id::"varchar" = (join_table.jsonb->>'groupId')
+   *  in the above forceCast = varchar
+   */
+  String forceCast                               = null;
+
   int valueType                                   = 1;
+
   String column;
   /**
    * field - in the format of column_name -> field -> subfield ->>
@@ -187,8 +201,8 @@ public class Criteria {
   }
 
   private String wrapField() {
+    String cast = "";
     if (isJSONB) {
-      String cast = "";
       valueType = getOperationType();
       if(valueType == NUMERIC_TYPE){
         cast = "::numeric";
@@ -201,7 +215,10 @@ public class Criteria {
       return "(" + addPrefix() + field2String() + ")";
     }
     else if(alias != null){
-      return alias + "." + field2String();
+      if(forceCast != null){
+        cast = forceCast;
+      }
+      return alias + "." + field2String() + "::\"" + cast + "\"";
     }
     return field2String();
   }
@@ -417,6 +434,15 @@ public class Criteria {
 
   public Criteria setJoinON(boolean joinON) {
     this.joinON = joinON;
+    return this;
+  }
+
+  public String getForceCast() {
+    return forceCast;
+  }
+
+  public Criteria setForceCast(String forceCast) {
+    this.forceCast = forceCast;
     return this;
   }
 

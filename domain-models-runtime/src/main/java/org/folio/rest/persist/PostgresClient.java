@@ -1122,8 +1122,14 @@ public class PostgresClient {
             filter = cr;
           }
 
-          selectFields.append(from.getSelectFields());
-          selectFields.append(",").append(to.getSelectFields());
+          String selectFromTable = from.getSelectFields();
+          String selectToTable = to.getSelectFields();
+          if(selectFromTable != null && selectFromTable.length() > 0){
+            selectFields.append(from.getSelectFields());
+          }
+          if(selectToTable != null && selectToTable.length() > 0){
+            selectFields.append(",").append(to.getSelectFields());
+          }
 
           tables.append(convertToPsqlStandard(tenantId) + "." + from.getTableName() + " " + from.getAlias() + " ");
 
