@@ -28,6 +28,12 @@ public class JoinBy {
   private String fields = "";
 
   public JoinBy(String tableName, String alias, Criteria joinColumn, Criteria []selectedFields) {
+
+
+/* for example, to select a userId field within the jsonb
+ * JoinBy jbFrom = new JoinBy(UsersAPI.TABLE_NAME_USER, "users", new Criteria().addField("'groupId'") , new Criteria[]{
+ * new Criteria().addField("'userId'")});*/
+
     String []sFields = new String[selectedFields.length];
     for (int i = 0; i < selectedFields.length; i++) {
       sFields[i] = selectedFields[i].setAlias(alias).toString();

@@ -847,7 +847,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    delete(table, " WHERE " + idField + "=" + id, false, replyHandler);
+    delete(table, " WHERE " + idField + "='" + id + "'", false, replyHandler);
   }
 
   /**
@@ -904,19 +904,29 @@ public class PostgresClient {
     });
   }
 
-  public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean setId,
-      Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+  public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
+      boolean setId, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
     long start = System.nanoTime();
 
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
+          String addIdField = "";
+          String localCountClause;
+          if(returnIdField){
+            addIdField = "," + idField;
+            localCountClause = countClause;
+          }
+          else{
+            //remove the idField in count(id) from the count statement and replace with *
+            localCountClause = countClause.replace(idField, "*");
+          }
           String select = "SELECT ";
           if (returnCount) {
-            select = select + countClause;
+            select = select + localCountClause;
           }
-          String q = select + fieldName + "," + idField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+          String q = select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
           log.debug("query = " + q);
           connection.query(q,
             query -> {
@@ -963,7 +973,12 @@ public class PostgresClient {
   //@Timer
   public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
     get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
-      + "@>'" + pojo2json(entity) + "' ", returnCount, true, replyHandler);
+      + "@>'" + pojo2json(entity) + "' ", returnCount, true, true, replyHandler);
+  }
+
+  public void get(String table, Object entity, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
+      + "@>'" + pojo2json(entity) + "' ", returnCount, returnIdField, true, replyHandler);
   }
 
   /**
@@ -987,7 +1002,7 @@ public class PostgresClient {
       where = filter.toString();
     }
     String fieldsStr = Arrays.toString(fields);
-    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, setId, replyHandler);
+    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, String[] fields, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
@@ -997,7 +1012,7 @@ public class PostgresClient {
       where = filter;
     }
     String fieldsStr = Arrays.toString(fields);
-    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, setId, replyHandler);
+    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
@@ -1047,7 +1062,7 @@ public class PostgresClient {
       }
     }
     get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
-      returnCount, setId, replyHandler);
+      returnCount, true, setId, replyHandler);
   }
 
 
