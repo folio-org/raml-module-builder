@@ -1087,7 +1087,7 @@ public class RestVerticle extends AbstractVerticle {
       // if this was left out by the client they must add for request to return
       // clean up simple stuff from the clients header - trim the string and remove ';' in case
       // it was put there as a suffix
-      String contentType = StringUtils.defaultString(request.getHeader("Content-type")).replace(";", "").trim();
+      String contentType = StringUtils.defaultString(request.getHeader("Content-type")).replaceFirst(";.*", "").trim();
       if (!consumes.contains(removeBoundry(contentType))) {
         endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType),
           validRequest);
