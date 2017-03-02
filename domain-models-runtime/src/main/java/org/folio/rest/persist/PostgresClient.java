@@ -977,8 +977,13 @@ public class PostgresClient {
   }
 
   public void get(String table, Object entity, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+    boolean setId = true;
+    if(returnIdField == false){
+      //if no id fields then cannot setId from extrnal column into json object
+      setId = false;
+    }
     get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
-      + "@>'" + pojo2json(entity) + "' ", returnCount, returnIdField, true, replyHandler);
+      + "@>'" + pojo2json(entity) + "' ", returnCount, returnIdField, setId, replyHandler);
   }
 
   /**
