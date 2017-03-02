@@ -136,6 +136,12 @@
       <version>1.1.4c</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>postgres-runner</artifactId>
+      <version>${project.parent.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 
@@ -191,24 +197,6 @@
             </configuration>
           </execution>
         </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.19.1</version>
-        <configuration>
-          <systemProperties>
-            <property>
-              <name>embed_postgres</name>
-              <value>true</value>
-            </property>
-            <property>
-              <name>postgres_import_path</name>
-              <value>${basedir}/src/test/resources/import.sql</value>
-            </property>
-          </systemProperties>
-        </configuration>
       </plugin>
 
       <plugin>
@@ -351,6 +339,7 @@
 
       <plugin>
         <artifactId>maven-antrun-plugin</artifactId>
+        <version>1.8</version>
         <executions>
           <execution>
             <phase>prepare-package</phase>
@@ -364,6 +353,62 @@
             <goals>
               <goal>run</goal>
             </goals>
+          </execution>
+          <execution>
+            <id>start-postgres</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <!-- Postgres configured like in Jenkins CI build environment https://issues.folio.org/browse/METADATA-10 -->
+                <exec executable="${java.home}/bin/java" dir="${project.build.directory}" spawn="true">
+                  <arg value="-cp"/>
+                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar"/>
+                  <arg value="org.folio.rest.persist.PostgresRunner"/>
+                  <arg value="5434"/>      <!-- PostgresRunner port -->
+                  <arg value="5433"/>      <!-- Postgres port -->
+                  <arg value="postgres"/>  <!-- username -->
+                  <arg value="postgres"/>  <!-- password -->
+                </exec>
+              </target>
+            </configuration>
+          </execution>
+          <execution>
+            <id>wait-for-postgres</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <exec executable="${java.home}/bin/java" dir="${project.build.directory}">
+                  <arg value="-cp"/>
+                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar"/>
+                  <arg value="org.folio.rest.persist.PostgresWaiter"/>
+                  <arg value="5434"/>      <!-- PostgresRunner port -->
+                  <!-- this waits until Postgres (started by spawned PostgresRunner) is ready -->
+                </exec>
+              </target>
+            </configuration>
+          </execution>
+          <execution>
+            <id>stop-postgres</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <exec executable="${java.home}/bin/java" dir="${project.build.directory}">
+                  <arg value="-cp"/>
+                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar"/>
+                  <arg value="org.folio.rest.persist.PostgresStopper"/>
+                  <arg value="5434"/>      <!-- PostgresRunner port -->
+                </exec>
+              </target>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -409,6 +454,27 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>2.19.1</version>
+        <executions>
+          <execution>
+            <id>integration-test</id>
+            <goals>
+              <goal>integration-test</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>verify</id>
+            <goals>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
       <plugin>
         <groupId>pl.project13.maven</groupId>
         <artifactId>git-commit-id-plugin</artifactId>

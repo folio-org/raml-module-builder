@@ -13,7 +13,7 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class PostgresClientTest {
+public class PostgresClientIT {
   static private final String TENANT = "tenant";
   static private Vertx vertx;
 
