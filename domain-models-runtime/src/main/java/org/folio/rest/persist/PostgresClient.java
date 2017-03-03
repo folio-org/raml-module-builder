@@ -36,7 +36,7 @@ import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.helpers.JoinBy;
 import org.folio.rest.security.AES;
-import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.ApplicationProperties;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
@@ -278,7 +278,7 @@ public class PostgresClient {
     String secretKey = System.getProperty("postgres_secretkey_4_embeddedmode");
 
     if(moduleName == null){
-      moduleName = PomReader.INSTANCE.getModuleName();
+      moduleName = ApplicationProperties.getNameUnderscore();
     }
 
     if(secretKey != null){

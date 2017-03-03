@@ -94,6 +94,8 @@ more maven plugins:
   run as `RestLauncher` and main verticle as `RestVerticle`. This will create a
   runnable jar with the runtime's `RestVerticle` serving as the main class.
 
+- Add the `git-commit-id-plugin` to your pom for exact version information.
+
 ### Build and run
 
 Do `mvn clean install` ... and run :)
@@ -313,13 +315,13 @@ Create JSON schemas indicating the objects exposed by the module:
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>8.0.0-SNAPSHOT</version>
+      <version>9.0.0-SNAPSHOT</version>
     </dependency>
 ```
 
-### Step 3: Add the plugins to your pom.xml
+### Step 3: Add the plugins to your pom.xml and create application.properties
 
-Four plugins should be declared in the pom.xml file:
+Five plugins should be declared in the pom.xml file:
 
 - The aspect plugin, which will pre-compile your code with validation aspects
   provided by the framework - remember the `@Validate` annotation. The
@@ -338,6 +340,8 @@ Four plugins should be declared in the pom.xml file:
 - The maven resource plugin, which will copy the RAML files into a directory
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
+
+- The git commit id plugin for exact version information.
 
 Add `ramlfiles_path` properties indicating the location of the RAML directories:
 
@@ -499,7 +503,44 @@ Add the plugins:
           </execution>
         </executions>
       </plugin>
+      
+      <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>2.2.1</version>
+        <executions>
+          <execution>
+            <id>get-the-git-infos</id>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
 ```
+
+Create a resource file src/main/resources/application.properties with this content:
+
+```properties
+application.name=${project.name}
+application.version=${project.version}
+git.commit.id=${git.commit.id}
+git.commit.id.abbrev=${git.commit.id.abbrev}
+git.remote.origin.url=${git.remote.origin.url}
+```
+
+Filter and copy the resource file:
+
+```sh
+
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+```
+
 
 ### Step 4: Build your project
 
