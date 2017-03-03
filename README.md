@@ -519,7 +519,7 @@ Add the plugins:
       </plugin>
 ```
 
-Create a resource file src/main/resources/application.properties with this content:
+Create a resource file `src/main/resources/application.properties` with this content:
 
 ```properties
 application.name=${project.name}
@@ -529,7 +529,7 @@ git.commit.id.abbrev=${git.commit.id.abbrev}
 git.remote.origin.url=${git.remote.origin.url}
 ```
 
-Filter and copy the resource file:
+Add this to the `pom.xml`'s `<build>` section to filter and copy the resource file:
 
 ```sh
 
