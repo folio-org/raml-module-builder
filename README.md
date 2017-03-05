@@ -166,14 +166,14 @@ To run the configuration module, navigate to the `/target/` directory in the con
 
 RMB implementing modules expect a set of environment variables to be passed in at module startup. The environment variables expected by RMB modules are:
 
- - DB_HOST
- - DB_PORT
- - DB_USERNAME
- - DB_PASSWORD
- - DB_DATABASE
- - DB_QUERYTIMEOUT
- - DB_CHARSET
- - DB_MAXPOOLSIZE
+ - db.host 
+ - db.port
+ - db.username 
+ - db.password 
+ - db.database 
+ - db.queryTimeout
+ - db.charset 
+ - db.maxPoolSize
 
 See https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables for more information on how to deploy environment variables to RMB modules via Okapi.
 

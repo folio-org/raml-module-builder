@@ -86,9 +86,9 @@ public enum MDGenerator {
     envs.add(new JsonObject().put("name", Envs.DB_DATABASE));
     envs.add(new JsonObject().put("name", Envs.DB_PASSWORD));
     envs.add(new JsonObject().put("name", Envs.DB_CHARSET));
-    envs.add(new JsonObject().put("name", Envs.DB_USERNAME));
-    envs.add(new JsonObject().put("name", Envs.DB_QUERYTIMEOUT));
-    envs.add(new JsonObject().put("name", Envs.DB_MAXPOOLSIZE));
+    envs.add(new JsonObject().put("name", Envs.DB_USER));
+    envs.add(new JsonObject().put("name", Envs.DB_TIMEOUT));
+    envs.add(new JsonObject().put("name", Envs.DB_MAXPOOL));
     md.put("env", envs);
   }
 
