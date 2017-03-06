@@ -190,7 +190,6 @@ public class DemoRamlRestTest {
           e.printStackTrace();
         }
       });
-
     }
     catch (Exception e) {
       context.fail();

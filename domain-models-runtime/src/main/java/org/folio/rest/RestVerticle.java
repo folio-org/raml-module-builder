@@ -56,6 +56,9 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Stream;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
@@ -66,6 +69,7 @@ import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.BinaryOutStream;
 import org.folio.rest.tools.utils.InterfaceToImpl;
+import org.folio.rest.tools.utils.JsonUtils;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rulez.Rules;
@@ -105,6 +109,9 @@ public class RestVerticle extends AbstractVerticle {
   private static final ObjectMapper MAPPER                          = new ObjectMapper();
   private static final String       OKAPI_HEADER_PREFIX             = "x-okapi";
   private static final String       DEFAULT_SCHEMA                  = "public";
+
+  private static final int          VALIDATION_ERROR_HTTP_CODE      = 422;
+  private static final String       VALIDATION_FIELD_ERROR          = "1";
 
   private final Messages            messages                        = Messages.getInstance();
   private int                       port                            = -1;
@@ -345,7 +352,6 @@ public class RestVerticle extends AbstractVerticle {
                         }
                       });
 
-                      //
                       // file upload requested (multipart/form-data) but the url is not to the /admin/upload
                       // meaning, an implementing module is using its own upload handling, so read the content and
                       // pass to implementing function just like any other call
@@ -747,13 +753,18 @@ public class RestVerticle extends AbstractVerticle {
 
   private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message,  boolean[] isValid) {
     if (isValid[0]) {
-      log.error(rc.request().absoluteURI() + " [ERROR] " + message);
       rc.response().setChunked(chunked);
       rc.response().setStatusCode(status);
       if(message != null){
         rc.response().write(message);
       }
+      else {
+        message = "";
+      }
       rc.response().end();
+      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
+        rc.request().version().toString(), rc.response().getStatusCode(), -1, rc.response().bytesWritten(),
+        rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), null, message);
     }
     // once we are here the call is not valid
     isValid[0] = false;
@@ -1149,6 +1160,8 @@ public class RestVerticle extends AbstractVerticle {
                 }
               }
 
+              Errors errorResp = new Errors();
+
               if(!allowEmptyObject(entityClazz, bodyContent)){
                 //right now - because no way in raml to make body optional - do not validate
                 //TenantAttributes object as it may be empty
@@ -1156,29 +1169,55 @@ public class RestVerticle extends AbstractVerticle {
                 if (validationErrors.size() > 0) {
                   StringBuffer sb = new StringBuffer();
                   for (ConstraintViolation<?> cv : validationErrors) {
+                    Error error = new Error();
+                    Parameter p = new Parameter();
+                    p.setKey(cv.getPropertyPath().toString());
+                    Object val = cv.getInvalidValue();
+                    if(val == null){
+                      p.setValue("null");
+                    }
+                    else{
+                      p.setValue(val.toString());
+
+                    }
+                    error.getParameters().add(p);
+                    error.setMessage(cv.getMessage());
+                    error.setCode("-1");
+                    error.setType(VALIDATION_FIELD_ERROR);
+                    errorResp.getErrors().add(error);
                     sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
                   }
-                  endRequestWithError(rc, 400, true, "Object validation errors " + sb.toString() , validRequest);
+                  endRequestWithError(rc, VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp) , validRequest);
                 }
               }
               // complex rules validation here (drools) - after simpler validation rules pass -
+              Error error = new Error();
+              FactHandle handle = null;
+              FactHandle handleError = null;
               try {
                 // if no /rules exist then drools session will be null
                 // TODO support adding .drl files dynamically to db / dir
                 // and having them picked up
                 if (droolsSession != null && paramArray[order] != null && validRequest[0]) {
                   // add object to validate to session
-                  FactHandle handle = droolsSession.insert(paramArray[order]);
+                  handle = droolsSession.insert(paramArray[order]);
+                  handleError = droolsSession.insert(error);
                   // run all rules in session on object
                   droolsSession.fireAllRules();
-                  // remove the object from the session
-                  droolsSession.delete(handle);
                 }
               } catch (Exception e) {
-                log.error(e);
-                endRequestWithError(rc, 400, true, e.getCause().getMessage(), validRequest);
+                error.setCode("-1");
+                error.setType(VALIDATION_FIELD_ERROR);
+                errorResp.getErrors().add(error);
+                endRequestWithError(rc, VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp), validRequest);
               }
-              // }
+              finally {
+                // remove the object from the session
+                if(handle != null){
+                  droolsSession.delete(handle);
+                  droolsSession.delete(handleError);
+                }
+              }
             }
           } catch (Exception e) {
             log.error(e);
