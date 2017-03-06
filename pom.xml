@@ -10,6 +10,7 @@
     <module>domain-models-interface-extensions</module>
     <module>domain-models-api-interfaces</module>
     <module>rules</module>
+    <module>postgres-runner</module>
     <module>domain-models-runtime</module>
   </modules>
 
@@ -35,6 +36,7 @@
     <vertx-version>3.3.3</vertx-version>
     <jackson-version>2.2.2</jackson-version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
 
   <dependencies>
