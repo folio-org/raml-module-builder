@@ -465,6 +465,7 @@ public class PostgresClient {
           returning = " RETURNING " + idField;
         }
         try {
+          /* do not change to updateWithParams as this will not return the generated id in the reply */
           connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
             ") VALUES ("+clientId+"?::JSON)"+ returning,
@@ -720,10 +721,11 @@ public class PostgresClient {
           returning.append(returningId);
         }
         try {
-          String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = '" + pojo2json(entity) + "' " + whereClause
+          String q = "UPDATE " + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = ?::jsonb"  + whereClause
               + " " + returning;
           log.debug("query = " + q);
-          connection.update(q, query -> {
+
+          connection.updateWithParams(q, new JsonArray().add(pojo2json(entity)), query -> {
             connection.close();
             if (query.failed()) {
               log.error(query.cause().getMessage(),query.cause());
