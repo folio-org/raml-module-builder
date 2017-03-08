@@ -1356,4 +1356,8 @@ public class RestVerticle extends AbstractVerticle {
       this.status = status;
     }
   }
+
+  public static void updateDroolsSession(KieSession s) {
+    droolsSession = s;
+  }
 }
