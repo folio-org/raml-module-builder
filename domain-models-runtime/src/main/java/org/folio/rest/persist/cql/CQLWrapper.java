@@ -3,6 +3,7 @@ package org.folio.rest.persist.cql;
 import org.folio.rest.persist.Criteria.Limit;
 import org.folio.rest.persist.Criteria.Offset;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
+import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
 
 public class CQLWrapper {
@@ -46,11 +47,19 @@ public class CQLWrapper {
     return this;
   }
 
+  /**
+   * @return a space followed by the SQL clauses of WHERE, OFFSET and LIMIT
+   * @throws IllegalStateException when the underlying CQL2PgJSON throws a QueryValidationException
+   */
   @Override
   public String toString() {
     String q = "";
     if(query != null && field != null){
-      q = " WHERE " + field.cql2pgJson(query);
+      try {
+        q = " WHERE " + field.cql2pgJson(query);
+      } catch (QueryValidationException e) {
+        throw new IllegalStateException(e);
+      }
     }
     return  q + " " + offset.toString() + " " + limit.toString();
   }
