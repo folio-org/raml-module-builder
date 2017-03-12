@@ -920,7 +920,9 @@ An example of such a file can be found in the configuration module:
 
 https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/resources/template_create_tenant.sql
 
-Notice the *myuniversity* placeholders in the file. The x-okapi-tenant header passed in to the API call will be used to get the tenant id. That tenant id will replace the *myuniversity* placeholder. Additional placeholders may be added in the future.
+Notice the *myuniversity* placeholders in the file. The x-okapi-tenant header passed in to the API call will be used to get the tenant id. That tenant id will replace the *myuniversity* placeholder. The *mymodule* placeholder maybe used as well and is replaced by the name of the module (the value used for the module name is the artifactId found in the pom.xml, the parent artifactId is used if one is found).  Additional placeholders may be added in the future.
+
+Posting a new tenant can optionally include a body. The body should contain a json conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version. In the case where `module_from` is included in the json, the RMB will look for an `template_update_tenant.sql` file to run (if one is not found, no script will be run. An optional `template_update_audit.sql` can also be created, and it will be run, if found, in case of an update indication [`module_from`])
 
 ##### Encrypting Tenant passwords
 
@@ -1068,6 +1070,14 @@ Messages message = new Messages();
 ksession.insert(message);
 ksession.fireAllRules();
 Assert.assertEquals("THIS IS A TEST", message.getMessage());
+```
+
+An additional option to use the Drool's framework in the RMB is to load rules dynamically. For example, a module may decide to store Drool `.drl` files in a database. This allows a module to allow admin users to update rules in the database and then load them into the RMB validation mechanism for use at runtime.
+
+```
+      Rules rules = new Rules(List<String> rulesLoaded);
+      ksession = rules.buildSession();
+      RestVerticle.updateDroolsSession(ksession);
 ```
 
 ## Messages
