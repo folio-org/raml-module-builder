@@ -1027,7 +1027,7 @@ The RMB framework automatically scans the `/resources/rules` path in an implemen
 put) by the runtime framework. This works in the following manner:
  - a POST / PUT request comes in with a body
  - The body for the request is mapped to a generated Pojo
- - The Pojo is inserted into the RMBs Drools session
+ - The Pojo is inserted into the RMB's Drools session
  - All rules are run against the Pojo
 
 This allows for more complex validation of objects.
@@ -1072,7 +1072,7 @@ ksession.fireAllRules();
 Assert.assertEquals("THIS IS A TEST", message.getMessage());
 ```
 
-An additional option to use the Drool's framework in the RMB is to load rules dynamically. For example, a module may decide to store Drool `.drl` files in a database. This allows a module to allow admin users to update rules in the database and then load them into the RMB validation mechanism for use at runtime.
+An additional option to use the Drools framework in the RMB is to load rules dynamically. For example, a module may decide to store Drool `.drl` files in a database. This allows a module to allow admin users to update rules in the database and then load them into the RMB validation mechanism for use at runtime.
 
 ```
       Rules rules = new Rules(List<String> rulesLoaded);
