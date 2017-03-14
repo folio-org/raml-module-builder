@@ -111,8 +111,18 @@ public class PostgresRunnerTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testNoArguments() {
+  public void runnerNoArguments() {
     PostgresRunner.main(new String [] {});
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void waiterNoArguments() throws IOException, InterruptedException {
+    PostgresWaiter.main(new String [] {});
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void stopperNoArguments() throws IOException {
+    PostgresStopper.main(new String [] {});
   }
 
   @Test
