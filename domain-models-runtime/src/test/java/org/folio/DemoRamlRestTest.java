@@ -41,6 +41,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
  */
@@ -124,6 +126,23 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
     //checkURLs(context, "http://localhost:" + port + "/admin/postgres_active_sessions?dbname=postgres", 200, "application/json");
 
+    Book b = new Book();
+    Data d = new Data();
+    d.setAuthor("a");
+    d.setGenre("g");
+    d.setDescription("asdfss");
+    b.setData(d);
+    ObjectMapper om = new ObjectMapper();
+    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 422, 1, "application/json");
+    postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=author", Buffer.buffer(book), 200, 1,
+      "application/json");
+    postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.description", Buffer.buffer(book), 200, 1,
+        "application/json");
+    postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.title", Buffer.buffer(book), 422, 1,
+        "application/json");
+    postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.title&validate_field=data.description",
+      Buffer.buffer(book), 422, 1, "application/json");
     //check File Uploads
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null);
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
@@ -312,13 +331,14 @@ public class DemoRamlRestTest {
     }).handler(response -> {
       int statusCode = response.statusCode();
       // is it 2XX
-      System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " for " + url);
+      System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " mode " + mode + " for " + url);
 
       if (statusCode == errorCode) {
         context.assertTrue(true);
       } else {
         response.bodyHandler(responseData -> {
-          context.fail("got non 200 response, error: " + responseData + " code " + statusCode);
+          context.fail("got unexpected response code, expected: " +
+              errorCode + ", received code: " + statusCode + " mode " + mode + " for url " +  url);
         });
       }
       if(!async.isCompleted()){
