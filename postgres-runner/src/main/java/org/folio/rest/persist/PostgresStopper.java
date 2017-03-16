@@ -16,18 +16,30 @@ public class PostgresStopper {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
 
-  @SuppressWarnings("squid:S106")  // "Replace this usage of System.out or System.err by a logger."
   public static void main(String [] args) throws IOException {
     if (args.length != 1) {
-      System.out.println("Invoke with a single argument: the port of PostgresStarter");
-      return;
+      throw new IllegalArgumentException("Invoke with a single argument: the port of PostgresStarter");
     }
 
     int port = Integer.parseUnsignedInt(args[0]);
-    URL url = new URL("http://localhost:" + port);
-    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-    conn.setRequestMethod("POST");
-    System.out.println(conn.getResponseCode() + " " + conn.getResponseMessage());
-    conn.disconnect();
+    String urlString = "http://localhost:" + port;
+    HttpURLConnection conn = null;
+    try {
+      URL url = new URL(urlString);
+      conn = (HttpURLConnection) url.openConnection();
+      conn.setRequestMethod("POST");
+      // conn.getResponseCode() waits until PostgresRunner has responded
+      if (conn.getResponseCode() != 200) {
+        throw new IOException("HTTP response code=" + conn.getResponseCode() + " " + conn.getResponseMessage());
+      }
+    }
+    catch (IOException e) {
+      throw new IOException(e.getMessage() + ": " + urlString, e);
+    }
+    finally {
+      if (conn != null) {
+        conn.disconnect();
+      }
+    }
   }
 }
