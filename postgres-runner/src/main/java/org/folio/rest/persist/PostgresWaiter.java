@@ -18,22 +18,24 @@ public class PostgresWaiter {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
 
-  @SuppressWarnings("squid:S106")  // "Replace this usage of System.out or System.err by a logger."
   public static void main(String [] args) throws IOException, InterruptedException {
     if (args.length != 1) {
-      System.out.println("Invoke with a single argument: the port of PostgresStarter");
-      return;
+      throw new IllegalArgumentException("Invoke with a single argument: the port of PostgresStarter");
     }
 
     int port = Integer.parseUnsignedInt(args[0]);
-    URL url = new URL("http://localhost:" + port);
+    String urlString = "http://localhost:" + port;
+    URL url = new URL(urlString);
     for (int i=10; i>=0; i--) {
+      HttpURLConnection conn = null;
       try {
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        // default is a GET request
-        // conn.getResponseCode() waits for the response from the PostgresRunner
-        System.out.println(conn.getResponseCode() + " " + conn.getResponseMessage());
-        conn.disconnect();
+        conn = (HttpURLConnection) url.openConnection();
+        // HttpURLConnection's default is a GET request
+        // conn.getResponseCode() waits until PostgresRunner has responded
+        if (conn.getResponseCode() != 200) {
+          throw new IllegalStateException(
+              "HTTP response code=" + conn.getResponseCode() + " " + conn.getResponseMessage());
+        }
         break;  // waiting ended without exception, so end program
       }
       catch (IOException e) {
@@ -42,7 +44,12 @@ public class PostgresWaiter {
         // in between.
         if (i == 0) {
           // last time throw exception to give user some feedback
-          throw e;
+          throw new IOException(e.getMessage() + ": " + urlString, e);
+        }
+      }
+      finally {
+        if (conn != null) {
+          conn.disconnect();
         }
       }
       TimeUnit.SECONDS.sleep(1);

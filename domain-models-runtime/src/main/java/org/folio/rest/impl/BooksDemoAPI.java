@@ -40,4 +40,13 @@ public class BooksDemoAPI implements RmbtestsResource {
 
   }
 
+  @Validate
+  @Override
+  public void postRmbtestsBooks(Book entity, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(null));
+
+  }
+
 }

@@ -67,11 +67,13 @@ import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.codecs.PojoEventBusCodec;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
+import org.folio.rest.tools.utils.AsyncResponseResult;
 import org.folio.rest.tools.utils.BinaryOutStream;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
+import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rulez.Rules;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
@@ -243,6 +245,7 @@ public class RestVerticle extends AbstractVerticle {
               Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
               if (m.find()) {
                 validPath = true;
+
                 // get the function that should be invoked for the requested
                 // path + requested http_method pair
                 JsonObject ret = mappedURLs.getMethodbyPath(regexURL, rc.request().method().toString());
@@ -295,6 +298,7 @@ public class RestVerticle extends AbstractVerticle {
                       o = aClass.newInstance();
                     }
                     final Object instance = o;
+
                     // function to invoke for the requested url
                     String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
                     // parameters for the function to invoke
@@ -313,26 +317,24 @@ public class RestVerticle extends AbstractVerticle {
                     //are as described in the raml
                     checkAcceptContentType(produces, consumes, rc, validRequest);
 
-                    // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
-                    //to the requested URL - array will be populated by parseParams() function
-                    Iterator<Map.Entry<String, Object>> paramList = params.iterator();
-                    Object[] paramArray = new Object[params.size()];
-                    parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
-
-                    //Get method in class to be run for this requested API endpoint
-                    Method[] method2Run = new Method[]{null};
-                    for (int i = 0; i < methods.length; i++) {
-                      if (methods[i].getName().equals(function)) {
-                        method2Run[0] = methods[i];
-                        break;
-                      }
-                    }
-                    //is function annotated to receive data in chunks as they come in.
-                    //Note that the function controls the logic to this if this is the case
-                    boolean streamData = isStreamed(method2Run[0].getAnnotations());
-
                     if (validRequest[0]) {
+                      // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
+                      //to the requested URL - array will be populated by parseParams() function
+                      Iterator<Map.Entry<String, Object>> paramList = params.iterator();
+                      Object[] paramArray = new Object[params.size()];
+                      parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
 
+                      //Get method in class to be run for this requested API endpoint
+                      Method[] method2Run = new Method[]{null};
+                      for (int i = 0; i < methods.length; i++) {
+                        if (methods[i].getName().equals(function)) {
+                          method2Run[0] = methods[i];
+                          break;
+                        }
+                      }
+                      //is function annotated to receive data in chunks as they come in.
+                      //Note that the function controls the logic to this if this is the case
+                      boolean streamData = isStreamed(method2Run[0].getAnnotations());
                       // check if we are dealing with a file upload , currently only multipart/form-data and application/octet
                       //in the raml definition for such a function
                       final boolean[] isContentUpload = new boolean[] { false };
@@ -1165,29 +1167,27 @@ public class RestVerticle extends AbstractVerticle {
               if(!allowEmptyObject(entityClazz, bodyContent)){
                 //right now - because no way in raml to make body optional - do not validate
                 //TenantAttributes object as it may be empty
-                Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray[order]);
-                if (validationErrors.size() > 0) {
-                  StringBuffer sb = new StringBuffer();
-                  for (ConstraintViolation<?> cv : validationErrors) {
-                    Error error = new Error();
-                    Parameter p = new Parameter();
-                    p.setKey(cv.getPropertyPath().toString());
-                    Object val = cv.getInvalidValue();
-                    if(val == null){
-                      p.setValue("null");
-                    }
-                    else{
-                      p.setValue(val.toString());
 
-                    }
-                    error.getParameters().add(p);
-                    error.setMessage(cv.getMessage());
-                    error.setCode("-1");
-                    error.setType(VALIDATION_FIELD_ERROR);
-                    errorResp.getErrors().add(error);
-                    sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
-                  }
+                //is this request only to validate a field value and not an actual
+                //request for additional processing
+                List<String> field2validate = request.params().getAll("validate_field");
+                boolean isValid = isValidRequest(rc, paramArray[order], errorResp, validRequest, field2validate);
+
+                if(!isValid){
                   endRequestWithError(rc, VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp) , validRequest);
+                  return;
+                }
+                else if(isValid && !field2validate.isEmpty()){
+                  //valid request for the field to validate request made
+                    AsyncResponseResult arr = new AsyncResponseResult();
+                    ResponseImpl ri = new ResponseImpl();
+                    ri.setStatus(200);
+                    arr.setResult(ri);
+                    //right now this is the only flag available to stop
+                    //any additional respones for this request. to fix
+                    validRequest[0] = false;
+                    sendResponse(rc, arr, 0, null);
+                    return;
                 }
               }
               // complex rules validation here (drools) - after simpler validation rules pass -
@@ -1196,8 +1196,6 @@ public class RestVerticle extends AbstractVerticle {
               FactHandle handleError = null;
               try {
                 // if no /rules exist then drools session will be null
-                // TODO support adding .drl files dynamically to db / dir
-                // and having them picked up
                 if (droolsSession != null && paramArray[order] != null && validRequest[0]) {
                   // add object to validate to session
                   handle = droolsSession.insert(paramArray[order]);
@@ -1328,6 +1326,50 @@ public class RestVerticle extends AbstractVerticle {
         }
       }
     });
+  }
+
+  /**
+   * @param errorResp
+   * @param paramArray
+   * @param rc
+   * @param validRequest
+   *
+   */
+  private boolean isValidRequest(RoutingContext rc, Object paramArray, Errors errorResp, boolean[] validRequest, List<String> singleField) {
+    Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray);
+    boolean ret = true;
+    if (validationErrors.size() > 0) {
+      //StringBuffer sb = new StringBuffer();
+
+      for (ConstraintViolation<?> cv : validationErrors) {
+        Error error = new Error();
+        Parameter p = new Parameter();
+        String field = cv.getPropertyPath().toString();
+        p.setKey(field);
+        Object val = cv.getInvalidValue();
+        if(val == null){
+          p.setValue("null");
+        }
+        else{
+          p.setValue(val.toString());
+
+        }
+        error.getParameters().add(p);
+        error.setMessage(cv.getMessage());
+        error.setCode("-1");
+        error.setType(VALIDATION_FIELD_ERROR);
+        if(singleField != null && singleField.contains(field)){
+          errorResp.getErrors().add(error);
+          ret = false;
+        }
+        else if(singleField.isEmpty()){
+          errorResp.getErrors().add(error);
+          ret = false;
+        }
+        //sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
+      }
+    }
+    return ret;
   }
 
   private boolean allowEmptyObject(Class clazz, String bodyContent){
