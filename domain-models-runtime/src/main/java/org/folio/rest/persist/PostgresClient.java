@@ -1228,6 +1228,15 @@ public class PostgresClient {
     join(from, to, operation, joinType, filter, returnedClazz, replyHandler);
   }
 
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, Class<?> returnedClazz, String where
+      ,Handler<AsyncResult<?>> replyHandler){
+    String filter = "";
+    if(where != null){
+      filter = where;
+    }
+    join(from, to, operation, joinType, filter, returnedClazz, replyHandler);
+  }
+
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
     return processResult(rs, clazz, count, true);
   }
