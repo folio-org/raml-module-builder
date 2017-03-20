@@ -1175,7 +1175,7 @@ public class PostgresClient {
             } else {
               if(returnedClass != null){
                 replyHandler.handle(io.vertx.core.Future.succeededFuture(
-                  processResult(query.result(), returnedClass, true, false)));
+                  processResult(query.result(), returnedClass, true, true)));
               }
               else{
                 replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
