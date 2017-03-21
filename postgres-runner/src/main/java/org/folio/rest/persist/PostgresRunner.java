@@ -87,7 +87,7 @@ public class PostgresRunner extends AbstractVerticle {
     JsonObject config = new JsonObject()
         .put("runnerPort", runnerPort)
         .put("postgresPort", postgresPort)
-        .put("userName", username)
+        .put("username", username)
         .put("password", password);
     DeploymentOptions options = new DeploymentOptions().setConfig(config).setWorker(true);
     if (vertxForDeploy == null) {
@@ -108,7 +108,7 @@ public class PostgresRunner extends AbstractVerticle {
     int postgresPort = config().getInteger("postgresPort");
 
     if (isPortInUse(runnerPort)) {
-      startFuture.fail(new IOException("Quitting because PostgresRunnerPort is already in use: " + runnerPort));
+      startFuture.fail(new IOException("Quitting because PostgresRunnerPort " + runnerPort + " is already in use."));
       return;
     }
 
@@ -191,7 +191,7 @@ public class PostgresRunner extends AbstractVerticle {
   }
 
   void listen(int port, Handler<AsyncResult<HttpServer>> listenHandler) {
-    log.debug("listen(port, listenHandler)");
+    log.debug("listen(port={0}, listenHandler)", port);
 
     runnerServer = vertx.createHttpServer();
     Router router = Router.router(vertx);
@@ -221,7 +221,7 @@ public class PostgresRunner extends AbstractVerticle {
   }
 
   PostgresProcess startPostgres(int postgresPort, String username, String password) {
-    log.debug("startPostgres(postgresPort, username, password)");
+    log.debug("startPostgres(postgresPort={0}, username={1}, password [not shown])", postgresPort, username);
     try {
       final PostgresConfig config = new PostgresConfig(
           Version.Main.PRODUCTION,
