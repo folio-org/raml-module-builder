@@ -162,7 +162,7 @@ $ java -jar mod-configuration-server/target/mod-configuration-server-fat.jar emb
 Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
 (for example to view or set the [Logging](#logging) levels).
 
-The local [API Documentation](#documentation) is available.
+The local [API Documentation](#documentation-of-the-apis) is available.
 
 ## Command-line options
 
@@ -1161,15 +1161,15 @@ Usage:
 
 Note: parameters can also be passed when relevant. The raml-module-builder runtime also exposes generic error message enums which can be found at `/domain-models-runtime/src/main/java/org/folio/rest/tools/messages/MessageConsts.java`
 
-## Documentation
+## Documentation of the APIs
 
-The runtime framework includes a web application which exposes RAMLs in a view
-friendly HTML format. The `maven-resources-plugin` plugin described earlier
+The runtime framework includes a web application which exposes RAMLs in a
+view-friendly HTML format. The `maven-resources-plugin` plugin described earlier
 copies the RAML files into the correct directory in your project, so that the
 runtime framework can access it and expose it.
 
 ```
-http://[host]:[port]/apidocs/index.html?raml=raml/circulation/patrons.raml
+http://[host]:[port]/apidocs/index.html?raml=raml/admin.raml
 ```
 
 ## Logging
