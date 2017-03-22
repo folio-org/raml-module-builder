@@ -32,6 +32,8 @@ import javax.crypto.SecretKey;
 
 import org.apache.commons.lang3.text.StrSubstitutor;
 import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.Criteria.Limit;
+import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.helpers.JoinBy;
@@ -988,6 +990,28 @@ public class PostgresClient {
       + "@>'" + pojo2json(entity) + "' ", returnCount, returnIdField, setId, replyHandler);
   }
 
+  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+    get(table, entity, fields, returnCount, returnIdField, -1, -1, replyHandler);
+  }
+
+  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, int offset, int limit, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+    boolean setId = true;
+    if(returnIdField == false){
+      //if no id fields then cannot setId from extrnal column into json object
+      setId = false;
+    }
+    StringBuilder sb = new StringBuilder();
+    if(offset != -1){
+      sb.append(" ").append(new Offset(offset).toString()).append(" ");
+    }
+    if(limit != -1){
+      sb.append(" ").append(new Limit(limit).toString()).append(" ");
+    }
+    String fieldsStr = Arrays.toString(fields);
+    get(table, entity.getClass(), fieldsStr.substring(1, fieldsStr.length()-1), " WHERE " + DEFAULT_JSONB_FIELD_NAME
+      + "@>'" + pojo2json(entity) + "' "+sb.toString(), returnCount, returnIdField, setId, replyHandler);
+  }
+
   /**
    * select query
    * @param table - table to query
@@ -1273,7 +1297,7 @@ public class PostgresClient {
         Object jo = tempList.get(i).getValue(DEFAULT_JSONB_FIELD_NAME);
         Object id = tempList.get(i).getValue(idField);
         Object o = null;
-        if(!isAuditFlavored){
+        if(!isAuditFlavored && jo != null){
           o = mapper.readValue(jo.toString(), clazz);
         }
         else{
