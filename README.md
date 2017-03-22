@@ -59,6 +59,20 @@ The framework consists of a number of tools:
 - rules - Basic Drools functionality allowing module developers to create
   validation rules via .drl files for objects (JSON schemas).
 
+## Overview
+
+Follow the [Introduction](#introduction) section above to generally understand
+the framework. Then scan the [Basics](#the-basics) section for a high-level
+overview. Then follow the
+[Get started with a sample working module](#get-started-with-a-sample-working-module)
+section which demonstrates an already constructed example.
+When that is understood, then move on to the section
+[Creating a new module](#creating-a-new-module) to get your project started.
+
+Note that actually building this RAML Module Builder framework is not required.
+(Some of the images below are out-of-date.) The already published artifacts will
+be incorporated into your project from the repository.
+
 ## The basics
 
 ![](images/build.png)
