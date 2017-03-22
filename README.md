@@ -7,7 +7,7 @@ This software is distributed under the terms of the Apache License, Version 2.0.
 
 ## Introduction
 
-This documentation includes information about the Raml-Module-Builder framework
+This documentation includes information about the Raml-Module-Builder (RMB) framework
 and examples of how to use it.
 
 The goal of the project is to abstract away as much boilerplate functionality as
@@ -131,50 +131,65 @@ and other [modules](http://dev.folio.org/source-code/#server-side).
 
 ## Get started with a sample working module
 
-Clone / download the Configuration module -
-https://github.com/folio-org/mod-configuration - Build via `mvn clean install`
+The [mod-configuration](https://github.com/folio-org/mod-configuration)
+is a full example which uses the RMB. Clone it, and then investigate:
+
+```
+$ git clone --recursive https://github.com/folio-org/mod-configuration.git
+$ cd mod-configuration
+$ mvn clean install
+```
 
 - This module implements basic configuration APIs. It contains two sub modules, the configuration server and a configuration client (which can be used to interact with the server in a more OO manner, instead of using URLs).
 
 - RAMLs and JSON schemas can be found in the `ramls` directory.
 
-- Open the pom.xml in the configuration server module - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and pojo generating tool via a maven exec plugin. The tool generates source files within the configuration server project. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
+- Open the pom.xml in the configuration server module - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files within the configuration server project. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
 
-- Open the https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/java/org/folio/rest/impl/ConfigAPI.java class and notice that there is a function representing each declared endpoint in the raml file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the ConfigAPI.java contains all the code for the entire module. All handling of URLs, validations, objects, etc... is all either in the RAML-Module-Builder (aka RMB) jars, or generated for the configuration module by the RMB at build time.
+- Open the `mod-configuration-server/src/main/java/org/folio/rest/impl/ConfigAPI.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the ConfigAPI.java contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for the configuration module by the RMB at build time.
 
 - **IMPORTANT NOTE:** Every interface implementation - by any module -
   must reside in package `org.folio.rest.impl`. This is the package that is
   scanned at runtime by the runtime framework, to find the needed runtime
   implementations of the generated interfaces.
 
-To run the configuration module, navigate to the `/target/` directory in the configuration-server and run
-`java -jar mod-configuration-server-fat.jar`
+Now run the configuration module in standalone mode:
 
-## Command line options
+```
+$ java -jar mod-configuration-server/target/mod-configuration-server-fat.jar embed_postgres=true
+```
 
-- `java.util.logging.config.file=C:\Git\circulation\target\classes\vertx-default-jul-logging.properties`
-  (Optional - defaults to /target/classes/vertx-default-jul-logging.properties)
+Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
+(for example to view or set the [Logging](#logging) levels).
 
-- `-Dhttp.port=8080` (Optional - defaults to 8081)
+The local [API Documentation](#documentation) is available.
 
-- `embed_postgres=true` (Optional - defaults to false)
+## Command-line options
 
-- `db_connection=[path]` (Optional - path to an external JSON config file with
+- `-Djava.util.logging.config.file=C:\configuration\vertx-default-jul-logging.properties`
+  (Optional -- defaults to `target/classes/vertx-default-jul-logging.properties`)
+
+- `-Dhttp.port=8080` (Optional -- defaults to 8081)
+
+- `embed_postgres=true` (Optional -- defaults to false)
+
+- `db_connection=[path]` (Optional -- path to an external JSON config file with
   connection parameters to a PostgreSQL DB)
 
   - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
     "username":"postgres","password":"mysecretpassword", "database":"postgres",
     "charset":"windows-1252", "queryTimeout" : 10000}`
 
-- `drools_dir=[path]` (Optional - path to an external drools file. By default,
-  `*.drl` files in the /resources/rules directory are loaded)
+- `drools_dir=[path]` (Optional -- path to an external drools file. By default,
+  `*.drl` files in the `resources/rules` directory are loaded)
 
-- Module specific arguments can be passed via the command line in the format key=value. These will be accessable to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
+- Other module-specific arguments can be passed via the command line in the format key=value. These will be accessible to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
 
-- `-XX:+HeapDumpOnOutOfMemoryError
--XX:+PrintGCDetails
--XX:+PrintGCTimeStamps
-  -Xloggc:C:\Git\circulation\gc.log` (or any other Optional JVM argument should be passed before the -jar argument)
+- Optional JVM arguments can be passed before the `-jar` argument, e.g.
+`-XX:+HeapDumpOnOutOfMemoryError`
+`-XX:+PrintGCDetails`
+`-XX:+PrintGCTimeStamps`
+`-Xloggc:C:\Git\circulation\gc.log`
 
 ## Environment Variables
 
@@ -189,7 +204,7 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_CHARSET
  - DB_MAXPOOLSIZE
 
-See https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables for more information on how to deploy environment variables to RMB modules via Okapi.
+See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables) section of the Okapi Guide for more information on how to deploy environment variables to RMB modules via Okapi.
 
 ## Creating a new module
 
