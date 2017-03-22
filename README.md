@@ -1174,21 +1174,19 @@ http://[host]:[port]/apidocs/index.html?raml=raml/circulation/patrons.raml
 
 ## Logging
 
-As stated earlier (command line options), you can pass a configuration file with logging configurations. However, you may also change log levels via the `/admin` API provided by the framework.
+As stated earlier in [Command-line options](#command-line-options), a configuration file can be specified with logging configurations. However, log levels can also be changed via the `/admin` API provided by the framework. For example:
 
-For example:
-
-Change log level of all classes to FINE
-
-(PUT) `http://localhost:8081/admin/loglevel?level=FINE`
-
-Get log level of all classes
+Get log level of all classes:
 
 (GET) `http://localhost:8081/admin/loglevel`
 
-A `java_package` parameter can also be passed to change the log level of a specific package. For Example:
+Change log level of all classes to FINE:
 
- `http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.MongoCRUD`
+(PUT) `http://localhost:8081/admin/loglevel?level=FINE`
+
+A `java_package` parameter can also be passed to change the log level of a specific package. For example:
+
+ `http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.PostgresClient`
 
  `http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist`
 
