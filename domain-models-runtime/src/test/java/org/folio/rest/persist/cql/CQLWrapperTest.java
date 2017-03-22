@@ -1,6 +1,7 @@
 package org.folio.rest.persist.cql;
 
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.junit.Test;
@@ -11,9 +12,13 @@ public class CQLWrapperTest {
   @Test
   public void returnsWhere() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(new CQL2PgJSON("field")).setQuery("name=miller");
-    String result = wrapper.toString();
-    assertTrue(result.startsWith(" "));
-    assertTrue(result.contains(" WHERE "));
+    assertThat(wrapper.toString(), startsWith(" WHERE "));
+  }
+
+  @Test
+  public void allRecords() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper().setField(new CQL2PgJSON("field")).setQuery("cql.allRecords=1");
+    assertThat(wrapper.toString(), matchesPattern("^ WHERE true *$"));
   }
 
   @Test(expected = IllegalStateException.class)
