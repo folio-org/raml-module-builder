@@ -1165,11 +1165,29 @@ Note: parameters can also be passed when relevant. The raml-module-builder runti
 The runtime framework includes a web application which exposes RAMLs in a
 view-friendly HTML format. The `maven-resources-plugin` plugin described earlier
 copies the RAML files into the correct directory in your project, so that the
-runtime framework can access it and expose it.
+runtime framework can access it and show local API documentation.
+
+So for example, when running the [sample working module](#get-started-with-a-sample-working-module)
+then its API documentation is at:
 
 ```
-http://[host]:[port]/apidocs/index.html?raml=raml/admin.raml
+http://localhost:8081/apidocs/index.html?raml=raml/configuration/config.raml
 ```
+
+If instead your [new module](#creating-a-new-module) is running on the default port,
+then its API documentation is at:
+
+```
+http://localhost:8081/apidocs/index.html?raml=raml/ebook.raml
+```
+
+The RMB also automatically provides other documentation, such as the "Admin API":
+
+```
+http://localhost:8081/apidocs/index.html?raml=raml/admin.raml
+```
+
+All current API documentation is also available at [dev.folio.org/doc/api](http://dev.folio.org/doc/api/)
 
 ## Logging
 
