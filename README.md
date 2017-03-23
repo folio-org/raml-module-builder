@@ -119,14 +119,13 @@ various tools.
 Notice that no web server was configured or even referenced in the implementing
 module - this is all handled by the runtime framework.
 
-Sample projects:
+Some sample projects:
 
-- https://github.com/folio-org/mod-circulation
 - https://github.com/folio-org/mod-configuration
-- https://github.com/folio-org/mod-acquisitions
+- https://github.com/folio-org/mod-loan-storage
 - https://github.com/folio-org/mod-acquisitions-postgres
 
-and other [modules](http://dev.folio.org/source-code/#server-side).
+and other [modules](http://dev.folio.org/source-code/#server-side) (not all do use the RMB).
 
 
 ## Get started with a sample working module
