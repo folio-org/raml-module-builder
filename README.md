@@ -216,7 +216,7 @@ directory within the root of the project.
 
 `ebook.raml`
 
-```sh
+```raml
 #%RAML 0.8
 
 title: e-BookMobile API
@@ -279,7 +279,7 @@ Create JSON schemas indicating the objects exposed by the module:
 
 `ebook.schema`
 
-```sh
+```json
 
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
@@ -337,7 +337,7 @@ Create JSON schemas indicating the objects exposed by the module:
 
 ### Step 2: Include the jars in your project pom.xml
 
-```sh
+```xml
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
@@ -369,7 +369,7 @@ Four plugins should be declared in the pom.xml file:
 
 Add `ramlfiles_path` properties indicating the location of the RAML directories:
 
-```sh
+```xml
   <properties>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <ramlfiles_util_path>${basedir}/raml-util</ramlfiles_util_path>
@@ -378,8 +378,7 @@ Add `ramlfiles_path` properties indicating the location of the RAML directories:
 
 Add the plugins:
 
-```sh
-
+```xml
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.1</version>
@@ -572,7 +571,7 @@ will run during verticle deployment. The verticle will not complete deployment
 until the init() completes. The init() function can do anything basically. but
 it must call back the Handler. For example:
 
-```sh
+```java
 public class InitAPIs implements InitAPI {
 
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler){
@@ -594,7 +593,7 @@ It is possible to add custom code that will run periodically. For example,
 to ongoingly check status of something in the system and act upon that.
 Need to implement the PeriodicAPI interface:
 
-```sh
+```java
 public interface PeriodicAPI {
   /** this implementation should return the delay in which to run the function */
   public long runEvery();
@@ -606,8 +605,7 @@ public interface PeriodicAPI {
 
 For example:
 
-```sh
-
+```java
 public class PeriodicAPIImpl implements PeriodicAPI {
 
 
@@ -636,7 +634,7 @@ There can be multiple implementations of the periodic hook, all will be called b
 ## Adding a hook to run immediately after verticle deployment
 It is possible to add custom code that will immediately after the verticle running the module is deployed.
 
-```sh
+```java
 public interface PostDeployVerticle {
 
   /** this implementation will be run immediately after the verticle is initially deployed. Failure does not stop
@@ -650,7 +648,7 @@ public interface PostDeployVerticle {
 
 An implementation example:
 
-```sh
+```java
 public class InitConfigService implements PostDeployVerticle {
 
   @Override
@@ -682,7 +680,7 @@ not be guaranteed to run if the JVM is forcefully shutdown.
 
 The interface to implement:
 
-```sh
+```java
 public interface ShutdownAPI {
 
   public void shutdown(Vertx vertx, Context context, Handler<AsyncResult<Void>> handler);
@@ -692,7 +690,7 @@ public interface ShutdownAPI {
 
 An implementation example:
 
-```sh
+```java
 public class ShutdownImpl implements ShutdownAPI {
 
   @Override
@@ -723,7 +721,7 @@ The RMB (RAML-Module-Builder) supports several methods to upload file / data. Th
 
 #### A multipart RAML declaration may look something like this:
 
-```sh
+```raml
 /uploadmultipart:
     description: Uploads a file
     post:
@@ -770,7 +768,7 @@ where each section in the body (separated by the boundary) is a "part".
 
 #### An octet/stream can look something like this:
 
-```sh
+```raml
  /uploadOctet:
     description: Uploads a file
     post:
@@ -813,7 +811,7 @@ layer.
 
 Currently the expected format is:
 
-```sh
+```sql
 create table <schema>.<table_name> (
   _id SERIAL PRIMARY KEY,
   jsonb JSONB NOT NULL
@@ -839,7 +837,7 @@ When querying such a table, you would want to get back all columns, not just the
 To achieve this, the declared json schema would need to contain a jsonb field.
 For example: json schema representing the entire auditing table row
 
-```sh
+```json
 {
   "$schema":"http://json-schema.org/draft-04/schema#",
   "type":"object",
@@ -910,7 +908,7 @@ The needed steps are:
 
 A good way for a module to set the secret key is by using the post deployment hook interface in the RMB.
 
-```sh
+```java
 public class InitConfigService implements PostDeployVerticle {
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {
@@ -974,7 +972,7 @@ https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-ser
 The RMB comes with a TenantClient to facilitate calling the API via URL.
 To post a tenant via the client:
 
-```sh
+```java
 TenantClient tClient = null;
 tClient = new TenantClient("localhost", port, "mytenantid");
 tClient.post( response -> {
@@ -1002,7 +1000,7 @@ Examples:
 
 Saving a POJO within a transaction:
 
-```sh
+```java
 PoLine poline = new PoLine();
 
 ...
@@ -1012,7 +1010,7 @@ postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...
 
 Querying for similar POJOs in the DB (with or without additional criteria):
 
-```sh
+```java
 Criterion c = new Criterion(new Criteria().addField("_id").setJSONB(false).setOperation("=").setValue("'"+entryId+"'"));
 
 postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
@@ -1027,7 +1025,7 @@ The RMB can receive parameters of different types. Modules can declare a query p
 
 The RMB exposes an easy way to query, using CQL (https://github.com/folio-org/cql2pgjson-java). This enables a seamless integration from the query parameters to a prepared where clause to query with.
 
-```sh
+```java
 //create object on table.field
 CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablename.jsonb");
 //cql wrapper based on table.field and the cql query
@@ -1038,7 +1036,8 @@ PostgresClient.getInstance(context.owner(), tenantId).get(CONFIG_COLLECTION, Con
 ```
 
 The CQLWrapper can also get an offset and limit
-```sh
+
+```java
 new CQLWrapper(cql2pgJson, query).setLimit(new Limit(limit)).setOffset(new Offset(offset));
 ```
 
@@ -1087,7 +1086,8 @@ end
 
 It is also possible to create a Drools session in your code, and load rules into the session in a more dynamic way.
 For example:
-```
+
+```java
 import org.folio.rulez.Rules;
 ...
 List<String> ruleList = generateDummyRule();
@@ -1102,7 +1102,7 @@ Assert.assertEquals("THIS IS A TEST", message.getMessage());
 
 An additional option to use the Drools framework in the RMB is to load rules dynamically. For example, a module may decide to store Drool `.drl` files in a database. This allows a module to allow admin users to update rules in the database and then load them into the RMB validation mechanism for use at runtime.
 
-```
+```java
       Rules rules = new Rules(List<String> rulesLoaded);
       ksession = rules.buildSession();
       RestVerticle.updateDroolsSession(ksession);
@@ -1122,15 +1122,17 @@ either:
 
 For example:
 In the circulation project, the messages file can be found at `/circulation/src/main/resources/en_messages.prop` with the following content:
+
 ```sh
 20002=Operation can not be calculated on a Null Amount
 20003=Unable to pay fine, amount is larger than owed
 20004=The item {0} is not renewable
 20005=Loan period must be greater than 1, period entered: {0}
 ```
+
 The circulation project exposes these messages as enums for easier usage in the code:
 
-```sh
+```java
 package org.folio.utils;
 
 import org.folio.rest.tools.messages.MessageEnum;
@@ -1233,7 +1235,7 @@ To override the `/health` API to return a relevant business logic health check f
 
 Example:
 
-```sh
+```java
 public class CustomHealthCheck extends AdminAPI {
 
   @Override
@@ -1268,7 +1270,7 @@ The framework can generate a Client class for every raml file with a function fo
 
 To generate a client API from your raml add the following plugin to your pom.xml
 
-```sh
+```xml
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
@@ -1305,7 +1307,7 @@ To generate a client API from your raml add the following plugin to your pom.xml
 
 For the monitoring APIs exposed by the runtime framework, changing the log level via the client would look like this:
 
-```sh
+```java
     AdminClient aClient = new AdminClient("localhost", 8083, "myuniversityId");
     aClient.putLoglevel(Level.FINE, "org.folio",  apiResponse -> {
       System.out.println(apiResponse.statusCode());
@@ -1314,7 +1316,7 @@ For the monitoring APIs exposed by the runtime framework, changing the log level
 
 Requesting a stack trace would look like this:
 
-```sh
+```java
     AdminClient aClient = new AdminClient("localhost", 8083, "myuniversityId");
     aClient.getJstack( trace -> {
       trace.bodyHandler( content -> {
@@ -1333,7 +1335,7 @@ Query parameters and header validation
 ![](images/object_validation.png)
 
 ### function example
-```sh
+```java
   @Validate
   @Override
   public void getConfigurationsEntries(String query, int offset, int limit,
