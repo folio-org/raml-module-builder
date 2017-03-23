@@ -1209,20 +1209,20 @@ A `java_package` parameter can also be passed to change the log level of a speci
 
 ## Monitoring
 
-The runtime framework via the /admin API exposes (as previously mentioned) some APIs to help monitor the service / module - (setting log levels, DB information):
- - The `jstack` command is available using the `/admin/jstack` API.
-    - returns stack traces of all threads in the JVM to help find slower / bottleneck methods
- - The `memory` command is available using the `/admin/memory` API.
-    - returns a jstat type of reply indicating memory usage within the JVM on a per pool basis (survivor, old gen, new gen, metadata, etc..) with usage percentages.
- - `/slow_queries` returns queries taking longer than X seconds
- - `/cache_hit_rates` returns cache hit rates in Postgres
- - `/table_index_usage` returns index usage per table
- - `/postgres_table_size` disk space used per table
- - `/postgres_table_access_stats` returns information about how tables are being accessed
- - `/postgres_load` returns load information in Postgres
- - `/postgres_active_sessions` returns active sessions in Postgres
- - `/health` returns status code 200 as long as service is up
- - `/module_stats` currently returns summary statistics (count, sum, min, max, average) of all select / update / delete / insert DB queries in the last 2 minutes.
+The runtime framework via the `/admin` API exposes (as previously mentioned) some APIs to help monitor the service (setting log levels, DB information).
+Some are listed below (and see the [full set](#documentation-of-the-apis)):
+
+ - `/admin/jstack` -- Stack traces of all threads in the JVM to help find slower and bottleneck methods.
+ - `/admin/memory` -- A jstat type of reply indicating memory usage within the JVM on a per pool basis (survivor, old gen, new gen, metadata, etc.) with usage percentages.
+ - `/admin/slow_queries` -- Queries taking longer than X seconds.
+ - `/admin/cache_hit_rates` -- Cache hit rates in Postgres.
+ - `/admin/table_index_usage` -- Index usage per table.
+ - `/admin/postgres_table_size` -- Disk space used per table.
+ - `/admin/postgres_table_access_stats` -- Information about how tables are being accessed.
+ - `/admin/postgres_load` -- Load information in Postgres.
+ - `/admin/postgres_active_sessions` -- Active sessions in Postgres.
+ - `/admin/health` -- Returns status code 200 as long as service is up.
+ - `/admin/module_stats` -- Summary statistics (count, sum, min, max, average) of all select / update / delete / insert DB queries in the last 2 minutes.
 
 ## Overriding Out of The Box RMB APIs
 It is possible to over ride APIs that the RMB provides with custom implementations.
