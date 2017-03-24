@@ -71,7 +71,7 @@ When that is understood, then move on to the section
 
 Note that actually building this RAML Module Builder framework is not required.
 (Some of the images below are out-of-date.) The already published artifacts will
-be incorporated into your project from the repository.
+be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your project from the repository.
 
 ## The basics
 
