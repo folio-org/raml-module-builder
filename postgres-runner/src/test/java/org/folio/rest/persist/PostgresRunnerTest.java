@@ -103,7 +103,7 @@ public class PostgresRunnerTest {
       } else {
         asyncHandler.handle(Future.succeededFuture());
       }
-      log.debug("{0} {1} response={2}", method, url, conn.getResponseCode(), Integer.valueOf(conn.getResponseCode()));
+      log.debug("{0} {1} response={2}", method, url, conn.getResponseCode());
       conn.disconnect();
     } catch (Exception e) {
       asyncHandler.handle(Future.failedFuture(e));
@@ -163,7 +163,8 @@ public class PostgresRunnerTest {
       } catch (IOException e) {
         context.fail(e);
       }
-      context.assertTrue(h.cause().getMessage().contains("RunnerPort is already in use"));
+      String message = h.cause().getMessage();
+      context.assertTrue(message.contains("RunnerPort " + ports.port1 + " is already in use"), message);
       async.complete();
     });
   }
@@ -204,6 +205,8 @@ public class PostgresRunnerTest {
     PostgresRunnerMock.main(mock, ports.port1, ports.port2, "u", "p", h -> {
       context.assertTrue(PostgresRunnerMock.getInvoked);
       context.assertTrue(PostgresRunnerMock.postInvoked);
+      context.assertEquals("u", PostgresRunnerMock.postgresConfig.credentials().username());
+      context.assertEquals("p", PostgresRunnerMock.postgresConfig.credentials().password());
       async.complete();
     });
   }
