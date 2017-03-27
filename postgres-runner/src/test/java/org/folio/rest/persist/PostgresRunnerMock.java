@@ -16,6 +16,7 @@ public class PostgresRunnerMock extends PostgresRunner {
   static boolean stopInvoked;
   static boolean getInvoked;
   static boolean postInvoked;
+  static PostgresConfig postgresConfig;
 
   public PostgresRunnerMock() {
     super();
@@ -28,6 +29,7 @@ public class PostgresRunnerMock extends PostgresRunner {
   @Override
   PostgresProcess startPostgres(PostgresConfig postgresConfig) throws IOException {
     log.debug("startPostgres(PostgresConfig)");
+    PostgresRunnerMock.postgresConfig = postgresConfig;
     startInvoked = true;
     return null;
   }
