@@ -141,7 +141,8 @@ $ mvn clean install
 
 - This module implements basic configuration APIs. It contains two sub modules, the configuration server and a configuration client (which can be used to interact with the server in a more OO manner, instead of using URLs).
 
-- RAMLs and JSON schemas can be found in the `ramls` directory.
+- Its RAMLs and JSON schemas can be found in the `ramls` directory.
+These are also displayed as local [API documentation](#documentation-of-the-apis).
 
 - Open the pom.xml in the configuration server module - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files within the configuration server project. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
 
@@ -632,7 +633,8 @@ There can be multiple implementations of the periodic hook, all will be called b
 
 
 ## Adding a hook to run immediately after verticle deployment
-It is possible to add custom code that will immediately after the verticle running the module is deployed.
+
+It is possible to add custom code that will be run immediately after the verticle running the module is deployed.
 
 ```java
 public interface PostDeployVerticle {
@@ -675,7 +677,7 @@ public class InitConfigService implements PostDeployVerticle {
 ## Adding a shutdown hook
 
 It is possible to add custom code that will run just before the verticle is
-undeployed and the JVM stopped. This will occur on graceful shutdowns - but can
+undeployed and the JVM stopped. This will occur on graceful shutdowns, but can
 not be guaranteed to run if the JVM is forcefully shutdown.
 
 The interface to implement:
@@ -715,7 +717,7 @@ Note that when implementing the generated interfaces it is possible to add a con
 
 ## Implementing file uploads
 
-The RMB (RAML-Module-Builder) supports several methods to upload file / data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
+The RMB (RAML-Module-Builder) supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
 
 ### Option 1
 
@@ -753,8 +755,9 @@ Content-Type: application/octet-stream
 
 ------WebKitFormBoundaryNKJKWHABrxY1AdmG
 ```
+
 There will be a `MimeMultipart` parameter passed into the generated interfaces. An implementing
-module can access its conect in the following manner:
+module can access its content in the following manner:
 
 ```sh
 int parts = entity.getCount();
@@ -777,6 +780,7 @@ where each section in the body (separated by the boundary) is a "part".
       body:
         application/octet-stream:
 ```
+
 The interfaces generated from the above will contain a parameter of type `java.io.InputStream`
 representing the uploaded file.
 
@@ -784,7 +788,7 @@ representing the uploaded file.
 ### Option 2
 
 The RMB allows for content to be streamed to a specific implemented interface.
-For example, if i would like to upload a large file without having to save it all in memory, i can:
+For example, to upload a large file without having to save it all in memory:
 
  - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
  - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
@@ -818,11 +822,11 @@ create table <schema>.<table_name> (
 );
 ```
 
-This means that all the fields in the json schema (representing the json object) **are** the jsonb (column) in the Postgres table.
+This means that all the fields in the JSON schema (representing the JSON object) **are** the "jsonb" (column) in the Postgres table.
 
-There is one exception to this. Lets take an example of an auditing table which wants to store changes to a specific table. Every row in the audit table will contain the operation, date and the current content (jsonb) in the table being audited.
+There is one exception to this. Lets take an example of an auditing table which wants to store changes to a specific table. Every row in the audit table will contain the operation, date, and the current content (jsonb) in the table being audited.
 
-for example:
+For example:
 
 
 _id| orig_id | operation | jsonb | creation_date
@@ -834,8 +838,8 @@ _id| orig_id | operation | jsonb | creation_date
 
 When querying such a table, you would want to get back all columns, not just the id and the jsonb columns.
 
-To achieve this, the declared json schema would need to contain a jsonb field.
-For example: json schema representing the entire auditing table row
+To achieve this, the declared JSON schema would need to contain a "jsonb" field.
+For example: JSON schema representing the entire auditing table row:
 
 ```json
 {
@@ -870,12 +874,13 @@ For example: json schema representing the entire auditing table row
   }
 }
 ```
-where the jsonb field references a json schema that will exist in the jsonb column in the table.
+where the "jsonb" field references a JSON schema that will exist in the "jsonb" column in the table.
 
-The example above refers to querying only. As of now, saving a record will only save the jsonb and id fields (the above example uses triggers to populate the operation, creation data and original id).
+The example above refers to querying only. As of now, saving a record will only save the "jsonb" and "id" fields (the above example uses triggers to populate the operation, creation data, and original id).
 
 #### Credentials
-Credentials when running in embedded mode are read from `resources/postgres-conf.json`. If a file is not found the following configuration will be used by default:
+
+When running in embedded mode, credentials are read from `resources/postgres-conf.json`. If a file is not found, then the following configuration will be used by default:
 
 ```
 port: 6000
@@ -891,12 +896,11 @@ As previously mentioned, the Postgres Client supplied by the RMB looks for a fil
 
 Meaning: password in plain text + secret key = encrypted password
 
-
 The RMB comes with an AES class that supports generating secret keys, encrypting and decrypting them, https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/security/AES.java
 
-Note the use of this class is optional.
+Note that the use of this class is optional.
 
-To work with an encrypted password the RMB exposes an API that can be used to set the secret key (stored only in memory). When creating the DB connection the RMB will check to see if the secret key has been set. If the secret key has been set the RMB will decrypt the password with the secret key, and use the decrypted password to connect to the DB with. Otherwise it will assume an un-encrypted password, and will connect using that password as is.
+To work with an encrypted password the RMB exposes an API that can be used to set the secret key (stored only in memory). When creating the DB connection the RMB will check to see if the secret key has been set. If the secret key has been set, the RMB will decrypt the password with the secret key, and use the decrypted password to connect to the DB. Otherwise it will assume an un-encrypted password, and will connect using that password as-is.
 A module can also set the secret key via the static method `AES.setSecretKey(mykey)`
 
 The needed steps are:
@@ -904,7 +908,7 @@ The needed steps are:
  -  Generate a key
  -  Encrypt a password
  -  Include that password in the config file
- -  Either call `AES.setSecretKey(mykey)` or the `admin/set_AES_key` API - (to load the secret key into memory)
+ -  Either call `AES.setSecretKey(mykey)` or the `admin/set_AES_key` API (to load the secret key into memory)
 
 A good way for a module to set the secret key is by using the post deployment hook interface in the RMB.
 
@@ -933,7 +937,7 @@ public class InitConfigService implements PostDeployVerticle {
 
 ## Tenant API
 
-The Postgres Client support in the RMB is schema specific, meaning, it expects every tenant to be represented by its own schema. The RMB exposes 3 APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existence' of a tenant schema. Note that the use of this API is optional.
+The Postgres Client support in the RMB is schema specific, meaning that it expects every tenant to be represented by its own schema. The RMB exposes three APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existence' of a tenant schema. Note that the use of this API is optional.
 
 The RAML defining the API:
 
@@ -946,9 +950,9 @@ An example of such a file can be found in the configuration module:
 
 https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/resources/template_create_tenant.sql
 
-Notice the *myuniversity* placeholders in the file. The x-okapi-tenant header passed in to the API call will be used to get the tenant id. That tenant id will replace the *myuniversity* placeholder. The *mymodule* placeholder maybe used as well and is replaced by the name of the module (the value used for the module name is the artifactId found in the pom.xml, the parent artifactId is used if one is found).  Additional placeholders may be added in the future.
+Notice the *myuniversity* placeholders in the file. The x-okapi-tenant header passed in to the API call will be used to get the tenant id. That tenant id will replace the *myuniversity* placeholder. The *mymodule* placeholder maybe used as well and is replaced by the name of the module (the value used for the module name is the artifactId found in the pom.xml and the parent artifactId is used if one is found).  Additional placeholders may be added in the future.
 
-Posting a new tenant can optionally include a body. The body should contain a json conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version. In the case where `module_from` is included in the json, the RMB will look for an `template_update_tenant.sql` file to run (if one is not found, no script will be run. An optional `template_update_audit.sql` can also be created, and it will be run, if found, in case of an update indication [`module_from`])
+Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version. In the case where `module_from` is included in the JSON, the RMB will look for an `template_update_tenant.sql` file to run (if one is not found, then no script will be run. An optional `template_update_audit.sql` can also be created, and it will be run, if found, in case of an update indication [`module_from`])
 
 ##### Encrypting Tenant passwords
 
@@ -1023,7 +1027,7 @@ postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
 
 The RMB can receive parameters of different types. Modules can declare a query parameter and receive it as a string parameter in the generated API functions.
 
-The RMB exposes an easy way to query, using CQL (https://github.com/folio-org/cql2pgjson-java). This enables a seamless integration from the query parameters to a prepared where clause to query with.
+The RMB exposes an easy way to query, using CQL (https://github.com/folio-org/cql2pgjson-java). This enables a seamless integration from the query parameters to a prepared "where" clause to query with.
 
 ```java
 //create object on table.field
@@ -1035,7 +1039,7 @@ PostgresClient.getInstance(context.owner(), tenantId).get(CONFIG_COLLECTION, Con
           cql, true,
 ```
 
-The CQLWrapper can also get an offset and limit
+The CQLWrapper can also get an offset and limit:
 
 ```java
 new CQLWrapper(cql2pgJson, query).setLimit(new Limit(limit)).setOffset(new Offset(offset));
@@ -1059,8 +1063,8 @@ put) by the runtime framework. This works in the following manner:
 
 This allows for more complex validation of objects.
 
-- For example, if two specific fields can logically be null, but not at the
-  same time - that can easily be implemented with a Drool, as those types of
+- For example, two specific fields can logically be null, but not at the
+  same time. That can easily be implemented with a Drool, as those types of
   validations are harder to create in a RAML file.
 
 - The `rules` project also exposes the drools session and allows validation
@@ -1100,7 +1104,7 @@ ksession.fireAllRules();
 Assert.assertEquals("THIS IS A TEST", message.getMessage());
 ```
 
-An additional option to use the Drools framework in the RMB is to load rules dynamically. For example, a module may decide to store Drool `.drl` files in a database. This allows a module to allow admin users to update rules in the database and then load them into the RMB validation mechanism for use at runtime.
+An additional option to use the Drools framework in the RMB is to load rules dynamically. For example, a module may decide to store Drool `.drl` files in a database. This enables a module to allow admin users to update rules in the database and then load them into the RMB validation mechanism for use at runtime.
 
 ```java
       Rules rules = new Rules(List<String> rulesLoaded);
@@ -1112,13 +1116,12 @@ An additional option to use the Drools framework in the RMB is to load rules dyn
 
 The runtime framework comes with a set of messages it prints out to the logs /
 sends back as error responses to incorrect API calls. These messages are
-language specific. In order to add your own message files, place the files in
+language-specific. In order to add your own message files, place the files in
 your project under the `/resources/messages` directory.
 
-Note that the format of the file names should be:
-either:
-`[name]_[lang_2_letters].properties - for example: APIMessages_de.properties`
-`[lang_2_letters]_messages.yyy - for example: en_messages.prop`
+Note that the format of the file names should be either:
+- `[name]_[lang_2_letters].properties` (e.g.: `APIMessages_de.properties`)
+- `[lang_2_letters]_messages.prop` (e.g.: `en_messages.prop`)
 
 For example:
 In the circulation project, the messages file can be found at `/circulation/src/main/resources/en_messages.prop` with the following content:
@@ -1266,9 +1269,9 @@ public class CustomHealthCheck extends AdminAPI {
 
 ## Client Generator
 
-The framework can generate a Client class for every raml file with a function for every API endpoint in the raml.
+The framework can generate a Client class for every RAML file with a function for every API endpoint in the RAML.
 
-To generate a client API from your raml add the following plugin to your pom.xml
+To generate a client API from your RAML add the following plugin to your pom.xml
 
 ```xml
       <plugin>
