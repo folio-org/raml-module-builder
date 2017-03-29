@@ -62,8 +62,9 @@ The framework consists of a number of tools:
 ## Overview
 
 Follow the [Introduction](#introduction) section above to generally understand
-the framework. Then scan the [Basics](#the-basics) section for a high-level
-overview. Then follow the
+the RMB framework.
+Review the separate [Okapi Guide and Reference](https://github.com/folio-org/okapi/blob/master/doc/guide.md).
+Scan the [Basics](#the-basics) section below for a high-level overview of RMB. Then follow the
 [Get started with a sample working module](#get-started-with-a-sample-working-module)
 section which demonstrates an already constructed example.
 When that is understood, then move on to the section
@@ -162,7 +163,9 @@ $ java -jar mod-configuration-server/target/mod-configuration-server-fat.jar emb
 Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
 (for example to view or set the [Logging](#logging) levels).
 
-The local [API Documentation](#documentation-of-the-apis) is available.
+At this stage there is not much that can be queried, so stop that quick demonstration now.
+After explaining general command-line options, etc.
+we will get your local development server running and populated with test data.
 
 ## Command-line options
 
@@ -206,8 +209,40 @@ RMB implementing modules expect a set of environment variables to be passed in a
 
 See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables) section of the Okapi Guide for more information on how to deploy environment variables to RMB modules via Okapi.
 
-## Creating a new module
+## Local development server
 
+To get going quickly with running a local instance of Okapi, adding a tenant and some test data,
+and deploying some modules, follow these separate brief
+[instructions](https://github.com/folio-org/ui-okapi-console/blob/master/automation/README.md).
+
+Ensure that the sample users are loaded, and that a query is successful:
+
+```
+curl -D - -w '\n' \
+  -H "X-Okapi-Tenant: diku" \
+  http://localhost:9131/users?active=true
+```
+
+Use the local [API documentation](#documentation-of-the-apis) to view the RAMLs and conduct some more requests
+(and remember to specify the "X-Okapi-Tenant: diku" header):
+```
+http://localhost:9131/apidocs/index.html?raml=raml/users.raml
+```
+
+Now use a similar method to deploy and enable the mod-configuration module that we started to investigate
+[above](#get-started-with-a-sample-working-module).
+
+Use the local [API documentation](#documentation-of-the-apis) to view the RAMLs, and post some entries,
+and conduct some requests:
+```
+http://localhost:9132/apidocs/index.html?raml=raml/configuration/config.raml
+```
+
+Continue to investigate the mod-configuration example.
+
+After getting started with your new module as explained below, it can be similarly deployed and investigated.
+
+## Creating a new module
 
 ### Step 1: Describe the APIs to be exposed by the new module
 
@@ -950,7 +985,7 @@ An example of such a file can be found in the configuration module:
 
 https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/resources/template_create_tenant.sql
 
-Notice the *myuniversity* placeholders in the file. The x-okapi-tenant header passed in to the API call will be used to get the tenant id. That tenant id will replace the *myuniversity* placeholder. The *mymodule* placeholder maybe used as well and is replaced by the name of the module (the value used for the module name is the artifactId found in the pom.xml and the parent artifactId is used if one is found).  Additional placeholders may be added in the future.
+Notice the *myuniversity* placeholders in the file. The x-okapi-tenant header passed in to the API call will be used to get the tenant id. That tenant id will replace the *myuniversity* placeholder. The *mymodule* placeholder maybe used as well, and is replaced by the name of the module (the value used for the module name is the artifactId found in the pom.xml and the parent artifactId is used if one is found).  Additional placeholders may be added in the future.
 
 Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version. In the case where `module_from` is included in the JSON, the RMB will look for an `template_update_tenant.sql` file to run (if one is not found, then no script will be run. An optional `template_update_audit.sql` can also be created, and it will be run, if found, in case of an update indication [`module_from`])
 
