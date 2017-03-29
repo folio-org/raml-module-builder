@@ -130,12 +130,6 @@
         <version>4.1</version>
     </dependency>
     <dependency>
-      <groupId>xpp3</groupId>
-      <artifactId>xpp3_min</artifactId>
-      <version>1.1.4c</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>postgres-runner</artifactId>
       <version>${project.parent.version}</version>
@@ -486,10 +480,6 @@
             </goals>
           </execution>
         </executions>
-        <configuration>
-          <generateGitPropertiesFile>true</generateGitPropertiesFile>
-          <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
-        </configuration>
       </plugin>
     </plugins>
   </build>

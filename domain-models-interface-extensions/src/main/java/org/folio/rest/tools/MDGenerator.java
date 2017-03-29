@@ -73,7 +73,7 @@ public enum MDGenerator {
   private MDGenerator() {
     md.put(ROUTING_ENTRIES, rEntries);
     md.put(PROVIDES, provides);
-    String id = PomReader.INSTANCE.getModuleName();
+    String id = ApplicationProperties.getNameUnderscore();
     setID(id);
     setName(id.replaceAll("_", " ") + " Module");
     setEnvs();
@@ -146,7 +146,7 @@ public enum MDGenerator {
     private JsonObject entry  = new JsonObject();
 
     public ProvidesEntry() {
-      String version = PomReader.INSTANCE.getVersion();
+      String version = ApplicationProperties.getVersionShort();
       entry.put("version", version.substring(0, version.indexOf(".")) + ".0");
     }
     public void setId(String id) {
