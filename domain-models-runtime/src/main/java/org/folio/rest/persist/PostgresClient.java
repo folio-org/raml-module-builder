@@ -1,21 +1,8 @@
 package org.folio.rest.persist;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.asyncsql.AsyncSQLClient;
-import io.vertx.ext.sql.ResultSet;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.UpdateResult;
-
 import java.io.File;
 import java.io.FileReader;
+import java.io.StringReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -30,6 +17,8 @@ import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.StrSubstitutor;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -44,9 +33,27 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.flapdoodle.embed.process.config.IRuntimeConfig;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.asyncsql.AsyncSQLClient;
+import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.UpdateResult;
 import ru.yandex.qatools.embed.postgresql.Command;
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -57,11 +64,6 @@ import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
 import ru.yandex.qatools.embed.postgresql.config.RuntimeConfigBuilder;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
 import ru.yandex.qatools.embed.postgresql.ext.ArtifactStoreBuilder;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import de.flapdoodle.embed.process.config.IRuntimeConfig;
 
 /**
  * @author shale currently does not support binary data unless base64 encoded
@@ -117,7 +119,7 @@ public class PostgresClient {
 
   public void setIdField(String id){
     idField = id;
-    Map<String, String> replaceMapping = new HashMap<String, String>();
+    Map<String, String> replaceMapping = new HashMap<>();
     replaceMapping.put("id", idField);
     StrSubstitutor sub = new StrSubstitutor(replaceMapping);
     countClause = sub.replace(countClauseTemplate);
@@ -1589,6 +1591,7 @@ public class PostgresClient {
       String[] allLines = sqlFile.split("(\r\n|\r|\n)");
       List<String> execStatements = new ArrayList<>();
       boolean inFunction = false;
+      boolean inCopy = false;
       boolean funcCompleteAddFuncAttributes = false;
       for (int i = 0; i < allLines.length; i++) {
         if(allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
@@ -1604,8 +1607,17 @@ public class PostgresClient {
           //this is an sql comment, skip
           continue;
         }
-        else if(allLines[i].toUpperCase().matches("^\\s*(CREATE OR REPLACE FUNCTION|CREATE FUNCTION).*")){
+        else if(allLines[i].toUpperCase().matches("^\\s*(COPY ).*?FROM.*?STDIN.*") && !inFunction){
           singleStatement.append(allLines[i]);
+          inCopy = true;
+        }
+        else if (inCopy && (allLines[i].trim().equals("\\."))){
+          inCopy = false;
+          execStatements.add( singleStatement.toString() );
+          singleStatement = new StringBuilder();
+        }
+        else if(allLines[i].toUpperCase().matches("^\\s*(CREATE OR REPLACE FUNCTION|CREATE FUNCTION).*")){
+          singleStatement.append(allLines[i]+"\n");
           inFunction = true;
         }
         else if (inFunction && allLines[i].trim().toUpperCase().matches(".*\\s*LANGUAGE .*")){
@@ -1628,11 +1640,14 @@ public class PostgresClient {
           execStatements.add( singleStatement.toString() );
           singleStatement = new StringBuilder();
         }
-        else if(allLines[i].trim().endsWith(";") && !inFunction){
+        else if(allLines[i].trim().endsWith(";") && !inFunction && !inCopy){
           execStatements.add( singleStatement.append(" " + allLines[i]).toString() );
           singleStatement = new StringBuilder();
         }
         else {
+          if(inCopy)  {
+            singleStatement.append("\n");
+          }
           singleStatement.append(" " + allLines[i]);
         }
       }
@@ -1660,6 +1675,62 @@ public class PostgresClient {
       "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
   }
 
+  /**
+   * Copy files via the COPY FROM postgres syntax
+   * Support 3 modes
+   * 1. In line (STDIN) Notice the mandatory \. at the end of all entries to import
+   * COPY config_data (jsonb) FROM STDIN ENCODING 'UTF8';
+   * {"module":"SETTINGS","config_name":"locale","update_date":"1.1.2017","code":"system.currency_symbol.dk","description":"currency code","default": false,"enabled": true,"value": "kr"}
+   * \.
+   * 2. Copy from a data file packaged in the jar
+   * COPY config_data (jsonb) FROM 'data/locales.data' ENCODING 'UTF8';
+   * 3. Copy from a file on disk (absolute path)
+   * COPY config_data (jsonb) FROM 'C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\data\\locales.data' ENCODING 'UTF8';
+
+   * @param copyInStatement
+   * @param connection
+   * @throws Exception
+   */
+  private void copyIn(String copyInStatement, Connection connection) throws Exception {
+    CopyManager copyManager =
+        new CopyManager((BaseConnection) connection);
+    if(copyInStatement.contains("STDIN")){
+      //run as is
+      int sep = copyInStatement.indexOf("\n");
+      String copyIn = copyInStatement.substring(0, sep);
+      String data = copyInStatement.substring(sep+1);
+      copyManager.copyIn(copyIn, new StringReader(data));
+    }
+    else{
+      //copy from a file,
+      String[] valuesInQuotes = StringUtils.substringsBetween(copyInStatement , "'", "'");
+      if(valuesInQuotes.length == 0){
+        log.warn("SQL statement: COPY FROM, has no STDIN and no file path wrapped in ''");
+        throw new Exception("SQL statement: COPY FROM, has no STDIN and no file path wrapped in ''");
+      }
+      //do not read from the file system for now as this needs to support data files packaged in
+      //the jar, read files into memory and load - consider improvements to this
+      String filePath = valuesInQuotes[0];
+      String data;
+      if(new File(filePath).isAbsolute()){
+        data = FileUtils.readFileToString(new File(filePath), "UTF8");
+      }
+      else{
+        try {
+          //assume running from within a jar,
+          data = ResourceUtils.resource2String(filePath);
+        } catch (Exception e) {
+          //from IDE
+          data = ResourceUtils.resource2String("/"+filePath);
+        }
+      }
+      copyInStatement = copyInStatement.replace("'"+filePath+"'", "STDIN");
+      System.out.println("copyInStatement: "+copyInStatement);
+      copyManager.copyIn(copyInStatement, new StringReader(data));
+    }
+
+  }
+
   private void execute(String[] sql, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
 
@@ -1680,7 +1751,12 @@ public class PostgresClient {
         for (int j = 0; j < sql.length; j++) {
           try {
             log.info("trying to execute: " + sql[j]);
-            statement.executeUpdate(sql[j]);
+            if(sql[j].trim().toUpperCase().startsWith("COPY ")){
+              copyIn(sql[j], connection);
+            }
+            else{
+              statement.executeUpdate(sql[j]);
+            }
             log.info("Successfully executed: " + sql[j]);
           } catch (Exception e) {
             results.add(sql[j]);
