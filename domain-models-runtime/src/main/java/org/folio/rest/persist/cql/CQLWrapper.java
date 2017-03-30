@@ -8,14 +8,13 @@ import org.folio.rest.persist.Criteria.Offset;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
-
 public class CQLWrapper {
 
   CQL2PgJSON field;
   String query;
   private Limit  limit = new Limit();
   private Offset offset = new Offset();
-  private List<WrapTheWrapper> addedWrappers = new ArrayList<WrapTheWrapper>();
+  private List<WrapTheWrapper> addedWrappers = new ArrayList<>();
 
 
   public CQLWrapper() {
@@ -71,37 +70,60 @@ public class CQLWrapper {
   }
 
   /**
+   * Append field.cql2pgJson(query) to sb.
+   *
+   * @param sb where to append
+   * @param query CQL query
+   * @param field field the query is based on
+   * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
+   */
+  private void append(StringBuilder sb, String query, CQL2PgJSON field) {
+    if(query == null || field == null) {
+      return;
+    }
+    try {
+      sb.append(field.cql2pgJson(query));
+    } catch (QueryValidationException e) {
+      throw new CQLQueryValidationException(e);
+    }
+  }
+
+  /**
+   * Append text to sb. Do nothing if sb is null or empty.
+   * Before appending append a space if sb is not empty.
+   * @param sb where to append
+   * @param text what to append
+   */
+  private void spaceAppend(StringBuilder sb, String text) {
+    if (text == null || text.isEmpty()) {
+      return;
+    }
+    if (sb.length() > 0) {
+      sb.append(' ');
+    }
+    sb.append(text);
+  }
+
+  /**
    * @return a space followed by the SQL clauses of WHERE, OFFSET and LIMIT
-   * @throws IllegalStateException when the underlying CQL2PgJSON throws a QueryValidationException
+   * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
    */
   @Override
   public String toString() {
-    String q = "";
-    StringBuffer sb = new StringBuffer();
-    if(query != null && field != null){
-      try {
-        sb.append(field.cql2pgJson(query));
-      } catch (QueryValidationException e) {
-        throw new IllegalStateException(e);
+    StringBuilder sb = new StringBuilder();
+    append(sb, query, field);
+    for (WrapTheWrapper wrap : addedWrappers) {
+      if (sb.length() > 0) {
+        sb.append(' ').append(wrap.operator).append(' ');
       }
+      append(sb, wrap.wrapper.getQuery(), wrap.wrapper.getField());
     }
-    int addons = addedWrappers.size();
-    for (int i = 0; i < addons; i++) {
-      CQL2PgJSON field = addedWrappers.get(i).wrapper.getField();
-      String query = addedWrappers.get(i).wrapper.getQuery();
-      if(sb.length() > 0){
-        sb.append(" ").append(addedWrappers.get(i).operator).append(" ");
-      }
-      try {
-        sb.append(field.cql2pgJson(query));
-      } catch (QueryValidationException e) {
-        throw new IllegalStateException(e);
-      }
+    if (sb.length() > 0) {
+      sb.insert(0, " WHERE ");
     }
-    if(sb.length() > 0){
-      q = " WHERE " + sb.toString();
-    }
-    return  q + " " + offset.toString() + " " + limit.toString();
+    spaceAppend(sb, offset.toString());
+    spaceAppend(sb, limit.toString());
+    return sb.toString();
   }
 
   class WrapTheWrapper {

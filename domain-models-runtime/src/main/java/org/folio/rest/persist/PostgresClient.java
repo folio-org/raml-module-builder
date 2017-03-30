@@ -97,6 +97,7 @@ public class PostgresClient {
   private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
       +"CALLED ON NULL INPUT|RETURNS NULL ON NULL INPUT|STRICT|"
       +"SECURITY INVOKER|SECURITY DEFINER|SET\\s.*|AS\\s.*|COST\\s\\d.*|ROWS\\s.*";
+  private static final Pattern postgresIdentifier = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
 
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
@@ -1557,6 +1558,36 @@ public class PostgresClient {
         replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
       }
     });
+  }
+
+  /**
+   * @param identifier  the identifier to check
+   * @return if the identifier is a valid Postgres identifier and does not contain
+   *          letters with diacritical marks or non-Latin letters
+   */
+  public boolean isValidPostgresIdentifier(String identifier) {
+    return postgresIdentifier.matcher(identifier).matches();
+  }
+
+  /**
+   * Drop the database if it exists.
+   * @param database  database name
+   * @throws SQLException  on database error
+   * @throws IllegalArgumentException  if database name is too long, contains
+   *          illegal characters or letters with diacritical marks or non-Latin letters
+   */
+  public void dropCreateDatabase(String database) throws SQLException {
+    if (! isValidPostgresIdentifier(database)) {
+      throw new IllegalArgumentException("Illegal character in database name: " + database);
+    }
+
+    try (Connection connection = getStandaloneConnection("postgres", true);
+        Statement statement = connection.createStatement()) {
+      statement.executeUpdate("DROP DATABASE IF EXISTS " + database);
+      statement.executeUpdate("CREATE DATABASE " + database);
+    } catch (SQLException e) {
+      throw e;
+    }
   }
 
   /**
