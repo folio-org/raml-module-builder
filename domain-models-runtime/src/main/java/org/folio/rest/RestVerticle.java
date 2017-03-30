@@ -1,30 +1,5 @@
 package org.folio.rest;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerFileUpload;
-import io.vertx.core.http.HttpServerOptions;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.dropwizard.MetricsService;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.StaticHandler;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -82,6 +57,31 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
 
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerFileUpload;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.dropwizard.MetricsService;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.StaticHandler;
+
 public class RestVerticle extends AbstractVerticle {
 
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
@@ -91,6 +91,8 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
+
+  public static MappedClasses       mappedURLs                     = null;
 
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
@@ -166,7 +168,7 @@ public class RestVerticle extends AbstractVerticle {
     serverMetrics = MetricsService.create(vertx);
 
     // maps paths found in raml to the generated functions to route to when the paths are requested
-    MappedClasses mappedURLs = populateConfig();
+    mappedURLs = populateConfig();
 
     // set of exposed urls as declared in the raml
     Set<String> urlPaths = mappedURLs.getAvailURLs();
@@ -680,7 +682,7 @@ public class RestVerticle extends AbstractVerticle {
       endRequestWithError(rc, 500, true, "Server error", new boolean[] { true });
       return;
     }
-
+    Object entity = null;
     try {
       HttpServerResponse response = rc.response();
       int statusCode = result.getStatus();
@@ -708,7 +710,7 @@ public class RestVerticle extends AbstractVerticle {
 
       mergeIntoResponseHeadersDistinct(response.headers(), rc.request().headers());
 
-      Object entity = result.getEntity();
+      entity = result.getEntity();
 
       /* entity is of type OutStream - and will be written as a string */
       if (entity instanceof OutStream) {
@@ -730,14 +732,28 @@ public class RestVerticle extends AbstractVerticle {
       log.error(e);
     } finally {
       rc.response().end();
+
     }
 
     long end = System.nanoTime();
 
     StringBuffer sb = new StringBuffer();
     if (log.isDebugEnabled()) {
-      sb.append(rc.getBodyAsString());
+      try {
+        sb.append(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
+      } catch (Exception e) {
+        try{
+          sb.append(Buffer.buffer((String)entity));
+        }
+        catch(Exception ee){
+          try{
+            sb.append(Buffer.buffer((String)entity));
+          }
+          catch(Exception eee){}
+        }
+      }
     }
+
     LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
       rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
       rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), tenantId, sb.toString());
@@ -1152,12 +1168,12 @@ public class RestVerticle extends AbstractVerticle {
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
               String bodyContent = rc.getBodyAsString();
+              log.debug(" -------- bodyContent -------- " + bodyContent);
               if(bodyContent != null){
                 if("java.io.Reader".equals(valueType)){
                   paramArray[order] = new StringReader(bodyContent);
                 }
                 else if(bodyContent.length() > 0) {
-                  log.debug(" -------- bodyContent -------- " + bodyContent);
                   paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
                 }
               }
