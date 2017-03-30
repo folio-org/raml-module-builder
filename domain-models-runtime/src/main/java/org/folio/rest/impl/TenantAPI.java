@@ -1,13 +1,5 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Handler;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +16,14 @@ import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 /**
@@ -194,8 +194,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
       try {
-        List<String> additionalPlaceholder = new ArrayList<String>();
-        List<String> additionalPlaceholderValues = new ArrayList<String>();
+        List<String> additionalPlaceholder = new ArrayList<>();
+        List<String> additionalPlaceholderValues = new ArrayList<>();
         boolean isUpdateMode[] = new boolean[]{false};
         //body is optional so that the TenantAttributes
         if(entity != null){
@@ -267,7 +267,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                   return;
                 }
               }
-              String sqlFile = IOUtils.toString(stream);
+              String sqlFile = IOUtils.toString(stream, "UTF8");
 
               sqlFile = StringUtils.replaceEach(sqlFile,
                 new String[]{TEMPLATE_TENANT_PLACEHOLDER, TEMPLATE_MODULE_PLACEHOLDER},
@@ -286,7 +286,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 createAuditFile);
               StringBuffer auditContent = new StringBuffer();
               if (audit != null) {
-                String auditScript = IOUtils.toString(audit).replace(TEMPLATE_TENANT_PLACEHOLDER, tenantId)
+                String auditScript = IOUtils.toString(audit, "UTF8").replace(TEMPLATE_TENANT_PLACEHOLDER, tenantId)
                 .replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
 
                 auditContent.append(StringUtils.replaceEach(
@@ -363,6 +363,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
           });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
+        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
+          withPlainInternalServerError(e.getMessage())));
       }
     });
   }
