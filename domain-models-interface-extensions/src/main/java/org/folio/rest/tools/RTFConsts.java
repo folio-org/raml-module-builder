@@ -27,7 +27,9 @@ public class RTFConsts {
   public static final String INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
   public static final String CLIENT_GEN_PACKAGE     = "org.folio.rest.client";
 
-  public static final String  POSSIBLE_HTTP_METHOD   = "javax.ws.rs.PUT|javax.ws.rs.POST|javax.ws.rs.DELETE|javax.ws.rs.GET|"
-      + "javax.ws.rs.OPTIONS|javax.ws.rs.HEAD|javax.ws.rs.TRACE|javax.ws.rs.CONNECT";
+  public static final String  POSSIBLE_HTTP_METHOD  = "javax.ws.rs.PUT|javax.ws.rs.POST|javax.ws.rs.DELETE|javax.ws.rs.GET|"
+      + "javax.ws.rs.OPTIONS|javax.ws.rs.HEAD|javax.ws.rs.TRACE|javax.ws.rs.CONNECT|org.folio.rest.jaxrs.resource.support.PATCH";
 
+  public static final int          VALIDATION_ERROR_HTTP_CODE      = 422;
+  public static final String       VALIDATION_FIELD_ERROR          = "1";
 }

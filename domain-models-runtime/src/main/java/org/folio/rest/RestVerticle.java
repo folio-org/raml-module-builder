@@ -114,9 +114,6 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       OKAPI_HEADER_PREFIX             = "x-okapi";
   private static final String       DEFAULT_SCHEMA                  = "public";
 
-  private static final int          VALIDATION_ERROR_HTTP_CODE      = 422;
-  private static final String       VALIDATION_FIELD_ERROR          = "1";
-
   private final Messages            messages                        = Messages.getInstance();
   private int                       port                            = -1;
 
@@ -1190,7 +1187,7 @@ public class RestVerticle extends AbstractVerticle {
                 boolean isValid = isValidRequest(rc, paramArray[order], errorResp, validRequest, field2validate);
 
                 if(!isValid){
-                  endRequestWithError(rc, VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp) , validRequest);
+                  endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp) , validRequest);
                   return;
                 }
                 else if(isValid && !field2validate.isEmpty()){
@@ -1221,9 +1218,9 @@ public class RestVerticle extends AbstractVerticle {
                 }
               } catch (Exception e) {
                 error.setCode("-1");
-                error.setType(VALIDATION_FIELD_ERROR);
+                error.setType(RTFConsts.VALIDATION_FIELD_ERROR);
                 errorResp.getErrors().add(error);
-                endRequestWithError(rc, VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp), validRequest);
+                endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp), validRequest);
               }
               finally {
                 // remove the object from the session
@@ -1373,7 +1370,7 @@ public class RestVerticle extends AbstractVerticle {
         error.getParameters().add(p);
         error.setMessage(cv.getMessage());
         error.setCode("-1");
-        error.setType(VALIDATION_FIELD_ERROR);
+        error.setType(RTFConsts.VALIDATION_FIELD_ERROR);
         if(singleField != null && singleField.contains(field)){
           errorResp.getErrors().add(error);
           ret = false;
