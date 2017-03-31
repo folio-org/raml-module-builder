@@ -286,8 +286,7 @@ public class DemoRamlRestTest {
               url, new Handler<HttpClientResponse>() {
         @Override
         public void handle(HttpClientResponse httpClientResponse) {
-
-          context.assertTrue(httpClientResponse.statusCode() == codeExpected);
+          context.assertEquals(codeExpected, httpClientResponse.statusCode(), url);
           System.out.println("status " + url + " " + httpClientResponse.statusCode());
           httpClientResponse.bodyHandler( body -> {
             System.out.println(body.toString());
@@ -296,7 +295,7 @@ public class DemoRamlRestTest {
         }
       });
       request.exceptionHandler(error -> {
-        context.fail(error.getMessage());
+        context.fail(url + " - " + error.getMessage());
         async.complete();
       });
       request.headers().add("Authorization", "abcdefg");
