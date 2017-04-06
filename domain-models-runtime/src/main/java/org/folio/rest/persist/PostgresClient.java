@@ -1153,7 +1153,7 @@ public class PostgresClient {
    *
    * */
   public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr, Class<?> returnedClass,
-      Handler<AsyncResult<?>> replyHandler){
+      boolean setId, Handler<AsyncResult<?>> replyHandler){
     long start = System.nanoTime();
 
     client.getConnection(res -> {
@@ -1202,7 +1202,7 @@ public class PostgresClient {
             } else {
               if(returnedClass != null){
                 replyHandler.handle(io.vertx.core.Future.succeededFuture(
-                  processResult(query.result(), returnedClass, true, true)));
+                  processResult(query.result(), returnedClass, true, setId)));
               }
               else{
                 replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
@@ -1228,13 +1228,18 @@ public class PostgresClient {
     });
   }
 
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr, Class<?> returnedClass,
+      Handler<AsyncResult<?>> replyHandler){
+    join(from, to, operation, joinType, cr, returnedClass, true, replyHandler);
+  }
+
   public void join(JoinBy from, JoinBy to, String operation, String joinType, Criterion cr
       ,Handler<AsyncResult<?>> replyHandler){
     String filter = "";
     if(cr != null){
       filter = cr.toString();
     }
-    join(from, to, operation, joinType, filter, null, replyHandler);
+    join(from, to, operation, joinType, filter, null, true, replyHandler);
   }
 
   public void join(JoinBy from, JoinBy to, String operation, String joinType, CQLWrapper cr
@@ -1243,7 +1248,7 @@ public class PostgresClient {
     if(cr != null){
       filter = cr.toString();
     }
-    join(from, to, operation, joinType, filter, null, replyHandler);
+    join(from, to, operation, joinType, filter, null, true, replyHandler);
   }
 
   public void join(JoinBy from, JoinBy to, String operation, String joinType, Class<?> returnedClazz, CQLWrapper cr
@@ -1252,7 +1257,16 @@ public class PostgresClient {
     if(cr != null){
       filter = cr.toString();
     }
-    join(from, to, operation, joinType, filter, returnedClazz, replyHandler);
+    join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
+  }
+
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, Class<?> returnedClazz, CQLWrapper cr
+      , boolean setId, Handler<AsyncResult<?>> replyHandler){
+    String filter = "";
+    if(cr != null){
+      filter = cr.toString();
+    }
+    join(from, to, operation, joinType, filter, returnedClazz, setId, replyHandler);
   }
 
   public void join(JoinBy from, JoinBy to, String operation, String joinType, Class<?> returnedClazz, String where
@@ -1261,7 +1275,7 @@ public class PostgresClient {
     if(where != null){
       filter = where;
     }
-    join(from, to, operation, joinType, filter, returnedClazz, replyHandler);
+    join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
   }
 
   private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
