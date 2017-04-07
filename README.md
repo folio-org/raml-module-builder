@@ -647,6 +647,27 @@ generated interface.
 
 See an [example](#function-example) of an implemented function.
 
+### Step 6: Design the RAML files
+
+It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
+Investigate the other FOLIO modules for guidance.
+
+Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files:
+```
+git submodule add https://github.com/folio-org/raml raml-util
+```
+
+The RMB does do some validation of RAML files at compile-time.
+There are some useful tools to assist with command-line validation and some
+can be integrated with text editors, e.g.
+[raml-cop](https://github.com/thebinarypenguin/raml-cop).
+
+Remember that the POM configuration enables viewing your RAML and interacting
+with your application via the local [API documentation](#documentation-of-the-apis).
+
+NOTE: The FOLIO project is currently using `RAML 0.8` version until the
+`RAML 1.0` tools have [settled](https://issues.folio.org/browse/FOLIO-523).
+
 ## Adding an init() implementation
 
 It is possible to add custom code that will run once before the application is deployed
