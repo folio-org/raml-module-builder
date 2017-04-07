@@ -383,11 +383,20 @@ Create JSON schemas indicating the objects exposed by the module:
 ### Step 2: Include the jars in your project pom.xml
 
 ```xml
+  <repositories>
+    <repository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </repository>
+  </repositories>
+  <dependencies>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>8.0.0-SNAPSHOT</version>
+      <version>10.0.4-SNAPSHOT</version>
     </dependency>
+  </dependencies>
 ```
 
 ### Step 3: Add the plugins to your pom.xml
@@ -425,6 +434,7 @@ Add the plugins:
 
 ```xml
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.1</version>
         <configuration>
@@ -456,7 +466,7 @@ Add the plugins:
                 </systemProperty>
                 <systemProperty>
                   <key>raml_files</key>
-                  <value>${ramlfiles_path}/circulation</value>
+                  <value>${ramlfiles_path}</value>
                 </systemProperty>
               </systemProperties>
             </configuration>
@@ -467,7 +477,7 @@ Add the plugins:
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.8</version>
+        <version>1.9</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
@@ -507,6 +517,7 @@ Add the plugins:
         </dependencies>
       </plugin>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
         <version>3.0.1</version>
         <executions>
@@ -545,10 +556,39 @@ Add the plugins:
         </executions>
       </plugin>
 
+      <!-- Replace the baseUri and the protocols in the RAMLs that have been copied to
+        apidocs directory so that they can be used via the local html api console. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>1.8</version>
+        <executions>
+          <execution>
+            <phase>prepare-package</phase>
+            <configuration>
+              <target>
+                <replace token="baseUri: http://github.com/org/folio/mod-place-storage"
+                  value="baseUri: http://localhost:{http.port}"
+                  dir="${basedir}/target/classes/apidocs/raml">
+                  <include name="**/*.raml" />
+                </replace>
+                <replace token="protocols: [ HTTPS ]" value="protocols: [ HTTP ]"
+                  dir="${basedir}/target/classes/apidocs/raml">
+                  <include name="**/*.raml" />
+                </replace>
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
+        <version>2.4</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -572,6 +612,8 @@ Add the plugins:
         </executions>
       </plugin>
 ```
+
+Compare the POM with other FOLIO RMB-based modules.
 
 ### Step 4: Build your project
 
