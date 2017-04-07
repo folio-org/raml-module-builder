@@ -95,19 +95,21 @@ For example, note the validation annotations generated based on the constraints 
 
 ### Set up your pom.xml
 
-After including the maven plugin to generate our sources, we need to add a few
-more maven plugins:
+- Add the `exec-maven-plugin`. This will generate the POJOs and interfaces based on
+  the RAML files.
 
-- Add the `aspectj-maven-plugin` to your pom. This is required if you
+- Add the `aspectj-maven-plugin`. This is required if you
   would like the runtime framework to validate all URLs.
 
-- Add the `maven-resources-plugin` to your pom. This plugin will copy
+- Add the `maven-shade-plugin`, indicating the main class to
+  run as `RestLauncher` and main verticle as `RestVerticle`. This will create a
+  runnable jar with the runtime's `RestVerticle` serving as the main class.
+
+- Add the `maven-resources-plugin`. This will copy
   your RAML files to the /apidocs directory where they will be made visible
   online (html view) by the runtime framework.
 
-- Add the `maven-shade-plugin` to your pom, indicating the main class to
-  run as `RestLauncher` and main verticle as `RestVerticle`. This will create a
-  runnable jar with the runtime's `RestVerticle` serving as the main class.
+These are further explained below.
 
 ### Build and run
 
@@ -321,10 +323,9 @@ schemas:
 
 Create JSON schemas indicating the objects exposed by the module:
 
-`ebook.schema`
+`ebook.json`
 
 ```json
-
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
@@ -391,23 +392,23 @@ Create JSON schemas indicating the objects exposed by the module:
 
 ### Step 3: Add the plugins to your pom.xml
 
-Four plugins should be declared in the pom.xml file:
+Four plugins need to be declared in the POM file:
 
-- The aspect plugin, which will pre-compile your code with validation aspects
+- The `exec-maven-plugin` which will generate the POJOs and interfaces based on
+  the RAML files.
+
+- The `aspectj-maven-plugin` which will pre-compile your code with validation aspects
   provided by the framework - remember the `@Validate` annotation. The
   validation supplied by the framework verifies that headers are passed
   correctly, parameters are of the correct type and contain the correct content
   as indicated by the RAML file.
 
-- The shade plugin, which will generate a fat-jar runnable jar. While the
+- The `maven-shade-plugin` which will generate a fat-jar runnable jar. While the
   shade plugin is not mandatory, it does makes things easier. The important thing to
   notice is the main class that will be run when running your module. Notice the
   `Main-class` and `Main-Verticle` in the shade plugin configuration.
 
-- The maven exec plugin, which will generate the POJOs and interfaces based on
-  the RAML files.
-
-- The maven resource plugin, which will copy the RAML files into a directory
+- The `maven-resources-plugin`, which will copy the RAML files into a directory
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
 
@@ -580,7 +581,7 @@ This should:
 
 - Create java interfaces for each added RAML file.
 
-- Each interface will contain functions to implement (each function represents
+- Each interface will contain functions to be implemented (each function represents
   an API endpoint declared in the RAML).
 
 - The parameters within each function interface will be annotated with
@@ -589,14 +590,15 @@ This should:
   needs to be handled by the implementer. This is handled by the framework,
   which handles validation.
 
-- POJOs - The JSON schemas will be generated into java objects.
-- All generated code can be found in the `org.folio.rest.jaxrs` package
+- POJOs -- The JSON schemas will be generated into java objects.
+
+- All generated code can be found in the `org.folio.rest.jaxrs` package.
 
 ### Step 5: Implement the generated interfaces
 
 Implement the interfaces associated with the RAML files you created. An
-interface is generated for every root endpoint in the RAML file you added to
-the `raml` project. So, for the ebook RAML an
+interface is generated for every root endpoint in the RAML files.
+So, for the ebook RAML an
 `org.folio.rest.jaxrs.resource.EbooksResource` interface will be generated.
 Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
