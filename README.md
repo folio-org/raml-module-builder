@@ -246,9 +246,11 @@ After getting started with your new module as explained below, it can be similar
 
 ### Step 1: Describe the APIs to be exposed by the new module
 
-Create a new project - Create a RAML file/s and define the API endpoints to
-be exposed by the module. Place this in the project - for example `/ramls`
-directory within the root of the project.
+Create the new project using the normal layout of files and basic POM file.
+
+Add an area for the RAML, schemas, and examples files, e.g. `/ramls`.
+These define the API endpoints.
+Get started by using the following familiar example:
 
 `ebook.raml`
 
@@ -260,55 +262,54 @@ baseUri: http://api.e-bookmobile.com/{version}
 version: v1
 
 schemas:
- - book: !include ebook.schema
-
+  - book: !include ebook.json
 
 /ebooks:
   /{bookTitle}:
-  get:
-    queryParameters:
-       author:
-         displayName: Author
-         type: string
-         description: An author's full name
-         example: Mary Roach
-         required: true
-       publicationYear:
-         displayName: Pub Year
-         type: number
-         description: The year released for the first time in the US
-         example: 1984
-         required: false
-       rating:
-         displayName: Rating
-         type: number
-         description: Average rating (1-5) submitted by users
-         example: 3.14
-         required: false
-       isbn:
-         displayName: ISBN
-         type: string
-         minLength: 10
-         example: 0321736079?
-    responses:
-      200:
-       body:
-         application/json:
-          schema: book
-          example: |
-             {
-               "bookdata": {
-                 "id": "SbBGk",
-                 "title": "Stiff: The Curious Lives of Human Cadavers",
-                 "description": null,
-                 "datetime": 1341533193,
-                 "genre": "science",
-                 "author": "Mary Roach",
-                 "link": "http://e-bookmobile.com/books/Stiff",
-               },
-               "success": true,
-               "status": 200
-             }
+    get:
+      queryParameters:
+        author:
+          displayName: Author
+          type: string
+          description: An author's full name
+          example: Mary Roach
+          required: false
+        publicationYear:
+          displayName: Pub Year
+          type: number
+          description: The year released for the first time in the US
+          example: 1984
+          required: false
+        rating:
+          displayName: Rating
+          type: number
+          description: Average rating (1-5) submitted by users
+          example: 3.14
+          required: false
+        isbn:
+          displayName: ISBN
+          type: string
+          minLength: 10
+          example: 03217360797
+      responses:
+        200:
+          body:
+            application/json:
+              schema: book
+              example: |
+                {
+                  "bookdata": {
+                    "id": "SbBGk",
+                    "title": "Stiff: The Curious Lives of Human Cadavers",
+                    "description": null,
+                    "datetime": 1341533193,
+                    "genre": "science",
+                    "author": "Mary Roach",
+                    "link": "http://e-bookmobile.com/books/Stiff"
+                  },
+                  "success": true,
+                  "status": 200
+                }
 ```
 
 Create JSON schemas indicating the objects exposed by the module:
