@@ -417,7 +417,7 @@ Four plugins need to be declared in the POM file:
   notice is the main class that will be run when running your module. Notice the
   `Main-class` and `Main-Verticle` in the shade plugin configuration.
 
-- The `maven-resources-plugin`, which will copy the RAML files into a directory
+- The `maven-resources-plugin` which will copy the RAML files into a directory
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
 
@@ -567,7 +567,7 @@ Add the plugins:
             <phase>prepare-package</phase>
             <configuration>
               <target>
-                <replace token="baseUri: http://github.com/org/folio/mod-place-storage"
+                <replace token="baseUri: http://api.e-bookmobile.com/{version}"
                   value="baseUri: http://localhost:{http.port}"
                   dir="${basedir}/target/classes/apidocs/raml">
                   <include name="**/*.raml" />
