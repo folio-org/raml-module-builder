@@ -108,6 +108,7 @@ public class PostgresRunner extends AbstractVerticle {
     int postgresPort = config().getInteger("postgresPort");
 
     if (isPortInUse(runnerPort)) {
+      undeploy();
       startFuture.fail(new IOException("Quitting because PostgresRunnerPort " + runnerPort + " is already in use."));
       return;
     }
