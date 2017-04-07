@@ -6,7 +6,9 @@ import java.util.Map;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.AsyncResult;
@@ -17,9 +19,12 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class TenantAPITest {
+public class TenantAPIIT {
   private static final String tenantId = "folio_shared";
   protected static Vertx vertx;
+
+  @Rule
+  public Timeout rule = Timeout.seconds(10);
 
   @BeforeClass
   public static void setUpClass() {
@@ -50,7 +55,7 @@ public class TenantAPITest {
 
   public void tenantDelete(TestContext context) {
     Async async = context.async();
-    vertx.executeBlocking(run -> {
+    vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
       try {
         Map<String,String> map = new HashMap<>();
@@ -58,19 +63,19 @@ public class TenantAPITest {
         tenantAPI.deleteTenant(map, h -> {
           tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
             context.assertFalse(bool, "tenant exists");
-            run.complete();
+            async.complete();
           }));
         }, Vertx.currentContext());
       } catch (Exception e) {
         context.fail(e);
       }
-    }, end -> async.complete());
-    async.await();
+    });
+    async.awaitSuccess();
   }
 
   public void tenantPost(TestContext context) {
     Async async = context.async();
-    vertx.executeBlocking(run -> {
+    vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
       try {
         TenantAttributes tenantAttributes = new TenantAttributes();
@@ -79,14 +84,14 @@ public class TenantAPITest {
         tenantAPI.postTenant(tenantAttributes, map, h -> {
           tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
             context.assertTrue(bool, "tenant exists");
-            run.complete();
+            async.complete();
           }));
         }, Vertx.currentContext());
       } catch (Exception e) {
         context.fail(e);
       }
-    }, end -> async.complete());
-    async.await();
+    });
+    async.awaitSuccess();
   }
 
   @Test
@@ -102,12 +107,12 @@ public class TenantAPITest {
   public void invalidTenantName(TestContext context) {
     String invalidTenantId = "- ";
     Async async = context.async();
-    vertx.executeBlocking(run -> {
+    vertx.runOnContext(run -> {
       new TenantAPI().tenantExists(Vertx.currentContext(), invalidTenantId, h -> {
         context.assertTrue(h.succeeded());
         context.assertFalse(h.result());
-        run.complete();
+        async.complete();
       });
-    }, end -> async.complete());
+    });
   }
 }
