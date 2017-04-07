@@ -127,7 +127,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     });
   }
 
-  private void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
+  void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
     /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
     PostgresClient.getInstance(context.owner()).select(
       "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '"+ PostgresClient.convertToPsqlStandard(tenantId) +"');",
