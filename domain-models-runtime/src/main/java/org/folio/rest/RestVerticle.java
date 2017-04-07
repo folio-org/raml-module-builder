@@ -92,8 +92,6 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
 
-  public static MappedClasses       mappedURLs                     = null;
-
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
@@ -165,7 +163,7 @@ public class RestVerticle extends AbstractVerticle {
     serverMetrics = MetricsService.create(vertx);
 
     // maps paths found in raml to the generated functions to route to when the paths are requested
-    mappedURLs = populateConfig();
+    MappedClasses mappedURLs = populateConfig();
 
     // set of exposed urls as declared in the raml
     Set<String> urlPaths = mappedURLs.getAvailURLs();
@@ -228,207 +226,7 @@ public class RestVerticle extends AbstractVerticle {
         }
         //single handler for all url calls other then documentation
         //which is handled separately
-        router.routeWithRegex("^(?!.*apidocs).*$").handler(rc -> {
-          long start = System.nanoTime();
-          try {
-            //list of regex urls created from urls declared in the raml
-            Iterator<String> iter = urlPaths.iterator();
-            boolean validPath = false;
-            boolean[] validRequest = { true };
-            // loop over regex patterns and try to match them against the requested
-            // URL if no match is found, then the requested url is not supported by
-            // the ramls and we return an error - this has positive security implications as well
-            while (iter.hasNext()) {
-              String regexURL = iter.next();
-              //try to match the requested url to each regex pattern created from the urls in the raml
-              Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
-              if (m.find()) {
-                validPath = true;
-
-                // get the function that should be invoked for the requested
-                // path + requested http_method pair
-                JsonObject ret = mappedURLs.getMethodbyPath(regexURL, rc.request().method().toString());
-                // if a valid path was requested but no function was found
-                if (ret == null) {
-
-                  // if the path is valid and the http method is options
-                  // assume a cors request
-                  if (rc.request().method() == HttpMethod.OPTIONS) {
-
-                    rc.response().end();
-
-                    return;
-                  }
-
-                  // the url exists but the http method requested does not match a function
-                  // meaning url+http method != a function
-                  endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported),
-                    validRequest);
-                }
-                Class<?> aClass;
-                try {
-                  if (validRequest[0]) {
-                    int groups = m.groupCount();
-                    //pathParams are the place holders in the raml query string
-                    //for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
-                    //they are replaced with actual values and are passed to the function which the url is mapped to
-                    String[] pathParams = new String[groups];
-                    for (int i = 0; i < groups; i++) {
-                      pathParams[i] = m.group(i + 1);
-                    }
-
-                    //create okapi headers map and inject into function
-                    Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
-                    String []tenantId = new String[]{null};
-                    getOkapiHeaders(rc, okapiHeaders, tenantId);
-
-                    //get interface mapped to this url
-                    String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
-                    // convert from interface to an actual class implementing it, which appears in the impl package
-                    aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
-                    Object o = null;
-                    // call back the constructor of the class - gives a hook into the class not based on the apis
-                    // passing the vertx and context objects in to it.
-                    try {
-                      o = aClass.getConstructor(Vertx.class, String.class).newInstance(vertx, tenantId[0]);
-                    } catch (Exception e) {
-                      // if no such constructor was implemented call the
-                      // default no param constructor to create the object to be used to call functions on
-                      o = aClass.newInstance();
-                    }
-                    final Object instance = o;
-
-                    // function to invoke for the requested url
-                    String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
-                    // parameters for the function to invoke
-                    JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
-                    // all methods in the class whose function is mapped to the called url
-                    // needed so that we can get a reference to the Method object and call it via reflection
-                    Method[] methods = aClass.getMethods();
-                    // what the api will return as output (Accept)
-                    JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
-                    // what the api expects to get (content-type)
-                    JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
-
-                    HttpServerRequest request = rc.request();
-
-                    //check that the accept and content-types passed in the header of the request
-                    //are as described in the raml
-                    checkAcceptContentType(produces, consumes, rc, validRequest);
-
-                    if (validRequest[0]) {
-                      // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
-                      //to the requested URL - array will be populated by parseParams() function
-                      Iterator<Map.Entry<String, Object>> paramList = params.iterator();
-                      Object[] paramArray = new Object[params.size()];
-                      parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
-
-                      //Get method in class to be run for this requested API endpoint
-                      Method[] method2Run = new Method[]{null};
-                      for (int i = 0; i < methods.length; i++) {
-                        if (methods[i].getName().equals(function)) {
-                          method2Run[0] = methods[i];
-                          break;
-                        }
-                      }
-                      //is function annotated to receive data in chunks as they come in.
-                      //Note that the function controls the logic to this if this is the case
-                      boolean streamData = isStreamed(method2Run[0].getAnnotations());
-                      // check if we are dealing with a file upload , currently only multipart/form-data and application/octet
-                      //in the raml definition for such a function
-                      final boolean[] isContentUpload = new boolean[] { false };
-                      final int[] uploadParamPosition = new int[] { -1 };
-                      params.forEach(param -> {
-                        String cType = request.getHeader("Content-type");
-                        if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
-                          isContentUpload[0] = true;
-                          uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
-                        }
-                        else if(((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")){
-                          //application/octet-stream passed - this is handled in a stream like manner
-                          //and the corresponding function called must annotate with a @Stream - and be able
-                          //to handle the function being called repeatedly on parts of the data
-                          uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
-                          isContentUpload[0] = true;
-                        }
-                      });
-
-                      // file upload requested (multipart/form-data) but the url is not to the /admin/upload
-                      // meaning, an implementing module is using its own upload handling, so read the content and
-                      // pass to implementing function just like any other call
-                      if (isContentUpload[0] && !streamData) {
-
-                        //if file upload - set needed handlers
-                        // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
-                        if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
-                          //multipart
-                          handleMultipartUpload(rc, request, uploadParamPosition, paramArray, validRequest);
-                          request.endHandler( a -> {
-                            if (validRequest[0]) {
-                              //if request is valid - invoke it
-                              try {
-                                invoke(method2Run[0], paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
-                                  LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                                  sendResponse(rc, v, start, tenantId[0]);
-                                });
-                              } catch (Exception e1) {
-                                log.error(e1.getMessage(), e1);
-                                rc.response().end();
-                              }
-                            }
-                          });
-                        }
-
-                        else {
-                          //assume input stream
-                          handleInputStreamUpload(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
-                            uploadParamPosition, paramArray, validRequest, start);
-                        }
-                      }
-                      else if(streamData){
-
-                        handleStream(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
-                          uploadParamPosition, paramArray, validRequest, start);
-
-                      }
-                      else{
-                        if (validRequest[0]) {
-                          //if request is valid - invoke it
-                          try {
-                            invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
-                              LogUtil.formatLogMessage(className, "start", " invoking " + function);
-                              sendResponse(rc, v, start, tenantId[0]);
-                            });
-                          } catch (Exception e1) {
-                            log.error(e1.getMessage(), e1);
-                            rc.response().end();
-                          }
-                        }
-                      }
-                    }
-                    else{
-                      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
-                        validRequest);
-                      return;
-                    }
-                  }
-                } catch (Exception e) {
-                  log.error(e.getMessage(), e);
-                  endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(),
-                    validRequest);
-                  return;
-                }
-              }
-            }
-            if (!validPath) {
-              // invalid path
-              endRequestWithError(rc, 400, true,
-                messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
-            }
-          } catch (Exception e) {
-              log.error(e.getMessage(), e);
-            }
-        } );
+        router.routeWithRegex("^(?!.*apidocs).*$").handler(rc -> route(mappedURLs, urlPaths, regex2Pattern, rc));
         // routes requests on “/assets/*” to resources stored in the “assets”
         // directory.
         router.route("/assets/*").handler(StaticHandler.create("assets"));
@@ -485,6 +283,216 @@ public class RestVerticle extends AbstractVerticle {
           });
       }
     });
+  }
+
+  /**
+   * Handler for all url calls other then documentation.
+   * @param mappedURLs  maps paths found in raml to the generated functions to route to when the paths are requested
+   * @param urlPaths  set of exposed urls as declared in the raml
+   * @param regex2Pattern  create a map of regular expression to url path
+   * @param rc  RoutingContext of this URL
+   */
+  private void route(MappedClasses mappedURLs, Set<String> urlPaths, Map<String, Pattern> regex2Pattern,
+      RoutingContext rc) {
+    long start = System.nanoTime();
+    try {
+      //list of regex urls created from urls declared in the raml
+      Iterator<String> iter = urlPaths.iterator();
+      boolean validPath = false;
+      boolean[] validRequest = { true };
+      // loop over regex patterns and try to match them against the requested
+      // URL if no match is found, then the requested url is not supported by
+      // the ramls and we return an error - this has positive security implications as well
+      while (iter.hasNext()) {
+        String regexURL = iter.next();
+        //try to match the requested url to each regex pattern created from the urls in the raml
+        Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
+        if (m.find()) {
+          validPath = true;
+
+          // get the function that should be invoked for the requested
+          // path + requested http_method pair
+          JsonObject ret = mappedURLs.getMethodbyPath(regexURL, rc.request().method().toString());
+          // if a valid path was requested but no function was found
+          if (ret == null) {
+
+            // if the path is valid and the http method is options
+            // assume a cors request
+            if (rc.request().method() == HttpMethod.OPTIONS) {
+
+              rc.response().end();
+
+              return;
+            }
+
+            // the url exists but the http method requested does not match a function
+            // meaning url+http method != a function
+            endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported),
+              validRequest);
+          }
+          Class<?> aClass;
+          try {
+            if (validRequest[0]) {
+              int groups = m.groupCount();
+              //pathParams are the place holders in the raml query string
+              //for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
+              //they are replaced with actual values and are passed to the function which the url is mapped to
+              String[] pathParams = new String[groups];
+              for (int i = 0; i < groups; i++) {
+                pathParams[i] = m.group(i + 1);
+              }
+
+              //create okapi headers map and inject into function
+              Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
+              String []tenantId = new String[]{null};
+              getOkapiHeaders(rc, okapiHeaders, tenantId);
+
+              //get interface mapped to this url
+              String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
+              // convert from interface to an actual class implementing it, which appears in the impl package
+              aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
+              Object o = null;
+              // call back the constructor of the class - gives a hook into the class not based on the apis
+              // passing the vertx and context objects in to it.
+              try {
+                o = aClass.getConstructor(Vertx.class, String.class).newInstance(vertx, tenantId[0]);
+              } catch (Exception e) {
+                // if no such constructor was implemented call the
+                // default no param constructor to create the object to be used to call functions on
+                o = aClass.newInstance();
+              }
+              final Object instance = o;
+
+              // function to invoke for the requested url
+              String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
+              // parameters for the function to invoke
+              JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
+              // all methods in the class whose function is mapped to the called url
+              // needed so that we can get a reference to the Method object and call it via reflection
+              Method[] methods = aClass.getMethods();
+              // what the api will return as output (Accept)
+              JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
+              // what the api expects to get (content-type)
+              JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
+
+              HttpServerRequest request = rc.request();
+
+              //check that the accept and content-types passed in the header of the request
+              //are as described in the raml
+              checkAcceptContentType(produces, consumes, rc, validRequest);
+
+              if (validRequest[0]) {
+                // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
+                //to the requested URL - array will be populated by parseParams() function
+                Iterator<Map.Entry<String, Object>> paramList = params.iterator();
+                Object[] paramArray = new Object[params.size()];
+                parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
+
+                //Get method in class to be run for this requested API endpoint
+                Method[] method2Run = new Method[]{null};
+                for (int i = 0; i < methods.length; i++) {
+                  if (methods[i].getName().equals(function)) {
+                    method2Run[0] = methods[i];
+                    break;
+                  }
+                }
+                //is function annotated to receive data in chunks as they come in.
+                //Note that the function controls the logic to this if this is the case
+                boolean streamData = isStreamed(method2Run[0].getAnnotations());
+                // check if we are dealing with a file upload , currently only multipart/form-data and application/octet
+                //in the raml definition for such a function
+                final boolean[] isContentUpload = new boolean[] { false };
+                final int[] uploadParamPosition = new int[] { -1 };
+                params.forEach(param -> {
+                  String cType = request.getHeader("Content-type");
+                  if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
+                    isContentUpload[0] = true;
+                    uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
+                  }
+                  else if(((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")){
+                    //application/octet-stream passed - this is handled in a stream like manner
+                    //and the corresponding function called must annotate with a @Stream - and be able
+                    //to handle the function being called repeatedly on parts of the data
+                    uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
+                    isContentUpload[0] = true;
+                  }
+                });
+
+                // file upload requested (multipart/form-data) but the url is not to the /admin/upload
+                // meaning, an implementing module is using its own upload handling, so read the content and
+                // pass to implementing function just like any other call
+                if (isContentUpload[0] && !streamData) {
+
+                  //if file upload - set needed handlers
+                  // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
+                  if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
+                    //multipart
+                    handleMultipartUpload(rc, request, uploadParamPosition, paramArray, validRequest);
+                    request.endHandler( a -> {
+                      if (validRequest[0]) {
+                        //if request is valid - invoke it
+                        try {
+                          invoke(method2Run[0], paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
+                            LogUtil.formatLogMessage(className, "start", " invoking " + function);
+                            sendResponse(rc, v, start, tenantId[0]);
+                          });
+                        } catch (Exception e1) {
+                          log.error(e1.getMessage(), e1);
+                          rc.response().end();
+                        }
+                      }
+                    });
+                  }
+
+                  else {
+                    //assume input stream
+                    handleInputStreamUpload(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
+                      uploadParamPosition, paramArray, validRequest, start);
+                  }
+                }
+                else if(streamData){
+
+                  handleStream(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
+                    uploadParamPosition, paramArray, validRequest, start);
+
+                }
+                else{
+                  if (validRequest[0]) {
+                    //if request is valid - invoke it
+                    try {
+                      invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
+                        LogUtil.formatLogMessage(className, "start", " invoking " + function);
+                        sendResponse(rc, v, start, tenantId[0]);
+                      });
+                    } catch (Exception e1) {
+                      log.error(e1.getMessage(), e1);
+                      rc.response().end();
+                    }
+                  }
+                }
+              }
+              else{
+                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
+                  validRequest);
+                return;
+              }
+            }
+          } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(),
+              validRequest);
+            return;
+          }
+        }
+      }
+      if (!validPath) {
+        // invalid path
+        endRequestWithError(rc, 400, true,
+          messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
+      }
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+    }
   }
 
   private void handleStream(Method method2Run, RoutingContext rc, HttpServerRequest request,
@@ -729,25 +737,20 @@ public class RestVerticle extends AbstractVerticle {
       log.error(e);
     } finally {
       rc.response().end();
-
     }
 
     long end = System.nanoTime();
 
-    StringBuffer sb = new StringBuffer();
+    StringBuilder sb = new StringBuilder();
     if (log.isDebugEnabled()) {
       try {
         sb.append(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       } catch (Exception e) {
-        try{
-          sb.append(Buffer.buffer((String)entity));
+        String name = "null";
+        if (entity != null) {
+          name = entity.getClass().getName();
         }
-        catch(Exception ee){
-          try{
-            sb.append(Buffer.buffer((String)entity));
-          }
-          catch(Exception eee){}
-        }
+        log.error("writeValueAsString(" + name + ")", e);
       }
     }
 
