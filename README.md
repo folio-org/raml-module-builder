@@ -310,6 +310,13 @@ schemas:
                   "success": true,
                   "status": 200
                 }
+    put:
+      queryParameters:
+        access_token:
+          displayName: Access Token
+          type: string
+          description: "Token giving you permission to make call"
+          required: true
 ```
 
 Create JSON schemas indicating the objects exposed by the module:
