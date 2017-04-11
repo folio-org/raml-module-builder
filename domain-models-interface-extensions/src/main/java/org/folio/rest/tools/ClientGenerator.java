@@ -1,12 +1,5 @@
 package org.folio.rest.tools;
 
-import io.vertx.core.Handler;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientResponse;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -41,6 +34,13 @@ import com.sun.codemodel.JMod;
 import com.sun.codemodel.JPackage;
 import com.sun.codemodel.JVar;
 import com.sun.codemodel.JWhileLoop;
+
+import io.vertx.core.Handler;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 /**
  *
@@ -156,6 +156,8 @@ public class ClientGenerator {
       JVar port = consructor.param(int.class, "port");
       JVar param = consructor.param(String.class, "tenantId");
       JVar keepAlive = consructor.param(boolean.class, "keepAlive");
+      JVar connTO = consructor.param(int.class, "connTO");
+      JVar idleTO = consructor.param(int.class, "idleTO");
 
      /* populate constructor */
       JBlock conBody=  consructor.body();
@@ -165,6 +167,8 @@ public class ClientGenerator {
       conBody.invoke(options, "setKeepAlive").arg(keepAlive);
       conBody.invoke(options, "setDefaultHost").arg(host);
       conBody.invoke(options, "setDefaultPort").arg(port);
+      conBody.invoke(options, "setConnectTimeout").arg(connTO);
+      conBody.invoke(options, "setIdleTimeout").arg(idleTO);
 
       JExpression x2 = jCodeModel.ref(io.vertx.core.Vertx.class).staticInvoke("currentContext");
       JVar context = conBody.decl(jCodeModel._ref(io.vertx.core.Context.class), "context", x2);
@@ -182,13 +186,24 @@ public class ClientGenerator {
       JVar portVar = consructor2.param(int.class, "port");
       JVar tenantIdVar = consructor2.param(String.class, "tenantId");
       JBlock conBody2 = consructor2.body();
-      conBody2.invoke("this").arg(hostVar).arg(portVar).arg(tenantIdVar).arg(JExpr.TRUE);
+      conBody2.invoke("this").arg(hostVar).arg(portVar).arg(tenantIdVar).arg(JExpr.TRUE)
+        .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
+
+      JMethod consructor1 = constructor(JMod.PUBLIC);
+      JVar hostVar1 = consructor1.param(String.class, "host");
+      JVar portVar1 = consructor1.param(int.class, "port");
+      JVar tenantIdVar1 = consructor1.param(String.class, "tenantId");
+      JVar keepAlive1 = consructor1.param(boolean.class, "keepAlive");
+      JBlock conBody1 = consructor1.body();
+      conBody1.invoke("this").arg(hostVar1).arg(portVar1).arg(tenantIdVar1).arg(keepAlive1)
+      .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
 
       /* constructor, init the httpClient */
       JMethod consructor3 = constructor(JMod.PUBLIC);
       JBlock conBody3 = consructor3.body();
 
-      conBody3.invoke("this").arg("localhost").arg(JExpr.lit(8081)).arg("folio_demo").arg(JExpr.FALSE);
+      conBody3.invoke("this").arg("localhost").arg(JExpr.lit(8081)).arg("folio_demo").arg(JExpr.FALSE)
+        .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
       consructor3.javadoc().add("Convenience constructor for tests ONLY!<br>Connect to localhost on 8081 as folio_demo tenant.");
 
     } catch (Exception e) {
@@ -282,7 +297,7 @@ public class ClientGenerator {
       body.directStatement(val);
     });
     //reset for next method usage
-    functionSpecificHeaderParams = new ArrayList<String>();
+    functionSpecificHeaderParams = new ArrayList<>();
 
     /* add content and accept headers if relevant */
     if(contentType != null){
