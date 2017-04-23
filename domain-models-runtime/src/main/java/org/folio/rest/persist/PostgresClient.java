@@ -97,7 +97,7 @@ public class PostgresClient {
   private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
       +"CALLED ON NULL INPUT|RETURNS NULL ON NULL INPUT|STRICT|"
       +"SECURITY INVOKER|SECURITY DEFINER|SET\\s.*|AS\\s.*|COST\\s\\d.*|ROWS\\s.*";
-  private static final Pattern postgresIdentifier = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
+  private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
 
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
@@ -1580,7 +1580,7 @@ public class PostgresClient {
    *          letters with diacritical marks or non-Latin letters
    */
   public boolean isValidPostgresIdentifier(String identifier) {
-    return postgresIdentifier.matcher(identifier).matches();
+    return POSTGRES_IDENTIFIER.matcher(identifier).matches();
   }
 
   /**
