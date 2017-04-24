@@ -190,13 +190,15 @@ public class HttpModuleClient {
   }
 
   public static void main(String args[]) throws Exception {
-
     HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "abcdefg", false);
-    Response a = hc.request("/users");
-    Response b = hc.request("/users");
+    for (int i = 0; i < 2; i++) {
+      Response a = hc.request("/users");
+      Response b = hc.request("/groups");
+      a.joinOn("patron_group", b, "id", "group");
+      //hc.request("/users").joinOn("patron_groups", hc.request("/users"));
+    }
     hc.closeClient();
-    a.joinOn("id", b);
-    hc.request("/users").joinOn("patron_groups", hc.request("/users"));
+
   }
 
 }
