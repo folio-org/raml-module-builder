@@ -84,8 +84,7 @@ public class HttpModuleClient {
   }
 
   private void request(HttpMethod method, String endpoint, Map<String, String> headers,
-      String rollbackURL, boolean cache,
-      Handler<HttpClientResponse> responseHandler, CompletableFuture<Response> cf2){
+      boolean cache, Handler<HttpClientResponse> responseHandler, CompletableFuture<Response> cf2){
 
     if(responseHandler == null){
       CompletableFuture<Response> cf = new CompletableFuture<>();
@@ -106,7 +105,7 @@ public class HttpModuleClient {
     request.end();
   }
 
-  public Response request(HttpMethod method, String endpoint, Map<String, String> headers, String rollbackURL,
+  public Response request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
       boolean cachable) throws Exception {
     if(cachable){
       initCache();
@@ -116,22 +115,32 @@ public class HttpModuleClient {
       }
     }
     CompletableFuture<Response> cf = new CompletableFuture<>();
-    request(method, endpoint, headers, rollbackURL, cachable, new HTTPJsonResponseHandler(endpoint, cf), cf);
+    request(method, endpoint, headers, cachable, new HTTPJsonResponseHandler(endpoint, cf), cf);
     Response response = new Response();
     try {
       response = cf.get((idleTO/1000)+1, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
-      response.populateError(endpoint, -1, e.getMessage());
+      response.populateError(endpoint, -1, e.toString());
     }
     catch(Throwable t){
       response.endpoint = endpoint;
       response.exception = t;
+      response.populateError(endpoint, -1, t.getMessage());
     }
     if(cachable && response.body != null) {
       cache.put(endpoint, response);
     }
     if(autoCloseConnections){
       httpClient.close();
+    }
+    if(response.error != null && rollbackURL != null){
+      Response rb = request(rollbackURL.method, rollbackURL.endpoint, null, null, false);
+      if(rb.error != null){
+        response.populateRollBackError(rb.error);
+      }
+      else{
+        response.body = rb.body;
+      }
     }
     return response;
   }
@@ -148,6 +157,10 @@ public class HttpModuleClient {
 
   public Response request(String endpoint, boolean cache) throws Exception {
     return request(HttpMethod.GET, endpoint, null, null, cache);
+  }
+
+  public Response request(String endpoint, RollBackURL rbURL) throws Exception {
+    return request(HttpMethod.GET, endpoint, null, rbURL, true);
   }
 
   public Response request(String endpoint) throws Exception {
@@ -195,8 +208,11 @@ public class HttpModuleClient {
       Response a = hc.request("/users");
       Response b = hc.request("/groups");
       a.joinOn("patron_group", b, "id", "group");
-      //hc.request("/users").joinOn("patron_groups", hc.request("/users"));
+      hc.request("/users").joinOn("patron_groups", hc.request("/groups"), "id");
     }
+    Response a = hc.request("/users");
+    Response b = hc.request("/abc", new RollBackURL("/users", HttpMethod.GET));
+    a.joinOn("patron_group", b, "id", "group");
     hc.closeClient();
 
   }

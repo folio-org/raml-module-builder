@@ -87,6 +87,17 @@ class Response {
     error.put("errorMessage", errorMessage);
   }
 
+  public void populateRollBackError(JsonObject rbError){
+    if(error == null){
+      //should not be null since roll back called when there is an error
+      //but just in case
+      error = new JsonObject();
+    }
+    error.put("rbEndpoint", rbError.getString("endpoint"));
+    error.put("rbStatusCode", rbError.getInteger("statusCode"));
+    error.put("rbErrorMessage", rbError.getString("errorMessage"));
+  }
+
   public String getEndpoint() {
     return endpoint;
   }
