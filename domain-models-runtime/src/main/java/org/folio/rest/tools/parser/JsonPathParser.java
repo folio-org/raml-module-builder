@@ -52,50 +52,127 @@ public class JsonPathParser {
    *    if the path ends with [1] or [*] - this value is ignored
    * @return either a jsonobject / jsonarray / List
    */
-  public Object getValueAt(String path, boolean returnParent){
-    String []subPathsList = getPathasList(path);
+  private Object getValueAt(String path, boolean returnParent){
+    String []subPathsList = getPathAsList(path);
     Object o = j;
+    List<StringBuilder> currentPaths = new ArrayList<>();
+    Map<Object, Object> rParent = null;
+
     if(subPathsList.length == 1){
       return j.getValue(subPathsList[0]);
     }
     else{
+      StringBuilder sb = new StringBuilder();
+      currentPaths.add(sb);
       for (int i = 0; i < subPathsList.length; i++) {
         if("[*]".equals(subPathsList[i])){
           List<Object> l = new ArrayList<>();
           if(o instanceof List && o != null){
+            List<StringBuilder> prefixes = currentPaths;
+            currentPaths = new ArrayList<>();
             int s = ((List)o).size();
+            int fix = 0;
             for(int j2=0; j2<s; j2++){
+              //loop over all json array entries, if the requested field was not found in the in
+              //the json array, there will be a null value in that index in the list below
               Object o1 = ((List<Object>)o).get(j2);
-              if(o1 != null){
+              if(o1 == null){
+                //currentPaths.remove(j2);
+                //fix = 1;
+              }
+              else {
               int s1 = ((JsonArray)o1).size();
                 for(int j1=0; j1<s1; j1++){
+                  ////////////////////////////
+                  StringBuilder sb1 = new StringBuilder(prefixes.get(j2)).append("["+j1+"]");
+                  currentPaths.add(sb1);
+                  ////////////////////////////
                   l.add(getValueAt("["+j1+"]", o1, null));
                 }
+                ///////////////
+                //currentPaths = currentPaths1;
+                //////////////
               }
             }
           }
           else{
             int s = ((JsonArray)o).size();
             for(int j=0; j<s; j++){
+              StringBuilder sb1 = new StringBuilder(sb).append("["+j+"]");
+              currentPaths.add(sb1);
               l.add(getValueAt("["+j+"]", o, null));
             }
+            currentPaths.remove(sb);
           }
           o = l;
         }
         else{
-          Map<Object, Object> rParent = null;
-          if(returnParent && i==subPathsList.length-1){
-            rParent = new HashMap<>();
+          for (int j1 = 0; j1 < currentPaths.size(); j1++) {
+            if(i>0 && i<subPathsList.length){
+              currentPaths.get(j1).append(".");
+            }
+            currentPaths.get(j1).append(wrapIfNeeded(subPathsList[i]));
+          }
+          if(i==subPathsList.length-1){
+            if(returnParent){
+              rParent = new HashMap<>();
+            }
+            if(o instanceof List){
+              int s = currentPaths.size()-1;
+              for(int j1 =s ; j1 >= 0 ; j1--){
+                if(((List)o).get(j1) == null){
+                  currentPaths.remove(j1);
+                  s--;
+                }
+              }
+            }
           }
           o = getValueAt(subPathsList[i], o, rParent);
+
         }
       }
     }
+    System.out.println("currentPaths: " + currentPaths);
     return o;
   }
 
+  private String wrapIfNeeded(String str){
+    if(str.contains(".")){
+      return "'"+str+"'";
+    }
+    return str;
+  }
+  /**
+   * Should be used with a path to a single value - no wildcards
+   * Will return the value of the passed in path and the json object / json array which
+   * holds the passed in path
+   * for example:
+   * {"a": { "b" : "c" , "d" : "e"}}
+   * passing in a.d will return a map of
+   * e={ "b" : "c" , "d" : "e"}
+   * @param path
+   * @return
+   */
   public Object getValueParentPairs(String path){
     return getValueAt(path, true);
+  }
+
+  public Object getPath2ValuePairs(String path){
+    return getValueAt(path, true);
+  }
+
+  private String calculateCurrentPath(StringBuilder previousPath, String []subPathsList,
+      int currentField, int currentArrayIndex){
+    if("[*]".equals(subPathsList[currentField])){
+      previousPath.append("[").append(currentArrayIndex).append("]");
+    }
+    else{
+      if(currentField>0 && currentField<subPathsList.length){
+        previousPath.append(".");
+      }
+      previousPath.append(subPathsList[currentField]);
+    }
+    return previousPath.toString();
   }
 
   private Object getValueAt(String path, Object o, Map<Object, Object> parent){
@@ -133,7 +210,7 @@ public class JsonPathParser {
           }
           temp.set(i, obj/*removed the []*/);
         }
-        temp.set(i, temp.get(i));
+        //temp.set(i, temp.get(i));
       }
       return temp;
     }
@@ -142,7 +219,7 @@ public class JsonPathParser {
 
   public void setValueAt(String path, Object value){
 
-    String []subPathsList = getPathasList(path);
+    String []subPathsList = getPathAsList(path);
     Object o = j;
     if(subPathsList.length == 1){
       j.put(path, value);
@@ -162,7 +239,7 @@ public class JsonPathParser {
     }
   }
 
-  private String[] getPathasList(String path){
+  private String[] getPathAsList(String path){
     int len = path.length();
     List<String> res = new ArrayList<>();
     StringBuilder token = new StringBuilder();
@@ -215,6 +292,17 @@ public class JsonPathParser {
     return res.toArray(new String[0]);
   }
 
+  private class Pairs {
+    Object object;
+    String path;
+    public Pairs(Object object, String path) {
+      super();
+      this.object = object;
+      this.path = path;
+    }
+  }
+
+
   public static void main(String args[]) throws IOException{
 
     //for (int i = 0; i < 3; i++) {
@@ -225,11 +313,19 @@ public class JsonPathParser {
           getResourceAsStream("pathTest.json"), "UTF-8"));
       JsonPathParser jp = new JsonPathParser(j1);
 
-      Object o = jp.getValueParentPairs("c.arr[*].a2.'aaa.ccc'");
+      Object o = jp.getValueParentPairs("c.arr[*].a2.'aaa.ccc'"); //fix
+
+      Object o3a = jp.getValueParentPairs("c.arr[*].a2.arr2[*]");
+
+      Object o3 = jp.getValueParentPairs("c.arr[*].a2.arr2[*].arr3[*]");
+
+      Object o11 = jp.getValueParentPairs("c.arr[*]");
 
       Object o1 = jp.getValueParentPairs("c.arr[0].a2.'aaa.ccc'");
 
       Object o2 = jp.getValueParentPairs("c.a1");
+
+      Object o4 = jp.getValueParentPairs("c.arr[*].a2.arr2[*].arr3[*].a32");
 
       System.out.println("c.arr[*].a2.'aaa.ccc': (with parent) " + jp.getValueAt("c.arr[*].a2.'aaa.ccc'", true));
 

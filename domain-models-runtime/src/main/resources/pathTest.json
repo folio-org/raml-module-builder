@@ -28,6 +28,7 @@
           ]
         }
       },
+      {"ignore": "true"},
       {
         "a2": {
           "aaa.ccc": "aaa.bbb",
