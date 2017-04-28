@@ -7,7 +7,7 @@
       {
         "a3": "a23",
         "a2": {
-          "aaa.ccc": "aaa.bbb1",
+          "aaa.ccc": "aaa.bbb",
           "arr2": [
             {
               "a30": "1"
@@ -31,7 +31,7 @@
       {"ignore": "true"},
       {
         "a2": {
-          "aaa.ccc": "aaa.bbb2",
+          "aaa.ccc": "aaa.bbb",
           "arr2": [
             {
               "a31": "3"
