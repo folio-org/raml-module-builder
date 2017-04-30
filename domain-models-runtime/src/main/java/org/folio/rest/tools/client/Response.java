@@ -1,9 +1,11 @@
 package org.folio.rest.tools.client;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-import io.vertx.core.json.JsonArray;
+import org.folio.rest.tools.parser.JsonPathParser;
+
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -19,59 +21,78 @@ class Response {
   JsonObject error;
   Throwable exception;
 
-  public Response joinOn(String withField, Response response, String onField, String insertField) throws ResponseNullPointer {
+  /**
+   * join current response with response parameter using the withField field name on the current
+   * response and the onField field from the response passed in as a parameter.
+   * Replace the withField in the current response
+   * with the value found in the insertField (from the Response parameter)
+   * @param withField
+   * @param response
+   * @param onField
+   * @param insertField
+   * @param allowNulls - whether to place a null value into the json from the passed in response
+   * json, in a case where there is no match in the join for a specific entry
+   * @return
+   * @throws ResponseNullPointer
+   */
+  public Response joinOn(String withField, Response response, String onField, String insertField, boolean allowNulls) throws ResponseNullPointer {
     if(this.body == null || response == null || response.body == null){
       throw new ResponseNullPointer();
     }
-    Map<Object, JsonObject> joinTable = new HashMap<>();
-    response.body.fieldNames().forEach( entry -> {
-      Object object = response.body.getValue(entry);
-      if(object instanceof JsonArray){
-        JsonArray rr = (JsonArray)object;
-        int size = rr.size();
-        for(int i=0; i<size; i++){
-          joinTable.put(rr.getJsonObject(i).getValue(onField), rr.getJsonObject(i));
+    JsonPathParser jpp = new JsonPathParser(response.body);
+    //get list of paths within the json to join on
+    List<StringBuilder> sbList = jpp.getAbsolutePaths(onField);
+    if(sbList == null){
+      //path does not exist in the json, nothing to join on, return response
+      return this;
+    }
+    Map<Object, Object> joinTable = new HashMap<>();
+    int size = sbList.size();
+    for (int i = 0; i < size; i++) {
+      Map<Object, Object> map = jpp.getValueAndParentPair(sbList.get(i));
+      if(map != null){
+        joinTable.putAll(map);
+      }
+    }
+    jpp = new JsonPathParser(this.body);
+    List<StringBuilder> list = jpp.getAbsolutePaths(withField);
+    int size2 = list.size();
+    for (int i = 0; i < size2; i++) {
+      Object o = joinTable.get(jpp.getValueAt(list.get(i).toString()));
+      if(o != null){
+        if(insertField != null){
+          o = ((JsonObject)o).getValue(insertField);
+        }
+        jpp.setValueAt(list.get(i).toString(), o);
+      }
+      else{
+        if(allowNulls){
+          jpp.setValueAt(list.get(i).toString(), o);
         }
       }
-    });
-    this.body.fieldNames().forEach( entry -> {
-      Object object = this.body.getValue(entry);
-      if(object instanceof JsonArray){
-        JsonArray rr = (JsonArray)object;
-        int size = rr.size();
-        for(int i=0; i<size; i++){
-          JsonObject jo = rr.getJsonObject(i);
-          JsonObject values2join = joinTable.get(jo.getValue(withField));
-          if(values2join != null){
-            if(insertField == null){
-              jo.put(withField, values2join);
-            }
-            else{
-              jo.put(withField, values2join.getValue(insertField));
-            }
-          }
-        }
-      }
-    });
+    }
+
     return this;
   }
 
-  public Response joinOn(String withField, Response response, String insertField) throws ResponseNullPointer {
-    return joinOn(withField, response, withField, insertField);
-
+  public Response joinOn(String withField, Response response, String onField, String insertField) throws ResponseNullPointer {
+    return joinOn(withField, response, onField, insertField, true);
   }
 
   /**
-   * join current response with response parameter using the same field name
-   * from both response bodies json
-   * @param field
+   * join current response with response parameter using the withField field name on the current
+   * response and the response passed in as a parameter. Replace the withField in the current response
+   * with the value found in the insertField (from the Response parameter)
+   * @param withField
    * @param response
+   * @param insertField
    * @return
+   * @throws ResponseNullPointer
    */
-  public Response joinOn(String withField, Response response) throws ResponseNullPointer {
-    return joinOn(withField, response, withField, null);
-
+  public Response joinOn(String withField, Response response, String onField) throws ResponseNullPointer {
+    return joinOn(withField, response, onField, null);
   }
+
 
   public static boolean isSuccess(int statusCode){
     if(statusCode >= 200 && statusCode < 300){

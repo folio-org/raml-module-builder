@@ -35,12 +35,14 @@ public class JsonPathParser {
    * <br>
    * c.arr[*].a2.arr2[*]
    * <br>
-   * and will return a list of all actual path conforming to this virtual path, for example
+   * and will return a list of all existing paths conforming to this virtual path, for example
    * c.arr[0].a2.arr2[0]
    * c.arr[1].a2.arr2[0]
    * c.arr[2].a2.arr2[0]
    * c.arr[0].a2.arr2[1]
    * c.arr[0].a2.arr2[2]
+   * <br>
+   * Paths within the virtual path that do not contain entries will not be returned
    * <br>
    * ...
    * c.arr[*].a2
@@ -69,10 +71,8 @@ public class JsonPathParser {
    * @param returnParent - can return the value of the direct parent
    *  <br>
    *  For example:
-   *    <br>passing in a usergroups[*].id will return a List of the ids
-   *    <br>passing in a (usergroups[*].id , true) will return a List of the json object containing
-   *    the id field - this is only relevant when a specific field is requested in the path -
-   *    if the path ends with [1] or [*] - this value is ignored
+   *    <br>passing in a usergroups[*].id will return a List of the ids (a wildcard in the path will result
+   *    in a returned List of values.
    * @return either a jsonobject / jsonarray / List
    */
   private Object getValueAt(String path, boolean returnParent, boolean returnPaths){
@@ -81,10 +81,6 @@ public class JsonPathParser {
     List<StringBuilder> currentPaths = new ArrayList<>();
     Map<Object, Object> rParent = null;
 
-    if(subPathsList.length == 1){
-      return j.getValue(subPathsList[0]);
-    }
-    else{
       StringBuilder sb = new StringBuilder();
       currentPaths.add(sb);
       for (int i = 0; i < subPathsList.length; i++) {
@@ -119,6 +115,9 @@ public class JsonPathParser {
             }
           }
           else{
+            if(o==null){
+              return null;
+            }
             int s = ((JsonArray)o).size();
             for(int j=0; j<s; j++){
               StringBuilder sb1 = new StringBuilder(sb).append("["+j+"]");
@@ -160,7 +159,6 @@ public class JsonPathParser {
 
         }
       }
-    }
     if(returnPaths){
       return currentPaths;
     }
@@ -173,22 +171,32 @@ public class JsonPathParser {
     }
     return str;
   }
+
   /**
-   * Should be used with a path to a single value - no wildcards to a specific field
+   * Should be used with a path to a single value - no wildcards (ex [*] should be used)
    * Will return the value of the passed in path and the json object / json array where the path
-   * is nested
-   * for example:
+   * is nested in.
+   * <br>
+   * For example:
    * {"a": { "b" : "c" , "d" : "e"}}
-   * passing in <b>a.d</b> will return a map of
+   * <br>
+   * Passing in <b>a.d</b> as the path will return a map of
    * e={ "b" : "c" , "d" : "e"}
+   * <br>
+   * Where 'e' is the value found at the requested path, and { "b" : "c" , "d" : "e"} is the
+   * object containing the requested path
    * <br>
    * If an array is requested for example: a.b[0] - then a json object will be returned containing
    * the content of the array only (will behave like getValueAt())
    * @param path
    * @return
    */
-  public Object getValueAndParentPair(String path){
-    return getValueAt(path, true, false);
+  public Map<Object, Object> getValueAndParentPair(String path){
+    return ( Map<Object, Object> )getValueAt(path, true, false);
+  }
+
+  public  Map<Object, Object>  getValueAndParentPair(StringBuilder path){
+    return ( Map<Object, Object> )getValueAt(path.toString(), true, false);
   }
 
   private Object getValueAt(String path, Object o, Map<Object, Object> parent){
@@ -202,8 +210,16 @@ public class JsonPathParser {
       }
     }
     else if(o instanceof JsonArray){
-      return ((JsonArray)o).getValue(Integer.parseInt(
-        path.substring(1, path.length()-1))/*remove the []*/);
+      Object o1 =
+          ((JsonArray)o).getValue(Integer.parseInt(
+            path.substring(1, path.length()-1))/*remove the []*/);
+      if(parent != null){
+        parent.put(o1, o);
+        return parent;
+      }
+      else{
+        return o1;
+      }
     }
     else if(o instanceof List){
       List<Object> temp = (List<Object>)o;
@@ -233,6 +249,11 @@ public class JsonPathParser {
     return null;
   }
 
+  /**
+   * Sets a value to the element at the specificed path
+   * @param path
+   * @param value
+   */
   public void setValueAt(String path, Object value){
 
     String []subPathsList = getPathAsList(path);
@@ -351,7 +372,9 @@ public class JsonPathParser {
       System.out.println("c.arr[*].a2.arr2[*].arr3[*]: " + jp.getValueAt("c.arr[*].a2.arr2[*].arr3[*]"));
 
       System.out.println("c.arr[*].a2.'aaa.ccc': " + jp.getValueAt("c.arr[*].a2.'aaa.ccc'"));
-      jp.setValueAt("c.arr[1].a2.'aaa.ccc'", "aaa.ccc");
+      jp.setValueAt("c.arr[0].a2.'aaa.ccc'", "aaa.ccc");
+      jp.setValueAt("c.arr[2].a2.'aaa.ccc'", "aaa.ddd");
+
       System.out.println("c.arr[*].a2.'aaa.ccc': " +jp.getValueAt("c.arr[*].a2.'aaa.ccc'"));
 
       System.out.println("c.arr[*].a2.arr2[*]: " + jp.getValueAt("c.arr[*].a2.arr2[*]"));
@@ -362,7 +385,7 @@ public class JsonPathParser {
       jp.setValueAt("c.arr[1].a2.'aaa.ccc'", "aaa.ddd");
       System.out.println("c.arr[1].a2.'aaa.ccc': " +jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
 
-      System.out.println("c.arr[1].a2 " + jp.getValueAt("c.arr[1].a2"));
+      System.out.println("c.arr[1].a2 " + ((JsonObject)jp.getValueAt("c.arr[0].a2.arr2[2]")).getJsonArray("arr3"));
       jp.setValueAt("c.arr[1].a2", new JsonObject("{\"xqq\":\"xaa\"}"));
       System.out.println("c.arr[1].a2 " + jp.getValueAt("c.arr[1].a2"));
 

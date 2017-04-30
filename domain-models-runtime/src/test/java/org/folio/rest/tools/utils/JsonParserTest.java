@@ -5,19 +5,20 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.junit.Test;
 
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 public class JsonParserTest {
 
   @Test
-  public void checkValueAndGetObjectItIsNestedIn() {
+  public void check() {
 
     JsonObject j1 = null;
     try {
@@ -51,15 +52,44 @@ public class JsonParserTest {
     List<StringBuilder> o7 = jp.getAbsolutePaths("c.arr[*].a2.arr2[*].arr3[*].a32");
     assertEquals(o7.size(), 2);
 
-    HashMap<String, Object> p = (HashMap<String, Object>)jp.getValueAndParentPair("c.arr[0].a2.'aaa.ccc'"); //fix
+    Map<Object, Object> p = jp.getValueAndParentPair("c.arr[0].a2.'aaa.ccc'"); //fix
     assertTrue(p.containsKey("aaa.bbb"));
     assertTrue(((JsonObject)p.get("aaa.bbb")).containsKey("arr2"));
 
-    HashMap<String, Object> p2 = (HashMap<String, Object>)jp.getValueAndParentPair("c.arr[3].a2.arr2[2].arr3[1]");
+    Map<Object, Object> p2 = jp.getValueAndParentPair("c.arr[3].a2.arr2[2].arr3[1]");
     assertNull(p2);
 
-    JsonObject p3 = (JsonObject)jp.getValueAndParentPair("c.arr[0]");
-    assertTrue(p3.containsKey("a3"));
+    Map<Object, Object> p3 = jp.getValueAndParentPair("c.arr[0]");
+    assertTrue(p3.containsKey(jp.getValueAt("c.arr[0]")));
+
+    assertEquals(new JsonArray("[{\"a32\":\"5\"}, {\"a32\":\"6\"}]").encode().replace(" ", ""),
+      (new JsonArray(((List)jp.getValueAt("c.arr[*].a2.arr2[*].arr3[*]"))).encode().replaceAll(" ", "")));
+
+    String v1 = (String) ((List)jp.getValueAt("c.arr[*].a2.'aaa.ccc'")).get(0);
+    assertEquals("aaa.bbb", v1);
+    jp.setValueAt("c.arr[0].a2.'aaa.ccc'", "aaa.ccc");
+    jp.setValueAt("c.arr[2].a2.'aaa.ccc'", "aaa.ddd");
+    String v2 = (String) ((List)jp.getValueAt("c.arr[*].a2.'aaa.ccc'")).get(0);
+    assertEquals("aaa.ccc", v2);
+    String v3 = (String) ((List)jp.getValueAt("c.arr[*].a2.'aaa.ccc'")).get(2);
+    assertEquals("aaa.ddd", v3);
+
+    assertEquals(((List)jp.getValueAt("c.arr[*].a2.arr2[*]")).size(), 5);
+    jp.setValueAt("c.arr[0].a2.arr2[0]", "yyy");
+    String v4 = (String) ((List)jp.getValueAt("c.arr[*].a2.arr2[*]")).get(0);
+    assertEquals("yyy", v4);
+
+    //check nulls
+    assertNull(jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
+    jp.setValueAt("c.arr[1].a2.'aaa.ccc'", "aaa.ddd");
+    assertNull(jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
+
+    assertEquals("aaa.ccc", jp.getValueAt("c.arr[0].a2.'aaa.ccc'"));
+
+    assertEquals(2, ((JsonObject)jp.getValueAt("c.arr[0].a2.arr2[2]")).getJsonArray("arr3").size());
+    jp.setValueAt("c.arr[0].a2", new JsonObject("{\"xqq\":\"xaa\"}"));
+    assertEquals("{\"xqq\":\"xaa\"}", ((JsonObject)jp.getValueAt("c.arr[0].a2")).encode());
+
   }
 
 }
