@@ -61,7 +61,12 @@ public class Response {
       Object o = joinTable.get(jpp.getValueAt(list.get(i).toString()));
       if(o != null){
         if(insertField != null){
-          o = ((JsonObject)o).getValue(insertField);
+          if(o instanceof JsonObject){
+            o = new JsonPathParser((JsonObject)o).getValueAt(insertField);
+          }
+          else{
+            o = ((JsonObject)o).getValue(insertField);
+          }
         }
         jpp.setValueAt(list.get(i).toString(), o);
       }
