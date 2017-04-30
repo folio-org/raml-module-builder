@@ -12,7 +12,7 @@ import io.vertx.core.json.JsonObject;
  * @author shale
  *
  */
-class Response {
+public class Response {
 
   String endpoint;
   int code;
