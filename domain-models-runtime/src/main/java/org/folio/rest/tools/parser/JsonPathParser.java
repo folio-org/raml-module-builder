@@ -251,6 +251,7 @@ public class JsonPathParser {
 
   /**
    * Sets a value to the element at the specificed path
+   * wildcards are not allowed in the path - for example [*] is NOT allowed
    * @param path
    * @param value
    */
@@ -270,9 +271,11 @@ public class JsonPathParser {
       ((JsonObject) o).put(subPathsList[subPathsList.length-1], value);
     }
     else if(o instanceof JsonArray){
-      ((JsonArray)o).getList().set(Integer.parseInt(
-        subPathsList[subPathsList.length-1].substring(
-          1, subPathsList[subPathsList.length-1].length()-1)), value/*remove the []*/);
+      try {
+        ((JsonArray)o).getList().set(Integer.parseInt(
+          subPathsList[subPathsList.length-1].substring(
+            1, subPathsList[subPathsList.length-1].length()-1)), value/*remove the []*/);
+      } catch (NumberFormatException e) {}
     }
   }
 
@@ -384,6 +387,8 @@ public class JsonPathParser {
       System.out.println("c.arr[1].a2.'aaa.ccc': " + jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
       jp.setValueAt("c.arr[1].a2.'aaa.ccc'", "aaa.ddd");
       System.out.println("c.arr[1].a2.'aaa.ccc': " +jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
+
+      jp.setValueAt("c.arr[*]", new JsonObject());
 
       System.out.println("c.arr[1].a2 " + ((JsonObject)jp.getValueAt("c.arr[0].a2.arr2[2]")).getJsonArray("arr3"));
       jp.setValueAt("c.arr[1].a2", new JsonObject("{\"xqq\":\"xaa\"}"));

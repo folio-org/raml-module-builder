@@ -90,6 +90,7 @@ public class JsonParserTest {
     jp.setValueAt("c.arr[0].a2", new JsonObject("{\"xqq\":\"xaa\"}"));
     assertEquals("{\"xqq\":\"xaa\"}", ((JsonObject)jp.getValueAt("c.arr[0].a2")).encode());
 
+    jp.setValueAt("c.arr[*]", new JsonObject());
   }
 
 }
