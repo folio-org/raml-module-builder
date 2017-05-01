@@ -6,6 +6,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.commons.io.IOUtils;
+import org.folio.rest.tools.parser.JsonPathParser;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.CacheStats;
@@ -19,6 +22,7 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -107,7 +111,11 @@ public class HttpModuleClient {
   }
 
   public Response request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
-      boolean cachable) throws Exception {
+      boolean cachable, BuildCQL bCql) throws Exception {
+
+    if(bCql != null){
+      endpoint = endpoint + bCql.buildCQL();
+    }
     if(cachable){
       initCache();
       Response j = cache.get(endpoint);
@@ -135,7 +143,7 @@ public class HttpModuleClient {
       httpClient.close();
     }
     if(response.error != null && rollbackURL != null){
-      Response rb = request(rollbackURL.method, rollbackURL.endpoint, null, null, false);
+      Response rb = request(rollbackURL.method, rollbackURL.endpoint, null, null, false, rollbackURL.cql);
       if(rb.error != null){
         response.populateRollBackError(rb.error);
       }
@@ -146,26 +154,44 @@ public class HttpModuleClient {
     return response;
   }
 
+  public Response request(String endpoint, Map<String, String> headers, boolean cache, BuildCQL cql)
+      throws Exception {
+    return request(HttpMethod.GET, endpoint, headers, null, cache, cql);
+  }
+
   public Response request(String endpoint, Map<String, String> headers, boolean cache)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, cache);
+    return request(HttpMethod.GET, endpoint, headers, null, cache, null);
+  }
+
+  public Response request(String endpoint, Map<String, String> headers, BuildCQL cql)
+      throws Exception {
+    return request(HttpMethod.GET, endpoint, headers, null, true, cql);
   }
 
   public Response request(String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, true);
+    return request(HttpMethod.GET, endpoint, headers, null, true, null);
+  }
+
+  public Response request(String endpoint, boolean cache, BuildCQL cql) throws Exception {
+    return request(HttpMethod.GET, endpoint, null, null, cache, cql);
   }
 
   public Response request(String endpoint, boolean cache) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, cache);
+    return request(HttpMethod.GET, endpoint, null, null, cache, null);
   }
 
   public Response request(String endpoint, RollBackURL rbURL) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, rbURL, true);
+    return request(HttpMethod.GET, endpoint, null, rbURL, true, null);
+  }
+
+  public Response request(String endpoint, BuildCQL cql) throws Exception {
+    return request(HttpMethod.GET, endpoint, null, null, true, cql);
   }
 
   public Response request(String endpoint) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, true);
+    return request(HttpMethod.GET, endpoint, null, null, true, null);
   }
 
   public void setDefaultHeaders(Map<String, String> headersForAllRequests){
@@ -204,14 +230,61 @@ public class HttpModuleClient {
   }
 
   public static void main(String args[]) throws Exception {
+
+    JsonObject j11 = new JsonObject(
+      IOUtils.toString(JsonPathParser.class.getClassLoader().
+        getResourceAsStream("pathTest.json"), "UTF-8"));
+
+    JsonObject j12 = new JsonObject(
+      IOUtils.toString(JsonPathParser.class.getClassLoader().
+        getResourceAsStream("pathTest.json"), "UTF-8"));
+
+    Response test11 = new Response();
+    test11.setBody(j11);
+    Response test12 = new Response();
+    test12.setBody(j12);
+
+    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr[1]").getBody());
+
+    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr", false).getBody());
+
+
+    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr[0].a3").getBody());
+
     HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
+
+    JsonObject j = new JsonObject();
+    JsonArray j22 = new JsonArray();
+    JsonArray j33 = new JsonArray();
+
+    j.put("arr", j22);
+    j.put("arr2", j33);
+
+    j22.add("librarian3");
+    j22.add("librarian2");
+
+    JsonObject j44 = new JsonObject();
+    j44.put("o", new JsonObject("{\"bbb\":\"aaa\"}"));
+    j33.add(j44);
+    Response rr = new Response();
+    rr.setBody(j);
+
+    Response bb0 = hc.request("/groups", false, new BuildCQL(rr, "arr2[0]", "group"));
+
+    Response bb = hc.request("/groups", false, new BuildCQL(rr, "arr", "group"));
+
+    Response bb1 = hc.request("/groups", false, new BuildCQL(rr, "arr[0]", "group"));
+
+    Response bb2 = hc.request("/groups", false, new BuildCQL(rr, "arr[*]", "group"));
+
+
     for (int i = 0; i < 2; i++) {
       boolean cache = true;
       if(i==1){
         cache = false;
       }
       Response a = hc.request("/users", cache);
-      Response b = hc.request("/groups", cache);
+      Response b = hc.request("/groups", cache, new BuildCQL(a, "users[*].patron_group", "group"));
       a.joinOn("users[*].patron_group", b, "usergroups[*].id", "group");
       hc.request("/users").joinOn("users[*].patron_group", hc.request("/groups"), "usergroups[*].id");
     }
