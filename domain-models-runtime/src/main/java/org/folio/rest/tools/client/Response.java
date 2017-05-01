@@ -22,8 +22,9 @@ public class Response {
   Throwable exception;
 
   /**
-   * join current response with response parameter using the withField field name on the current
-   * response and the onField field from the response passed in as a parameter.
+   * join this response with response parameter using the withField field name on the current
+   * response and the onField field from the response passed in as a parameter (Basically, merge
+   * entries from the two responses when the values of the withField and onField match.
    * Replace the withField in the current response
    * with the value found in the insertField (from the Response parameter)
    * @param withField
@@ -80,17 +81,29 @@ public class Response {
     return this;
   }
 
+  /**
+   * join this response with response parameter using the withField field name on the current
+   * response and the onField field from the response passed in as a parameter (Basically, merge
+   * entries from the two responses when the values of the withField and onField match.
+   * Replace the withField in the current response
+   * with the value found in the insertField (from the Response parameter)
+   * @param withField
+   * @param response
+   * @param onField
+   * @param insertField
+   * @return
+   * @throws ResponseNullPointer
+   */
   public Response joinOn(String withField, Response response, String onField, String insertField) throws ResponseNullPointer {
     return joinOn(withField, response, onField, insertField, true);
   }
 
   /**
-   * join current response with response parameter using the withField field name on the current
-   * response and the response passed in as a parameter. Replace the withField in the current response
-   * with the value found in the insertField (from the Response parameter)
+   * join this response with response parameter using the withField field name on the current
+   * response and the onField field from the response passed in as a parameter (Basically, merge
+   * entries from the two responses when the values of the withField and onField match.
    * @param withField
    * @param response
-   * @param insertField
    * @return
    * @throws ResponseNullPointer
    */
