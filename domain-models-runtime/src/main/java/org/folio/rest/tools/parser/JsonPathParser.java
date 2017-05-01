@@ -29,6 +29,10 @@ public class JsonPathParser {
     return getValueAt(path, false, false);
   }
 
+  public Object getValueAt(StringBuilder path){
+    return getValueAt(path.toString(), false, false);
+  }
+
   /**
    * can receive a path with wildcards
    * for example:
@@ -73,7 +77,8 @@ public class JsonPathParser {
    *  For example:
    *    <br>passing in a usergroups[*].id will return a List of the ids (a wildcard in the path will result
    *    in a returned List of values.
-   * @return either a jsonobject / jsonarray / List
+   * @return either a jsonobject / jsonarray when a specific value is requested or a List when a
+   * wildcard is included in the path
    */
   private Object getValueAt(String path, boolean returnParent, boolean returnPaths){
     String []subPathsList = getPathAsList(path);
