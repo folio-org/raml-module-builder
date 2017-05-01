@@ -100,11 +100,7 @@ public class JsonPathParser {
               //loop over all json array entries, if the requested field was not found in the in
               //the json array, there will be a null value in that index in the list below
               Object o1 = ((List<Object>)o).get(j2);
-              if(o1 == null){
-                //currentPaths.remove(j2);
-                //fix = 1;
-              }
-              else {
+              if(o1 != null){
               int s1 = ((JsonArray)o1).size();
                 for(int j1=0; j1<s1; j1++){
                   ////////////////////////////
@@ -280,7 +276,7 @@ public class JsonPathParser {
         ((JsonArray)o).getList().set(Integer.parseInt(
           subPathsList[subPathsList.length-1].substring(
             1, subPathsList[subPathsList.length-1].length()-1)), value/*remove the []*/);
-      } catch (NumberFormatException e) {}
+      } catch (NumberFormatException e) {e.getMessage(); /* do nothing */}
     }
   }
 

@@ -38,6 +38,9 @@ public class HttpModuleClient {
   private static final String APP_JSON_CTYPE = "application/json";
   private static final String APP_JSON_ACCEPT = "application/json";
   private static final String X_OKAPI_HEADER = "x-okapi-tenant";
+
+  private static final Logger log = LoggerFactory.getLogger(HttpModuleClient.class);
+
   private String tenantId;
   private HttpClientOptions options;
   private HttpClient httpClient;
@@ -49,21 +52,14 @@ public class HttpModuleClient {
   private int connTO = 2000;
   private int idleTO = 5000;
 
-  private static final Logger log = LoggerFactory.getLogger(HttpModuleClient.class);
-
   public HttpModuleClient(String host, int port, String tenantId, boolean keepAlive, int connTO,
       int idleTO, boolean autoCloseConnections, long cacheTO) {
     this.tenantId = tenantId;
     this.cacheTO = cacheTO;
     this.connTO = connTO;
     this.idleTO = idleTO;
-    options = new HttpClientOptions();
-    options.setLogActivity(true);
-    options.setKeepAlive(keepAlive);
-    options.setDefaultHost(host);
-    options.setDefaultPort(port);
-    options.setConnectTimeout(connTO);
-    options.setIdleTimeout(idleTO);
+    options = new HttpClientOptions().setLogActivity(true).setKeepAlive(keepAlive)
+        .setDefaultHost(host).setDefaultPort(port).setConnectTimeout(connTO).setIdleTimeout(idleTO);
     Context context = Vertx.currentContext();
     this.autoCloseConnections = autoCloseConnections;
     if (context == null) {
@@ -74,18 +70,18 @@ public class HttpModuleClient {
     setDefaultHeaders();
   }
 
-  private void setDefaultHeaders(){
-    headers.put(X_OKAPI_HEADER, tenantId);
-    headers.put(CTYPE, APP_JSON_CTYPE);
-    headers.put(ACCEPT, APP_JSON_ACCEPT);
-  }
-
   public HttpModuleClient(String host, int port, String tenantId) {
     this(host, port, tenantId, true, 2000, 5000, true, 30);
   }
 
   public HttpModuleClient(String host, int port, String tenantId, boolean autoCloseConnections) {
     this(host, port, tenantId, true, 2000, 5000, autoCloseConnections, 30);
+  }
+
+  private void setDefaultHeaders(){
+    headers.put(X_OKAPI_HEADER, tenantId);
+    headers.put(CTYPE, APP_JSON_CTYPE);
+    headers.put(ACCEPT, APP_JSON_ACCEPT);
   }
 
   private void request(HttpMethod method, String endpoint, Map<String, String> headers,
