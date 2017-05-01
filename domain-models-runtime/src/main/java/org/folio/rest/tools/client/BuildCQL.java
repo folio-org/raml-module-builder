@@ -22,6 +22,26 @@ public class BuildCQL {
 
   private BuildCQL(){}
 
+  /**
+   * Builds a simple cql string by parsing through the Response's json, extracting values found in
+   * the pathToExtractFrom path ({@link org.folio.rest.tools.parser.JsonPathParser}) and creating
+   * a cql query string with cqlPath=values_found_in_path.
+   * <br>
+   * This could look something like this:
+   * values found in <i>pathToExtractFrom</i>: <b>"hi", "hello", "whats up"</b>
+   * <br>
+   * <i>cqlPath</i>: <b>myField</b>
+   * <br>
+   * <i>result</i>: <b>?query=myField=hi+or+myField=hello+or+myField=whats%20up</b>
+   * <br>The operator is 'or' by default
+   * @param r
+   * @param pathToExtractFrom
+   * @param cqlPath
+   * @param queryParamName - defaults to 'query'
+   * @param addQuestionMark - defaults to 'true', if other params have already been added to the endpoint
+   * change to false
+   * @param operator - defaults to 'or'
+   */
   public BuildCQL(Response r, String pathToExtractFrom, String cqlPath, String queryParamName, boolean addQuestionMark, String operator){
     this.r = r;
     this.pathToExtractFrom = pathToExtractFrom;
@@ -31,6 +51,23 @@ public class BuildCQL {
     this.operatorBetweenArgs = operator;
   }
 
+  /**
+   * Builds a simple cql string by parsing through the Response's json, extracting values found in
+   * the pathToExtractFrom path ({@link org.folio.rest.tools.parser.JsonPathParser}) and creating
+   * a cql query string with cqlPath=values_found_in_path.
+   * <br>
+   * This could look something like this:
+   * values found in <i>pathToExtractFrom</i>: <b>"hi", "hello", "whats up"</b>
+   * <br>
+   * <i>cqlPath</i>: <b>myField</b>
+   * <br>
+   * <i>result</i>: <b>?query=myField=hi+or+myField=hello+or+myField=whats%20up</b>
+   * <br>The operator is 'or' by default
+   * @param r
+   * @param pathToExtractFrom
+   * @param cqlPath
+   * @param queryParamName - defaults to 'query'
+   */
   public BuildCQL(Response r, String pathToExtractFrom, String cqlPath, String queryParamName){
     this.r = r;
     this.pathToExtractFrom = pathToExtractFrom;
@@ -38,6 +75,22 @@ public class BuildCQL {
     this.cqlPath = cqlPath;
   }
 
+  /**
+   * Builds a simple cql string by parsing through the Response's json, extracting values found in
+   * the pathToExtractFrom path ({@link org.folio.rest.tools.parser.JsonPathParser}) and creating
+   * a cql query string with cqlPath=values_found_in_path.
+   * <br>
+   * This could look something like this:
+   * values found in <i>pathToExtractFrom</i>: <b>"hi", "hello", "whats up"</b>
+   * <br>
+   * <i>cqlPath</i>: <b>myField</b>
+   * <br>
+   * <i>result</i>: <b>?query=myField=hi+or+myField=hello+or+myField=whats%20up</b>
+   * <br>The operator is 'or' by default
+   * @param r
+   * @param pathToExtractFrom
+   * @param cqlPath
+   */
   public BuildCQL(Response r, String pathToExtractFrom, String cqlPath){
     this.r = r;
     this.pathToExtractFrom = pathToExtractFrom;
