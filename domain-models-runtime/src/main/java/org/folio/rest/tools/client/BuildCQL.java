@@ -99,17 +99,20 @@ public class BuildCQL {
 
   public String buildCQL() throws UnsupportedEncodingException {
     StringBuilder sb = new StringBuilder();
+    StringBuilder prefix = new StringBuilder();
+
     if(addQuestionMark){
-      sb.append("?");
+      prefix.append("?");
     }
     else{
-      sb.append("&");
+      prefix.append("&");
     }
-    sb.append(queryParamName).append("=");
+    prefix.append(queryParamName).append("=");
+
     JsonPathParser jpp = new JsonPathParser( r.getBody() );
     Object o = jpp.getValueAt(pathToExtractFrom);
     List<Object> paths = null;
-/*    if(o instanceof JsonArray){
+    /*if(o instanceof JsonArray){
       paths = ((JsonArray)o).getList();
     }*/
     if (o instanceof List){
@@ -123,12 +126,18 @@ public class BuildCQL {
     }
     int size = paths.size();
     for (int i = 0; i < size; i++) {
+      if(paths.get(i) == null){
+        continue;
+      }
       sb.append(cqlPath).append("==").append(URLEncoder.encode(paths.get(i).toString(), "UTF-8"));
       if(i<size-1){
         sb.append("+").append(operatorBetweenArgs).append("+");
       }
     }
-    return sb.toString();
+    if(sb.length() > 0){
+      return prefix.append(sb.toString()).toString();
+    }
+    return "";
   }
 
 }
