@@ -8,13 +8,13 @@ import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.tools.parser.JsonPathParser;
+import org.folio.rest.tools.utils.VertxUtils;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 
-import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
@@ -60,13 +60,8 @@ public class HttpModuleClient {
     this.idleTO = idleTO;
     options = new HttpClientOptions().setLogActivity(true).setKeepAlive(keepAlive)
         .setDefaultHost(host).setDefaultPort(port).setConnectTimeout(connTO).setIdleTimeout(idleTO);
-    Context context = Vertx.currentContext();
     this.autoCloseConnections = autoCloseConnections;
-    if (context == null) {
-        vertx = Vertx.vertx();
-    } else {
-        vertx = context.owner();
-    }
+    vertx = VertxUtils.getVertxFromContextOrNew();
     setDefaultHeaders();
   }
 
