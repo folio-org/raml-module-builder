@@ -54,6 +54,7 @@ public class JsonPathParser {
    * @param path
    * @return
    */
+  @SuppressWarnings("unchecked")
   public List<StringBuilder> getAbsolutePaths(String path){
     return (List<StringBuilder>)getValueAt(path, false, true);
   }
@@ -145,7 +146,7 @@ public class JsonPathParser {
             if(o instanceof List){
               int s = currentPaths.size()-1;
               for(int j1 =s ; j1 >= 0 ; j1--){
-                if(((List)o).get(j1) == null){
+                if(((List<?>)o).get(j1) == null){
                   currentPaths.remove(j1);
                   s--;
                 }
@@ -192,10 +193,12 @@ public class JsonPathParser {
    * @param path
    * @return
    */
+  @SuppressWarnings("unchecked")
   public Map<Object, Object> getValueAndParentPair(String path){
     return ( Map<Object, Object> )getValueAt(path, true, false);
   }
 
+  @SuppressWarnings("unchecked")
   public  Map<Object, Object>  getValueAndParentPair(StringBuilder path){
     return ( Map<Object, Object> )getValueAt(path.toString(), true, false);
   }
@@ -223,6 +226,7 @@ public class JsonPathParser {
       }
     }
     else if(o instanceof List){
+      @SuppressWarnings("unchecked")
       List<Object> temp = (List<Object>)o;
       int s = temp.size();
       for (int i = 0; i < s; i++) {
@@ -256,6 +260,7 @@ public class JsonPathParser {
    * @param path
    * @param value
    */
+  @SuppressWarnings("unchecked")
   public void setValueAt(String path, Object value){
 
     String []subPathsList = getPathAsList(path);
@@ -333,6 +338,7 @@ public class JsonPathParser {
     return res.toArray(new String[0]);
   }
 
+  @SuppressWarnings("unused")
   public static void main(String args[]) throws IOException{
 
     //for (int i = 0; i < 3; i++) {

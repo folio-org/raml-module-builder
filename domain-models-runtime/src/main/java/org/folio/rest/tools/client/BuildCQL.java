@@ -20,8 +20,6 @@ public class BuildCQL {
   private boolean addQuestionMark = true;
   private String operatorBetweenArgs = "or";
 
-  private BuildCQL(){}
-
   /**
    * Builds a simple cql string by parsing through the Response's json, extracting values found in
    * the pathToExtractFrom path ({@link org.folio.rest.tools.parser.JsonPathParser}) and creating
@@ -97,6 +95,7 @@ public class BuildCQL {
     this.cqlPath = cqlPath;
   }
 
+  @SuppressWarnings("unchecked")
   public String buildCQL() throws UnsupportedEncodingException {
     StringBuilder sb = new StringBuilder();
     StringBuilder prefix = new StringBuilder();
@@ -117,7 +116,7 @@ public class BuildCQL {
     }*/
     if (o instanceof List){
       //assume list
-      paths = (List<Object>)jpp.getValueAt(pathToExtractFrom);
+      paths = (List<Object>)o;
     }
     else{
       //single value
