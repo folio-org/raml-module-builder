@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -90,6 +91,8 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+  public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
+
   public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
 
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
@@ -109,7 +112,6 @@ public class RestVerticle extends AbstractVerticle {
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = new ObjectMapper();
-  private static final String       OKAPI_HEADER_PREFIX             = "x-okapi";
   private static final String       DEFAULT_SCHEMA                  = "public";
 
   private final Messages            messages                        = Messages.getInstance();
@@ -1032,6 +1034,13 @@ public class RestVerticle extends AbstractVerticle {
         else if (param.startsWith("drools_dir=")) {
           droolsPath = param.split("=")[1];
           LogUtil.formatLogMessage(className, "cmdProcessing", "Drools rules file dir set to " + droolsPath);
+        }
+        else if (param.startsWith("debug_log_package=")) {
+          String debugPackage = param.split("=")[1];
+          if(debugPackage != null && debugPackage.length() > 0){
+            LogUtil.formatLogMessage(className, "cmdProcessing", "Setting package " + debugPackage + " to debug");
+            LogUtil.updateLogConfiguration(debugPackage, Level.FINEST);
+          }
         }
         else if (param.startsWith("db_connection=")) {
           String dbconnection = param.split("=")[1];

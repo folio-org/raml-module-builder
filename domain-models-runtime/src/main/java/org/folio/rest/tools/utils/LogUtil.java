@@ -1,12 +1,12 @@
 package org.folio.rest.tools.utils;
 
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
+
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class LogUtil {
 
@@ -46,7 +46,7 @@ public class LogUtil {
   /**
    * Update the log level for all packages / a specific package / a specific class
    * @param packageName - pass "*" for all packages
-   * @param level
+   * @param level - see {@link Level}
    * @return - JsonObject with a list of updated loggers and their levels
    */
   public static JsonObject updateLogConfiguration(String packageName, Level level){
@@ -57,7 +57,7 @@ public class LogUtil {
     Enumeration<String> loggers = manager.getLoggerNames();
     while (loggers.hasMoreElements()) {
       String log = loggers.nextElement();
-      if(log != null && packageName != null && (log.startsWith(packageName) || "*".equals(packageName)) ){
+      if(log != null && packageName != null && (log.startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
         java.util.logging.Logger logger = manager.getLogger(log);
         if(logger != null){
           logger.setLevel(level);
