@@ -1608,7 +1608,7 @@ http://localhost:8080/patrons
 
 Other [modules](http://dev.folio.org/source-code/#server-side).
 
+See project [RMB](https://issues.folio.org/browse/RMB)
+at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
+
 Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
-
-
-
