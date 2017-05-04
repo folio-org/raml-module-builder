@@ -394,7 +394,7 @@ Create JSON schemas indicating the objects exposed by the module:
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>10.2.0</version>
+      <version>10.1.0</version>
     </dependency>
   </dependencies>
 ```
@@ -1469,12 +1469,12 @@ The client returns a `Response` object. The `Response` class has the following m
 
 
 The `HttpModuleClient request` function can receive the following paramters:
-`HttpMethod` - (default: GET)
-`endpoint` - API endpoint
-`headers` (default headers are passed in if this is not populated - Content-type=application/json, Accept: plain/test)
-`RollBackURL` URL to call if the request is unsuccessful [a non 2xx code is returned], Not that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
-`cachable` (whether to call the response), 
-`BuildCQL` object - This allows you to build a simple CQL query string from content within a json object. For example: 
+ - `HttpMethod` - (default: GET)
+ - `endpoint` - API endpoint
+ - `headers` (default headers are passed in if this is not populated - Content-type=application/json, Accept: plain/test)
+ - `RollBackURL` URL to call if the request is unsuccessful [a non 2xx code is returned], Not that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
+ - `cachable` (whether to call the response), 
+ - `BuildCQL` object - This allows you to build a simple CQL query string from content within a json object. For example: 
 `
 Response userResponse = 
 hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
@@ -1488,21 +1488,29 @@ The `Response` class also exposes a joinOn function that allow you to join / mer
 `public Response joinOn(String withField, Response response, String onField, String insertField,
       String intoField, boolean allowNulls)`
 
+
 The Join occurs with the response initiating the joinOn call
-`withField` - the field within the response whose value / values will be used to join
-`response` - the response to join this response with
-`onField` - the field in the passed in response whose value / values will be used to join
-`insertField` - the field in the passed in `response` to push into the current response (defaults to the `onField` value if this is not passed in)
-`intoField` - the field to populate within this response
-`allowNulls` - whether to populate with `null` if the field requested to push into the current response is `null` - if set to false - then the field will not be populated with a null value.
+
+ - `withField` - the field within the response whose value / values will be used to join
+ - `response` - the response to join this response with
+ - `onField` - the field in the passed in response whose value / values will be used to join
+ - `insertField` - the field in the passed in `response` to push into the current response (defaults to the `onField` value if this is not passed in)
+ - `intoField` - the field to populate within this response
+ - `allowNulls` - whether to populate with `null` if the field requested to push into the current response is `null` - if set to false - then the field will not be populated with a null value.
 
 Example:
+
 join:
+
 (response1) `{"a": "1","b": "2"}`
+
 with:
+
 (response2) `{"arr2":[{"id":"1","a31":"1"},{"id":"1","a31":"2"},{"id":"1","a32":"4"},{"id":"2","a31":"4"}]}`
+
 returns:
 `{"a":"1","b":["1","2"]}`
+
 with the following call:
 `response1.joinOn("a", response2, "arr2[*].id", "a31", "b", false)`
 
@@ -1515,9 +1523,13 @@ Since in this case a single entry (response1) matches multiple entries from resp
 The RMB exposes a simple JSON parser for the vert.x JSONObject. The parser allows getting and setting nested Json values. The parser allows retreiving values / nested values in a simpler manner. 
 For example:
 `a.b -> get value of field 'b' which is nested within a jsonobject called 'a'`
+
 `a.c[1].d - get 'd' which appears in array c[1]`
+
 `a.'bb.cc' -> get field called bb.cc - use '' when '.' in name`
+
 `a.c[*].a2 -> get all a2 values as a List for each entry in the c array`
+
 
 See the `JsonPathParser` class for more info. 
 
