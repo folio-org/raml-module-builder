@@ -1,11 +1,16 @@
 package org.folio.rest.tools.client;
 
-import java.util.HashMap;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import org.folio.rest.tools.parser.JsonPathParser;
+import org.folio.rest.tools.parser.JsonPathParser.Pairs;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
+
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -17,7 +22,6 @@ public class Response {
   String endpoint;
   int code;
   JsonObject body;
-  String statusMessage;
   JsonObject error;
   Throwable exception;
 
@@ -30,13 +34,19 @@ public class Response {
    * @param withField
    * @param response
    * @param onField
-   * @param insertField
-   * @param allowNulls - whether to place a null value into the json from the passed in response
-   * json, in a case where there is no match in the join for a specific entry
+   * @param insertField - the path should be relative to the object itself. so if an array of
+   * json objects is returned the path should will be evaluated on each json object and not on the
+   * array as a whole - this is unlike the withField and the onField which refer to the array of
+   * results as a whole so that if an array of results are returned withField and onField will
+   * need to indicate something along the lines of a[*].field , while insertField will refer to
+   * 'field' only without the a[*]
+   * @param intoField - the field in the current Response's json to merge into
+   * @param allowNulls
    * @return
    * @throws ResponseNullPointer
    */
-  public Response joinOn(String withField, Response response, String onField, String insertField, boolean allowNulls) throws ResponseNullPointer {
+  public Response joinOn(String withField, Response response, String onField, String insertField,
+      String intoField, boolean allowNulls) throws ResponseNullPointer {
     if(this.body == null || response == null || response.body == null){
       throw new ResponseNullPointer();
     }
@@ -47,33 +57,70 @@ public class Response {
       //path does not exist in the json, nothing to join on, return response
       return this;
     }
-    Map<Object, Object> joinTable = new HashMap<>();
+    Multimap<Object, Object> joinTable = ArrayListMultimap.create();
+    //Map<Object, Object> joinTable = new HashMap<>();
     int size = sbList.size();
     for (int i = 0; i < size; i++) {
-      Map<Object, Object> map = jpp.getValueAndParentPair(sbList.get(i));
+      Pairs map = jpp.getValueAndParentPair(sbList.get(i));
       if(map != null){
-        joinTable.putAll(map);
+        joinTable.put(map.getRequestedValue(), map.getRootNode());
       }
     }
     jpp = new JsonPathParser(this.body);
     List<StringBuilder> list = jpp.getAbsolutePaths(withField);
     int size2 = list.size();
     for (int i = 0; i < size2; i++) {
-      Object o = joinTable.get(jpp.getValueAt(list.get(i).toString()));
-      if(o != null){
-        if(insertField != null){
-          if(o instanceof JsonObject){
-            o = new JsonPathParser((JsonObject)o).getValueAt(insertField);
-          }
-          else{
-            o = ((JsonObject)o).getValue(insertField);
+      //get object for each requested absolute path (withField) needed to compare with the
+      //join table values
+      Object valueAtPath = jpp.getValueAt(list.get(i).toString());
+      //check if the value at the requested path also exists in the join table.
+      //if so, get the corresponding object from the join table that will replace a value
+      //in the current json
+      Collection<Object> o = joinTable.get(valueAtPath);
+      if(o != null && o.size() > 0){
+        Object toInsert = null;
+        //get the value from the join table object to use as the replacement
+        //this can be the entire object, or a value found at a path within the object aka insertField
+        if(o.size() == 1 && insertField != null){
+          toInsert = new JsonPathParser((JsonObject)o.iterator().next()).getValueAt(insertField);
+        }
+        else if(o.size() > 1 && insertField != null){
+          //more then one of the same value mapped to different objects, create a jsonarray
+          //with all the values and insert the jsonarray
+          toInsert = new JsonArray();
+          Iterator<?> it = o.iterator();
+          while(it.hasNext()){
+            Object object = new JsonPathParser((JsonObject)it.next()).getValueAt(insertField);
+            if(object != null){
+              ((JsonArray)toInsert).add(object);
+            }
           }
         }
-        jpp.setValueAt(list.get(i).toString(), o);
+        else {
+          toInsert = new JsonPathParser((JsonObject)o.iterator().next());
+        }
+        if(!allowNulls && toInsert == null){
+          continue;
+        }
+        if(intoField != null){
+          //get the path in the json to replace with the value from the join table
+          Object into = jpp.getValueAndParentPair(list.get(i)).getRootNode();
+          JsonPathParser jpp2 = new JsonPathParser((JsonObject)into);
+          Object placeWhereReplacementShouldHappen = jpp2.getValueAt(intoField);
+          if(placeWhereReplacementShouldHappen instanceof JsonArray){
+            ((JsonArray)placeWhereReplacementShouldHappen).add(toInsert);
+          }
+          else{
+            jpp2.setValueAt(intoField, toInsert);
+          }
+        }
+        else{
+          jpp.setValueAt(list.get(i).toString(), toInsert);
+        }
       }
       else{
         if(allowNulls){
-          jpp.setValueAt(list.get(i).toString(), o);
+          jpp.setValueAt(list.get(i).toString(), null);
         }
       }
     }
@@ -90,7 +137,36 @@ public class Response {
    * @param withField
    * @param response
    * @param onField
-   * @param insertField
+   * @param insertField - the path should be relative to the object itself. so if an array of
+   * json objects is returned the path should will be evaluated on each json object and not on the
+   * array as a whole - this is unlike the withField and the onField which refer to the array of
+   * results as a whole so that if an array of results are returned withField and onField will
+   * need to indicate something along the lines of a[*].field , while insertField will refer to
+   * 'field' only without the a[*]
+   * @param allowNulls - whether to place a null value into the json from the passed in response
+   * json, in a case where there is no match in the join for a specific entry
+   * @return
+   * @throws ResponseNullPointer
+   */
+  public Response joinOn(String withField, Response response, String onField, String insertField, boolean allowNulls) throws ResponseNullPointer {
+    return joinOn(withField, response, onField, insertField, null, allowNulls);
+  }
+
+  /**
+   * join this response with response parameter using the withField field name on the current
+   * response and the onField field from the response passed in as a parameter (Basically, merge
+   * entries from the two responses when the values of the withField and onField match.
+   * Replace the withField in the current response
+   * with the value found in the insertField (from the Response parameter)
+   * @param withField
+   * @param response
+   * @param onField
+   * @param insertField - the path should be relative to the object itself. so if an array of
+   * json objects is returned the path should will be evaluated on each json object and not on the
+   * array as a whole - this is unlike the withField and the onField which refer to the array of
+   * results as a whole so that if an array of results are returned withField and onField will
+   * need to indicate something along the lines of a[*].field , while insertField will refer to
+   * 'field' only without the a[*]
    * @return
    * @throws ResponseNullPointer
    */
@@ -159,14 +235,6 @@ public class Response {
 
   public void setBody(JsonObject body) {
     this.body = body;
-  }
-
-  public String getStatusMessage() {
-    return statusMessage;
-  }
-
-  public void setStatusMessage(String statusMessage) {
-    this.statusMessage = statusMessage;
   }
 
   public JsonObject getError() {

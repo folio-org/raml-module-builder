@@ -2,9 +2,7 @@ package org.folio.rest.tools.parser;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 
@@ -25,10 +23,57 @@ public class JsonPathParser {
     this.j = j;
   }
 
+  /**
+   * Function may return a value / jsonobject / jsonarray / null / List - depending on the path
+   * passed in and the value of the path requested
+   *
+   * @param path
+   * <br>
+   * Path can be
+   * <br>
+   * a.b -> get value of field 'b' which is nested within a jsonobject called 'a'
+   * <br>
+   * a.c[1].d
+   * <br>
+   * a.c -> get json array c
+   * <br>
+   * a.'bb.cc' -> get field called bb.cc - use '' when '.' in name
+   * <br>
+   * a.c[*].a2 -> get all a2 values as a <b>List</b> for each entry in the c array
+   *  <br>
+   *  For example:
+   *    <br>passing in a usergroups[*].id will return a List of the ids (a wildcard in the path will result
+   *    in a returned List of values.
+   * @return either a jsonobject / jsonarray when a specific value is requested or a List when a
+   * wildcard is included in the path
+   */
   public Object getValueAt(String path){
     return getValueAt(path, false, false);
   }
 
+  /**
+   * Function may return a value / jsonobject / jsonarray / null / List - depending on the path
+   * passed in and the value of the path requested
+   * @param path
+   * <br>
+   * Path can be
+   * <br>
+   * a.b -> get value of field 'b' which is nested within a jsonobject called 'a'
+   * <br>
+   * a.c[1].d - get 'd' which appears in array c[1]
+   * <br>
+   * a.c -> get json array c
+   * <br>
+   * a.'bb.cc' -> get field called bb.cc - use '' when '.' in name
+   * <br>
+   * a.c[*].a2 -> get all a2 values as a <b>List</b> for each entry in the c array
+   *  <br>
+   *  For example:
+   *    <br>passing in a usergroups[*].id will return a List of the ids (a wildcard in the path will result
+   *    in a returned List of values.
+   * @return either a jsonobject / jsonarray when a specific value is requested or a List when a
+   * wildcard is included in the path
+   */
   public Object getValueAt(StringBuilder path){
     return getValueAt(path.toString(), false, false);
   }
@@ -85,11 +130,16 @@ public class JsonPathParser {
     String []subPathsList = getPathAsList(path);
     Object o = j;
     List<StringBuilder> currentPaths = new ArrayList<>();
-    Map<Object, Object> rParent = null;
-
+    Pairs rParent = new Pairs();
+    boolean returnRoot = false;
       StringBuilder sb = new StringBuilder();
       currentPaths.add(sb);
       for (int i = 0; i < subPathsList.length; i++) {
+        if(i>1 && rParent == null){
+          //if this was a list, then the rParent was reset, set it to a new Pairs so that it is
+          //re-populated with the json object from the list and not the list itself
+          rParent = new Pairs();
+        }
         if("[*]".equals(subPathsList[i])){
           List<Object> l = new ArrayList<>();
           if(o instanceof List && o != null){
@@ -108,7 +158,7 @@ public class JsonPathParser {
                   StringBuilder sb1 = new StringBuilder(prefixes.get(j2)).append("["+j1+"]");
                   currentPaths.add(sb1);
                   ////////////////////////////
-                  l.add(getValueAt("["+j1+"]", o1, null));
+                  l.add(getValueAt("["+j1+"]", o1, null, returnRoot));
                 }
                 ///////////////
                 //currentPaths = currentPaths1;
@@ -124,7 +174,7 @@ public class JsonPathParser {
             for(int j=0; j<s; j++){
               StringBuilder sb1 = new StringBuilder(sb).append("["+j+"]");
               currentPaths.add(sb1);
-              l.add(getValueAt("["+j+"]", o, null));
+              l.add(getValueAt("["+j+"]", o, null, returnRoot));
             }
             currentPaths.remove(sb);
           }
@@ -136,12 +186,21 @@ public class JsonPathParser {
               if(!subPathsList[i].matches("\\[.*?\\]")){
                 currentPaths.get(j1).append(".");
               }
+              else{
+                if(i==1){
+                  //if [*] is the second value - this means the root node requested was something like
+                  //a[*] - which means the request is for a list of objects - in such a case
+                  //set the root node to each object and not to the list itself. so reset the  rParent
+                  //object to null - it will be repopulated in the next iteration.
+                  rParent = null;
+                }
+              }
             }
             currentPaths.get(j1).append(wrapIfNeeded(subPathsList[i]));
           }
           if(i==subPathsList.length-1){
             if(returnParent){
-              rParent = new HashMap<>();
+              returnRoot = true;
             }
             if(o instanceof List){
               int s = currentPaths.size()-1;
@@ -154,7 +213,7 @@ public class JsonPathParser {
             }
           }
           try {
-            o = getValueAt(subPathsList[i], o, rParent);
+            o = getValueAt(subPathsList[i], o, rParent, returnRoot);
           } catch (Exception e) {
             return null;
           }
@@ -193,20 +252,24 @@ public class JsonPathParser {
    * @param path
    * @return
    */
-  @SuppressWarnings("unchecked")
-  public Map<Object, Object> getValueAndParentPair(String path){
-    return ( Map<Object, Object> )getValueAt(path, true, false);
+  public Pairs getValueAndParentPair(String path){
+    return ( Pairs )getValueAt(path, true, false);
   }
 
-  @SuppressWarnings("unchecked")
-  public  Map<Object, Object>  getValueAndParentPair(StringBuilder path){
-    return ( Map<Object, Object> )getValueAt(path.toString(), true, false);
+  public Pairs getValueAndParentPair(StringBuilder path){
+    return ( Pairs )getValueAt(path.toString(), true, false);
   }
 
-  private Object getValueAt(String path, Object o, Map<Object, Object> parent){
+  private Object getValueAt(String path, Object o, Pairs parent, boolean returnRoot){
     if(o instanceof JsonObject){
       if(parent != null){
-        parent.put(((JsonObject) o).getValue(path), o);
+        if(parent.rootNode == null){
+          //dirty, but this checks to make sure we only put the root node into the parent map
+          parent.rootNode = o;
+        }
+      }
+      if(returnRoot){
+        parent.requestedValue = ((JsonObject) o).getValue(path);
         return parent;
       }
       else{
@@ -218,7 +281,12 @@ public class JsonPathParser {
           ((JsonArray)o).getValue(Integer.parseInt(
             path.substring(1, path.length()-1))/*remove the []*/);
       if(parent != null){
-        parent.put(o1, o);
+        if(parent.rootNode == null){
+          parent.rootNode = o;
+        }
+      }
+      if(returnRoot){
+        parent.requestedValue = o1;
         return parent;
       }
       else{
@@ -233,8 +301,13 @@ public class JsonPathParser {
         if(temp.get(i) instanceof JsonObject){
           Object obj = ((JsonObject) temp.get(i)).getValue(path);
           if(parent != null){
-            parent.put(obj, o);
-            return parent;
+            if(parent.rootNode == null){
+              parent.rootNode = o;
+            }
+            if(returnRoot){
+              parent.requestedValue = ((JsonObject) o).getValue(path);
+              return parent;
+            }
           }
           temp.set(i, obj);
         }
@@ -242,8 +315,13 @@ public class JsonPathParser {
           Object obj = ((JsonArray)temp.get(i)).getValue(Integer.parseInt(
             path.substring(1, path.length()-1)));
           if(parent != null){
-            parent.put(obj, o);
-            return parent;
+            if(parent.rootNode == null){
+              parent.rootNode = o;
+            }
+            if(returnRoot){
+              parent.requestedValue = ((JsonObject) o).getValue(path);
+              return parent;
+            }
           }
           temp.set(i, obj/*removed the []*/);
         }
@@ -270,7 +348,7 @@ public class JsonPathParser {
     }
     else{
       for (int i = 0; i < subPathsList.length-1; i++) {
-        o = getValueAt(subPathsList[i], o, null);
+        o = getValueAt(subPathsList[i], o, null, false);
       }
     }
     if(o instanceof JsonObject){
@@ -285,7 +363,7 @@ public class JsonPathParser {
     }
   }
 
-  private String[] getPathAsList(String path){
+  protected String[] getPathAsList(String path){
     int len = path.length();
     List<String> res = new ArrayList<>();
     StringBuilder token = new StringBuilder();
@@ -336,6 +414,23 @@ public class JsonPathParser {
       res.add(token.toString());
     }
     return res.toArray(new String[0]);
+  }
+
+  public class Pairs {
+    Object rootNode;
+    Object requestedValue;
+    public Object getRootNode() {
+      return rootNode;
+    }
+    public void setRootNode(Object rootNode) {
+      this.rootNode = rootNode;
+    }
+    public Object getRequestedValue() {
+      return requestedValue;
+    }
+    public void setRequestedValue(Object requestedValue) {
+      this.requestedValue = requestedValue;
+    }
   }
 
   @SuppressWarnings("unused")

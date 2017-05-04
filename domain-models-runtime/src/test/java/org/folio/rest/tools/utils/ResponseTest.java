@@ -1,15 +1,18 @@
 package org.folio.rest.tools.utils;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.tools.client.Response;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.junit.Test;
 
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -47,15 +50,94 @@ public class ResponseTest {
       assertEquals(jpp.getValueAt("c.a1.ignore"), "true");
 
       //non existent insertField with allowNulls set to true (default)
-      assertNull(new JsonPathParser(test1.joinOn("c.a1", test2, "a", "c.arr[5]").getBody())
+      Response r2 = new Response();
+      r2.setBody(j1);
+      assertNull(new JsonPathParser(r2.joinOn("c.a1", test2, "a", "c.arr[5]").getBody())
         .getValueAt("c.a1"));
 
       //check non existent path
       assertNull(jpp.getValueAt("c.a1.ignores!SA"));
 
-      //non existent insertField and join field -
-      assertNotNull(test1.joinOn("c.a9", test2, "a", "c.arr[5]"));
-      //System.out.println(test1.joinOn("c.a9", test2, "a", "c.arr[5]").getBody());
+      //do not allow nulls , so that the c.a9 field which does not exist
+      //will not be added sine the c.arr[5] is null
+      assertFalse(
+        test1.joinOn("c.a9", test2, "a", "c.arr[5]" , false).getBody().getJsonObject("c").containsKey("a9"));
+
+      assertTrue(
+        test1.joinOn("c.a9", test2, "a", "c.arr[5]" , true).getBody().getJsonObject("c").containsKey("a9"));
+
+      //pass all params to joinOn
+      r2.joinOn("b", test2, "c.arr[0].a2.arr2[1].a30", "c.arr[0].a2.arr2[2].arr3[0]", "a", false);
+      assertEquals("5" , r2.getBody().getJsonObject("a").getString("a32"));
+
+      String val = (String)new JsonPathParser(
+        r2.joinOn("b", test2, "c.arr[0].a2.arr2[1].a30", "c.arr[0]", "a", false).getBody()).getValueAt("a.a3");
+      assertEquals("a23" , val);
+
+
+      //one to many join
+      //json to join on has the same id multiple times with different values for each id.
+      //match with this json so that all values are inserted as an array
+      j2 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("joinTest.json"), "UTF-8"));
+
+      j1 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("pathTest.json"), "UTF-8"));
+
+      Response resp1 = new Response();
+      resp1.setBody(j1);
+
+      Response resp2 = new Response();
+      resp2.setBody(j2);
+
+      JsonArray arr = (JsonArray)new JsonPathParser(
+        resp1.joinOn("a", resp2, "arr2[*].id", "a31", "b", false).getBody()).getValueAt("b");
+
+      assertEquals(3 , arr.size());
+
+      //test many to many
+      j2 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("joinTest.json"), "UTF-8"));
+
+      j1 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("joinTest.json"), "UTF-8"));
+
+      resp1 = new Response();
+      resp1.setBody(j1);
+
+      resp2 = new Response();
+      resp2.setBody(j2);
+
+      JsonObject jo1 = resp1.joinOn("arr2[*].id", resp2, "arr2[*].id", "a31", "id", false).getBody();
+
+      List<?> listOfVals = (List<?>)new JsonPathParser(jo1).getValueAt("arr2[*].id");
+      assertEquals(5 , listOfVals.size());
+      assertEquals("4", jo1.getJsonArray("arr2").getJsonObject(4).getString("id"));
+
+      //test with numbers / boolean
+      j2 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("pathTest.json"), "UTF-8"));
+
+      j1 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("pathTest.json"), "UTF-8"));
+
+      resp1 = new Response();
+      resp1.setBody(j1);
+
+      resp2 = new Response();
+      resp2.setBody(j2);
+
+      resp1.joinOn("number", resp2, "number", "boolean", "number", false);
+      assertTrue(resp1.getBody().getBoolean("number"));
+
+      resp1.joinOn("boolean", resp2, "boolean", "number", "number", false);
+      assertTrue(99 == resp1.getBody().getInteger("number"));
 
     } catch (Exception e) {
       e.printStackTrace();
