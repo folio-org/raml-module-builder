@@ -19,6 +19,41 @@ public class BuildCQL {
   private String queryParamName = "query";
   private boolean addQuestionMark = true;
   private String operatorBetweenArgs = "or";
+  private String cqlStatementOperator = "==";
+
+
+  /**
+   * Builds a simple cql string by parsing through the Response's json, extracting values found in
+   * the pathToExtractFrom path ({@link org.folio.rest.tools.parser.JsonPathParser}) and creating
+   * a cql query string with cqlPath=values_found_in_path.
+   * <br>
+   * This could look something like this:
+   * values found in <i>pathToExtractFrom</i>: <b>"hi", "hello", "whats up"</b>
+   * <br>
+   * <i>cqlPath</i>: <b>myField</b>
+   * <br>
+   * <i>result</i>: <b>?query=myField=hi+or+myField=hello+or+myField=whats%20up</b>
+   * <br>The operator is 'or' by default
+   * @param r
+   * @param pathToExtractFrom
+   * @param cqlPath
+   * @param queryParamName - defaults to 'query'
+   * @param addQuestionMark - defaults to 'true', if other params have already been added to the endpoint
+   * change to false
+   * @param operator - defaults to 'or'
+   * @param cqlStatementOperator - operator within cql statement - default is == , for example -
+   * field_a==value, can pass in for example = , to generate statements like field_a=value
+   */
+  public BuildCQL(Response r, String pathToExtractFrom, String cqlPath, String queryParamName, boolean addQuestionMark,
+      String operator, String cqlStatementOperator){
+    this.r = r;
+    this.pathToExtractFrom = pathToExtractFrom;
+    this.queryParamName = queryParamName;
+    this.addQuestionMark = addQuestionMark;
+    this.cqlPath = cqlPath;
+    this.operatorBetweenArgs = operator;
+    this.cqlStatementOperator = cqlStatementOperator;
+  }
 
   /**
    * Builds a simple cql string by parsing through the Response's json, extracting values found in
@@ -128,7 +163,7 @@ public class BuildCQL {
       if(paths.get(i) == null){
         continue;
       }
-      sb.append(cqlPath).append("==").append(URLEncoder.encode(paths.get(i).toString(), "UTF-8"));
+      sb.append(cqlPath).append(cqlStatementOperator).append(URLEncoder.encode(paths.get(i).toString(), "UTF-8"));
       if(i<size-1){
         sb.append("+").append(operatorBetweenArgs).append("+");
       }

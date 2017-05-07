@@ -55,7 +55,8 @@ public class BuildCQLTest {
       //build cql by requesting values from a non existent field in the json, should be an emptry string ""
       String g7 = new BuildCQL(r, "arr3", "group").buildCQL();
       assertEquals("", URLDecoder.decode(g7, "UTF-8"));
-
+      String g8 = new BuildCQL(r, "arr[*]", "group", "query1", false, "and", "=").buildCQL();
+      assertEquals("&query1=group=librarian3 and group=librarian2", URLDecoder.decode(g8, "UTF-8"));
     } catch (Exception e) {
       e.printStackTrace();
       assertTrue(false);
