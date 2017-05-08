@@ -1521,7 +1521,7 @@ Since in this case a single entry (response1) matches multiple entries from resp
 
 #### Parsing
 
-The RMB exposes a simple JSON parser for the vert.x JSONObject. The parser allows getting and setting nested JSON values. The parser allows retreiving values / nested values in a simpler manner.
+The RMB exposes a simple JSON parser for the vert.x JSONObject. The parser allows getting and setting nested JSON values. The parser allows retrieving values / nested values in a simpler manner.
 For example:
 
 `a.b` -- Get value of field 'b' which is nested within a JSONObject called 'a'
