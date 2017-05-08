@@ -1474,7 +1474,7 @@ The `HttpModuleClient request` function can receive the following parameters:
  - `endpoint` - API endpoint
  - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
  - `RollBackURL` - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
- - `cachable` - Whether to call the response
+ - `cachable` - Whether to cache the response
  - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
 `
 Response userResponse =
@@ -1535,6 +1535,22 @@ For example:
 
 See the `JsonPathParser` class for more info.
 
+
+### A full example
+
+    //create a client
+    HttpModuleClient hClient = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
+    //make a request to the user groups endpoint
+    Response groupResponse = hClient.request("/groups?group=on_campus");
+    //make another request to the users endpoint and append a cql query string with the id of all entries
+    //returned from the request made to the user groups endpoint
+    Response userResponse = hClient.request("/users", new BuildCQL(groupResponse, "usergroups[*].id", "patron_group"));
+    //join the values within the users response and the values in the user groups response - injecting the value
+    //from the 'group' field in each user group returned into the 'patron_group' field - do this when the patron_group value
+    //in the users objects equals the id value in the user groups object
+    userResponse.joinOn("users[*].patron_group", groupResponse, "usergroups[*].id", "group", "patron_group", false);
+    //close the http client
+    hClient.closeClient();
 
 ## A Little More on Validation
 
