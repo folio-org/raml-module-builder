@@ -1438,13 +1438,14 @@ Requesting a stack trace would look like this:
 
 ## Querying multiple modules via HTTP
 
-The RMB has some tools available to help: 
- - make HTTP requests to other modules
+The RMB has some tools available to help:
+ - Make HTTP requests to other modules
  - Parse JSON responses received (as well as any JSON for that matter)
  - Merge together / Join JSON responses from multiple modules
  - Build simple CQL query strings based on values in a JSON
-  
- #### HTTP Requests
+
+#### HTTP Requests
+
 The `HttpModuleClient` class exposes a basic HTTP Client.
 The full constructor takes the following parameters
  - host
@@ -1463,25 +1464,25 @@ The client returns a `Response` object. The `Response` class has the following m
   - endpoint - url the response came from
   - code - http returned status code for request
   - (JsonObject) body - the response data
-  - (JsonObject) error -  in case of an error - The `error` member be populated. The
+  - (JsonObject) error -  in case of an error - The `error` member will be populated. The
   error object will contain the `endpoint`, the `statusCode`, and the `errorMessage`
   - (Throwable) exception - if an exception was thrown during the API call
 
 
-The `HttpModuleClient request` function can receive the following paramters:
+The `HttpModuleClient request` function can receive the following parameters:
  - `HttpMethod` - (default: GET)
  - `endpoint` - API endpoint
- - `headers` (default headers are passed in if this is not populated - Content-type=application/json, Accept: plain/test)
- - `RollBackURL` URL to call if the request is unsuccessful [a non 2xx code is returned], Not that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
- - `cachable` (whether to call the response), 
- - `BuildCQL` object - This allows you to build a simple CQL query string from content within a json object. For example: 
+ - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
+ - `RollBackURL` - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
+ - `cachable` - Whether to call the response
+ - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
 `
-Response userResponse = 
+Response userResponse =
 hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
 `
-This will create a query string with all values from the JSON found in the path usergroups[*].id and will generate a cql query string which will look something like this:
+This will create a query string with all values from the JSON found in the path usergroups[*].id and will generate a CQL query string which will look something like this:
 `?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
-See `BuildCQL` for configuration options
+See `BuildCQL` for configuration options.
 
 The `Response` class also exposes a joinOn function that allow you to join / merge the received JSON objects from multiple requests.
 
@@ -1489,7 +1490,7 @@ The `Response` class also exposes a joinOn function that allow you to join / mer
       String intoField, boolean allowNulls)`
 
 
-The Join occurs with the response initiating the joinOn call
+The Join occurs with the response initiating the joinOn call:
 
  - `withField` - the field within the response whose value / values will be used to join
  - `response` - the response to join this response with
@@ -1515,23 +1516,24 @@ with the following call:
 `response1.joinOn("a", response2, "arr2[*].id", "a31", "b", false)`
 
 Explanation:
-Join response1 on field "a" with response2 on field "arr2[*].id" (this means all id's in the arr2 array. If a match is found take the value found in field "a31" and place it in field "b".
-Since in this case a single entry (response1) matches multiple entries from response2 - an array is created and populated. If this was a one-to-one match, then only the single value (whether a json object, Json array, any value) would have been inserted.
+Join response1 on field "a" with response2 on field "arr2[*].id" (this means all IDs in the arr2 array. If a match is found take the value found in field "a31" and place it in field "b".
+Since in this case a single entry (response1) matches multiple entries from response2 - an array is created and populated. If this was a one-to-one match, then only the single value (whether a JSON object, JSON array, any value) would have been inserted.
 
 #### Parsing
 
-The RMB exposes a simple JSON parser for the vert.x JSONObject. The parser allows getting and setting nested Json values. The parser allows retreiving values / nested values in a simpler manner. 
+The RMB exposes a simple JSON parser for the vert.x JSONObject. The parser allows getting and setting nested JSON values. The parser allows retreiving values / nested values in a simpler manner.
 For example:
-`a.b -> get value of field 'b' which is nested within a jsonobject called 'a'`
 
-`a.c[1].d - get 'd' which appears in array c[1]`
+`a.b` -- Get value of field 'b' which is nested within a JSONObject called 'a'
 
-`a.'bb.cc' -> get field called bb.cc - use '' when '.' in name`
+`a.c[1].d` -- Get 'd' which appears in array 'c[1]'
 
-`a.c[*].a2 -> get all a2 values as a List for each entry in the c array`
+`a.'bb.cc'` -- Get field called 'bb.cc' (use '' when '.' in name)
+
+`a.c[*].a2` -- Get all 'a2' values as a List for each entry in the 'c' array
 
 
-See the `JsonPathParser` class for more info. 
+See the `JsonPathParser` class for more info.
 
 
 ## A Little More on Validation
