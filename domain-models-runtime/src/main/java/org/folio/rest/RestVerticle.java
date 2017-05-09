@@ -48,6 +48,7 @@ import org.folio.rest.tools.utils.BinaryOutStream;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rulez.Rules;
@@ -111,7 +112,7 @@ public class RestVerticle extends AbstractVerticle {
   private static KieSession         droolsSession;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
-  private static final ObjectMapper MAPPER                          = new ObjectMapper();
+  private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
   private static final String       DEFAULT_SCHEMA                  = "public";
 
   private final Messages            messages                        = Messages.getInstance();
@@ -131,7 +132,6 @@ public class RestVerticle extends AbstractVerticle {
     //passed in the request body in put and post requests. The constraints validated by this factory
     //are the ones in the json schemas accompanying the raml files
     validationFactory = Validation.buildDefaultValidatorFactory();
-
   }
 
   // https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html

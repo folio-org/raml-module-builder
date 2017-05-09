@@ -33,6 +33,7 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
@@ -91,7 +92,7 @@ public class PostgresClient {
   private static PostgresProcess postgresProcess          = null;
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
-  private static ObjectMapper    mapper                   = new ObjectMapper();
+  private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
   private static Map<String, PostgresClient> connectionPool = new HashMap<>();
   private static String moduleName                        = null;
 
