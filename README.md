@@ -171,10 +171,14 @@ we will get your local development server running and populated with test data.
 
 ## Command-line options
 
+- `-Dhttp.port=8080` (Optional -- defaults to 8081)
+
 - `-Djava.util.logging.config.file=C:\configuration\vertx-default-jul-logging.properties`
   (Optional -- defaults to `target/classes/vertx-default-jul-logging.properties`)
 
-- `-Dhttp.port=8080` (Optional -- defaults to 8081)
+- `-Ddebug_log_package=*` (Optional -- Set log level to debug for all packages.
+Or use `org.folio.rest.*` for all classes within a specific package,
+or `org.folio.rest.RestVerticle` for a specific class.)
 
 - `embed_postgres=true` (Optional -- defaults to false)
 
@@ -1304,7 +1308,10 @@ All current API documentation is also available at [dev.folio.org/doc/api](http:
 
 ## Logging
 
-As stated earlier in [Command-line options](#command-line-options), a configuration file can be specified with logging configurations. However, log levels can also be changed via the `/admin` API provided by the framework. For example:
+As stated earlier in [Command-line options](#command-line-options), a configuration file can be specified with logging configurations.
+Also debug level can be set for specific packages.
+
+The log levels can also be changed via the `/admin` API provided by the framework. For example:
 
 Get log level of all classes:
 
