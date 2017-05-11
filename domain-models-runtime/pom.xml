@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>11.0.0-SNAPSHOT</version>
+    <version>11.0.0</version>
   </parent>
 
   <repositories>
@@ -363,13 +363,13 @@
               <target>
                 <!-- Postgres configured like in Jenkins CI build environment https://issues.folio.org/browse/METADATA-10 -->
                 <exec executable="${java.home}/bin/java" dir="${project.build.directory}" spawn="true">
-                  <arg value="-cp"/>
-                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar"/>
-                  <arg value="org.folio.rest.persist.PostgresRunner"/>
-                  <arg value="5434"/>      <!-- PostgresRunner port -->
-                  <arg value="5433"/>      <!-- Postgres port -->
-                  <arg value="postgres"/>  <!-- username -->
-                  <arg value="postgres"/>  <!-- password -->
+                  <arg value="-cp" />
+                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar" />
+                  <arg value="org.folio.rest.persist.PostgresRunner" />
+                  <arg value="5434" />      <!-- PostgresRunner port -->
+                  <arg value="5433" />      <!-- Postgres port -->
+                  <arg value="postgres" />  <!-- username -->
+                  <arg value="postgres" />  <!-- password -->
                 </exec>
               </target>
             </configuration>
@@ -383,10 +383,10 @@
             <configuration>
               <target>
                 <exec executable="${java.home}/bin/java" dir="${project.build.directory}">
-                  <arg value="-cp"/>
-                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar"/>
-                  <arg value="org.folio.rest.persist.PostgresWaiter"/>
-                  <arg value="5434"/>      <!-- PostgresRunner port -->
+                  <arg value="-cp" />
+                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar" />
+                  <arg value="org.folio.rest.persist.PostgresWaiter" />
+                  <arg value="5434" />      <!-- PostgresRunner port -->
                   <!-- this waits until Postgres (started by spawned PostgresRunner) is ready -->
                 </exec>
               </target>
@@ -401,10 +401,10 @@
             <configuration>
               <target>
                 <exec executable="${java.home}/bin/java" dir="${project.build.directory}">
-                  <arg value="-cp"/>
-                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar"/>
-                  <arg value="org.folio.rest.persist.PostgresStopper"/>
-                  <arg value="5434"/>      <!-- PostgresRunner port -->
+                  <arg value="-cp" />
+                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar" />
+                  <arg value="org.folio.rest.persist.PostgresStopper" />
+                  <arg value="5434" />      <!-- PostgresRunner port -->
                 </exec>
               </target>
             </configuration>
