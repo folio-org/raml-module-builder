@@ -77,7 +77,7 @@ public class Criteria {
    * field - in the format of column_name -> field -> subfield ->>
    * subfield_value for example: "'price' -> 'po_currency' ->> 'value'"
    */
-  List<String>                 field = new ArrayList<String>();
+  List<String>                 field = new ArrayList<>();
   Object                       value;
 
   String                operation;
@@ -295,7 +295,12 @@ public class Criteria {
       if(isArray){
         return " '\"" + value + "\"'";
       }else{
-        return " '" + value + "'";
+        if(isWrappedInQuotes((String)value)){
+          return value;
+        }
+        else{
+          return " '" + value + "'";
+        }
       }
     }
     if (value == null && valueType == STRING_TYPE) {
@@ -322,6 +327,17 @@ public class Criteria {
   private boolean isNULLOp() {
     if (operation != null) {
       return NULL_OPS.matcher(operation).find();
+    }
+    return false;
+  }
+
+  private boolean isWrappedInQuotes(String value){
+    try {
+      if(value.charAt(0) == '\'' && value.charAt(value.length()-1) == '\''){
+        return true;
+      }
+    } catch (Exception e) {
+      return false;
     }
     return false;
   }
