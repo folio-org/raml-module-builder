@@ -298,7 +298,7 @@ public class DemoRamlRestTest {
         context.fail(url + " - " + error.getMessage());
         async.complete();
       });
-      request.headers().add("Authorization", "abcdefg");
+      request.headers().add("x-okapi-tenant", "abcdefg");
       request.headers().add("Accept", accept);
       request.setChunked(true);
       request.end();
@@ -345,7 +345,7 @@ public class DemoRamlRestTest {
       }
     });
     request.setChunked(true);
-    request.putHeader("Authorization", "abcdefg");
+    request.putHeader("x-okapi-tenant", "abcdefg");
     request.putHeader("Accept", "application/json,text/plain");
     if(contenttype != null){
       request.putHeader("Content-type",
