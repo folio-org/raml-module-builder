@@ -70,7 +70,7 @@ public class Criteria {
   private static final int  NUMERIC_TYPE          = 3;
   private static final int  NULL_TYPE             = 4;
 
-  private static final Map<String, JsonObject> schemaCache = new HashMap<>();
+  private static final Map<String, JsonObject> SCHEMA_CACHE = new HashMap<>();
 
   String alias                                = null;
 
@@ -108,11 +108,11 @@ public class Criteria {
   }
 
   public Criteria(String schema) throws Exception {
-    schema4validation = schemaCache.get(schema);
+    schema4validation = SCHEMA_CACHE.get(schema);
     if(schema4validation == null){
       JsonObject jo = new JsonObject(
         IOUtils.toString(getClass().getClassLoader().getResourceAsStream(schema), "UTF-8"));
-      schemaCache.put(schema, jo);
+      SCHEMA_CACHE.put(schema, jo);
       schema4validation = jo;
     }
   }
