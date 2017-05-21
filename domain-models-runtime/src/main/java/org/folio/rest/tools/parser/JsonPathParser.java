@@ -18,6 +18,12 @@ import io.vertx.core.json.JsonObject;
 public class JsonPathParser {
 
   JsonObject j;
+  boolean isSchema = false;
+
+  public JsonPathParser(JsonObject j, boolean isSchema){
+    this.j = j;
+    this.isSchema = isSchema;
+  }
 
   public JsonPathParser(JsonObject j){
     this.j = j;
@@ -262,6 +268,10 @@ public class JsonPathParser {
 
   private Object getValueAt(String path, Object o, Pairs parent, boolean returnRoot){
     if(o instanceof JsonObject){
+      JsonObject props = ((JsonObject) o).getJsonObject("properties");
+      if(props != null && isSchema){
+        return getValueAt(path, props, parent, returnRoot);
+      }
       if(parent != null){
         if(parent.rootNode == null){
           //dirty, but this checks to make sure we only put the root node into the parent map
@@ -438,6 +448,17 @@ public class JsonPathParser {
 
     //for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
+
+      JsonObject j22 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("userdata.json"), "UTF-8"));
+      JsonPathParser jp2 = new JsonPathParser(j22, true);
+      System.out.println(jp2.getValueAt("personal.preferredContact.desc.type", false, false));
+      System.out.println(jp2.getValueAt("personals.preferredContact.desc.type", false, false));
+      System.out.println(jp2.getValueAt("personal.properties.preferredContact.properties.desc.type", false, false));
+      System.out.println(jp2.getAbsolutePaths("personal.preferredContact.desc.type"));
+      System.out.println(jp2.getValueAndParentPair("personal.preferredContact.desc.type").getRequestedValue());
+      System.out.println(jp2.getValueAndParentPair("personal2.preferredContact.desc.type"));
 
       JsonObject j1 = new JsonObject(
         IOUtils.toString(JsonPathParser.class.getClassLoader().
