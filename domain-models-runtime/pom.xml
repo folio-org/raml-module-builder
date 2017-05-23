@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>12.1.0-SNAPSHOT</version>
+    <version>12.1.0</version>
   </parent>
 
   <repositories>
@@ -431,7 +431,7 @@
                   </manifestEntries>
                 </transformer>
               </transformers>
-              <artifactSet/>
+              <artifactSet />
               <filters>
                 <filter>
                   <!-- exclude classes from jaxb-xjc that already exist in com.sun.codemodel:codemodel -->
