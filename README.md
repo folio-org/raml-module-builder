@@ -1133,7 +1133,11 @@ postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
               reply -> {...
 ```
 
+The `Criteria` object which generates `where` clauses can also receive a JSON Schema so that it can cast values to the correct type within the `where` clause.
 
+```java
+Criteria idCrit = new Criteria("ramls/schemas/userdata.json");
+```
 
 ## Query Syntax
 
