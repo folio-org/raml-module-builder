@@ -14,7 +14,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
-  static private final String TENANT = "tenant";
+  static private final String TENANT  = "tenant";
+  static private final String TENANT2 = "tenant2";
   static private Vertx vertx;
 
   @Rule
@@ -124,5 +125,25 @@ public class PostgresClientIT {
   @Test(expected = IllegalArgumentException.class)
   public void instanceDefaultSchema(TestContext context) {
     PostgresClient.getInstance(vertx, PostgresClient.DEFAULT_SCHEMA);
+  }
+
+  @Test
+  public void tenantSeparation(TestContext context) {
+    Async async = context.async();
+    PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
+    PostgresClient c2 = PostgresClient.getInstance(vertx, TENANT2);
+
+    String sql1 =
+          "create table " + TENANT + ".a ( i integer );\n"
+        + "insert into "  + TENANT + ".a (i) values (5);\n";
+    c1.runSQLFile(sql1, true, reply1 -> {
+      context.assertTrue(reply1.succeeded());
+      String sql2 = "select i from " + TENANT + ".a";
+      c2.runSQLFile(sql2, true, reply2 -> {
+        context.assertTrue(reply2.failed());
+        context.assertEquals("", reply2.cause().getMessage());
+        async.complete();
+      });
+    });
   }
 }
