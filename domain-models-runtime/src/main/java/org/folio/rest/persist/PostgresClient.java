@@ -1350,6 +1350,7 @@ public class PostgresClient {
         list.add(o);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
+        list.add(null);
       }
     }
     ret[0] = list;
