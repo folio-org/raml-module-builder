@@ -349,7 +349,8 @@ public class RestVerticle extends AbstractVerticle {
               String []tenantId = new String[]{null};
               getOkapiHeaders(rc, okapiHeaders, tenantId);
 
-              if(tenantId[0] == null){
+              if(tenantId[0] == null && !rc.request().path().startsWith("/admin")){
+                //if tenant id is not passed in and this is not an /admin request, return error
                 endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest)
                   + " Tenant must be set", validRequest);
               }
@@ -411,7 +412,6 @@ public class RestVerticle extends AbstractVerticle {
                 final boolean[] isContentUpload = new boolean[] { false };
                 final int[] uploadParamPosition = new int[] { -1 };
                 params.forEach(param -> {
-                  String cType = request.getHeader("Content-type");
                   if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
                     isContentUpload[0] = true;
                     uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
