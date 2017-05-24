@@ -925,6 +925,9 @@ JSONB tables in PostgreSQL. This is not mandatory and developers can work with
 regular PostgreSQL tables but will need to implement their own data access
 layer.
 
+#### **Important Note:**
+The embedded Postgres can not run as root. 
+
 Currently the expected format is:
 
 ```sql
