@@ -148,6 +148,13 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
       200, 1, null, null);
 
+
+    //check that additionalProperties (fields not appearing in schema) - returns 422
+    JsonObject jo = new JsonObject(book);
+    jo.put("lalala", "non existant");
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", "abcdefg");
+
+
     List<Object> list = getListOfBooks();
 
     checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200); // should be 200

@@ -51,11 +51,13 @@ import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
+import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.rulez.Rules;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
 
@@ -1188,7 +1190,14 @@ public class RestVerticle extends AbstractVerticle {
                   paramArray[order] = new StringReader(bodyContent);
                 }
                 else if(bodyContent.length() > 0) {
-                  paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
+                  try {
+                    paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
+                  } catch (UnrecognizedPropertyException e) {
+                    log.error(e.getMessage(), e);
+                    endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(
+                      ValidationHelper.createValidationErrorMessage("", "", e.getMessage())) , validRequest);
+                    return;
+                  }
                 }
               }
 
@@ -1365,8 +1374,8 @@ public class RestVerticle extends AbstractVerticle {
    * @param validRequest
    *
    */
-  private boolean isValidRequest(RoutingContext rc, Object paramArray, Errors errorResp, boolean[] validRequest, List<String> singleField) {
-    Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray);
+  private boolean isValidRequest(RoutingContext rc, Object content, Errors errorResp, boolean[] validRequest, List<String> singleField) {
+    Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(content);
     boolean ret = true;
     if (validationErrors.size() > 0) {
       //StringBuffer sb = new StringBuffer();
