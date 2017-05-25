@@ -1,4 +1,5 @@
-# 12.1.1
+# 12.1.2
 
-RMB-24 - Requests to /admin/health require X-Okapi-Tenant
+RMB-16 when additionalProperties is set to false return a 422
+RMB-22 when additionalProperties is set to false , getting old db objects are ignored but count remains
 
