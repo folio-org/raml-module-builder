@@ -42,6 +42,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
+import de.flapdoodle.embed.process.store.NonCachedPostgresArtifactStoreBuilder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -60,11 +61,10 @@ import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.PostgresStarter;
 import ru.yandex.qatools.embed.postgresql.config.AbstractPostgresConfig;
-import ru.yandex.qatools.embed.postgresql.config.DownloadConfigBuilder;
 import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
+import ru.yandex.qatools.embed.postgresql.config.PostgresDownloadConfigBuilder;
 import ru.yandex.qatools.embed.postgresql.config.RuntimeConfigBuilder;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
-import ru.yandex.qatools.embed.postgresql.ext.ArtifactStoreBuilder;
 
 /**
  * @author shale
@@ -1859,7 +1859,8 @@ public class PostgresClient {
       IRuntimeConfig runtimeConfig = new RuntimeConfigBuilder()
         .defaults(Command.Postgres)
         .artifactStore(
-          new ArtifactStoreBuilder().defaults(Command.Postgres).download(new DownloadConfigBuilder().defaultsForCommand(Command.Postgres)
+          new NonCachedPostgresArtifactStoreBuilder().defaults(Command.Postgres).
+          download(new PostgresDownloadConfigBuilder().defaultsForCommand(Command.Postgres)
           // .progressListener(new LoggingProgressListener(logger, Level.ALL))
             .build())).build();
       PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
@@ -1869,15 +1870,15 @@ public class PostgresClient {
       String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
-      final PostgresConfig config = new PostgresConfig(Version.Main.PRODUCTION, new AbstractPostgresConfig.Net("127.0.0.1", port),
-        new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
-        new AbstractPostgresConfig.Credentials(username, password));
-
       String locale = "en_US.UTF-8";
       String OS = System.getProperty("os.name").toLowerCase();
       if(OS.indexOf("win") >= 0){
         locale = "american_usa";
       }
+
+      final PostgresConfig config = new PostgresConfig(Version.V9_6_2, new AbstractPostgresConfig.Net("127.0.0.1", port),
+        new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
+        new AbstractPostgresConfig.Credentials(username, password));
 
       config.getAdditionalInitDbParams().addAll(Arrays.asList(
         "-E", "UTF-8",
