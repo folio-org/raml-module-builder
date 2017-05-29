@@ -1,16 +1,17 @@
 package org.folio.rest.tools.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-public class UtilityClassTester {
+import org.junit.Assert;
+
+/**
+ * Unit test tool for utility classes.<p />
+ * Also helps to get 100% code coverage because it invokes the private constructor.
+ */
+public final class UtilityClassTester {
   private UtilityClassTester() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
@@ -19,6 +20,7 @@ public class UtilityClassTester {
    * Assert that the private constructor throws an UnsupportedOperationException.
    * @param constructor  Constructor of a utility class
    */
+  @java.lang.SuppressWarnings("squid:S1166")  // ignore "Either log or rethrow this exception"
   private static void assertInvocationException(Constructor<?> constructor) {
     try {
       constructor.setAccessible(true);
@@ -32,7 +34,7 @@ public class UtilityClassTester {
     } catch (Exception e) {
       throw new InternalError(e);
     }
-    fail("Private constructor of utiliy class must throw UnsupportedOperationException "
+    Assert.fail("Private constructor of utiliy class must throw UnsupportedOperationException "
         + "to fail unintended invocation via reflection.");
   }
 
@@ -44,15 +46,15 @@ public class UtilityClassTester {
    */
   public static void assertUtilityClass(final Class<?> clazz) {
     try {
-      assertTrue("class is final", Modifier.isFinal(clazz.getModifiers()));
-      assertEquals("number of constructors", 1, clazz.getDeclaredConstructors().length);
+      Assert.assertTrue("class must be final", Modifier.isFinal(clazz.getModifiers()));
+      Assert.assertEquals("number of constructors", 1, clazz.getDeclaredConstructors().length);
       final Constructor<?> constructor = clazz.getDeclaredConstructor();
-      assertTrue("constructor is private", Modifier.isPrivate(constructor.getModifiers()));
-      assertFalse("constructor accessible", constructor.isAccessible());
+      Assert.assertTrue("constructor must be private", Modifier.isPrivate(constructor.getModifiers()));
+      Assert.assertFalse("constructor accessible", constructor.isAccessible());
       assertInvocationException(constructor);
       for (final Method method : clazz.getMethods()) {
         if (method.getDeclaringClass().equals(clazz)) {
-          assertTrue("method is static - " + method, Modifier.isStatic(method.getModifiers()));
+          Assert.assertTrue("method must be static - " + method, Modifier.isStatic(method.getModifiers()));
         }
       }
     } catch (Exception e) {
