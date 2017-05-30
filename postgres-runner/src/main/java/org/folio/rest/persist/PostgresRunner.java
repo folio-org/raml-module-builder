@@ -231,7 +231,7 @@ public class PostgresRunner extends AbstractVerticle {
           new PostgresConfig.Timeout(),
           new PostgresConfig.Credentials(username, password));
 
-      String locale = "en_US.UTF-8";
+      String locale = "C";
       if (System.getProperty("os.name").toLowerCase().contains("win")) {
         locale = "american_usa";
       }
