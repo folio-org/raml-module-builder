@@ -18,10 +18,10 @@ public enum Envs {
   private static final String TIMEOUT = "queryTimeout";
   private static final String MAXPOOL = "maxPoolSize";
 
-  static Map<String, String> env = null;
+  private static Map<String, String> env = System.getenv();
 
-  static {
-    env = System.getenv();
+  static void setEnv(Map<String,String> env) {
+    Envs.env = env;
   }
 
   public static String getEnv(Envs key){

@@ -15,7 +15,7 @@ import javassist.LoaderClassPath;
 import javassist.NotFoundException;
 import javassist.expr.ExprEditor;
 import javassist.expr.MethodCall;
-import static java.util.Arrays.asList;
+
 /**
  * @author shale
  *
