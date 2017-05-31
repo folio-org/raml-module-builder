@@ -1,4 +1,4 @@
-package org.folio.rest.tools.utils;
+package org.folio.rest.testing;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
