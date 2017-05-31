@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>11.0.0-SNAPSHOT</version>
+  <version>12.1.3-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -174,12 +174,12 @@
             <configuration>
               <rules>
                  <requireMavenVersion>
-                  <message>Maven >= 3.3 required</message>
+                  <message>Maven &gt;= 3.3 required</message>
                   <version>3.3</version>
                 </requireMavenVersion>
                 <requireJavaVersion>
                   <message>
-                    JDK >= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
+                    JDK &gt;= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
                     http://dev.folio.org/doc/troubleshooting#missing-certificate-authority-for-lets-encrypt
                   </message>
                   <version>1.8.0-101</version>
@@ -250,7 +250,7 @@
     <url>https://github.com/folio-org/raml-module-builder</url>
     <connection>scm:git:git://github.com:folio-org/raml-module-builder.git</connection>
     <developerConnection>scm:git:git@github.com:folio-org/raml-module-builder.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>v11.0.0</tag>
   </scm>
 
   <distributionManagement>

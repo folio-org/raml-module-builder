@@ -398,7 +398,7 @@ Create JSON schemas indicating the objects exposed by the module:
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>10.1.0</version>
+      <version>11.0.0</version>
     </dependency>
   </dependencies>
 ```
@@ -925,6 +925,9 @@ JSONB tables in PostgreSQL. This is not mandatory and developers can work with
 regular PostgreSQL tables but will need to implement their own data access
 layer.
 
+#### **Important Note:**
+The embedded Postgres can not run as root. 
+
 Currently the expected format is:
 
 ```sql
@@ -1133,7 +1136,11 @@ postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
               reply -> {...
 ```
 
+The `Criteria` object which generates `where` clauses can also receive a JSON Schema so that it can cast values to the correct type within the `where` clause.
 
+```java
+Criteria idCrit = new Criteria("ramls/schemas/userdata.json");
+```
 
 ## Query Syntax
 

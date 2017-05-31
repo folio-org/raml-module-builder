@@ -1,11 +1,17 @@
 package org.folio.rest.persist.Criteria;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.io.IOUtils;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.parser.JsonPathParser;
+
+import io.vertx.core.json.JsonObject;
 
 /**
  *
@@ -64,6 +70,8 @@ public class Criteria {
   private static final int  NUMERIC_TYPE          = 3;
   private static final int  NULL_TYPE             = 4;
 
+  private static final Map<String, JsonObject> SCHEMA_CACHE = new HashMap<>();
+
   String alias                                = null;
 
   boolean joinON                                  = false;
@@ -77,7 +85,7 @@ public class Criteria {
    * field - in the format of column_name -> field -> subfield ->>
    * subfield_value for example: "'price' -> 'po_currency' ->> 'value'"
    */
-  List<String>                 field = new ArrayList<String>();
+  List<String>                 field = new ArrayList<>();
   Object                       value;
 
   String                operation;
@@ -93,6 +101,21 @@ public class Criteria {
   boolean               isJsonOp           = false;
 
   String                arrayField         = null;
+
+  JsonObject            schema4validation  = null;
+
+  public Criteria() {
+  }
+
+  public Criteria(String schema) throws Exception {
+    schema4validation = SCHEMA_CACHE.get(schema);
+    if(schema4validation == null){
+      JsonObject jo = new JsonObject(
+        IOUtils.toString(getClass().getClassLoader().getResourceAsStream(schema), "UTF-8"));
+      SCHEMA_CACHE.put(schema, jo);
+      schema4validation = jo;
+    }
+  }
 
   @Override
   public String toString() {
@@ -173,21 +196,21 @@ public class Criteria {
       valueType = getOperationType();
       if(valueType == NUMERIC_TYPE){
         cast = "::numeric";
-        return "(" + addPrefix() + field2String() + ")" + cast;
+        return "(" + addPrefix() + field2String(false) + ")" + cast;
       }
       else if (valueType == BOOLEAN_TYPE){
         cast = "::boolean";
-        return "(" + addPrefix() + field2String() + ")" + cast;
+        return "(" + addPrefix() + field2String(false) + ")" + cast;
       }
-      return "(" + addPrefix() + field2String() + ")";
+      return "(" + addPrefix() + field2String(false) + ")";
     }
     else if(alias != null){
       if(forceCast != null){
         cast = forceCast;
       }
-      return alias + "." + field2String() + "::\"" + cast + "\"";
+      return alias + "." + field2String(false) + "::\"" + cast + "\"";
     }
-    return field2String();
+    return field2String(false);
   }
 
   private String addPrefix() {
@@ -225,7 +248,7 @@ public class Criteria {
    * Added fields in arrayList to a string - prefix and -> / ->> added in addPrefix()
    * @return
    */
-  private String field2String(){
+  private String field2String(boolean validate){
     StringBuilder sb = new StringBuilder();
     int size = field.size();
     if(size == 1 && isArray){
@@ -242,19 +265,37 @@ public class Criteria {
           i++;
         }
       }
-      sb.append(field.get(i));
+      String fVal = field.get(i);
+      if(validate){
+        //remove '' from field name when using schema to
+        //detect type
+        fVal = fVal.substring(1, fVal.length()-1);
+      }
+      sb.append(fVal);
       if(i+2 == size){
         //add final arrow either -> or ->>
         if(!isJsonOp){
-          sb.append("->>");
+          if(validate){
+            sb.append(".");
+          }else{
+            sb.append("->>");
+          }
         }
         else{
-          sb.append("->");
+          if(validate){
+            sb.append(".");
+          }else{
+            sb.append("->");
+          }
         }
       }
       else if(i+1 < size){
         //add ->
-        sb.append("->");
+        if(validate){
+          sb.append(".");
+        }else{
+          sb.append("->");
+        }
       }
     }
     return sb.toString();
@@ -262,30 +303,48 @@ public class Criteria {
 
   private int getOperationType() {
     String ret = "";
-    if (value == null) {
-      //no value passed this may be ok, try to guess value type via the operator
-      if (isBooleanOp()) {
-        //using a boolean operator - values are not relevant in this use case
+    if(schema4validation != null){
+      String val = new JsonPathParser(schema4validation, true).
+        getValueAt(field2String(true).replaceAll("->>", ".").replaceAll("->", ".")+".type").toString();
+      if("string".equals(val)){
+        return STRING_TYPE;
+      }
+      else if("boolean".equals(val)){
         return BOOLEAN_TYPE;
       }
-      else if(isNULLOp()){
-        //using a null operator - values are not relevant in this use case
+      else if("null".equals(val)){
         return NULL_TYPE;
       }
-      //criteria is using a regular operator to compare to a null value - that is ok
-      return STRING_TYPE;
-    } else {
-      Matcher m = NUMERIC_PATTERN.matcher(value.toString());
-      if (m.matches()) {
+      else{
         return NUMERIC_TYPE;
-      } else {
-        m = BOOLEAN_PATTERN.matcher(value.toString());
-        if (m.matches()) {
-          return BOOLEAN_TYPE;
-        }
       }
     }
-    return STRING_TYPE;
+    else{
+      if (value == null) {
+        //no value passed this may be ok, try to guess value type via the operator
+        if (isBooleanOp()) {
+          //using a boolean operator - values are not relevant in this use case
+          return BOOLEAN_TYPE;
+        }
+        else if(isNULLOp()){
+          //using a null operator - values are not relevant in this use case
+          return NULL_TYPE;
+        }
+        //criteria is using a regular operator to compare to a null value - that is ok
+        return STRING_TYPE;
+      } else {
+        Matcher m = NUMERIC_PATTERN.matcher(value.toString());
+        if (m.matches()) {
+          return NUMERIC_TYPE;
+        } else {
+          m = BOOLEAN_PATTERN.matcher(value.toString());
+          if (m.matches()) {
+            return BOOLEAN_TYPE;
+          }
+        }
+      }
+      return STRING_TYPE;
+    }
   }
 
   private Object wrapValue() {
@@ -293,9 +352,14 @@ public class Criteria {
     // value may be null for example - field IS NOT NULL criteria
     if (value != null && valueType == STRING_TYPE && isJSONB) {
       if(isArray){
-        return " '\"" + value + "\"'";
-      }else{
         return " '" + value + "'";
+      }else{
+        if(isWrappedInQuotes((String)value)){
+          return value;
+        }
+        else{
+          return " '" + value + "'";
+        }
       }
     }
     if (value == null && valueType == STRING_TYPE) {
@@ -322,6 +386,17 @@ public class Criteria {
   private boolean isNULLOp() {
     if (operation != null) {
       return NULL_OPS.matcher(operation).find();
+    }
+    return false;
+  }
+
+  private boolean isWrappedInQuotes(String value){
+    try {
+      if(value.charAt(0) == '\'' && value.charAt(value.length()-1) == '\''){
+        return true;
+      }
+    } catch (Exception e) {
+      return false;
     }
     return false;
   }
@@ -447,6 +522,14 @@ public class Criteria {
   public Criteria setForceCast(String forceCast) {
     this.forceCast = forceCast;
     return this;
+  }
+
+  public From getFrom() {
+    return from;
+  }
+
+  public Select getSelect() {
+    return select;
   }
 
 }

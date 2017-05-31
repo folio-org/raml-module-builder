@@ -95,6 +95,23 @@ public class JsonParserTest {
     assertEquals("{\"xqq\":\"xaa\"}", ((JsonObject)jp.getValueAt("c.arr[0].a2")).encode());
 
     jp.setValueAt("c.arr[*]", new JsonObject());
+
+    //schema test
+    JsonObject j22 = null;
+    try {
+      j22 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("userdata.json"), "UTF-8"));
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    JsonPathParser jp2 = new JsonPathParser(j22, true);
+    assertEquals("string", jp2.getValueAt("personal.preferredContact.desc.type"));
+    assertNull(jp2.getValueAt("personals.preferredContact.desc.type"));
+    assertNull(jp2.getValueAt("personal.properties.preferredContact.properties.desc.type"));
+    assertEquals("personal.preferredContact.desc.type", jp2.getAbsolutePaths("personal.preferredContact.desc.type").get(0).toString());
+    assertEquals("string", jp2.getValueAndParentPair("personal.preferredContact.desc.type").getRequestedValue());
+    assertNull(jp2.getValueAndParentPair("personal2.preferredContact.desc.type"));
   }
 
 }
