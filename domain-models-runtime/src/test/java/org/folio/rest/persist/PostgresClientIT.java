@@ -19,8 +19,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
-  static private final String TENANT  = "tenant";
-  static private final String TENANT2 = "tenant2";
+  static private final String TENANT = "tenant";
   static private Vertx vertx;
 
   @Rule
