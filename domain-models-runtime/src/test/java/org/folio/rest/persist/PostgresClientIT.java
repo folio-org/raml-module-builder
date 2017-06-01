@@ -141,6 +141,9 @@ public class PostgresClientIT {
       + "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema + ";\n";
     PostgresClient.getInstance(vertx).runSQLFile(sql, false, reply -> {
       context.assertTrue(reply.succeeded());
+      int failures = reply.result().size();
+      // we allow the 2 create statements to fail if role/schema already exists, but not the GRANT statements
+      context.assertTrue(failures <= 2);
       async.complete();
     });
     async.await();
@@ -155,6 +158,7 @@ public class PostgresClientIT {
       + "insert into "  + schema + ".a (i) values (" + i + ");\n";
     client.runSQLFile(sql, true, reply1 -> {
       context.assertTrue(reply1.succeeded());
+      context.assertTrue(reply1.result().isEmpty());  // no failures
       client.select("select i from " + schema + ".a", reply2 -> {
         context.assertTrue(reply2.succeeded());
         context.assertEquals(i, reply2.result().getResults().get(0).getInteger(0));
