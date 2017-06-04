@@ -1,3 +1,7 @@
+## Not-yet-released
+
+* Provide UtilityClassTester
+
 ## 12.1.2 2017-05-25
 
 * When additionalProperties is set to false return a 422 RMB-16

@@ -11,6 +11,7 @@
     <module>domain-models-api-interfaces</module>
     <module>rules</module>
     <module>postgres-runner</module>
+    <module>testing</module>
     <module>domain-models-runtime</module>
   </modules>
 

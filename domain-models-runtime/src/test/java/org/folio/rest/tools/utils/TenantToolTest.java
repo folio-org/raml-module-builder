@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.ClientGenerator;
 import org.junit.Test;
 
