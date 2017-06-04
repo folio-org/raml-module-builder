@@ -21,7 +21,7 @@ public class EnvsTest {
     map.put("DB_MAXPOOLSIZE", "5");
     // deprecated key db.username for allDBConfs()
     map.put("db.username", "superwoman");
-    Envs.env = Collections.unmodifiableMap(map);
+    Envs.setEnv(Collections.unmodifiableMap(map));
   }
 
   @Test

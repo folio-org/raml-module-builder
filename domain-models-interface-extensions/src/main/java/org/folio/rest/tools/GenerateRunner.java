@@ -21,6 +21,8 @@ import org.raml.jaxrs.codegen.core.ext.GeneratorExtension;
  */
 public class GenerateRunner {
 
+  static final GeneratorProxy GENERATOR = new GeneratorProxy();
+
   private static String outputDirectory = null;
   private static String inputDirectory = null;
   private static Configuration configuration = null;
@@ -28,8 +30,6 @@ public class GenerateRunner {
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs";
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
-
-  static final GeneratorProxy generator = new GeneratorProxy();
 
   public static void main(String args[]) throws Exception{
 
@@ -107,7 +107,7 @@ public class GenerateRunner {
         reader.close();
         if(line.startsWith("#%RAML")) {
           System.out.println("processing " + ramls[j]);
-          generator.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
+          GENERATOR.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
           numMatches++;
         }
         else{

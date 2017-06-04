@@ -26,6 +26,7 @@ public enum PomReader {
 
   private final Logger log = LoggerFactory.getLogger(PomReader.class);
 
+  @SuppressWarnings("checkstyle:methodlength")
   private PomReader() {
     try {
       System.out.println("Attempting to read in the module name....");
