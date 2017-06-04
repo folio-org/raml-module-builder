@@ -1,8 +1,5 @@
 package org.folio.rest.tools;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.io.File;
 import java.io.FileReader;
 
@@ -12,6 +9,9 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ResourceInfo;
+
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
@@ -48,7 +48,7 @@ public enum PomReader {
         ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
         ImmutableSet<ResourceInfo> resources = classPath.getResources();
         for (ResourceInfo info : resources) {
-          if(info.getResourceName().endsWith("pom.xml") || info.getResourceName().endsWith("pom.properties")){
+          if(info.getResourceName().endsWith("pom.xml")){
             //maven sets the classpath order according to the pom, so the poms project will be the first entry
             model = mavenreader.read(PomReader.class.getResourceAsStream("/"+info.getResourceName()));
             break;
