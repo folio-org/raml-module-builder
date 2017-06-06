@@ -927,7 +927,7 @@ layer.
 
 **Important Note:** The embedded Postgres can not run as root.
 
-**Important Note:** The embedded Postgres relies on the en_US.UTF-8 locale. If this locale is not installed the Postgres will not start up properly.
+**Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
 
 Currently the expected format is:
 
