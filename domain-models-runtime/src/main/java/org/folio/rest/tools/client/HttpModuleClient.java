@@ -51,15 +51,24 @@ public class HttpModuleClient {
   private long cacheTO = 30; //minutes
   private int connTO = 2000;
   private int idleTO = 5000;
+  private boolean absoluteHostAddr = false;
 
   public HttpModuleClient(String host, int port, String tenantId, boolean keepAlive, int connTO,
       int idleTO, boolean autoCloseConnections, long cacheTO) {
+
     this.tenantId = tenantId;
     this.cacheTO = cacheTO;
     this.connTO = connTO;
     this.idleTO = idleTO;
     options = new HttpClientOptions().setLogActivity(true).setKeepAlive(keepAlive)
-        .setDefaultHost(host).setDefaultPort(port).setConnectTimeout(connTO).setIdleTimeout(idleTO);
+        .setConnectTimeout(connTO).setIdleTimeout(idleTO);
+
+    if(port == -1){
+      absoluteHostAddr = true;
+    }
+    else{
+      options.setDefaultPort(port).setDefaultHost(host);
+    }
     this.autoCloseConnections = autoCloseConnections;
     vertx = VertxUtils.getVertxFromContextOrNew();
     setDefaultHeaders();
@@ -69,8 +78,16 @@ public class HttpModuleClient {
     this(host, port, tenantId, true, 2000, 5000, true, 30);
   }
 
+  public HttpModuleClient(String absHost, String tenantId) {
+    this(absHost, -1, tenantId, true, 2000, 5000, true, 30);
+  }
+
   public HttpModuleClient(String host, int port, String tenantId, boolean autoCloseConnections) {
     this(host, port, tenantId, true, 2000, 5000, autoCloseConnections, 30);
+  }
+
+  public HttpModuleClient(String absHost, String tenantId, boolean autoCloseConnections) {
+    this(absHost, -1, tenantId, true, 2000, 5000, autoCloseConnections, 30);
   }
 
   private void setDefaultHeaders(){
