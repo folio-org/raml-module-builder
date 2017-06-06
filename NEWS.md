@@ -1,6 +1,13 @@
-## Not-yet-released
+## 12.1.3 2017-06-06
 
+* v1.23 of embedded postgres fails to start on windows - upgrade to v2.2 RMB-25
+* Split PostgresClient RMB-10
+* getting module name from pom error RMB-28
+* tenant api - unit tests and code cleanup RMB-3
 * Provide UtilityClassTester
+* includes trait added to raml-util
+* raml-util updated
+* Support passing List<String> to implementing function when query param is repeated in query string
 
 ## 12.1.2 2017-05-25
 
