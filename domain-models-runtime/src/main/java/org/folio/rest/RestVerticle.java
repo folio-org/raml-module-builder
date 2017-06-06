@@ -1307,6 +1307,14 @@ public class RestVerticle extends AbstractVerticle {
               } else {
                 paramArray[order] = Boolean.valueOf(param);
               }
+            } else if (valueType.contains("List")) {
+              List<String> vals = queryParams.getAll("include");
+              if (vals == null) {
+                paramArray[order] = null;
+              }
+              else {
+                paramArray[order] = vals;
+              }
             } else if (valueType.contains("BigDecimal")) {
               if (param == null) {
                 if (defaultVal != null) {
