@@ -656,7 +656,8 @@ See an [example](#function-example) of an implemented function.
 It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
 Investigate the other FOLIO modules for guidance.
 
-Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files:
+Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files,
+as the "raml-util" directory beside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml raml-util
 ```
