@@ -10,21 +10,21 @@ schemas:
   - job: !include schemas/job.schema
   - jobs_conf: !include schemas/jobs_conf.schema
   - jobs_confs: !include schemas/jobs_confs.schema
-  - parameters: !include ../../../../../raml-util/schemas/parameters.schema
+  - parameters: !include ../raml-util/schemas/parameters.schema
   - parameter: !include schemas/parameter.schema
   - bulks: !include schemas/bulks.schema
   - bulk: !include schemas/bulk.schema
 
 traits:
-  - orderable: !include ../../../../../raml-util/traits/orderable.raml
-  - pageable:  !include ../../../../../raml-util/traits/pageable.raml
-  - searchable: !include ../../../../../raml-util/traits/searchable.raml
-  - language: !include ../../../../../raml-util/traits/language.raml
-  - secured: !include ../../../../../raml-util/traits/auth.raml
+  - orderable: !include ../raml-util/traits/orderable.raml
+  - pageable:  !include ../raml-util/traits/pageable.raml
+  - searchable: !include ../raml-util/traits/searchable.raml
+  - language: !include ../raml-util/traits/language.raml
+  - secured: !include ../raml-util/traits/auth.raml
 
 resourceTypes:
-  - collection: !include ../../../../../raml-util/rtypes/collection.raml
-  - collection-item: !include ../../../../../raml-util/rtypes/item-collection.raml
+  - collection: !include ../raml-util/rtypes/collection.raml
+  - collection-item: !include ../raml-util/rtypes/item-collection.raml
 
 /jobs:
   /jobconfs:
