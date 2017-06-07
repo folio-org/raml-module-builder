@@ -160,7 +160,7 @@
                 </systemProperty>
                 <systemProperty>
                   <key>raml_files</key>
-                  <value>${ramlfiles_path},${basedir}/../raml-util/ramls</value>
+                  <value>${ramlfiles_path},${basedir}/raml-util/ramls</value>
                 </systemProperty>
               </systemProperties>
             </configuration>
