@@ -130,6 +130,15 @@ public class BuildCQL {
     this.cqlPath = cqlPath;
   }
 
+  /**
+   * this function is needed in cases where chaining is used so that the
+   * response is injected into a Function when working with completeableFutures
+   * @param r
+   */
+  public void setResponse(Response r){
+    this.r = r;
+  }
+
   @SuppressWarnings("unchecked")
   public String buildCQL() throws UnsupportedEncodingException {
     StringBuilder sb = new StringBuilder();

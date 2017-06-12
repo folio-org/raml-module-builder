@@ -1,11 +1,17 @@
 package org.folio.rest.tools.client;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.VertxUtils;
 
 import com.google.common.cache.CacheBuilder;
@@ -29,20 +35,21 @@ import io.vertx.core.logging.LoggerFactory;
  * @author shale
  *
  */
-public class HttpModuleClient {
+public class HttpModuleClient2 {
 
   private static final String CTYPE = "Content-Type";
   private static final String ACCEPT = "Accept";
   private static final String APP_JSON_CTYPE = "application/json";
   private static final String APP_JSON_ACCEPT = "application/json";
   private static final String X_OKAPI_HEADER = "x-okapi-tenant";
+  private static final Pattern TAG_REGEX = Pattern.compile("\\{(.+?)\\}");
 
   private static final Logger log = LoggerFactory.getLogger(HttpModuleClient.class);
 
   private String tenantId;
   private HttpClientOptions options;
   private HttpClient httpClient;
-  private LoadingCache<String, Response> cache = null;
+  private LoadingCache<String, CompletableFuture<Response>> cache = null;
   private Vertx vertx;
   private boolean autoCloseConnections = true;
   private Map<String, String> headers = new HashMap<>();
@@ -51,7 +58,7 @@ public class HttpModuleClient {
   private int idleTO = 5000;
   private boolean absoluteHostAddr = false;
 
-  public HttpModuleClient(String host, int port, String tenantId, boolean keepAlive, int connTO,
+  public HttpModuleClient2(String host, int port, String tenantId, boolean keepAlive, int connTO,
       int idleTO, boolean autoCloseConnections, long cacheTO) {
 
     this.tenantId = tenantId;
@@ -73,7 +80,7 @@ public class HttpModuleClient {
     setDefaultHeaders();
   }
 
-  public HttpModuleClient(String host, int port, String tenantId) {
+  public HttpModuleClient2(String host, int port, String tenantId) {
     this(host, port, tenantId, true, 2000, 5000, true, 30);
   }
 
@@ -82,11 +89,11 @@ public class HttpModuleClient {
    * @param absHost - ex. http://localhost:8081
    * @param tenantId
    */
-  public HttpModuleClient(String absHost, String tenantId) {
+  public HttpModuleClient2(String absHost, String tenantId) {
     this(absHost, -1, tenantId, true, 2000, 5000, true, 30);
   }
 
-  public HttpModuleClient(String host, int port, String tenantId, boolean autoCloseConnections) {
+  public HttpModuleClient2(String host, int port, String tenantId, boolean autoCloseConnections) {
     this(host, port, tenantId, true, 2000, 5000, autoCloseConnections, 30);
   }
 
@@ -96,7 +103,7 @@ public class HttpModuleClient {
    * @param tenantId
    * @param autoCloseConnections
    */
-  public HttpModuleClient(String absHost, String tenantId, boolean autoCloseConnections) {
+  public HttpModuleClient2(String absHost, String tenantId, boolean autoCloseConnections) {
     this(absHost, -1, tenantId, true, 2000, 5000, autoCloseConnections, 30);
   }
 
@@ -109,10 +116,6 @@ public class HttpModuleClient {
   private void request(HttpMethod method, String endpoint, Map<String, String> headers,
       boolean cache, Handler<HttpClientResponse> responseHandler, CompletableFuture<Response> cf2){
 
-    if(responseHandler == null){
-      CompletableFuture<Response> cf = new CompletableFuture<>();
-      responseHandler = new HTTPJsonResponseHandler(endpoint, cf);
-    }
     httpClient = vertx.createHttpClient(options);
     HttpClientRequest request = null;
     if(absoluteHostAddr){
@@ -133,7 +136,7 @@ public class HttpModuleClient {
     request.end();
   }
 
-  public Response request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
+  public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
       boolean cachable, BuildCQL bCql) throws Exception {
 
     if(bCql != null){
@@ -141,80 +144,117 @@ public class HttpModuleClient {
     }
     if(cachable){
       initCache();
-      Response j = cache.get(endpoint);
-      if(j.body != null){
+      CompletableFuture<Response> j = cache.get(endpoint);
+      if(j != null && !j.isCompletedExceptionally() && j.isDone()){
         return j;
       }
     }
     CompletableFuture<Response> cf = new CompletableFuture<>();
-    request(method, endpoint, headers, cachable, new HTTPJsonResponseHandler(endpoint, cf), cf);
-    Response response = new Response();
-    try {
-      response = cf.get((idleTO/1000)+1, TimeUnit.SECONDS);
-    } catch (TimeoutException e) {
-      response.populateError(endpoint, -1, e.toString());
-    }
-    catch(Throwable t){
-      response.endpoint = endpoint;
-      response.exception = t;
-      response.populateError(endpoint, -1, t.getMessage());
-    }
-    if(cachable && response.body != null) {
-      cache.put(endpoint, response);
+    HTTPJsonResponseHandler handler = new HTTPJsonResponseHandler(endpoint, cf);
+    if(cachable) {
+      handler.cache = cache;
     }
     if(autoCloseConnections){
-      httpClient.close();
+      handler.httpClient = httpClient;
     }
-    if(response.error != null && rollbackURL != null){
-      Response rb = request(rollbackURL.method, rollbackURL.endpoint, null, null, false, rollbackURL.cql);
-      if(rb.error != null){
-        response.populateRollBackError(rb.error);
-      }
-      else{
-        response.body = rb.body;
-      }
+    if(rollbackURL != null){
+      handler.rollbackURL = rollbackURL;
     }
-    return response;
+
+    request(method, endpoint, headers, cachable, handler, cf);
+
+    return cf;
   }
 
-  public Response request(String endpoint, Map<String, String> headers, boolean cache, BuildCQL cql)
+  public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, boolean cache, BuildCQL cql)
       throws Exception {
     return request(HttpMethod.GET, endpoint, headers, null, cache, cql);
   }
 
-  public Response request(String endpoint, Map<String, String> headers, boolean cache)
+  public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, boolean cache)
       throws Exception {
     return request(HttpMethod.GET, endpoint, headers, null, cache, null);
   }
 
-  public Response request(String endpoint, Map<String, String> headers, BuildCQL cql)
+  public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, BuildCQL cql)
       throws Exception {
     return request(HttpMethod.GET, endpoint, headers, null, true, cql);
   }
 
-  public Response request(String endpoint, Map<String, String> headers)
+  public CompletableFuture<Response> request(String endpoint, Map<String, String> headers)
       throws Exception {
     return request(HttpMethod.GET, endpoint, headers, null, true, null);
   }
 
-  public Response request(String endpoint, boolean cache, BuildCQL cql) throws Exception {
+  public CompletableFuture<Response> request(String endpoint, boolean cache, BuildCQL cql) throws Exception {
     return request(HttpMethod.GET, endpoint, null, null, cache, cql);
   }
 
-  public Response request(String endpoint, boolean cache) throws Exception {
+  public CompletableFuture<Response> request(String endpoint, boolean cache) throws Exception {
     return request(HttpMethod.GET, endpoint, null, null, cache, null);
   }
 
-  public Response request(String endpoint, RollBackURL rbURL) throws Exception {
+  public CompletableFuture<Response> request(String endpoint, RollBackURL rbURL) throws Exception {
     return request(HttpMethod.GET, endpoint, null, rbURL, true, null);
   }
 
-  public Response request(String endpoint, BuildCQL cql) throws Exception {
+  public CompletableFuture<Response> request(String endpoint, BuildCQL cql) throws Exception {
     return request(HttpMethod.GET, endpoint, null, null, true, cql);
   }
 
-  public Response request(String endpoint) throws Exception {
+  public CompletableFuture<Response> request(String endpoint) throws Exception {
     return request(HttpMethod.GET, endpoint, null, null, true, null);
+  }
+
+  public Function<Response, CompletableFuture<Response>> chainedRequest(
+      String urlTempate, Map<String, String> headers, BuildCQL cql, Consumer<Response> completionHandler){
+    try {
+      List<String> replace = getTagValues(urlTempate);
+      return (resp) -> {
+        //once future completes we enter this section//
+        //create a new request based on the content of the passed in response (resp)//
+        try {
+          int size = replace.size();
+          String newURL = null;
+          if(size > 0){
+            JsonPathParser jpp = new JsonPathParser(resp.getBody());
+            for (int i = 0; i < size; i++) {
+              String val = (String)jpp.getValueAt(replace.get(i));
+              newURL = urlTempate.replace("{"+replace.get(i)+"}", val);
+            }
+          }
+          //call back to the passed in consumer, this function should analyze the returned//
+          //response for errors / exceptions and return accordingly if found//
+          completionHandler.accept(resp);
+          if(cql != null){
+            cql.setResponse(resp);
+          }
+          if(resp.getError() != null || resp.getException() != null){
+            return null;
+          }
+          else{
+            //call request//
+            return request(newURL, headers, cql);
+          }
+        } catch (Exception e) {
+          resp.exception = e;
+          completionHandler.accept(resp);
+        }
+        return null;
+      };
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return null;
+  }
+
+  private static List<String> getTagValues(final String str) {
+      final List<String> tagValues = new ArrayList<>();
+      final Matcher matcher = TAG_REGEX.matcher(str);
+      while (matcher.find()) {
+          tagValues.add(matcher.group(1));
+      }
+      return tagValues;
   }
 
   public void setDefaultHeaders(Map<String, String> headersForAllRequests){
@@ -243,10 +283,10 @@ public class HttpModuleClient {
         .maximumSize(1000)
         .expireAfterWrite(cacheTO, TimeUnit.MINUTES)
         .build(
-          new CacheLoader<String, Response>() {
+          new CacheLoader<String, CompletableFuture<Response>>() {
             @Override
-            public Response load(String key) throws Exception {
-              return new Response();
+            public CompletableFuture<Response> load(String key) throws Exception {
+              return new CompletableFuture<>();
             }
           });
     }
@@ -254,6 +294,10 @@ public class HttpModuleClient {
 
   public static void main(String args[]) throws Exception {
 
+    String f=  "{users[0].username}".
+    replace("{"+"users[0].username"+"}", "jhandy");
+
+    f.toCharArray();
 /*    JsonObject j11 = new JsonObject(
       IOUtils.toString(JsonPathParser.class.getClassLoader().
         getResourceAsStream("pathTest.json"), "UTF-8"));
