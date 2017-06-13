@@ -116,24 +116,31 @@ public class HttpModuleClient2 {
   private void request(HttpMethod method, String endpoint, Map<String, String> headers,
       boolean cache, Handler<HttpClientResponse> responseHandler, CompletableFuture<Response> cf2){
 
-    httpClient = vertx.createHttpClient(options);
-    HttpClientRequest request = null;
-    if(absoluteHostAddr){
-      request = httpClient.requestAbs(method, options.getDefaultHost() + endpoint);
-    } else {
-      request = httpClient.request(method, endpoint);
-    }
-    request.exceptionHandler(error -> {
+    try {
+      httpClient = vertx.createHttpClient(options);
+      HttpClientRequest request = null;
+      if(absoluteHostAddr){
+        request = httpClient.requestAbs(method, options.getDefaultHost() + endpoint);
+      } else {
+        request = httpClient.request(method, endpoint);
+      }
+      request.exceptionHandler(error -> {
+        Response r = new Response();
+        r.populateError(endpoint, -1, error.getMessage());
+        cf2.complete(r);
+      })
+      .handler(responseHandler);
+      if(headers != null){
+        this.headers.putAll(headers);
+      }
+      request.headers().setAll(this.headers);
+      request.end();
+    } catch (Exception e) {
       Response r = new Response();
-      r.populateError(endpoint, -1, error.getMessage());
+      r.populateError(endpoint, -1, e.getMessage());
+      r.exception = e;
       cf2.complete(r);
-    })
-    .handler(responseHandler);
-    if(headers != null){
-      this.headers.putAll(headers);
     }
-    request.headers().setAll(this.headers);
-    request.end();
   }
 
   public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
@@ -238,6 +245,9 @@ public class HttpModuleClient2 {
           }
         } catch (Exception e) {
           resp.exception = e;
+          resp.endpoint = urlTempate;
+          resp.body = null;
+          resp.code = -1;
           completionHandler.accept(resp);
         }
         return null;

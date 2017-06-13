@@ -358,7 +358,27 @@ public class JsonPathParser {
     }
     else{
       for (int i = 0; i < subPathsList.length-1; i++) {
-        o = getValueAt(subPathsList[i], o, null, false);
+        Object parent = o;
+        o = getValueAt(subPathsList[i], parent, null, false);
+        if(o == null){
+          String fieldName = subPathsList[i];
+          if(subPathsList[i].matches(".*\\[.*?\\].*")){
+            fieldName = subPathsList[i].replaceAll("\\[.*\\]", "");
+            //create an array
+            o = new JsonArray();
+          }
+          else{
+            //create json object
+            o = new JsonObject();
+          }
+          if(parent instanceof JsonArray){
+            ((JsonArray)parent).add(o);
+          }
+          else{
+            ((JsonObject)parent).put(fieldName, o);
+          }
+
+        }
       }
     }
     if(o instanceof JsonObject){
@@ -441,6 +461,10 @@ public class JsonPathParser {
     public void setRequestedValue(Object requestedValue) {
       this.requestedValue = requestedValue;
     }
+  }
+
+  public JsonObject getJsonObject(){
+    return j;
   }
 
   @SuppressWarnings("unused")

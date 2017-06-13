@@ -44,6 +44,15 @@ public class ResponseTest {
       JsonPathParser jpp = new JsonPathParser( test1.joinOn("c.a1", test2, "a", "c.arr[1]").getBody() );
       assertEquals("true", jpp.getValueAt("c.a1.ignore"));
 
+      //non existant path creation test
+      Response testSetNonExistPath1 = new Response();
+      Response r1 = new Response();
+      JsonObject j3 = new JsonObject(
+        IOUtils.toString(JsonPathParser.class.getClassLoader().
+          getResourceAsStream("pathTest.json"), "UTF-8"));
+      testSetNonExistPath1.setBody(j3);
+      System.out.println("---> look at this: " + r1.joinOn(testSetNonExistPath1, "c.a1", test2, "a", "c.arr[1]").getBody());
+
       //try to replace value at c.a1 with a value from a non existant field (c.a[5]) with the
       //param allowNulls set to false so that the value is not updated
       new JsonPathParser(test1.joinOn("c.a1", test2, "a", "c.arr[5]", false).getBody());
@@ -74,7 +83,6 @@ public class ResponseTest {
         r2.joinOn("b", test2, "c.arr[0].a2.arr2[1].a30", "c.arr[0]", "a", false).getBody()).getValueAt("a.a3");
       assertEquals("a23" , val);
 
-
       //one to many join
       //json to join on has the same id multiple times with different values for each id.
       //match with this json so that all values are inserted as an array
@@ -96,6 +104,13 @@ public class ResponseTest {
         resp1.joinOn("a", resp2, "arr2[*].id", "a31", "b", false).getBody()).getValueAt("b");
 
       assertEquals(3 , arr.size());
+
+      //test non existent paths
+      Response r = new Response();
+      r.joinOn(resp1, "a", resp2, "arr2[*].id", "a31", "b", false);
+      JsonArray arr2 =
+      (JsonArray)new JsonPathParser(r.getBody()).getValueAt("b");
+      assertEquals("2" , arr2.getString(1));
 
       //test many to many
       j2 = new JsonObject(

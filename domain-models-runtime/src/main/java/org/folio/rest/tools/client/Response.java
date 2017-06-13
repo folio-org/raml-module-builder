@@ -45,12 +45,23 @@ public class Response {
    * @return
    * @throws ResponseNullPointer
    */
-  public Response joinOn(String withField, Response response, String onField, String insertField,
+  public Response joinOn(Response response1, String withField, Response response2, String onField, String insertField,
       String intoField, boolean allowNulls) throws ResponseNullPointer {
-    if(this.body == null || response == null || response.body == null){
+    if((this.body == null && response1 == null && response1.body == null) || response2 == null || response2.body == null){
       throw new ResponseNullPointer();
     }
-    JsonPathParser jpp = new JsonPathParser(response.body);
+    JsonPathParser output = null;
+    JsonObject input = new JsonObject();
+
+    if(response1 != null && response1.body != null){
+      input = response1.body;
+      this.body = new JsonObject();
+      output =  new JsonPathParser(this.body);
+    }
+    else{
+      input = this.body;
+    }
+    JsonPathParser jpp = new JsonPathParser(response2.body);
     //get list of paths within the json to join on
     List<StringBuilder> sbList = jpp.getAbsolutePaths(onField);
     if(sbList == null){
@@ -66,7 +77,7 @@ public class Response {
         joinTable.put(map.getRequestedValue(), map.getRootNode());
       }
     }
-    jpp = new JsonPathParser(this.body);
+    jpp = new JsonPathParser(input);
     List<StringBuilder> list = jpp.getAbsolutePaths(withField);
     int size2 = list.size();
     for (int i = 0; i < size2; i++) {
@@ -104,18 +115,35 @@ public class Response {
         }
         if(intoField != null){
           //get the path in the json to replace with the value from the join table
-          Object into = jpp.getValueAndParentPair(list.get(i)).getRootNode();
+          Object into = null;
+          if(output != null){
+            into = output.getValueAndParentPair(list.get(i)).getRootNode();
+          }else{
+            into = jpp.getValueAndParentPair(list.get(i)).getRootNode();
+          }
           JsonPathParser jpp2 = new JsonPathParser((JsonObject)into);
           Object placeWhereReplacementShouldHappen = jpp2.getValueAt(intoField);
           if(placeWhereReplacementShouldHappen instanceof JsonArray){
             ((JsonArray)placeWhereReplacementShouldHappen).add(toInsert);
           }
           else{
-            jpp2.setValueAt(intoField, toInsert);
+            if(output != null){
+              output.setValueAt(intoField, toInsert);
+            }
+            else{
+              jpp2.setValueAt(intoField, toInsert);
+            }
           }
         }
         else{
-          jpp.setValueAt(list.get(i).toString(), toInsert);
+          if(output != null){
+            //update new json
+            output.setValueAt(list.get(i).toString(), toInsert);
+          }
+          else{
+            //update this.body
+            jpp.setValueAt(list.get(i).toString(), toInsert);
+          }
         }
       }
       else{
@@ -125,7 +153,16 @@ public class Response {
       }
     }
 
+    if(output != null){
+      Response r = new Response();
+      r.setBody(output.getJsonObject());
+      return r;
+    }
     return this;
+  }
+
+  public Response joinOn(String withField, Response response2, String onField, String insertField, String intoField, boolean allowNulls) throws ResponseNullPointer {
+    return joinOn(null, withField, response2, onField, insertField, intoField, allowNulls);
   }
 
   /**
@@ -149,7 +186,11 @@ public class Response {
    * @throws ResponseNullPointer
    */
   public Response joinOn(String withField, Response response, String onField, String insertField, boolean allowNulls) throws ResponseNullPointer {
-    return joinOn(withField, response, onField, insertField, null, allowNulls);
+    return joinOn(null, withField, response, onField, insertField, null, allowNulls);
+  }
+
+  public Response joinOn(Response response1, String withField, Response response2, String onField, String insertField, boolean allowNulls) throws ResponseNullPointer {
+    return joinOn(response1, withField, response2, onField, insertField, null, allowNulls);
   }
 
   /**
@@ -174,6 +215,10 @@ public class Response {
     return joinOn(withField, response, onField, insertField, true);
   }
 
+  public Response joinOn(Response response1, String withField, Response response2, String onField, String insertField) throws ResponseNullPointer {
+    return joinOn(response1, withField, response2, onField, insertField, null, true);
+  }
+
   /**
    * join this response with response parameter using the withField field name on the current
    * response and the onField field from the response passed in as a parameter (Basically, merge
@@ -187,6 +232,9 @@ public class Response {
     return joinOn(withField, response, onField, null);
   }
 
+  public Response joinOn(Response response1, String withField, Response response2, String onField) throws ResponseNullPointer {
+    return joinOn(response1, withField, response2, onField, null, null, true);
+  }
 
   public static boolean isSuccess(int statusCode){
     if(statusCode >= 200 && statusCode < 300){

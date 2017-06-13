@@ -82,8 +82,9 @@ public class JsonParserTest {
 
     //check nulls
     assertNull(jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
+    //set value of non existent path will create that path
     jp.setValueAt("c.arr[1].a2.'aaa.ccc'", "aaa.ddd");
-    assertNull(jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
+    assertEquals("aaa.ddd" , jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
 
     assertEquals("aaa.ccc", jp.getValueAt("c.arr[0].a2.'aaa.ccc'"));
 

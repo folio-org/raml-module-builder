@@ -30,6 +30,7 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
     hcr.bodyHandler( bh -> {
       Response r = new Response();
       r.code = hcr.statusCode();
+      r.endpoint = this.endpoint;
       if(Response.isSuccess(r.code)){
         r.body = bh.toJsonObject();
       }
