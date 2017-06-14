@@ -12,6 +12,7 @@ import org.junit.runner.RunWith;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -199,6 +200,7 @@ public class PostgresClientIT {
     int n = 10;
     /** sleep time in milliseconds */
     double sleep = 100;
+    String selectSleep = "select pg_sleep(" + sleep/1000 + ")";
     /** maximum duration in milliseconds for the completion of all parallel queries */
     long maxDuration = (long) (n * sleep / 2);
     /* create n queries in parallel, each sleeping for some time.
@@ -209,8 +211,8 @@ public class PostgresClientIT {
     PostgresClient client = PostgresClient.getInstance(vertx);
     List<Future> futures = new ArrayList<>(n);
     for (int i=0; i<n; i++) {
-      Future<List<String>> future = Future.future();
-      client.runSQLFile("pg_sleep(" + sleep/1000 + ")", true, future.completer());
+      Future<ResultSet> future = Future.future();
+      client.select(selectSleep, future.completer());
       futures.add(future);
     }
     long start = System.currentTimeMillis();
