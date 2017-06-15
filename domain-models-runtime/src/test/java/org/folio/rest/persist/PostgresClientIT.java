@@ -138,13 +138,17 @@ public class PostgresClientIT {
     String sql =
         "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;\n"
       + "GRANT " + schema + " TO CURRENT_USER;\n"
-      + "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema + ";\n"
+      + "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema + ";\n"
       + "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema + ";\n";
     PostgresClient.getInstance(vertx).runSQLFile(sql, false, reply -> {
       context.assertTrue(reply.succeeded());
-      int failures = reply.result().size();
-      // we allow the 2 create statements to fail if role/schema already exists, but not the GRANT statements
-      context.assertTrue(failures <= 2);
+      for (String failure : reply.result()) {
+        if (failure.trim().startsWith("CREATE ROLE")) {
+          // role may already exist from previous run
+          continue;
+        }
+        context.fail(failure);
+      }
       async.complete();
     });
     async.await();
