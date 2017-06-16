@@ -7,7 +7,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "$ref" : "jobs_conf"
+        "$ref" : "jobs_conf.schema"
       }
     },
     "total_records": {

@@ -40,11 +40,11 @@
     },
     "last_modified": {
       "type": "object",
-      "$ref": "last_modified"
+      "$ref": "last_modified.schema"
     },
     "parameters": {
       "type": "object",
-      "$ref" : "parameters"
+      "$ref" : "../raml-util/schemas/parameters.schema"
     }
   },
   "required": [
