@@ -214,7 +214,7 @@ public class HttpModuleClient2 {
   }
 
   public Function<Response, CompletableFuture<Response>> chainedRequest(
-      String urlTempate, Map<String, String> headers, BuildCQL cql, Consumer<Response> completionHandler){
+      String urlTempate, Map<String, String> headers, BuildCQL cql, Consumer<Response> processPassedInResponse){
     try {
       List<String> replace = getTagValues(urlTempate);
       return (resp) -> {
@@ -222,24 +222,28 @@ public class HttpModuleClient2 {
         //create a new request based on the content of the passed in response (resp)//
         try {
           int size = replace.size();
-          String newURL = null;
+          String newURL = urlTempate;
           if(size > 0){
             JsonPathParser jpp = new JsonPathParser(resp.getBody());
             for (int i = 0; i < size; i++) {
               String val = (String)jpp.getValueAt(replace.get(i));
+              if(val == null){
+                log.error("Unable to replace {"+replace.get(i)+"} with content from received json result, does the json contain this field? Endpoint: "+ resp.endpoint);
+                throw new Exception("Missing {"+replace.get(i)+"} value from results received from endpoint " + resp.endpoint);
+              }
               newURL = urlTempate.replace("{"+replace.get(i)+"}", val);
             }
           }
           //call back to the passed in consumer, this function should analyze the returned//
           //response for errors / exceptions and return accordingly if found//
-          completionHandler.accept(resp);
-          if(cql != null){
-            cql.setResponse(resp);
-          }
+          processPassedInResponse.accept(resp);
           if(resp.getError() != null || resp.getException() != null){
             return null;
           }
           else{
+            if(cql != null){
+              cql.setResponse(resp);
+            }
             //call request//
             return request(newURL, headers, cql);
           }
@@ -248,7 +252,7 @@ public class HttpModuleClient2 {
           resp.endpoint = urlTempate;
           resp.body = null;
           resp.code = -1;
-          completionHandler.accept(resp);
+          processPassedInResponse.accept(resp);
         }
         return null;
       };
