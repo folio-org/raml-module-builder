@@ -6,7 +6,9 @@ import java.util.List;
 
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.parser.JsonPathParser.Pairs;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
@@ -19,11 +21,62 @@ import io.vertx.core.json.JsonObject;
  */
 public class Response {
 
+  private static final ObjectMapper MAPPER = ObjectMapperTool.getMapper();
+
   String endpoint;
   int code;
   JsonObject body;
   JsonObject error;
   Throwable exception;
+
+  public Response mapFrom(Response response1, String extractField, String intoField, boolean allowNulls)
+      throws ResponseNullPointer {
+    return mapFrom(response1, extractField, intoField, null, allowNulls);
+  }
+
+  /**
+   * pull a specific field / section from response1 and populate this response with that section
+   * @param response1
+   * @param extractField
+   * @param intoField
+   * @param allowNulls
+   * @return
+   */
+  public Response mapFrom(Response response1, String extractField, String intoField, String nameOfInsert, boolean allowNulls)
+      throws ResponseNullPointer {
+    if(response1 == null || response1.body == null){
+      throw new ResponseNullPointer();
+    }
+    if(this.body == null){
+      this.body = new JsonObject();
+    }
+    JsonPathParser jpp = new JsonPathParser(response1.body);
+    //get list of paths within the json to join on
+    List<StringBuilder> sbList = jpp.getAbsolutePaths(extractField);
+    if(sbList == null){
+      //path does not exist in the json, nothing to join on, return response
+      return this;
+    }
+    JsonPathParser result = new JsonPathParser(this.body);
+    int size = sbList.size();
+    boolean isArray = false;
+    if(size > 1){
+      isArray = true;
+    }
+    JsonObject ret = new JsonObject();
+    for (int i = 0; i < size; i++) {
+      Object val = jpp.getValueAt(sbList.get(i));
+      if(val == null && !allowNulls){
+        continue;
+      }
+      String fixedPath = intoField;
+      if(isArray){
+        fixedPath = fixedPath +"["+i+"]";
+      }
+      result.setValueAt(fixedPath, val, nameOfInsert);
+    }
+    return this;
+  }
 
   /**
    * join this response with response parameter using the withField field name on the current
@@ -34,7 +87,7 @@ public class Response {
    * @param withField
    * @param response
    * @param onField
-   * @param insertField - the path should be relative to the object itself. so if an array of
+   * @param extractField - the path should be relative to the object itself. so if an array of
    * json objects is returned the path should will be evaluated on each json object and not on the
    * array as a whole - this is unlike the withField and the onField which refer to the array of
    * results as a whole so that if an array of results are returned withField and onField will
@@ -45,17 +98,19 @@ public class Response {
    * @return
    * @throws ResponseNullPointer
    */
-  public Response joinOn(Response response1, String withField, Response response2, String onField, String insertField,
+  public Response joinOn(Response response1, String withField, Response response2, String onField, String extractField,
       String intoField, boolean allowNulls) throws ResponseNullPointer {
-    if((this.body == null && response1 == null && response1.body == null) || response2 == null || response2.body == null){
+    if((this.body == null && response1 == null) || response2 == null || response2.body == null){
       throw new ResponseNullPointer();
     }
     JsonPathParser output = null;
-    JsonObject input = new JsonObject();
+    JsonObject input = null;
 
     if(response1 != null && response1.body != null){
       input = response1.body;
-      this.body = new JsonObject();
+      if(this.body == null){
+        this.body = new JsonObject();
+      }
       output =  new JsonPathParser(this.body);
     }
     else{
@@ -73,13 +128,17 @@ public class Response {
     int size = sbList.size();
     for (int i = 0; i < size; i++) {
       Pairs map = jpp.getValueAndParentPair(sbList.get(i));
-      if(map != null){
+      if(map != null && map.getRequestedValue() != null){
         joinTable.put(map.getRequestedValue(), map.getRootNode());
       }
     }
     jpp = new JsonPathParser(input);
     List<StringBuilder> list = jpp.getAbsolutePaths(withField);
-    int size2 = list.size();
+    int size2 = 0;
+    if(list != null){
+      //if withField path does not exist in json the list will be null
+      size2 = list.size();
+    }
     for (int i = 0; i < size2; i++) {
       //get object for each requested absolute path (withField) needed to compare with the
       //join table values
@@ -89,26 +148,37 @@ public class Response {
       //in the current json
       Collection<Object> o = joinTable.get(valueAtPath);
       if(o != null && o.size() > 0){
+        //there is a match between the two jsons, can either be a single match or a match to multiple
+        //matches
         Object toInsert = null;
+        int arrayPlacement = 0;
         //get the value from the join table object to use as the replacement
         //this can be the entire object, or a value found at a path within the object aka insertField
-        if(o.size() == 1 && insertField != null){
-          toInsert = new JsonPathParser((JsonObject)o.iterator().next()).getValueAt(insertField);
+        if(o.size() == 1 && extractField != null){
+          String tempEField = extractField;
+          if(extractField.contains("../")){
+            tempEField = backTrack(sbList.get(i).toString(), extractField);
+          }
+          toInsert = new JsonPathParser((JsonObject)o.iterator().next()).getValueAt(tempEField);
         }
-        else if(o.size() > 1 && insertField != null){
+        else if(o.size() > 1 && extractField != null){
           //more then one of the same value mapped to different objects, create a jsonarray
           //with all the values and insert the jsonarray
           toInsert = new JsonArray();
           Iterator<?> it = o.iterator();
           while(it.hasNext()){
-            Object object = new JsonPathParser((JsonObject)it.next()).getValueAt(insertField);
+            String tempEField = extractField;
+            if(extractField.contains("../")){
+              tempEField = backTrack(sbList.get(arrayPlacement++).toString(), extractField);
+            }
+            Object object = new JsonPathParser((JsonObject)it.next()).getValueAt(tempEField);
             if(object != null){
               ((JsonArray)toInsert).add(object);
             }
           }
         }
         else {
-          toInsert = new JsonPathParser((JsonObject)o.iterator().next());
+          toInsert = o.iterator().next();
         }
         if(!allowNulls && toInsert == null){
           continue;
@@ -116,22 +186,32 @@ public class Response {
         if(intoField != null){
           //get the path in the json to replace with the value from the join table
           Object into = null;
+          String tempIntoField = intoField;
           if(output != null){
-            into = output.getValueAndParentPair(list.get(i)).getRootNode();
+            Pairs p = output.getValueAndParentPair(list.get(i));
+            if(p != null){
+              //there is an existing value in this jsons path
+              into = p.getRootNode();
+            } else {
+              output.setValueAt(tempIntoField, toInsert);
+            }
           }else{
             into = jpp.getValueAndParentPair(list.get(i)).getRootNode();
           }
+          if(intoField.contains("../")){
+            tempIntoField = backTrack(list.get(i).toString(), intoField);
+          }
           JsonPathParser jpp2 = new JsonPathParser((JsonObject)into);
-          Object placeWhereReplacementShouldHappen = jpp2.getValueAt(intoField);
+          Object placeWhereReplacementShouldHappen = jpp2.getValueAt(tempIntoField);
           if(placeWhereReplacementShouldHappen instanceof JsonArray){
             ((JsonArray)placeWhereReplacementShouldHappen).add(toInsert);
           }
           else{
             if(output != null){
-              output.setValueAt(intoField, toInsert);
+              output.setValueAt(tempIntoField, toInsert);
             }
             else{
-              jpp2.setValueAt(intoField, toInsert);
+              jpp2.setValueAt(tempIntoField, toInsert);
             }
           }
         }
@@ -148,7 +228,16 @@ public class Response {
       }
       else{
         if(allowNulls){
-          jpp.setValueAt(list.get(i).toString(), null);
+          if(intoField != null){
+            String tempIntoField = intoField;
+            if(intoField.contains("../")){
+              tempIntoField = backTrack(list.get(i).toString(), intoField);
+            }
+            jpp.setValueAt(tempIntoField, null);
+          }
+          else{
+            jpp.setValueAt(list.get(i).toString(), null);
+          }
         }
       }
     }
@@ -159,6 +248,19 @@ public class Response {
       return r;
     }
     return this;
+  }
+
+  private String backTrack(String path, String backtrack){
+    String a[] = path.split("\\.");
+    int backTrackCount = backtrack.split("../").length-1;
+    int removeFrom = (a.length-backTrackCount);
+    StringBuffer sb = new StringBuffer();
+    for (int i = 0; i < removeFrom; i++) {
+      sb.append(a[i]).append(".");
+    }
+    int i = backtrack.lastIndexOf("../");
+    sb.append(backtrack.substring(i+3));
+    return sb.toString();
   }
 
   public Response joinOn(String withField, Response response2, String onField, String insertField, String intoField, boolean allowNulls) throws ResponseNullPointer {
@@ -241,6 +343,18 @@ public class Response {
       return true;
     }
     return false;
+  }
+
+  public Object convertToPojo(Class<?> type) throws Exception {
+    return MAPPER.readValue(body.encode(), type) ;
+  }
+
+  public static Object convertToPojo(JsonObject j, Class<?> type) throws Exception {
+    return MAPPER.readValue(j.encode(), type) ;
+  }
+
+  public static Object convertToPojo(JsonArray j, Class<?> type) throws Exception {
+    return MAPPER.readValue(j.encode(), MAPPER.getTypeFactory().constructCollectionType(List.class, type));
   }
 
   public void populateError(String endpoint, int statusCode, String errorMessage){
