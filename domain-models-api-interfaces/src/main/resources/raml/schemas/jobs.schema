@@ -2,12 +2,12 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "job_confs": {
-      "id": "jobConfs",
+    "jobs": {
+      "id": "jobs",
       "type": "array",
       "items": {
         "type": "object",
-        "$ref" : "jobs_conf.schema"
+        "$ref" : "job"
       }
     },
     "total_records": {
@@ -15,7 +15,7 @@
     }
   },
   "required": [
-    "job_confs",
+    "jobs",
     "total_records"
   ]
 }

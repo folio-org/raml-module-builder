@@ -19,7 +19,7 @@
     },
     "last_modified": {
       "type": "object",
-      "$ref" : "last_modified.schema"
+      "$ref" : "last_modified"
     },
     "inst_id": {
       "type": "string"
