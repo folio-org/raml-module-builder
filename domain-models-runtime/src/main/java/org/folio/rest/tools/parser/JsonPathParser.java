@@ -192,15 +192,15 @@ public class JsonPathParser {
               if(!subPathsList[i].matches("\\[.*?\\]")){
                 currentPaths.get(j1).append(".");
               }
-              else{
-                if(i==1){
-                  //if [*] is the second value - this means the root node requested was something like
+              //else{
+                //if(i==1){
+                  //if [*] is the second or 3rd value - this means the root node requested was something like
                   //a[*] - which means the request is for a list of objects - in such a case
                   //set the root node to each object and not to the list itself. so reset the  rParent
                   //object to null - it will be repopulated in the next iteration.
-                  rParent = null;
-                }
-              }
+                  //rParent = null;
+                //}
+             // }
             }
             currentPaths.get(j1).append(wrapIfNeeded(subPathsList[i]));
           }
@@ -342,6 +342,10 @@ public class JsonPathParser {
     return null;
   }
 
+  public void setValueAt(String path, Object value){
+    setValueAt(path, value, null);
+  }
+
   /**
    * Sets a value to the element at the specificed path
    * wildcards are not allowed in the path - for example [*] is NOT allowed
@@ -349,7 +353,7 @@ public class JsonPathParser {
    * @param value
    */
   @SuppressWarnings("unchecked")
-  public void setValueAt(String path, Object value){
+  public void setValueAt(String path, Object value, String nameForNewArray){
 
     String []subPathsList = getPathAsList(path);
     Object o = j;
@@ -359,13 +363,15 @@ public class JsonPathParser {
     else{
       for (int i = 0; i < subPathsList.length-1; i++) {
         Object parent = o;
+        boolean isArray = false;
         o = getValueAt(subPathsList[i], parent, null, false);
         if(o == null){
           String fieldName = subPathsList[i];
-          if(subPathsList[i].matches(".*\\[.*?\\].*")){
-            fieldName = subPathsList[i].replaceAll("\\[.*\\]", "");
+          if(subPathsList[i+1].matches(".*\\[.*?\\].*")){
+            fieldName = subPathsList[i];
             //create an array
             o = new JsonArray();
+            isArray = true;
           }
           else{
             //create json object
@@ -376,6 +382,19 @@ public class JsonPathParser {
           }
           else{
             ((JsonObject)parent).put(fieldName, o);
+/*            if(isArray){
+              JsonObject j = new JsonObject();
+              j.put(fieldName, o);
+              ((JsonObject)parent).put(fieldName, o);
+            }
+            if(nameForNewArray == null || i < subPathsList.length-2){
+              ((JsonObject)parent).put(fieldName, o);
+            }
+            else if(nameForNewArray != null){
+              JsonObject j = new JsonObject();
+              ((JsonObject)parent).put(fieldName, j);
+              j.put(nameForNewArray, o);
+            }*/
           }
 
         }
@@ -385,11 +404,26 @@ public class JsonPathParser {
       ((JsonObject) o).put(subPathsList[subPathsList.length-1], value);
     }
     else if(o instanceof JsonArray){
+      String pos = "-1";
       try {
-        ((JsonArray)o).getList().set(Integer.parseInt(
-          subPathsList[subPathsList.length-1].substring(
-            1, subPathsList[subPathsList.length-1].length()-1)), value/*remove the []*/);
-      } catch (NumberFormatException e) {e.getMessage(); /* do nothing */}
+        pos = subPathsList[subPathsList.length-1].substring(
+          1, subPathsList[subPathsList.length-1].length()-1);
+        ((JsonArray)o).getList().set(Integer.parseInt(pos), value/*remove the []*/);
+      } catch (NumberFormatException e) {
+        e.getMessage(); /* do nothing */
+      }
+      catch(IndexOutOfBoundsException ioob){
+        //tried setting a value in the jsonarray that has no values
+        //assume this is because the path doesnt exist and add
+        JsonObject j = new JsonObject();
+        if(nameForNewArray != null){
+          j.put(nameForNewArray, value);
+          ((JsonArray)o).getList().add(j);
+        }
+        else{
+          ((JsonArray)o).getList().add(value);
+        }
+      }
     }
   }
 
