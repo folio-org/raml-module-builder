@@ -1,3 +1,6 @@
+## 12.1.4 (not yet released)
+* RMB-32 fix JSON encoding of String in UpdateSection
+
 ## 12.1.3 2017-06-06
 
 * v1.23 of embedded postgres fails to start on windows - upgrade to v2.2 RMB-25
