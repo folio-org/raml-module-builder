@@ -68,7 +68,6 @@ public class HttpModuleClient2 {
     options = new HttpClientOptions().setLogActivity(true).setKeepAlive(keepAlive)
         .setConnectTimeout(connTO).setIdleTimeout(idleTO);
     options.setDefaultHost(host);
-
     if(port == -1){
       absoluteHostAddr = true;
     }
@@ -78,10 +77,11 @@ public class HttpModuleClient2 {
     this.autoCloseConnections = autoCloseConnections;
     vertx = VertxUtils.getVertxFromContextOrNew();
     setDefaultHeaders();
+    httpClient = vertx.createHttpClient(options);
   }
 
   public HttpModuleClient2(String host, int port, String tenantId) {
-    this(host, port, tenantId, true, 2000, 5000, true, 30);
+    this(host, port, tenantId, true, 2000, 5000, false, 30);
   }
 
   /**
@@ -90,7 +90,7 @@ public class HttpModuleClient2 {
    * @param tenantId
    */
   public HttpModuleClient2(String absHost, String tenantId) {
-    this(absHost, -1, tenantId, true, 2000, 5000, true, 30);
+    this(absHost, -1, tenantId, true, 2000, 5000, false, 30);
   }
 
   public HttpModuleClient2(String host, int port, String tenantId, boolean autoCloseConnections) {
@@ -117,7 +117,6 @@ public class HttpModuleClient2 {
       boolean cache, Handler<HttpClientResponse> responseHandler, CompletableFuture<Response> cf2){
 
     try {
-      httpClient = vertx.createHttpClient(options);
       HttpClientRequest request = null;
       if(absoluteHostAddr){
         request = httpClient.requestAbs(method, options.getDefaultHost() + endpoint);
@@ -279,7 +278,6 @@ public class HttpModuleClient2 {
 
   public void closeClient(){
     httpClient.close();
-    cache.invalidateAll();
   }
 
   public void clearCache(){
