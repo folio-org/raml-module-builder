@@ -37,6 +37,8 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class HttpModuleClient2 {
 
+  static LoadingCache<String, Response> cache = null;
+
   private static final String CTYPE = "Content-Type";
   private static final String ACCEPT = "Accept";
   private static final String APP_JSON_CTYPE = "application/json";
@@ -49,7 +51,6 @@ public class HttpModuleClient2 {
   private String tenantId;
   private HttpClientOptions options;
   private HttpClient httpClient;
-  private LoadingCache<String, CompletableFuture<Response>> cache = null;
   private Vertx vertx;
   private boolean autoCloseConnections = true;
   private Map<String, String> headers = new HashMap<>();
@@ -150,16 +151,16 @@ public class HttpModuleClient2 {
     }
     if(cachable){
       initCache();
-      CompletableFuture<Response> j = cache.get(endpoint);
-      if(j != null && !j.isCompletedExceptionally() && j.isDone()){
-        return j;
+      Response j = cache.get(endpoint);
+      if(j != null && j.getBody() != null){
+        CompletableFuture<Response> cf = new CompletableFuture<>();
+        cf.complete(j);
+        log.debug("entry retrieved from cache: " + endpoint);
+        return cf;
       }
     }
     CompletableFuture<Response> cf = new CompletableFuture<>();
     HTTPJsonResponseHandler handler = new HTTPJsonResponseHandler(endpoint, cf);
-    if(cachable) {
-      handler.cache = cache;
-    }
     if(autoCloseConnections){
       handler.httpClient = httpClient;
     }
@@ -295,10 +296,10 @@ public class HttpModuleClient2 {
         .maximumSize(1000)
         .expireAfterWrite(cacheTO, TimeUnit.MINUTES)
         .build(
-          new CacheLoader<String, CompletableFuture<Response>>() {
+          new CacheLoader<String, Response>() {
             @Override
-            public CompletableFuture<Response> load(String key) throws Exception {
-              return new CompletableFuture<>();
+            public Response load(String key) throws Exception {
+              return new Response();
             }
           });
     }

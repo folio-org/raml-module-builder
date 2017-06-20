@@ -2,8 +2,6 @@ package org.folio.rest.tools.client;
 
 import java.util.concurrent.CompletableFuture;
 
-import com.google.common.cache.LoadingCache;
-
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
@@ -17,7 +15,6 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
   CompletableFuture<Response> cf;
   String endpoint;
   RollBackURL rollbackURL;
-  LoadingCache<String, CompletableFuture<Response>> cache;
   HttpClient httpClient;
 
   public HTTPJsonResponseHandler(String endpoint, CompletableFuture<Response> cf){
@@ -41,8 +38,13 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
       if(httpClient != null){
         httpClient.close();
       }
-      if(cache != null && r.body != null) {
-        cache.put(endpoint, cf);
+      if(HttpModuleClient2.cache != null && r.body != null) {
+        try {
+          HttpModuleClient2.cache.put(endpoint, cf.get());
+        } catch (Exception e) {
+          //caching error
+          e.printStackTrace();
+        }
       }
 /*      if(r.error != null && rollbackURL != null){
 
