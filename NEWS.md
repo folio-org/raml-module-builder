@@ -1,3 +1,6 @@
+## 12.1.4 (not yet released)
+* submodule util with ResourceUtil.asString()
+
 ## 12.1.3 2017-06-06
 
 * v1.23 of embedded postgres fails to start on windows - upgrade to v2.2 RMB-25
