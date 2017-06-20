@@ -60,7 +60,8 @@ public class Response {
     JsonPathParser result = new JsonPathParser(this.body);
     int size = sbList.size();
     boolean isArray = false;
-    if(size > 1){
+    if(extractField.contains("[*]")){
+      //probably the contains is enough and no need to check size
       isArray = true;
     }
     JsonObject ret = new JsonObject();
@@ -87,12 +88,12 @@ public class Response {
    * @param withField
    * @param response
    * @param onField
-   * @param extractField - the path should be relative to the object itself. so if an array of
-   * json objects is returned the path should will be evaluated on each json object and not on the
-   * array as a whole - this is unlike the withField and the onField which refer to the array of
-   * results as a whole so that if an array of results are returned withField and onField will
-   * need to indicate something along the lines of a[*].field , while insertField will refer to
-   * 'field' only without the a[*]
+   * @param extractField - the field to extract from the response to join on. Two options:
+   * 1. an absolute path - such as a.b.c or a.b.c.d[0] - should be used when one field needs to be
+   * extracted
+   * 2. a relative path - such as ../../abc - should be used in cases where the join on is an array
+   * of results, and we want to extract the specific field for each item in the array to push into the
+   * response we are joining with.
    * @param intoField - the field in the current Response's json to merge into
    * @param allowNulls
    * @return
