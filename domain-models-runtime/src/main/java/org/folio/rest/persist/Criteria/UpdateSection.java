@@ -1,10 +1,10 @@
 package org.folio.rest.persist.Criteria;
 
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
 import java.util.ArrayList;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Joiner;
 import com.google.common.primitives.Primitives;
 
@@ -52,20 +52,20 @@ public class UpdateSection {
 
   }
 
+  /**
+   * Return the object o set by setValue(o) encoded as a JSON string. Return null if o is null
+   * or if o is neither a JsonObject nor a String nor a primitive type.
+   * @return the JSON string
+   */
   public String getValue() {
-    if (value != null) {
-      if (value instanceof JsonObject) {
-        return ((JsonObject) value).encode();
-      }
-      else if(Primitives.isWrapperType(value.getClass()) || value.getClass().isPrimitive()){
-        return value.toString();
-      }
-      else if(value instanceof String){
-        return "\"" + value.toString() + "\"";
-      }
-      else {
-        return null;
-      }
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof JsonObject) {
+      return ((JsonObject) value).encode();
+    }
+    if (value instanceof String || value.getClass().isPrimitive() || Primitives.isWrapperType(value.getClass())) {
+      return Json.encode(value);
     }
     return null;
   }
