@@ -72,7 +72,7 @@ When that is understood, then move on to the section
 
 Note that actually building this RAML Module Builder framework is not required.
 (Some of the images below are out-of-date.) The already published artifacts will
-be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your project from the repository.
+be [incorporated](#step-2-include-the-jars-in-your-project-pom-xml) into your project from the repository.
 
 ## The basics
 
@@ -995,7 +995,7 @@ where the "jsonb" field references a JSON schema that will exist in the "jsonb" 
 
 The example above refers to querying only. As of now, saving a record will only save the "jsonb" and "id" fields (the above example uses triggers to populate the operation, creation data, and original id).
 
-#### Credentials
+### Credentials
 
 When running in embedded mode, credentials are read from `resources/postgres-conf.json`. If a file is not found, then the following configuration will be used by default:
 
@@ -1050,6 +1050,33 @@ public class InitConfigService implements PostDeployVerticle {
   }
 }
 ```
+
+### Foreign keys constraint
+
+PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB.  Create an additional column with the foreign key constraint and setup a trigger to keep it in sync with the value inside the JSONB.
+
+Example:
+
+```sql
+CREATE TABLE item (
+  _id UUID PRIMARY KEY,
+  jsonb JSONB NOT NULL,
+  permanentLoanTypeId UUID REFERENCES loan_type,
+  temporaryLoanTypeId UUID REFERENCES loan_type
+);
+CREATE OR REPLACE FUNCTION update_item_references()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.permanentLoanTypeId = NEW.jsonb->>'permanentLoanTypeId';
+  NEW.temporaryLoanTypeId = NEW.jsonb->>'temporaryLoanTypeId';
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+CREATE TRIGGER update_item_references
+  BEFORE INSERT OR UPDATE ON item
+  FOR EACH ROW EXECUTE PROCEDURE update_item_references();
+```
+
 
 
 ## Tenant API
