@@ -11,6 +11,8 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.folio.rest.tools.client.exceptions.PopulateTemplateException;
+import org.folio.rest.tools.client.exceptions.PreviousRequestException;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.VertxUtils;
 
@@ -21,6 +23,7 @@ import com.google.common.cache.LoadingCache;
 
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
@@ -114,7 +117,7 @@ public class HttpModuleClient2 {
     headers.put(ACCEPT, APP_JSON_ACCEPT);
   }
 
-  private void request(HttpMethod method, String endpoint, Map<String, String> headers,
+  private void request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers,
       boolean cache, Handler<HttpClientResponse> responseHandler, CompletableFuture<Response> cf2){
 
     try {
@@ -134,7 +137,12 @@ public class HttpModuleClient2 {
         this.headers.putAll(headers);
       }
       request.headers().setAll(this.headers);
-      request.end();
+      if(data != null){
+        request.end(data);
+      }
+      else{
+        request.end();
+      }
     } catch (Exception e) {
       Response r = new Response();
       r.populateError(endpoint, -1, e.getMessage());
@@ -143,7 +151,7 @@ public class HttpModuleClient2 {
     }
   }
 
-  public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
+  public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
       boolean cachable, BuildCQL bCql) throws Exception {
 
     if(bCql != null){
@@ -168,9 +176,25 @@ public class HttpModuleClient2 {
       handler.rollbackURL = rollbackURL;
     }
 
-    request(method, endpoint, headers, cachable, handler, cf);
+    request(method, data, endpoint, headers, cachable, handler, cf);
 
     return cf;
+  }
+
+  public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
+      boolean cachable, BuildCQL bCql) throws Exception {
+
+      return request(method, null, endpoint, headers, rollbackURL,cachable, bCql);
+  }
+
+  public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers)
+      throws Exception {
+    return request(method, endpoint, headers, null, false, null);
+  }
+
+  public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers)
+      throws Exception {
+    return request(method, endpoint, headers, null, false, null);
   }
 
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, boolean cache, BuildCQL cql)
@@ -213,6 +237,28 @@ public class HttpModuleClient2 {
     return request(HttpMethod.GET, endpoint, null, null, true, null);
   }
 
+  /**
+   * A request that should be used within a thenCompose() completable future call and receive as
+   * input a Response object from the previous request.
+   * The chainedRequest will
+   * 1. callback to the passed in Consumer with the Response of the previous request for handling
+   * 2. if the passed in Response contains errors - the current request will not be sent and a
+   * completable future will be returned indicating that the request was not run
+   * 3. replace placeholder in the url {a.b[0]} with actual values appearing in the json passed in
+   * by the thenCompose(). For example: passing in:
+   * http://localhost:9130/users/{users[0].username}
+   * will look in the passed in json for the value found in the first user in a json array[].username
+   * NOTE that if a template has a placeholder, and the path indicated in the placeholder does not
+   * exist in the passed in Response - the current request will not be sent and a completeable future
+   * with a Response (containing the error) will be returned
+   * 4. build a cql via values in the passed in json
+   * 5. Send the request
+   * @param urlTempate
+   * @param headers
+   * @param cql
+   * @param processPassedInResponse
+   * @return
+   */
   public Function<Response, CompletableFuture<Response>> chainedRequest(
       String urlTempate, Map<String, String> headers, BuildCQL cql, Consumer<Response> processPassedInResponse){
     try {
@@ -221,6 +267,15 @@ public class HttpModuleClient2 {
         //once future completes we enter this section//
         //create a new request based on the content of the passed in response (resp)//
         try {
+          //call back to the passed in consumer, this function should analyze the returned//
+          //response for errors / exceptions and return accordingly if found//
+          processPassedInResponse.accept(resp);
+          if(resp.getError() != null || resp.getException() != null){
+            CompletableFuture<Response> cf = new CompletableFuture<>();
+            PreviousRequestException pre = new PreviousRequestException("for template, " + urlTempate);
+            cf.complete(createResponse(urlTempate, pre));
+            return cf;
+          }
           int size = replace.size();
           String newURL = urlTempate;
           if(size > 0){
@@ -229,37 +284,38 @@ public class HttpModuleClient2 {
               String val = (String)jpp.getValueAt(replace.get(i));
               if(val == null){
                 log.error("Unable to replace {"+replace.get(i)+"} with content from received json result, does the json contain this field? Endpoint: "+ resp.endpoint);
-                throw new Exception("Missing {"+replace.get(i)+"} value from results received from endpoint " + resp.endpoint);
+                PopulateTemplateException pe = new PopulateTemplateException("Missing {"+replace.get(i)+"} value from results received from endpoint " + resp.endpoint);
+                CompletableFuture<Response> cf = new CompletableFuture<>();
+                cf.complete(createResponse(urlTempate, pe));
+                return cf;
               }
               newURL = urlTempate.replace("{"+replace.get(i)+"}", val);
             }
           }
-          //call back to the passed in consumer, this function should analyze the returned//
-          //response for errors / exceptions and return accordingly if found//
-          processPassedInResponse.accept(resp);
-          if(resp.getError() != null || resp.getException() != null){
-            return null;
+          if(cql != null){
+            cql.setResponse(resp);
           }
-          else{
-            if(cql != null){
-              cql.setResponse(resp);
-            }
-            //call request//
-            return request(newURL, headers, cql);
-          }
+          //call request//
+          return request(newURL, headers, cql);
         } catch (Exception e) {
-          resp.exception = e;
-          resp.endpoint = urlTempate;
-          resp.body = null;
-          resp.code = -1;
-          processPassedInResponse.accept(resp);
+          CompletableFuture<Response> cf = new CompletableFuture<>();
+          cf.complete(createResponse(urlTempate, e));
+          return cf;
         }
-        return null;
       };
     } catch (Exception e) {
       e.printStackTrace();
     }
     return null;
+  }
+
+  private Response createResponse(String urlTempate, Exception e){
+    Response r = new Response();
+    r.exception = e;
+    r.endpoint = urlTempate;
+    r.body = null;
+    r.code = -1;
+    return r;
   }
 
   private static List<String> getTagValues(final String str) {

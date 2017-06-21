@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import org.folio.rest.tools.client.exceptions.ResponseNullPointer;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.parser.JsonPathParser.Pairs;
 import org.folio.rest.tools.utils.ObjectMapperTool;
