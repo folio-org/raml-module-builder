@@ -25,12 +25,12 @@ public class ResourceUtilTest {
 
   @Test
   public void readEmptyFile() throws IOException {
-    assertEquals("", ResourceUtil.asString("ResourceUtilEmpty"));
+    assertEquals("", ResourceUtil.asString("ResourceUtilEmpty.bin"));
   }
 
   @Test
   public void readExampleFile() throws IOException {
-    assertEquals("first line\numlauts: äöü\n", ResourceUtil.asString("ResourceUtilExample"));
+    assertEquals("first line\numlauts: äöü\n", ResourceUtil.asString("ResourceUtilExample.bin"));
   }
 
   @Test
@@ -39,6 +39,6 @@ public class ResourceUtilTest {
     for (int i=0; i<expected.length; i++) {
       expected[i] = 'a';
     }
-    assertEquals(new String(expected), ResourceUtil.asString("ResourceUtil3000"));
+    assertEquals(new String(expected), ResourceUtil.asString("ResourceUtil3000.bin"));
   }
 }
