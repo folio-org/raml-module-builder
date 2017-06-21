@@ -24,10 +24,30 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
 
   @Override
   public void handle(HttpClientResponse hcr) {
+    boolean hasBody[] = new boolean[]{false};
+    hcr.endHandler( eh -> {
+      //needed in cases where there is no body content
+      if(!hasBody[0]){
+        Response r = new Response();
+        r.code = hcr.statusCode();
+        r.endpoint = this.endpoint;
+        r.headers = hcr.headers();
+        if(!Response.isSuccess(r.code)){
+          r.populateError(this.endpoint, r.code, hcr.statusMessage());
+        }
+        cf.complete(r);
+      }
+      if(httpClient != null){
+        //this is not null when autoclose = true
+        httpClient.close();
+      }
+    });
     hcr.bodyHandler( bh -> {
+      hasBody[0] = true;
       Response r = new Response();
       r.code = hcr.statusCode();
       r.endpoint = this.endpoint;
+      r.headers = hcr.headers();
       if(Response.isSuccess(r.code)){
         r.body = bh.toJsonObject();
       }
@@ -35,9 +55,6 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
         r.populateError(this.endpoint, r.code, hcr.statusMessage());
       }
       cf.complete(r);
-      if(httpClient != null){
-        httpClient.close();
-      }
       if(HttpModuleClient2.cache != null && r.body != null) {
         try {
           HttpModuleClient2.cache.put(endpoint, cf.get());
@@ -51,6 +68,14 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
       }*/
     });
     hcr.exceptionHandler( eh -> {
+      if(httpClient != null){
+        //this is not null when autoclose = true
+        try {
+          httpClient.close();
+        } catch (Exception e) {
+          System.out.println("HTTPJsonResponseHandler class tried closing a client that was closed, this may be ok. " + e.getMessage());
+        }
+      }
       cf.completeExceptionally(eh);
     });
   }
