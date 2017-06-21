@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
+import io.vertx.core.MultiMap;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
@@ -29,6 +30,7 @@ public class Response {
   JsonObject body;
   JsonObject error;
   Throwable exception;
+  MultiMap headers;
 
   public Response mapFrom(Response response1, String extractField, String intoField, boolean allowNulls)
       throws ResponseNullPointer {
@@ -255,6 +257,10 @@ public class Response {
   private String backTrack(String path, String backtrack){
     String a[] = path.split("\\.");
     int backTrackCount = backtrack.split("../").length-1;
+    if(backTrackCount == -1){
+      //in case ../ was passed in, the split returns []
+      backTrackCount = 1;
+    }
     int removeFrom = (a.length-backTrackCount);
     StringBuffer sb = new StringBuffer();
     for (int i = 0; i < removeFrom; i++) {
@@ -415,6 +421,14 @@ public class Response {
 
   public void setException(Throwable exception) {
     this.exception = exception;
+  }
+
+  public MultiMap getHeaders() {
+    return headers;
+  }
+
+  public void setHeaders(MultiMap headers) {
+    this.headers = headers;
   }
 
 }
