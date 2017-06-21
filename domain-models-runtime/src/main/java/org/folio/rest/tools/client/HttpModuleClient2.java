@@ -11,6 +11,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.client.exceptions.PopulateTemplateException;
 import org.folio.rest.tools.client.exceptions.PreviousRequestException;
 import org.folio.rest.tools.parser.JsonPathParser;
@@ -22,6 +23,7 @@ import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 
 import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
@@ -189,7 +191,12 @@ public class HttpModuleClient2 {
 
   public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(method, endpoint, headers, null, false, null);
+    return request(method, data, endpoint, headers, null, false, null);
+  }
+
+  public CompletableFuture<Response> request(HttpMethod method, Object pojo, String endpoint, Map<String, String> headers)
+      throws Exception {
+    return request(method, Buffer.buffer(PostgresClient.pojo2json(pojo)), endpoint, headers, null, false, null);
   }
 
   public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers)
@@ -255,12 +262,13 @@ public class HttpModuleClient2 {
    * 5. Send the request
    * @param urlTempate
    * @param headers
+   * @param inheritOkapiHeaders - take all okapi headers in passed in Response and over write / add to this request
    * @param cql
    * @param processPassedInResponse
    * @return
    */
   public Function<Response, CompletableFuture<Response>> chainedRequest(
-      String urlTempate, Map<String, String> headers, BuildCQL cql, Consumer<Response> processPassedInResponse){
+      String urlTempate, Map<String, String> headers, boolean inheritOkapiHeaders, BuildCQL cql, Consumer<Response> processPassedInResponse){
     try {
       List<String> replace = getTagValues(urlTempate);
       return (resp) -> {
@@ -269,7 +277,9 @@ public class HttpModuleClient2 {
         try {
           //call back to the passed in consumer, this function should analyze the returned//
           //response for errors / exceptions and return accordingly if found//
-          processPassedInResponse.accept(resp);
+          if(processPassedInResponse != null){
+            processPassedInResponse.accept(resp);
+          }
           if(resp.getError() != null || resp.getException() != null){
             CompletableFuture<Response> cf = new CompletableFuture<>();
             PreviousRequestException pre = new PreviousRequestException("for template, " + urlTempate);
@@ -296,6 +306,9 @@ public class HttpModuleClient2 {
             cql.setResponse(resp);
           }
           //call request//
+          if(inheritOkapiHeaders){
+            mergeHeaders(headers, resp.headers, resp.endpoint);
+          }
           return request(newURL, headers, cql);
         } catch (Exception e) {
           CompletableFuture<Response> cf = new CompletableFuture<>();
@@ -307,6 +320,26 @@ public class HttpModuleClient2 {
       e.printStackTrace();
     }
     return null;
+  }
+
+  private void mergeHeaders(Map<String, String >headers1,  MultiMap headers2, String endpoint){
+    Consumer<Map.Entry<String,String>> consumer = entry -> {
+      String headerKey = entry.getKey().toLowerCase();
+      if(headerKey.startsWith("x-okapi")){
+        headers1.put(headerKey, entry.getValue());
+      }
+    };
+    if(headers != null){
+      headers2.forEach(consumer);
+    }
+    else{
+      log.warn("headers passed into chainedRequest are null, from endpoint " + endpoint);
+    }
+  }
+
+  public Function<Response, CompletableFuture<Response>> chainedRequest(
+      String urlTempate, Map<String, String> headers, BuildCQL cql, Consumer<Response> processPassedInResponse){
+    return chainedRequest(urlTempate, headers, false, cql, processPassedInResponse);
   }
 
   private Response createResponse(String urlTempate, Exception e){
