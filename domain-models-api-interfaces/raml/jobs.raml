@@ -5,15 +5,15 @@ baseUri: http://localhost:8081/v1
 version: v1
 
 schemas:
-  - last_modified: !include schemas/last_modified.schema
-  - jobs: !include schemas/jobs.schema
-  - job: !include schemas/job.schema
-  - jobs_conf: !include schemas/jobs_conf.schema
-  - jobs_confs: !include schemas/jobs_confs.schema
+  - last_modified: !include last_modified.schema
+  - jobs: !include jobs.schema
+  - job: !include job.schema
+  - jobs_conf: !include jobs_conf.schema
+  - jobs_confs: !include jobs_confs.schema
   - parameters: !include raml-util/schemas/parameters.schema
-  - parameter: !include schemas/parameter.schema
-  - bulks: !include schemas/bulks.schema
-  - bulk: !include schemas/bulk.schema
+  - parameter: !include parameter.schema
+  - bulks: !include bulks.schema
+  - bulk: !include bulk.schema
 
 traits:
   - orderable: !include raml-util/traits/orderable.raml
