@@ -52,7 +52,11 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
         r.body = bh.toJsonObject();
       }
       else{
-        r.populateError(this.endpoint, r.code, hcr.statusMessage());
+        String message = hcr.statusMessage();
+        if(bh != null){
+          message = bh.toString();
+        }
+        r.populateError(this.endpoint, r.code, message);
       }
       cf.complete(r);
       if(HttpModuleClient2.cache != null && r.body != null) {
