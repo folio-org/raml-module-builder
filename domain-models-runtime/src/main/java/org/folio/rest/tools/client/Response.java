@@ -1,5 +1,6 @@
 package org.folio.rest.tools.client;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -127,13 +128,16 @@ public class Response {
       //path does not exist in the json, nothing to join on, return response
       return this;
     }
-    Multimap<Object, Object> joinTable = ArrayListMultimap.create();
+    Multimap<Object, ArrayList<Object>> joinTable = ArrayListMultimap.create();
     //Map<Object, Object> joinTable = new HashMap<>();
     int size = sbList.size();
     for (int i = 0; i < size; i++) {
       Pairs map = jpp.getValueAndParentPair(sbList.get(i));
       if(map != null && map.getRequestedValue() != null){
-        joinTable.put(map.getRequestedValue(), map.getRootNode());
+        ArrayList<Object> a = new ArrayList<>();
+        a.add(sbList.get(i));
+        a.add(map.getRootNode());
+        joinTable.put(map.getRequestedValue(), a);
       }
     }
     jpp = new JsonPathParser(input);
@@ -150,7 +154,7 @@ public class Response {
       //check if the value at the requested path also exists in the join table.
       //if so, get the corresponding object from the join table that will replace a value
       //in the current json
-      Collection<Object> o = joinTable.get(valueAtPath);
+      Collection<ArrayList<Object>> o = joinTable.get(valueAtPath);
       if(o != null && o.size() > 0){
         //there is a match between the two jsons, can either be a single match or a match to multiple
         //matches
@@ -160,10 +164,11 @@ public class Response {
         //this can be the entire object, or a value found at a path within the object aka insertField
         if(o.size() == 1 && extractField != null){
           String tempEField = extractField;
+          ArrayList<Object> b = o.iterator().next();
           if(extractField.contains("../")){
-            tempEField = backTrack(sbList.get(i).toString(), extractField);
+            tempEField = backTrack(b.get(0).toString(), extractField);
           }
-          toInsert = new JsonPathParser((JsonObject)o.iterator().next()).getValueAt(tempEField);
+          toInsert = new JsonPathParser((JsonObject)b.get(1)).getValueAt(tempEField);
         }
         else if(o.size() > 1 && extractField != null){
           //more then one of the same value mapped to different objects, create a jsonarray
@@ -172,10 +177,11 @@ public class Response {
           Iterator<?> it = o.iterator();
           while(it.hasNext()){
             String tempEField = extractField;
+            ArrayList<Object> b = (ArrayList)it.next();
             if(extractField.contains("../")){
-              tempEField = backTrack(sbList.get(arrayPlacement++).toString(), extractField);
+              tempEField = backTrack(b.get(0).toString(), extractField);
             }
-            Object object = new JsonPathParser((JsonObject)it.next()).getValueAt(tempEField);
+            Object object = new JsonPathParser((JsonObject)b.get(1)).getValueAt(tempEField);
             if(object != null){
               ((JsonArray)toInsert).add(object);
             }
