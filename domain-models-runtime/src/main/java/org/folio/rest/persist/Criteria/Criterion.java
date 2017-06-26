@@ -202,7 +202,7 @@ public class Criterion {
                 field2remove = i;
               }
             }
-            ArrayList<String> fieldList = new ArrayList<String>(Arrays.asList(fields));
+            ArrayList<String> fieldList = new ArrayList<>(Arrays.asList(fields));
             if (field2remove != -1) {
               fieldList.remove(field2remove);
             }
@@ -275,7 +275,31 @@ public class Criterion {
     return sb.toString();
   }
 
-  public static void main(String args[]) {
+  public static void main(String args[]) throws Exception {
+
+    try {
+      Criteria schema = new Criteria("userdata.json");
+      schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
+      System.out.println(schema.toString());
+
+      schema = new Criteria("userdata.json");
+      schema.addField("'active'").setOperation("=").setValue("true");
+      System.out.println(schema.toString());
+
+      schema = new Criteria();
+      schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
+      System.out.println(schema.toString());
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+
+/*    PostgresClient.setConfigFilePath("C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\postgres-conf.json");
+    PostgresClient.getInstance(Vertx.factory.vertx() , "myuniversity3").get("users",
+      JsonObject.class, new Criterion(nb), true, reply -> {
+        reply.succeeded();
+      });*/
 
     Criterion a =  json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]");
     // System.out.println(a.toString());

@@ -6,12 +6,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.folio.rest.tools.utils.VertxUtils;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 
-import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
@@ -19,6 +20,8 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -33,6 +36,9 @@ public class HttpModuleClient {
   private static final String APP_JSON_CTYPE = "application/json";
   private static final String APP_JSON_ACCEPT = "application/json";
   private static final String X_OKAPI_HEADER = "x-okapi-tenant";
+
+  private static final Logger log = LoggerFactory.getLogger(HttpModuleClient.class);
+
   private String tenantId;
   private HttpClientOptions options;
   private HttpClient httpClient;
@@ -43,44 +49,61 @@ public class HttpModuleClient {
   private long cacheTO = 30; //minutes
   private int connTO = 2000;
   private int idleTO = 5000;
-
-  private static final Logger log = LoggerFactory.getLogger(HttpModuleClient.class);
+  private boolean absoluteHostAddr = false;
 
   public HttpModuleClient(String host, int port, String tenantId, boolean keepAlive, int connTO,
       int idleTO, boolean autoCloseConnections, long cacheTO) {
+
     this.tenantId = tenantId;
     this.cacheTO = cacheTO;
     this.connTO = connTO;
     this.idleTO = idleTO;
-    options = new HttpClientOptions();
-    options.setLogActivity(true);
-    options.setKeepAlive(keepAlive);
+    options = new HttpClientOptions().setLogActivity(true).setKeepAlive(keepAlive)
+        .setConnectTimeout(connTO).setIdleTimeout(idleTO);
     options.setDefaultHost(host);
-    options.setDefaultPort(port);
-    options.setConnectTimeout(connTO);
-    options.setIdleTimeout(idleTO);
-    Context context = Vertx.currentContext();
-    this.autoCloseConnections = autoCloseConnections;
-    if (context == null) {
-        vertx = Vertx.vertx();
-    } else {
-        vertx = context.owner();
-    }
-    setDefaultHeaders();
-  }
 
-  private void setDefaultHeaders(){
-    headers.put(X_OKAPI_HEADER, tenantId);
-    headers.put(CTYPE, APP_JSON_CTYPE);
-    headers.put(ACCEPT, APP_JSON_ACCEPT);
+    if(port == -1){
+      absoluteHostAddr = true;
+    }
+    else{
+      options.setDefaultPort(port);
+    }
+    this.autoCloseConnections = autoCloseConnections;
+    vertx = VertxUtils.getVertxFromContextOrNew();
+    setDefaultHeaders();
   }
 
   public HttpModuleClient(String host, int port, String tenantId) {
     this(host, port, tenantId, true, 2000, 5000, true, 30);
   }
 
+  /**
+   *
+   * @param absHost - ex. http://localhost:8081
+   * @param tenantId
+   */
+  public HttpModuleClient(String absHost, String tenantId) {
+    this(absHost, -1, tenantId, true, 2000, 5000, true, 30);
+  }
+
   public HttpModuleClient(String host, int port, String tenantId, boolean autoCloseConnections) {
     this(host, port, tenantId, true, 2000, 5000, autoCloseConnections, 30);
+  }
+
+  /**
+   *
+   * @param absHost - ex. http://localhost:8081
+   * @param tenantId
+   * @param autoCloseConnections
+   */
+  public HttpModuleClient(String absHost, String tenantId, boolean autoCloseConnections) {
+    this(absHost, -1, tenantId, true, 2000, 5000, autoCloseConnections, 30);
+  }
+
+  private void setDefaultHeaders(){
+    headers.put(X_OKAPI_HEADER, tenantId);
+    headers.put(CTYPE, APP_JSON_CTYPE);
+    headers.put(ACCEPT, APP_JSON_ACCEPT);
   }
 
   private void request(HttpMethod method, String endpoint, Map<String, String> headers,
@@ -91,7 +114,12 @@ public class HttpModuleClient {
       responseHandler = new HTTPJsonResponseHandler(endpoint, cf);
     }
     httpClient = vertx.createHttpClient(options);
-    HttpClientRequest request = httpClient.request(method, endpoint);
+    HttpClientRequest request = null;
+    if(absoluteHostAddr){
+      request = httpClient.requestAbs(method, options.getDefaultHost() + endpoint);
+    } else {
+      request = httpClient.request(method, endpoint);
+    }
     request.exceptionHandler(error -> {
       Response r = new Response();
       r.populateError(endpoint, -1, error.getMessage());
@@ -106,7 +134,11 @@ public class HttpModuleClient {
   }
 
   public Response request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
-      boolean cachable) throws Exception {
+      boolean cachable, BuildCQL bCql) throws Exception {
+
+    if(bCql != null){
+      endpoint = endpoint + bCql.buildCQL();
+    }
     if(cachable){
       initCache();
       Response j = cache.get(endpoint);
@@ -134,7 +166,7 @@ public class HttpModuleClient {
       httpClient.close();
     }
     if(response.error != null && rollbackURL != null){
-      Response rb = request(rollbackURL.method, rollbackURL.endpoint, null, null, false);
+      Response rb = request(rollbackURL.method, rollbackURL.endpoint, null, null, false, rollbackURL.cql);
       if(rb.error != null){
         response.populateRollBackError(rb.error);
       }
@@ -145,26 +177,44 @@ public class HttpModuleClient {
     return response;
   }
 
+  public Response request(String endpoint, Map<String, String> headers, boolean cache, BuildCQL cql)
+      throws Exception {
+    return request(HttpMethod.GET, endpoint, headers, null, cache, cql);
+  }
+
   public Response request(String endpoint, Map<String, String> headers, boolean cache)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, cache);
+    return request(HttpMethod.GET, endpoint, headers, null, cache, null);
+  }
+
+  public Response request(String endpoint, Map<String, String> headers, BuildCQL cql)
+      throws Exception {
+    return request(HttpMethod.GET, endpoint, headers, null, true, cql);
   }
 
   public Response request(String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, true);
+    return request(HttpMethod.GET, endpoint, headers, null, true, null);
+  }
+
+  public Response request(String endpoint, boolean cache, BuildCQL cql) throws Exception {
+    return request(HttpMethod.GET, endpoint, null, null, cache, cql);
   }
 
   public Response request(String endpoint, boolean cache) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, cache);
+    return request(HttpMethod.GET, endpoint, null, null, cache, null);
   }
 
   public Response request(String endpoint, RollBackURL rbURL) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, rbURL, true);
+    return request(HttpMethod.GET, endpoint, null, rbURL, true, null);
+  }
+
+  public Response request(String endpoint, BuildCQL cql) throws Exception {
+    return request(HttpMethod.GET, endpoint, null, null, true, cql);
   }
 
   public Response request(String endpoint) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, true);
+    return request(HttpMethod.GET, endpoint, null, null, true, null);
   }
 
   public void setDefaultHeaders(Map<String, String> headersForAllRequests){
@@ -203,18 +253,96 @@ public class HttpModuleClient {
   }
 
   public static void main(String args[]) throws Exception {
-    HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "abcdefg", false);
+
+/*    JsonObject j11 = new JsonObject(
+      IOUtils.toString(JsonPathParser.class.getClassLoader().
+        getResourceAsStream("pathTest.json"), "UTF-8"));
+
+    JsonObject j12 = new JsonObject(
+      IOUtils.toString(JsonPathParser.class.getClassLoader().
+        getResourceAsStream("pathTest.json"), "UTF-8"));
+
+    Response test11 = new Response();
+    test11.setBody(j11);
+    Response test12 = new Response();
+    test12.setBody(j12);
+
+    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr[1]").getBody());
+
+    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr", false).getBody());
+
+
+    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr[0].a3").getBody());*/
+
+    HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "trigger_test2", false);
+
+    JsonObject j = new JsonObject();
+    JsonArray j22 = new JsonArray();
+    JsonArray j33 = new JsonArray();
+
+    j.put("arr", j22);
+    j.put("arr2", j33);
+
+    j22.add("librarian3");
+    j22.add("librarian2");
+
+    JsonObject j44 = new JsonObject();
+    j44.put("o", new JsonObject("{\"bbb\":\"aaa\"}"));
+    j33.add(j44);
+    Response rr = new Response();
+    rr.setBody(j);
+
+    Response bb0 = hc.request("/groups", false, new BuildCQL(rr, "arr2[0]", "group"));
+    System.out.println(bb0.body);
+    Response bb = hc.request("/groups", false, new BuildCQL(rr, "arr", "group"));
+    System.out.println(bb.body);
+    Response bb1 = hc.request("/groups", false, new BuildCQL(rr, "arr[0]", "group"));
+    System.out.println(bb1.body);
+    Response bb2 = hc.request("/groups", false, new BuildCQL(rr, "arr[*]", "group"));
+    System.out.println(bb2.body);
+
+
     for (int i = 0; i < 2; i++) {
-      Response a = hc.request("/users");
-      Response b = hc.request("/groups");
-      a.joinOn("patron_group", b, "id", "group");
-      hc.request("/users").joinOn("patron_groups", hc.request("/groups"), "id");
+      boolean cache = true;
+      if(i==1){
+        cache = false;
+      }
+      Response a = hc.request("/users", cache);
+      System.out.println(a.body);
+      Response b = hc.request("/groups", cache, new BuildCQL(a, "users[*].patron_group", "group"));
+      a.joinOn("users[*].patron_group", b, "usergroups[*].id", "group");
+      hc.request("/users").joinOn("users[*].patron_group", hc.request("/groups"), "usergroups[*].id");
     }
+
     Response a = hc.request("/users");
-    Response b = hc.request("/abc", new RollBackURL("/users", HttpMethod.GET));
-    a.joinOn("patron_group", b, "id", "group");
+    Response b = hc.request("/groups");
+    a.joinOn("users[*].patron_group2", b, "usergroups[*].id2", "group2");
+
+    Response a1 = hc.request("/users");
+    Response b1 = hc.request("/abc", new RollBackURL("/users", HttpMethod.GET));
+    a1.joinOn("users[*].patron_group", b1, "usergroups[*].id", "group");
     hc.closeClient();
 
+    JsonObject j1 = new JsonObject();
+    j1.put("a", "1");
+    j1.put("b", "2");
+    JsonObject jo = new JsonObject();
+    jo.put("a1", "1");
+    j1.put("c", jo);
+    JsonObject j2 = new JsonObject();
+    j2.put("z", "1");
+    j2.put("zz", "2");
+    Response test1 = new Response();
+    test1.body = j1;
+    Response test2 = new Response();
+    test2.body = j2;
+    Response end = test1.joinOn("c.a1", test2, "z", "zz");
+    System.out.println(end.getBody());
+    j2.put("z", "2");
+    Response end3 = test1.joinOn("c.a1", test2, "z", "zz");
+    System.out.println(end3.getBody());
+    Response end2 = test1.joinOn("c.a1", test2, "z");
+    System.out.println(end2.getBody());
   }
 
 }

@@ -171,10 +171,14 @@ we will get your local development server running and populated with test data.
 
 ## Command-line options
 
+- `-Dhttp.port=8080` (Optional -- defaults to 8081)
+
 - `-Djava.util.logging.config.file=C:\configuration\vertx-default-jul-logging.properties`
   (Optional -- defaults to `target/classes/vertx-default-jul-logging.properties`)
 
-- `-Dhttp.port=8080` (Optional -- defaults to 8081)
+- `-Ddebug_log_package=*` (Optional -- Set log level to debug for all packages.
+Or use `org.folio.rest.*` for all classes within a specific package,
+or `org.folio.rest.RestVerticle` for a specific class.)
 
 - `embed_postgres=true` (Optional -- defaults to false)
 
@@ -394,7 +398,7 @@ Create JSON schemas indicating the objects exposed by the module:
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>10.0.4-SNAPSHOT</version>
+      <version>11.0.0</version>
     </dependency>
   </dependencies>
 ```
@@ -652,7 +656,8 @@ See an [example](#function-example) of an implemented function.
 It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
 Investigate the other FOLIO modules for guidance.
 
-Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files:
+Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files,
+as the "raml-util" directory beside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml raml-util
 ```
@@ -921,6 +926,10 @@ JSONB tables in PostgreSQL. This is not mandatory and developers can work with
 regular PostgreSQL tables but will need to implement their own data access
 layer.
 
+**Important Note:** The embedded Postgres can not run as root.
+
+**Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
+
 Currently the expected format is:
 
 ```sql
@@ -1129,7 +1138,11 @@ postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
               reply -> {...
 ```
 
+The `Criteria` object which generates `where` clauses can also receive a JSON Schema so that it can cast values to the correct type within the `where` clause.
 
+```java
+Criteria idCrit = new Criteria("ramls/schemas/userdata.json");
+```
 
 ## Query Syntax
 
@@ -1304,7 +1317,10 @@ All current API documentation is also available at [dev.folio.org/doc/api](http:
 
 ## Logging
 
-As stated earlier in [Command-line options](#command-line-options), a configuration file can be specified with logging configurations. However, log levels can also be changed via the `/admin` API provided by the framework. For example:
+As stated earlier in [Command-line options](#command-line-options), a configuration file can be specified with logging configurations.
+Also debug level can be set for specific packages.
+
+The log levels can also be changed via the `/admin` API provided by the framework. For example:
 
 Get log level of all classes:
 
@@ -1435,6 +1451,122 @@ Requesting a stack trace would look like this:
       });
     });
 ```
+
+## Querying multiple modules via HTTP
+
+The RMB has some tools available to help:
+ - Make HTTP requests to other modules
+ - Parse JSON responses received (as well as any JSON for that matter)
+ - Merge together / Join JSON responses from multiple modules
+ - Build simple CQL query strings based on values in a JSON
+
+#### HTTP Requests
+
+The `HttpModuleClient` class exposes a basic HTTP Client.
+The full constructor takes the following parameters
+ - host
+ - port
+ - tenantId
+ - keepAlive - of connections (default: true)
+ - connTO - connection timeout (default: 2 seconds)
+ - idleTO - idle timeout (default: 5 seconds)
+ - autoCloseConnections - close connection when request completes (default: true)
+ - cacheTO - cache of endpoint results timeout (in minutes, default: 30)
+```
+    HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
+    Response response = hc.request("/groups");
+```
+The client returns a `Response` object. The `Response` class has the following members:
+  - endpoint - url the response came from
+  - code - http returned status code for request
+  - (JsonObject) body - the response data
+  - (JsonObject) error -  in case of an error - The `error` member will be populated. The
+  error object will contain the `endpoint`, the `statusCode`, and the `errorMessage`
+  - (Throwable) exception - if an exception was thrown during the API call
+
+
+The `HttpModuleClient request` function can receive the following parameters:
+ - `HttpMethod` - (default: GET)
+ - `endpoint` - API endpoint
+ - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
+ - `RollBackURL` - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
+ - `cachable` - Whether to cache the response
+ - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
+`
+Response userResponse =
+hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
+`
+This will create a query string with all values from the JSON found in the path usergroups[*].id and will generate a CQL query string which will look something like this:
+`?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
+See `BuildCQL` for configuration options.
+
+The `Response` class also exposes a joinOn function that allow you to join / merge the received JSON objects from multiple requests.
+
+`public Response joinOn(String withField, Response response, String onField, String insertField,
+      String intoField, boolean allowNulls)`
+
+
+The Join occurs with the response initiating the joinOn call:
+
+ - `withField` - the field within the response whose value / values will be used to join
+ - `response` - the response to join this response with
+ - `onField` - the field in the passed in response whose value / values will be used to join
+ - `insertField` - the field in the passed in `response` to push into the current response (defaults to the `onField` value if this is not passed in)
+ - `intoField` - the field to populate within this response
+ - `allowNulls` - whether to populate with `null` if the field requested to push into the current response is `null` - if set to false - then the field will not be populated with a null value.
+
+Example:
+
+join:
+
+(response1) `{"a": "1","b": "2"}`
+
+with:
+
+(response2) `{"arr2":[{"id":"1","a31":"1"},{"id":"1","a31":"2"},{"id":"1","a32":"4"},{"id":"2","a31":"4"}]}`
+
+returns:
+`{"a":"1","b":["1","2"]}`
+
+with the following call:
+`response1.joinOn("a", response2, "arr2[*].id", "a31", "b", false)`
+
+Explanation:
+Join response1 on field "a" with response2 on field "arr2[*].id" (this means all IDs in the arr2 array. If a match is found take the value found in field "a31" and place it in field "b".
+Since in this case a single entry (response1) matches multiple entries from response2 - an array is created and populated. If this was a one-to-one match, then only the single value (whether a JSON object, JSON array, any value) would have been inserted.
+
+#### Parsing
+
+The RMB exposes a simple JSON parser for the vert.x JSONObject. The parser allows getting and setting nested JSON values. The parser allows retrieving values / nested values in a simpler manner.
+For example:
+
+`a.b` -- Get value of field 'b' which is nested within a JSONObject called 'a'
+
+`a.c[1].d` -- Get 'd' which appears in array 'c[1]'
+
+`a.'bb.cc'` -- Get field called 'bb.cc' (use '' when '.' in name)
+
+`a.c[*].a2` -- Get all 'a2' values as a List for each entry in the 'c' array
+
+
+See the `JsonPathParser` class for more info.
+
+
+### A full example
+
+    //create a client
+    HttpModuleClient hClient = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
+    //make a request to the user groups endpoint
+    Response groupResponse = hClient.request("/groups?group=on_campus");
+    //make another request to the users endpoint and append a cql query string with the id of all entries
+    //returned from the request made to the user groups endpoint
+    Response userResponse = hClient.request("/users", new BuildCQL(groupResponse, "usergroups[*].id", "patron_group"));
+    //join the values within the users response and the values in the user groups response - injecting the value
+    //from the 'group' field in each user group returned into the 'patron_group' field - do this when the patron_group value
+    //in the users objects equals the id value in the user groups object
+    userResponse.joinOn("users[*].patron_group", groupResponse, "usergroups[*].id", "group", "patron_group", false);
+    //close the http client
+    hClient.closeClient();
 
 ## A Little More on Validation
 
@@ -1608,7 +1740,7 @@ http://localhost:8080/patrons
 
 Other [modules](http://dev.folio.org/source-code/#server-side).
 
+See project [RMB](https://issues.folio.org/browse/RMB)
+at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
+
 Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
-
-
-

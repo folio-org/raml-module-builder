@@ -51,11 +51,11 @@ import io.vertx.ext.web.RoutingContext;
 public class PostgresRunner extends AbstractVerticle {
   private static final Logger log = LoggerFactory.getLogger(PostgresRunner.class);
   private static Vertx vertxForDeploy;
-  private boolean postgresRuns = false;
-  private PostgresProcess postgresProcess;
   HttpServer runnerServer;
   List<RoutingContext> getRequests = new ArrayList<>();
   List<RoutingContext> postRequests = new ArrayList<>();
+  private boolean postgresRuns = false;
+  private PostgresProcess postgresProcess;
 
   /**
    * Set the Vertx that all following calls to the static main methods use for deploying this Verticle.

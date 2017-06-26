@@ -1,18 +1,5 @@
 package org.folio;
 
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -42,6 +29,19 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 /**
  * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
@@ -134,19 +134,26 @@ public class DemoRamlRestTest {
     b.setData(d);
     ObjectMapper om = new ObjectMapper();
     String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 422, 1, "application/json");
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 422, 1, "application/json", "abcdefg");
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=author", Buffer.buffer(book), 200, 1,
-      "application/json");
+      "application/json", "abcdefg");
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.description", Buffer.buffer(book), 200, 1,
-        "application/json");
+        "application/json", "abcdefg");
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.title", Buffer.buffer(book), 422, 1,
-        "application/json");
+        "application/json", "abcdefg");
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.title&validate_field=data.description",
-      Buffer.buffer(book), 422, 1, "application/json");
+      Buffer.buffer(book), 422, 1, "application/json", "abcdefg");
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null);
+    postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null);
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
-      200, 1, null);
+      200, 1, null, null);
+
+
+    //check that additionalProperties (fields not appearing in schema) - returns 422
+    JsonObject jo = new JsonObject(book);
+    jo.put("lalala", "non existant");
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", "abcdefg");
+
 
     List<Object> list = getListOfBooks();
 
@@ -241,13 +248,13 @@ public class DemoRamlRestTest {
         checkURLs(context, "http://localhost:" + port + url, 200);
         try {
           postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs"
-          , Buffer.buffer(getFile("job.json")), 201, 1, "application/json");
+          , Buffer.buffer(getFile("job.json")), 201, 1, "application/json", "abcdefg");
           postData(context, "http://localhost:" + port + url + "/" +location
-          , Buffer.buffer(getFile("job_conf_post.json")), 204, 0, null);
+          , Buffer.buffer(getFile("job_conf_post.json")), 204, 0, null, "abcdefg");
           postData(context, "http://localhost:" + port + url + "/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null);
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, "abcdefg");
           postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null);
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, "abcdefg");
         } catch (Exception e) {
           e.printStackTrace();
           context.fail();
@@ -298,7 +305,7 @@ public class DemoRamlRestTest {
         context.fail(url + " - " + error.getMessage());
         async.complete();
       });
-      request.headers().add("Authorization", "abcdefg");
+      request.headers().add("x-okapi-tenant", "abcdefg");
       request.headers().add("Accept", accept);
       request.setChunked(true);
       request.end();
@@ -311,7 +318,7 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private void postData(TestContext context, String url, Buffer buffer, int errorCode, int mode, String contenttype) {
+  private void postData(TestContext context, String url, Buffer buffer, int errorCode, int mode, String contenttype, String tenant) {
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request = null;
@@ -345,7 +352,9 @@ public class DemoRamlRestTest {
       }
     });
     request.setChunked(true);
-    request.putHeader("Authorization", "abcdefg");
+    if(tenant != null){
+      request.putHeader("x-okapi-tenant", tenant);
+    }
     request.putHeader("Accept", "application/json,text/plain");
     if(contenttype != null){
       request.putHeader("Content-type",

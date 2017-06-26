@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,13 +48,16 @@ import org.folio.rest.tools.utils.BinaryOutStream;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
+import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.rulez.Rules;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
 
@@ -90,6 +94,8 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+  public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
+
   public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
 
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
@@ -108,8 +114,7 @@ public class RestVerticle extends AbstractVerticle {
   private static KieSession         droolsSession;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
-  private static final ObjectMapper MAPPER                          = new ObjectMapper();
-  private static final String       OKAPI_HEADER_PREFIX             = "x-okapi";
+  private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
   private static final String       DEFAULT_SCHEMA                  = "public";
 
   private final Messages            messages                        = Messages.getInstance();
@@ -129,7 +134,6 @@ public class RestVerticle extends AbstractVerticle {
     //passed in the request body in put and post requests. The constraints validated by this factory
     //are the ones in the json schemas accompanying the raml files
     validationFactory = Validation.buildDefaultValidatorFactory();
-
   }
 
   // https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
@@ -347,41 +351,47 @@ public class RestVerticle extends AbstractVerticle {
               String []tenantId = new String[]{null};
               getOkapiHeaders(rc, okapiHeaders, tenantId);
 
-              //get interface mapped to this url
-              String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
-              // convert from interface to an actual class implementing it, which appears in the impl package
-              aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
-              Object o = null;
-              // call back the constructor of the class - gives a hook into the class not based on the apis
-              // passing the vertx and context objects in to it.
-              try {
-                o = aClass.getConstructor(Vertx.class, String.class).newInstance(vertx, tenantId[0]);
-              } catch (Exception e) {
-                // if no such constructor was implemented call the
-                // default no param constructor to create the object to be used to call functions on
-                o = aClass.newInstance();
+              if(tenantId[0] == null && !rc.request().path().startsWith("/admin")){
+                //if tenant id is not passed in and this is not an /admin request, return error
+                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest)
+                  + " Tenant must be set", validRequest);
               }
-              final Object instance = o;
-
-              // function to invoke for the requested url
-              String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
-              // parameters for the function to invoke
-              JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
-              // all methods in the class whose function is mapped to the called url
-              // needed so that we can get a reference to the Method object and call it via reflection
-              Method[] methods = aClass.getMethods();
-              // what the api will return as output (Accept)
-              JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
-              // what the api expects to get (content-type)
-              JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
-
-              HttpServerRequest request = rc.request();
-
-              //check that the accept and content-types passed in the header of the request
-              //are as described in the raml
-              checkAcceptContentType(produces, consumes, rc, validRequest);
 
               if (validRequest[0]) {
+                //get interface mapped to this url
+                String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
+                // convert from interface to an actual class implementing it, which appears in the impl package
+                aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
+                Object o = null;
+                // call back the constructor of the class - gives a hook into the class not based on the apis
+                // passing the vertx and context objects in to it.
+                try {
+                  o = aClass.getConstructor(Vertx.class, String.class).newInstance(vertx, tenantId[0]);
+                } catch (Exception e) {
+                  // if no such constructor was implemented call the
+                  // default no param constructor to create the object to be used to call functions on
+                  o = aClass.newInstance();
+                }
+                final Object instance = o;
+
+                // function to invoke for the requested url
+                String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
+                // parameters for the function to invoke
+                JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
+                // all methods in the class whose function is mapped to the called url
+                // needed so that we can get a reference to the Method object and call it via reflection
+                Method[] methods = aClass.getMethods();
+                // what the api will return as output (Accept)
+                JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
+                // what the api expects to get (content-type)
+                JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
+
+                HttpServerRequest request = rc.request();
+
+                //check that the accept and content-types passed in the header of the request
+                //are as described in the raml
+                checkAcceptContentType(produces, consumes, rc, validRequest);
+
                 // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
                 //to the requested URL - array will be populated by parseParams() function
                 Iterator<Map.Entry<String, Object>> paramList = params.iterator();
@@ -404,7 +414,6 @@ public class RestVerticle extends AbstractVerticle {
                 final boolean[] isContentUpload = new boolean[] { false };
                 final int[] uploadParamPosition = new int[] { -1 };
                 params.forEach(param -> {
-                  String cType = request.getHeader("Content-type");
                   if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
                     isContentUpload[0] = true;
                     uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
@@ -1033,6 +1042,13 @@ public class RestVerticle extends AbstractVerticle {
           droolsPath = param.split("=")[1];
           LogUtil.formatLogMessage(className, "cmdProcessing", "Drools rules file dir set to " + droolsPath);
         }
+        else if (param.startsWith("debug_log_package=")) {
+          String debugPackage = param.split("=")[1];
+          if(debugPackage != null && debugPackage.length() > 0){
+            LogUtil.formatLogMessage(className, "cmdProcessing", "Setting package " + debugPackage + " to debug");
+            LogUtil.updateLogConfiguration(debugPackage, Level.FINEST);
+          }
+        }
         else if (param.startsWith("db_connection=")) {
           String dbconnection = param.split("=")[1];
           PostgresClient.setConfigFilePath(dbconnection);
@@ -1174,7 +1190,14 @@ public class RestVerticle extends AbstractVerticle {
                   paramArray[order] = new StringReader(bodyContent);
                 }
                 else if(bodyContent.length() > 0) {
-                  paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
+                  try {
+                    paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
+                  } catch (UnrecognizedPropertyException e) {
+                    log.error(e.getMessage(), e);
+                    endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(
+                      ValidationHelper.createValidationErrorMessage("", "", e.getMessage())) , validRequest);
+                    return;
+                  }
                 }
               }
 
@@ -1284,6 +1307,14 @@ public class RestVerticle extends AbstractVerticle {
               } else {
                 paramArray[order] = Boolean.valueOf(param);
               }
+            } else if (valueType.contains("List")) {
+              List<String> vals = queryParams.getAll("include");
+              if (vals == null) {
+                paramArray[order] = null;
+              }
+              else {
+                paramArray[order] = vals;
+              }
             } else if (valueType.contains("BigDecimal")) {
               if (param == null) {
                 if (defaultVal != null) {
@@ -1351,8 +1382,8 @@ public class RestVerticle extends AbstractVerticle {
    * @param validRequest
    *
    */
-  private boolean isValidRequest(RoutingContext rc, Object paramArray, Errors errorResp, boolean[] validRequest, List<String> singleField) {
-    Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(paramArray);
+  private boolean isValidRequest(RoutingContext rc, Object content, Errors errorResp, boolean[] validRequest, List<String> singleField) {
+    Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(content);
     boolean ret = true;
     if (validationErrors.size() > 0) {
       //StringBuffer sb = new StringBuffer();

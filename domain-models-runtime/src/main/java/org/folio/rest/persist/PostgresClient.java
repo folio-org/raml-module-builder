@@ -33,6 +33,7 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
@@ -41,6 +42,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
+import de.flapdoodle.embed.process.store.NonCachedPostgresArtifactStoreBuilder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -59,15 +61,15 @@ import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.PostgresStarter;
 import ru.yandex.qatools.embed.postgresql.config.AbstractPostgresConfig;
-import ru.yandex.qatools.embed.postgresql.config.DownloadConfigBuilder;
 import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
+import ru.yandex.qatools.embed.postgresql.config.PostgresDownloadConfigBuilder;
 import ru.yandex.qatools.embed.postgresql.config.RuntimeConfigBuilder;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
-import ru.yandex.qatools.embed.postgresql.ext.ArtifactStoreBuilder;
 
 /**
- * @author shale currently does not support binary data unless base64 encoded
+ * @author shale
  *
+ * currently does not support binary data unless base64 encoded
  */
 public class PostgresClient {
 
@@ -90,7 +92,7 @@ public class PostgresClient {
   private static PostgresProcess postgresProcess          = null;
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
-  private static ObjectMapper    mapper                   = new ObjectMapper();
+  private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
   private static Map<String, PostgresClient> connectionPool = new HashMap<>();
   private static String moduleName                        = null;
 
@@ -385,9 +387,9 @@ public class PostgresClient {
               if (connection != null) {
                 connection.close();
               }
-              done.handle(io.vertx.core.Future.failedFuture(res1.cause().getMessage()));
+              done.handle(Future.failedFuture(res1.cause()));
             } else {
-              done.handle(io.vertx.core.Future.succeededFuture(connection));
+              done.handle(Future.succeededFuture(connection));
             }
           });
         } catch (Exception e) {
@@ -395,7 +397,7 @@ public class PostgresClient {
           if (connection != null) {
             connection.close();
           }
-          done.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          done.handle(Future.failedFuture(e));
         }
       }
     });
@@ -404,7 +406,7 @@ public class PostgresClient {
   //@Timer
   @SuppressWarnings("unchecked")
   public void rollbackTx(Object conn, Handler<Object> done) {
-    SQLConnection sqlConnection =  ((io.vertx.core.Future<SQLConnection>) conn).result();
+    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     sqlConnection.rollback(res -> {
       if (res.failed()) {
         sqlConnection.close();
@@ -419,7 +421,7 @@ public class PostgresClient {
   //@Timer
   @SuppressWarnings("unchecked")
   public void endTx(Object conn, Handler<Object> done) {
-    SQLConnection sqlConnection = ((io.vertx.core.Future<SQLConnection>) conn).result();
+    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     sqlConnection.commit(res -> {
       if (res.failed()) {
         sqlConnection.close();
@@ -477,14 +479,14 @@ public class PostgresClient {
             new JsonArray().add(pojo2json(entity)), query -> {
               connection.close();
               if (query.failed()) {
-                replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+                replyHandler.handle(Future.failedFuture(query.cause()));
               } else {
                 List<JsonArray> resList = query.result().getResults();
                 String response = "";
                 if(resList.size() > 0){
                   response = resList.get(0).getValue(0).toString();
                 }
-                replyHandler.handle(io.vertx.core.Future.succeededFuture(response));
+                replyHandler.handle(Future.succeededFuture(response));
               }
               long end = System.nanoTime();
               StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
@@ -494,10 +496,10 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -508,15 +510,15 @@ public class PostgresClient {
 
     log.debug("save called on " + table);
     // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
-    SQLConnection connection = ((io.vertx.core.Future<SQLConnection>) sqlConnection).result();
+    SQLConnection connection = ((Future<SQLConnection>) sqlConnection).result();
     try {
       connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
         new JsonArray().add(pojo2json(entity)), query -> {
           if (query.failed()) {
-            replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+            replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
-            replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
+            replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
           long end = System.nanoTime();
           StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
@@ -526,7 +528,7 @@ public class PostgresClient {
         connection.close();
       }
       log.error(e.getMessage(), e);
-      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+      replyHandler.handle(Future.failedFuture(e));
     }
   }
 
@@ -572,7 +574,7 @@ public class PostgresClient {
                             log.info("rollback success. " + new JsonArray(rollbackres.result().getResults()).encodePrettily());
                           }
                           connection.close();
-                          replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+                          replyHandler.handle(Future.failedFuture(query.cause()));
                         });
                       } else {
                           connection.query("COMMIT;", commit -> {
@@ -580,7 +582,7 @@ public class PostgresClient {
                               long end = System.nanoTime();
                               StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
                               connection.close();
-                              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+                              replyHandler.handle(Future.succeededFuture(query.result()));
                             }
                             else {
                               log.error("query saveBatch failed to commit, attempting rollback ",
@@ -593,7 +595,7 @@ public class PostgresClient {
                                   log.info("rollback success. " + new JsonArray(rollbackres.result().getResults()).encodePrettily());
                                 }
                                 connection.close();
-                                replyHandler.handle(io.vertx.core.Future.failedFuture(commit.cause().getMessage()));
+                                replyHandler.handle(Future.failedFuture(commit.cause()));
                               });
                             }
                           });
@@ -603,7 +605,7 @@ public class PostgresClient {
                 else{
                   connection.close();
                   log.error("query saveBatch failed", begin.cause());
-                  replyHandler.handle(io.vertx.core.Future.failedFuture(begin.cause().getMessage()));
+                  replyHandler.handle(Future.failedFuture(begin.cause()));
                 }
               });
 
@@ -612,7 +614,7 @@ public class PostgresClient {
                 connection.close();
               }
               log.error(e.getMessage(), e);
-              replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+              replyHandler.handle(Future.failedFuture(e));
             }
           //});
         } catch (Exception e) {
@@ -620,10 +622,10 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -734,9 +736,9 @@ public class PostgresClient {
             connection.close();
             if (query.failed()) {
               log.error(query.cause().getMessage(),query.cause());
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+              replyHandler.handle(Future.succeededFuture(query.result()));
             }
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
@@ -749,11 +751,11 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
 
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -815,9 +817,9 @@ public class PostgresClient {
             connection.close();
             if (query.failed()) {
               log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+              replyHandler.handle(Future.succeededFuture(query.result()));
             }
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
@@ -830,10 +832,10 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -888,9 +890,9 @@ public class PostgresClient {
             connection.close();
             if (query.failed()) {
               log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+              replyHandler.handle(Future.succeededFuture(query.result()));
             }
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".delete", (end-start));
@@ -903,10 +905,10 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -940,9 +942,9 @@ public class PostgresClient {
             connection.close();
             if (query.failed()) {
               log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
+              replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
             }
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
@@ -955,12 +957,12 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
 
       } else {
         log.error(res.cause().getMessage(), res.cause());
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -1198,14 +1200,14 @@ public class PostgresClient {
             connection.close();
             if (query.failed()) {
               log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
               if(returnedClass != null){
-                replyHandler.handle(io.vertx.core.Future.succeededFuture(
+                replyHandler.handle(Future.succeededFuture(
                   processResult(query.result(), returnedClass, true, setId)));
               }
               else{
-                replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+                replyHandler.handle(Future.succeededFuture(query.result()));
               }
             }
             long end = System.nanoTime();
@@ -1219,11 +1221,11 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
         log.error(res.cause().getMessage(), res.cause());
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -1348,6 +1350,7 @@ public class PostgresClient {
         list.add(o);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
+        list.add(null);
       }
     }
     ret[0] = list;
@@ -1374,9 +1377,9 @@ public class PostgresClient {
           connection.query(sql, query -> {
             connection.close();
             if (query.failed()) {
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result()));
+              replyHandler.handle(Future.succeededFuture(query.result()));
             }
           });
         } catch (Exception e) {
@@ -1384,10 +1387,10 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -1406,9 +1409,9 @@ public class PostgresClient {
           connection.update(sql, query -> {
             connection.close();
             if (query.failed()) {
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toString()));
+              replyHandler.handle(Future.succeededFuture(query.result().toString()));
             }
             log.debug("mutate timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
           });
@@ -1417,10 +1420,10 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -1437,18 +1440,18 @@ public class PostgresClient {
    */
   @SuppressWarnings("unchecked")
   public void mutate(Object conn, String sql, Handler<AsyncResult<String>> replyHandler){
-    SQLConnection sqlConnection = ((io.vertx.core.Future<SQLConnection>) conn).result();
+    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     try {
       sqlConnection.update(sql, query -> {
         if (query.failed()) {
-          replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+          replyHandler.handle(Future.failedFuture(query.cause()));
         } else {
-          replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().toString()));
+          replyHandler.handle(Future.succeededFuture(query.result().toString()));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
-      replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+      replyHandler.handle(Future.failedFuture(e));
     }
   }
 
@@ -1521,9 +1524,9 @@ public class PostgresClient {
             query -> {
             connection.close();
             if (query.failed()) {
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getUpdated()));
+              replyHandler.handle(Future.succeededFuture(query.result().getUpdated()));
             }
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".persistentlyCacheResult", (end-start));
@@ -1534,10 +1537,10 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -1553,9 +1556,9 @@ public class PostgresClient {
             query -> {
             connection.close();
             if (query.failed()) {
-              replyHandler.handle(io.vertx.core.Future.failedFuture(query.cause().getMessage()));
+              replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              replyHandler.handle(io.vertx.core.Future.succeededFuture(query.result().getUpdated()));
+              replyHandler.handle(Future.succeededFuture(query.result().getUpdated()));
             }
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".removePersistentCacheResult", (end-start));
@@ -1566,10 +1569,10 @@ public class PostgresClient {
             connection.close();
           }
           log.error(e.getMessage(), e);
-          replyHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+          replyHandler.handle(Future.failedFuture(e));
         }
       } else {
-        replyHandler.handle(io.vertx.core.Future.failedFuture(res.cause().getMessage()));
+        replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
@@ -1628,7 +1631,7 @@ public class PostgresClient {
       Handler<AsyncResult<List<String>>> replyHandler){
     if(sqlFile == null){
       log.error("sqlFile value is null");
-      replyHandler.handle(io.vertx.core.Future.failedFuture("sqlFile value is null"));
+      replyHandler.handle(Future.failedFuture("sqlFile value is null"));
       return;
     }
     try {
@@ -1844,7 +1847,7 @@ public class PostgresClient {
       }
     }, done -> {
       log.debug("execute timer for: " + sql.hashCode() + " took " + (System.nanoTime()-s)/1000000);
-      replyHandler.handle(io.vertx.core.Future.succeededFuture(results));
+      replyHandler.handle(Future.succeededFuture(results));
     });
   }
 
@@ -1856,7 +1859,8 @@ public class PostgresClient {
       IRuntimeConfig runtimeConfig = new RuntimeConfigBuilder()
         .defaults(Command.Postgres)
         .artifactStore(
-          new ArtifactStoreBuilder().defaults(Command.Postgres).download(new DownloadConfigBuilder().defaultsForCommand(Command.Postgres)
+          new NonCachedPostgresArtifactStoreBuilder().defaults(Command.Postgres).
+          download(new PostgresDownloadConfigBuilder().defaultsForCommand(Command.Postgres)
           // .progressListener(new LoggingProgressListener(logger, Level.ALL))
             .build())).build();
       PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
@@ -1866,15 +1870,15 @@ public class PostgresClient {
       String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
-      final PostgresConfig config = new PostgresConfig(Version.Main.PRODUCTION, new AbstractPostgresConfig.Net("127.0.0.1", port),
-        new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
-        new AbstractPostgresConfig.Credentials(username, password));
-
       String locale = "en_US.UTF-8";
       String OS = System.getProperty("os.name").toLowerCase();
       if(OS.indexOf("win") >= 0){
         locale = "american_usa";
       }
+
+      final PostgresConfig config = new PostgresConfig(Version.V9_6_2, new AbstractPostgresConfig.Net("127.0.0.1", port),
+        new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
+        new AbstractPostgresConfig.Credentials(username, password));
 
       config.getAdditionalInitDbParams().addAll(Arrays.asList(
         "-E", "UTF-8",
@@ -1943,7 +1947,7 @@ public class PostgresClient {
 
     } catch (Exception e) {
       log.error(messages.getMessage("en", MessageConsts.ImportFailed), e.getMessage(), e);
-      dothis.fail(e.getMessage());
+      dothis.fail(e);
     }
     dothis.complete("Done.");
 

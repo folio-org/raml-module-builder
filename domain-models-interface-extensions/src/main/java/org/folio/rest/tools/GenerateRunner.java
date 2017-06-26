@@ -4,9 +4,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FilenameFilter;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.jsonschema2pojo.AnnotationStyle;
 import org.raml.jaxrs.codegen.core.Configuration;
 import org.raml.jaxrs.codegen.core.Configuration.JaxrsVersion;
@@ -19,6 +21,8 @@ import org.raml.jaxrs.codegen.core.ext.GeneratorExtension;
  */
 public class GenerateRunner {
 
+  static final GeneratorProxy GENERATOR = new GeneratorProxy();
+
   private static String outputDirectory = null;
   private static String inputDirectory = null;
   private static Configuration configuration = null;
@@ -26,8 +30,6 @@ public class GenerateRunner {
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs";
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
-
-  static final GeneratorProxy generator = new GeneratorProxy();
 
   public static void main(String args[]) throws Exception{
 
@@ -62,6 +64,18 @@ public class GenerateRunner {
     if(ramlsDir == null) {
       ramlsDir = root + SOURCES_DEFAULT;
     }
+
+    //copy ramls dir to /target so it is in the classpath. this is needed
+    //for the criteria object to check data types of paths in a json by
+    //checking them in the schema. will probably be further needed in the future
+
+    String[] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
+    for (int i = 0; i < paths.length; i++) {
+      String rootPath2RamlDir = Paths.get(paths[i]).getFileName().toString();
+      System.out.println("copying ramls to target directory at: " + (root+RESOURCE_DEFAULT+"/"+rootPath2RamlDir));
+      FileUtils.copyDirectory(new File(paths[i]), new File(root+RESOURCE_DEFAULT+"/"+rootPath2RamlDir));
+    }
+
     String []dirs = ramlsDir.split(",");
     for (int i = 0; i < dirs.length; i++) {
       inputDirectory = dirs[i];
@@ -93,7 +107,7 @@ public class GenerateRunner {
         reader.close();
         if(line.startsWith("#%RAML")) {
           System.out.println("processing " + ramls[j]);
-          generator.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
+          GENERATOR.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
           numMatches++;
         }
         else{

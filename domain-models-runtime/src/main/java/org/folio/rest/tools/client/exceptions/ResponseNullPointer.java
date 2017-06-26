@@ -1,4 +1,4 @@
-package org.folio.rest.tools.client;
+package org.folio.rest.tools.client.exceptions;
 
 /**
  * @author shale

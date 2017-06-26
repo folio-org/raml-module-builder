@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>10.0.7-SNAPSHOT</version>
+  <version>12.1.4-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -11,6 +11,7 @@
     <module>domain-models-api-interfaces</module>
     <module>rules</module>
     <module>postgres-runner</module>
+    <module>testing</module>
     <module>domain-models-runtime</module>
   </modules>
 
@@ -174,12 +175,12 @@
             <configuration>
               <rules>
                  <requireMavenVersion>
-                  <message>Maven >= 3.3 required</message>
+                  <message>Maven &gt;= 3.3 required</message>
                   <version>3.3</version>
                 </requireMavenVersion>
                 <requireJavaVersion>
                   <message>
-                    JDK >= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
+                    JDK &gt;= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
                     http://dev.folio.org/doc/troubleshooting#missing-certificate-authority-for-lets-encrypt
                   </message>
                   <version>1.8.0-101</version>
@@ -207,6 +208,24 @@
               <value>${project.baseUri}src/main/resources/log4j.properties</value>
             </property>
           </properties>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>2.17</version>
+        <executions>
+          <execution>
+            <id>verify-style</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <configLocation>codestyles.xml</configLocation>
+          <excludes>**/LastModified_.java</excludes>
         </configuration>
       </plugin>
       <plugin>
@@ -250,7 +269,7 @@
     <url>https://github.com/folio-org/raml-module-builder</url>
     <connection>scm:git:git://github.com:folio-org/raml-module-builder.git</connection>
     <developerConnection>scm:git:git@github.com:folio-org/raml-module-builder.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>v11.0.0</tag>
   </scm>
 
   <distributionManagement>
