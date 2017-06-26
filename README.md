@@ -1077,6 +1077,9 @@ CREATE TRIGGER update_item_references
   FOR EACH ROW EXECUTE PROCEDURE update_item_references();
 ```
 
+The overhead of this trigger and foreign key constraint reduces the number of UPDATE transactions per second on this table by about 40%.  See
+https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/rest/persist/ForeignKeyPerformanceIT.java
+for the performance test.  Doing the foreign key check manually by sending additional SELECT queries takes much more time than 40%.
 
 
 ## Tenant API
