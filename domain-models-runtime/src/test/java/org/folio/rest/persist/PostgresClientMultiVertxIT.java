@@ -1,9 +1,16 @@
 package org.folio.rest.persist;
 
+import java.util.List;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
@@ -47,5 +54,61 @@ public class PostgresClientMultiVertxIT {
   @Test
   public void test2(TestContext context) {
     run(context);
+  }
+
+  public class Verticle extends AbstractVerticle {
+    private PostgresClient client;
+
+    @Override
+    public void start(Future<Void> startFuture) {
+      client = PostgresClient.getInstance(vertx);
+      startFuture.complete();
+    }
+
+    @Override
+    public void stop(Future<Void> stopFuture) {
+      client.closeClient(stopFuture.completer());
+    }
+
+    public void runSQL(Handler<AsyncResult<List<String>>> handler) {
+      client.runSQLFile("UPDATE pg_database SET datname=null WHERE false;\n", true, handler);
+    }
+  }
+
+  @Test
+  public void testParallel(TestContext context) {
+    Async async = context.async();
+    Vertx vertx1 = Vertx.vertx();
+    Vertx vertx2 = Vertx.vertx();
+    Vertx vertx3 = Vertx.vertx();
+    Verticle v1 = new Verticle();
+    Verticle v2 = new Verticle();
+    Verticle v3 = new Verticle();
+    vertx1.deployVerticle(v1, d1 -> {
+      vertx2.deployVerticle(v2, d2 -> {
+        vertx3.deployVerticle(v3, d3 -> {
+          v1.runSQL(r1 -> {
+            v2.runSQL(r2 -> {
+              v3.runSQL(r3 -> {
+                vertx1.undeploy(d1.result(), u1 -> {
+                  vertx1.close(c1 -> {
+                    vertx3.undeploy(d3.result(), u3 -> {
+                      vertx3.close(c3 -> {
+                        // does v2 work after v1 and v3 have been removed?
+                        v2.runSQL(v2after -> {
+                          context.assertTrue(v2after.succeeded());
+                          context.assertEquals(0, v2after.result().size());
+                          async.complete();
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
   }
 }
