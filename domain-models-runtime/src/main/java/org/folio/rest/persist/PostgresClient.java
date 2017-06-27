@@ -260,7 +260,7 @@ public class PostgresClient {
     }
     AsyncSQLClient clientToClose = client;
     client = null;
-    connectionPool.remove(vertx, tenantId);  // remove (vertx, tenantId, this) entry
+    connectionPool.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
     clientToClose.close(whenDone);
   }
 
