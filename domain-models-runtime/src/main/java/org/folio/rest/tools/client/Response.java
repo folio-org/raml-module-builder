@@ -1,9 +1,11 @@
 package org.folio.rest.tools.client;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import org.folio.rest.tools.client.exceptions.ResponseNullPointer;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.parser.JsonPathParser.Pairs;
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -12,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
+import io.vertx.core.MultiMap;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
@@ -28,6 +31,7 @@ public class Response {
   JsonObject body;
   JsonObject error;
   Throwable exception;
+  MultiMap headers;
 
   public Response mapFrom(Response response1, String extractField, String intoField, boolean allowNulls)
       throws ResponseNullPointer {
@@ -60,7 +64,8 @@ public class Response {
     JsonPathParser result = new JsonPathParser(this.body);
     int size = sbList.size();
     boolean isArray = false;
-    if(size > 1){
+    if(extractField.contains("[*]")){
+      //probably the contains is enough and no need to check size
       isArray = true;
     }
     JsonObject ret = new JsonObject();
@@ -87,12 +92,12 @@ public class Response {
    * @param withField
    * @param response
    * @param onField
-   * @param extractField - the path should be relative to the object itself. so if an array of
-   * json objects is returned the path should will be evaluated on each json object and not on the
-   * array as a whole - this is unlike the withField and the onField which refer to the array of
-   * results as a whole so that if an array of results are returned withField and onField will
-   * need to indicate something along the lines of a[*].field , while insertField will refer to
-   * 'field' only without the a[*]
+   * @param extractField - the field to extract from the response to join on. Two options:
+   * 1. an absolute path - such as a.b.c or a.b.c.d[0] - should be used when one field needs to be
+   * extracted
+   * 2. a relative path - such as ../../abc - should be used in cases where the join on is an array
+   * of results, and we want to extract the specific field for each item in the array to push into the
+   * response we are joining with.
    * @param intoField - the field in the current Response's json to merge into
    * @param allowNulls
    * @return
@@ -123,13 +128,16 @@ public class Response {
       //path does not exist in the json, nothing to join on, return response
       return this;
     }
-    Multimap<Object, Object> joinTable = ArrayListMultimap.create();
+    Multimap<Object, ArrayList<Object>> joinTable = ArrayListMultimap.create();
     //Map<Object, Object> joinTable = new HashMap<>();
     int size = sbList.size();
     for (int i = 0; i < size; i++) {
       Pairs map = jpp.getValueAndParentPair(sbList.get(i));
       if(map != null && map.getRequestedValue() != null){
-        joinTable.put(map.getRequestedValue(), map.getRootNode());
+        ArrayList<Object> a = new ArrayList<>();
+        a.add(sbList.get(i));
+        a.add(map.getRootNode());
+        joinTable.put(map.getRequestedValue(), a);
       }
     }
     jpp = new JsonPathParser(input);
@@ -146,7 +154,7 @@ public class Response {
       //check if the value at the requested path also exists in the join table.
       //if so, get the corresponding object from the join table that will replace a value
       //in the current json
-      Collection<Object> o = joinTable.get(valueAtPath);
+      Collection<ArrayList<Object>> o = joinTable.get(valueAtPath);
       if(o != null && o.size() > 0){
         //there is a match between the two jsons, can either be a single match or a match to multiple
         //matches
@@ -156,10 +164,11 @@ public class Response {
         //this can be the entire object, or a value found at a path within the object aka insertField
         if(o.size() == 1 && extractField != null){
           String tempEField = extractField;
+          ArrayList<Object> b = o.iterator().next();
           if(extractField.contains("../")){
-            tempEField = backTrack(sbList.get(i).toString(), extractField);
+            tempEField = backTrack(b.get(0).toString(), extractField);
           }
-          toInsert = new JsonPathParser((JsonObject)o.iterator().next()).getValueAt(tempEField);
+          toInsert = new JsonPathParser((JsonObject)b.get(1)).getValueAt(tempEField);
         }
         else if(o.size() > 1 && extractField != null){
           //more then one of the same value mapped to different objects, create a jsonarray
@@ -168,10 +177,11 @@ public class Response {
           Iterator<?> it = o.iterator();
           while(it.hasNext()){
             String tempEField = extractField;
+            ArrayList<Object> b = (ArrayList)it.next();
             if(extractField.contains("../")){
-              tempEField = backTrack(sbList.get(arrayPlacement++).toString(), extractField);
+              tempEField = backTrack(b.get(0).toString(), extractField);
             }
-            Object object = new JsonPathParser((JsonObject)it.next()).getValueAt(tempEField);
+            Object object = new JsonPathParser((JsonObject)b.get(1)).getValueAt(tempEField);
             if(object != null){
               ((JsonArray)toInsert).add(object);
             }
@@ -253,6 +263,10 @@ public class Response {
   private String backTrack(String path, String backtrack){
     String a[] = path.split("\\.");
     int backTrackCount = backtrack.split("../").length-1;
+    if(backTrackCount == -1){
+      //in case ../ was passed in, the split returns []
+      backTrackCount = 1;
+    }
     int removeFrom = (a.length-backTrackCount);
     StringBuffer sb = new StringBuffer();
     for (int i = 0; i < removeFrom; i++) {
@@ -413,6 +427,14 @@ public class Response {
 
   public void setException(Throwable exception) {
     this.exception = exception;
+  }
+
+  public MultiMap getHeaders() {
+    return headers;
+  }
+
+  public void setHeaders(MultiMap headers) {
+    this.headers = headers;
   }
 
 }

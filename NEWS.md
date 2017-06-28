@@ -1,4 +1,5 @@
 ## 12.1.4 (not yet released)
+* RMB-32 fix JSON encoding of String in UpdateSection
 * submodule util with ResourceUtil.asString()
 
 ## 12.1.3 2017-06-06

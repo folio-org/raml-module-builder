@@ -182,6 +182,7 @@ public class PostgresClient {
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
+    postgresClient.vertx = vertx;
     return postgresClient;
   }
 
