@@ -255,7 +255,8 @@ After getting started with your new module as explained below, it can be similar
 Create the new project using the normal layout of files and basic POM file.
 
 Add an area for the RAML, schemas, and examples files, e.g. `/ramls`.
-These define the API endpoints.
+These define the API endpoints. The documentation of HTTP response codes
+is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java).
 Get started by using the following familiar example:
 
 `ebook.raml`
