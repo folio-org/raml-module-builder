@@ -1,5 +1,6 @@
 ## 12.1.4 (not yet released)
 * RMB-32 fix JSON encoding of String in UpdateSection
+* RMB-40 submodule util with ResourceUtil.asString(...), IOUtil.toUTF8String(InputStream)
 
 ## 12.1.3 2017-06-06
 
