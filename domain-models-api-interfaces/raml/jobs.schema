@@ -2,12 +2,12 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "bulks": {
-      "id": "bulks",
+    "jobs": {
+      "id": "jobs",
       "type": "array",
       "items": {
         "type": "object",
-        "$ref" : "bulk"
+        "$ref" : "job.schema"
       }
     },
     "total_records": {
@@ -15,7 +15,7 @@
     }
   },
   "required": [
-    "bulks",
+    "jobs",
     "total_records"
   ]
 }
