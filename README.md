@@ -57,7 +57,7 @@ The framework consists of a number of tools:
     - Runtime library runs a Vert.x verticle.
 
 - `rules` -- Basic Drools functionality allowing module developers to create
-  validation rules via *.drl files for objects (JSON schemas).
+  validation rules via `*.drl` files for objects (JSON schemas).
 
 ## Overview
 
@@ -72,7 +72,7 @@ When that is understood, then move on to the section
 
 Note that actually building this RAML Module Builder framework is not required.
 (Some of the images below are out-of-date.) The already published artifacts will
-be [incorporated](#step-2-include-the-jars-in-your-project-pom-xml) into your project from the repository.
+be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your project from the repository.
 
 ## The basics
 
