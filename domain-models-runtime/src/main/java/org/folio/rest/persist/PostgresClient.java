@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
+import org.apache.commons.collections4.map.HashedMap;
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.StrSubstitutor;
@@ -93,7 +95,7 @@ public class PostgresClient {
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
   private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
-  private static Map<String, PostgresClient> connectionPool = new HashMap<>();
+  private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
   private static String moduleName                        = null;
 
   private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
@@ -169,11 +171,11 @@ public class PostgresClient {
    */
   private static PostgresClient getInstanceInternal(Vertx vertx, String tenantId) {
     // assumes a single thread vertx model so no sync needed
-    PostgresClient postgresClient = connectionPool.get(tenantId);
+    PostgresClient postgresClient = connectionPool.get(vertx, tenantId);
     try {
       if (postgresClient == null) {
         postgresClient = new PostgresClient(vertx, tenantId);
-        connectionPool.put(tenantId, postgresClient);
+        connectionPool.put(vertx, tenantId, postgresClient);
       }
       if (postgresClient.client == null) {
         // in connectionPool, but closeClient() has been invoked
@@ -182,7 +184,6 @@ public class PostgresClient {
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
-    postgresClient.vertx = vertx;
     return postgresClient;
   }
 
@@ -259,7 +260,7 @@ public class PostgresClient {
     }
     AsyncSQLClient clientToClose = client;
     client = null;
-    connectionPool.remove(tenantId);  // remove (tenantId, this) entry
+    connectionPool.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
     clientToClose.close(whenDone);
   }
 
