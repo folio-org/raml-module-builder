@@ -57,7 +57,7 @@ The framework consists of a number of tools:
     - Runtime library runs a Vert.x verticle.
 
 - `rules` -- Basic Drools functionality allowing module developers to create
-  validation rules via *.drl files for objects (JSON schemas).
+  validation rules via `*.drl` files for objects (JSON schemas).
 
 ## Overview
 
@@ -255,6 +255,7 @@ After getting started with your new module as explained below, it can be similar
 Create the new project using the normal layout of files and basic POM file.
 
 Add an area for the RAML, schemas, and examples files, e.g. `/ramls`.
+(See [notes](#step-6-design-the-raml-files) below.)
 These define the API endpoints.
 Get started by using the following familiar example:
 
@@ -425,12 +426,11 @@ Four plugins need to be declared in the POM file:
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
 
-Add `ramlfiles_path` properties indicating the location of the RAML directories:
+Add `ramlfiles_path` property indicating the location of the RAML directories:
 
 ```xml
   <properties>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <ramlfiles_util_path>${basedir}/raml-util</ramlfiles_util_path>
   </properties>
 ```
 
@@ -541,22 +541,6 @@ Add the plugins:
               </resources>
             </configuration>
           </execution>
-          <execution>
-            <id>copy-resources-2</id>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${basedir}/target/classes/apidocs/raml-util</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${ramlfiles_util_path}</directory>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
         </executions>
       </plugin>
 
@@ -657,15 +641,20 @@ It is beneficial at this stage to take some time to design and prepare the RAML 
 Investigate the other FOLIO modules for guidance.
 
 Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files,
-as the "raml-util" directory beside your "ramls" directory:
+as the "raml-util" directory inside your "ramls" directory:
 ```
-git submodule add https://github.com/folio-org/raml raml-util
+git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 
+When any schema file refers to an additional schema file, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Also ensure that all such referenced files are below the parent file.
+
 The RMB does do some validation of RAML files at compile-time.
-There are some useful tools to assist with command-line validation and some
-can be integrated with text editors, e.g.
+There are some useful tools to assist with command-line validation,
+and some can be integrated with text editors, e.g.
 [raml-cop](https://github.com/thebinarypenguin/raml-cop).
+
+RAML-aware text editors are very helpful, such as
+[api-workbench](https://github.com/mulesoft/api-workbench) for Atom.
 
 Remember that the POM configuration enables viewing your RAML and interacting
 with your application via the local [API documentation](#documentation-of-the-apis).
@@ -995,7 +984,7 @@ where the "jsonb" field references a JSON schema that will exist in the "jsonb" 
 
 The example above refers to querying only. As of now, saving a record will only save the "jsonb" and "id" fields (the above example uses triggers to populate the operation, creation data, and original id).
 
-#### Credentials
+### Credentials
 
 When running in embedded mode, credentials are read from `resources/postgres-conf.json`. If a file is not found, then the following configuration will be used by default:
 
@@ -1050,6 +1039,36 @@ public class InitConfigService implements PostDeployVerticle {
   }
 }
 ```
+
+### Foreign keys constraint
+
+PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB.  Create an additional column with the foreign key constraint and setup a trigger to keep it in sync with the value inside the JSONB.
+
+Example:
+
+```sql
+CREATE TABLE item (
+  _id UUID PRIMARY KEY,
+  jsonb JSONB NOT NULL,
+  permanentLoanTypeId UUID REFERENCES loan_type,
+  temporaryLoanTypeId UUID REFERENCES loan_type
+);
+CREATE OR REPLACE FUNCTION update_item_references()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.permanentLoanTypeId = NEW.jsonb->>'permanentLoanTypeId';
+  NEW.temporaryLoanTypeId = NEW.jsonb->>'temporaryLoanTypeId';
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+CREATE TRIGGER update_item_references
+  BEFORE INSERT OR UPDATE ON item
+  FOR EACH ROW EXECUTE PROCEDURE update_item_references();
+```
+
+The overhead of this trigger and foreign key constraint reduces the number of UPDATE transactions per second on this table by about 10% (when tested against an external stand alone Postgres database).  See
+https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/rest/persist/ForeignKeyPerformanceIT.java
+for the performance test.  Doing the foreign key check manually by sending additional SELECT queries takes much more time than 10%.
 
 
 ## Tenant API

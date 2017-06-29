@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>12.1.4-SNAPSHOT</version>
+    <version>12.1.5-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -20,7 +20,6 @@
   <properties>
     <droolsVersion>6.4.0.Final</droolsVersion>
     <log_path>${basedir}/logs/api.log</log_path>
-    <ramlfiles_util_path>${basedir}/../raml-util</ramlfiles_util_path>
     <filebeat_log_path>${basedir}/logs/filebeat</filebeat_log_path>
     <filebeat_registry_file>${basedir}/logs/filebeat/registry</filebeat_registry_file>
     <logstash_instance>ec2-52-27-98-246.us-west-2.compute.amazonaws.com:5044</logstash_instance>
@@ -134,6 +133,12 @@
       <artifactId>xpp3_min</artifactId>
       <version>1.1.4c</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>pl.pragmatists</groupId>
+      <artifactId>JUnitParams</artifactId>
+      <version>1.1.0</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -299,22 +304,6 @@
               </resources>
             </configuration>
           </execution>
-          <execution>
-            <id>copy-resources-2</id>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${basedir}/target/classes/apidocs/raml-util</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${ramlfiles_util_path}</directory>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
         </executions>
       </plugin>
 
@@ -322,19 +311,6 @@
         <artifactId>maven-antrun-plugin</artifactId>
         <version>1.8</version>
         <executions>
-          <execution>
-            <phase>prepare-package</phase>
-            <configuration>
-              <target>
-                <replace token="../../../../../raml-util" value="../raml-util" dir="${basedir}/target/classes/apidocs/raml">
-                  <include name="**/*.raml" />
-                </replace>
-              </target>
-            </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-          </execution>
           <execution>
             <id>start-postgres</id>
             <phase>pre-integration-test</phase>

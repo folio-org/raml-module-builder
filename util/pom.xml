@@ -8,7 +8,7 @@
     <version>12.1.5-SNAPSHOT</version>
   </parent>
 
-  <artifactId>testing</artifactId>
+  <artifactId>util</artifactId>
 
   <dependencies>
     <dependency>
@@ -16,7 +16,13 @@
       <artifactId>junit</artifactId>
       <version>4.12</version>
       <optional>true</optional>
-   </dependency>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>testing</artifactId>
+      <version>${project.parent.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
