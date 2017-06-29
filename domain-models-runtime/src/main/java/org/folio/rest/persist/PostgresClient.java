@@ -1610,24 +1610,13 @@ public class PostgresClient {
   }
 
   /**
-   *
    * Will connect to a specific database and execute the commands in the .sql file
-   * against that database  -
-   *
+   * against that database.<p />
    * NOTE: NOT tested on all types of statements - but on a lot
    *
    * @param sqlFile - string of sqls with executable statements
-   * @param newDB - if creating a new database is included in the file - include the name of the db as after running the
-   * create database command appearing in the file, there will be a new connection created to the
-   * newDB and all subsequent commands will be executed against the newly created newDB name. the user / password of
-   * the connection is currently hard coded to the value of newDB - so the .sql file which is creating the DB
-   * should do something like this:
-        CREATE DATABASE myuniversity
-            WITH OWNER = myuniversity
-            PASSWORD = myuniversity
    * @param stopOnError - stop on first error
-   * @param timeout - in seconds
-   * @param replyHandler - list of statements that failed - if any
+   * @param replyHandler - the handler's result is the list of statements that failed; the list may be empty
    */
   public void runSQLFile(String sqlFile, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
@@ -1642,7 +1631,6 @@ public class PostgresClient {
       List<String> execStatements = new ArrayList<>();
       boolean inFunction = false;
       boolean inCopy = false;
-      boolean funcCompleteAddFuncAttributes = false;
       for (int i = 0; i < allLines.length; i++) {
         if(allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
           final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
@@ -1700,6 +1688,10 @@ public class PostgresClient {
           }
           singleStatement.append(" " + allLines[i]);
         }
+      }
+      String lastStatement = singleStatement.toString();
+      if (! lastStatement.trim().isEmpty()) {
+        execStatements.add(lastStatement);
       }
       execute(execStatements.toArray(new String[]{}), stopOnError, replyHandler);
     } catch (Exception e) {
