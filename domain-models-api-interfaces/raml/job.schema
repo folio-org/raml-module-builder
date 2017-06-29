@@ -11,25 +11,13 @@
     "name": {
       "type": "string"
     },
-    "description": {
-      "type": "string"
-    },
-    "type": {
-      "type": "string"
-    },
-    "category": {
-      "type": "string"
-    },
-    "enabled": {
-      "type": "boolean"
-    },
     "creator": {
       "type": "string"
     },
-    "inst_id": {
+    "job_conf_id": {
       "type": "string"
     },
-    "lib_id": {
+    "status": {
       "type": "string"
     },
     "bulk_size": {
@@ -40,18 +28,20 @@
     },
     "last_modified": {
       "type": "object",
-      "$ref": "last_modified"
+      "$ref" : "last_modified.schema"
+    },
+    "inst_id": {
+      "type": "string"
     },
     "parameters": {
       "type": "object",
-      "$ref" : "parameters"
+      "$ref" : "raml-util/schemas/parameters.schema"
     }
   },
   "required": [
-    "module",
-    "name",
-    "type",
-    "enabled",
+    "job_conf_id",
+    "creator",
+    "status",
     "inst_id"
   ]
 }

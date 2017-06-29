@@ -255,6 +255,7 @@ After getting started with your new module as explained below, it can be similar
 Create the new project using the normal layout of files and basic POM file.
 
 Add an area for the RAML, schemas, and examples files, e.g. `/ramls`.
+(See [notes](#step-6-design-the-raml-files) below.)
 These define the API endpoints.
 Get started by using the following familiar example:
 
@@ -425,12 +426,11 @@ Four plugins need to be declared in the POM file:
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
 
-Add `ramlfiles_path` properties indicating the location of the RAML directories:
+Add `ramlfiles_path` property indicating the location of the RAML directories:
 
 ```xml
   <properties>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <ramlfiles_util_path>${basedir}/raml-util</ramlfiles_util_path>
   </properties>
 ```
 
@@ -541,22 +541,6 @@ Add the plugins:
               </resources>
             </configuration>
           </execution>
-          <execution>
-            <id>copy-resources-2</id>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${basedir}/target/classes/apidocs/raml-util</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${ramlfiles_util_path}</directory>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
         </executions>
       </plugin>
 
@@ -657,15 +641,20 @@ It is beneficial at this stage to take some time to design and prepare the RAML 
 Investigate the other FOLIO modules for guidance.
 
 Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files,
-as the "raml-util" directory beside your "ramls" directory:
+as the "raml-util" directory inside your "ramls" directory:
 ```
-git submodule add https://github.com/folio-org/raml raml-util
+git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 
+When any schema file refers to an additional schema file, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Also ensure that all such referenced files are below the parent file.
+
 The RMB does do some validation of RAML files at compile-time.
-There are some useful tools to assist with command-line validation and some
-can be integrated with text editors, e.g.
+There are some useful tools to assist with command-line validation,
+and some can be integrated with text editors, e.g.
 [raml-cop](https://github.com/thebinarypenguin/raml-cop).
+
+RAML-aware text editors are very helpful, such as
+[api-workbench](https://github.com/mulesoft/api-workbench) for Atom.
 
 Remember that the POM configuration enables viewing your RAML and interacting
 with your application via the local [API documentation](#documentation-of-the-apis).
