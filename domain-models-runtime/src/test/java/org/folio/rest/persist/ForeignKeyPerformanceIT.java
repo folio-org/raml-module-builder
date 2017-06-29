@@ -126,11 +126,22 @@ public class ForeignKeyPerformanceIT {
       trigger[run]   = inserts(context, "foreignkeyperformanceit_withtrigger");
     }
 
+    System.out.println("Avg: " + mean(notrigger) + " Inserts with no Trigger in 5 seconds");
+    System.out.println("Avg: " + mean(trigger) + " Inserts with Trigger in 5 seconds");
+
     Arrays.sort(notrigger);
     Arrays.sort(trigger);
     System.out.println("Median: " + notrigger[2] + " transactions in 5 seconds without trigger");
     System.out.println("Median: " + trigger[2]   + " transactions in 5 seconds with trigger");
 
     context.assertTrue(trigger[2]*2 >= notrigger[2], "trigger has at least half the transactions of notrigger");
+  }
+
+  public static double mean(long[] m) {
+    double sum = 0;
+    for (int i = 0; i < m.length; i++) {
+        sum += m[i];
+    }
+    return sum / m.length;
   }
 }

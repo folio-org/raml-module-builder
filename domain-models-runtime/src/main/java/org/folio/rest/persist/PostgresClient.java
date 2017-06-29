@@ -1615,7 +1615,7 @@ public class PostgresClient {
    *
    * NOTE: NOT tested on all types of statements - but on a lot
    *
-   * @param sqlFile - reader to sql file with executable statements
+   * @param sqlFile - string of sqls with executable statements
    * @param newDB - if creating a new database is included in the file - include the name of the db as after running the
    * create database command appearing in the file, there will be a new connection created to the
    * newDB and all subsequent commands will be executed against the newly created newDB name. the user / password of
