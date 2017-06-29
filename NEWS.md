@@ -1,6 +1,10 @@
-## 12.1.4 (not yet released)
+## 12.1.4
 * RMB-32 fix JSON encoding of String in UpdateSection
 * RMB-40 submodule util with ResourceUtil.asString(...), IOUtil.toUTF8String(InputStream)
+* RMB-36 fix PostgresClient.runSQLFile(...) when last sql statement does not end with ;
+* RMB-31 Foreign key documentation and performance test
+* RMB-38 PostgresClient on 2nd vertx throws RejectedExecutionException
+* Support cross module join functionality - see MODUSERBL-7
 
 ## 12.1.3 2017-06-06
 
