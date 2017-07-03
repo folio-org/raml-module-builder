@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.client.exceptions.PopulateTemplateException;
 import org.folio.rest.tools.client.exceptions.PreviousRequestException;
+import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.VertxUtils;
 
@@ -40,7 +41,7 @@ import io.vertx.core.logging.LoggerFactory;
  * @author shale
  *
  */
-public class HttpModuleClient2 {
+public class HttpModuleClient2 implements HttpClientInterface {
 
   static LoadingCache<String, Response> cache = null;
 
