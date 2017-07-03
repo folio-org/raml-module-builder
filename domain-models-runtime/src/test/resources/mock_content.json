@@ -1,0 +1,33 @@
+{
+  "mocks": [
+    {
+      "description" : "url -> when this url is called with the method [get / put  / etc...] than if the request requires input data ",
+      "url": "auth_test2",
+      "method": "get",
+      "status": 200,
+      "receivedData": {"id": "1","a31": "1"},
+      "receivedPath": "",
+      "sendData" : {},
+      "headers" : [
+        {"name": "x-okapi-token", "value": "12345"},
+        {"name": "x-okapi-tenant", "value": "eeee"}
+      ]
+    },
+    {
+      "url": "auth_test2",
+      "method": "get",
+      "status": 200,
+      "receivedData" : {},
+      "receivedPath": "",
+      "sendData" : {}
+    },
+    {
+      "url": "auth_test2",
+      "method": "get",
+      "status": 200,
+      "receivedData" : {},
+      "receivedPath": "",
+      "sendData" : {}
+    }
+  ]
+}
