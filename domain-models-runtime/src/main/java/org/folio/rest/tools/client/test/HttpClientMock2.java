@@ -26,7 +26,7 @@ import io.vertx.core.logging.LoggerFactory;
 @SuppressWarnings("unchecked")
 public class HttpClientMock2 implements HttpClientInterface {
 
-
+  public static final String MOCK_MODE = "mock.httpclient";
   public static final String MOCK_FILE = "mock_content.json";
 
   private static final Logger log = LoggerFactory.getLogger(HttpClientMock2.class);

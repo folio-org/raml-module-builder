@@ -40,6 +40,7 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.RTFConsts;
+import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.codecs.PojoEventBusCodec;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
@@ -244,6 +245,13 @@ public class RestVerticle extends AbstractVerticle {
         if (port == -1) {
           // we are here if port was not passed via cmd line
           port = config().getInteger("http.port", 8081);
+        }
+
+        //check if mock mode requested and set sys param so that http client factory
+        //can config itself accordingly
+        String mockMode = config().getString(HttpClientMock2.MOCK_MODE);
+        if(mockMode != null){
+          System.setProperty(HttpClientMock2.MOCK_MODE, mockMode);
         }
 
         // in anycase set the port so it is available to others via the config()

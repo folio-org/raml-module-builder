@@ -13,7 +13,7 @@ public class HttpClientFactory {
   private static boolean mock = false;
 
   static {
-    if(System.getProperty("mock.httpclient") != null){
+    if(System.getProperty(HttpClientMock2.MOCK_MODE) != null ){
       mock = true;
     }
   }

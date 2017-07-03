@@ -43,6 +43,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
+import static org.junit.Assert.assertEquals;
+
 /**
  * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
  */
