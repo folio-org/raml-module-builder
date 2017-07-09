@@ -790,6 +790,9 @@ public class RestVerticle extends AbstractVerticle {
     if (isValid[0]) {
       rc.response().setChunked(chunked);
       rc.response().setStatusCode(status);
+      if(status == 422){
+        rc.response().putHeader("Content-type", SUPPORTED_CONTENT_TYPE_JSON_DEF);
+      }
       if(message != null){
         rc.response().write(message);
       }

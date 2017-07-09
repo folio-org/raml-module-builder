@@ -340,6 +340,15 @@ public class DemoRamlRestTest {
       System.out.println("Status - " + statusCode + " at " + System.currentTimeMillis() + " mode " + mode + " for " + url);
 
       if (statusCode == errorCode) {
+        if(statusCode == 422){
+          String str = response.getHeader("Content-type");
+          if(str != null && str.contains("application/json")){
+            context.assertTrue(true);
+          }
+          else{
+            context.fail("422 response code should contain a content type header of application/json");
+          }
+        }
         context.assertTrue(true);
       } else {
         response.bodyHandler(responseData -> {
