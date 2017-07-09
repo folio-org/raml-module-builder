@@ -1,3 +1,11 @@
+## 13.0.0
+
+* RMB-42 Generated clients populate Authorization header with okapi tenant
+* RMB-34 Validation response does not include content-type header
+* FOLIO-693 document HTTP status codes
+* DMOD-164 unit tests for Tenant API
+* FOLIO-685 explore auto-generation of fakes (mocks) for module testing
+
 ## 12.1.4
 * RMB-32 fix JSON encoding of String in UpdateSection
 * RMB-40 submodule util with ResourceUtil.asString(...), IOUtil.toUTF8String(InputStream)
