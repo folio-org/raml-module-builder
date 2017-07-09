@@ -43,8 +43,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-import static org.junit.Assert.assertEquals;
-
 /**
  * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
  */
@@ -185,7 +183,7 @@ public class DemoRamlRestTest {
       System.out.println("--- bp content --- "+bp.getContent());
       mmp.addBodyPart(bp);
       mmp.addBodyPart(bp2);
-      AdminClient aClient = new AdminClient("localhost", port, "abc", false);
+      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
       aClient.postUploadmultipart(PersistMethod.SAVE, null, "abc",
         mmp, reply -> {
         if(reply.statusCode() != 200){

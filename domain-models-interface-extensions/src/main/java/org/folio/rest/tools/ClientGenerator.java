@@ -67,6 +67,8 @@ public class ClientGenerator {
   private String mappingType = "postgres";
 
   private JFieldVar tenantId;
+  private JFieldVar token;
+
   private JFieldVar httpClient;
 
   public static void main(String[] args) throws Exception {
@@ -144,6 +146,8 @@ public class ClientGenerator {
       /* class variable tenant id */
       tenantId = jc.field(JMod.PRIVATE, String.class, "tenantId");
 
+      token = jc.field(JMod.PRIVATE, String.class, "token");
+
       /* class variable to http options */
       JFieldVar options = jc.field(JMod.PRIVATE, HttpClientOptions.class, "options");
 
@@ -155,6 +159,7 @@ public class ClientGenerator {
       JVar host = consructor.param(String.class, "host");
       JVar port = consructor.param(int.class, "port");
       JVar param = consructor.param(String.class, "tenantId");
+      JVar token = consructor.param(String.class, "token");
       JVar keepAlive = consructor.param(boolean.class, "keepAlive");
       JVar connTO = consructor.param(int.class, "connTO");
       JVar idleTO = consructor.param(int.class, "idleTO");
@@ -162,6 +167,7 @@ public class ClientGenerator {
      /* populate constructor */
       JBlock conBody=  consructor.body();
       conBody.assign(JExpr._this().ref(tenantId), param);
+      conBody.assign(JExpr._this().ref(token), token);
       conBody.assign(options, JExpr._new(jCodeModel.ref(HttpClientOptions.class)));
       conBody.invoke(options, "setLogActivity").arg(JExpr.TRUE);
       conBody.invoke(options, "setKeepAlive").arg(keepAlive);
@@ -178,24 +184,26 @@ public class ClientGenerator {
       JVar hostVar = consructor2.param(String.class, "host");
       JVar portVar = consructor2.param(int.class, "port");
       JVar tenantIdVar = consructor2.param(String.class, "tenantId");
+      JVar tokenVar = consructor2.param(String.class, "token");
       JBlock conBody2 = consructor2.body();
-      conBody2.invoke("this").arg(hostVar).arg(portVar).arg(tenantIdVar).arg(JExpr.TRUE)
+      conBody2.invoke("this").arg(hostVar).arg(portVar).arg(tenantIdVar).arg(tokenVar).arg(JExpr.TRUE)
         .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
 
       JMethod consructor1 = constructor(JMod.PUBLIC);
       JVar hostVar1 = consructor1.param(String.class, "host");
       JVar portVar1 = consructor1.param(int.class, "port");
       JVar tenantIdVar1 = consructor1.param(String.class, "tenantId");
+      JVar tokenVar1 = consructor1.param(String.class, "token");
       JVar keepAlive1 = consructor1.param(boolean.class, "keepAlive");
       JBlock conBody1 = consructor1.body();
-      conBody1.invoke("this").arg(hostVar1).arg(portVar1).arg(tenantIdVar1).arg(keepAlive1)
+      conBody1.invoke("this").arg(hostVar1).arg(portVar1).arg(tenantIdVar1).arg(tokenVar1).arg(keepAlive1)
       .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
 
       /* constructor, init the httpClient */
       JMethod consructor3 = constructor(JMod.PUBLIC);
       JBlock conBody3 = consructor3.body();
 
-      conBody3.invoke("this").arg("localhost").arg(JExpr.lit(8081)).arg("folio_demo").arg(JExpr.FALSE)
+      conBody3.invoke("this").arg("localhost").arg(JExpr.lit(8081)).arg("folio_demo").arg("folio_demo").arg(JExpr.FALSE)
         .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
       consructor3.javadoc().add("Convenience constructor for tests ONLY!<br>Connect to localhost on 8081 as folio_demo tenant.");
 
@@ -312,7 +320,7 @@ public class ClientGenerator {
 
     /* push tenant id into x-okapi-tenant and authorization headers for now */
     JConditional _if = body._if(tenantId.ne(JExpr._null()));
-    _if._then().directStatement("request.putHeader(\"Authorization\", tenantId);");
+    _if._then().directStatement("request.putHeader(\"X-Okapi-Token\", token);");
     _if._then().directStatement("request.putHeader(\""+OKAPI_HEADER_TENANT+"\", tenantId);");
     /* add response handler to each function */
     JClass handler = jCodeModel.ref(Handler.class).narrow(HttpClientResponse.class);
