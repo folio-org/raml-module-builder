@@ -648,6 +648,9 @@ git submodule add https://github.com/folio-org/raml ramls/raml-util
 
 When any schema file refers to an additional schema file, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Also ensure that all such referenced files are below the parent file.
 
+The documentation of HTTP response codes
+is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java).
+
 The RMB does do some validation of RAML files at compile-time.
 There are some useful tools to assist with command-line validation,
 and some can be integrated with text editors, e.g.
