@@ -72,7 +72,7 @@ When that is understood, then move on to the section
 
 Note that actually building this RAML Module Builder framework is not required.
 (Some of the images below are out-of-date.) The already published artifacts will
-be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your project from the repository.
+be [incorporated](#step-2) into your project from the repository.
 
 ## The basics
 
@@ -385,7 +385,7 @@ Create JSON schemas indicating the objects exposed by the module:
 }
 ```
 
-### Step 2: Include the jars in your project pom.xml
+### <a name="step-2"></a>Step 2: Include the jars in your project pom.xml
 
 ```xml
   <repositories>
@@ -633,7 +633,14 @@ So, for the ebook RAML an
 Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
-See an [example](#function-example) of an implemented function.
+The implementations must go into the `org.folio.rest.impl` package because RMB's
+[RestVerticle](https://github.com/folio-org/raml-module-builder/blob/b95cd0e/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java#L372)
+scans this package for a class that implements the required interface.  The class can
+have any name.
+RMB then uses reflection to invoke the constructor and the method.
+
+See [mod-user's org.folio.rest.impl package](https://github.com/folio-org/mod-users/tree/master/src/main/java/org/folio/rest/impl)
+for example implementations.
 
 ### Step 6: Design the RAML files
 
