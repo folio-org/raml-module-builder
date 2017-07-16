@@ -1,3 +1,7 @@
+## 13.0.1
+
+* RMB-46 RMB's http client caches requests by default
+
 ## 13.0.0
 
 * RMB-42 Generated clients populate Authorization header with okapi tenant
