@@ -154,6 +154,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
     }
   }
 
+  @Override
   public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
       boolean cachable, BuildCQL bCql) throws Exception {
 
@@ -163,7 +164,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
     if(cachable){
       initCache();
       Response j = cache.get(endpoint);
-      if(j != null && j.getBody() != null){
+      if(j != null && j.getBody() != null && method.name().equalsIgnoreCase("get")){
         CompletableFuture<Response> cf = new CompletableFuture<>();
         cf.complete(j);
         log.debug("entry retrieved from cache: " + endpoint);
@@ -184,65 +185,78 @@ public class HttpModuleClient2 implements HttpClientInterface {
     return cf;
   }
 
+  @Override
   public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
       boolean cachable, BuildCQL bCql) throws Exception {
 
       return request(method, null, endpoint, headers, rollbackURL,cachable, bCql);
   }
 
+  @Override
   public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers)
       throws Exception {
     return request(method, data, endpoint, headers, null, false, null);
   }
 
+  @Override
   public CompletableFuture<Response> request(HttpMethod method, Object pojo, String endpoint, Map<String, String> headers)
       throws Exception {
     return request(method, Buffer.buffer(PostgresClient.pojo2json(pojo)), endpoint, headers, null, false, null);
   }
 
+  @Override
   public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers)
       throws Exception {
     return request(method, endpoint, headers, null, false, null);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, boolean cache, BuildCQL cql)
       throws Exception {
     return request(HttpMethod.GET, endpoint, headers, null, cache, cql);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, boolean cache)
       throws Exception {
     return request(HttpMethod.GET, endpoint, headers, null, cache, null);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, BuildCQL cql)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, true, cql);
+    return request(HttpMethod.GET, endpoint, headers, null, false, cql);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, true, null);
+    return request(HttpMethod.GET, endpoint, headers, null, false, null);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint, boolean cache, BuildCQL cql) throws Exception {
     return request(HttpMethod.GET, endpoint, null, null, cache, cql);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint, boolean cache) throws Exception {
     return request(HttpMethod.GET, endpoint, null, null, cache, null);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint, RollBackURL rbURL) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, rbURL, true, null);
+    return request(HttpMethod.GET, endpoint, null, rbURL, false, null);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint, BuildCQL cql) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, true, cql);
+    return request(HttpMethod.GET, endpoint, null, null, false, cql);
   }
 
+  @Override
   public CompletableFuture<Response> request(String endpoint) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, true, null);
+    return request(HttpMethod.GET, endpoint, null, null, false, null);
   }
 
   /**
@@ -268,8 +282,9 @@ public class HttpModuleClient2 implements HttpClientInterface {
    * @param processPassedInResponse
    * @return
    */
+  @Override
   public Function<Response, CompletableFuture<Response>> chainedRequest(
-      String urlTempate, Map<String, String> headers, boolean inheritOkapiHeaders, BuildCQL cql, Consumer<Response> processPassedInResponse){
+      String urlTempate, Map<String, String> headers, boolean inheritOkapiHeaders, boolean cache, BuildCQL cql, Consumer<Response> processPassedInResponse){
     try {
       List<String> replace = getTagValues(urlTempate);
       return (resp) -> {
@@ -310,7 +325,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
           if(inheritOkapiHeaders){
             mergeHeaders(headers, resp.headers, resp.endpoint);
           }
-          return request(newURL, headers, cql);
+          return request(newURL, headers, cache, cql);
         } catch (Exception e) {
           CompletableFuture<Response> cf = new CompletableFuture<>();
           cf.complete(createResponse(urlTempate, e));
@@ -338,9 +353,16 @@ public class HttpModuleClient2 implements HttpClientInterface {
     }
   }
 
+  @Override
   public Function<Response, CompletableFuture<Response>> chainedRequest(
       String urlTempate, Map<String, String> headers, BuildCQL cql, Consumer<Response> processPassedInResponse){
     return chainedRequest(urlTempate, headers, false, cql, processPassedInResponse);
+  }
+
+  @Override
+  public Function<Response, CompletableFuture<Response>> chainedRequest(
+      String urlTempate, Map<String, String> headers, boolean inheritOkapiHeaders, BuildCQL cql, Consumer<Response> processPassedInResponse){
+    return chainedRequest(urlTempate, headers, inheritOkapiHeaders, false, cql, processPassedInResponse);
   }
 
   private Response createResponse(String urlTempate, Exception e){
@@ -361,20 +383,24 @@ public class HttpModuleClient2 implements HttpClientInterface {
       return tagValues;
   }
 
+  @Override
   public void setDefaultHeaders(Map<String, String> headersForAllRequests){
     if(headersForAllRequests != null){
       headers.putAll(headersForAllRequests);
     }
   }
 
+  @Override
   public void closeClient(){
     httpClient.close();
   }
 
+  @Override
   public void clearCache(){
     cache.invalidateAll();
   }
 
+  @Override
   public CacheStats getCacheStats(){
     return cache.stats();
   }

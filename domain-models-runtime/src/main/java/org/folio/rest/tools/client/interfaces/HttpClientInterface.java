@@ -84,6 +84,10 @@ public interface HttpClientInterface {
    * @return
    */
   Function<Response, CompletableFuture<Response>> chainedRequest(String urlTempate,
+      Map<String, String> headers, boolean inheritOkapiHeaders, boolean cache, BuildCQL cql,
+      Consumer<Response> processPassedInResponse);
+
+  Function<Response, CompletableFuture<Response>> chainedRequest(String urlTempate,
       Map<String, String> headers, boolean inheritOkapiHeaders, BuildCQL cql,
       Consumer<Response> processPassedInResponse);
 

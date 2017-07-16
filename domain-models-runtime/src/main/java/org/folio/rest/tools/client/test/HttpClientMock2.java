@@ -248,6 +248,13 @@ public class HttpClientMock2 implements HttpClientInterface {
   }
 
   @Override
+  public Function<Response, CompletableFuture<Response>> chainedRequest(String urlTempate,
+      Map<String, String> headers, boolean inheritOkapiHeaders, boolean cache, BuildCQL cql,
+      Consumer<Response> processPassedInResponse) {
+    return chainedRequest(urlTempate, headers, inheritOkapiHeaders, cql, processPassedInResponse);
+  }
+
+  @Override
   public void setDefaultHeaders(Map<String, String> headersForAllRequests) {
     // TODO Auto-generated method stub
   }
