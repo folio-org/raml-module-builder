@@ -672,6 +672,9 @@ with your application via the local [API documentation](#documentation-of-the-ap
 NOTE: The FOLIO project is currently using `RAML 0.8` version until the
 `RAML 1.0` tools have [settled](https://issues.folio.org/browse/FOLIO-523).
 
+NOTE: RAML files must declare at least two endpoints, see
+[RMB-1](https://issues.folio.org/browse/RMB-1).
+
 ## Adding an init() implementation
 
 It is possible to add custom code that will run once before the application is deployed
