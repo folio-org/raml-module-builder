@@ -1,3 +1,7 @@
+## 13.0.2
+
+* FOLIO-727 Support multi-field queries in CQL2PgJSON (upgraded CQL2PgJSON for this functionality)
+
 ## 13.0.1
 
 * RMB-46 RMB's http client caches requests by default
