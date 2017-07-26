@@ -388,7 +388,7 @@ public class ClientGenerator {
         Class<?> entityClazz = Class.forName(valueType);
 
         if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context") &&
-            !valueType.equals("java.util.Map")) {
+            !valueType.equals("java.util.Map") && !valueType.equals("io.vertx.ext.web.RoutingContext")) {
 
           /* this is a post or put since our only options here are receiving a reader (data in body) or
            * entity - which is also data in body - but we can only have one since a multi part body

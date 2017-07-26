@@ -40,6 +40,7 @@
     <jackson-version>2.2.2</jackson-version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <generate_routing_context>/rmbtests/test</generate_routing_context>
   </properties>
 
   <dependencies>

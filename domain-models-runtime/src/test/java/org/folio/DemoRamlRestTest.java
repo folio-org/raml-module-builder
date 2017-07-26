@@ -147,7 +147,8 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null);
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
       200, 1, null, null);
-
+    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201, 1,
+      "application/json", "abcdefg");
 
     //check that additionalProperties (fields not appearing in schema) - returns 422
     JsonObject jo = new JsonObject(book);

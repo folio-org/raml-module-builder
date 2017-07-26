@@ -6,8 +6,7 @@
     <version>13.0.3-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-interface-extensions</artifactId>
-
-
+  
   <dependencies>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -23,6 +22,10 @@
       <groupId>org.folio</groupId>
       <artifactId>domain-models-api-aspects</artifactId>
       <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>

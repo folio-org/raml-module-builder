@@ -25,6 +25,7 @@
     <logstash_instance>ec2-52-27-98-246.us-west-2.compute.amazonaws.com:5044</logstash_instance>
     <postgresql.version>9.4.1209</postgresql.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <generate_routing_context>/rmbtests/test</generate_routing_context>
   </properties>
   <dependencies>
     <dependency>

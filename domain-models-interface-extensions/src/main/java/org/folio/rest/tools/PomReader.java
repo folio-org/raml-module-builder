@@ -2,6 +2,7 @@ package org.folio.rest.tools;
 
 import java.io.File;
 import java.io.FileReader;
+import java.util.Properties;
 
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -23,6 +24,7 @@ public enum PomReader {
 
   private String moduleName = null;
   private String version = null;
+  private Properties props = null;
 
   private final Logger log = LoggerFactory.getLogger(PomReader.class);
 
@@ -67,6 +69,8 @@ public enum PomReader {
       }
       version.replaceAll("-.*", "");
       moduleName = moduleName.replaceAll("-", "_");
+      props = model.getProperties();
+      props.list(System.out);
       log.info("module name: " + moduleName + ", version: " + version);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -79,5 +83,9 @@ public enum PomReader {
 
   public String getModuleName() {
     return moduleName;
+  }
+
+  public Properties getProps() {
+    return props;
   }
 }

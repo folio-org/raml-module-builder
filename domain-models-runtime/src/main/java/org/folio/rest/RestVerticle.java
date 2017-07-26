@@ -39,6 +39,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.ClientGenerator;
+import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.codecs.PojoEventBusCodec;
@@ -103,7 +104,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
-  private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept";
+  private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept, x-okapi-tenant";
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_STREAMIN = "application/octet-stream";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
@@ -331,7 +332,8 @@ public class RestVerticle extends AbstractVerticle {
             // if the path is valid and the http method is options
             // assume a cors request
             if (rc.request().method() == HttpMethod.OPTIONS) {
-
+              //rc.response().putHeader(CORS_ALLOW_HEADER, CORS_ALLOW_HEADER_VALUE);
+              //rc.response().putHeader(CORS_ALLOW_ORIGIN, CORS_ALLOW_ORIGIN_VALUE);
               rc.response().end();
 
               return;
@@ -825,6 +827,17 @@ public class RestVerticle extends AbstractVerticle {
   public void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
       Map<String,String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
 
+    String generateRCforFunc = PomReader.INSTANCE.getProps().getProperty("generate_routing_context");
+    boolean addRCParam = false;
+    if(generateRCforFunc != null){
+      String []addRC = generateRCforFunc.split(",");
+      for (int i = 0; i < addRC.length; i++) {
+        if(addRC[i].equals(rc.request().path())){
+          addRCParam = true;
+        }
+      }
+    }
+
     Context context = vertx.getOrCreateContext();
 
     //if streaming is requested the status will be 0 (streaming started)
@@ -839,20 +852,32 @@ public class RestVerticle extends AbstractVerticle {
     }
 
     Object[] newArray = new Object[params.length];
-    for (int i = 0; i < params.length - 3; i++) {
+    int size = 3;
+    int pos = 0;
+
+    //this endpoint indicated it wants to receive the routing context as a parameter
+    if(addRCParam){
+      //the amount of extra params added is 4 not 3
+      size = 4;
+      //the first param of the extra params is the injected RC
+      newArray[params.length - size] = rc;
+      pos = 1;
+    }
+
+    for (int i = 0; i < params.length - size; i++) {
       newArray[i] = params[i];
     }
 
     //inject call back handler into each function
-    newArray[params.length - 2] = resultHandler;
+    newArray[params.length - (size-(pos+1))] = resultHandler;
 
     //inject vertx context into each function
-    newArray[params.length - 1] = getVertx().getOrCreateContext();
+    newArray[params.length - (size-(pos+2))] = getVertx().getOrCreateContext();
 
 /*    if(tenantId[0] == null){
       headers.put(OKAPI_HEADER_TENANT, DEFAULT_SCHEMA);
     }*/
-    newArray[params.length - 3] = headers;
+    newArray[params.length - (size-pos)] = headers;
 
     context.runOnContext(v -> {
       try {
@@ -1190,7 +1215,7 @@ public class RestVerticle extends AbstractVerticle {
             Class<?> entityClazz = Class.forName(valueType);
 
             if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context") &&
-                !valueType.equals("java.util.Map") && !valueType.equals("java.io.InputStream")) {
+                !valueType.equals("java.util.Map") && !valueType.equals("java.io.InputStream") && !valueType.equals("io.vertx.ext.web.RoutingContext")) {
               // we have special handling for the Result Handler and context, it is also assumed that
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
