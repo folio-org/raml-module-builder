@@ -110,6 +110,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
   private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
+  private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static MetricsService     serverMetrics                   = null;
   private static ValidatorFactory   validationFactory;
@@ -212,6 +213,7 @@ public class RestVerticle extends AbstractVerticle {
     router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
+    router.post().consumes(SUPPORTED_CONTENT_TYPE_FORM).handler(handler);
 
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
