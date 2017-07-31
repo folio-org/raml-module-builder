@@ -1,3 +1,8 @@
+## 13.0.3
+
+* RMB-49 VertxUtils.getVertxWithExceptionHandler()
+* FOLIO-749 add exception handler to each vertx
+
 ## 13.0.2
 
 * FOLIO-727 Support multi-field queries in CQL2PgJSON (upgraded CQL2PgJSON for this functionality)
