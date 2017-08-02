@@ -24,6 +24,7 @@ import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +60,7 @@ public class DemoRamlRestTest {
    */
   @Before
   public void setUp(TestContext context) throws IOException {
-    vertx = Vertx.vertx();
+    vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
 
     try {

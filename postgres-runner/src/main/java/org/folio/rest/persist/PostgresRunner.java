@@ -92,6 +92,7 @@ public class PostgresRunner extends AbstractVerticle {
     DeploymentOptions options = new DeploymentOptions().setConfig(config).setWorker(true);
     if (vertxForDeploy == null) {
       vertxForDeploy = Vertx.vertx();
+      vertxForDeploy.exceptionHandler(ex -> log.error("Unhandled exception caught by vertx", ex));
     }
     vertxForDeploy.deployVerticle(postgresRunner, options, result -> {
       if (asyncHandler != null) {

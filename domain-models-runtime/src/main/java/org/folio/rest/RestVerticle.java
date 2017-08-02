@@ -57,6 +57,7 @@ import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
+import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.rulez.Rules;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
@@ -132,7 +133,7 @@ public class RestVerticle extends AbstractVerticle {
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
   public static void main(String[] args) {
-    Vertx vertx = Vertx.vertx();
+    Vertx vertx = VertxUtils.getVertxWithExceptionHandler();
     vertx.deployVerticle(new RestVerticle());
   }
 

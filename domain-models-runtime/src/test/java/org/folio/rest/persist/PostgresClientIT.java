@@ -3,6 +3,7 @@ package org.folio.rest.persist;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -28,7 +29,7 @@ public class PostgresClientIT {
 
   @BeforeClass
   public static void setUpClass() throws Exception {
-    vertx = Vertx.vertx();
+    vertx = VertxUtils.getVertxWithExceptionHandler();
 
     String embed = System.getProperty("embed_postgres", "").toLowerCase().trim();
     if ("true".equals(embed)) {
