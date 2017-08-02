@@ -47,9 +47,9 @@ public class BooksDemoAPI implements RmbtestsResource {
   @Override
   public void postRmbtestsBooks(Book entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
-
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(null));
-
+    OutStream stream = new OutStream();
+    stream.setData(entity);
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostRmbtestsBooksResponse.withJsonCreated("/dummy/location", stream)));
   }
 
   @Override
@@ -60,7 +60,7 @@ public class BooksDemoAPI implements RmbtestsResource {
     OutStream os = new OutStream();
     try {
       os.setData(routingContext.getBodyAsJson());
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostRmbtestsTestResponse.withJsonCreated(os)));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostRmbtestsTestResponse.withJsonOK(os)));
     } catch (Exception e) {
       e.printStackTrace();
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(null));

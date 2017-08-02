@@ -22,6 +22,7 @@ import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.security.AES;
+import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -147,9 +148,16 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null);
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
       200, 1, null, null);
-    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201, 1,
+    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 200, 1,
       "application/json", "abcdefg");
 
+    d.setDatetime(new Datetime());
+    d.setTitle("title");
+    d.setLink("link");
+    b.setStatus(0);
+    b.setSuccess(true);
+    book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", "abcdefg");
     //check that additionalProperties (fields not appearing in schema) - returns 422
     JsonObject jo = new JsonObject(book);
     jo.put("lalala", "non existant");
@@ -350,11 +358,20 @@ public class DemoRamlRestTest {
             context.fail("422 response code should contain a content type header of application/json");
           }
         }
+        else if (statusCode == 201) {
+          response.bodyHandler(responseData -> {
+            String date = (String)new JsonPathParser(responseData.toJsonObject()).getValueAt("metaData.createdDate");
+            if(date == null){
+              context.fail("metaData schema createdDate missing from returned json");
+            }
+          });
+        }
         context.assertTrue(true);
       } else {
         response.bodyHandler(responseData -> {
           context.fail("got unexpected response code, expected: " +
-              errorCode + ", received code: " + statusCode + " mode " + mode + " for url " +  url);
+              errorCode + ", received code: " + statusCode + " mode " + mode + " for url " +  url +
+              "\ndata:" + responseData.toString());
         });
       }
       if(!async.isCompleted()){

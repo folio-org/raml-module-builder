@@ -9,10 +9,11 @@
           "type":"string"
         },
         "title":{
-          "type":"string"
+          "type":"string",
+          "readOnly": true
         },
         "description":{
-          "type":"null"
+          "type": "null"
         },
         "datetime":{
           "type":"object",
@@ -52,6 +53,9 @@
     },
     "status":{
       "type":"integer"
+    },        
+    "metaData": {
+      "$ref": "metadata.schema"
     }
   },
   "additionalProperties": false,

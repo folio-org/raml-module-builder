@@ -6,7 +6,8 @@ version: v1
 
 schemas:
   - book: !include book.schema
-
+  - metadata.schema: !include raml-util/schemas/metadata.schema
+ 
 /rmbtests:
   /books:
     /{bookTitle}:
@@ -67,11 +68,21 @@ schemas:
         application/json:
           schema: book
           example: ""
+      responses:
+        201:
+         body:
+           application/json:
+            example: examples/bulk.sample
+         headers:
+           Location:
   /test:
     post:
       body:
         application/json:
       responses:
-        201:
+        200:
          body:
            application/json:
+        302:
+          headers:
+            Location:

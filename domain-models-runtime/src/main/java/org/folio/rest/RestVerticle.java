@@ -8,6 +8,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.MetaData;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
@@ -49,6 +51,7 @@ import org.folio.rest.tools.utils.AsyncResponseResult;
 import org.folio.rest.tools.utils.BinaryOutStream;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
+import org.folio.rest.tools.utils.JwtUtils;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
@@ -94,6 +97,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
   public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
+  public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
@@ -214,7 +218,6 @@ public class RestVerticle extends AbstractVerticle {
     router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_FORM).handler(handler);
-
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
     runHook(vv -> {
@@ -408,7 +411,7 @@ public class RestVerticle extends AbstractVerticle {
                 //to the requested URL - array will be populated by parseParams() function
                 Iterator<Map.Entry<String, Object>> paramList = params.iterator();
                 Object[] paramArray = new Object[params.size()];
-                parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams);
+                parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
 
                 //Get method in class to be run for this requested API endpoint
                 Method[] method2Run = new Method[]{null};
@@ -1190,7 +1193,7 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   private void parseParams(RoutingContext rc, Iterator<Map.Entry<String, Object>> paramList, boolean[] validRequest, JsonArray consumes,
-      Object[] paramArray, String[] pathParams) {
+      Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
@@ -1222,7 +1225,7 @@ public class RestVerticle extends AbstractVerticle {
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
               String bodyContent = rc.getBodyAsString();
-              log.debug(" -------- bodyContent -------- " + bodyContent);
+              log.debug(rc.request().path() + " -------- bodyContent -------- " + bodyContent);
               if(bodyContent != null){
                 if("java.io.Reader".equals(valueType)){
                   paramArray[order] = new StringReader(bodyContent);
@@ -1293,6 +1296,7 @@ public class RestVerticle extends AbstractVerticle {
                   droolsSession.delete(handleError);
                 }
               }
+              populateMetaData(paramArray[order], okapiHeaders.get(OKAPI_HEADER_TOKEN), rc.request().path());
             }
           } catch (Exception e) {
             log.error(e);
@@ -1455,6 +1459,43 @@ public class RestVerticle extends AbstractVerticle {
       }
     }
     return ret;
+  }
+
+  private void populateMetaData(Object entity, String token, String path){
+    //try to populate meta data section of the passed in json (converted to pojo already as this stage)
+    //will only succeed if the pojo (json schema) has a reference to the metaData schema.
+    //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema
+    //the created date and by fields are stored in the db in separate columns on insert trigger so that even if
+    //we overwrite them here, the correct value will be set in the db level via a trigger on update
+    try{
+      MetaData md = new MetaData();
+      //OffsetDateTime time = OffsetDateTime.now();
+      md.setUpdatedDate(new Date());
+      md.setCreatedDate(new Date());
+      String json;
+      try {
+        String[] split = token.split("\\.");
+        //the split array contains the 3 parts of the token - the body is the middle part
+        json = JwtUtils.getJson(split[1]);
+        JsonObject j = new JsonObject(json);
+        md.setCreatedByUserId(j.getString("user_id"));
+        md.setUpdatedByUserId(j.getString("user_id"));
+      } catch (Exception e) {
+        log.warn("Problem parsing " + OKAPI_HEADER_TOKEN + " header, for path " + path + " - " + e.getMessage());
+      }
+
+      /* if a metadata section is passed in by client, we cannot assume it is correct.
+       * entity.getClass().getMethod("getMetaData",
+      new Class[] { }).invoke(entity);*/
+
+      entity.getClass().getMethod("setMetaData",
+        new Class[] { MetaData.class }).invoke(entity,  md);
+    }
+    catch(Exception e){
+      //do nothing - if this is thrown then the setMetaData() failed, assume pojo
+      // (aka) json schema - didnt include a reference to it.
+      log.debug(e.getMessage(), e);
+    }
   }
 
   private boolean allowEmptyObject(Class clazz, String bodyContent){
