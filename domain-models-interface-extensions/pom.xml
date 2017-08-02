@@ -6,7 +6,7 @@
     <version>13.0.3-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-interface-extensions</artifactId>
-  
+
   <dependencies>
     <dependency>
       <groupId>io.vertx</groupId>
