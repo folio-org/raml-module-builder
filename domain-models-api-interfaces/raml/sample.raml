@@ -71,19 +71,19 @@ schemas:
           schema: book
       responses:
         201:
-         body:
-           application/json:
-            example: !include examples/bulk.sample
-         headers:
-           Location:
+          body:
+            application/json:
+              example: !include examples/bulk.sample
+          headers:
+            Location:
   /test:
     post:
       body:
         application/json:
       responses:
         200:
-         body:
-           application/json:
+          body:
+            application/json:
         302:
           headers:
             Location:
