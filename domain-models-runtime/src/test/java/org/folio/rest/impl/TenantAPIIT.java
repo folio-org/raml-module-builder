@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -28,7 +29,7 @@ public class TenantAPIIT {
 
   @BeforeClass
   public static void setUpClass() {
-    vertx = Vertx.vertx();
+    vertx = VertxUtils.getVertxWithExceptionHandler();
   }
 
   @AfterClass

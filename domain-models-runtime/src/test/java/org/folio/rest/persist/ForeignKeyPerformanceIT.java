@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -30,7 +31,7 @@ public class ForeignKeyPerformanceIT {
 
   @BeforeClass
   static public void setupClass(TestContext context) {
-    vertx = Vertx.vertx();
+    vertx = VertxUtils.getVertxWithExceptionHandler();
     Assume.assumeTrue("TEST_PERFORMANCE=yes", "yes".equals(System.getenv("TEST_PERFORMANCE")));
   }
 

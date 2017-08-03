@@ -2,6 +2,7 @@ package org.folio.rest.persist;
 
 import java.util.List;
 
+import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -78,9 +79,9 @@ public class PostgresClientMultiVertxIT {
   @Test
   public void testParallel(TestContext context) {
     Async async = context.async();
-    Vertx vertx1 = Vertx.vertx();
-    Vertx vertx2 = Vertx.vertx();
-    Vertx vertx3 = Vertx.vertx();
+    Vertx vertx1 = VertxUtils.getVertxWithExceptionHandler();
+    Vertx vertx2 = VertxUtils.getVertxWithExceptionHandler();
+    Vertx vertx3 = VertxUtils.getVertxWithExceptionHandler();
     Verticle v1 = new Verticle();
     Verticle v2 = new Verticle();
     Verticle v3 = new Verticle();

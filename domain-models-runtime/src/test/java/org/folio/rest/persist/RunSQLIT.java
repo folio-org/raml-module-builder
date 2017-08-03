@@ -12,6 +12,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunnerWithParametersFactory;
 
+import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.Test;
 
 @RunWith(Parameterized.class)
@@ -40,7 +41,8 @@ public class RunSQLIT {
   @Test
   public void sql(TestContext context) {
     Async async = context.async();
-    PostgresClient client = PostgresClient.getInstance(Vertx.vertx());
+    Vertx vertx = VertxUtils.getVertxFromContextOrNew();
+    PostgresClient client = PostgresClient.getInstance(vertx);
     client.runSQLFile(sql, false, replyHandler -> {
       context.assertTrue(replyHandler.succeeded(), "runSQL succeed status");
       int resultSize = replyHandler.result().size();
