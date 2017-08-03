@@ -135,21 +135,21 @@ public class DemoRamlRestTest {
     b.setData(d);
     ObjectMapper om = new ObjectMapper();
     String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 422, 1, "application/json", "abcdefg");
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 422, 1, "application/json", "abcdefg", false);
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=author", Buffer.buffer(book), 200, 1,
-      "application/json", "abcdefg");
+      "application/json", "abcdefg", false);
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.description", Buffer.buffer(book), 200, 1,
-        "application/json", "abcdefg");
+        "application/json", "abcdefg", false);
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.title", Buffer.buffer(book), 422, 1,
-        "application/json", "abcdefg");
+        "application/json", "abcdefg", false);
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.title&validate_field=data.description",
-      Buffer.buffer(book), 422, 1, "application/json", "abcdefg");
+      Buffer.buffer(book), 422, 1, "application/json", "abcdefg", false);
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null);
+    postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null, false);
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
-      200, 1, null, null);
+      200, 1, null, null, false);
     postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 200, 1,
-      "application/json", "abcdefg");
+      "application/json", "abcdefg", false);
 
     d.setDatetime(new Datetime());
     d.setTitle("title");
@@ -157,11 +157,13 @@ public class DemoRamlRestTest {
     b.setStatus(0);
     b.setSuccess(true);
     book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", "abcdefg");
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", "abcdefg", true);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", "abcdefg", false);
+
     //check that additionalProperties (fields not appearing in schema) - returns 422
     JsonObject jo = new JsonObject(book);
     jo.put("lalala", "non existant");
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", "abcdefg");
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", "abcdefg", false);
 
 
     List<Object> list = getListOfBooks();
@@ -257,13 +259,13 @@ public class DemoRamlRestTest {
         checkURLs(context, "http://localhost:" + port + url, 200);
         try {
           postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs"
-          , Buffer.buffer(getFile("job.json")), 201, 1, "application/json", "abcdefg");
+          , Buffer.buffer(getFile("job.json")), 201, 1, "application/json", "abcdefg", false);
           postData(context, "http://localhost:" + port + url + "/" +location
-          , Buffer.buffer(getFile("job_conf_post.json")), 204, 0, null, "abcdefg");
+          , Buffer.buffer(getFile("job_conf_post.json")), 204, 0, null, "abcdefg", false);
           postData(context, "http://localhost:" + port + url + "/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, "abcdefg");
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, "abcdefg", false);
           postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, "abcdefg");
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, "abcdefg", false);
         } catch (Exception e) {
           e.printStackTrace();
           context.fail();
@@ -327,7 +329,7 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private void postData(TestContext context, String url, Buffer buffer, int errorCode, int mode, String contenttype, String tenant) {
+  private void postData(TestContext context, String url, Buffer buffer, int errorCode, int mode, String contenttype, String tenant, boolean userIdHeader) {
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request = null;
@@ -361,7 +363,7 @@ public class DemoRamlRestTest {
         else if (statusCode == 201) {
           response.bodyHandler(responseData -> {
             String date = (String)new JsonPathParser(responseData.toJsonObject()).getValueAt("metaData.createdDate");
-            if(date == null){
+            if(date == null && userIdHeader){
               context.fail("metaData schema createdDate missing from returned json");
             }
           });
@@ -383,6 +385,9 @@ public class DemoRamlRestTest {
       request.putHeader("x-okapi-tenant", tenant);
     }
     request.putHeader("Accept", "application/json,text/plain");
+    if(userIdHeader){
+      request.putHeader("X-Okapi-User-Id", "af23adf0-61ba-4887-bf82-956c4aae2260");
+    }
     if(contenttype != null){
       request.putHeader("Content-type",
         contenttype);

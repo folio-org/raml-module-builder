@@ -101,7 +101,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
-
+  public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
   public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
 
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
@@ -1296,7 +1296,7 @@ public class RestVerticle extends AbstractVerticle {
                   droolsSession.delete(handleError);
                 }
               }
-              populateMetaData(paramArray[order], okapiHeaders.get(OKAPI_HEADER_TOKEN), rc.request().path());
+              populateMetaData(paramArray[order], okapiHeaders, rc.request().path());
             }
           } catch (Exception e) {
             log.error(e);
@@ -1461,40 +1461,44 @@ public class RestVerticle extends AbstractVerticle {
     return ret;
   }
 
-  private void populateMetaData(Object entity, String token, String path){
+  private void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path){
     //try to populate meta data section of the passed in json (converted to pojo already as this stage)
     //will only succeed if the pojo (json schema) has a reference to the metaData schema.
     //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema
     //the created date and by fields are stored in the db in separate columns on insert trigger so that even if
     //we overwrite them here, the correct value will be set in the db level via a trigger on update
-    try{
-      MetaData md = new MetaData();
-      //OffsetDateTime time = OffsetDateTime.now();
-      md.setUpdatedDate(new Date());
-      md.setCreatedDate(new Date());
-      String json;
-      try {
+    String json;
+    try {
+      String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
+      if(userId == null){
+        String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
         String[] split = token.split("\\.");
         //the split array contains the 3 parts of the token - the body is the middle part
         json = JwtUtils.getJson(split[1]);
         JsonObject j = new JsonObject(json);
-        md.setCreatedByUserId(j.getString("user_id"));
-        md.setUpdatedByUserId(j.getString("user_id"));
-      } catch (Exception e) {
-        log.warn("Problem parsing " + OKAPI_HEADER_TOKEN + " header, for path " + path + " - " + e.getMessage());
+        userId = j.getString("user_id");
       }
-
-      /* if a metadata section is passed in by client, we cannot assume it is correct.
-       * entity.getClass().getMethod("getMetaData",
-      new Class[] { }).invoke(entity);*/
-
-      entity.getClass().getMethod("setMetaData",
-        new Class[] { MetaData.class }).invoke(entity,  md);
-    }
-    catch(Exception e){
-      //do nothing - if this is thrown then the setMetaData() failed, assume pojo
-      // (aka) json schema - didnt include a reference to it.
-      log.debug(e.getMessage(), e);
+      if(userId != null){
+        MetaData md = new MetaData();
+        md.setUpdatedDate(new Date());
+        md.setCreatedDate(new Date());
+        md.setCreatedByUserId(userId);
+        md.setUpdatedByUserId(userId);
+        try{
+          /* if a metadata section is passed in by client, we cannot assume it is correct.
+           * entity.getClass().getMethod("getMetaData",
+          new Class[] { }).invoke(entity);*/
+          entity.getClass().getMethod("setMetaData",
+            new Class[] { MetaData.class }).invoke(entity,  md);
+        }
+        catch(Exception e){
+          //do nothing - if this is thrown then the setMetaData() failed, assume pojo
+          // (aka) json schema - didnt include a reference to it.
+          log.debug(e.getMessage(), e);
+        }
+      }
+    } catch (Exception e) {
+      log.warn("Problem parsing " + OKAPI_HEADER_TOKEN + " header, for path " + path + " - " + e.getMessage());
     }
   }
 
