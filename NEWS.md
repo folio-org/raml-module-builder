@@ -1,3 +1,7 @@
+## 13.1.0
+
+* RMB-48 implement handling of meta-data section in RMB
+
 ## 13.0.3
 
 * RMB-49 VertxUtils.getVertxWithExceptionHandler()
