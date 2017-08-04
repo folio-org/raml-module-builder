@@ -70,7 +70,7 @@ public enum PomReader {
       version.replaceAll("-.*", "");
       moduleName = moduleName.replaceAll("-", "_");
       props = model.getProperties();
-      props.list(System.out);
+      //props.list(System.out);
       log.info("module name: " + moduleName + ", version: " + version);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
