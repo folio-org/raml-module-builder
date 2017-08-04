@@ -6,7 +6,7 @@ version: v1
 
 schemas:
   - book: !include book.schema
-  - metadata.schema: !include raml-util/schemas/metadata.schema
+  - raml-util/schemas/metadata.schema: !include raml-util/schemas/metadata.schema
  
 /rmbtests:
   /books:
@@ -47,13 +47,19 @@ schemas:
                    "id": "SbBGk",
                    "title": "Stiff: The Curious Lives of Human Cadavers",
                    "description": null,
-                   "datetime": 1341533193,
+                   "datetime": {
+                     "date": "2117-08-03"
+                   },
                    "genre": "science",
                    "author": "Mary Roach",
-                   "link": "http://e-bookmobile.com/books/Stiff",
+                   "link": "http://e-bookmobile.com/books/Stiff"
                  },
                  "success": true,
-                 "status": 200
+                 "status": 200,
+                 "metaData": {
+                   "createdDate": "2017-04-01T23:11:00.000Z",
+                   "createdByUserId": "dee12548-9cee-45fa-bbae-675c1cc0ce3b"
+                 }
                }
 
     put:
@@ -67,22 +73,21 @@ schemas:
       body:
         application/json:
           schema: book
-          example: ""
       responses:
         201:
-         body:
-           application/json:
-            example: examples/bulk.sample
-         headers:
-           Location:
+          body:
+            application/json:
+              example: !include examples/bulk.sample
+          headers:
+            Location:
   /test:
     post:
       body:
         application/json:
       responses:
         200:
-         body:
-           application/json:
+          body:
+            application/json:
         302:
           headers:
             Location:
