@@ -55,7 +55,7 @@
       "type":"integer"
     },        
     "metaData": {
-      "$ref": "metadata.schema"
+      "$ref": "raml-util/schemas/metadata.schema"
     }
   },
   "additionalProperties": false,
