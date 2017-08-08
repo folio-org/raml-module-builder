@@ -125,8 +125,7 @@ module - this is all handled by the runtime framework.
 Some sample projects:
 
 - https://github.com/folio-org/mod-configuration
-- https://github.com/folio-org/mod-loan-storage
-- https://github.com/folio-org/mod-acquisitions-postgres
+- https://github.com/folio-org/mod-notes
 
 and other [modules](http://dev.folio.org/source-code/#server-side) (not all do use the RMB).
 
@@ -646,6 +645,7 @@ for example implementations.
 
 It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
 Investigate the other FOLIO modules for guidance.
+The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
 
 Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files,
 as the "raml-util" directory inside your "ramls" directory:
