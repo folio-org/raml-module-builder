@@ -43,6 +43,57 @@
       <version>4.12</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+        <groupId>com.github.javaparser</groupId>
+        <artifactId>javaparser-core</artifactId>
+        <version>3.3.0</version>
+    </dependency>
+    <dependency>
+        <groupId>org.raml</groupId>
+        <artifactId>raml-parser-2</artifactId>
+        <version>1.0.13</version>
+    </dependency>
   </dependencies>
 
+  <build>
+    <plugins>
+     <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>aspectj-maven-plugin</artifactId>
+        <version>1.9</version>
+        <configuration>
+          <verbose>true</verbose>
+          <showWeaveInfo>false</showWeaveInfo>
+          <complianceLevel>1.8</complianceLevel>
+          <includes>
+            <include>**/*.java</include>
+            <include>**/*.aj</include>
+          </includes>
+          <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
+          <XaddSerialVersionUID>true</XaddSerialVersionUID>
+          <showWeaveInfo>true</showWeaveInfo>
+          <aspectLibraries>
+            <aspectLibrary>
+              <groupId>org.folio</groupId>
+              <artifactId>domain-models-api-aspects</artifactId>
+            </aspectLibrary>
+          </aspectLibraries>
+          <weaveDependencies>
+            <weaveDependency>
+              <groupId>org.jsonschema2pojo</groupId>
+              <artifactId>jsonschema2pojo-core</artifactId>
+            </weaveDependency>
+          </weaveDependencies>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    
+    </plugins>
+  </build>
 </project>
