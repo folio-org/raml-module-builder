@@ -40,11 +40,13 @@ public class JsonSchemaPojoUtil {
     set.add("username");
     Map<Object, Object> jsonField2PojoMap = jsonFields2Pojo(FILE_PATH);
     injectAnnotation(FILE_PATH, "javax.validation.constraints.Null" , set);
-    RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi("C:\\Git\\mod-circulation-storage\\ramls\\loan-policy-storage.raml");
+    RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi(
+      "C:\\Git\\raml-module-builder\\domain-models-api-interfaces\\raml\\sample.raml");
+    //RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi("C:\\Git\\mod-circulation-storage\\ramls\\loan-policy-storage.raml");
     List<GlobalSchema> schema = ramlModelResult.getApiV08().schemas();
     int r = schema.size();
     for (int i = 0; i < r; i++) {
-      List<String> paths = getNodesWithType(new JsonObject(schema.get(i).value().value()), "readonly", true);
+      List<String> paths = getFieldsInSchemaWithType(new JsonObject(schema.get(i).value().value()), "readonly", true);
       System.out.println("*Schema* " + schema.get(i).key() + "");
       paths.stream().forEach(System.out::println);
     }
@@ -172,13 +174,13 @@ public class JsonSchemaPojoUtil {
   }
 
 
-  public static void getNodesWithAllSchemasInRAML(String ramlPath, String type, Object value){
+  public static void getFieldsInAllSchemasInRAMLWithType(String ramlPath, String type, Object value){
 
     RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi(ramlPath);
     List<GlobalSchema> schema = ramlModelResult.getApiV08().schemas();
     int r = schema.size();
     for (int i = 0; i < r; i++) {
-      List<String> paths = getNodesWithType(new JsonObject(schema.get(i).value().value()), type, value);
+      List<String> paths = getFieldsInSchemaWithType(new JsonObject(schema.get(i).value().value()), type, value);
       System.out.println("*Schema* " + schema.get(i).key() + "");
       paths.stream().forEach(System.out::println);
       //System.out.println(paths.size());
@@ -195,17 +197,34 @@ public class JsonSchemaPojoUtil {
    * @return - returns a list of paths within the schema that contain this type = value , the path
    * is dot seperated - so for embedded objects in the schema you would be something like a.b.c
    */
-  public static List<String> getNodesWithType(JsonObject schema, String type, Object value){
+  public static List<String> getFieldsInSchemaWithType(JsonObject schema, String type, Object value){
     if(schema == null){
       return null;
     }
-    List<String> paths = new ArrayList<>();
+    Set<String> paths = new HashSet<>();
     Map<String, Object> map = schema.getMap();
     map.forEach((k,v)->collectNodes(paths, new StringBuffer() , k , v, type, value, false));
-    return paths;
+    return new ArrayList<>(paths);
   }
 
-  private static void collectNodes(List<String> paths, StringBuffer sb, String path, final Object value, String compare2type, Object compare2Val, boolean inArray){
+  public static List<String> getAllFieldsInSchema(JsonObject schema){
+    if(schema == null){
+      return null;
+    }
+    Set<String> paths = new HashSet<>();
+    Map<String, Object> map = schema.getMap();
+    map.forEach((k,v)->collectNodes(paths, new StringBuffer() , k , v, "*", null, false));
+    return new ArrayList<>(paths);
+  }
+
+  public static List<GlobalSchema> getSchemasFromRaml(File path2Raml) {
+    RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi(path2Raml.getAbsolutePath());
+    //get a list of schemas from the raml
+    List<GlobalSchema> schemaListInRAML = ramlModelResult.getApiV08().schemas();
+    return schemaListInRAML;
+  }
+
+  private static void collectNodes(Set<String> paths, StringBuffer sb, String path, final Object value, String compare2type, Object compare2Val, boolean inArray){
     if(path.equals("required")){
       return;
     }
@@ -219,6 +238,10 @@ public class JsonSchemaPojoUtil {
         if(!path.startsWith("$")){
           //dont add objects like $date to the field path as they are descriptive
           sb.append(path).append(".");
+        } else{
+          //but we need to add $ fields otherwise we lose track of hierarchy
+          //so place a dummy value and then remove it
+          sb.append("$$$$").append(".");
         }
         Map<String, Object> map = (Map<String, Object>) value;
         map.forEach((k,v)->collectNodes(paths, sb, k , v, compare2type, compare2Val, "array".equals(((Map)value).get("type"))));
@@ -226,10 +249,15 @@ public class JsonSchemaPojoUtil {
       }
     }
     else {
-     //we are here because this is a node of type object and we are now looking at the
+      //we are here because this is a node of type object and we are now looking at the
       //individual properties
-      if(path.equals(compare2type) && value.equals(compare2Val)){
-        paths.add(sb.toString().substring(0, sb.length()-1));
+      //if("link".equalsIgnoreCase(path)){
+      //  System.out.println("PATH " + path + " , " + sb.toString());
+      //}
+      if((path.equals(compare2type) && value.equals(compare2Val)) || compare2type.equals("*")){
+        if(sb.length() > 0){
+          paths.add(sb.toString().substring(0, sb.length()-1).replace(".$$$$", ""));
+        }
       }
     }
   }

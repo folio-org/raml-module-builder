@@ -7,7 +7,9 @@ import java.io.FilenameFilter;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -19,8 +21,6 @@ import org.raml.jaxrs.codegen.core.Configuration;
 import org.raml.jaxrs.codegen.core.Configuration.JaxrsVersion;
 import org.raml.jaxrs.codegen.core.GeneratorProxy;
 import org.raml.jaxrs.codegen.core.ext.GeneratorExtension;
-import org.raml.v2.api.RamlModelBuilder;
-import org.raml.v2.api.RamlModelResult;
 import org.raml.v2.api.model.v08.api.GlobalSchema;
 
 import io.vertx.core.json.JsonObject;
@@ -38,8 +38,11 @@ public class GenerateRunner {
   private static Configuration configuration = null;
 
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs";
+  private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
+
+  private static Set<String> injectedAnnotations = new HashSet<>();
 
   public static void main(String args[]) throws Exception{
 
@@ -86,6 +89,16 @@ public class GenerateRunner {
       FileUtils.copyDirectory(new File(paths[i]), new File(root+RESOURCE_DEFAULT+"/"+rootPath2RamlDir));
     }
 
+
+    //look for custom fields in the json schemas
+    String customFields = System.getProperties().getProperty("jsonschema.customfield");
+    boolean usingDefaultCustomField = false;
+    if(customFields == null){
+      usingDefaultCustomField = true;
+      customFields = "{\"fieldname\" : \"readonly\" , \"fieldvalue\": true , \"annotation\" : \"javax.validation.constraints.Null\"}";
+    }
+    String schemaCustomFields[] = customFields.split(";");
+
     String []dirs = ramlsDir.split(",");
     for (int i = 0; i < dirs.length; i++) {
       inputDirectory = dirs[i];
@@ -111,6 +124,10 @@ public class GenerateRunner {
           return false;
         }
       });
+
+      Set<String> processedPojos = new HashSet<>();
+      List<List<GlobalSchema>> globalUnprocessedSchemas = new ArrayList<>();
+
       for (int j = 0; j < ramls.length; j++) {
         BufferedReader reader=new BufferedReader(new FileReader(ramls[j]));
         String line=reader.readLine();
@@ -121,62 +138,47 @@ public class GenerateRunner {
           GENERATOR.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
           numMatches++;
 
-          RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi(ramls[j].getAbsolutePath());
-          List<GlobalSchema> schemaList = ramlModelResult.getApiV08().schemas();
-
           //get list of schema to injectedFieldList
           //have a map of top level schemas (schemas used in the raml schema:, etc...) to pojos
           //scan fields in top level pojo list to get referenced pojos
           //the name of their schema will be the jsonproperty annotation name
           //check if for the top level pojo , the embedded objects need annotating
 
-          //contains schemas referenced in the raml (not embedded ones) - to pojo mappings
-          Set<Entry<Object, Object>> o = GlobalSchemaPojoMapperCache.getSchema2PojoMapper().entrySet();
-          o.forEach( entry -> {
-            String schema = FilenameUtils.getName(((URL)entry.getKey()).getPath()); // schema
-            String pojo = (String)entry.getValue(); //pojo generated from that schema
-            int schemasSize = schemaList.size();
-            for (int l = 0; l < schemasSize; l++) {
-              //System.out.println("comparing " + schema + " to " + schemaList.get(l).key());
-              if(schemaList.get(l).key().equalsIgnoreCase(schema)){
-                //get the fields in the schema that contain the field name we are looking for
-                List<String> injectFieldList =
-                    JsonSchemaPojoUtil.getNodesWithType(new JsonObject(schemaList.get(l).value().value()), "readonly", true);
-                String fullPathPojo = outputDirectory + pojo.replace('.', '/') + ".java";
-                System.out.println("-->schema: " + schema + ", pojo: " + fullPathPojo + ", ");
-                System.out.println("Schema content " + schemaList.get(l).value().value());
-                injectFieldList.stream().forEach(System.out::println);
-                try {
-                  System.out.println("updating " + fullPathPojo + " with " + injectFieldList.size() + " annotations");
-                  //JsonSchemaPojoUtil.injectAnnotation(fullPathPojo, "javax.validation.constraints.Null", new HashSet(injectFieldList));
-                } catch (Exception e) {
-                  e.printStackTrace();
-                }
-              }
-            }
-          });
-/*          RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi(ramls[j].getAbsolutePath());
-          //get a list of schemas from the raml
-          List<GlobalSchema> schemaListInRAML = ramlModelResult.getApiV08().schemas();
-          Set<GlobalSchema> ramlSchemaSet = new HashSet<>(schemaListInRAML);
-          int schemasSizeInRAML = schemaListInRAML.size();
-          Map<Object, Object> topLevelSchemas = GlobalSchemaPojoMapperCache.getSchema2PojoMapper();
-          ramlSchemaSet.forEach( gSchema -> {
-            System.out.println(gSchema.key());
-          });
-          topLevelSchemas.forEach( (schema , pojo) -> {
-            System.out.println("-->schema: " + schema + ", pojo: " + pojo + ", ");
-            try {
-              processPojoAndSchema((String)pojo , (String)schema , schemaListInRAML, topLevelSchemas);
-            } catch (Exception e) {
-              e.printStackTrace();
-            }
-          });*/
+          //Set<GlobalSchema> ramlSchemaSet = new HashSet<>(JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]));
+          List<GlobalSchema> schemaList = JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]);
+          //System.out.print("schemas listed in " + ramls[j]);
+          System.out.println("Schemas found in " + ramls[j]);
+          schemaList.forEach( entry -> System.out.println("* " + entry.key()) );
 
+          List<GlobalSchema> unprocessedSchemas = new ArrayList<>();
+          unprocessedSchemas.addAll(schemaList);
+
+          for (int k = 0; k < schemaCustomFields.length; k++) {
+            String message = "";
+            if(usingDefaultCustomField){
+              message = "Using default: ";
+            }
+            System.out.println(message + " custom field " + schemaCustomFields[k]);
+            JsonObject jo = new JsonObject(schemaCustomFields[k]);
+            String fieldName = jo.getString("fieldname");
+            Object fieldValue = jo.getValue("fieldvalue");
+            String annotation = jo.getString("annotation");
+            System.out.println("processing referenced schemas. looking for " + fieldName + " with value " + fieldValue);
+            processReferencedSchemas(schemaList, unprocessedSchemas, processedPojos, fieldName, fieldValue, annotation, k);
+          }
+          globalUnprocessedSchemas.add(unprocessedSchemas);
         }
         else{
           System.out.println(ramls[j] + " has a .raml suffix but does not start with #%RAML");
         }
+      }
+      for (int j = 0; j < schemaCustomFields.length; j++) {
+        JsonObject jo = new JsonObject(schemaCustomFields[j]);
+        String fieldName = jo.getString("fieldname");
+        Object fieldValue = jo.getValue("fieldvalue");
+        String annotation = jo.getString("annotation");
+        System.out.println("processing unreferenced schemas. looking for " + fieldName + " with value " + fieldValue);
+        processRemainingSchemas(outputDirectoryWithPackage, globalUnprocessedSchemas, processedPojos, fieldName, fieldValue, annotation);
       }
       System.out.println("processed: " + numMatches + " raml files");
     }
@@ -190,5 +192,158 @@ public class GenerateRunner {
         type.equalsIgnoreCase("Character") || type.equalsIgnoreCase("char") ||
         type.equalsIgnoreCase("Byte") || type.equalsIgnoreCase("Boolean") ||
         type.equalsIgnoreCase("String") || type.equalsIgnoreCase("int");
-}
+  }
+
+  private static void processReferencedSchemas(List<GlobalSchema> schemaList,
+      List<GlobalSchema> unprocessedSchemas, Set<String> processedPojos, String fieldName, Object fieldValue, String annotation, int k){
+    //contains schemas referenced in the raml (not embedded ones) - to pojo mappings
+    Set<Entry<Object, Object>> o = GlobalSchemaPojoMapperCache.getSchema2PojoMapper().entrySet();
+    o.forEach( entry -> {
+      String schema = FilenameUtils.getName(((URL)entry.getKey()).getPath()); // schema
+      String pojo = (String)entry.getValue(); //pojo generated from that schema
+      processedPojos.add(pojo);
+      int schemasSize = schemaList.size();
+      for (int l = 0; l < schemasSize; l++) {
+        //System.out.println("comparing " + schema + " to " + schemaList.get(l).key());
+        if(schemaList.get(l).key().equalsIgnoreCase(schema)){
+          //get the fields in the schema that contain the field name we are looking for
+          if(k==0){
+            unprocessedSchemas.remove(schemaList.get(l));
+          }
+          List<String> injectFieldList =
+              JsonSchemaPojoUtil.getFieldsInSchemaWithType(new JsonObject(schemaList.get(l).value().value()), fieldName, fieldValue);
+          String fullPathPojo = outputDirectory + pojo.replace('.', '/') + ".java";
+          //System.out.println("-->schema: " + schema + ", pojo: " + fullPathPojo + ", ");
+          //System.out.println("Schema content " + schemaList.get(l).value().value());
+          //injectFieldList.stream().forEach(System.out::println);
+          try {
+            //System.out.println("updating " + fullPathPojo + " with " + injectFieldList.size() + " annotations");
+            //check for dot annotation - split by '.'
+            inject(fullPathPojo, annotation, injectFieldList);
+            //JsonSchemaPojoUtil.injectAnnotation(fullPathPojo, annotation, new HashSet(injectFieldList));
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    });
+  }
+
+  private static void inject(String rootPojo, String annotation, List<String> injectFieldList) throws Exception{
+
+    String outputDirectory =
+        System.getProperties().getProperty("project.basedir") + "/src/main/java/" +
+            MODEL_PACKAGE_DEFAULT.replace('.', '/');
+
+    int injectCount = injectFieldList.size();
+    Set<String> annotateField4RootPojo = new HashSet<>();
+
+    for (int i = 0; i < injectCount; i++) {
+      Map<Object, Object> schemaFields2JavaTypes = JsonSchemaPojoUtil.jsonFields2Pojo(rootPojo);
+      String field = injectFieldList.get(i);
+      System.out.println("Processing field " + field);
+      if(!field.contains(".")){
+        annotateField4RootPojo.add(field);
+      }
+      else {
+        //this is an annotation on an embedded object (json object embedded within a schema)
+        String hierarchyOfObjects[] = field.split("\\.");
+        //loop over the hierarchy. the last entry will be the field name
+        //so we need to loop over the generated objects and then annotate the field name
+        for (int j = 0; j < hierarchyOfObjects.length-1; j++) {
+          //get the java type of the field
+          Object javaType = schemaFields2JavaTypes.get(hierarchyOfObjects[j]);
+          System.out.println("javaType " + javaType + " for " + hierarchyOfObjects[j]);
+          if(javaType != null){
+            //if the type is a list of that type, remove the List<>
+            javaType = ((String)javaType).replaceAll("<", "").replaceAll(">", "").replaceAll("List", "");
+            //build path to the embedded schema generated pojo
+            String pojoPath = outputDirectory + "/" + javaType + ".java";
+            //get fields in that pojo (may not be used)
+            schemaFields2JavaTypes = JsonSchemaPojoUtil.jsonFields2Pojo(pojoPath);
+            if(j == hierarchyOfObjects.length-2){
+              String fieldInPojo = hierarchyOfObjects[hierarchyOfObjects.length-1];
+              Set<String> fields2annotate = new HashSet<>();
+              System.out.println("Adding annotation to " + fieldInPojo + " in " + pojoPath);
+              fields2annotate.add(fieldInPojo);
+              System.out.println("updating " + pojoPath + " with " + fields2annotate.size() + " annotations");
+              if(!injectedAnnotations.contains(pojoPath+fields2annotate+annotation)){
+                injectedAnnotations.add(pojoPath+fields2annotate+annotation);
+                JsonSchemaPojoUtil.injectAnnotation(pojoPath, annotation, fields2annotate);
+              }
+            }
+          }
+        }
+      }
+    }
+    System.out.println("updating " + rootPojo + " with " + annotateField4RootPojo.size() + " annotations, annotation list: ");
+    annotateField4RootPojo.forEach(System.out::println);
+    if(!injectedAnnotations.contains(rootPojo+annotation)){
+      injectedAnnotations.add(rootPojo+annotation);
+      JsonSchemaPojoUtil.injectAnnotation(rootPojo, annotation, new HashSet<>(annotateField4RootPojo));
+    }
+  }
+
+  private static void processRemainingSchemas(String outputDirectoryWithPackage, List<List<GlobalSchema>> globalUnprocessedSchemas,
+      Set<String> processedPojos, String fieldName, Object fieldValue, String annotation) throws Exception {
+    File []pojos = new File(outputDirectoryWithPackage + "/model/").listFiles(new FilenameFilter() {
+
+      @Override
+      public boolean accept(File dir, String name) {
+        if(name.endsWith(".java")){
+          return true;
+        }
+        return false;
+      }
+    });
+    //loop over all pojos in the gen directory, check if the pojos have been processed
+    //meaning mapped to a schema and annotated, if not, then process
+    for (int k = 0; k < pojos.length; k++) {
+      if(!processedPojos.contains(MODEL_PACKAGE_DEFAULT + "." + pojos[k].getName().replace(".java", ""))) {
+        //System.out.println("pojo NOT processed.... " + pojos[k].getAbsolutePath());
+        //get all fields in the pojo to compare them to all fields in each schema so that we
+        //can map a pojo to a schema and then annotate the pojo's field in accordance with the schema
+        Map<Object, Object> fieldsInPojo = JsonSchemaPojoUtil.jsonFields2Pojo(pojos[k].getAbsolutePath());
+        int size1 = globalUnprocessedSchemas.size();
+        //loop over all unprocessed schema across all ramls
+        for (int l = 0; l < size1; l++) {
+          List<GlobalSchema> gsList = globalUnprocessedSchemas.get(l);
+          int size2 = gsList.size();
+          //loop over all schemas for a specific raml
+          for (int m = 0; m < size2; m++) {
+            int counter = 0;
+            GlobalSchema gs = gsList.get(m);
+            //System.out.println("comparing to " + gs.key());
+            List<String> schemaFields = JsonSchemaPojoUtil.getAllFieldsInSchema(new JsonObject(gs.value().value()));
+            int size3 = schemaFields.size();
+            //loop over all fields per schema and check if all fields exist in a specific pojo
+            //if so, then we have mapped the pojo to the schema
+            for (int n = 0; n < size3; n++) {
+              if(fieldsInPojo.size() != schemaFields.size()){
+                break;
+              }
+              if(!fieldsInPojo.containsKey(schemaFields.get(n))){
+                //System.out.println("pojo does not contain " + schemaFields.get(n));
+                break;
+              }
+              counter++;
+            }
+            if(counter == fieldsInPojo.size()){
+              //System.out.println("pojo  " + pojos[k].getAbsolutePath() + " is mapped to " + gs.key());
+              List<String> injectFieldList =
+                  JsonSchemaPojoUtil.getFieldsInSchemaWithType(new JsonObject(gs.value().value()), fieldName, fieldValue);
+              //injectFieldList.stream().forEach(System.out::println);
+              try {
+                //JsonSchemaPojoUtil.injectAnnotation(pojos[k].getAbsolutePath(), annotation, new HashSet(injectFieldList));
+                inject(pojos[k].getAbsolutePath(), annotation, injectFieldList);
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
 }
