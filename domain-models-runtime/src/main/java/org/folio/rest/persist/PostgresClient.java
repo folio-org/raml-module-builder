@@ -487,7 +487,8 @@ public class PostgresClient {
 
           String upsertClause = "";
           if(upsert){
-            upsertClause = " ON CONFLICT (id) DO UPDATE SET " + DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED.jsonb ";
+            upsertClause = " ON CONFLICT ("+idField+") DO UPDATE SET " +
+              DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + " ";
           }
 
           /* do not change to updateWithParams as this will not return the generated id in the reply */
