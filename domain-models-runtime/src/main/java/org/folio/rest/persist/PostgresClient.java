@@ -3,6 +3,7 @@ package org.folio.rest.persist;
 import java.io.File;
 import java.io.FileReader;
 import java.io.StringReader;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -457,6 +458,14 @@ public class PostgresClient {
   }
 
   public void save(String table, String id, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) throws Exception {
+    save(table, id, entity, returnId, false, replyHandler);
+  }
+
+  public void upsert(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+    save(table, id, entity, true, true, replyHandler);
+  }
+
+  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, Handler<AsyncResult<String>> replyHandler) throws Exception {
     long start = System.nanoTime();
 
     client.getConnection(res -> {
@@ -473,11 +482,18 @@ public class PostgresClient {
         if(returnId){
           returning = " RETURNING " + idField;
         }
+
         try {
+
+          String upsertClause = "";
+          if(upsert){
+            upsertClause = " ON CONFLICT (id) DO UPDATE SET " + DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED.jsonb ";
+          }
+
           /* do not change to updateWithParams as this will not return the generated id in the reply */
           connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
-            ") VALUES ("+clientId+"?::JSON)"+ returning,
+            ") VALUES ("+clientId+"?::JSON)" + upsertClause + returning,
             new JsonArray().add(pojo2json(entity)), query -> {
               connection.close();
               if (query.failed()) {
@@ -1337,8 +1353,13 @@ public class PostgresClient {
           else if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME))
               && !columnNames.get(j).equals(idField)){
             try {
-              o.getClass().getMethod(columnNametoCamelCaseWithset(columnNames.get(j)),
-                new Class[] { String.class }).invoke(o, new String[] { tempList.get(i).getString(columnNames.get(j)) });
+              Method m[] = o.getClass().getMethods();
+              for (int k = 0; k < m.length; k++) {
+                if(m[k].getName().equals(columnNametoCamelCaseWithset(columnNames.get(j)))){
+                  o.getClass().getMethod(columnNametoCamelCaseWithset(columnNames.get(j)),
+                    m[k].getParameterTypes()).invoke(o, new Object[] { tempList.get(i).getValue(columnNames.get(j)) });
+                }
+              }
             } catch (Exception e) {
               log.warn("Unable to populate field " + columnNametoCamelCaseWithset(columnNames.get(j))
                 + " for object of type " + clazz.getName());
