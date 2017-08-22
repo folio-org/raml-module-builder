@@ -35,7 +35,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.MetaData;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
@@ -1480,7 +1480,7 @@ public class RestVerticle extends AbstractVerticle {
         userId = j.getString("user_id");
       }
       if(userId != null){
-        MetaData md = new MetaData();
+        Metadata md = new Metadata();
         md.setUpdatedDate(new Date());
         md.setCreatedDate(new Date());
         md.setCreatedByUserId(userId);
@@ -1489,8 +1489,8 @@ public class RestVerticle extends AbstractVerticle {
           /* if a metadata section is passed in by client, we cannot assume it is correct.
            * entity.getClass().getMethod("getMetaData",
           new Class[] { }).invoke(entity);*/
-          entity.getClass().getMethod("setMetaData",
-            new Class[] { MetaData.class }).invoke(entity,  md);
+          entity.getClass().getMethod("setMetadata",
+            new Class[] { Metadata.class }).invoke(entity,  md);
         }
         catch(Exception e){
           //do nothing - if this is thrown then the setMetaData() failed, assume pojo

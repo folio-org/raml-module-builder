@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>13.2.0-SNAPSHOT</version>
+    <version>14.0.0-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-api-interfaces</artifactId>
   <properties>
@@ -162,13 +162,10 @@
                   <key>raml_files</key>
                   <value>${ramlfiles_path},${ramlfiles_util_path}/ramls</value>
                 </systemProperty>
-<!--
                 <systemProperty>
                   <key>jsonschema.customfield</key>
-                  <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"};
-                  {"fieldname" : "readonly" , "fieldvalue": false , "annotation" : "javax.validation.constraints.Null"}</value>
+                  <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"}</value>
                 </systemProperty> 
--->
               </systemProperties>
             </configuration>
           </execution>

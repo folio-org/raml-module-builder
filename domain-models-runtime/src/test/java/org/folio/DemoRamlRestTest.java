@@ -363,7 +363,7 @@ public class DemoRamlRestTest {
         }
         else if (statusCode == 201) {
           response.bodyHandler(responseData -> {
-            String date = (String)new JsonPathParser(responseData.toJsonObject()).getValueAt("metaData.createdDate");
+            String date = (String)new JsonPathParser(responseData.toJsonObject()).getValueAt("metadata.createdDate");
             if(date == null && userIdHeader){
               context.fail("metaData schema createdDate missing from returned json");
             }
