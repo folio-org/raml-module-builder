@@ -658,6 +658,12 @@ It is possible to use a relative path with one set of dot-dots "../" but definit
 [not more](https://issues.folio.org/browse/RMB-30).
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
+NOTE: The schema name of a collection must not end with `.json` to produce the correct class name.
+Examples are `schemaCollection: noteCollection` in
+[note.raml](https://github.com/folio-org/mod-notes/blob/master/ramls/note.raml) and
+`schemaCollection: addresstypeCollection` in
+[addressTypes.raml](https://github.com/folio-org/raml/blob/master/ramls/mod-users/addressTypes.raml).
+
 The documentation of HTTP response codes
 is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java)
 
