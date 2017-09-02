@@ -23,12 +23,16 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.StrSubstitutor;
+import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
 import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.helpers.JoinBy;
+import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.messages.MessageConsts;
@@ -933,7 +937,12 @@ public class PostgresClient {
   }
 
   public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
-      boolean setId, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+      boolean setId, Handler<AsyncResult<Results>> replyHandler) throws Exception {
+    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null, replyHandler);
+  }
+
+  public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
+      boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) throws Exception {
     long start = System.nanoTime();
 
     client.getConnection(res -> {
@@ -954,9 +963,16 @@ public class PostgresClient {
           if (returnCount) {
             select = select + localCountClause;
           }
-          String q = select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
-          log.debug("query = " + q);
-          connection.query(q,
+
+          String []q = new String[]{
+            select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
+          };
+
+          if(facets != null && !facets.isEmpty()){
+            q[0] = buildFacetQuery(table , where, facets, q[0]);
+          }
+          log.info("query = " + q[0]);
+          connection.query(q[0],
             query -> {
             connection.close();
             if (query.failed()) {
@@ -968,7 +984,7 @@ public class PostgresClient {
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
             if(log.isDebugEnabled()){
-              log.debug("timer: get " +q+ " (ns) " + (end-start));
+              log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
             }
           });
         } catch (Exception e) {
@@ -986,6 +1002,28 @@ public class PostgresClient {
     });
   }
 
+  private String buildFacetQuery(String tableName, String where, List<FacetField> facets, String query) throws Exception {
+    String limitClause = "OFFSET [\\d]+ LIMIT [\\d]+";
+    FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + "." + tableName);
+    //ugly hack to remove the offset , limit and order by, fix this with a private get() getting cql
+    //to remove limit and offset normally
+    String strippedWhere = where.replaceAll(limitClause, "").replaceAll(" ORDER BY .*", "");
+    fm.setWhere(strippedWhere);
+    fm.setSupportFacets(facets);
+
+    Pattern pattern = Pattern.compile(limitClause);
+    Matcher matcher = pattern.matcher(where);
+
+    while(matcher.find()) {
+      fm.setLimitClause(matcher.group(0));
+      System.out.println("found: " + matcher.group(0));
+    }
+
+    fm.setMainQuery(query.replaceAll(limitClause, ""));
+    log.info( "facet query " + fm.generateFacetQuery());
+
+    return fm.generateFacetQuery();
+  }
 
 
   /**
@@ -999,26 +1037,26 @@ public class PostgresClient {
    * @throws Exception
    */
   //@Timer
-  public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+  public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Results>> replyHandler) throws Exception {
     get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo2json(entity) + "' ", returnCount, true, true, replyHandler);
   }
 
-  public void get(String table, Object entity, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+  public void get(String table, Object entity, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Results>> replyHandler) throws Exception {
     boolean setId = true;
     if(returnIdField == false){
-      //if no id fields then cannot setId from extrnal column into json object
+      //if no id fields then cannot setId from external column into json object
       setId = false;
     }
     get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo2json(entity) + "' ", returnCount, returnIdField, setId, replyHandler);
   }
 
-  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Results>> replyHandler) throws Exception {
     get(table, entity, fields, returnCount, returnIdField, -1, -1, replyHandler);
   }
 
-  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, int offset, int limit, Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, int offset, int limit, Handler<AsyncResult<Results>> replyHandler) throws Exception {
     boolean setId = true;
     if(returnIdField == false){
       //if no id fields then cannot setId from extrnal column into json object
@@ -1045,22 +1083,28 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
     throws Exception {
     get(table, clazz, filter, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
+  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results>> replyHandler) throws Exception {
+    get(table, clazz, fields, filter, returnCount, setId, null, replyHandler);
+  }
+
+  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId,
+      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler)
       throws Exception {
     String where = "";
     if(filter != null){
       where = filter.toString();
     }
     String fieldsStr = Arrays.toString(fields);
-    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
+    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, facets, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String[] fields, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
+  public void get(String table, Class<?> clazz, String[] fields, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
       throws Exception {
     String where = "";
     if(filter != null){
@@ -1070,7 +1114,7 @@ public class PostgresClient {
     get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
+  public void get(String table, Class<?> clazz, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
       throws Exception {
     String where = "";
     if(filter != null){
@@ -1079,19 +1123,25 @@ public class PostgresClient {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, where, returnCount, setId, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
       throws Exception {
     get(table, clazz, fields, filter, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Object[]>> replyHandler)
+  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
       throws Exception {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, boolean setId, Handler<AsyncResult<Object[]>> replyHandler)
+  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
       throws Exception {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, replyHandler);
+  }
+
+  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, boolean setId, List<FacetField> facets,
+      Handler<AsyncResult<Results>> replyHandler)
+      throws Exception {
+    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, facets, replyHandler);
   }
 
   /**
@@ -1105,7 +1155,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
-      Handler<AsyncResult<Object[]>> replyHandler) throws Exception {
+      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) throws Exception {
 
     StringBuilder sb = new StringBuilder();
     StringBuilder fromClauseFromCriteria = new StringBuilder();
@@ -1117,7 +1167,12 @@ public class PostgresClient {
       }
     }
     get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
-      returnCount, true, setId, replyHandler);
+      returnCount, true, setId, facets, replyHandler);
+  }
+
+  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results>> replyHandler) throws Exception {
+    get(table, clazz, filter, returnCount, setId, null, replyHandler);
   }
 
 
@@ -1299,17 +1354,19 @@ public class PostgresClient {
     join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
   }
 
-  private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
+  private Results processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
     return processResult(rs, clazz, count, true);
   }
 
-  private Object[] processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count, boolean setId) {
+  private Results processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count, boolean setId) {
     long start = System.nanoTime();
     Object[] ret = new Object[2];
     List<Object> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
     List<String> columnNames = rs.getColumnNames();
     int columnNamesCount = columnNames.size();
+    Map<String, org.folio.rest.jaxrs.model.Facet> rInfo = new HashMap<>();
+
     int rowCount = rs.getNumRows();
     if (rowCount > 0 && count) {
       rowCount = rs.getResults().get(0).getInteger(0);
@@ -1330,13 +1387,30 @@ public class PostgresClient {
       }
     }
 
+    int facetEntriesInResultSet = 0;
+
     for (int i = 0; i < tempList.size(); i++) {
       try {
         Object jo = tempList.get(i).getValue(DEFAULT_JSONB_FIELD_NAME);
         Object id = tempList.get(i).getValue(idField);
         Object o = null;
         if(!isAuditFlavored && jo != null){
-          o = mapper.readValue(jo.toString(), clazz);
+          try {
+            //is this a facet entry - if so process it, otherwise will throw an exception
+            //and continue trying to map to the pojos
+            o =  mapper.readValue(jo.toString(), org.folio.rest.jaxrs.model.Facet.class);
+            org.folio.rest.jaxrs.model.Facet facet = rInfo.get(((org.folio.rest.jaxrs.model.Facet)o).getType());
+            if(facet == null){
+              rInfo.put(((org.folio.rest.jaxrs.model.Facet)o).getType(), (org.folio.rest.jaxrs.model.Facet)o);
+            }
+            else{
+              facet.getFacetValues().add(((org.folio.rest.jaxrs.model.Facet)o).getFacetValues().get(0));
+            }
+            facetEntriesInResultSet = facetEntriesInResultSet+1;
+            continue;
+          } catch (Exception e) {
+            o = mapper.readValue(jo.toString(), clazz);
+          }
         }
         else{
           o = clazz.newInstance();
@@ -1377,14 +1451,23 @@ public class PostgresClient {
         list.add(null);
       }
     }
-    ret[0] = list;
-    ret[1] = rowCount;
+
+    ResultInfo rn = new ResultInfo();
+    rInfo.forEach( (k , v ) -> {
+      rn.getFacets().add(v);
+    });
+    rn.setTotalRecords(rowCount);
+
+    Results r = new Results();
+    r.setResults(list);
+    r.setResultInfo(rn);
+
     long end = System.nanoTime();
     StatsTracker.addStatElement(STATS_KEY+".processResult", (end-start));
     if(log.isDebugEnabled()){
       log.debug("timer: process results (ns) " + (end-start));
     }
-    return ret;
+    return r;
   }
 
   /**

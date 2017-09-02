@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import java.io.Reader;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
@@ -28,7 +29,7 @@ public class BooksDemoAPI implements RmbtestsResource {
   @Validate
   @Override
   public void getRmbtestsBooks(String author, BigDecimal publicationYear, BigDecimal rating,
-      String isbn, Map<String, String> okapiHeaders,
+      String isbn, List<String> facets, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetRmbtestsBooksResponse.withJsonOK(new Book())));

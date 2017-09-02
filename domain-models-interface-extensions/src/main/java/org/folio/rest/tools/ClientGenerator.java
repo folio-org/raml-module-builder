@@ -337,7 +337,7 @@ public class ClientGenerator {
 
   }
 
-  private void addParameter(JBlock methodBody, JVar queryParams, String valueName, Boolean encode, Boolean simple) {
+  private void addParameter(JBlock methodBody, JVar queryParams, String valueName, Boolean encode, Boolean simple, boolean isList) {
     JBlock b = methodBody;
     if (!simple) {
       JConditional _if = methodBody._if(JExpr.ref(valueName).ne(JExpr._null()));
@@ -345,10 +345,15 @@ public class ClientGenerator {
     }
     b.invoke(queryParams, "append").arg(JExpr.lit(valueName + "="));
     if (encode) {
-      JExpression expr = jCodeModel.ref(java.net.URLEncoder.class).staticInvoke("encode").arg(JExpr.ref(valueName)).arg("UTF-8");
-      b.invoke(queryParams, "append").arg(expr);
+        JExpression expr = jCodeModel.ref(java.net.URLEncoder.class).staticInvoke("encode").arg(JExpr.ref(valueName)).arg("UTF-8");
+        b.invoke(queryParams, "append").arg(expr);
     } else {
-      b.invoke(queryParams, "append").arg(JExpr.ref(valueName));
+      if(isList){
+        b.directStatement("if("+valueName+".getClass().isArray())"
+            +"{queryParams.append(String.join(\"&"+valueName+"=\"," +valueName+"));}");
+      } else{
+        b.invoke(queryParams, "append").arg(JExpr.ref(valueName));
+      }
     }
     b.invoke(queryParams, "append").arg(JExpr.lit("&"));
   }
@@ -479,29 +484,32 @@ public class ClientGenerator {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
           encode = true;
-          addParameter(methodBody, queryParams, valueName, encode, false);
+          addParameter(methodBody, queryParams, valueName, encode, false, false);
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
-          addParameter(methodBody, queryParams, valueName, encode, true);
+          addParameter(methodBody, queryParams, valueName, encode, true, false);
         } else if (valueType.contains("boolean")) {
           method.param(boolean.class, valueName);
-          addParameter(methodBody, queryParams, valueName, encode, true);
+          addParameter(methodBody, queryParams, valueName, encode, true, false);
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
-          addParameter(methodBody, queryParams, valueName, encode, false);
+          addParameter(methodBody, queryParams, valueName, encode, false, false);
         } else if (valueType.contains("Integer")) {
             method.param(Integer.class, valueName);
-            addParameter(methodBody, queryParams, valueName, encode, false);
+            addParameter(methodBody, queryParams, valueName, encode, false, false);
         } else if (valueType.contains("Boolean")) {
             method.param(Boolean.class, valueName);
-            addParameter(methodBody, queryParams, valueName, encode, false);
+            addParameter(methodBody, queryParams, valueName, encode, false, false);
+        }else if (valueType.contains("List")) {
+          method.param(String[].class, valueName);
+          addParameter(methodBody, queryParams, valueName, encode, false, true);
         }else { // enum object type
           try {
             String enumClazz = replaceLast(valueType, ".", "$");
             Class<?> enumClazz1 = Class.forName(enumClazz);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
-              addParameter(methodBody, queryParams, valueName, encode, false);
+              addParameter(methodBody, queryParams, valueName, encode, false, false);
             }
           } catch (Exception ee) {
             ee.printStackTrace();

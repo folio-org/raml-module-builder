@@ -2,6 +2,7 @@ package org.folio;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -17,6 +18,7 @@ import javax.mail.internet.MimeMultipart;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
+import org.folio.rest.client.RmbtestsClient;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
@@ -137,6 +139,7 @@ public class DemoRamlRestTest {
     ObjectMapper om = new ObjectMapper();
     String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 422, 1, "application/json", "abcdefg", false);
+
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=author", Buffer.buffer(book), 200, 1,
       "application/json", "abcdefg", false);
     postData(context, "http://localhost:" + port + "/rmbtests/books?validate_field=data.description", Buffer.buffer(book), 200, 1,
@@ -173,6 +176,17 @@ public class DemoRamlRestTest {
 
     //use generated client
     checkClientCode(context);
+
+    RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
+    String[] facets = new String[]{"author:10", "name:5"};
+    testClient.getBooks("aaa", new BigDecimal(1999), null, null, facets, handler -> {
+      if(handler.statusCode() != 200){
+        context.fail();
+      }
+      else{
+        System.out.println(handler.statusCode() + "----------------------------------------- passed ---------------------------");
+      }
+    });
   }
 
   /**

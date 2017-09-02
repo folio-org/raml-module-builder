@@ -254,7 +254,8 @@ public class JsonSchemaPojoUtil {
       //if("link".equalsIgnoreCase(path)){
       //  System.out.println("PATH " + path + " , " + sb.toString());
       //}
-      if((path.equals(compare2type) && value.equals(compare2Val)) || compare2type.equals("*")){
+      if((path.equals(compare2type) && value.equals(compare2Val)) || compare2type.equals("*") ||
+          (path.equals(compare2type) && value.equals("*"))){
         if(sb.length() > 0){
           paths.add(sb.toString().substring(0, sb.length()-1).replace(".$$$$", ""));
         }

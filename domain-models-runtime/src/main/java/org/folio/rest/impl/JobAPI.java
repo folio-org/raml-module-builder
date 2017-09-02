@@ -1,11 +1,5 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Handler;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +23,12 @@ import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.OutStream;
+
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Handler;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * API to add job configurations and job instances associated with the job configurations
@@ -63,7 +63,7 @@ public class JobAPI implements JobsResource {
             criterion, true, reply -> {
                 JobsConfs ps = new JobsConfs();
                 @SuppressWarnings("unchecked")
-                List<JobConf> jobConfs = (List<JobConf>) reply.result()[0];
+                List<JobConf> jobConfs = (List<JobConf>) reply.result().getResults();
                 ps.setJobConfs(jobConfs);
                 ps.setTotalRecords(jobConfs.size());
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsResponse.withJsonOK(ps)));
@@ -133,7 +133,7 @@ public class JobAPI implements JobsResource {
           PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.JOB_CONF_COLLECTION, JobConf.class,
             new Criterion(c), true, reply -> {
               @SuppressWarnings("unchecked")
-              List<JobConf> confs = (List<JobConf>) reply.result()[0];
+              List<JobConf> confs = (List<JobConf>) reply.result().getResults();
               if (confs.isEmpty()) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
                   GetJobsJobconfsByJobconfsIdResponse.withPlainNotFound("JobConf "
@@ -270,7 +270,7 @@ public class JobAPI implements JobsResource {
             true, reply -> {
               try {
                 @SuppressWarnings("unchecked")
-                List<Job> jobs = (List<Job>) reply.result()[0];
+                List<Job> jobs = (List<Job>) reply.result().getResults();
                 Jobs jobList = new Jobs();
                 jobList.setJobs(jobs);
                 jobList.setTotalRecords(jobs.size());
@@ -353,7 +353,7 @@ public class JobAPI implements JobsResource {
             reply -> {
               try {
                 @SuppressWarnings("unchecked")
-                List<Job> job = (List<Job>) reply.result()[0];
+                List<Job> job = (List<Job>) reply.result().getResults();
                 if (job.isEmpty()) {
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
                     GetJobsJobconfsByJobconfsIdJobsByJobIdResponse.withPlainNotFound("Job "
@@ -499,7 +499,7 @@ public class JobAPI implements JobsResource {
             reply -> {
               try {
                 @SuppressWarnings("unchecked")
-                List<Bulk> bulks = (List<Bulk>) reply.result()[0];
+                List<Bulk> bulks = (List<Bulk>) reply.result().getResults();
                 Bulks bulkList = new Bulks();
                 bulkList.setBulks(bulks);
                 bulkList.setTotalRecords(bulks.size());
