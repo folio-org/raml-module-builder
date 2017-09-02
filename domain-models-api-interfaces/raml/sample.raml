@@ -7,11 +7,15 @@ version: v1
 schemas:
   - book: !include book.schema
   - raml-util/schemas/metadata.schema: !include raml-util/schemas/metadata.schema
+  - raml-util/schemas/resultInfo.schema: !include raml-util/schemas/resultInfo.schema
+ 
+traits:
+  - facets: !include raml-util/traits/facets.raml
  
 /rmbtests:
   /books:
-    /{bookTitle}:
     get:
+      is: [facets]
       queryParameters:
         author:
           displayName: Author
