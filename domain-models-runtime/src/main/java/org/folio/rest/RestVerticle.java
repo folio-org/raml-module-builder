@@ -1351,7 +1351,7 @@ public class RestVerticle extends AbstractVerticle {
                 paramArray[order] = Boolean.valueOf(param);
               }
             } else if (valueType.contains("List")) {
-              List<String> vals = queryParams.getAll("include");
+              List<String> vals = queryParams.getAll(valueName);
               if (vals == null) {
                 paramArray[order] = null;
               }
