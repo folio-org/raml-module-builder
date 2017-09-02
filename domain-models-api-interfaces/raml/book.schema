@@ -9,8 +9,7 @@
           "type":"string"
         },
         "title":{
-          "type":"string",
-          "readOnly": true
+          "type":"string"
         },
         "description":{
           "type": "null"
@@ -36,7 +35,6 @@
       "required":[
         "title",
         "description",
-        "datetime",
         "genre",
         "author",
         "link"
@@ -46,16 +44,22 @@
       "type":"string"
     },
     "success":{
-      "type":"boolean"
+      "type":"boolean",
+      "readonly" : false
     },
     "image":{
       "type":"string"
     },
     "status":{
       "type":"integer"
-    },        
-    "metaData": {
-      "$ref": "raml-util/schemas/metadata.schema"
+    },       
+    "metadata": {
+      "$ref": "raml-util/schemas/metadata.schema",
+      "readonly" : true
+    },       
+    "resultInfo": {
+      "$ref": "raml-util/schemas/resultInfo.schema",
+      "readonly" : true
     }
   },
   "additionalProperties": false,

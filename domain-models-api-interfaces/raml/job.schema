@@ -12,7 +12,8 @@
       "type": "string"
     },
     "creator": {
-      "type": "string"
+      "type": "string",
+      "readonly": true
     },
     "job_conf_id": {
       "type": "string"
@@ -35,7 +36,8 @@
     },
     "parameters": {
       "type": "object",
-      "$ref" : "raml-util/schemas/parameters.schema"
+      "$ref" : "raml-util/schemas/parameters.schema",
+      "readonly": true
     }
   },
   "required": [
