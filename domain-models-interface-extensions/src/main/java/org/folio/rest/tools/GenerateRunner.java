@@ -208,6 +208,7 @@ public class GenerateRunner {
         if(schemaList.get(l).key().equalsIgnoreCase(schema)){
           //get the fields in the schema that contain the field name we are looking for
           if(k==0){
+            //remove from list of unprocessed schemas as we are now processing this schema
             unprocessedSchemas.remove(schemaList.get(l));
           }
           List<String> injectFieldList =
@@ -239,9 +240,11 @@ public class GenerateRunner {
     Set<String> annotateField4RootPojo = new HashSet<>();
 
     for (int i = 0; i < injectCount; i++) {
+      //get a map between the json schema field (to compare to the injectFieldList) - to the
+      //java type mapped to this json schema field
       Map<Object, Object> schemaFields2JavaTypes = JsonSchemaPojoUtil.jsonFields2Pojo(rootPojo);
       String field = injectFieldList.get(i);
-      System.out.println("Processing field " + field);
+      //System.out.println("Processing field " + field);
       if(!field.contains(".")){
         annotateField4RootPojo.add(field);
       }
