@@ -4,13 +4,13 @@ with facets as (
     ${facet.fieldPath} as ${facet.alias},
   </#list>
   count(*) as cnt,
-  count(id) OVER() AS count,
+  count(${idField}) OVER() AS count,
   ${idField}
      FROM
       ${table}    
       ${where}
     GROUP BY GROUPING SETS (
-      id,
+      ${idField},
       <#list facets as facet>
         ${facet.alias}<#sep>,
       </#list>

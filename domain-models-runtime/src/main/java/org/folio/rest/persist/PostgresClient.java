@@ -1009,6 +1009,7 @@ public class PostgresClient {
   }
 
   private String buildFacetQuery(String tableName, String where, List<FacetField> facets, String query) throws Exception {
+    long start = System.nanoTime();
     String limitClause = "OFFSET [\\d]+ LIMIT [\\d]+";
     FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + "." + tableName);
     //ugly hack to remove the offset , limit and order by, fix this with a private get() getting cql
@@ -1027,6 +1028,8 @@ public class PostgresClient {
 
     fm.setMainQuery(query.replaceAll(limitClause, ""));
     //log.info( "facet query " + fm.generateFacetQuery());
+    long end = System.nanoTime();
+    log.debug( "timer: buildFacetQuery (ns) " + (end - start));
 
     return fm.generateFacetQuery();
   }
