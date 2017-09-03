@@ -964,6 +964,12 @@ public class PostgresClient {
             select = select + localCountClause;
           }
 
+          if(!"null".equals(fieldName) && fieldName.contains("*")){
+            //if we are requesting all fields (*) , then dont add the id field to the select
+            //this will return two id columns which will create ambiguity in facet queries
+            addIdField = "";
+          }
+
           String []q = new String[]{
             select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
           };
@@ -971,7 +977,7 @@ public class PostgresClient {
           if(facets != null && !facets.isEmpty()){
             q[0] = buildFacetQuery(table , where, facets, q[0]);
           }
-          log.info("query = " + q[0]);
+          log.debug("query = " + q[0]);
           connection.query(q[0],
             query -> {
             connection.close();
@@ -1010,7 +1016,7 @@ public class PostgresClient {
     String strippedWhere = where.replaceAll(limitClause, "").replaceAll(" ORDER BY .*", "");
     fm.setWhere(strippedWhere);
     fm.setSupportFacets(facets);
-
+    fm.setIdField(idField);
     Pattern pattern = Pattern.compile(limitClause);
     Matcher matcher = pattern.matcher(where);
 
@@ -1020,7 +1026,7 @@ public class PostgresClient {
     }
 
     fm.setMainQuery(query.replaceAll(limitClause, ""));
-    log.info( "facet query " + fm.generateFacetQuery());
+    //log.info( "facet query " + fm.generateFacetQuery());
 
     return fm.generateFacetQuery();
   }
@@ -1419,8 +1425,8 @@ public class PostgresClient {
          * if there is an update_date column in the record - try to populate a field updateDate in the
          * jsonb object - this allows to use the DB for things like triggers to populate the update_date
          * automatically, but still push them into the jsonb object - the json schema must declare this field
-         * as well - also support the audit mode descrbed above. Note that currently only string valued columns
-         * are supported - NOTE that the query must request any field it wants to get populated into the jsonb obj*/
+         * as well - also support the audit mode descrbed above.
+         * NOTE that the query must request any field it wants to get populated into the jsonb obj*/
         for (int j = 0; j < columnNamesCount; j++) {
           if(columnNames.get(j).equals("count")){
             rowCount = tempList.get(i).getLong(columnNames.get(j)).intValue();

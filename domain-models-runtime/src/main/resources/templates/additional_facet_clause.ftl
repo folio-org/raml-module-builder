@@ -9,9 +9,10 @@
                 'count', cnt)
             )
         ) AS jsonb,
+        ${idField},
        count AS count
     FROM facets
      where ${facet.alias} is not null
-     group by ${facet.alias}, cnt, count
+     group by ${facet.alias}, cnt, count, ${idField}
      order by cnt desc
      )

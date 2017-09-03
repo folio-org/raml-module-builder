@@ -30,6 +30,7 @@ public class FacetManager {
   private String mainQuery;
   private String where = "";
   private String limitClause = "";
+  private String idField ="";
   private List<FacetField> facets;
   private Map<String, Object> templateInput = new HashMap<>();
 
@@ -75,6 +76,8 @@ public class FacetManager {
     templateInput.put("mainQuery", this.mainQuery);
 
     templateInput.put("limitClause", this.limitClause);
+
+    templateInput.put("idField", idField);
 
     Template template = cfg.getTemplate("base_facet_query.ftl");
 
@@ -157,6 +160,14 @@ public class FacetManager {
    */
   public void setMainQuery(String mainQuery) {
     this.mainQuery = mainQuery;
+  }
+
+  public String getIdField() {
+    return idField;
+  }
+
+  public void setIdField(String idField) {
+    this.idField = idField;
   }
 
   public static void main(String args[]) throws Exception {
