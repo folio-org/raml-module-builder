@@ -44,7 +44,7 @@ public class FacetManager {
       //do this ONLY ONCE
       FacetManager.cfg = new Configuration(new Version(2, 3, 26));
       // Where do we load the templates from:
-      cfg.setClassForTemplateLoading(FacetManager.class, "/templates");
+      cfg.setClassForTemplateLoading(FacetManager.class, "/templates/facets");
       cfg.setDefaultEncoding("UTF-8");
       cfg.setLocale(Locale.US);
       cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
