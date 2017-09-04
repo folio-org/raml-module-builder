@@ -1,3 +1,10 @@
+## 14.0.0
+
+* RMB-59 implement faceting framework
+* RMB-51 add read only field usage
+* RMB-57 Add upsert support to rmb db client
+* RMB-52 Change name of expected metadata property
+
 ## 13.1.0
 
 * RMB-48 implement handling of meta-data section in RMB

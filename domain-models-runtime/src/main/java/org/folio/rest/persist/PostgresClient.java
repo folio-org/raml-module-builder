@@ -1008,6 +1008,16 @@ public class PostgresClient {
     });
   }
 
+  /**
+   * function uses freemarker templating, the template will be loaded the first time
+   * should take about 70-80 milli - after that the template gets cached and will be sub milli
+   * @param tableName
+   * @param where
+   * @param facets
+   * @param query
+   * @return
+   * @throws Exception
+   */
   private String buildFacetQuery(String tableName, String where, List<FacetField> facets, String query) throws Exception {
     long start = System.nanoTime();
     String limitClause = "OFFSET [\\d]+ LIMIT [\\d]+";
@@ -1023,7 +1033,6 @@ public class PostgresClient {
 
     while(matcher.find()) {
       fm.setLimitClause(matcher.group(0));
-      System.out.println("found: " + matcher.group(0));
     }
 
     fm.setMainQuery(query.replaceAll(limitClause, ""));
