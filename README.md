@@ -1239,6 +1239,33 @@ For example:
 ```
 3. When building your module, an additional parameter will be added to the generated interfaces of the faceted endpoints. `List<String> facets`. You can simply convert this list into a List of Facet objects using the RMB tool as follows: `List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");` and pass the `facetList` returned to the `postgresClient`'s `get()` methods.
 
+## Json Schema fields
+
+It is possible to indicate that a field in the json is a readonly field when declaring the schema. `"readonly": true`. From example:
+```
+    "resultInfo": {
+      "$ref": "raml-util/schemas/resultInfo.schema",
+      "readonly" : true
+    }
+```
+A `readonly` field is not allowed to be passed in as part of the request. A request that contains data for a field that was declared as `readonly` will throw a validation error by RMB.
+
+This is part of a framework exposed by RMB which allows creating a field and associating a validation constraint on that field.
+
+To add a custom field, add a system property (in the configuration) to the plugin definition (in the pom.xml) running the `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
+
+for example:
+```
+<systemProperty>
+    <key>jsonschema.customfield</key>
+    <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"}</value>
+</systemProperty> 
+```
+
+the `jsonschema.customfield` key can contain multiple json values (delimited by a `;`). Each json indicates a field name + a field value to match against - and a validation annotation to apply. So, getting back to the readonly field, the example above indicates that a field in the json schema that has been tagged with the `readonly` field can not contain data when passed in as part of the request.
+A list of available annotations:
+https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
+
 ## Drools integration
 
 The RMB framework automatically scans the `/resources/rules` path in an implemented project for
