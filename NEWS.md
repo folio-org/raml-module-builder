@@ -1,9 +1,9 @@
 ## 14.0.0
 
-* RMB-59 implement faceting framework
+* RMB-59 implement faceting framework (breaks backwards compatibility - postgresClient's get() now returns a org.folio.rest.persist.interfaces.Result object and not an Object[])
 * RMB-51 add read only field usage
 * RMB-57 Add upsert support to rmb db client
-* RMB-52 Change name of expected metadata property
+* RMB-52 Change name of expected metadata property (breaks backwards compatibility)
 
 ## 13.1.0
 
