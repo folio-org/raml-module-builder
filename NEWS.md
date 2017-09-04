@@ -4,6 +4,7 @@
 * RMB-51 add read only field usage
 * RMB-57 Add upsert support to rmb db client
 * RMB-52 Change name of expected metadata property (breaks backwards compatibility)
+* RMB-60 Mark vertx-unit to compile scope (breaking change for modules that use the vertx-unit packaged in RMB)
 
 ## 13.1.0
 
