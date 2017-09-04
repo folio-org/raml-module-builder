@@ -1213,6 +1213,32 @@ A CQL querying example:
 http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20sortBy%20enabled
 ```
 
+## Facet Support
+
+RMB also allows easy faceting of result sets. The grouping / faceting is done in the database.
+To add faceting to your API.
+1. Add the [faceting RAML trait](https://github.com/folio-org/raml/blob/master/traits/facets.raml) to your RAML and reference it from the endpoint (using the is:[])
+    - facet query parameter format: `facets=a.b.c` , or `facets=a.b.c:10` , they are repeating.
+2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas. 
+For example:
+```
+ "type": "object",
+  "properties": {
+    "items": {
+      "id": "items",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref" : "item.json"
+      }
+    },
+    "resultInfo": {
+      "type": "object",
+      "$ref": "resultInfo.schema"
+    } 
+```
+3. When building your module, an additional parameter will be added to the generated interfaces of the faceted endpoints. `List<String> facets`. You can simply convert this list into a List of Facet objects using the RMB tool as follows: `List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");` and pass the `facetList` returned to the `postgresClient`'s `get()` methods.
+
 ## Drools integration
 
 The RMB framework automatically scans the `/resources/rules` path in an implemented project for
