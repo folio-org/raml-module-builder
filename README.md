@@ -1215,7 +1215,7 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Metadata
 
-RMB is aware of the [metada.schema](https://github.com/folio-org/raml/blob/master/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB willl check if the passed in json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the currect user and the currest time. RMB will set both update and create values to the same data/time and to the same user as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using triggers see [metadata.sql](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata/metadata.sql)
+RMB is aware of the [metada.schema](https://github.com/folio-org/raml/blob/master/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB willl check if the json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the currect user and the currest time. RMB will set both update and create values to the same data/time and to the same user as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using triggers see [metadata.sql](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata/metadata.sql)
 
 ## Facet Support
 
@@ -1560,7 +1560,7 @@ The RMB has some tools available to help:
 
 #### HTTP Requests
 
-The `HttpModuleClient` class exposes a basic HTTP Client.
+The `HttpModuleClient2` class exposes a basic HTTP Client.
 The full constructor takes the following parameters
  - host
  - port
@@ -1574,6 +1574,12 @@ The full constructor takes the following parameters
     HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
     Response response = hc.request("/groups");
 ```
+
+It is recommended to use the `HttpClientFactory` to get an instance of the `HttpModuleClient2`.
+The factory will then return either the actual `HttpModuleClient2` class or an instance of the `HttpClientMock2`. To return an instance of the mock client , set the mock mode flag in the vertx config. one way to do this:
+`new DeploymentOptions().setConfig(new JsonObject().put(HttpClientMock2.MOCK_MODE, "true"));`
+See [mock_content.json](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/resources/mock_content.json) for an example of how to associate a url with mocked data and headers
+
 The client returns a `Response` object. The `Response` class has the following members:
   - endpoint - url the response came from
   - code - http returned status code for request
@@ -1583,7 +1589,7 @@ The client returns a `Response` object. The `Response` class has the following m
   - (Throwable) exception - if an exception was thrown during the API call
 
 
-The `HttpModuleClient request` function can receive the following parameters:
+The `HttpModuleClient2 request` function can receive the following parameters:
  - `HttpMethod` - (default: GET)
  - `endpoint` - API endpoint
  - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
@@ -1650,19 +1656,43 @@ For example:
 See the `JsonPathParser` class for more info.
 
 
-### A full example
+### An example
 
     //create a client
-    HttpModuleClient hClient = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
-    //make a request to the user groups endpoint
-    Response groupResponse = hClient.request("/groups?group=on_campus");
-    //make another request to the users endpoint and append a cql query string with the id of all entries
-    //returned from the request made to the user groups endpoint
-    Response userResponse = hClient.request("/users", new BuildCQL(groupResponse, "usergroups[*].id", "patron_group"));
-    //join the values within the users response and the values in the user groups response - injecting the value
-    //from the 'group' field in each user group returned into the 'patron_group' field - do this when the patron_group value
-    //in the users objects equals the id value in the user groups object
-    userResponse.joinOn("users[*].patron_group", groupResponse, "usergroups[*].id", "group", "patron_group", false);
+    HttpClientInterface client = HttpClientFactory.getHttpClient(okapiURL, tenant);
+    //make a request
+    CompletableFuture<Response> response1 = client.request(url, okapiHeaders);
+    //chain a request to the previous request, the placeholder {users[0].username}
+    //means that the value appearing in the first user[0]'s username in the json returned
+    //in response1 will be injected here
+    //the handlePreviousResponse() is a function you code and will receive the response
+    //object (containing headers / body / etc,,,) of response1 so that you can decide what to do
+    //before the chainedRequest is issued - see example below
+    //the chained request will not be sent if the previous response (response1) has completed with
+    //an error
+    response1.thenCompose(client.chainedRequest("/authn/credentials/{users[0].username}", 
+        okapiHeaders, null, handlePreviousResponse());
+    
+        Consumer<Response> handlePreviousResponse(){
+            return (response) -> {
+                int statusCode = response.getCode();
+                boolean ok = Response.isSuccess(statusCode);
+                //if not ok, return error
+            };
+        }
+    
+    //if you send multiple chained Requests based on response1 you can use the 
+    //CompletableFuture.allOf() to wait till they are all complete
+    //or you can chain one request to another in a pipeline manner as well
+    
+    //you can also generate a cql query param as part of the chained request based on the 
+    //response of the previous response. the below will create a username=<value> cql clause for
+    //every value appearing in the response1 json's users array -> username
+    response1.thenCompose(client.chainedRequest("/authn/credentials", okapiHeaders, new BuildCQL(null, "users[*].username", "username")),...
+    
+    //join the values within 2 responses - injecting the value from a field in one json into the field of another json when a constraint between the two jsons exists (like field a from json 1 equals field c from json 2)
+    //compare all users->patron_groups in response1 to all usergroups->id in groupResponse, when there is a match, push the group field in the specific entry of groupResonse into the patron_group field in the specific entry in the response1 json
+    response1.joinOn("users[*].patron_group", groupResponse, "usergroups[*].id", "group", "patron_group", false);
     //close the http client
     hClient.closeClient();
 
