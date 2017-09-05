@@ -1222,7 +1222,7 @@ RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/mas
 RMB also allows easy faceting of result sets. The grouping / faceting is done in the database.
 To add faceting to your API.
 1. Add the [faceting RAML trait](https://github.com/folio-org/raml/blob/master/traits/facets.raml) to your RAML and reference it from the endpoint (using the is:[])
-    - facet query parameter format: `facets=a.b.c` , or `facets=a.b.c:10` , they are repeating.
+    - facet query parameter format: `facets=a.b.c` , or `facets=a.b.c:10` , they are repeating. For example ?facets=active&facets=personal.lastName
 2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas. 
 For example:
 ```
