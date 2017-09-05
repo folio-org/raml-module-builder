@@ -1234,7 +1234,7 @@ For example:
     },
     "resultInfo": {
       "type": "object",
-      "$ref": "resultInfo.schema"
+      "$ref": "raml-util/schemas/resultInfo.schema"
     } 
 ```
 3. When building your module, an additional parameter will be added to the generated interfaces of the faceted endpoints. `List<String> facets`. You can simply convert this list into a List of Facet objects using the RMB tool as follows: `List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");` and pass the `facetList` returned to the `postgresClient`'s `get()` methods.
