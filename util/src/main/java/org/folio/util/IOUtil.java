@@ -3,9 +3,13 @@ package org.folio.util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * InputStream functions.
+ */
 public final class IOUtil {
   /** private constructor preventing instantiation. */
   private IOUtil() {
@@ -13,32 +17,33 @@ public final class IOUtil {
   }
 
   /**
-   * Read from the inputStream and return it as an UTF-8 String.<p />
-   *
+   * Read UTF-8 from the inputStream and return it as a String.
+   * <p>
    * This replaces org.apache.commons.io.IOUtils.toString(inputStream, "UTF-8")
-   * and avoids including the full commons-io package.<p />
-   *
+   * and avoids including the full commons-io package.
+   * <p>
    * There is no toString(InputStream) because IOUtils.toString(InputStream) is deprecated
    * as it uses Charset.defaultCharset() what most likely is unintended.
    *
    * @param inputStream where to read from
-   * @return the UTF-8 String
+   * @return the String
    * @throws IOException on i/o error when reading from the inputStream
-   * @throws NullPointerException if inputStream is null
    * @throws UnsupportedEncodingException if the charsetName is not supported
+   * @throws NullPointerException if inputStream is null
    */
   public static String toUTF8String(final InputStream inputStream) throws IOException {
     return toString(inputStream, StandardCharsets.UTF_8.name());
   }
 
   /**
-   * Read from the inputStream and return it as an String in charset encoding.<p />
-   *
+   * Read from the inputStream using charset encoding and return it as an String.
+   * <p>
    * This replaces org.apache.commons.io.IOUtils.toString(inputStream, charset)
    * and avoids including the full commons-io package.
    *
    * @param inputStream where to read from
-   * @return the String in charset encoding
+   * @param charset charset the inputStream is encoded
+   * @return the String
    * @throws IOException on i/o error when reading from the inputStream
    * @throws NullPointerException if inputStream is null
    * @throws UnsupportedEncodingException if the charsetName is not supported
@@ -48,13 +53,14 @@ public final class IOUtil {
   }
 
   /**
-   * Read from the inputStream and return it as an String in charsetName encoding.<p />
-   *
+   * Read from the inputStream in charsetName encoding and return it as a String.
+   * <p>
    * This replaces org.apache.commons.io.IOUtils.toString(inputStream, charsetName)
    * and avoids including the full commons-io package.
    *
    * @param inputStream where to read from
-   * @return the String in charsetName encoding
+   * @param charsetName name of the encoding of inputStream
+   * @return the String
    * @throws IOException on i/o error when reading from the inputStream
    * @throws NullPointerException if inputStream is null
    * @throws UnsupportedEncodingException if the charsetName is not supported

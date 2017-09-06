@@ -18,7 +18,7 @@ import io.vertx.core.json.JsonObject;
 
 /**
  * Dereference JSON schemas of RAML files by merging the file content
- * of any ("$ref": <filename>).
+ * of any {@code ("$ref": <filename>)}.
  *
  * An instance of SchemaDereferencer forever caches the content of any
  * file it has already used.
@@ -29,7 +29,7 @@ public class SchemaDereferencer {
 
   /**
    * Set the base path all $ref filenames are based on.
-   * @param basePath - file system path
+   * @param basePath  file system path
    */
   public SchemaDereferencer(final String basePath) {
     this.basePath = basePath;
@@ -70,8 +70,8 @@ public class SchemaDereferencer {
    *
    * These can then be read using org.folio.util.ResourceUtil.asString("schemas/message.schema").
    *
-   * @param args - file pairs (inputFile, outputFile)
-   * @throws IOException - when reading or writing a file fails.
+   * @param args  file pairs (inputFile, outputFile)
+   * @throws IOException  when reading or writing a file fails.
    */
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
@@ -106,10 +106,10 @@ public class SchemaDereferencer {
   /**
    * Return a schema with all $ref dereferenced.
    *
-   * @param path - path and name of the schema file relative to basePath
+   * @param file  path and name of the schema file relative to basePath
    * @return dereferenced schema
-   * @throws IOException - when any $ref file cannot be read
-   * @throws IllegalStateException - when the $ref chain has a loop
+   * @throws IOException  when any $ref file cannot be read
+   * @throws IllegalStateException  when the $ref chain has a loop
    */
   public JsonObject dereferencedSchema(final String file) throws IOException {
     return dereferencedSchema(file, new ArrayDeque<>());
@@ -118,10 +118,11 @@ public class SchemaDereferencer {
   /**
    * Return a schema with all $ref dereferenced.
    *
-   * @param path - path and name of the schema file relative to basePath
+   * @param file  path and name of the schema file relative to basePath
+   * @param dereferenceStack  stack of the files chain for file
    * @return dereferenced RAML
-   * @throws IOException - when any $ref file cannot be read
-   * @throws IllegalStateException - when the $ref chain has a loop
+   * @throws IOException  when any $ref file cannot be read
+   * @throws IllegalStateException  when the $ref chain has a loop
    */
   protected JsonObject dereferencedSchema(final String file, Deque<String> dereferenceStack) throws IOException {
     String pathString = basePath + File.separator + file;
@@ -159,13 +160,13 @@ public class SchemaDereferencer {
   }
 
   /**
-   * Merge the file content of any ("$ref": <filename>) into jsonObject.
+   * Merge the file content of any {@code ("$ref": <filename>)} into jsonObject.
    *
-   * @param jsonObject - where to replace $ref
-   * @param dereferenceStack - dereferenceStack to check for loops
-   * @throws IllegalArgumentException - on $ref loop
-   * @throws IOException - when any $ref file cannot be read
-   * @throws ClassCastException - when $ref is not a String
+   * @param jsonObject  where to replace $ref
+   * @param dereferenceStack  dereferenceStack to check for loops
+   * @throws IllegalArgumentException  on $ref loop
+   * @throws IOException  when any $ref file cannot be read
+   * @throws ClassCastException  when $ref is not a String
    */
   private void dereference(JsonObject jsonObject, Deque<String> dereferenceStack) throws IOException {
     for (Entry<String,Object> entry : jsonObject) {
