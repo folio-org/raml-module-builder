@@ -653,12 +653,14 @@ as the "raml-util" directory inside your "ramls" directory:
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 
-When any schema file refers to an additional schema file, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Ideally ensure that all such referenced files are below the parent file.
+When any schema file refers to an additional schema file using "$ref" syntax, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Ideally ensure that all such referenced files are below the parent file.
 It is possible to use a relative path with one set of dot-dots "../" but definitely
 [not more](https://issues.folio.org/browse/RMB-30).
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
-NOTE: The schema name of a collection must not end with `.json` to produce the correct class name.
+To create a dereferenced schema with any "$ref" replaced use [SchemaDereferencer](https://github.com/folio-org/raml-module-builder/blob/master/util/src/main/java/org/folio/util/SchemaDereferencer.java).
+
+NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
 Examples are `schemaCollection: noteCollection` in
 [note.raml](https://github.com/folio-org/mod-notes/blob/master/ramls/note.raml) and
 `schemaCollection: addresstypeCollection` in

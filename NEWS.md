@@ -1,3 +1,6 @@
+## 14.0.1
+* RMB-56 add SchemaDereferencer that replaces "$ref"
+
 ## 14.0.0
 
 * RMB-59 implement faceting framework (breaks backwards compatibility - postgresClient's get() now returns a org.folio.rest.persist.interfaces.Result object and not an Object[])
