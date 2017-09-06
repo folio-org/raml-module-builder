@@ -37,9 +37,10 @@ public class IOUtilTest {
   }
 
   @Test
-  public void readUmlautsWrongEncoding() throws IOException {
+  public void readUmlautsEncoding() throws IOException {
     String s = "first line\numlauts: äöü\n";
-    assertNotEquals(s, IOUtil.toUTF8String(inputStream(s)), StandardCharsets.ISO_8859_1);
+    assertEquals(s, IOUtil.toString(inputStream(s), StandardCharsets.UTF_8));
+    assertNotEquals(s, IOUtil.toString(inputStream(s), StandardCharsets.ISO_8859_1));
   }
 
   @Test

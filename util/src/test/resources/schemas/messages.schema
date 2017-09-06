@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "errors": {
+      "id": "messages",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref": "message.schema"
+      }
+    },
+    "total_records": {
+      "type": "integer"
+    }
+  }
+}
