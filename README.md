@@ -1222,7 +1222,7 @@ RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/mas
 RMB also allows easy faceting of result sets. The grouping / faceting is done in the database.
 To add faceting to your API.
 1. Add the [faceting RAML trait](https://github.com/folio-org/raml/blob/master/traits/facets.raml) to your RAML and reference it from the endpoint (using the is:[])
-    - facet query parameter format: `facets=a.b.c` , or `facets=a.b.c:10` , they are repeating. For example ?facets=active&facets=personal.lastName
+    - facet query parameter format: `facets=a.b.c` or `facets=a.b.c:10` (they are repeating). For example `?facets=active&facets=personal.lastName`
 2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas. 
 For example:
 ```
@@ -1572,13 +1572,14 @@ The full constructor takes the following parameters
  - idleTO - idle timeout (default: 5 seconds)
  - autoCloseConnections - close connection when request completes (default: true)
  - cacheTO - cache of endpoint results timeout (in minutes, default: 30)
+
 ```
     HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
     Response response = hc.request("/groups");
 ```
 
 It is recommended to use the `HttpClientFactory` to get an instance of the `HttpModuleClient2`.
-The factory will then return either the actual `HttpModuleClient2` class or an instance of the `HttpClientMock2`. To return an instance of the mock client , set the mock mode flag in the vertx config. one way to do this:
+The factory will then return either the actual `HttpModuleClient2` class or an instance of the `HttpClientMock2`. To return an instance of the mock client, set the mock mode flag in the vertx config. One way to do this:
 `new DeploymentOptions().setConfig(new JsonObject().put(HttpClientMock2.MOCK_MODE, "true"));`
 See [mock_content.json](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/resources/mock_content.json) for an example of how to associate a url with mocked data and headers
 
@@ -1602,7 +1603,7 @@ The `HttpModuleClient2 request` function can receive the following parameters:
 Response userResponse =
 hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
 `
-This will create a query string with all values from the JSON found in the path usergroups[*].id and will generate a CQL query string which will look something like this:
+This will create a query string with all values from the JSON found in the path `usergroups[*].id` and will generate a CQL query string which will look something like this:
 `?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
 See `BuildCQL` for configuration options.
 
