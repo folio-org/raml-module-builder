@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string"
+    },
+    "module": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "creator": {
+      "type": "string",
+      "readonly": true
+    },
+    "creator_date": {
+      "type": "string",
+      "readonly": true
+    }
+  },
+  "required": [
+    "job_conf_id",
+    "creator"
+  ]
+}
