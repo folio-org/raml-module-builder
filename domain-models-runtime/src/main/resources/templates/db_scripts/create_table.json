@@ -1,0 +1,35 @@
+[
+  {
+    "tableName": "users",
+    "mode": "new",
+    "generateId": true,
+    "fromModuleVersion": "12.2",
+    "populateJsonWithId": true,
+    "withMetadata": true,
+    "likeIndex": [
+      {"fieldName": "username", "tOps": "ADD"}
+    ],    
+    "ginIndex": [
+      {"fieldName": "person", "tOps": "ADD"}
+    ],
+    "withAuditing": true,
+    "auditingSnippet": 
+        {
+        "delete": "injectedAction = '\"deleted\"';OLD.jsonb = jsonb_set(OLD.jsonb, '{action}' , injectedAction::jsonb , false);"
+        },
+    "uniqueIndex": [
+      {"fieldName": "username", "tOps": "ADD"},
+      {"fieldName": "personal.phone", "tOps": "ADD"}
+    ],
+    "foreignKeys": [
+      {"fieldName": "username", "targetTable": "users", "tOps": "ADD"}
+    ],
+    "customSnippetPath": "insertAsSelect.sql",
+    "deleteFields": [
+      {"fieldName": "a.b"}
+    ],
+    "addFields": [
+      {"fieldName": "a.b", "defaultValue": "test"}
+    ]
+  }
+]

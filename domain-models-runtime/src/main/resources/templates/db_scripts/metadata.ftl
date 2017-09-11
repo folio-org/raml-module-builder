@@ -1,16 +1,7 @@
 -- auto populate the meta data schema
 
--- add the two needed columns per table
-
-IF COL_LENGTH('myuniversity_mymodule.<table_name>', 'creation_date') IS NULL
-BEGIN
-    ALTER TABLE myuniversity_mymodule.<table_name>
-    ADD COLUMN creation_date timestamp WITH TIME ZONE,
-    ADD COLUMN created_by text;
-END
-
 -- on create of user record - pull creation date and creator into dedicated column - rmb auto-populates these fields in the md fields
-CREATE OR REPLACE FUNCTION set_md()
+CREATE OR REPLACE FUNCTION ${table.tableName}_set_md()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.creation_date = to_timestamp(NEW.jsonb->'metadata'->>'createdDate', 'YYYY-MM-DD"T"HH24:MI:SS.MS');
@@ -18,11 +9,17 @@ BEGIN
   RETURN NEW;
 END;
 $$ language 'plpgsql';
-CREATE TRIGGER set_md_trigger BEFORE INSERT ON myuniversity_mymodule.<table_name>
-   FOR EACH ROW EXECUTE PROCEDURE  set_md();
+
+<#if table.mode == "update">
+  DROP TRIGGER IF EXISTS set_${table.tableName}_md_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+</#if>
+
+CREATE TRIGGER set_${table.tableName}_md_trigger BEFORE INSERT ON ${myuniversity}_${mymodule}.${table.tableName}
+   FOR EACH ROW EXECUTE PROCEDURE ${table.tableName}_set_md();
 
 -- on update populate md fields from the creation date and creator fields
-CREATE OR REPLACE FUNCTION set_md_json()
+
+CREATE OR REPLACE FUNCTION set_${table.tableName}_md_json()
 RETURNS TRIGGER AS $$
 DECLARE
   createdDate timestamp WITH TIME ZONE;
@@ -55,9 +52,12 @@ RETURN NEW;
 
 END;
 $$ language 'plpgsql';
-CREATE TRIGGER set_md_json_trigger BEFORE UPDATE ON myuniversity_mymodule.<table_name>
-  FOR EACH ROW EXECUTE PROCEDURE set_md_json();
 
--- --- end auto populate meta data schema ------------
+<#if table.mode == "update">
+  DROP TRIGGER IF EXISTS set_${table.tableName}_md_json_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+</#if>
 
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA myuniversity_mymodule TO myuniversity_mymodule;
+CREATE TRIGGER set_${table.tableName}_md_json_trigger BEFORE UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
+  FOR EACH ROW EXECUTE PROCEDURE set_${table.tableName}_md_json();
+
+----- end auto populate meta data schema ------------
