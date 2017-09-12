@@ -63,9 +63,7 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
   
     <#include "foreign_keys.ftl">
   
-    <#if table.populateJsonWithId == true>
-      <#include "populate_id.ftl">
-    </#if>
+    <#include "populate_id.ftl">
   
     <#if table.withMetadata == true>
       <#include "metadata.ftl">

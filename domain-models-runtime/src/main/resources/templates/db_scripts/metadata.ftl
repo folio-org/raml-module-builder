@@ -1,6 +1,7 @@
+
 -- auto populate the meta data schema
 
--- on create of user record - pull creation date and creator into dedicated column - rmb auto-populates these fields in the md fields
+-- on create of ${table.tableName} record - pull creation date and creator into dedicated column - rmb auto-populates these fields in the md fields
 CREATE OR REPLACE FUNCTION ${table.tableName}_set_md()
 RETURNS TRIGGER AS $$
 BEGIN
