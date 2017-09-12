@@ -26,55 +26,59 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
     );
   <#elseif table.mode == "delete">
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+  <#elseif table.mode == "update">
+    -- altering a table with additional columns is not currently supported
   </#if>
 
-  <#if table.withMetadata == true>
+  <#if table.mode != "delete">
+    <#-- if we are in delete table mode only the drop table casacade above is needed, skip everything else -->
+    <#if table.withMetadata == true>
     <#-- add the two needed columns per table -->
     ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}
       ADD COLUMN IF NOT EXISTS creation_date timestamp WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS created_by text;
-  <#else>
+    <#else>
     ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName} 
       DROP COLUMN IF EXISTS creation_date CASCADE,
       DROP COLUMN IF EXISTS created_by CASCADE;
+    </#if>
+  
+    <#if table.deleteFields??>
+      <#list table.deleteFields as fields2del>
+    UPDATE ${myuniversity}_${mymodule}.${table.tableName} SET jsonb = jsonb #- ${fields2del.fieldPath};
+      </#list>
+    </#if>
+  
+    <#if table.addFields??>
+      <#list table.addFields as fields2add>
+        <#if fields2add.defaultValue?is_string>
+    UPDATE ${myuniversity}_${mymodule}.${table.tableName} SET jsonb = jsonb_set(jsonb , ${fields2add.fieldPath}, '"${fields2add.defaultValue}"', true);
+        <#else>
+    UPDATE ${myuniversity}_${mymodule}.${table.tableName} SET jsonb = jsonb_set(jsonb , ${fields2add.fieldPath}, ${fields2add.defaultValue?c}, true);
+        </#if>
+      </#list>
+    </#if>
+  
+    <#include "indexes.ftl">
+  
+    <#include "foreign_keys.ftl">
+  
+    <#if table.populateJsonWithId == true>
+      <#include "populate_id.ftl">
+    </#if>
+  
+    <#if table.withMetadata == true>
+      <#include "metadata.ftl">
+    </#if>
+  
+    <#if table.withAuditing == true>
+      <#include "audit.ftl">
+    </#if>
+  
+    <#if table.customSnippetPath??>
+      <#include table.customSnippetPath>
+    </#if>
   </#if>
-  
-  <#if table.deleteFields??>
-    <#list table.deleteFields as fields2del>
-      UPDATE ${myuniversity}_${mymodule}.${table.tableName} SET jsonb = jsonb #- ${fields2del.fieldPath};
-    </#list>
-  </#if>
-  
-  <#if table.addFields??>
-    <#list table.addFields as fields2add>
-      <#if fields2add.defaultValue?is_string>
-      UPDATE ${myuniversity}_${mymodule}.${table.tableName} SET jsonb = jsonb_set(jsonb , ${fields2add.fieldPath}, '"${fields2add.defaultValue}"', true);
-      <#else>
-      UPDATE ${myuniversity}_${mymodule}.${table.tableName} SET jsonb = jsonb_set(jsonb , ${fields2add.fieldPath}, ${fields2add.defaultValue?c}, true);
-      </#if>
-    </#list>
-  </#if>
-  
-  <#include "indexes.ftl">
-  
-  <#include "foreign_keys.ftl">
-  
-  <#if table.populateJsonWithId == true>
-    <#include "populate_id.ftl">
-  </#if>
-  
-  <#if table.withMetadata == true>
-    <#include "metadata.ftl">
-  </#if>
-  
-  <#if table.withAuditing == true>
-    <#include "audit.ftl">
-  </#if>
-  
-  <#if table.customSnippetPath??>
-    <#include table.customSnippetPath>
-  </#if>
-
 </#if>
 </#list>
 

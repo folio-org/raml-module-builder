@@ -3,9 +3,9 @@
   <#if table.uniqueIndex??>
     <#list table.uniqueIndex as indexes>
         <#if indexes.tOps.name() == "ADD">
-    CREATE UNIQUE INDEX ${table.tableName}_${indexes.fieldName}_unique_idx ON ${myuniversity}_${mymodule}.${table.tableName}((${indexes.fieldPath}));
+    CREATE UNIQUE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique ON ${myuniversity}_${mymodule}.${table.tableName}((${indexes.fieldPath}));
         <#else>
-    DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_unique_idx;
+    DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique;
         </#if>
     </#list>
   </#if>
@@ -14,7 +14,7 @@
   <#if table.likeIndex??>
     <#list table.likeIndex as indexes>
       <#if indexes.tOps.name() == "ADD">
-    CREATE INDEX ${table.tableName}_${indexes.fieldName}_idx_like ON ${myuniversity}_${mymodule}.${table.tableName}(((${indexes.fieldPath})) varchar_pattern_ops);
+    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_like ON ${myuniversity}_${mymodule}.${table.tableName}(((${indexes.fieldPath})) varchar_pattern_ops);
       <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_like;
       </#if>
@@ -24,7 +24,7 @@
   <#if table.ginIndex??>
     <#list table.ginIndex as indexes>
       <#if indexes.tOps.name() == "ADD">
-    CREATE INDEX ${table.tableName}_${indexes.fieldName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN ((${indexes.fieldPath}));
+    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN ((${indexes.fieldPath}));
       <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin;
       </#if>
