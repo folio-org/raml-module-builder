@@ -16,12 +16,8 @@ import io.vertx.core.json.JsonObject;
 
 public class JsonSchemaPojoUtilTest {
 
-  private static final String FILE_PATH =
-      "src\\test\\resources\\FacetValue.java";
-  private static final String RAML_PATH =
-      //"..\\domain-models-api-interfaces\\raml\\jobs.raml";
-  // src\\test\\resources\\loan-rules-storage.raml";
-      "src\\test\\resources\\jobs.raml";
+  private static final String FILE_PATH = "src/test/resources/FacetValue.java";
+  private static final String RAML_PATH = "src/test/resources/jobs.raml";
 
   @Test
   public void jsonFields2Pojo() throws Exception {
