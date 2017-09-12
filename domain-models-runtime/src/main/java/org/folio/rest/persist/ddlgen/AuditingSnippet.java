@@ -6,27 +6,29 @@ package org.folio.rest.persist.ddlgen;
  */
 public class AuditingSnippet {
 
-  private String delete;
-  private String insert;
-  private String update;
+  private AuditInject delete;
+  private AuditInject insert;
+  private AuditInject update;
 
-  public String getDelete() {
+  public AuditInject getDelete() {
     return delete;
   }
-  public void setDelete(String delete) {
+  public void setDelete(AuditInject delete) {
     this.delete = delete;
   }
-  public String getUpdate() {
-    return update;
-  }
-  public void setUpdate(String update) {
-    this.update = update;
-  }
-  public String getInsert() {
+  public AuditInject getInsert() {
     return insert;
   }
-  public void setInsert(String insert) {
+  public void setInsert(AuditInject insert) {
     this.insert = insert;
   }
+  public AuditInject getUpdate() {
+    return update;
+  }
+  public void setUpdate(AuditInject update) {
+    this.update = update;
+  }
+
+
 
 }
