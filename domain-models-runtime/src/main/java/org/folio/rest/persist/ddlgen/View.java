@@ -11,6 +11,7 @@ public class View {
   private ViewTable joinTable;
   private String mode;
   private double fromModuleVersion;
+  private String pkColumnName = "id";
 
   public String getViewName() {
     return viewName;
@@ -42,6 +43,11 @@ public class View {
   public void setFromModuleVersion(double fromModuleVersion) {
     this.fromModuleVersion = fromModuleVersion;
   }
-
+  public String getPkColumnName() {
+    return pkColumnName;
+  }
+  public void setPkColumnName(String pkColumnName) {
+    this.pkColumnName = pkColumnName;
+  }
 
 }

@@ -11,9 +11,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-<#if table.mode == "update">
-  DROP TRIGGER IF EXISTS set_${table.tableName}_md_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-</#if>
+DROP TRIGGER IF EXISTS set_${table.tableName}_md_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
 
 CREATE TRIGGER set_${table.tableName}_md_trigger BEFORE INSERT ON ${myuniversity}_${mymodule}.${table.tableName}
    FOR EACH ROW EXECUTE PROCEDURE ${table.tableName}_set_md();
@@ -54,9 +52,7 @@ RETURN NEW;
 END;
 $$ language 'plpgsql';
 
-<#if table.mode == "update">
-  DROP TRIGGER IF EXISTS set_${table.tableName}_md_json_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-</#if>
+DROP TRIGGER IF EXISTS set_${table.tableName}_md_json_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
 
 CREATE TRIGGER set_${table.tableName}_md_json_trigger BEFORE UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
   FOR EACH ROW EXECUTE PROCEDURE set_${table.tableName}_md_json();

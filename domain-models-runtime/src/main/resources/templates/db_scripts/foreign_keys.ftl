@@ -24,10 +24,9 @@
     END;
     $$ language 'plpgsql';
     
-    <#if table.mode == "update">
-      <#-- in update mode try to drop the trigger and re-create (below) since there is no create trigger if not exists -->
-      DROP TRIGGER IF EXISTS update_${table.tableName}_references ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-    </#if>
+    <#-- in update mode try to drop the trigger and re-create (below) since there is no create trigger if not exists -->
+    DROP TRIGGER IF EXISTS update_${table.tableName}_references ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+
     <#-- Create / Drop trigger to call foreign key function -->
     CREATE TRIGGER update_${table.tableName}_references
       BEFORE INSERT OR UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}

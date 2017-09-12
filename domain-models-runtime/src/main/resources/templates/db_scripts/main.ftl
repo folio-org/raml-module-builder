@@ -19,15 +19,13 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
 -- current version ${version}
 -- upgrade from version ${(table.fromModuleVersion)!0}
 
-  <#if table.mode == "new">
-    CREATE TABLE ${myuniversity}_${mymodule}.${table.tableName} (
-      id UUID PRIMARY KEY <#if table.generateId == true>DEFAULT gen_random_uuid()</#if>,
+  <#if table.mode != "delete">
+    CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.tableName} (
+      ${table.pkColumnName} UUID PRIMARY KEY <#if table.generateId == true>DEFAULT gen_random_uuid()</#if>,
       jsonb JSONB NOT NULL
     );
-  <#elseif table.mode == "delete">
+  <#else>
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-  <#elseif table.mode == "update">
-    -- altering a table with additional columns is not currently supported
   </#if>
 
   <#if table.mode != "delete">

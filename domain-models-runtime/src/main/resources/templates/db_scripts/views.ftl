@@ -8,9 +8,9 @@
 -- current version ${version}
 -- upgrade from version ${(view.fromModuleVersion)!0}
 
-  <#if view.mode == "new">
+  <#if view.mode != "delete">
     <#include "create_view.ftl">
-  <#elseif table.mode == "delete">
+  <#else>
     DROP VIEW IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
   </#if>
   
