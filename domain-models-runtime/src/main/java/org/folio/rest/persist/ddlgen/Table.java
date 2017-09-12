@@ -23,6 +23,7 @@ public class Table {
   private boolean populateJsonWithId;
   private double fromModuleVersion;
   private AuditingSnippet auditingSnippet;
+  private String pkColumnName = "id";
 
   public String getTableName() {
     return tableName;
@@ -144,5 +145,12 @@ public class Table {
     this.auditingSnippet = auditingSnippet;
   }
 
+  public String getPkColumnName() {
+    return pkColumnName;
+  }
+
+  public void setPkColumnName(String pkColumnName) {
+    this.pkColumnName = pkColumnName;
+  }
 
 }
