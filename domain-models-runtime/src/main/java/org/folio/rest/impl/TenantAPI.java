@@ -257,14 +257,6 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                     + "templates/db_scripts/create_view.json, RMB will not run any scripts for " + tenantId);
                 return;
               }
-              String tableInputStr = IOUtils.toString(tableInput, "UTF8");
-              String viewInputStr = IOUtils.toString(viewInput, "UTF8");
-
-              List<Table> tables = (List<Table>)ObjectMapperTool.getMapper().readValue(
-                tableInputStr, ObjectMapperTool.getMapper().getTypeFactory().constructCollectionType(List.class, Table.class));
-
-              List<View> views = (List<View>)ObjectMapperTool.getMapper().readValue(
-                viewInputStr, ObjectMapperTool.getMapper().getTypeFactory().constructCollectionType(List.class, View.class));
 
               String op = "create";
               double version = 0.0;
@@ -272,9 +264,24 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 op = "update";
                 version = Double.parseDouble(entity.getModuleFrom());
               }
+
               SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, version);
-              sMaker.setTables(tables);
-              sMaker.setViews(views);
+
+              String tableInputStr = null;
+              if(tableInput != null){
+                tableInputStr = IOUtils.toString(tableInput, "UTF8");
+                List<Table> tables = (List<Table>)ObjectMapperTool.getMapper().readValue(
+                  tableInputStr, ObjectMapperTool.getMapper().getTypeFactory().constructCollectionType(List.class, Table.class));
+                sMaker.setTables(tables);
+              }
+              String viewInputStr = null;
+              if(viewInput != null){
+                viewInputStr = IOUtils.toString(viewInput, "UTF8");
+                List<View> views = (List<View>)ObjectMapperTool.getMapper().readValue(
+                  viewInputStr, ObjectMapperTool.getMapper().getTypeFactory().constructCollectionType(List.class, View.class));
+                sMaker.setViews(views);
+              }
+
               String sqlFile = sMaker.generateDDL();
 
               /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
