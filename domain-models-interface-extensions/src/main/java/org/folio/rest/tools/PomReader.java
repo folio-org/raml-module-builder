@@ -2,8 +2,10 @@ package org.folio.rest.tools;
 
 import java.io.File;
 import java.io.FileReader;
+import java.util.List;
 import java.util.Properties;
 
+import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 
@@ -25,17 +27,20 @@ public enum PomReader {
   private String moduleName = null;
   private String version = null;
   private Properties props = null;
+  private List<Dependency> dependencies = null;
+  private String rmbVersion = null;
 
   private final Logger log = LoggerFactory.getLogger(PomReader.class);
 
   @SuppressWarnings("checkstyle:methodlength")
   private PomReader() {
     try {
-      System.out.println("Attempting to read in the module name....");
+      System.out.print("Attempting to read in the module name from....");
       MavenXpp3Reader mavenreader = new MavenXpp3Reader();
       Model model = null;
       String currentRunningJar =
           PomReader.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+      System.out.println(currentRunningJar);
       if(currentRunningJar != null && (currentRunningJar.contains("domain-models-runtime")
           || currentRunningJar.contains("domain-models-interface-extensions"))){
         //the runtime is the jar run when deploying during unit tests
@@ -59,17 +64,33 @@ public enum PomReader {
       }
       if(model.getParent() != null){
         moduleName = model.getParent().getArtifactId();
+        version = model.getParent().getVersion();
       }
       else{
         moduleName = model.getArtifactId();
       }
-      version = model.getVersion();
+
       if(version == null){
-        version = "1.0.0";
+        version = model.getVersion();
+        if(version == null){
+          version = "1.0.0";
+        }
       }
-      version.replaceAll("-.*", "");
+      version = version.replaceAll("-.*", "");
       moduleName = moduleName.replaceAll("-", "_");
       props = model.getProperties();
+      dependencies = model.getDependencies();
+
+      for (int i = 0; i < dependencies.size(); i++) {
+        if("domain-models-runtime".equals(dependencies.get(i).getArtifactId())){
+          rmbVersion = dependencies.get(i).getVersion();
+        }
+      }
+      if(rmbVersion == null){
+        //if we are in the rmb jar - build time
+        rmbVersion = version;
+      }
+
       //props.list(System.out);
       log.info("module name: " + moduleName + ", version: " + version);
     } catch (Exception e) {
@@ -88,4 +109,13 @@ public enum PomReader {
   public Properties getProps() {
     return props;
   }
+
+  public List<Dependency> getDependencies() {
+    return dependencies;
+  }
+
+  public String getRmbVersion() {
+    return rmbVersion;
+  }
+
 }
