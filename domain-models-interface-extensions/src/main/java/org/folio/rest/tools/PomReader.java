@@ -77,15 +77,22 @@ public enum PomReader {
         }
       }
       version = version.replaceAll("-.*", "");
+
       moduleName = moduleName.replaceAll("-", "_");
       props = model.getProperties();
       dependencies = model.getDependencies();
 
+      //the version is a placeholder to a value in the props section
+      version = replacePlaceHolderWithValue(version);
+
       for (int i = 0; i < dependencies.size(); i++) {
         if("domain-models-runtime".equals(dependencies.get(i).getArtifactId())){
           rmbVersion = dependencies.get(i).getVersion();
+          rmbVersion = replacePlaceHolderWithValue(rmbVersion);
+          rmbVersion = rmbVersion.replaceAll("-.*", "");
         }
       }
+
       if(rmbVersion == null){
         //if we are in the rmb jar - build time
         rmbVersion = version;
@@ -96,6 +103,18 @@ public enum PomReader {
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
+  }
+
+  private String replacePlaceHolderWithValue(String placeholder){
+    String ret[] = new String[]{placeholder};
+    if(placeholder != null && placeholder.startsWith("${")){
+      props.forEach( (k,v) -> {
+        if(("${"+k+"}").equals(placeholder)){
+          ret[0] = (String)v;
+        }
+      });
+    }
+    return ret[0];
   }
 
   public String getVersion() {
