@@ -14,6 +14,7 @@ import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.Table;
 import org.folio.rest.persist.ddlgen.View;
 import org.folio.rest.tools.ClientGenerator;
+import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
@@ -87,7 +88,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 return;
               }
               sqlFile = IOUtils.toString(is);*/
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), "delete", 0.0);
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), "delete", null, PomReader.INSTANCE.getRmbVersion());
               sqlFile = sMaker.generateDDL();
 
             } catch (Exception e1) {
@@ -264,13 +265,14 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               }
 
               String op = "create";
-              double version = 0.0;
+
+              String previousVersion = null;
               if(isUpdateMode[0]){
                 op = "update";
-                version = Double.parseDouble(entity.getModuleFrom());
+                previousVersion = entity.getModuleFrom();
               }
 
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, version);
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, PomReader.INSTANCE.getRmbVersion());
 
               String tableInputStr = null;
               if(tableInput != null){
@@ -288,7 +290,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               }
 
               String sqlFile = sMaker.generateDDL();
-
+              System.out.println(sqlFile);
               /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
               PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, false,
                 reply -> {

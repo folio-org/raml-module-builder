@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
+import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 
 import freemarker.template.Configuration;
@@ -31,12 +32,13 @@ public class SchemaMaker {
   private String mode;
   private List<Table> tables = new ArrayList<>();
   private List<View> views = new ArrayList<>();
-  private double version;
+  private String previousVersion;
+  private String rmbVersion;
 
   /**
    * @param onTable
    */
-  public SchemaMaker(String tenant, String module, String mode, double version){
+  public SchemaMaker(String tenant, String module, String mode, String previousVersion, String rmbVersion){
     if(SchemaMaker.cfg == null){
       //do this ONLY ONCE
       SchemaMaker.cfg = new Configuration(new Version(2, 3, 26));
@@ -49,7 +51,8 @@ public class SchemaMaker {
     this.tenant = tenant;
     this.module = module;
     this.mode = mode;
-    this.version = version;
+    this.previousVersion = previousVersion;
+    this.rmbVersion = rmbVersion;
   }
 
   public String generateDDL() throws IOException, TemplateException {
@@ -60,7 +63,27 @@ public class SchemaMaker {
 
     templateInput.put("mode", this.mode);
 
-    templateInput.put("version", this.version);
+    String pVersion = this.previousVersion;
+
+    if(pVersion != null){
+      //will be null on deletes unless its read from db by rmb
+      int loc = pVersion.lastIndexOf(".");
+      if(loc != -1){
+        pVersion = this.previousVersion.substring(0, loc);
+      }
+    }
+    else{
+      pVersion = "0";
+    }
+
+    templateInput.put("version", Double.parseDouble(pVersion));
+    System.out.println("updating from version" + Double.parseDouble(pVersion));
+
+    templateInput.put("newVersion", PomReader.INSTANCE.getVersion());
+
+    //TODO - check the rmbVersion in the internal_rmb table and compare to this passed in
+    //version, to check if core rmb scripts need updating due to an update
+    templateInput.put("rmbVersion", this.rmbVersion);
 
     if(tables != null){
       int size = tables.size();
@@ -194,7 +217,7 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", "delete", 1.0);
+    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", "delete", PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
 
     String json = IOUtils.toString(
       SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/create_table.json"));
