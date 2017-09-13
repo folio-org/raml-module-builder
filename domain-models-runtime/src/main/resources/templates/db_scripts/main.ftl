@@ -5,6 +5,16 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
 GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
 CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
+
+CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
+      id integer PRIMARY KEY,
+      jsonb JSONB NOT NULL
+    );
+
+insert into ${myuniversity}_${mymodule}.rmb_internal (id, jsonb) values (1, '{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
+
+-- rmb version ${rmbVersion}
+
 </#if>
 
 SET search_path TO ${myuniversity}_${mymodule}, public;
@@ -14,10 +24,10 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
 
 <#-- the table version indicates which version introduced this feature hence all versions before this need the schema upgrade-->
 <#-- the from module version - if not set, is set to zero as it assumes that a version not set indicates to create the table always -->
-<#if (version < (table.fromModuleVersion)!0) || mode == "create">
+<#if (version <= (table.fromModuleVersion)!"0") || mode == "create">
 
--- current version ${version}
--- upgrade from version ${(table.fromModuleVersion)!0}
+-- Previous module version ${version}
+-- Run upgrade of table: ${table.tableName} since table created in version ${(table.fromModuleVersion)!0}
 
   <#if table.mode != "delete">
     CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.tableName} (
