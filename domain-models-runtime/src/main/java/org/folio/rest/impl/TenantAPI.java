@@ -36,13 +36,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
   public static final String       TABLE_JSON = "templates/db_scripts/create_table.json";
   public static final String       VIEW_JSON = "templates/db_scripts/create_view.json";
+  public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
 
-  public static final String       UPDATE_TENANT_TEMPLATE = "template_update_tenant.sql";
-  public static final String       DELETE_TENANT_TEMPLATE = "template_delete_tenant.sql";
-  public static final String       AUDIT_TENANT_TEMPLATE  = "template_audit.sql";
-  public static final String       UPDATE_AUDIT_TENANT_TEMPLATE  = "template_update_audit.sql";
-  private static final String      TEMPLATE_TENANT_PLACEHOLDER   = "myuniversity";
-  private static final String      TEMPLATE_MODULE_PLACEHOLDER   = "mymodule";
   private static final String      UPGRADE_FROM_VERSION          = "module_from";
   private static final String      UPGRADE_TO_VERSION            = "module_to";
 
@@ -85,24 +80,34 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
             String sqlFile = null;
             try {
-              sqlFile = IOUtils.toString(
-                TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_TENANT_TEMPLATE));
+/*              InputStream is = TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_JSON);
+              if(is == null){
+                log.info("No delete json to use for deleting tenant " + tenantId);
+                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withNoContent()));
+                return;
+              }
+              sqlFile = IOUtils.toString(is);*/
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), "delete", 0.0);
+              sqlFile = sMaker.generateDDL();
+
             } catch (Exception e1) {
               handlers.handle(io.vertx.core.Future.failedFuture(e1.getMessage()));
               log.error(e1.getMessage(), e1);
               return;
             }
 
-            String sql2run = sqlFile.replaceAll(TEMPLATE_TENANT_PLACEHOLDER, tenantId);
-            sql2run = sql2run.replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
+            System.out.println("Attempting to run delete script:");
+            System.out.println(sqlFile);
             /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-            PostgresClient.getInstance(context.owner()).runSQLFile(sql2run, false,
+            PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, false,
                 reply -> {
                   try {
                     String res = "";
                     if(reply.succeeded()){
                       res = new JsonArray(reply.result()).encodePrettily();
                       if(reply.result().size() > 0){
+                        log.error("Unable to run the following commands during tenant delete: ");
+                        reply.result().forEach(System.out::println);
                         handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withPlainBadRequest(res)));
                       }
                       else {
