@@ -21,12 +21,8 @@
     </#list>
   </#if>
   
-  <#if table.ginIndex??>
-    <#list table.ginIndex as indexes>
-      <#if indexes.tOps.name() == "ADD">
-    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN ((${indexes.fieldPath}));
-      <#else>
-    DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin;
-      </#if>
-    </#list>
+  <#if table.ginIndex == true>
+    CREATE INDEX IF NOT EXISTS ${table.tableName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN (jsonb jsonb_path_ops);
+  <#else>
+    DROP INDEX IF EXISTS ${table.tableName}_idx_gin;
   </#if>

@@ -15,7 +15,7 @@ public class Table {
   private boolean withAuditing;
   private List<TableIndexes> likeIndex;
   private List<TableIndexes> uniqueIndex;
-  private List<TableIndexes> ginIndex;
+  private boolean ginIndex;
   private List<ForeignKeys> foreignKeys;
   private String customSnippetPath;
   private List<AddFields> addFields;
@@ -129,14 +129,6 @@ public class Table {
     this.fromModuleVersion = fromModuleVersion;
   }
 
-  public List<TableIndexes> getGinIndex() {
-    return ginIndex;
-  }
-
-  public void setGinIndex(List<TableIndexes> ginIndex) {
-    this.ginIndex = ginIndex;
-  }
-
   public AuditingSnippet getAuditingSnippet() {
     return auditingSnippet;
   }
@@ -151,6 +143,14 @@ public class Table {
 
   public void setPkColumnName(String pkColumnName) {
     this.pkColumnName = pkColumnName;
+  }
+
+  public boolean isGinIndex() {
+    return ginIndex;
+  }
+
+  public void setGinIndex(boolean ginIndex) {
+    this.ginIndex = ginIndex;
   }
 
 }

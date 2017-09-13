@@ -62,93 +62,89 @@ public class SchemaMaker {
 
     templateInput.put("version", this.version);
 
-    int size = tables.size();
+    if(tables != null){
+      int size = tables.size();
+      for (int i = 0; i < size; i++) {
+        Table t = tables.get(i);
 
-    for (int i = 0; i < size; i++) {
-      Table t = tables.get(i);
-
-      if(t.getMode() == null){
-        //the only relevant mode that the templates take into account is delete
-        //otherwise update and new will always create if does not exist
-        //so can set to either new or update , doesnt matter, leave the option
-        //in case we do need to differentiate in the future between the two
-        t.setMode("new");
-      }
-
-      List<DeleteFields> dFields = t.getDeleteFields();
-      if(dFields != null){
-        for (int j = 0; j < dFields.size(); j++) {
-          DeleteFields d = dFields.get(j);
-          d.setFieldPath(convertDotPath2PostgresMutateNotation(d.getFieldName()));
+        if(t.getMode() == null){
+          //the only relevant mode that the templates take into account is delete
+          //otherwise update and new will always create if does not exist
+          //so can set to either new or update , doesnt matter, leave the option
+          //in case we do need to differentiate in the future between the two
+          t.setMode("new");
         }
-      }
 
-      List<AddFields> aFields = t.getAddFields();
-      if(aFields != null){
-        for (int j = 0; j < aFields.size(); j++) {
-          //NOTE, SINGLE QUOTES IN DEFAULT VALUE MUST BE ESCAPED - ' -> '' BY CALLER
-          AddFields a = aFields.get(j);
-          a.setFieldPath(convertDotPath2PostgresMutateNotation(a.getFieldName()));
+        List<DeleteFields> dFields = t.getDeleteFields();
+        if(dFields != null){
+          for (int j = 0; j < dFields.size(); j++) {
+            DeleteFields d = dFields.get(j);
+            d.setFieldPath(convertDotPath2PostgresMutateNotation(d.getFieldName()));
+          }
         }
-      }
 
-      List<ForeignKeys> fKeys = t.getForeignKeys();
-      if(fKeys != null){
-        for (int j = 0; j < fKeys.size(); j++) {
-          ForeignKeys f = fKeys.get(j);
-          f.setFieldPath(convertDotPath2PostgresNotation(f.getFieldName()));
-          f.setFieldName(f.getFieldName().replaceAll("\\.", "_"));
+        List<AddFields> aFields = t.getAddFields();
+        if(aFields != null){
+          for (int j = 0; j < aFields.size(); j++) {
+            //NOTE, SINGLE QUOTES IN DEFAULT VALUE MUST BE ESCAPED - ' -> '' BY CALLER
+            AddFields a = aFields.get(j);
+            a.setFieldPath(convertDotPath2PostgresMutateNotation(a.getFieldName()));
+          }
         }
-      }
 
-      List<TableIndexes> tInd = t.getLikeIndex();
-      if(tInd != null){
-        for (int j = 0; j < tInd.size(); j++) {
-          TableIndexes ti = tInd.get(j);
-          ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName()));
-          ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
+        List<ForeignKeys> fKeys = t.getForeignKeys();
+        if(fKeys != null){
+          for (int j = 0; j < fKeys.size(); j++) {
+            ForeignKeys f = fKeys.get(j);
+            f.setFieldPath(convertDotPath2PostgresNotation(f.getFieldName()));
+            f.setFieldName(f.getFieldName().replaceAll("\\.", "_"));
+          }
         }
-      }
 
-      List<TableIndexes> uInd = t.getUniqueIndex();
-      if(uInd != null){
-        for (int j = 0; j < uInd.size(); j++) {
-          TableIndexes u = uInd.get(j);
-          u.setFieldPath(convertDotPath2PostgresNotation(u.getFieldName()));
-          //remove . from path since this is incorrect syntax in postgres
-          u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
+        List<TableIndexes> tInd = t.getLikeIndex();
+        if(tInd != null){
+          for (int j = 0; j < tInd.size(); j++) {
+            TableIndexes ti = tInd.get(j);
+            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName()));
+            ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
+          }
         }
-      }
 
-      List<TableIndexes> gInd = t.getGinIndex();
-      if(gInd != null){
-        for (int j = 0; j < gInd.size(); j++) {
-          TableIndexes u = gInd.get(j);
-          u.setFieldPath(convertDotPath2PostgresNotation(u.getFieldName()));
-          //remove . from path since this is incorrect syntax in postgres
-          u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
+        List<TableIndexes> uInd = t.getUniqueIndex();
+        if(uInd != null){
+          for (int j = 0; j < uInd.size(); j++) {
+            TableIndexes u = uInd.get(j);
+            u.setFieldPath(convertDotPath2PostgresNotation(u.getFieldName()));
+            //remove . from path since this is incorrect syntax in postgres
+            u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
+          }
         }
       }
     }
 
-    size = views.size();
-    for (int i = 0; i < size; i++) {
-      View v = views.get(i);
-      if(v.getMode() == null){
-        v.setMode("new");
+    if(views != null){
+      int size = views.size();
+      for (int i = 0; i < size; i++) {
+        View v = views.get(i);
+        if(v.getMode() == null){
+          v.setMode("new");
+        }
+        ViewTable vt = v.getJoinTable();
+        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField() ));
+        vt = v.getTable();
+        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField() ));
       }
-      ViewTable vt = v.getJoinTable();
-      vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField() ));
-      vt = v.getTable();
-      vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField() ));
     }
 
     templateInput.put("tables", this.tables);
 
     templateInput.put("views", this.views);
 
-
-    Template tableTemplate = cfg.getTemplate("main.ftl");
+    String templateName = "main.ftl";
+    if("delete".equals(this.mode)){
+      templateName = "delete.ftl";
+    }
+    Template tableTemplate = cfg.getTemplate(templateName);
 
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
@@ -198,7 +194,7 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", "create", 1.0);
+    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", "delete", 1.0);
 
     String json = IOUtils.toString(
       SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/create_table.json"));
