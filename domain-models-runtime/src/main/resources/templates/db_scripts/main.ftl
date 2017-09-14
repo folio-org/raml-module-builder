@@ -24,7 +24,7 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
 
 <#-- the table version indicates which version introduced this feature hence all versions before this need the schema upgrade-->
 <#-- the from module version - if not set, is set to zero as it assumes that a version not set indicates to create the table always -->
-<#if (version <= (table.fromModuleVersion)!"0") || mode == "create">
+<#if (version < (table.fromModuleVersion)!"0") || mode == "create">
 
 -- Previous module version ${version}
 -- Run upgrade of table: ${table.tableName} since table created in version ${(table.fromModuleVersion)!0}
