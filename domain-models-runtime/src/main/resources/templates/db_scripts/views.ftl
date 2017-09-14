@@ -6,7 +6,7 @@
 <#if (version < (view.fromModuleVersion)!0) || mode == "create">
 
 -- Previous module version ${version}
--- Run upgrade of view since table created in version ${(view.fromModuleVersion)!0}
+-- Run upgrade of view since view created in version ${(view.fromModuleVersion)!0}
 
   <#if view.mode != "delete">
     <#include "create_view.ftl">
