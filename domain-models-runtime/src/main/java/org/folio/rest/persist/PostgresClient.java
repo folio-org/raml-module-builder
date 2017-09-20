@@ -1987,7 +1987,7 @@ public class PostgresClient {
       String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
-      String locale = "en_US.UTF-8";
+      String locale = "C";
       String OS = System.getProperty("os.name").toLowerCase();
       if(OS.indexOf("win") >= 0){
         locale = "american_usa";
