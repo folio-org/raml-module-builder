@@ -1223,7 +1223,7 @@ RMB also allows easy faceting of result sets. The grouping / faceting is done in
 To add faceting to your API.
 1. Add the [faceting RAML trait](https://github.com/folio-org/raml/blob/master/traits/facets.raml) to your RAML and reference it from the endpoint (using the is:[])
     - facet query parameter format: `facets=a.b.c` or `facets=a.b.c:10` (they are repeating). For example `?facets=active&facets=personal.lastName`
-2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas. 
+2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas.
 For example:
 ```
  "type": "object",
@@ -1239,7 +1239,7 @@ For example:
     "resultInfo": {
       "type": "object",
       "$ref": "raml-util/schemas/resultInfo.schema"
-    } 
+    }
 ```
 3. When building your module, an additional parameter will be added to the generated interfaces of the faceted endpoints. `List<String> facets`. You can simply convert this list into a List of Facet objects using the RMB tool as follows: `List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");` and pass the `facetList` returned to the `postgresClient`'s `get()` methods.
 
@@ -1265,7 +1265,7 @@ for example:
 <systemProperty>
     <key>jsonschema.customfield</key>
     <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"}</value>
-</systemProperty> 
+</systemProperty>
 ```
 
 the `jsonschema.customfield` key can contain multiple json values (delimited by a `;`). Each json indicates a field name + a field value to match against - and a validation annotation to apply. So, getting back to the readonly field, the example above indicates that a field in the json schema that has been tagged with the `readonly` field can not contain data when passed in as part of the request.
@@ -1673,9 +1673,9 @@ See the `JsonPathParser` class for more info.
     //before the chainedRequest is issued - see example below
     //the chained request will not be sent if the previous response (response1) has completed with
     //an error
-    response1.thenCompose(client.chainedRequest("/authn/credentials/{users[0].username}", 
+    response1.thenCompose(client.chainedRequest("/authn/credentials/{users[0].username}",
         okapiHeaders, null, handlePreviousResponse());
-    
+
         Consumer<Response> handlePreviousResponse(){
             return (response) -> {
                 int statusCode = response.getCode();
@@ -1683,16 +1683,16 @@ See the `JsonPathParser` class for more info.
                 //if not ok, return error
             };
         }
-    
-    //if you send multiple chained Requests based on response1 you can use the 
+
+    //if you send multiple chained Requests based on response1 you can use the
     //CompletableFuture.allOf() to wait till they are all complete
     //or you can chain one request to another in a pipeline manner as well
-    
-    //you can also generate a cql query param as part of the chained request based on the 
+
+    //you can also generate a cql query param as part of the chained request based on the
     //response of the previous response. the below will create a username=<value> cql clause for
     //every value appearing in the response1 json's users array -> username
     response1.thenCompose(client.chainedRequest("/authn/credentials", okapiHeaders, new BuildCQL(null, "users[*].username", "username")),...
-    
+
     //join the values within 2 responses - injecting the value from a field in one json into the field of another json when a constraint between the two jsons exists (like field a from json 1 equals field c from json 2)
     //compare all users->patron_groups in response1 to all usergroups->id in groupResponse, when there is a match, push the group field in the specific entry of groupResonse into the patron_group field in the specific entry in the response1 json
     response1.joinOn("users[*].patron_group", groupResponse, "usergroups[*].id", "group", "patron_group", false);

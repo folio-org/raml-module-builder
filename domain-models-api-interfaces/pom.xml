@@ -167,7 +167,7 @@
                 <systemProperty>
                   <key>jsonschema.customfield</key>
                   <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"}</value>
-                </systemProperty> 
+                </systemProperty>
               </systemProperties>
             </configuration>
           </execution>
