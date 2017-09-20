@@ -149,7 +149,7 @@ public class JsonSchemaPojoUtil {
    * @param type - type to look for - "type" / "readonly" / etc...
    * @param value - the value of the type - true / "string" / etc...
    * @return - returns a list of paths within the schema that contain this type = value , the path
-   * is dot sepsrated - so for embedded objects in the schema you would be something like a.b.c
+   * is dot separated - so for embedded objects in the schema you would be something like a.b.c
    */
   public static List<String> getFieldsInSchemaWithType(JsonObject schema, String type, Object value){
     if(schema == null){
