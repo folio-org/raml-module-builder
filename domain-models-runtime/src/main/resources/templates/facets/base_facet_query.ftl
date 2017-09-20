@@ -7,7 +7,7 @@ with facets as (
   count(${idField}) OVER() AS count,
   ${idField}
      FROM
-      ${table}    
+      ${table}
       ${where}
     GROUP BY GROUPING SETS (
       ${idField},
@@ -20,12 +20,12 @@ with facets as (
  <#list facets as facet>
   <#include "additional_facet_clause.ftl">,
  </#list>
- 
+
 lst999 as (
        ${mainQuery}
-       ) 
+       )
  <#list facets as facet>
   (SELECT count, ${idField}, jsonb FROM lst${facet_index + 1} limit ${facet.topFacets2return})<#sep> UNION </#sep>
  </#list>
-UNION ALL 
+UNION ALL
 (select count, ${idField}, jsonb from lst999 ${limitClause} );

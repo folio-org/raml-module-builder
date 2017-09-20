@@ -2,12 +2,12 @@ package org.folio.rest.annotations;
 
 import org.aspectj.lang.annotation.SuppressAjWarnings;
 import org.aspectj.lang.reflect.MethodSignature;
- 
+
 
 public aspect SchemaMapper2 {
-  
+
   pointcut mapSchema2Pojo(): execution(* org.jsonschema2pojo.SchemaMapper.generate(..));
-  
+
   @SuppressAjWarnings({"adviceDidNotMatch"})
   after() returning(Object r): mapSchema2Pojo() {
     MethodSignature methodSignature = (MethodSignature) thisJoinPoint.getSignature();
@@ -23,7 +23,7 @@ public aspect SchemaMapper2 {
     }
     write(params);
   }
-  
+
   private void write(Object[] params){
     if(params[0] != null && params[1] != null){
       org.folio.rest.utils.GlobalSchemaPojoMapperCache.add(params[0], params[1]);
