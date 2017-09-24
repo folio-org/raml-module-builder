@@ -103,7 +103,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
   public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
-  public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
+  public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
 
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
