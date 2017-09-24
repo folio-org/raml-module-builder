@@ -1103,18 +1103,17 @@ https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runti
 
 #### The Post Tenant API 
 
-RMB will look for two files at `/resources/templates/db_scripts/`: **create_table.json** and **create_view.json**
+RMB will look for a file at `/resources/templates/db_scripts/` called **schema.json**
 
-The create_table file contains an array of tables to create for a tenant on registration (tenant api post)
-The create_view file contains an array of views to create for that tenant
+The file contains an array of tables and views to create for a tenant on registration (tenant api post)
 
 An example can be found here:
  
- - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/create_table.json.example
-
- - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/create_view.json.example
+ - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example
  
 Entries in the json file to be aware of:
+
+For each table:
 
 1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
 2. `generateId` - whether to auto generate the id of entries for this table - (will add the following to the id column `DEFAULT gen_random_uuid()`)
@@ -1134,7 +1133,9 @@ Entries in the json file to be aware of:
 12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
 13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
 
-The view json file is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by.
+The views are a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by.
+
+The beforeScript and endScript allows a module to run custom code before table / view creation/updates and after all tables/views have been created/updated.
 
 The tables / views will be generated in the schema named tenantid_modulename
 
