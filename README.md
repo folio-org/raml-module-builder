@@ -1101,11 +1101,12 @@ The RAML defining the API:
 
 https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/raml/tenant.raml
 
-#### The Post Tenant API will look for two files in the module's classpath called:
-**create_table.json** and **create_view.json**
+#### The Post Tenant API 
+
+RMB will look for two files at `/resources/templates/db_scripts/`: **create_table.json** and **create_view.json**
 
 The create_table file contains an array of tables to create for a tenant on registration (tenant api post)
-The create_view file contains an array of views to create for a tenant
+The create_view file contains an array of views to create for that tenant
 
 An example can be found here:
  
@@ -1132,6 +1133,8 @@ Entries in the json file to be aware of:
 11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
 12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
 13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
+
+The view json file is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by.
 
 The tables / views will be generated in the schema named tenantid_modulename
 
