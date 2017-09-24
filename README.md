@@ -1099,7 +1099,7 @@ The Postgres Client support in the RMB is schema specific, meaning that it expec
 
 The RAML defining the API:
 
-https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/raml/tenant.raml
+https://github.com/folio-org/raml/blob/3e5a4a58e141fb9d4a6968723df50e0f0b8d8de1/ramls/tenant.raml
 
 #### The Post Tenant API 
 
