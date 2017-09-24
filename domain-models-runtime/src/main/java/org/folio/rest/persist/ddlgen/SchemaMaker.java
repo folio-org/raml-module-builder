@@ -73,11 +73,11 @@ public class SchemaMaker {
       }
     }
     else{
-      pVersion = "0";
+      pVersion = "0.0";
     }
 
     templateInput.put("version", Double.parseDouble(pVersion));
-    System.out.println("updating from version" + Double.parseDouble(pVersion));
+    System.out.println("updating from version " + Double.parseDouble(pVersion));
 
     templateInput.put("newVersion", PomReader.INSTANCE.getVersion());
 
