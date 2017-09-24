@@ -1,0 +1,89 @@
+{
+  "beforeScript": "select * from start; ",
+  "tables": [
+    {
+      "tableName": "users",
+      "generateId": true,
+      "fromModuleVersion": 12.2,
+      "populateJsonWithId": true,
+      "withMetadata": true,
+      "likeIndex": [
+        {
+          "fieldName": "username",
+          "tOps": "ADD"
+        }
+      ],
+      "ginIndex": true,
+      "withAuditing": true,
+      "pkColumnName": "id",
+      "auditingSnippet": {
+        "delete": {
+          "declare": "injectedAction text;",
+          "statement": "injectedAction = '\"deleted\"';OLD.jsonb = jsonb_set(OLD.jsonb, '{action}' , injectedAction::jsonb , false);"
+        },
+        "insert": {
+          "declare": "injectedAction2 text;",
+          "statement": "injectedAction2 = '\"inserted\"';OLD.jsonb = jsonb_set(OLD.jsonb, '{action}' , injectedAction2::jsonb , false);"
+        }
+      },
+      "uniqueIndex": [
+        {
+          "fieldName": "username",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "personal.phone",
+          "tOps": "ADD"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "username",
+          "targetTable": "users",
+          "tOps": "ADD"
+        }
+      ],
+      "customSnippetPath": "insertAsSelect.sql",
+      "deleteFields": [
+        {
+          "fieldName": "a.b"
+        }
+      ],
+      "addFields": [
+        {
+          "fieldName": "a.b",
+          "defaultValue": "test"
+        }
+      ]
+    }
+  ],
+  "views": [
+    {
+      "viewName": "users_groups_view",
+      "mode": "new",
+      "table": {
+        "tableName": "users",
+        "joinOnField": "patronGroup"
+      },
+      "joinTable": {
+        "tableName": "groups",
+        "joinOnField": "id",
+        "jsonFieldAlias": "group_jsonb"
+      }
+    },
+    {
+      "viewName": "items_mt_view",
+      "mode": "new",
+      "table": {
+        "tableName": "item",
+        "joinOnField": "materialTypeId"
+      },
+      "joinTable": {
+        "tableName": "material_type",
+        "joinOnField": "id",
+        "jsonFieldAlias": "mt_jsonb"
+      }
+    }
+  ],
+  "endScript": "select * from end;"
+}

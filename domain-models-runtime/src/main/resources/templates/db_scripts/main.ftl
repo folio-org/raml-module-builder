@@ -19,6 +19,10 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (id, jsonb) values (1, '{"r
 
 SET search_path TO ${myuniversity}_${mymodule}, public;
 
+<#if startScript??>
+  ${startScript}
+</#if>
+
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>
 
@@ -89,5 +93,9 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
 </#list>
 
 <#include "views.ftl">
+
+<#if endScript??>
+  ${endScript}
+</#if>
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};

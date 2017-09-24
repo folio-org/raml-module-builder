@@ -10,9 +10,8 @@ import org.apache.commons.io.IOUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
-import org.folio.rest.persist.ddlgen.Table;
-import org.folio.rest.persist.ddlgen.View;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.messages.Messages;
@@ -35,8 +34,7 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
-  public static final String       TABLE_JSON = "templates/db_scripts/create_table.json";
-  public static final String       VIEW_JSON = "templates/db_scripts/create_view.json";
+  public static final String       TABLE_JSON = "templates/db_scripts/schema.json";
   public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
 
   private static final String      UPGRADE_FROM_VERSION          = "module_from";
@@ -254,13 +252,12 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
               InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(
                 TABLE_JSON);
-              InputStream viewInput = TenantAPI.class.getClassLoader().getResourceAsStream(
-                VIEW_JSON);
-              if(tableInput == null && viewInput == null) {
+
+              if(tableInput == null) {
                 handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
                   .withNoContent()));
-                log.info("Could not find templates/db_scripts/create_table.json , "
-                    + "templates/db_scripts/create_view.json, RMB will not run any scripts for " + tenantId);
+                log.info("Could not find templates/db_scripts/schema.json , "
+                    + " RMB will not run any scripts for " + tenantId);
                 return;
               }
 
@@ -277,16 +274,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               String tableInputStr = null;
               if(tableInput != null){
                 tableInputStr = IOUtils.toString(tableInput, "UTF8");
-                List<Table> tables = (List<Table>)ObjectMapperTool.getMapper().readValue(
-                  tableInputStr, ObjectMapperTool.getMapper().getTypeFactory().constructCollectionType(List.class, Table.class));
-                sMaker.setTables(tables);
-              }
-              String viewInputStr = null;
-              if(viewInput != null){
-                viewInputStr = IOUtils.toString(viewInput, "UTF8");
-                List<View> views = (List<View>)ObjectMapperTool.getMapper().readValue(
-                  viewInputStr, ObjectMapperTool.getMapper().getTypeFactory().constructCollectionType(List.class, View.class));
-                sMaker.setViews(views);
+                Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+                sMaker.setSchema(schema);
               }
 
               String sqlFile = sMaker.generateDDL();

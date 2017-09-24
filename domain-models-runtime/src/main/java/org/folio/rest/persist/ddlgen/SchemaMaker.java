@@ -3,7 +3,6 @@ package org.folio.rest.persist.ddlgen;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -30,10 +29,9 @@ public class SchemaMaker {
   private String tenant;
   private String module;
   private String mode;
-  private List<Table> tables = new ArrayList<>();
-  private List<View> views = new ArrayList<>();
   private String previousVersion;
   private String rmbVersion;
+  private Schema schema;
 
   /**
    * @param onTable
@@ -63,6 +61,20 @@ public class SchemaMaker {
 
     templateInput.put("mode", this.mode);
 
+    if("delete".equals(this.mode)){
+      return handleDelete();
+    }
+
+    if(this.schema == null){
+      //log this
+      System.out.print("Must call setSchema() first...");
+      return null;
+    }
+
+    templateInput.put("startScript", this.schema.getBeforeScript());
+
+    templateInput.put("endScript", this.schema.getEndScript());
+
     String pVersion = this.previousVersion;
 
     if(pVersion != null){
@@ -84,6 +96,8 @@ public class SchemaMaker {
     //TODO - check the rmbVersion in the internal_rmb table and compare to this passed in
     //version, to check if core rmb scripts need updating due to an update
     templateInput.put("rmbVersion", this.rmbVersion);
+
+    List<Table> tables = this.schema.getTables();
 
     if(tables != null){
       int size = tables.size();
@@ -145,6 +159,7 @@ public class SchemaMaker {
       }
     }
 
+    List<View> views = this.schema.getViews();
     if(views != null){
       int size = views.size();
       for (int i = 0; i < size; i++) {
@@ -159,28 +174,22 @@ public class SchemaMaker {
       }
     }
 
-    templateInput.put("tables", this.tables);
+    templateInput.put("tables", this.schema.getTables());
 
-    templateInput.put("views", this.views);
+    templateInput.put("views", this.schema.getViews());
 
-    String templateName = "main.ftl";
-    if("delete".equals(this.mode)){
-      templateName = "delete.ftl";
-    }
-    Template tableTemplate = cfg.getTemplate(templateName);
-
+    Template tableTemplate = cfg.getTemplate("main.ftl");
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
 
     return writer.toString();
   }
 
-  public List<Table> getTables() {
-    return tables;
-  }
-
-  public void setTables(List<Table> tables) {
-    this.tables = tables;
+  private String handleDelete() throws IOException, TemplateException {
+    Writer writer = new StringWriter();
+    Template tableTemplate = cfg.getTemplate("delete.ftl");
+    tableTemplate.process(templateInput, writer);
+    return writer.toString();
   }
 
   public String getTenant() {
@@ -207,30 +216,23 @@ public class SchemaMaker {
     this.mode = mode;
   }
 
-  public List<View> getViews() {
-    return views;
+  public Schema getSchema() {
+    return schema;
   }
 
-  public void setViews(List<View> views) {
-    this.views = views;
+  public void setSchema(Schema schema) {
+    this.schema = schema;
   }
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", "delete", PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
+    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", "create", PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
 
     String json = IOUtils.toString(
-      SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/create_table.json"));
-    List<Table> tables = (List<Table>)ObjectMapperTool.getMapper().readValue(
-      json, ObjectMapperTool.getMapper().getTypeFactory().constructCollectionType(List.class, Table.class));
+      SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/examples/create_table.json.example"));
+    fm.setSchema(ObjectMapperTool.getMapper().readValue(
+      json, Schema.class));
 
-    String json2 = IOUtils.toString(
-      SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/create_view.json"));
-    List<View> views = (List<View>)ObjectMapperTool.getMapper().readValue(
-      json2, ObjectMapperTool.getMapper().getTypeFactory().constructCollectionType(List.class, View.class));
-
-    fm.setTables(tables);
-    fm.setViews(views);
     System.out.println(fm.generateDDL());
 
   }
