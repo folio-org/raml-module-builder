@@ -1,3 +1,7 @@
+## 15.0.0
+
+* RMB-61 move sql templates into rmb (break backwards compatibility for implementing modules using the sql scripts to generate a DB schema on tenant creation / update / delete)
+
 ## 14.0.0
 
 * RMB-59 implement faceting framework (breaks backwards compatibility - postgresClient's get() now returns a org.folio.rest.persist.interfaces.Result object and not an Object[])
