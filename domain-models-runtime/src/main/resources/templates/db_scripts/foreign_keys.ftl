@@ -1,4 +1,4 @@
-  
+
   <#-- Create / Drop foreign keys -->
   <#if table.foreignKeys??>
     ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}
@@ -23,7 +23,7 @@
       RETURN NEW;
     END;
     $$ language 'plpgsql';
-    
+
     <#-- in update mode try to drop the trigger and re-create (below) since there is no create trigger if not exists -->
     DROP TRIGGER IF EXISTS update_${table.tableName}_references ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
 
@@ -31,7 +31,7 @@
     CREATE TRIGGER update_${table.tableName}_references
       BEFORE INSERT OR UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
       FOR EACH ROW EXECUTE PROCEDURE update_${table.tableName}_references();
-      
+
   <#else>
     <#-- foreign key list is empty attempt to drop trigger and then function -->
     DROP TRIGGER IF EXISTS update_${table.tableName}_references ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;

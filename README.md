@@ -1101,16 +1101,16 @@ The RAML defining the API:
 
 https://github.com/folio-org/raml/blob/3e5a4a58e141fb9d4a6968723df50e0f0b8d8de1/ramls/tenant.raml
 
-#### The Post Tenant API 
+#### The Post Tenant API
 
 RMB will look for a file at `/resources/templates/db_scripts/` called **schema.json**
 
 The file contains an array of tables and views to create for a tenant on registration (tenant api post)
 
 An example can be found here:
- 
+
  - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example
- 
+
 Entries in the json file to be aware of:
 
 For each table:
@@ -1119,7 +1119,7 @@ For each table:
 2. `generateId` - whether to auto generate the id of entries for this table - (will add the following to the id column `DEFAULT gen_random_uuid()`)
 3. `fromModuleVersion` - this field indicates the version in which the table was created / updated in. When a tenant update is requested - only versions older than the indicated version will generate the declared table. This ensures that if a module upgrades from an older version, the needed tables will be generated for it, however, subsequent upgrades from versions equal or later than the version indicated for the table will not re-generate the table.
  - Note that this is enforced for all tables, views, indexes, FK, triggers, etc... - via the `IF NOT EXISTS` sql Postgres statement
-4. `mode` - should be used only to indicate `delete` 
+4. `mode` - should be used only to indicate `delete`
 5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
 6. `likeIndex` - indicate which fields in the json will be queried using the LIKE  - needed for fields that will be faceted on
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
@@ -1139,7 +1139,7 @@ The beforeScript and endScript allows a module to run custom code before table /
 
 The tables / views will be generated in the schema named tenantid_modulename
 
-The x-okapi-tenant header passed in to the API call will be used to get the tenant id. T
+The x-okapi-tenant header passed in to the API call will be used to get the tenant id.
 The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
 
 Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
@@ -1151,9 +1151,9 @@ As of now (this may change in the future), securing a tenant's connection to the
  - Set the secret key (as described in the Securing DB Configuration file section)
 
   The PASSWORD will be replaced with the following:
-  encrypt(tenant id with secrey key) = **new tenant's password**
+  encrypt(tenant id with secret key) = **new tenant's password**
   The **new tenant's password** will replace the default PASSWORD value (which is the tenantid_modulename)
-  The RMB Postrges client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
+  The RMB Postgres client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
 
 
 The RMB comes with a TenantClient to facilitate calling the API via URL.
@@ -1170,7 +1170,7 @@ tClient.post( response -> {
 });
 ```
 
-#### The Delete Tenant API 
+#### The Delete Tenant API
 
 When this API is called RMB will basically drop the schema for the tenant (CASCADE) as well as drop the user
 
