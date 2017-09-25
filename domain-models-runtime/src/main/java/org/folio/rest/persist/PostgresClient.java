@@ -88,6 +88,9 @@ public class PostgresClient {
 
   private static final String   UPDATE = "UPDATE ";
   private static final String   SET = " SET ";
+  private static final String   WHERE = " WHERE ";
+  private static final String INSERT_CLAUSE = "INSERT INTO ";
+
   private static final String   _PASSWORD = "password";
   private static final String   _USERNAME = "username";
   private static final String   HOST     = "host";
@@ -107,6 +110,7 @@ public class PostgresClient {
   private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
       +"CALLED ON NULL INPUT|RETURNS NULL ON NULL INPUT|STRICT|"
       +"SECURITY INVOKER|SECURITY DEFINER|SET\\s.*|AS\\s.*|COST\\s\\d.*|ROWS\\s.*";
+
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
 
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
@@ -497,7 +501,7 @@ public class PostgresClient {
           }
 
           /* do not change to updateWithParams as this will not return the generated id in the reply */
-          connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+          connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
             ") VALUES ("+clientId+"?::JSON)" + upsertClause + returning,
             new JsonArray().add(pojo2json(entity)), query -> {
@@ -507,7 +511,7 @@ public class PostgresClient {
               } else {
                 List<JsonArray> resList = query.result().getResults();
                 String response = "";
-                if(resList.size() > 0){
+                if(!resList.isEmpty()){
                   response = resList.get(0).getValue(0).toString();
                 }
                 replyHandler.handle(Future.succeededFuture(response));
@@ -536,7 +540,7 @@ public class PostgresClient {
     // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
     SQLConnection connection = ((Future<SQLConnection>) sqlConnection).result();
     try {
-      connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+      connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
         new JsonArray().add(pojo2json(entity)), query -> {
           if (query.failed()) {
@@ -585,7 +589,7 @@ public class PostgresClient {
             try {
               connection.query("BEGIN;", begin -> {
                 if(begin.succeeded()){
-                  connection.query("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+                  connection.query(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
                     " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES "+sb.toString()+" RETURNING " + idField + ";",
                     query -> {
                       if (query.failed()) {
@@ -640,7 +644,6 @@ public class PostgresClient {
               log.error(e.getMessage(), e);
               replyHandler.handle(Future.failedFuture(e));
             }
-          //});
         } catch (Exception e) {
           if(connection != null){
             connection.close();
@@ -663,7 +666,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    update(table, entity, DEFAULT_JSONB_FIELD_NAME, " WHERE " + idField + "='" + id + "'", false, replyHandler);
+    update(table, entity, DEFAULT_JSONB_FIELD_NAME, WHERE + idField + "='" + id + "'", false, replyHandler);
   }
 
   /**
@@ -880,7 +883,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    delete(table, " WHERE " + idField + "='" + id + "'", false, replyHandler);
+    delete(table, WHERE + idField + "='" + id + "'", false, replyHandler);
   }
 
   /**
@@ -899,7 +902,7 @@ public class PostgresClient {
   }
 
   public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    delete(table, " WHERE " + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo2json(entity) + "' ", false, replyHandler);
+    delete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo2json(entity) + "' ", false, replyHandler);
   }
 
   private void delete(String table, String where, boolean dbPrefix, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
@@ -1057,7 +1060,7 @@ public class PostgresClient {
    */
   //@Timer
   public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Results>> replyHandler) throws Exception {
-    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
+    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo2json(entity) + "' ", returnCount, true, true, replyHandler);
   }
 
@@ -1067,7 +1070,7 @@ public class PostgresClient {
       //if no id fields then cannot setId from external column into json object
       setId = false;
     }
-    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
+    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo2json(entity) + "' ", returnCount, returnIdField, setId, replyHandler);
   }
 
@@ -1089,7 +1092,7 @@ public class PostgresClient {
       sb.append(" ").append(new Limit(limit).toString()).append(" ");
     }
     String fieldsStr = Arrays.toString(fields);
-    get(table, entity.getClass(), fieldsStr.substring(1, fieldsStr.length()-1), " WHERE " + DEFAULT_JSONB_FIELD_NAME
+    get(table, entity.getClass(), fieldsStr.substring(1, fieldsStr.length()-1), WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo2json(entity) + "' "+sb.toString(), returnCount, returnIdField, setId, replyHandler);
   }
 

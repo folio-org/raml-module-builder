@@ -169,7 +169,7 @@ public class Rules {
     VerifierBuilder vBuilder = VerifierBuilderFactory.newVerifierBuilder();
     Verifier verifier = vBuilder.newVerifier();
     verifier.addResourcesToVerify(new InputStreamResource(resource, "UTF8"), ResourceType.DRL);
-    List<String> errorList = new ArrayList<String>();
+    List<String> errorList = new ArrayList<>();
     for (int i = 0; i < verifier.getErrors().size(); i++)
     {
       errorList.add(verifier.getErrors().get(i).getMessage());
@@ -182,17 +182,14 @@ public class Rules {
 
     System.out.println("Getting rules from " + uri.toString());
     Path rulePath = null;
-    ArrayList<String> list = new ArrayList<String>();
+    ArrayList<String> list = new ArrayList<>();
     FileSystem fileSystem = null;
 
-    //if (!uri.isAbsolute()) {
-    fileSystem = null;
     if (uri.getScheme().equals("jar")) {
       try {
         fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap());
       } catch (FileSystemAlreadyExistsException e) {
         fileSystem = FileSystems.getFileSystem(uri);
-        //e.printStackTrace();
       }
       rulePath = fileSystem.getPath(RULES_DIR_JAR);
     }
@@ -203,7 +200,6 @@ public class Rules {
       uri = Rules.class.getClassLoader().getResource(RULES_DIR_IDE).toURI();
       rulePath = Paths.get(uri);
     }
-    //}
     Stream<Path> walk = Files.walk(rulePath, 1);
     for (Iterator<Path> it = walk.iterator(); it.hasNext();) {
       Path file = it.next();
