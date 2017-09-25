@@ -9,9 +9,9 @@
       RETURN NEW;
   END;
   $$ language 'plpgsql';
-  
+
   DROP TRIGGER IF EXISTS set_id_injson_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-  
+
   CREATE TRIGGER set_id_injson_${table.tableName} BEFORE INSERT OR UPDATE ON ${myuniversity}_${mymodule}.${table.tableName} FOR EACH ROW EXECUTE PROCEDURE set_id_injson_${table.tableName}();
 <#else>
   DROP TRIGGER IF EXISTS set_id_injson_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;

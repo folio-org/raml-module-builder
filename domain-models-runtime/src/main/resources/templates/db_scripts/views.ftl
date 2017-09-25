@@ -13,7 +13,7 @@
   <#else>
     DROP VIEW IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
   </#if>
-  
+
 </#if>
 
 </#list>
