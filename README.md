@@ -1139,7 +1139,7 @@ The beforeScript and endScript allows a module to run custom code before table /
 
 The tables / views will be generated in the schema named tenantid_modulename
 
-The x-okapi-tenant header passed in to the API call will be used to get the tenant id. T
+The x-okapi-tenant header passed in to the API call will be used to get the tenant id.
 The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
 
 Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
@@ -1151,9 +1151,9 @@ As of now (this may change in the future), securing a tenant's connection to the
  - Set the secret key (as described in the Securing DB Configuration file section)
 
   The PASSWORD will be replaced with the following:
-  encrypt(tenant id with secrey key) = **new tenant's password**
+  encrypt(tenant id with secret key) = **new tenant's password**
   The **new tenant's password** will replace the default PASSWORD value (which is the tenantid_modulename)
-  The RMB Postrges client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
+  The RMB Postgres client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
 
 
 The RMB comes with a TenantClient to facilitate calling the API via URL.
