@@ -1,10 +1,9 @@
 {
-	"tables":
-		[
-		    {
-		        "tableName": "test_tenantapi",
-		        "pkColumnName": "_id",
-		        "generateId": true
-		    }
-		]
+  "tables": [
+    {
+      "tableName": "test_tenantapi",
+      "pkColumnName": "_id",
+      "generateId": true
+    }
+  ]
 }
