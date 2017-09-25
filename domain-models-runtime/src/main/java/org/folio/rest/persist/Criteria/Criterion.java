@@ -1,5 +1,6 @@
 package org.folio.rest.persist.Criteria;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -10,6 +11,7 @@ import java.util.Set;
 
 import org.folio.rest.persist.Criteria.GroupedCriterias.Pairs;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -164,71 +166,71 @@ public class Criterion {
     return snippet + " " + order.toString() + " " + offset.toString() + " " + limit.toString();
   }
 
-  public static Criterion json2Criterion(String query) {
+  /**
+   * example of json that can be passed in and converted into a postgres jsonb query
+   * "[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"
+   * with the use of cql this function should be depreicated
+   * @param query
+   * @return
+   * @throws IOException
+   * @throws JsonProcessingException
+   */
+  public static Criterion json2Criterion(String query) throws Exception {
     Criterion cc = new Criterion();
-    try {
-      if(query != null){
-        JsonNode node = MAPPER.readTree(query);
-        Iterator<JsonNode> iter = node.elements();
-        processQueryIntern(iter, cc);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
+    if(query != null){
+      JsonNode node = MAPPER.readTree(query);
+      Iterator<JsonNode> iter = node.elements();
+      processQueryIntern(iter, cc);
     }
     return cc;
   }
 
   private static Criterion processQueryIntern(Iterator<JsonNode> iter, Criterion cc) {
-    try {
-      int clauseCount = 0;
-      Criteria c[] = new Criteria[2];
-      String op = null;
-      int pos = 0;
-      while (iter.hasNext()) {
-        JsonNode jsonNode = iter.next();
-        if (jsonNode.isArray()) {
-          processQueryIntern(jsonNode.elements(), cc);
+    int clauseCount = 0;
+    Criteria c[] = new Criteria[2];
+    String op = null;
+    int pos = 0;
+    while (iter.hasNext()) {
+      JsonNode jsonNode = iter.next();
+      if (jsonNode.isArray()) {
+        processQueryIntern(jsonNode.elements(), cc);
+      } else {
+        clauseCount++;
+        if (1 == jsonNode.size()) {
+          op = jsonNode.get("op").textValue();
         } else {
-          clauseCount++;
-          if (1 == jsonNode.size()) {
-            op = jsonNode.get("op").textValue();
-          } else {
-            Criteria crit = new Criteria();
-            String[] fields = jsonNode.get("field").textValue().split("->>|->");
-            int field2remove = -1;
-            for (int i = 0; i < fields.length; i++) {
-              if ("[]".equals(fields[i])) {
-                crit.isArray = true;
-                field2remove = i;
-              }
+          Criteria crit = new Criteria();
+          String[] fields = jsonNode.get("field").textValue().split("->>|->");
+          int field2remove = -1;
+          for (int i = 0; i < fields.length; i++) {
+            if ("[]".equals(fields[i])) {
+              crit.isArray = true;
+              field2remove = i;
             }
-            ArrayList<String> fieldList = new ArrayList<>(Arrays.asList(fields));
-            if (field2remove != -1) {
-              fieldList.remove(field2remove);
-            }
-            crit.field = fieldList;
-            if("STRING".equals(jsonNode.get("value").getNodeType().name())){
-              crit.value = jsonNode.get("value").textValue();
-            }else{
-              crit.value = jsonNode.get("value");
-            }
-            crit.operation = jsonNode.get("op").textValue();
-            c[pos++] = crit;
           }
+          ArrayList<String> fieldList = new ArrayList<>(Arrays.asList(fields));
+          if (field2remove != -1) {
+            fieldList.remove(field2remove);
+          }
+          crit.field = fieldList;
+          if("STRING".equals(jsonNode.get("value").getNodeType().name())){
+            crit.value = jsonNode.get("value").textValue();
+          }else{
+            crit.value = jsonNode.get("value");
+          }
+          crit.operation = jsonNode.get("op").textValue();
+          c[pos++] = crit;
         }
       }
-      if (clauseCount == 3) {
-        cc.addCriterion(c[0], op, c[1]);
-      } else if (clauseCount == 2) {
-        // not query
-        c[0].isNotQuery = true;
-        cc.addCriterion(c[0]);
-      } else if (clauseCount == 1) {
-        cc.addCriterion(c[0]);
-      }
-      return cc;
-    } catch (Exception e) {
-      e.printStackTrace();
+    }
+    if (clauseCount == 3) {
+      cc.addCriterion(c[0], op, c[1]);
+    } else if (clauseCount == 2) {
+      // not query
+      c[0].isNotQuery = true;
+      cc.addCriterion(c[0]);
+    } else if (clauseCount == 1) {
+      cc.addCriterion(c[0]);
     }
     return cc;
   }
@@ -277,23 +279,17 @@ public class Criterion {
 
   public static void main(String args[]) throws Exception {
 
-    try {
-      Criteria schema = new Criteria("userdata.json");
-      schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
-      System.out.println(schema.toString());
+    Criteria schema = new Criteria("userdata.json");
+    schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
+    System.out.println(schema.toString());
 
-      schema = new Criteria("userdata.json");
-      schema.addField("'active'").setOperation("=").setValue("true");
-      System.out.println(schema.toString());
+    schema = new Criteria("userdata.json");
+    schema.addField("'active'").setOperation("=").setValue("true");
+    System.out.println(schema.toString());
 
-      schema = new Criteria();
-      schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
-      System.out.println(schema.toString());
-
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-
+    schema = new Criteria();
+    schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
+    System.out.println(schema.toString());
 
 /*    PostgresClient.setConfigFilePath("C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\postgres-conf.json");
     PostgresClient.getInstance(Vertx.factory.vertx() , "myuniversity3").get("users",

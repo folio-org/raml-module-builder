@@ -88,11 +88,12 @@ public class PostgresClient {
 
   private static final String   UPDATE = "UPDATE ";
   private static final String   SET = " SET ";
-  private static final String   PASSWORD = "password";
-  private static final String   USERNAME = "username";
+  private static final String   _PASSWORD = "password";
+  private static final String   _USERNAME = "username";
   private static final String   HOST     = "host";
   private static final String   PORT     = "port";
   private static final String   DATABASE = "database";
+  private static final String   DEFAULT_IP = "127.0.0.1";
 
   private static final String    STATS_KEY                = PostgresClient.class.getName();
 
@@ -312,9 +313,9 @@ public class PostgresClient {
       if (embeddedMode) {
         //embedded mode, if no config passed use defaults
         postgreSQLClientConfig = new JsonObject();
-        postgreSQLClientConfig.put(USERNAME, USERNAME);
-        postgreSQLClientConfig.put(PASSWORD, PASSWORD);
-        postgreSQLClientConfig.put(HOST, "127.0.0.1");
+        postgreSQLClientConfig.put(_USERNAME, _USERNAME);
+        postgreSQLClientConfig.put(_PASSWORD, _PASSWORD);
+        postgreSQLClientConfig.put(HOST, DEFAULT_IP);
         postgreSQLClientConfig.put(PORT, 6000);
         postgreSQLClientConfig.put(DATABASE, "postgres");
       }
@@ -324,13 +325,13 @@ public class PostgresClient {
       }
     }
     else if(tenantId.equals(DEFAULT_SCHEMA)){
-      postgreSQLClientConfig.put(USERNAME, postgreSQLClientConfig.getString(USERNAME));
-      postgreSQLClientConfig.put(PASSWORD, decodePassword( postgreSQLClientConfig.getString(PASSWORD) ));
+      postgreSQLClientConfig.put(_USERNAME, postgreSQLClientConfig.getString(_USERNAME));
+      postgreSQLClientConfig.put(_PASSWORD, decodePassword( postgreSQLClientConfig.getString(_PASSWORD) ));
     }
     else{
       log.info("Using schema: " + tenantId);
-      postgreSQLClientConfig.put(USERNAME, convertToPsqlStandard(tenantId));
-      postgreSQLClientConfig.put(PASSWORD, createPassword(tenantId));
+      postgreSQLClientConfig.put(_USERNAME, convertToPsqlStandard(tenantId));
+      postgreSQLClientConfig.put(_PASSWORD, createPassword(tenantId));
     }
 
     if(embeddedPort != -1 && embeddedMode){
@@ -352,7 +353,7 @@ public class PostgresClient {
       return;
     }
     JsonObject passwordRedacted = postgreSQLClientConfig.copy();
-    passwordRedacted.put(PASSWORD, "...");
+    passwordRedacted.put(_PASSWORD, "...");
     log.info("postgreSQLClientConfig = " + passwordRedacted.encode());
   }
 
@@ -1825,8 +1826,8 @@ public class PostgresClient {
   private Connection getStandaloneConnection(String newDB, boolean superUser) throws SQLException {
     String host = postgreSQLClientConfig.getString(HOST);
     int port = postgreSQLClientConfig.getInteger(PORT);
-    String user = postgreSQLClientConfig.getString(USERNAME);
-    String pass = postgreSQLClientConfig.getString(PASSWORD);
+    String user = postgreSQLClientConfig.getString(_USERNAME);
+    String pass = postgreSQLClientConfig.getString(_PASSWORD);
     String db = postgreSQLClientConfig.getString(DATABASE);
 
     if(newDB != null){
@@ -1900,7 +1901,7 @@ public class PostgresClient {
       Handler<AsyncResult<List<String>>> replyHandler){
 
     long s = System.nanoTime();
-    log.info("Executing multiple statements with id " + sql.hashCode());
+    log.info("Executing multiple statements with id " + Arrays.hashCode(sql));
     List<String> results = new ArrayList<>();
     vertx.executeBlocking(dothis -> {
       Connection connection = null;
@@ -1934,10 +1935,10 @@ public class PostgresClient {
         }
         try {
           //connection.commit();
-          log.info("Successfully committed: " + sql.hashCode());
+          log.info("Successfully committed: " + Arrays.hashCode(sql));
         } catch (Exception e) {
           error = true;
-          log.error("Commit failed " + sql.hashCode() + " " + e.getMessage(), e);
+          log.error("Commit failed " + Arrays.hashCode(sql) + " " + e.getMessage(), e);
         }
       }
       catch(Exception e){
@@ -1963,7 +1964,7 @@ public class PostgresClient {
         }
       }
     }, done -> {
-      log.debug("execute timer for: " + sql.hashCode() + " took " + (System.nanoTime()-s)/1000000);
+      log.debug("execute timer for: " + Arrays.hashCode(sql) + " took " + (System.nanoTime()-s)/1000000);
       replyHandler.handle(Future.succeededFuture(results));
     });
   }
@@ -1983,8 +1984,8 @@ public class PostgresClient {
       PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
 
       int port = postgreSQLClientConfig.getInteger(PORT);
-      String username = postgreSQLClientConfig.getString(USERNAME);
-      String password = postgreSQLClientConfig.getString(PASSWORD);
+      String username = postgreSQLClientConfig.getString(_USERNAME);
+      String password = postgreSQLClientConfig.getString(_PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       String locale = "en_US.UTF-8";
@@ -1993,7 +1994,7 @@ public class PostgresClient {
         locale = "american_usa";
       }
 
-      final PostgresConfig config = new PostgresConfig(Version.V9_6_2, new AbstractPostgresConfig.Net("127.0.0.1", port),
+      final PostgresConfig config = new PostgresConfig(Version.V9_6_2, new AbstractPostgresConfig.Net(DEFAULT_IP, port),
         new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
         new AbstractPostgresConfig.Credentials(username, password));
 
@@ -2046,8 +2047,8 @@ public class PostgresClient {
     try {
       String host = postgreSQLClientConfig.getString(HOST);
       int port = postgreSQLClientConfig.getInteger(PORT);
-      String user = postgreSQLClientConfig.getString(USERNAME);
-      String pass = postgreSQLClientConfig.getString(PASSWORD);
+      String user = postgreSQLClientConfig.getString(_USERNAME);
+      String pass = postgreSQLClientConfig.getString(_PASSWORD);
       String db = postgreSQLClientConfig.getString(DATABASE);
 
       log.info("Connecting to " + db);
