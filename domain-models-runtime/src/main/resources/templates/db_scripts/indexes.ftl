@@ -9,7 +9,7 @@
         </#if>
     </#list>
   </#if>
-  
+
   <#-- Create / Drop indexes for fuzzy LIKE matching -->
   <#if table.likeIndex??>
     <#list table.likeIndex as indexes>
@@ -20,7 +20,7 @@
       </#if>
     </#list>
   </#if>
-  
+
   <#if table.ginIndex == true>
     CREATE INDEX IF NOT EXISTS ${table.tableName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN (jsonb jsonb_path_ops);
   <#else>

@@ -50,17 +50,17 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
       ADD COLUMN IF NOT EXISTS creation_date timestamp WITH TIME ZONE,
       ADD COLUMN IF NOT EXISTS created_by text;
     <#else>
-    ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName} 
+    ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}
       DROP COLUMN IF EXISTS creation_date CASCADE,
       DROP COLUMN IF EXISTS created_by CASCADE;
     </#if>
-  
+
     <#if table.deleteFields??>
       <#list table.deleteFields as fields2del>
     UPDATE ${myuniversity}_${mymodule}.${table.tableName} SET jsonb = jsonb #- ${fields2del.fieldPath};
       </#list>
     </#if>
-  
+
     <#if table.addFields??>
       <#list table.addFields as fields2add>
         <#if fields2add.defaultValue?is_string>
@@ -70,21 +70,21 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
         </#if>
       </#list>
     </#if>
-  
+
     <#include "indexes.ftl">
-  
+
     <#include "foreign_keys.ftl">
-  
+
     <#include "populate_id.ftl">
-  
+
     <#if table.withMetadata == true>
       <#include "metadata.ftl">
     </#if>
-  
+
     <#if table.withAuditing == true>
       <#include "audit.ftl">
     </#if>
-  
+
     <#if table.customSnippetPath??>
       <#include table.customSnippetPath>
     </#if>
