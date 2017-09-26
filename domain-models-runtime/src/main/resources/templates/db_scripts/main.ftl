@@ -1,5 +1,5 @@
 
-<#if mode == "create">
+<#if mode.name() == "CREATE">
 <#-- Create needed extensions, schema, role -->
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
@@ -19,8 +19,14 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (id, jsonb) values (1, '{"r
 
 SET search_path TO ${myuniversity}_${mymodule}, public;
 
-<#if startScript??>
-  ${startScript}
+<#if scripts??>
+  <#list scripts as script>
+    <#if script.run == "before">
+      <#if (version < (script.fromModuleVersion)!"0") || mode.name() == "CREATE">
+        ${script.snippet}
+      </#if>
+    </#if>
+  </#list>
 </#if>
 
 <#-- Loop over all tables that need updating / adding / deleting -->
@@ -28,7 +34,7 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
 
 <#-- the table version indicates which version introduced this feature hence all versions before this need the schema upgrade-->
 <#-- the from module version - if not set, is set to zero as it assumes that a version not set indicates to create the table always -->
-<#if (version < (table.fromModuleVersion)!"0") || mode == "create">
+<#if (version < (table.fromModuleVersion)!"0") || mode.name() == "CREATE">
 
 -- Previous module version ${version}
 -- Run upgrade of table: ${table.tableName} since table created in version ${(table.fromModuleVersion)!0}
@@ -94,8 +100,14 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
 
 <#include "views.ftl">
 
-<#if endScript??>
-  ${endScript}
+<#if scripts??>
+  <#list scripts as script>
+    <#if script.run == "after">
+      <#if (version < (script.fromModuleVersion)!"0") || mode.name() == "CREATE">
+        ${script.snippet}
+      </#if>
+    </#if>
+  </#list>
 </#if>
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};

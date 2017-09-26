@@ -28,7 +28,7 @@ public class SchemaMaker {
   private Map<String, Object> templateInput = new HashMap<>();
   private String tenant;
   private String module;
-  private String mode;
+  private TenantOperation mode;
   private String previousVersion;
   private String rmbVersion;
   private Schema schema;
@@ -36,7 +36,7 @@ public class SchemaMaker {
   /**
    * @param onTable
    */
-  public SchemaMaker(String tenant, String module, String mode, String previousVersion, String rmbVersion){
+  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion, String rmbVersion){
     if(SchemaMaker.cfg == null){
       //do this ONLY ONCE
       SchemaMaker.cfg = new Configuration(new Version(2, 3, 26));
@@ -61,7 +61,7 @@ public class SchemaMaker {
 
     templateInput.put("mode", this.mode);
 
-    if("delete".equals(this.mode)){
+    if("delete".equalsIgnoreCase(this.mode.name())){
       return handleDelete();
     }
 
@@ -70,10 +70,6 @@ public class SchemaMaker {
       System.out.print("Must call setSchema() first...");
       return null;
     }
-
-    templateInput.put("startScript", this.schema.getBeforeScript());
-
-    templateInput.put("endScript", this.schema.getEndScript());
 
     String pVersion = this.previousVersion;
 
@@ -178,6 +174,8 @@ public class SchemaMaker {
 
     templateInput.put("views", this.schema.getViews());
 
+    templateInput.put("scripts", this.schema.getScripts());
+
     Template tableTemplate = cfg.getTemplate("main.ftl");
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
@@ -208,11 +206,11 @@ public class SchemaMaker {
     this.module = module;
   }
 
-  public String getMode() {
+  public TenantOperation getMode() {
     return mode;
   }
 
-  public void setMode(String mode) {
+  public void setMode(TenantOperation mode) {
     this.mode = mode;
   }
 
@@ -226,10 +224,10 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", "create", PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
+    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", TenantOperation.DELETE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
 
     String json = IOUtils.toString(
-      SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/examples/create_table.json.example"));
+      SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/examples/schema.json.example"));
     fm.setSchema(ObjectMapperTool.getMapper().readValue(
       json, Schema.class));
 

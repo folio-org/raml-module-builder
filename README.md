@@ -1113,7 +1113,7 @@ An example can be found here:
 
 Entries in the json file to be aware of:
 
-For each table:
+For each **table**:
 
 1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
 2. `generateId` - whether to auto generate the id of entries for this table - (will add the following to the id column `DEFAULT gen_random_uuid()`)
@@ -1133,9 +1133,16 @@ For each table:
 12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
 13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
 
-The views are a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by.
+The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by.
 
-The beforeScript and endScript allows a module to run custom code before table / view creation/updates and after all tables/views have been created/updated.
+The **script** section allows a module to run custom SQLs before table / view creation/updates and after all tables/views have been created/updated.
+
+The fields in the **script** section include:
+
+1. `run` - either `before` or `after` the tables / views are generated
+2. `snippet` - the SQL to run
+3. `fromModuleVersion` - same as `fromModuleVersion` for table
+
 
 The tables / views will be generated in the schema named tenantid_modulename
 

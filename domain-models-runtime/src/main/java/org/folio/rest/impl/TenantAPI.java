@@ -12,6 +12,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
+import org.folio.rest.persist.ddlgen.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.messages.Messages;
@@ -86,7 +87,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 return;
               }
               sqlFile = IOUtils.toString(is);*/
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), "delete", null, PomReader.INSTANCE.getRmbVersion());
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), TenantOperation.DELETE, null, PomReader.INSTANCE.getRmbVersion());
               sqlFile = sMaker.generateDDL();
 
             } catch (Exception e1) {
@@ -261,11 +262,11 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 return;
               }
 
-              String op = "create";
+              TenantOperation op = TenantOperation.CREATE;
 
               String previousVersion = null;
               if(isUpdateMode[0]){
-                op = "update";
+                op = TenantOperation.UPDATE;
                 previousVersion = entity.getModuleFrom();
               }
 

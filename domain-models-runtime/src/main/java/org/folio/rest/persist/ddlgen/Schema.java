@@ -11,8 +11,7 @@ public class Schema {
 
   private List<Table> tables = new ArrayList<>();
   private List<View> views = new ArrayList<>();
-  private String beforeScript;
-  private String endScript;
+  private List<Script> scripts = new ArrayList<>();
 
   public List<Table> getTables() {
     return tables;
@@ -26,16 +25,10 @@ public class Schema {
   public void setViews(List<View> views) {
     this.views = views;
   }
-  public String getBeforeScript() {
-    return beforeScript;
+  public List<Script> getScripts() {
+    return scripts;
   }
-  public void setBeforeScript(String beforeScript) {
-    this.beforeScript = beforeScript;
-  }
-  public String getEndScript() {
-    return endScript;
-  }
-  public void setEndScript(String endScript) {
-    this.endScript = endScript;
+  public void setScripts(List<Script> scripts) {
+    this.scripts = scripts;
   }
 }

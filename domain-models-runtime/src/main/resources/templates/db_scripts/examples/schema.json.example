@@ -1,10 +1,21 @@
 {
-  "beforeScript": "select * from start; ",
+  "scripts": [
+    {
+      "run": "before",
+      "snippet": "select * from start; ",
+      "fromModuleVersion" : 15.2
+    },
+    {
+      "run": "after",
+      "snippet": "select * from end; ",
+      "fromModuleVersion" : 14.2
+    }
+  ],
   "tables": [
     {
       "tableName": "users",
       "generateId": true,
-      "fromModuleVersion": 12.2,
+      "fromModuleVersion": 15.2,
       "populateJsonWithId": true,
       "withMetadata": true,
       "likeIndex": [
@@ -84,6 +95,5 @@
         "jsonFieldAlias": "mt_jsonb"
       }
     }
-  ],
-  "endScript": "select * from end;"
+  ]
 }
