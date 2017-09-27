@@ -41,6 +41,8 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  *
@@ -51,6 +53,8 @@ public class ClientGenerator {
   public static final String  CLIENT_CLASS_SUFFIX    = "Client";
   public static final String  PATH_TO_GENERATE_TO    = "/src/main/java/";
   public static final String  OKAPI_HEADER_TENANT = "x-okapi-tenant";
+
+  private static final Logger log = LoggerFactory.getLogger(ClientGenerator.class);
 
   /* Creating java code model classes */
   JCodeModel jCodeModel = new JCodeModel();
@@ -208,7 +212,7 @@ public class ClientGenerator {
       consructor3.javadoc().add("Convenience constructor for tests ONLY!<br>Connect to localhost on 8081 as folio_demo tenant.");
 
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
     }
 
   }
@@ -466,7 +470,7 @@ public class ClientGenerator {
           return true;
         }
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e.getMessage(), e);
       }
     }
     else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
@@ -512,14 +516,15 @@ public class ClientGenerator {
               addParameter(methodBody, queryParams, valueName, encode, false, false);
             }
           } catch (Exception ee) {
-            ee.printStackTrace();
+            log.error(ee.getMessage(), ee);
+
           }
         }
         if(encode){
           method._throws(UnsupportedEncodingException.class);
         }
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e.getMessage(), e);
       }
     }
     return false;

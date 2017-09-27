@@ -1,10 +1,12 @@
 package org.folio.rest.tools.codecs;
 
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.MessageCodec;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.MessageCodec;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 /**
@@ -14,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class PojoEventBusCodec implements MessageCodec<Object, Object> {
 
+  private static final Logger log = LoggerFactory.getLogger(PojoEventBusCodec.class);
   private static final ObjectMapper MAPPER  = new ObjectMapper();
 
 
@@ -24,7 +27,7 @@ public class PojoEventBusCodec implements MessageCodec<Object, Object> {
     try {
       value = MAPPER.writeValueAsString(pojo);
     } catch (JsonProcessingException e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
     }
 
     int dataLength = value.getBytes().length;
@@ -58,7 +61,7 @@ public class PojoEventBusCodec implements MessageCodec<Object, Object> {
     try {
       obj = MAPPER.readValue(data, Class.forName(clazz));
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
     }
 
     // We can finally create custom message object

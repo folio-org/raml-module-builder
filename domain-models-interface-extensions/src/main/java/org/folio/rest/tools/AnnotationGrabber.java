@@ -1,8 +1,5 @@
 package org.folio.rest.tools;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-
 import java.io.BufferedWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
@@ -31,6 +28,11 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
 public class AnnotationGrabber {
 
   public static final String  DELIMITER              = "&!!&";
@@ -57,6 +59,8 @@ public class AnnotationGrabber {
   public static final String  CONTENT_TYPE           = "Content-Type";
 
   private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
+
+  private static final Logger log = LoggerFactory.getLogger(AnnotationGrabber.class);
 
   private static boolean generateClient = false;
   private static boolean generateModDescrptor = false;
@@ -181,7 +185,7 @@ public class AnnotationGrabber {
             for (Method method : type.getDeclaredMethods()) {
               Object value = method.invoke(methodAn[j], (Object[]) null);
               if (value.getClass().isArray()) {
-                List<Object> retList = new ArrayList<Object>();
+                List<Object> retList = new ArrayList<>();
                 for (int k = 0; k < Array.getLength(value); k++) {
                   if(replaceAccept){
                     //replace any/any with */* to allow declaring accpet */* which causes compilation issues
@@ -286,7 +290,7 @@ public class AnnotationGrabber {
         }
 
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e.getMessage(), e);
       }
     });
     //writeMappings(globalClassMapping);

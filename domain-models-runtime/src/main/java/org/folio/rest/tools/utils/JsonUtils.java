@@ -1,10 +1,5 @@
 package org.folio.rest.tools.utils;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -12,6 +7,11 @@ import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
@@ -37,7 +37,7 @@ public class JsonUtils {
           //pojo
           obj = MAPPER.writeValueAsString(entity);
         } catch (JsonProcessingException e) {
-          e.printStackTrace();
+          log.error(e.getMessage() , e);
         }
       }
     }

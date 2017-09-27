@@ -24,6 +24,8 @@ import org.raml.jaxrs.codegen.core.ext.GeneratorExtension;
 import org.raml.v2.api.model.v08.api.GlobalSchema;
 
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
@@ -41,6 +43,8 @@ public class GenerateRunner {
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
+
+  private static final Logger log = LoggerFactory.getLogger(GenerateRunner.class);
 
   private static Set<String> injectedAnnotations = new HashSet<>();
 
@@ -223,7 +227,7 @@ public class GenerateRunner {
             inject(fullPathPojo, annotation, injectFieldList);
             //JsonSchemaPojoUtil.injectAnnotation(fullPathPojo, annotation, new HashSet(injectFieldList));
           } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
           }
         }
       }
@@ -340,7 +344,7 @@ public class GenerateRunner {
                 //JsonSchemaPojoUtil.injectAnnotation(pojos[k].getAbsolutePath(), annotation, new HashSet(injectFieldList));
                 inject(pojos[k].getAbsolutePath(), annotation, injectFieldList);
               } catch (Exception e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
               }
             }
           }

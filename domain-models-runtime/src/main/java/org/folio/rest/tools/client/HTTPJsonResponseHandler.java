@@ -5,12 +5,16 @@ import java.util.concurrent.CompletableFuture;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
  *
  */
 class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
+
+  private static final Logger log = LoggerFactory.getLogger(HTTPJsonResponseHandler.class);
 
   CompletableFuture<Response> cf;
   String endpoint;
@@ -63,8 +67,7 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
         try {
           HttpModuleClient2.cache.put(endpoint, cf.get());
         } catch (Exception e) {
-          //caching error
-          e.printStackTrace();
+          log.error(e.getMessage(), e);
         }
       }
 /*      if(r.error != null && rollbackURL != null){
@@ -77,7 +80,7 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
         try {
           httpClient.close();
         } catch (Exception e) {
-          System.out.println("HTTPJsonResponseHandler class tried closing a client that was closed, this may be ok. " + e.getMessage());
+          log.error("HTTPJsonResponseHandler class tried closing a client that was closed, this may be ok. " + e.getMessage(), e);
         }
       }
       cf.completeExceptionally(eh);

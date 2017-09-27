@@ -13,8 +13,12 @@ import com.sun.codemodel.JDocComment;
 import com.sun.codemodel.JMethod;
 
 import io.vertx.core.Handler;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class Raml2Java extends AbstractGeneratorExtension {
+
+  private static final Logger log = LoggerFactory.getLogger(Raml2Java.class);
 
   @Override
   public void onAddResourceMethod(JMethod method, Action action, MimeType bodyMimeType, Collection<MimeType> uniqueResponseMimeTypes) {
@@ -52,7 +56,7 @@ public class Raml2Java extends AbstractGeneratorExtension {
                 + "This should only be used if a third party add-on to vertx needs the RC as input ");
           }
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e.getMessage(), e);
         }
       }
     }
