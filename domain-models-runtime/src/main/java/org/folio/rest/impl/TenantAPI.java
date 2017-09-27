@@ -54,9 +54,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     context.runOnContext(v -> {
       try {
 
-        System.out.println("sending... deleteTenant");
         String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-
+        log.info("sending... deleteTenant for " + tenantId);
         tenantExists(context, tenantId,
           h -> {
             boolean exists = false;
@@ -96,10 +95,10 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               return;
             }
 
-            System.out.println("Attempting to run delete script:");
-            System.out.println(sqlFile);
+            log.info("Attempting to run delete script for: " + tenantId);
+            log.debug("GENERATED SCHEMA " + sqlFile);
             /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-            PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, false,
+            PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
                     String res = "";
@@ -164,8 +163,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     context.runOnContext(v -> {
       try {
 
-        System.out.println("sending... postTenant");
         String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
+        log.info("sending... postTenant for " + tenantId);
 
         tenantExists(context, tenantId, res -> {
           boolean exists = false;
@@ -199,9 +198,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
      */
 
     context.runOnContext(v -> {
-      System.out.println("sending... postTenant");
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
-
+      log.info("sending... postTenant for " + tenantId);
       try {
         boolean isUpdateMode[] = new boolean[]{false};
         //body is optional so that the TenantAttributes
@@ -280,9 +278,9 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               }
 
               String sqlFile = sMaker.generateDDL();
-              System.out.println(sqlFile);
+              log.debug("GENERATED SCHEMA " + sqlFile);
               /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-              PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, false,
+              PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
                     StringBuffer res = new StringBuffer();
@@ -331,7 +329,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
    * @return
    */
   private void validateJson(JsonObject jar) throws Exception {
-    System.out.println("jobj =................................. " + jar);
+    //System.out.println("jobj =................................. " + jar);
     if(!jar.containsKey(UPGRADE_FROM_VERSION)){
       throw new Exception(UPGRADE_FROM_VERSION + " entry does not exist in post tenant request body");
     }

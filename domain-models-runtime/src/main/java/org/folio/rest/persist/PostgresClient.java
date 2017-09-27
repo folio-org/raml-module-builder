@@ -1768,7 +1768,7 @@ public class PostgresClient {
             allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
           }
         }
-        if(allLines[i].startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].startsWith("--")){
+        if(allLines[i].trim().startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].trim().startsWith("--")){
           //this is an sql comment, skip
           continue;
         }
@@ -1914,7 +1914,7 @@ public class PostgresClient {
 
         /* this should be  super user account that is in the config file */
         connection = getStandaloneConnection(null, false);
-        connection.setAutoCommit(true);
+        connection.setAutoCommit(false);
         statement = connection.createStatement();
 
         for (int j = 0; j < sql.length; j++) {
@@ -1937,8 +1937,14 @@ public class PostgresClient {
           }
         }
         try {
-          //connection.commit();
-          log.info("Successfully committed: " + Arrays.hashCode(sql));
+          if(error){
+            connection.rollback();
+            log.error("Rollback for: " + Arrays.hashCode(sql));
+          }
+          else{
+            connection.commit();
+            log.info("Successfully committed: " + Arrays.hashCode(sql));
+          }
         } catch (Exception e) {
           error = true;
           log.error("Commit failed " + Arrays.hashCode(sql) + " " + e.getMessage(), e);
