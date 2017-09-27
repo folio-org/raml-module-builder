@@ -91,12 +91,12 @@ public class PostgresClient {
   private static final String   WHERE = " WHERE ";
   private static final String INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final String   _PASSWORD = "password";
+  private static final String   _PASSWORD = "password"; //NOSONAR
   private static final String   _USERNAME = "username";
   private static final String   HOST     = "host";
   private static final String   PORT     = "port";
   private static final String   DATABASE = "database";
-  private static final String   DEFAULT_IP = "127.0.0.1";
+  private static final String   DEFAULT_IP = "127.0.0.1"; //NOSONAR
 
   private static final String    STATS_KEY                = PostgresClient.class.getName();
 
