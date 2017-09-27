@@ -97,12 +97,16 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
+
   public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
   public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
-  public static final String        STREAM_ID                       =  "STREAMED_ID";
-  public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+  public static final String        OKAPI_HEADER_PERMISSIONS        = "X-Okapi-Permissions";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
   public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
+
+  public static final String        STREAM_ID                       =  "STREAMED_ID";
+  public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
 
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
