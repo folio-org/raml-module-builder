@@ -10,10 +10,10 @@ public final class ResourceUtil {
   }
 
   /**
-   * Return the resource file as an UTF-8 String.
+   * Return the UTF-8 encoded resource file.
    *
-   * @param name resource path of the input file
-   * @return UTF-8 String
+   * @param name  resource path of the input file
+   * @return the conent of the resource file
    * @throws IOException on i/o error when reading the input file
    */
   public static String asString(final String name) throws IOException {
@@ -22,7 +22,7 @@ public final class ResourceUtil {
       if (inputStream == null) {
         throw new FileNotFoundException("Resource not found: " + name);
       }
-      return IOUtil.toUTF8String(inputStream);
+      return IoUtil.toStringUtf8(inputStream);
     }
   }
 }
