@@ -44,4 +44,10 @@ public class From {
     return false;
   }
 
+  @Override
+  public int hashCode() {
+    return snippet.hashCode();
+  }
+
+
 }

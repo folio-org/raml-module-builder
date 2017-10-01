@@ -153,10 +153,19 @@ public class Rules {
           }else{
             kieFileSystemPath = kieFileSystemPath + "/drools/" + file.getName();
           }
-          fis = new FileInputStream(file);
+          try {
+            fis = new FileInputStream(file);
+            kfs.write( kieFileSystemPath , kieServices.getResources().newInputStreamResource( fis ) );
+            System.out.println("loading " + ruleFiles.get(i));
+          } catch (Exception e) {
+            throw e;
+          }
+          finally {
+            if(fis != null){
+              fis.close();
+            }
+          }
         }
-        kfs.write( kieFileSystemPath , kieServices.getResources().newInputStreamResource( fis ) );
-        System.out.println("loading " + ruleFiles.get(i));
       }
     } catch (NullPointerException e) {
       //TODO log this!

@@ -23,24 +23,21 @@ public class PojoEventBusCodec implements MessageCodec<Object, Object> {
   @Override
   public void encodeToWire(Buffer buffer, Object pojo) {
 
-    String value = null;
     try {
-      value = MAPPER.writeValueAsString(pojo);
+      String value = MAPPER.writeValueAsString(pojo);
+      String clazz = pojo.getClass().getName();
+      int clazzLength = clazz.getBytes().length;
+      buffer.appendInt(clazzLength);
+      buffer.appendString(clazz);
+      if(value != null){
+        int dataLength = value.getBytes().length;
+        // Write data into given buffer
+        buffer.appendInt(dataLength);
+        buffer.appendString(value);
+      }
     } catch (JsonProcessingException e) {
       log.error(e.getMessage(), e);
     }
-
-    int dataLength = value.getBytes().length;
-
-    String clazz = pojo.getClass().getName();
-
-    int clazzLength = clazz.getBytes().length;
-
-    // Write data into given buffer
-    buffer.appendInt(clazzLength);
-    buffer.appendString(clazz);
-    buffer.appendInt(dataLength);
-    buffer.appendString(value);
   }
 
   @Override

@@ -423,10 +423,6 @@ public class HttpModuleClient2 implements HttpClientInterface {
 
   public static void main(String args[]) throws Exception {
 
-    String f=  "{users[0].username}".
-    replace("{"+"users[0].username"+"}", "jhandy");
-
-    f.toCharArray();
 /*    JsonObject j11 = new JsonObject(
       IOUtils.toString(JsonPathParser.class.getClassLoader().
         getResourceAsStream("pathTest.json"), "UTF-8"));

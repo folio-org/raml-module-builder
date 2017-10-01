@@ -1,12 +1,5 @@
 package org.folio.rest.resource.handlers;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +7,13 @@ import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.resource.interfaces.Importer;
 import org.folio.rest.tools.RTFConsts;
+
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  *
@@ -94,7 +94,7 @@ public class FileDataHandler implements io.vertx.core.Handler<Buffer> {
     //also assumes the rows are relatively of the same size or at least that the file
     //is distributed evenly across buffers
     percentOfFileRead = ((double) bytesRead / fileSize)*100;
-    avgRowSize = sizeOfBuffer/rows.length;
+    avgRowSize = (double)sizeOfBuffer/rows.length;
 
     //iterate over the read rows
     for (int i = 0; i < rows.length; i++) {
