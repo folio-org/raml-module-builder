@@ -1,8 +1,5 @@
 package org.folio.rest.tools;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -10,6 +7,9 @@ import java.nio.charset.Charset;
 import org.folio.rest.tools.utils.Envs;
 
 import com.google.common.io.Files;
+
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Current generates the following:
@@ -100,10 +100,11 @@ public enum MDGenerator {
     provides.add(pe.getEntry());
   }
 
-  public void setID (String id){
+  void setID (String id){
     md.put(ID, id);
   }
-  public void setName(String name){
+
+  void setName(String name){
     md.put(NAME, name);
   }
   public void generateMD() throws IOException{

@@ -333,7 +333,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
         }
       };
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage() , e);
     }
     return null;
   }

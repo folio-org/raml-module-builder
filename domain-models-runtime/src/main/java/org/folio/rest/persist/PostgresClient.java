@@ -1729,8 +1729,8 @@ public class PostgresClient {
 
     try (Connection connection = getStandaloneConnection("postgres", true);
         Statement statement = connection.createStatement()) {
-      statement.executeUpdate("DROP DATABASE IF EXISTS " + database);
-      statement.executeUpdate("CREATE DATABASE " + database);
+      statement.executeUpdate("DROP DATABASE IF EXISTS " + database); //NOSONAR
+      statement.executeUpdate("CREATE DATABASE " + database); //NOSONAR
     } catch (SQLException e) {
       throw e;
     }
