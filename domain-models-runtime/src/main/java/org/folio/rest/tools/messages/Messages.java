@@ -84,7 +84,6 @@ public class Messages {
   @SuppressWarnings("squid:S135") // suppress "Reduce the total number of break
   // "and continue statements in this loop to use at most one."
   protected void loadMessages(Path messagePath) throws IOException {
-
     try (Stream<Path> walk = Files.walk(messagePath, 1)) {
       for (Iterator<Path> it = walk.iterator(); it.hasNext();) {
         Path file = it.next();
