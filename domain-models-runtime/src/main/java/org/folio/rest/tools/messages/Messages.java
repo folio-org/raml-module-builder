@@ -80,6 +80,8 @@ public class Messages {
       URI uri = url.toURI();
 
       if ("jar".equals(uri.getScheme())) {
+        // jar scheme is required for Jenkins:
+        // https://github.com/folio-org/raml-module-builder/pull/111
         try (FileSystem fileSystem = getFileSystem(uri)) {
           Path messagePath = fileSystem.getPath(dir);
           loadMessages(messagePath);
