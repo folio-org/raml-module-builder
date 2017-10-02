@@ -8,10 +8,14 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystemAlreadyExistsException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.MessageFormat;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -74,10 +78,26 @@ public class Messages {
         return;
       }
       URI uri = url.toURI();
-      Path messagePath = Paths.get(uri);
-      loadMessages(messagePath);
+
+      if ("jar".equals(uri.getScheme())) {
+        try (FileSystem fileSystem = getFileSystem(uri)) {
+          Path messagePath = fileSystem.getPath(dir);
+          loadMessages(messagePath);
+        }
+      } else {
+        Path messagePath = Paths.get(uri);
+        loadMessages(messagePath);
+      }
     } catch (IOException|URISyntaxException e) {
       throw new IllegalArgumentException(dir, e);
+    }
+  }
+
+  private FileSystem getFileSystem(URI uri) throws IOException {
+    try {
+      return FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap());
+    } catch (FileSystemAlreadyExistsException e) { // NOSONAR
+      return FileSystems.getFileSystem(uri);
     }
   }
 
