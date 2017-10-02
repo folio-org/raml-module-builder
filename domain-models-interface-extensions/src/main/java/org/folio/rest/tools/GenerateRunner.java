@@ -193,9 +193,16 @@ public class GenerateRunner {
     List<List<GlobalSchema>> globalUnprocessedSchemas = new ArrayList<>();
 
     for (int j = 0; j < ramls.length; j++) {
-      BufferedReader reader=new BufferedReader(new FileReader(ramls[j]));
-      String line=reader.readLine();
-      reader.close();
+      String line;
+      BufferedReader reader = null;
+      try {
+        reader = new BufferedReader(new FileReader(ramls[j]));
+        line = reader.readLine();
+      } finally {
+        if(reader != null){
+          reader.close();
+        }
+      }
       if(line.startsWith("#%RAML")) {
         System.out.println("processing " + ramls[j]);
         //generate java interfaces and pojos from raml

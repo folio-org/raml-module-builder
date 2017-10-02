@@ -1924,7 +1924,7 @@ public class PostgresClient {
               copyIn(sql[j], connection);
             }
             else{
-              statement.executeUpdate(sql[j]);
+              statement.executeUpdate(sql[j]); //NOSONAR
             }
             log.info("Successfully executed: " + sql[j]);
           } catch (Exception e) {

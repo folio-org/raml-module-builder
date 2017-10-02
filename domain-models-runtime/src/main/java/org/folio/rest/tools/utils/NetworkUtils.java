@@ -61,14 +61,19 @@ public class NetworkUtils {
 
   public static String readURL(String path) throws Exception {
     URL url = new URL(path);
-    BufferedReader in = new BufferedReader(
-    new InputStreamReader(url.openStream()));
+    BufferedReader in = null;
     StringBuffer content = new StringBuffer();
     String input;
-    while ((input = in.readLine()) != null)
-      content.append(input);
-    in.close();
-    return content.toString();
+    try {
+      in = new BufferedReader(new InputStreamReader(url.openStream()));
+      while ((input = in.readLine()) != null)
+        content.append(input);
+      return content.toString();
+    } finally {
+      if(in != null){
+        in.close();
+      }
+    }
   }
 
   public static boolean isValidURL(String path){

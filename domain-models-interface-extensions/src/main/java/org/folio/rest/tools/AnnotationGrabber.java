@@ -1,14 +1,9 @@
 package org.folio.rest.tools;
 
-import java.io.BufferedWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -365,16 +360,6 @@ public class AnnotationGrabber {
       }
     }
     return retObject;
-  }
-
-  public static void writeMappings(JsonObject json) throws Exception {
-
-    Path path = Paths.get(System.getProperty("file_path") + "/" + PATH_MAPPING_FILE);
-    System.out.println("output mapping file to " + System.getProperty("file_path") + " ------------------------");
-    BufferedWriter bw = Files.newBufferedWriter(path, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE,
-        StandardOpenOption.CREATE);
-    bw.write(json.encodePrettily());
-    bw.close();
   }
 
   private static String getRegexForPath(String path) {
