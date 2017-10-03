@@ -40,15 +40,9 @@ public class JsonSchemaPojoUtil {
       new FileInputStream(path2pojo));
     ModifierVisitor<?> annotationVisitor = new PojoModifier(annotationName, fields);
     annotationVisitor.visit(cu, null);
-    BufferedWriter bw = null;
-    try {
-      bw = Files.newBufferedWriter(new File(path2pojo).toPath(),
-        StandardCharsets.UTF_8);
+    try (BufferedWriter bw =
+        Files.newBufferedWriter(new File(path2pojo).toPath(), StandardCharsets.UTF_8)) {
       bw.write(cu.toString());
-    } finally {
-      if(bw != null){
-        bw.close();
-      }
     }
   }
 
