@@ -1101,37 +1101,69 @@ The Postgres Client support in the RMB is schema specific, meaning that it expec
 
 The RAML defining the API:
 
-https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/raml/tenant.raml
+https://github.com/folio-org/raml/blob/3e5a4a58e141fb9d4a6968723df50e0f0b8d8de1/ramls/tenant.raml
 
-#### The Post Tenant API will look for a file in the module's classpath called:
-**template_create_tenant.sql**
+#### The Post Tenant API
 
-An example of such a file can be found in the configuration module:
+RMB will look for a file at `/resources/templates/db_scripts/` called **schema.json**
 
-https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/resources/template_create_tenant.sql
+The file contains an array of tables and views to create for a tenant on registration (tenant api post)
 
-Notice the *myuniversity* placeholders in the file. The x-okapi-tenant header passed in to the API call will be used to get the tenant id. That tenant id will replace the *myuniversity* placeholder. The *mymodule* placeholder may be used as well, and is replaced by the name of the module (the value used for the module name is the artifactId found in the pom.xml and the parent artifactId is used if one is found).  Additional placeholders may be added in the future.
+An example can be found here:
 
-Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version. In the case where `module_from` is included in the JSON, the RMB will look for an `template_update_tenant.sql` file to run (if one is not found, then no script will be run. An optional `template_update_audit.sql` can also be created, and it will be run, if found, in case of an update indication [`module_from`])
+ - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example
+
+Entries in the json file to be aware of:
+
+For each **table**:
+
+1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
+2. `generateId` - whether to auto generate the id of entries for this table - (will add the following to the id column `DEFAULT gen_random_uuid()`)
+3. `fromModuleVersion` - this field indicates the version in which the table was created / updated in. When a tenant update is requested - only versions older than the indicated version will generate the declared table. This ensures that if a module upgrades from an older version, the needed tables will be generated for it, however, subsequent upgrades from versions equal or later than the version indicated for the table will not re-generate the table.
+ - Note that this is enforced for all tables, views, indexes, FK, triggers, etc... - via the `IF NOT EXISTS` sql Postgres statement
+4. `mode` - should be used only to indicate `delete`
+5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
+6. `likeIndex` - indicate which fields in the json will be queried using the LIKE  - needed for fields that will be faceted on
+ - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
+7. `ginIndex` - generate an inverted index on the json
+8. `withAuditing` - create an auditing table with triggers populating the audit table whenever an insert, update, or delete occurs on the table
+ - the name of the audit table will be `audit_`{tableName}
+ - The `auditingSnippet` section allows some customizations to the auditing function by allowing custom sqls in the declare section and the body (for either insert / update / delete)
+9. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the json and creating a FK constraint)
+10. `uniqueIndex` - create a unique index on a field in the json
+11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
+12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
+13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
+
+The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by.
+
+The **script** section allows a module to run custom SQLs before table / view creation/updates and after all tables/views have been created/updated.
+
+The fields in the **script** section include:
+
+1. `run` - either `before` or `after` the tables / views are generated
+2. `snippet` - the SQL to run
+3. `fromModuleVersion` - same as `fromModuleVersion` for table
+
+
+The tables / views will be generated in the schema named tenantid_modulename
+
+The x-okapi-tenant header passed in to the API call will be used to get the tenant id.
+The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
+
+Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
 
 ##### Encrypting Tenant passwords
 
 As of now (this may change in the future), securing a tenant's connection to the database via an encrypted password can be accomplished in the following way:
 
  - Set the secret key (as described in the Securing DB Configuration file section)
- - When creating a user / role for the tenant in your .sql file include the following:
-   - `CREATE USER myuniversity WITH ENCRYPTED PASSWORD 'myuniversity';`
 
-  *myuniversity* PASSWORD will be replaced with the following:
-  encrypt(tenant id with secrey key) = **new tenant's password**
-  The **new tenant's password** will replace the *myuniversity* PASSWORD value
-  The RMB Postrges client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
+  The PASSWORD will be replaced with the following:
+  encrypt(tenant id with secret key) = **new tenant's password**
+  The **new tenant's password** will replace the default PASSWORD value (which is the tenantid_modulename)
+  The RMB Postgres client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
 
-
-It is also possible to create a **template_audit.sql** file. If the Post tenant API finds this file in the classpath, it will be run as well.
-
-Example file:
-https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/resources/template_audit.sql
 
 The RMB comes with a TenantClient to facilitate calling the API via URL.
 To post a tenant via the client:
@@ -1147,14 +1179,9 @@ tClient.post( response -> {
 });
 ```
 
-#### The Delete Tenant API will look for a file in the module's classpath called:
-**template_delete_tenant.sql**
+#### The Delete Tenant API
 
-An example of such a file can be found in the configuration module:
-
-https://github.com/folio-org/mod-configuration/blob/master/mod-configuration-server/src/main/resources/template_delete_tenant.sql
-
-
+When this API is called RMB will basically drop the schema for the tenant (CASCADE) as well as drop the user
 
 
 **Some Postgres Client examples**
@@ -1225,7 +1252,7 @@ RMB also allows easy faceting of result sets. The grouping / faceting is done in
 To add faceting to your API.
 1. Add the [faceting RAML trait](https://github.com/folio-org/raml/blob/master/traits/facets.raml) to your RAML and reference it from the endpoint (using the is:[])
     - facet query parameter format: `facets=a.b.c` or `facets=a.b.c:10` (they are repeating). For example `?facets=active&facets=personal.lastName`
-2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas. 
+2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas.
 For example:
 ```
  "type": "object",
@@ -1241,9 +1268,11 @@ For example:
     "resultInfo": {
       "type": "object",
       "$ref": "raml-util/schemas/resultInfo.schema"
-    } 
+    }
 ```
 3. When building your module, an additional parameter will be added to the generated interfaces of the faceted endpoints. `List<String> facets`. You can simply convert this list into a List of Facet objects using the RMB tool as follows: `List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");` and pass the `facetList` returned to the `postgresClient`'s `get()` methods.
+
+NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
 ## Json Schema fields
 
@@ -1265,7 +1294,7 @@ for example:
 <systemProperty>
     <key>jsonschema.customfield</key>
     <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"}</value>
-</systemProperty> 
+</systemProperty>
 ```
 
 the `jsonschema.customfield` key can contain multiple json values (delimited by a `;`). Each json indicates a field name + a field value to match against - and a validation annotation to apply. So, getting back to the readonly field, the example above indicates that a field in the json schema that has been tagged with the `readonly` field can not contain data when passed in as part of the request.
@@ -1673,9 +1702,9 @@ See the `JsonPathParser` class for more info.
     //before the chainedRequest is issued - see example below
     //the chained request will not be sent if the previous response (response1) has completed with
     //an error
-    response1.thenCompose(client.chainedRequest("/authn/credentials/{users[0].username}", 
+    response1.thenCompose(client.chainedRequest("/authn/credentials/{users[0].username}",
         okapiHeaders, null, handlePreviousResponse());
-    
+
         Consumer<Response> handlePreviousResponse(){
             return (response) -> {
                 int statusCode = response.getCode();
@@ -1683,16 +1712,16 @@ See the `JsonPathParser` class for more info.
                 //if not ok, return error
             };
         }
-    
-    //if you send multiple chained Requests based on response1 you can use the 
+
+    //if you send multiple chained Requests based on response1 you can use the
     //CompletableFuture.allOf() to wait till they are all complete
     //or you can chain one request to another in a pipeline manner as well
-    
-    //you can also generate a cql query param as part of the chained request based on the 
+
+    //you can also generate a cql query param as part of the chained request based on the
     //response of the previous response. the below will create a username=<value> cql clause for
     //every value appearing in the response1 json's users array -> username
     response1.thenCompose(client.chainedRequest("/authn/credentials", okapiHeaders, new BuildCQL(null, "users[*].username", "username")),...
-    
+
     //join the values within 2 responses - injecting the value from a field in one json into the field of another json when a constraint between the two jsons exists (like field a from json 1 equals field c from json 2)
     //compare all users->patron_groups in response1 to all usergroups->id in groupResponse, when there is a match, push the group field in the specific entry of groupResonse into the patron_group field in the specific entry in the response1 json
     response1.joinOn("users[*].patron_group", groupResponse, "usergroups[*].id", "group", "patron_group", false);

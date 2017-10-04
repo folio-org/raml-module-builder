@@ -2,17 +2,17 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>14.0.1-SNAPSHOT</version>
+  <version>15.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
+    <module>postgres-runner</module>
+    <module>rules</module>
+    <module>testing</module>
+    <module>util</module>
     <module>domain-models-api-aspects</module>
     <module>domain-models-interface-extensions</module>
     <module>domain-models-api-interfaces</module>
-    <module>rules</module>
-    <module>postgres-runner</module>
-    <module>testing</module>
-    <module>util</module>
     <module>domain-models-runtime</module>
   </modules>
 
@@ -228,6 +228,7 @@
         </executions>
         <configuration>
           <configLocation>codestyles.xml</configLocation>
+          <suppressionsLocation>codestyles-suppressions.xml</suppressionsLocation>
           <excludes>**/LastModified_.java</excludes>
         </configuration>
       </plugin>

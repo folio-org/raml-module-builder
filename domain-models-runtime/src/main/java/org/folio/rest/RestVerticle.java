@@ -97,17 +97,23 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
+
   public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
   public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
-  public static final String        STREAM_ID                       =  "STREAMED_ID";
-  public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+  public static final String        OKAPI_HEADER_PERMISSIONS        = "X-Okapi-Permissions";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
   public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
-  public static final HashMap<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>();
+
+  public static final String        STREAM_ID                       =  "STREAMED_ID";
+  public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+
+  public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
   private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
   private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
   private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
+  private static final String       CORS_ALLOW_METHODS_HEADER       = "Access-Control-Allow-Methods";
+  private static final String       CORS_ALLOW_METHODS_VALUE        = "POST, GET, OPTIONS , PUT, DELETE";
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
   private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept, x-okapi-tenant";
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
@@ -341,7 +347,6 @@ public class RestVerticle extends AbstractVerticle {
               //rc.response().putHeader(CORS_ALLOW_HEADER, CORS_ALLOW_HEADER_VALUE);
               //rc.response().putHeader(CORS_ALLOW_ORIGIN, CORS_ALLOW_ORIGIN_VALUE);
               rc.response().end();
-
               return;
             }
 
@@ -349,6 +354,7 @@ public class RestVerticle extends AbstractVerticle {
             // meaning url+http method != a function
             endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.HTTPMethodNotSupported),
               validRequest);
+            return;
           }
           Class<?> aClass;
           try {
@@ -1340,7 +1346,7 @@ public class RestVerticle extends AbstractVerticle {
                 emptyNumeircParam = true;
               }
               else {
-                paramArray[order] = Integer.valueOf(param).intValue();
+                paramArray[order] = Integer.valueOf(param);
               }
             } else if (valueType.contains("boolean") || valueType.contains("Boolean")) {
               if (param == null) {
@@ -1448,11 +1454,11 @@ public class RestVerticle extends AbstractVerticle {
         error.setMessage(cv.getMessage());
         error.setCode("-1");
         error.setType(RTFConsts.VALIDATION_FIELD_ERROR);
-        if(singleField != null && singleField.contains(field)){
-          errorResp.getErrors().add(error);
-          ret = false;
-        }
-        else if(singleField.isEmpty()){
+        //return the error if the validation is requested on a specific field
+        //and that field fails validation. if another field fails validation
+        //that is ok as validation on that specific field wasnt requested
+        //or there are validation errors and this is not a per field validation request
+        if((singleField != null && singleField.contains(field)) || singleField.isEmpty()){
           errorResp.getErrors().add(error);
           ret = false;
         }

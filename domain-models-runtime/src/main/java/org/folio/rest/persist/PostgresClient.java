@@ -88,11 +88,15 @@ public class PostgresClient {
 
   private static final String   UPDATE = "UPDATE ";
   private static final String   SET = " SET ";
-  private static final String   PASSWORD = "password";
-  private static final String   USERNAME = "username";
+  private static final String   WHERE = " WHERE ";
+  private static final String INSERT_CLAUSE = "INSERT INTO ";
+
+  private static final String   _PASSWORD = "password"; //NOSONAR
+  private static final String   _USERNAME = "username";
   private static final String   HOST     = "host";
   private static final String   PORT     = "port";
   private static final String   DATABASE = "database";
+  private static final String   DEFAULT_IP = "127.0.0.1"; //NOSONAR
 
   private static final String    STATS_KEY                = PostgresClient.class.getName();
 
@@ -106,6 +110,7 @@ public class PostgresClient {
   private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
       +"CALLED ON NULL INPUT|RETURNS NULL ON NULL INPUT|STRICT|"
       +"SECURITY INVOKER|SECURITY DEFINER|SET\\s.*|AS\\s.*|COST\\s\\d.*|ROWS\\s.*";
+
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
 
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
@@ -312,9 +317,9 @@ public class PostgresClient {
       if (embeddedMode) {
         //embedded mode, if no config passed use defaults
         postgreSQLClientConfig = new JsonObject();
-        postgreSQLClientConfig.put(USERNAME, USERNAME);
-        postgreSQLClientConfig.put(PASSWORD, PASSWORD);
-        postgreSQLClientConfig.put(HOST, "127.0.0.1");
+        postgreSQLClientConfig.put(_USERNAME, _USERNAME);
+        postgreSQLClientConfig.put(_PASSWORD, _PASSWORD);
+        postgreSQLClientConfig.put(HOST, DEFAULT_IP);
         postgreSQLClientConfig.put(PORT, 6000);
         postgreSQLClientConfig.put(DATABASE, "postgres");
       }
@@ -324,13 +329,13 @@ public class PostgresClient {
       }
     }
     else if(tenantId.equals(DEFAULT_SCHEMA)){
-      postgreSQLClientConfig.put(USERNAME, postgreSQLClientConfig.getString(USERNAME));
-      postgreSQLClientConfig.put(PASSWORD, decodePassword( postgreSQLClientConfig.getString(PASSWORD) ));
+      postgreSQLClientConfig.put(_USERNAME, postgreSQLClientConfig.getString(_USERNAME));
+      postgreSQLClientConfig.put(_PASSWORD, decodePassword( postgreSQLClientConfig.getString(_PASSWORD) ));
     }
     else{
       log.info("Using schema: " + tenantId);
-      postgreSQLClientConfig.put(USERNAME, convertToPsqlStandard(tenantId));
-      postgreSQLClientConfig.put(PASSWORD, createPassword(tenantId));
+      postgreSQLClientConfig.put(_USERNAME, convertToPsqlStandard(tenantId));
+      postgreSQLClientConfig.put(_PASSWORD, createPassword(tenantId));
     }
 
     if(embeddedPort != -1 && embeddedMode){
@@ -352,7 +357,7 @@ public class PostgresClient {
       return;
     }
     JsonObject passwordRedacted = postgreSQLClientConfig.copy();
-    passwordRedacted.put(PASSWORD, "...");
+    passwordRedacted.put(_PASSWORD, "...");
     log.info("postgreSQLClientConfig = " + passwordRedacted.encode());
   }
 
@@ -496,7 +501,7 @@ public class PostgresClient {
           }
 
           /* do not change to updateWithParams as this will not return the generated id in the reply */
-          connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+          connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
             ") VALUES ("+clientId+"?::JSON)" + upsertClause + returning,
             new JsonArray().add(pojo2json(entity)), query -> {
@@ -506,7 +511,7 @@ public class PostgresClient {
               } else {
                 List<JsonArray> resList = query.result().getResults();
                 String response = "";
-                if(resList.size() > 0){
+                if(!resList.isEmpty()){
                   response = resList.get(0).getValue(0).toString();
                 }
                 replyHandler.handle(Future.succeededFuture(response));
@@ -535,7 +540,7 @@ public class PostgresClient {
     // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
     SQLConnection connection = ((Future<SQLConnection>) sqlConnection).result();
     try {
-      connection.queryWithParams("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+      connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
         new JsonArray().add(pojo2json(entity)), query -> {
           if (query.failed()) {
@@ -584,7 +589,7 @@ public class PostgresClient {
             try {
               connection.query("BEGIN;", begin -> {
                 if(begin.succeeded()){
-                  connection.query("INSERT INTO " + convertToPsqlStandard(tenantId) + "." + table +
+                  connection.query(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
                     " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES "+sb.toString()+" RETURNING " + idField + ";",
                     query -> {
                       if (query.failed()) {
@@ -639,7 +644,6 @@ public class PostgresClient {
               log.error(e.getMessage(), e);
               replyHandler.handle(Future.failedFuture(e));
             }
-          //});
         } catch (Exception e) {
           if(connection != null){
             connection.close();
@@ -662,7 +666,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    update(table, entity, DEFAULT_JSONB_FIELD_NAME, " WHERE " + idField + "='" + id + "'", false, replyHandler);
+    update(table, entity, DEFAULT_JSONB_FIELD_NAME, WHERE + idField + "='" + id + "'", false, replyHandler);
   }
 
   /**
@@ -879,7 +883,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    delete(table, " WHERE " + idField + "='" + id + "'", false, replyHandler);
+    delete(table, WHERE + idField + "='" + id + "'", false, replyHandler);
   }
 
   /**
@@ -898,7 +902,7 @@ public class PostgresClient {
   }
 
   public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    delete(table, " WHERE " + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo2json(entity) + "' ", false, replyHandler);
+    delete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo2json(entity) + "' ", false, replyHandler);
   }
 
   private void delete(String table, String where, boolean dbPrefix, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
@@ -1056,7 +1060,7 @@ public class PostgresClient {
    */
   //@Timer
   public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Results>> replyHandler) throws Exception {
-    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
+    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo2json(entity) + "' ", returnCount, true, true, replyHandler);
   }
 
@@ -1066,7 +1070,7 @@ public class PostgresClient {
       //if no id fields then cannot setId from external column into json object
       setId = false;
     }
-    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, " WHERE " + DEFAULT_JSONB_FIELD_NAME
+    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo2json(entity) + "' ", returnCount, returnIdField, setId, replyHandler);
   }
 
@@ -1088,7 +1092,7 @@ public class PostgresClient {
       sb.append(" ").append(new Limit(limit).toString()).append(" ");
     }
     String fieldsStr = Arrays.toString(fields);
-    get(table, entity.getClass(), fieldsStr.substring(1, fieldsStr.length()-1), " WHERE " + DEFAULT_JSONB_FIELD_NAME
+    get(table, entity.getClass(), fieldsStr.substring(1, fieldsStr.length()-1), WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo2json(entity) + "' "+sb.toString(), returnCount, returnIdField, setId, replyHandler);
   }
 
@@ -1725,8 +1729,8 @@ public class PostgresClient {
 
     try (Connection connection = getStandaloneConnection("postgres", true);
         Statement statement = connection.createStatement()) {
-      statement.executeUpdate("DROP DATABASE IF EXISTS " + database);
-      statement.executeUpdate("CREATE DATABASE " + database);
+      statement.executeUpdate("DROP DATABASE IF EXISTS " + database); //NOSONAR
+      statement.executeUpdate("CREATE DATABASE " + database); //NOSONAR
     } catch (SQLException e) {
       throw e;
     }
@@ -1764,7 +1768,7 @@ public class PostgresClient {
             allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
           }
         }
-        if(allLines[i].startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].startsWith("--")){
+        if(allLines[i].trim().startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].trim().startsWith("--")){
           //this is an sql comment, skip
           continue;
         }
@@ -1825,8 +1829,8 @@ public class PostgresClient {
   private Connection getStandaloneConnection(String newDB, boolean superUser) throws SQLException {
     String host = postgreSQLClientConfig.getString(HOST);
     int port = postgreSQLClientConfig.getInteger(PORT);
-    String user = postgreSQLClientConfig.getString(USERNAME);
-    String pass = postgreSQLClientConfig.getString(PASSWORD);
+    String user = postgreSQLClientConfig.getString(_USERNAME);
+    String pass = postgreSQLClientConfig.getString(_PASSWORD);
     String db = postgreSQLClientConfig.getString(DATABASE);
 
     if(newDB != null){
@@ -1900,7 +1904,7 @@ public class PostgresClient {
       Handler<AsyncResult<List<String>>> replyHandler){
 
     long s = System.nanoTime();
-    log.info("Executing multiple statements with id " + sql.hashCode());
+    log.info("Executing multiple statements with id " + Arrays.hashCode(sql));
     List<String> results = new ArrayList<>();
     vertx.executeBlocking(dothis -> {
       Connection connection = null;
@@ -1910,7 +1914,7 @@ public class PostgresClient {
 
         /* this should be  super user account that is in the config file */
         connection = getStandaloneConnection(null, false);
-        connection.setAutoCommit(true);
+        connection.setAutoCommit(false);
         statement = connection.createStatement();
 
         for (int j = 0; j < sql.length; j++) {
@@ -1920,7 +1924,7 @@ public class PostgresClient {
               copyIn(sql[j], connection);
             }
             else{
-              statement.executeUpdate(sql[j]);
+              statement.executeUpdate(sql[j]); //NOSONAR
             }
             log.info("Successfully executed: " + sql[j]);
           } catch (Exception e) {
@@ -1933,11 +1937,17 @@ public class PostgresClient {
           }
         }
         try {
-          //connection.commit();
-          log.info("Successfully committed: " + sql.hashCode());
+          if(error){
+            connection.rollback();
+            log.error("Rollback for: " + Arrays.hashCode(sql));
+          }
+          else{
+            connection.commit();
+            log.info("Successfully committed: " + Arrays.hashCode(sql));
+          }
         } catch (Exception e) {
           error = true;
-          log.error("Commit failed " + sql.hashCode() + " " + e.getMessage(), e);
+          log.error("Commit failed " + Arrays.hashCode(sql) + " " + e.getMessage(), e);
         }
       }
       catch(Exception e){
@@ -1963,7 +1973,7 @@ public class PostgresClient {
         }
       }
     }, done -> {
-      log.debug("execute timer for: " + sql.hashCode() + " took " + (System.nanoTime()-s)/1000000);
+      log.debug("execute timer for: " + Arrays.hashCode(sql) + " took " + (System.nanoTime()-s)/1000000);
       replyHandler.handle(Future.succeededFuture(results));
     });
   }
@@ -1983,8 +1993,8 @@ public class PostgresClient {
       PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
 
       int port = postgreSQLClientConfig.getInteger(PORT);
-      String username = postgreSQLClientConfig.getString(USERNAME);
-      String password = postgreSQLClientConfig.getString(PASSWORD);
+      String username = postgreSQLClientConfig.getString(_USERNAME);
+      String password = postgreSQLClientConfig.getString(_PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       String locale = "en_US.UTF-8";
@@ -1993,7 +2003,7 @@ public class PostgresClient {
         locale = "american_usa";
       }
 
-      final PostgresConfig config = new PostgresConfig(Version.V9_6_2, new AbstractPostgresConfig.Net("127.0.0.1", port),
+      final PostgresConfig config = new PostgresConfig(Version.V9_6_2, new AbstractPostgresConfig.Net(DEFAULT_IP, port),
         new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
         new AbstractPostgresConfig.Credentials(username, password));
 
@@ -2046,8 +2056,8 @@ public class PostgresClient {
     try {
       String host = postgreSQLClientConfig.getString(HOST);
       int port = postgreSQLClientConfig.getInteger(PORT);
-      String user = postgreSQLClientConfig.getString(USERNAME);
-      String pass = postgreSQLClientConfig.getString(PASSWORD);
+      String user = postgreSQLClientConfig.getString(_USERNAME);
+      String pass = postgreSQLClientConfig.getString(_PASSWORD);
       String db = postgreSQLClientConfig.getString(DATABASE);
 
       log.info("Connecting to " + db);

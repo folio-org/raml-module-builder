@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "scripts": {
+      "additionalItems": false,
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "string"
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "fromModuleVersion": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "tables": {
+      "additionalItems": false,
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "addFields": {
+            "additionalItems": false,
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "defaultValue": {
+                  "type": "string"
+                },
+                "fieldName": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "auditingSnippet": {
+            "additionalProperties": false,
+            "properties": {
+              "delete": {
+                "additionalProperties": false,
+                "properties": {
+                  "declare": {
+                    "type": "string"
+                  },
+                  "statement": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "insert": {
+                "additionalProperties": false,
+                "properties": {
+                  "declare": {
+                    "type": "string"
+                  },
+                  "statement": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "customSnippetPath": {
+            "type": "string"
+          },
+          "deleteFields": {
+            "additionalItems": false,
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fieldName": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "foreignKeys": {
+            "additionalItems": false,
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fieldName": {
+                  "type": "string"
+                },
+                "tOps": {
+                  "type": "string"
+                },
+                "targetTable": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "fromModuleVersion": {
+            "type": "number"
+          },
+          "generateId": {
+            "type": "boolean"
+          },
+          "ginIndex": {
+            "type": "boolean"
+          },
+          "likeIndex": {
+            "additionalItems": false,
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fieldName": {
+                  "type": "string"
+                },
+                "tOps": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "pkColumnName": {
+            "type": "string"
+          },
+          "populateJsonWithId": {
+            "type": "boolean"
+          },
+          "tableName": {
+            "type": "string"
+          },
+          "uniqueIndex": {
+            "additionalItems": false,
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fieldName": {
+                  "type": "string"
+                },
+                "tOps": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "withAuditing": {
+            "type": "boolean"
+          },
+          "withMetadata": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "views": {
+      "additionalItems": false,
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "joinTable": {
+            "additionalProperties": false,
+            "properties": {
+              "joinOnField": {
+                "type": "string"
+              },
+              "jsonFieldAlias": {
+                "type": "string"
+              },
+              "tableName": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "table": {
+            "additionalProperties": false,
+            "properties": {
+              "joinOnField": {
+                "type": "string"
+              },
+              "tableName": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "viewName": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "type": "object"
+}

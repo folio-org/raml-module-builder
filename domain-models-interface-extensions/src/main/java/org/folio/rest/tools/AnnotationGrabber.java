@@ -1,17 +1,9 @@
 package org.folio.rest.tools;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-
-import java.io.BufferedWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,6 +22,11 @@ import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
+
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class AnnotationGrabber {
 
@@ -57,6 +54,8 @@ public class AnnotationGrabber {
   public static final String  CONTENT_TYPE           = "Content-Type";
 
   private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
+
+  private static final Logger log = LoggerFactory.getLogger(AnnotationGrabber.class);
 
   private static boolean generateClient = false;
   private static boolean generateModDescrptor = false;
@@ -181,7 +180,7 @@ public class AnnotationGrabber {
             for (Method method : type.getDeclaredMethods()) {
               Object value = method.invoke(methodAn[j], (Object[]) null);
               if (value.getClass().isArray()) {
-                List<Object> retList = new ArrayList<Object>();
+                List<Object> retList = new ArrayList<>();
                 for (int k = 0; k < Array.getLength(value); k++) {
                   if(replaceAccept){
                     //replace any/any with */* to allow declaring accpet */* which causes compilation issues
@@ -286,7 +285,7 @@ public class AnnotationGrabber {
         }
 
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e.getMessage(), e);
       }
     });
     //writeMappings(globalClassMapping);
@@ -361,16 +360,6 @@ public class AnnotationGrabber {
       }
     }
     return retObject;
-  }
-
-  public static void writeMappings(JsonObject json) throws Exception {
-
-    Path path = Paths.get(System.getProperty("file_path") + "/" + PATH_MAPPING_FILE);
-    System.out.println("output mapping file to " + System.getProperty("file_path") + " ------------------------");
-    BufferedWriter bw = Files.newBufferedWriter(path, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE,
-        StandardOpenOption.CREATE);
-    bw.write(json.encodePrettily());
-    bw.close();
   }
 
   private static String getRegexForPath(String path) {

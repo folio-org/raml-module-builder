@@ -3,7 +3,6 @@ package org.folio;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
@@ -13,8 +12,6 @@ import javassist.CtClass;
 import javassist.CtMethod;
 import javassist.LoaderClassPath;
 import javassist.NotFoundException;
-import javassist.expr.ExprEditor;
-import javassist.expr.MethodCall;
 
 /**
  * @author shale
@@ -51,21 +48,21 @@ public class JavassistPerfomanceInstrumenter {
     setModifiers(modifiers);
 
     Method[] methods;
-    try {
-      final ClassPool pool = ClassPool.getDefault();
-      pool.appendClassPath(new LoaderClassPath(getClass().getClassLoader()));
 
-      for (int i = 0; i < classList.length; i++) {
-        //convert string name to ctclass
-        final CtClass compiledClass = pool.get(classList[i]);
+    final ClassPool pool = ClassPool.getDefault();
+    pool.appendClassPath(new LoaderClassPath(getClass().getClassLoader()));
+
+    for (int i = 0; i < classList.length; i++) {
+      //convert string name to ctclass
+      final CtClass compiledClass = pool.get(classList[i]);
 
 
-        CtMethod[] m = compiledClass.getDeclaredMethods();
-        for (int j = 0; j < m.length; j++) {
-          if(m[j].getName().contains("lambda")){
-            try {
-              m[j].insertAfter("{long __endMsGen__ = System.currentTimeMillis();" +
-                        "System.out.println(\"Executed in ms: \" + (__endMsGen__-__startMsGen__));}");
+      CtMethod[] m = compiledClass.getDeclaredMethods();
+      for (int j = 0; j < m.length; j++) {
+        if(m[j].getName().contains("lambda")){
+          try {
+            m[j].insertAfter("{long __endMsGen__ = System.currentTimeMillis();" +
+                      "System.out.println(\"Executed in ms: \" + (__endMsGen__-__startMsGen__));}");
 /*              m[j].instrument(new ExprEditor() {
                 public void edit(final MethodCall m) throws CannotCompileException {
                   //if ("java.lang.Integer".equals(m.getClassName()) && "max".equals(m.getMethodName())) {
@@ -86,27 +83,27 @@ public class JavassistPerfomanceInstrumenter {
                   //}
                 }
               });*/
-              System.out.println("added to" + m[j]);
+            System.out.println("added to" + m[j]);
 
-            } catch (Exception e) {
-              System.out.println("NOT added to 1 " + m[j].getLongName());
+          } catch (Exception e) {
+            System.out.println("NOT added to 1 " + m[j].getLongName());
 
-              //e.printStackTrace();
-            }
-          }
-          else{
-            try {
-              m[j].addLocalVariable("__startMsGen__", CtClass.longType);
-              m[j].insertBefore("__startMsGen__ = System.currentTimeMillis();");
-              System.out.println("added to" + m[j].getLongName());
-            } catch (Exception e) {
-              // TODO Auto-generated catch block
-              //e.printStackTrace();
-              System.out.println("NOT added to" + m[j].getLongName());
-
-            }
+            //e.printStackTrace();
           }
         }
+        else{
+          try {
+            m[j].addLocalVariable("__startMsGen__", CtClass.longType);
+            m[j].insertBefore("__startMsGen__ = System.currentTimeMillis();");
+            System.out.println("added to" + m[j].getLongName());
+          } catch (Exception e) {
+            // TODO Auto-generated catch block
+            //e.printStackTrace();
+            System.out.println("NOT added to" + m[j].getLongName());
+
+          }
+        }
+      }
 
 /*        //get methods in class and filter out the ones to instrument
         methods = Class.forName(class2Get).getMethods();
@@ -137,10 +134,7 @@ public class JavassistPerfomanceInstrumenter {
             });
           }
         }*/
-        compiledClass.writeFile(targetFolder);
-      }
-    } catch (Exception e1) {
-      e1.printStackTrace();
+      compiledClass.writeFile(targetFolder);
     }
 
 /*    try {
@@ -212,12 +206,9 @@ public class JavassistPerfomanceInstrumenter {
  }
 
  public void avc(){
-
    System.out.println("this is a test....");
-   Integer.max(1, 3);
-   String.valueOf(7);
-
-
+   //Integer.max(1, 3);
+   //String.valueOf(7);
  }
 
  private void setModifiers(String []modifiers){

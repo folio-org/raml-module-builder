@@ -43,4 +43,8 @@ public class Select {
     return false;
   }
 
+  @Override
+  public int hashCode() {
+    return snippet.hashCode();
+  }
 }

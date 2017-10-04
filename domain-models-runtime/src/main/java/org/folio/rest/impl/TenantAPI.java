@@ -1,19 +1,22 @@
 package org.folio.rest.impl;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.rest.persist.ddlgen.SchemaMaker;
+import org.folio.rest.persist.ddlgen.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
+import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.messages.Messages;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 
@@ -32,13 +35,9 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
-  public static final String       CREATE_TENANT_TEMPLATE = "template_create_tenant.sql";
-  public static final String       UPDATE_TENANT_TEMPLATE = "template_update_tenant.sql";
-  public static final String       DELETE_TENANT_TEMPLATE = "template_delete_tenant.sql";
-  public static final String       AUDIT_TENANT_TEMPLATE  = "template_audit.sql";
-  public static final String       UPDATE_AUDIT_TENANT_TEMPLATE  = "template_update_audit.sql";
-  private static final String      TEMPLATE_TENANT_PLACEHOLDER   = "myuniversity";
-  private static final String      TEMPLATE_MODULE_PLACEHOLDER   = "mymodule";
+  public static final String       TABLE_JSON = "templates/db_scripts/schema.json";
+  public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
+
   private static final String      UPGRADE_FROM_VERSION          = "module_from";
   private static final String      UPGRADE_TO_VERSION            = "module_to";
 
@@ -55,16 +54,15 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     context.runOnContext(v -> {
       try {
 
-        System.out.println("sending... deleteTenant");
         String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-
+        log.info("sending... deleteTenant for " + tenantId);
         tenantExists(context, tenantId,
           h -> {
             boolean exists = false;
             if(h.succeeded()){
               exists = h.result();
               if(!exists){
-                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
+                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.
                   withPlainInternalServerError("Tenant does not exist: " + tenantId)));
                 log.error("Can not delete. Tenant does not exist: " + tenantId);
                 return;
@@ -81,24 +79,34 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
             String sqlFile = null;
             try {
-              sqlFile = IOUtils.toString(
-                TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_TENANT_TEMPLATE));
+/*              InputStream is = TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_JSON);
+              if(is == null){
+                log.info("No delete json to use for deleting tenant " + tenantId);
+                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withNoContent()));
+                return;
+              }
+              sqlFile = IOUtils.toString(is);*/
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), TenantOperation.DELETE, null, PomReader.INSTANCE.getRmbVersion());
+              sqlFile = sMaker.generateDDL();
+
             } catch (Exception e1) {
               handlers.handle(io.vertx.core.Future.failedFuture(e1.getMessage()));
               log.error(e1.getMessage(), e1);
               return;
             }
 
-            String sql2run = sqlFile.replaceAll(TEMPLATE_TENANT_PLACEHOLDER, tenantId);
-            sql2run = sql2run.replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
+            log.info("Attempting to run delete script for: " + tenantId);
+            log.debug("GENERATED SCHEMA " + sqlFile);
             /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-            PostgresClient.getInstance(context.owner()).runSQLFile(sql2run, false,
+            PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
                     String res = "";
                     if(reply.succeeded()){
                       res = new JsonArray(reply.result()).encodePrettily();
                       if(reply.result().size() > 0){
+                        log.error("Unable to run the following commands during tenant delete: ");
+                        reply.result().forEach(System.out::println);
                         handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withPlainBadRequest(res)));
                       }
                       else {
@@ -155,8 +163,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     context.runOnContext(v -> {
       try {
 
-        System.out.println("sending... postTenant");
         String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
+        log.info("sending... postTenant for " + tenantId);
 
         tenantExists(context, tenantId, res -> {
           boolean exists = false;
@@ -190,18 +198,14 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
      */
 
     context.runOnContext(v -> {
-      System.out.println("sending... postTenant");
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
-
+      log.info("sending... postTenant for " + tenantId);
       try {
-        List<String> additionalPlaceholder = new ArrayList<>();
-        List<String> additionalPlaceholderValues = new ArrayList<>();
         boolean isUpdateMode[] = new boolean[]{false};
         //body is optional so that the TenantAttributes
         if(entity != null){
           log.debug("upgrade from " + entity.getModuleFrom() + " to " + entity.getModuleTo());
           try {
-            toMap(entity, additionalPlaceholder, additionalPlaceholderValues);
             if(entity.getModuleFrom() != null){
               isUpdateMode[0] = true;
             }
@@ -244,57 +248,39 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 log.error(h.cause().getMessage(), h.cause());
                 return;
               }
-              String createTenantFile = CREATE_TENANT_TEMPLATE;
+
+              InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(
+                TABLE_JSON);
+
+              if(tableInput == null) {
+                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+                  .withNoContent()));
+                log.info("Could not find templates/db_scripts/schema.json , "
+                    + " RMB will not run any scripts for " + tenantId);
+                return;
+              }
+
+              TenantOperation op = TenantOperation.CREATE;
+
+              String previousVersion = null;
               if(isUpdateMode[0]){
-                createTenantFile = UPDATE_TENANT_TEMPLATE;
+                op = TenantOperation.UPDATE;
+                previousVersion = entity.getModuleFrom();
               }
 
-              log.debug("Using " + createTenantFile + " for tenant " + tenantId);
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, PomReader.INSTANCE.getRmbVersion());
 
-              InputStream stream = TenantAPI.class.getClassLoader().getResourceAsStream(
-                createTenantFile);
-              if(stream == null) {
-                if(!isUpdateMode[0]){
-                  handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                    withPlainInternalServerError("No Create tenant template found, can not create tenant")));
-                  log.error("No Create tenant template found, can not create tenant " + tenantId);
-                  return;
-                }
-                else{
-                  handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-                    .withNoContent()));
-                  log.info("No update schema found for " + tenantId);
-                  return;
-                }
+              String tableInputStr = null;
+              if(tableInput != null){
+                tableInputStr = IOUtils.toString(tableInput, "UTF8");
+                Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+                sMaker.setSchema(schema);
               }
-              String sqlFile = IOUtils.toString(stream, "UTF8");
 
-              sqlFile = StringUtils.replaceEach(sqlFile,
-                new String[]{TEMPLATE_TENANT_PLACEHOLDER, TEMPLATE_MODULE_PLACEHOLDER},
-                new String[] {tenantId, PostgresClient.getModuleName()});
-
-              sqlFile = StringUtils.replaceEach(
-                sqlFile, additionalPlaceholder.toArray(new String[additionalPlaceholder.size()]),
-                additionalPlaceholderValues.toArray(new String[additionalPlaceholderValues.size()]));
-
-              /* is there an audit .sql file to load */
-              String createAuditFile = AUDIT_TENANT_TEMPLATE;
-              if(isUpdateMode[0]){
-                createAuditFile = UPDATE_AUDIT_TENANT_TEMPLATE;
-              }
-              InputStream audit = TenantAPI.class.getClassLoader().getResourceAsStream(
-                createAuditFile);
-              StringBuffer auditContent = new StringBuffer();
-              if (audit != null) {
-                String auditScript = IOUtils.toString(audit, "UTF8").replace(TEMPLATE_TENANT_PLACEHOLDER, tenantId)
-                .replaceAll(TEMPLATE_MODULE_PLACEHOLDER, PostgresClient.getModuleName());
-
-                auditContent.append(StringUtils.replaceEach(
-                  auditScript, additionalPlaceholder.toArray(new String[additionalPlaceholder.size()]),
-                  additionalPlaceholderValues.toArray(new String[additionalPlaceholderValues.size()])));
-              }
+              String sqlFile = sMaker.generateDDL();
+              log.debug("GENERATED SCHEMA " + sqlFile);
               /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-              PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, false,
+              PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
                     StringBuffer res = new StringBuffer();
@@ -305,44 +291,13 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                       }
                       res.append(new JsonArray(reply.result()).encodePrettily());
                       OutStream os = new OutStream();
-
-                      if (audit != null && !failuresExist) {
-                        PostgresClient.getInstance(context.owner()).runSQLFile(
-                          auditContent.toString(),
-                          false,
-                          reply2 -> {
-                            if (reply2.succeeded()) {
-                              boolean failuresExistAudit = false;
-                              if(reply2.result().size() > 0){
-                                failuresExistAudit = true;
-                              }
-                              String auditRes = new JsonArray(reply2.result()).encodePrettily();
-                              os.setData(res + auditRes);
-                              if(failuresExistAudit){
-                                handlers.handle(io.vertx.core.Future.succeededFuture(
-                                  PostTenantResponse.withPlainBadRequest(auditRes)));
-                              }
-                              else{
-                                os.setData(res);
-                                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                                  withJsonCreated(os)));
-                              }
-                            } else {
-                              log.error(reply2.cause().getMessage(), reply2.cause());
-                              handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                                withPlainInternalServerError("Created tenant without auditing: "
-                                  + reply2.cause().getMessage())));
-                            }
-                          });
-                      } else {
-                        if(failuresExist){
-                          handlers.handle(io.vertx.core.Future.succeededFuture(
-                            PostTenantResponse.withPlainBadRequest(res.toString())));
-                        }
-                        else{
-                          os.setData(res);
-                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonCreated(os)));
-                        }
+                      if(failuresExist){
+                        handlers.handle(io.vertx.core.Future.succeededFuture(
+                          PostTenantResponse.withPlainBadRequest(res.toString())));
+                      }
+                      else{
+                        os.setData(res);
+                        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonCreated(os)));
                       }
                     } else {
                       log.error(reply.cause().getMessage(), reply.cause());
@@ -374,7 +329,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
    * @return
    */
   private void validateJson(JsonObject jar) throws Exception {
-    System.out.println("jobj =................................. " + jar);
+    //System.out.println("jobj =................................. " + jar);
     if(!jar.containsKey(UPGRADE_FROM_VERSION)){
       throw new Exception(UPGRADE_FROM_VERSION + " entry does not exist in post tenant request body");
     }

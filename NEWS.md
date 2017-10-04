@@ -1,5 +1,9 @@
-## 14.0.1
-* RMB-56 add SchemaDereferencer that replaces "$ref"
+## 15.0.1
+* RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
+
+## 15.0.0
+
+* RMB-61 move sql templates into rmb (break backwards compatibility for implementing modules using the sql scripts to generate a DB schema on tenant creation / update / delete)
 
 ## 14.0.0
 

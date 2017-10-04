@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -24,177 +25,236 @@ import org.raml.jaxrs.codegen.core.ext.GeneratorExtension;
 import org.raml.v2.api.model.v08.api.GlobalSchema;
 
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
- * @author shale
+ * Read RAML files and generate .java files from them.
  *
+ * Copy RAML files and schema files to target.
  */
 public class GenerateRunner {
 
-  static final GeneratorProxy GENERATOR = new GeneratorProxy();
-
-  private static String outputDirectory = null;
-  private static String inputDirectory = null;
-  private static Configuration configuration = null;
-
+  private static final GeneratorProxy GENERATOR = new GeneratorProxy();
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs";
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
 
-  private static Set<String> injectedAnnotations = new HashSet<>();
+  private static final Logger log = LoggerFactory.getLogger(GenerateRunner.class);
 
-  public static void main(String args[]) throws Exception{
+  private String outputDirectory = null;
+  private String outputDirectoryWithPackage = null;
+  private String modelDirectory = null;
+  private Configuration configuration = null;
+
+  private boolean usingDefaultCustomField = true;
+  private final String defaultCustomField =
+      "{\"fieldname\" : \"readonly\" , \"fieldvalue\": true , \"annotation\" : \"javax.validation.constraints.Null\"}";
+  private String [] schemaCustomFields = { defaultCustomField };
+
+  private Set<String> injectedAnnotations = new HashSet<>();
+
+  /**
+   * Create a GenerateRunner for a specific target directory.
+   * <p>
+   * The output directory of the .java client is
+   * <code>src/main/java/org/folio/rest/client</code>,
+   * the output directory of the .java pojos is
+   * <code>src/main/java/org/folio/rest/jaxrs/model</code>,
+   * the output directory of the RAML and dereferenced schema files is
+   * <code>target/classes</code>; they are relative to the parameter
+   * <code>outputDirectory</code>.
+   *
+   * @param outputDirectory  where to write the files to
+   * @throws Exception  on error when reading or writing a file
+   */
+  public GenerateRunner(String outputDirectory) {
+    this.outputDirectory = outputDirectory;
+    outputDirectoryWithPackage = outputDirectory + PACKAGE_DEFAULT.replace('.', '/');
+    modelDirectory = outputDirectory + MODEL_PACKAGE_DEFAULT.replace('.', '/');
 
     List<GeneratorExtension> extensions = new ArrayList<>();
     extensions.add(new Raml2Java());
-
-    String root = System.getProperties().getProperty("project.basedir");
-
-    outputDirectory = root + "/src/main/java/";// + PACKAGE_DEFAULT.replace('.', '/');
-
-    String outputDirectoryWithPackage = outputDirectory + PACKAGE_DEFAULT.replace('.', '/');
-
-    ClientGenerator.makeCleanDir(outputDirectoryWithPackage);
-
-    //if we are generating interfaces, we need to remove any generated client code
-    //as if the interfaces have changed in a way (pojos removed, etc...) that causes
-    //the client generated code to cause compilation errors
-    String clientDir = System.getProperties().getProperty("project.basedir")
-        + ClientGenerator.PATH_TO_GENERATE_TO
-        + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
-    ClientGenerator.makeCleanDir(clientDir);
-
-
     configuration = new Configuration();
     configuration.setJaxrsVersion(JaxrsVersion.JAXRS_2_0);
     configuration.setUseJsr303Annotations(true);
     configuration.setJsonMapper(AnnotationStyle.JACKSON2);
     configuration.setBasePackageName(PACKAGE_DEFAULT);
     configuration.setExtensions(extensions);
+  }
+
+  /**
+   * Reads RAML and schema files and writes the generated .java files, the
+   * RAML files and the dereferenced schema files.
+   * <p>
+   * The input directories of the RAML and schema files are listed
+   * in system property <code>raml_files</code> and are comma separated.
+   * <p>
+   * The output directories are relative to the directory
+   * specified by the system property <code>project.basedir</code>, see
+   * {@link #GenerateRunner(String)}. Any existing content is removed.
+   *
+   * @param args  are ignored
+   * @throws Exception  on file read or file write error
+   */
+  public static void main(String args[]) throws Exception{
+
+    String root = System.getProperties().getProperty("project.basedir");
+    String outputDirectory = root + ClientGenerator.PATH_TO_GENERATE_TO;
+
+    GenerateRunner generateRunner = new GenerateRunner(outputDirectory);
+    generateRunner.cleanDirectories();
+    generateRunner.setCustomFields(System.getProperties().getProperty("jsonschema.customfield"));
 
     String ramlsDir = System.getProperty("raml_files");
     if(ramlsDir == null) {
       ramlsDir = root + SOURCES_DEFAULT;
     }
 
-    //copy ramls dir to /target so it is in the classpath. this is needed
-    //for the criteria object to check data types of paths in a json by
-    //checking them in the schema. will probably be further needed in the future
+    String [] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
+    for (String inputDirectory : paths) {
+      //copy ramls dir to /target so it is in the classpath. this is needed
+      //for the criteria object to check data types of paths in a json by
+      //checking them in the schema. will probably be further needed in the future
+      String rootPath2RamlDir = Paths.get(inputDirectory).getFileName().toString();
+      String resourceDirectory = root + RESOURCE_DEFAULT + "/" + rootPath2RamlDir;
+      copyToTarget(inputDirectory, resourceDirectory);
 
-    String[] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
-    for (int i = 0; i < paths.length; i++) {
-      String rootPath2RamlDir = Paths.get(paths[i]).getFileName().toString();
-      System.out.println("copying ramls to target directory at: " + (root+RESOURCE_DEFAULT+"/"+rootPath2RamlDir));
-      FileUtils.copyDirectory(new File(paths[i]), new File(root+RESOURCE_DEFAULT+"/"+rootPath2RamlDir));
+      // generate
+      generateRunner.generate(inputDirectory);
     }
+  }
 
+  /**
+   * Remove all files from the PACKAGE_DEFAULT and RTFConsts.CLIENT_GEN_PACKAGE
+   * directories.
+   * @throws IOException on file delete error
+   */
+  public void cleanDirectories() throws IOException {
+    ClientGenerator.makeCleanDir(outputDirectoryWithPackage);
 
-    //look for custom fields in the json schemas
-    String customFields = System.getProperties().getProperty("jsonschema.customfield");
-    boolean usingDefaultCustomField = false;
-    if(customFields == null){
+    //if we are generating interfaces, we need to remove any generated client code
+    //as if the interfaces have changed in a way (pojos removed, etc...) that causes
+    //the client generated code to cause compilation errors
+    String clientDir = outputDirectory + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
+    ClientGenerator.makeCleanDir(clientDir);
+  }
+
+  /**
+   * Set the JSON schemas of custom fields.
+   * @param customFields the semicolon separated schemas, or null for default custom fields.
+   */
+  public void setCustomFields(String customFields) {
+    if (customFields == null) {
       usingDefaultCustomField = true;
-      customFields = "{\"fieldname\" : \"readonly\" , \"fieldvalue\": true , \"annotation\" : \"javax.validation.constraints.Null\"}";
+      schemaCustomFields = new String [] { defaultCustomField };
+    } else {
+      usingDefaultCustomField = false;
+      schemaCustomFields = customFields.split(";");
     }
-    String schemaCustomFields[] = customFields.split(";");
-
-    String []dirs = ramlsDir.split(",");
-    for (int i = 0; i < dirs.length; i++) {
-      inputDirectory = dirs[i];
-
-      System.out.println( "Input directory " + inputDirectory);
-
-      configuration.setOutputDirectory(new File(outputDirectory));
-      configuration.setSourceDirectory(new File(inputDirectory));
-
-      int numMatches = 0;
-
-      if(!new File(inputDirectory).isDirectory()){
-        System.out.println(inputDirectory + " is not a valid directory");
-      }
-
-      File []ramls = new File(inputDirectory).listFiles(new FilenameFilter() {
-
-        @Override
-        public boolean accept(File dir, String name) {
-          if(name.endsWith(".raml")){
-            return true;
-          }
-          return false;
-        }
-      });
-
-      Set<String> processedPojos = new HashSet<>();
-      List<List<GlobalSchema>> globalUnprocessedSchemas = new ArrayList<>();
-
-      for (int j = 0; j < ramls.length; j++) {
-        BufferedReader reader=new BufferedReader(new FileReader(ramls[j]));
-        String line=reader.readLine();
-        reader.close();
-        if(line.startsWith("#%RAML")) {
-          System.out.println("processing " + ramls[j]);
-          //generate java interfaces and pojos from raml
-          GENERATOR.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
-          numMatches++;
-
-          //get list of schema to injectedFieldList
-          //have a map of top level schemas (schemas used in the raml schema:, etc...) to pojos
-          //scan fields in top level pojo list to get referenced pojos
-          //the name of their schema will be the jsonproperty annotation name
-          //check if for the top level pojo , the embedded objects need annotating
-
-          //Set<GlobalSchema> ramlSchemaSet = new HashSet<>(JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]));
-          List<GlobalSchema> schemaList = JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]);
-          //System.out.print("schemas listed in " + ramls[j]);
-          System.out.println("Schemas found in " + ramls[j]);
-          schemaList.forEach( entry -> System.out.println("* " + entry.key()) );
-
-          List<GlobalSchema> unprocessedSchemas = new ArrayList<>();
-          unprocessedSchemas.addAll(schemaList);
-
-          for (int k = 0; k < schemaCustomFields.length; k++) {
-            String message = "";
-            if(usingDefaultCustomField){
-              message = "Using default: ";
-            }
-            System.out.println(message + " custom field " + schemaCustomFields[k]);
-            JsonObject jo = new JsonObject(schemaCustomFields[k]);
-            String fieldName = jo.getString("fieldname");
-            Object fieldValue = jo.getValue("fieldvalue");
-            String annotation = jo.getString("annotation");
-            System.out.println("processing referenced schemas. looking for " + fieldName + " with value " + fieldValue);
-            processReferencedSchemas(schemaList, unprocessedSchemas, processedPojos, fieldName, fieldValue, annotation, k);
-          }
-          globalUnprocessedSchemas.add(unprocessedSchemas);
-        }
-        else{
-          System.out.println(ramls[j] + " has a .raml suffix but does not start with #%RAML");
-        }
-      }
-      for (int j = 0; j < schemaCustomFields.length; j++) {
-        JsonObject jo = new JsonObject(schemaCustomFields[j]);
-        String fieldName = jo.getString("fieldname");
-        Object fieldValue = jo.getValue("fieldvalue");
-        String annotation = jo.getString("annotation");
-        System.out.println("processing unreferenced schemas. looking for " + fieldName + " with value " + fieldValue);
-        processRemainingSchemas(outputDirectoryWithPackage, globalUnprocessedSchemas, processedPojos, fieldName, fieldValue, annotation);
-      }
-      System.out.println("processed: " + numMatches + " raml files");
-    }
-    return;
   }
 
-
-  public static boolean isPrimitiveOrPrimitiveWrapperOrString(String type) {
-    return type.equalsIgnoreCase("Double") ||type.equalsIgnoreCase("Float") || type.equalsIgnoreCase("Long")
-        || type.equalsIgnoreCase("Integer") || type.equalsIgnoreCase("Short") ||
-        type.equalsIgnoreCase("Character") || type.equalsIgnoreCase("char") ||
-        type.equalsIgnoreCase("Byte") || type.equalsIgnoreCase("Boolean") ||
-        type.equalsIgnoreCase("String") || type.equalsIgnoreCase("int");
+  /**
+   * Copy the files from inputDirectory to targetDirectory.
+   * @param inputDirectory  source
+   * @param targetDirectory  destination
+   * @throws IOException on file copy error
+   */
+  public static void copyToTarget(String inputDirectory, String targetDirectory) throws IOException {
+    System.out.println("copying ramls to target directory at: " + targetDirectory);
+    FileUtils.copyDirectory(new File(inputDirectory), new File(targetDirectory));
   }
 
-  private static void processReferencedSchemas(List<GlobalSchema> schemaList,
+  public void generate(String inputDirectory) throws Exception {
+    System.out.println( "Input directory " + inputDirectory);
+
+    configuration.setOutputDirectory(new File(outputDirectory));
+    configuration.setSourceDirectory(new File(inputDirectory));
+
+    int numMatches = 0;
+
+    if(!new File(inputDirectory).isDirectory()){
+      throw new IOException("Input path is not a valid directory: " + inputDirectory);
+    }
+
+    File []ramls = new File(inputDirectory).listFiles(new FilenameFilter() {
+
+      @Override
+      public boolean accept(File dir, String name) {
+        if(name.endsWith(".raml")){
+          return true;
+        }
+        return false;
+      }
+    });
+
+    Set<String> processedPojos = new HashSet<>();
+    List<List<GlobalSchema>> globalUnprocessedSchemas = new ArrayList<>();
+
+    for (int j = 0; j < ramls.length; j++) {
+      String line;
+      BufferedReader reader = null;
+      try {
+        reader = new BufferedReader(new FileReader(ramls[j]));
+        line = reader.readLine();
+      } finally {
+        if(reader != null){
+          reader.close();
+        }
+      }
+      if(line.startsWith("#%RAML")) {
+        System.out.println("processing " + ramls[j]);
+        //generate java interfaces and pojos from raml
+        GENERATOR.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
+        numMatches++;
+
+        //get list of schema to injectedFieldList
+        //have a map of top level schemas (schemas used in the raml schema:, etc...) to pojos
+        //scan fields in top level pojo list to get referenced pojos
+        //the name of their schema will be the jsonproperty annotation name
+        //check if for the top level pojo , the embedded objects need annotating
+
+        //Set<GlobalSchema> ramlSchemaSet = new HashSet<>(JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]));
+        List<GlobalSchema> schemaList = JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]);
+        //System.out.print("schemas listed in " + ramls[j]);
+        System.out.println("Schemas found in " + ramls[j]);
+        schemaList.forEach( entry -> System.out.println("* " + entry.key()) );
+
+        List<GlobalSchema> unprocessedSchemas = new ArrayList<>();
+        unprocessedSchemas.addAll(schemaList);
+
+        for (int k = 0; k < schemaCustomFields.length; k++) {
+          String message = "";
+          if(usingDefaultCustomField){
+            message = "Using default: ";
+          }
+          System.out.println(message + " custom field " + schemaCustomFields[k]);
+          JsonObject jo = new JsonObject(schemaCustomFields[k]);
+          String fieldName = jo.getString("fieldname");
+          Object fieldValue = jo.getValue("fieldvalue");
+          String annotation = jo.getString("annotation");
+          System.out.println("processing referenced schemas. looking for " + fieldName + " with value " + fieldValue);
+          processReferencedSchemas(schemaList, unprocessedSchemas, processedPojos, fieldName, fieldValue, annotation, k);
+        }
+        globalUnprocessedSchemas.add(unprocessedSchemas);
+      }
+      else{
+        System.out.println(ramls[j] + " has a .raml suffix but does not start with #%RAML");
+      }
+    }
+    for (int j = 0; j < schemaCustomFields.length; j++) {
+      JsonObject jo = new JsonObject(schemaCustomFields[j]);
+      String fieldName = jo.getString("fieldname");
+      Object fieldValue = jo.getValue("fieldvalue");
+      String annotation = jo.getString("annotation");
+      System.out.println("processing unreferenced schemas. looking for " + fieldName + " with value " + fieldValue);
+      processRemainingSchemas(globalUnprocessedSchemas, processedPojos, fieldName, fieldValue, annotation);
+    }
+    System.out.println("processed: " + numMatches + " raml files");
+  }
+
+  private void processReferencedSchemas(List<GlobalSchema> schemaList,
       List<GlobalSchema> unprocessedSchemas, Set<String> processedPojos, String fieldName, Object fieldValue, String annotation, int k){
     //contains schemas referenced in the raml (not embedded ones) - to pojo mappings
     Set<Entry<Object, Object>> o = GlobalSchemaPojoMapperCache.getSchema2PojoMapper().entrySet();
@@ -223,19 +283,14 @@ public class GenerateRunner {
             inject(fullPathPojo, annotation, injectFieldList);
             //JsonSchemaPojoUtil.injectAnnotation(fullPathPojo, annotation, new HashSet(injectFieldList));
           } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
           }
         }
       }
     });
   }
 
-  private static void inject(String rootPojo, String annotation, List<String> injectFieldList) throws Exception{
-
-    String outputDirectory =
-        System.getProperties().getProperty("project.basedir") + "/src/main/java/" +
-            MODEL_PACKAGE_DEFAULT.replace('.', '/');
-
+  private void inject(String rootPojo, String annotation, List<String> injectFieldList) throws Exception{
     int injectCount = injectFieldList.size();
     Set<String> annotateField4RootPojo = new HashSet<>();
 
@@ -261,7 +316,7 @@ public class GenerateRunner {
             //if the type is a list of that type, remove the List<>
             javaType = ((String)javaType).replaceAll("<", "").replaceAll(">", "").replaceAll("List", "");
             //build path to the embedded schema generated pojo
-            String pojoPath = outputDirectory + "/" + javaType + ".java";
+            String pojoPath = modelDirectory + "/" + javaType + ".java";
             //get fields in that pojo (may not be used)
             schemaFields2JavaTypes = JsonSchemaPojoUtil.jsonFields2Pojo(pojoPath);
             if(j == hierarchyOfObjects.length-2){
@@ -287,7 +342,7 @@ public class GenerateRunner {
     }
   }
 
-  private static void processRemainingSchemas(String outputDirectoryWithPackage, List<List<GlobalSchema>> globalUnprocessedSchemas,
+  private void processRemainingSchemas(List<List<GlobalSchema>> globalUnprocessedSchemas,
       Set<String> processedPojos, String fieldName, Object fieldValue, String annotation) throws Exception {
     File []pojos = new File(outputDirectoryWithPackage + "/model/").listFiles(new FilenameFilter() {
 
@@ -340,7 +395,7 @@ public class GenerateRunner {
                 //JsonSchemaPojoUtil.injectAnnotation(pojos[k].getAbsolutePath(), annotation, new HashSet(injectFieldList));
                 inject(pojos[k].getAbsolutePath(), annotation, injectFieldList);
               } catch (Exception e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
               }
             }
           }

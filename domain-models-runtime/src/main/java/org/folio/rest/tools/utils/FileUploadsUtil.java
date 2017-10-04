@@ -5,7 +5,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetHeaders;
@@ -15,6 +14,8 @@ import javax.mail.internet.MimeMultipart;
 import com.google.common.primitives.Bytes;
 
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
@@ -28,6 +29,7 @@ public class FileUploadsUtil {
   //need encoding for this - if "charset" is passed in the header request then it should be used instead
   private static final String DEFAULT_ENCODING = "ISO-8859-1";
 
+  private static final Logger log = LoggerFactory.getLogger(FileUploadsUtil.class);
 
   public static MimeMultipart MultiPartFormData(Buffer buffer) throws IOException {
 
@@ -70,7 +72,7 @@ public class FileUploadsUtil {
           MimeBodyPart mbp = new MimeBodyPart(new InternetHeaders(), buffer.slice().array());
           mmp.addBodyPart(mbp);
         } catch (MessagingException e) {
-          e.printStackTrace();
+          log.error(e.getMessage(), e);
         }
         pos = Bytes.indexOf(tmpBuffer, pattern);
       }

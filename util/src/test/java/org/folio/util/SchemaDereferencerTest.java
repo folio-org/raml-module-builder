@@ -5,7 +5,6 @@ import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -50,7 +49,7 @@ public class SchemaDereferencerTest {
 
   private JsonObject readJson(String file) throws IOException {
     try (InputStream reader = new FileInputStream(file)) {
-      return new JsonObject(IOUtil.toUTF8String(reader));
+      return new JsonObject(IoUtil.toStringUtf8(reader));
     }
   }
 
@@ -100,7 +99,6 @@ public class SchemaDereferencerTest {
       new SchemaDereferencer("::\0").dereferencedSchema("::\0");
       fail();
     } catch (IOException e) {
-      e.printStackTrace(System.err);
       assertThat(e.getMessage(), containsString("::\0"));
     }
   }

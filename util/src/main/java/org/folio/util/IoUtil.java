@@ -1,6 +1,7 @@
 package org.folio.util;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -8,12 +9,25 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 /**
- * InputStream functions.
+ * Reads an InputStream or File into a String.
  */
-public final class IOUtil {
+public final class IoUtil {
   /** private constructor preventing instantiation. */
-  private IOUtil() {
+  private IoUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
+  }
+
+  /**
+   * Read from the UTF8 encoded file <code>path</code> and return it as a String.
+   *
+   * @param path  file to read
+   * @return file content
+   * @throws IOException  on file read error
+   */
+  public static String toStringUtf8(final String path) throws IOException {
+    try (FileInputStream fileInputStream = new FileInputStream(path)) {
+      return toStringUtf8(fileInputStream);
+    }
   }
 
   /**
@@ -30,42 +44,45 @@ public final class IOUtil {
    * @throws IOException on i/o error when reading from the inputStream
    * @throws UnsupportedEncodingException if the charsetName is not supported
    * @throws NullPointerException if inputStream is null
+   * @throws UnsupportedEncodingException if the charsetName is not supported
    */
-  public static String toUTF8String(final InputStream inputStream) throws IOException {
+  public static String toStringUtf8(final InputStream inputStream) throws IOException {
     return toString(inputStream, StandardCharsets.UTF_8.name());
   }
 
   /**
-   * Read from the inputStream using charset encoding and return it as an String.
+   * Read from the inputStream in <code>charset</code> encoding and return it as a String.
    * <p>
    * This replaces org.apache.commons.io.IOUtils.toString(inputStream, charset)
    * and avoids including the full commons-io package.
    *
    * @param inputStream where to read from
-   * @param charset charset the inputStream is encoded
-   * @return the String
+   * @param charset  the encoding of the inputStream
+   * @return the inputStream content
    * @throws IOException on i/o error when reading from the inputStream
    * @throws NullPointerException if inputStream is null
    * @throws UnsupportedEncodingException if the charsetName is not supported
    */
-  public static String toString(final InputStream inputStream, final Charset charset) throws IOException {
+  public static String toString(final InputStream inputStream, final Charset charset)
+      throws IOException {
     return toString(inputStream, charset.name());
   }
 
   /**
-   * Read from the inputStream in charsetName encoding and return it as a String.
-   * <p>
-   * This replaces org.apache.commons.io.IOUtils.toString(inputStream, charsetName)
+   * Read from the inputStream in <code>charsetName</code> encoding and return it as a String.
+   *
+   * <p>This replaces org.apache.commons.io.IOUtils.toString(inputStream, charsetName)
    * and avoids including the full commons-io package.
    *
    * @param inputStream where to read from
-   * @param charsetName name of the encoding of inputStream
-   * @return the String
+   * @param charsetName  encoding of inputStream
+   * @return the inputStream content
    * @throws IOException on i/o error when reading from the inputStream
    * @throws NullPointerException if inputStream is null
    * @throws UnsupportedEncodingException if the charsetName is not supported
    */
-  public static String toString(final InputStream inputStream, final String charsetName) throws IOException {
+  public static String toString(final InputStream inputStream, final String charsetName)
+      throws IOException {
     // Implementation idea:
     // https://stackoverflow.com/questions/309424/read-convert-an-inputstream-to-a-string#35446009
     // "8. Using ByteArrayOutputStream and inputStream.read (JDK)"

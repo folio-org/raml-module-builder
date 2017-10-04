@@ -15,6 +15,7 @@ import org.folio.rest.tools.utils.OutStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
 
 /**
@@ -22,6 +23,7 @@ import io.vertx.ext.web.RoutingContext;
  */
 public class BooksDemoAPI implements RmbtestsResource {
 
+  private static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger(BooksDemoAPI.class);
 
   /**
    * validate to test the validation aspect
@@ -63,7 +65,7 @@ public class BooksDemoAPI implements RmbtestsResource {
       os.setData(routingContext.getBodyAsJson());
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostRmbtestsTestResponse.withJsonOK(os)));
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error( e );
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(null));
     }
   }

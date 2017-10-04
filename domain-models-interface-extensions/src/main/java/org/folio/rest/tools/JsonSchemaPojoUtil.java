@@ -23,39 +23,11 @@ import com.github.javaparser.ast.visitor.ModifierVisitor;
 
 import io.vertx.core.json.JsonObject;
 
-
 /**
- * @author shale
- *
+ * Can read a RAML file and its JSON schemas and annotate the corresponding
+ * Pojo .java file with the annotations as specified in the schemas.
  */
 public class JsonSchemaPojoUtil {
-
-  private static final String  FILE_PATH =
-      "C:\\Git\\mod-users\\src\\main\\java\\org\\folio\\rest\\jaxrs\\model\\User.java";
-
-  public static void main(String[] args) throws Exception {
-    com.github.javaparser.ast.CompilationUnit cu = com.github.javaparser.JavaParser.parse(
-      new FileInputStream(FILE_PATH));
-    Set<String> set = new HashSet<>();
-    set.add("username");
-    Map<Object, Object> jsonField2PojoMap = jsonFields2Pojo(FILE_PATH);
-    injectAnnotation(FILE_PATH, "javax.validation.constraints.Null" , set);
-    RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi(
-      "C:\\Git\\raml-module-builder\\domain-models-api-interfaces\\raml\\sample.raml");
-    //RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi("C:\\Git\\mod-circulation-storage\\ramls\\loan-policy-storage.raml");
-    List<GlobalSchema> schema = ramlModelResult.getApiV08().schemas();
-    int r = schema.size();
-    for (int i = 0; i < r; i++) {
-      List<String> paths = getFieldsInSchemaWithType(new JsonObject(schema.get(i).value().value()), "readonly", true);
-      System.out.println("*Schema* " + schema.get(i).key() + "");
-      paths.stream().forEach(System.out::println);
-    }
-    System.out.println(cu.toString());
-    BufferedWriter bw = Files.newBufferedWriter(new File(FILE_PATH).toPath(), StandardCharsets.UTF_8);
-    bw.write(cu.toString());
-    bw.close();
-  }
-
   /**
    * inject an annotation into each of the fields indicated in the Set<String>.
    * @param path2pojo - full path to the .java file to inject into
@@ -68,9 +40,10 @@ public class JsonSchemaPojoUtil {
       new FileInputStream(path2pojo));
     ModifierVisitor<?> annotationVisitor = new PojoModifier(annotationName, fields);
     annotationVisitor.visit(cu, null);
-    BufferedWriter bw = Files.newBufferedWriter(new File(path2pojo).toPath(), StandardCharsets.UTF_8);
-    bw.write(cu.toString());
-    bw.close();
+    try (BufferedWriter bw =
+        Files.newBufferedWriter(new File(path2pojo).toPath(), StandardCharsets.UTF_8)) {
+      bw.write(cu.toString());
+    }
   }
 
   /**
@@ -140,50 +113,32 @@ public class JsonSchemaPojoUtil {
       this.jsonField2PojoMap = jsonField2PojoMap;
     }
 
-      @Override
-      public FieldDeclaration visit(FieldDeclaration fd, Void arg) {
-          super.visit(fd, arg);
-          boolean []addAnno = new boolean[]{false};
-          fd.getAnnotations().forEach( annotation -> {
-            try {
-              List<Node> annos = annotation.getChildNodes();
-              if(annos.size() == 2 &&  annotationName.equalsIgnoreCase(annos.get(0).toString())){
-                //attempt to get parent node of this annotation , which will be the field node
-                //containing the comment, annotations, and the needed field name itself
-                Optional<Node> n = annotation.getParentNode();
-                if(n.isPresent()){
-                  //get list of nodes, the field name should be the last node in the list
-                  List<Node> list = n.get().getChildNodes();
-                  int size = list.size();
-                  if(size > 0){
-                    //the field node itself is a list of type, name
-                    List<Node> fieldInfo = list.get(size-1).getChildNodes();
-                    jsonField2PojoMap.put(annos.get(1).toString().replaceAll("\"", ""), fieldInfo.get(0).toString());
-                  }
-                }
-              }
-            } catch (java.util.NoSuchElementException e) {
-              System.out.println("");
+    @Override
+    public FieldDeclaration visit(FieldDeclaration fd, Void arg) {
+      super.visit(fd, arg);
+      boolean []addAnno = new boolean[]{false};
+      fd.getAnnotations().forEach( annotation -> {
+        List<Node> annos = annotation.getChildNodes();
+        if(annos.size() == 2 &&  annotationName.equalsIgnoreCase(annos.get(0).toString())){
+          //attempt to get parent node of this annotation , which will be the field node
+          //containing the comment, annotations, and the needed field name itself
+          Optional<Node> n = annotation.getParentNode();
+          if(n.isPresent()){
+            //get list of nodes, the field name should be the last node in the list
+            List<Node> list = n.get().getChildNodes();
+            int size = list.size();
+            if(size > 0){
+              //the field node itself is a list of type, name
+              List<Node> fieldInfo = list.get(size-1).getChildNodes();
+              jsonField2PojoMap.put(annos.get(1).toString().replaceAll("\"", ""), fieldInfo.get(0).toString());
             }
-          });
-          if(addAnno[0]){
-            fd.addAnnotation(annotationName);
           }
-          return fd;
+        }
+      });
+      if(addAnno[0]){
+        fd.addAnnotation(annotationName);
       }
-  }
-
-
-  public static void getFieldsInAllSchemasInRAMLWithType(String ramlPath, String type, Object value){
-
-    RamlModelResult ramlModelResult = new RamlModelBuilder().buildApi(ramlPath);
-    List<GlobalSchema> schema = ramlModelResult.getApiV08().schemas();
-    int r = schema.size();
-    for (int i = 0; i < r; i++) {
-      List<String> paths = getFieldsInSchemaWithType(new JsonObject(schema.get(i).value().value()), type, value);
-      System.out.println("*Schema* " + schema.get(i).key() + "");
-      paths.stream().forEach(System.out::println);
-      //System.out.println(paths.size());
+      return fd;
     }
   }
 
@@ -195,7 +150,7 @@ public class JsonSchemaPojoUtil {
    * @param type - type to look for - "type" / "readonly" / etc...
    * @param value - the value of the type - true / "string" / etc...
    * @return - returns a list of paths within the schema that contain this type = value , the path
-   * is dot seperated - so for embedded objects in the schema you would be something like a.b.c
+   * is dot separated - so for embedded objects in the schema you would be something like a.b.c
    */
   public static List<String> getFieldsInSchemaWithType(JsonObject schema, String type, Object value){
     if(schema == null){
@@ -236,7 +191,7 @@ public class JsonSchemaPojoUtil {
       }
       else{
         if(!path.startsWith("$")){
-          //dont add objects like $date to the field path as they are descriptive
+          //don't add objects like $date to the field path as they are descriptive
           sb.append(path).append(".");
         } else{
           //but we need to add $ fields otherwise we lose track of hierarchy

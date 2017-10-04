@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>14.0.1-SNAPSHOT</version>
+    <version>15.0.1-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-api-interfaces</artifactId>
   <properties>
@@ -167,7 +167,7 @@
                 <systemProperty>
                   <key>jsonschema.customfield</key>
                   <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"}</value>
-                </systemProperty> 
+                </systemProperty>
               </systemProperties>
             </configuration>
           </execution>

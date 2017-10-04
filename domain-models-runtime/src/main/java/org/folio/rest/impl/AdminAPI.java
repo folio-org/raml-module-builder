@@ -1,11 +1,5 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -34,6 +28,12 @@ import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.LoggerFactory;
 
 public class AdminAPI implements AdminResource {
 
@@ -207,18 +207,18 @@ public class AdminAPI implements AdminResource {
         //System.out.println(bp.getContent());
         //System.out.println("-----------------------------------------");
       }
-    }
-    String name = "";
-    try{
-      if(fileName == null){
-        name = entity.getBodyPart(0).getFileName();
+      String name = "";
+      try{
+        if(fileName == null){
+          name = entity.getBodyPart(0).getFileName();
+        }
+        else{
+          name = fileName;
+        }
       }
-      else{
-        name = fileName;
+      catch(Exception e){
+        log.error(e.getMessage(), e);
       }
-    }
-    catch(Exception e){
-      log.error(e.getMessage(), e);
     }
 
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadmultipartResponse.withOK("TODO"

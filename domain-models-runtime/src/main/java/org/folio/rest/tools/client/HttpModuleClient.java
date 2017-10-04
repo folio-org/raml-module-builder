@@ -150,7 +150,7 @@ public class HttpModuleClient {
     request(method, endpoint, headers, cachable, new HTTPJsonResponseHandler(endpoint, cf), cf);
     Response response = new Response();
     try {
-      response = cf.get((idleTO/1000)+1, TimeUnit.SECONDS);
+      response = cf.get((idleTO/1000L)+1, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
       response.populateError(endpoint, -1, e.toString());
     }

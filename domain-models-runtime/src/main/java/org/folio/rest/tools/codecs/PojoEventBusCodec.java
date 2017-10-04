@@ -1,10 +1,12 @@
 package org.folio.rest.tools.codecs;
 
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.MessageCodec;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.MessageCodec;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 /**
@@ -14,30 +16,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class PojoEventBusCodec implements MessageCodec<Object, Object> {
 
+  private static final Logger log = LoggerFactory.getLogger(PojoEventBusCodec.class);
   private static final ObjectMapper MAPPER  = new ObjectMapper();
 
 
   @Override
   public void encodeToWire(Buffer buffer, Object pojo) {
 
-    String value = null;
     try {
-      value = MAPPER.writeValueAsString(pojo);
+      String value = MAPPER.writeValueAsString(pojo);
+      String clazz = pojo.getClass().getName();
+      int clazzLength = clazz.getBytes().length;
+      buffer.appendInt(clazzLength);
+      buffer.appendString(clazz);
+      if(value != null){
+        int dataLength = value.getBytes().length;
+        // Write data into given buffer
+        buffer.appendInt(dataLength);
+        buffer.appendString(value);
+      }
     } catch (JsonProcessingException e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
     }
-
-    int dataLength = value.getBytes().length;
-
-    String clazz = pojo.getClass().getName();
-
-    int clazzLength = clazz.getBytes().length;
-
-    // Write data into given buffer
-    buffer.appendInt(clazzLength);
-    buffer.appendString(clazz);
-    buffer.appendInt(dataLength);
-    buffer.appendString(value);
   }
 
   @Override
@@ -58,7 +58,7 @@ public class PojoEventBusCodec implements MessageCodec<Object, Object> {
     try {
       obj = MAPPER.readValue(data, Class.forName(clazz));
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
     }
 
     // We can finally create custom message object

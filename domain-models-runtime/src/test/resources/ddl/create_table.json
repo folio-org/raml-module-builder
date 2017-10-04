@@ -1,0 +1,18 @@
+[{
+  "tableName": "config_data",
+  "mode": "new",
+  "withMetadata": true,
+  "likeQueries": [
+    {"field": "username", "tOps" : "ADD"}
+  ],
+  "withAuditing": true,
+  "uniqueIndex": [
+      {"field": "username", "tOps" : "ADD"},
+      {"field": "personal.phone", "tOps" : "ADD"}
+  ],
+  "foreignKeys": [
+    {"field": "username", "tableName": "users", "tOps" : "ADD"}
+  ],
+  "customSnippet": "insertAsSelect.sql"
+}
+]

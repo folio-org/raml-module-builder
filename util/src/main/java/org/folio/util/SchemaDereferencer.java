@@ -148,7 +148,7 @@ public class SchemaDereferencer {
 
     String schemaString;
     try (InputStream reader = new FileInputStream(path)) {
-      schemaString = IOUtil.toUTF8String(reader);
+      schemaString = IoUtil.toStringUtf8(reader);
     }
     JsonObject schema = new JsonObject(schemaString);
     dereference(schema, dereferenceStack);
