@@ -32,6 +32,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.MDC;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -103,7 +104,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        OKAPI_HEADER_PERMISSIONS        = "X-Okapi-Permissions";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
   public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
-
+  public static final String        OKAPI_REQUESTID_HEADER          = "X-Okapi-Request-Id";
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
 
@@ -344,8 +345,6 @@ public class RestVerticle extends AbstractVerticle {
             // if the path is valid and the http method is options
             // assume a cors request
             if (rc.request().method() == HttpMethod.OPTIONS) {
-              //rc.response().putHeader(CORS_ALLOW_HEADER, CORS_ALLOW_HEADER_VALUE);
-              //rc.response().putHeader(CORS_ALLOW_ORIGIN, CORS_ALLOW_ORIGIN_VALUE);
               rc.response().end();
               return;
             }
@@ -372,7 +371,10 @@ public class RestVerticle extends AbstractVerticle {
               Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
               String []tenantId = new String[]{null};
               getOkapiHeaders(rc, okapiHeaders, tenantId);
-
+              String reqId = okapiHeaders.get(OKAPI_REQUESTID_HEADER);
+              if(reqId != null){
+                MDC.put("reqId", "reqId="+reqId);
+              }
               if(tenantId[0] == null && !rc.request().path().startsWith("/admin")){
                 //if tenant id is not passed in and this is not an /admin request, return error
                 endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest)

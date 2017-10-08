@@ -4,15 +4,18 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Launcher;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.dropwizard.DropwizardMetricsOptions;
 import io.vertx.ext.dropwizard.Match;
 import io.vertx.ext.dropwizard.MatchType;
 
 public class RestLauncher extends Launcher {
 
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
+  }
+
   public static void main(String[] args) {
-    // System.setProperty("vertx.logger-delegate-factory-class-name",
-    // "io.vertx.core.logging.Log4jLogDelegateFactory");
     new RestLauncher().dispatch(args);
   }
 

@@ -43,6 +43,7 @@ import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -56,6 +57,10 @@ public class DemoRamlRestTest {
   private static Vertx vertx;
   private static int port;
 
+
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
+  }
 
   /**
    * @param context  the test context.
@@ -396,6 +401,7 @@ public class DemoRamlRestTest {
       }
     });
     request.setChunked(true);
+    request.putHeader("X-Okapi-Request-Id", "999999999999");
     if(tenant != null){
       request.putHeader("x-okapi-tenant", tenant);
     }
