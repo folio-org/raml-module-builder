@@ -196,7 +196,8 @@ public class Rules {
 
     if (uri.getScheme().equals("jar")) {
       try {
-        fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap());
+        //comment out sonar as this is closed at the end of the function
+        fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap()); //NOSONAR
       } catch (FileSystemAlreadyExistsException e) {
         fileSystem = FileSystems.getFileSystem(uri);
       }

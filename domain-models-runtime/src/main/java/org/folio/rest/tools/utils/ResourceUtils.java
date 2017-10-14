@@ -109,24 +109,24 @@ public class ResourceUtils {
   private static ArrayList<String> listResources(Path path, boolean inJar, boolean absolutePath)
       throws Exception {
     ArrayList<String> ret = new ArrayList<>();
-    Stream<Path> walk = Files.walk(path, 1);
-    int cnt = 0;
-    for (Iterator<Path> it = walk.iterator(); it.hasNext();) {
-      Path file = it.next();
-      if(cnt++ != 0){
-        //first entry is the directory itself, so skip it
-        String name = file.getFileName().toString();
-        String resource = path.getFileName().toString() + "/" + name;
-        if(absolutePath){
-          String r = resource2AbsolutePath(resource, inJar);
-          ret.add(r);
-        }
-        else{
-          ret.add(resource);
+    try(Stream<Path> walk = Files.walk(path, 1)){
+      int cnt = 0;
+      for (Iterator<Path> it = walk.iterator(); it.hasNext();) {
+        Path file = it.next();
+        if(cnt++ != 0){
+          //first entry is the directory itself, so skip it
+          String name = file.getFileName().toString();
+          String resource = path.getFileName().toString() + "/" + name;
+          if(absolutePath){
+            String r = resource2AbsolutePath(resource, inJar);
+            ret.add(r);
+          }
+          else{
+            ret.add(resource);
+          }
         }
       }
     }
-    walk.close();
     return ret;
   }
 

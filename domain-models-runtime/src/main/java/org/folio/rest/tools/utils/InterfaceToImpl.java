@@ -1,8 +1,5 @@
 package org.folio.rest.tools.utils;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -10,6 +7,9 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Table;
 import com.google.common.reflect.ClassPath;
+
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 public class InterfaceToImpl {
@@ -52,7 +52,7 @@ public class InterfaceToImpl {
       }
       try {
         Class<?> clazz = Class.forName(info.getName());
-        if(!clazz.getSuperclass().getName().equals("java.lang.Object")){
+        if(!clazz.getSuperclass().getName().equals("java.lang.Object")){ //NOSONAR
           /** user defined class which overrides one of the out of the box RMB implementations
            * set the clazz to the interface. find the correct implementation below */
           userImpl = clazz;
@@ -60,7 +60,7 @@ public class InterfaceToImpl {
         }
         /** loop over all interfaces the class implements */
         for (Class<?> anInterface : clazz.getInterfaces()) {
-          if (!anInterface.getName().equals(interface2check)) {
+          if (!anInterface.getName().equals(interface2check)) { //NOSONAR
             /**if userImpl != null here then a user impl exists but does not match the requested interface, so set to null*/
             userImpl = null;
             /** class doesnt implement the requested package, continue to check if it implements other packages */
