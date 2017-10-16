@@ -17,6 +17,8 @@ import javax.mail.internet.MimeMultipart;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
@@ -33,11 +35,10 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
 
 public class AdminAPI implements AdminResource {
 
-  private static final io.vertx.core.logging.Logger log              = LoggerFactory.getLogger(AdminAPI.class);
+  private static final Logger log              = LogManager.getLogger(AdminAPI.class);
   // format of the percentages returned by the /memory api
   private static final DecimalFormat                DECFORMAT        = new DecimalFormat("###.##");
   private static LRUCache<Date, String>             jvmMemoryHistory = LRUCache.newInstance(100);
@@ -48,7 +49,7 @@ public class AdminAPI implements AdminResource {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
     try {
-      JsonObject updatedLoggers = LogUtil.updateLogConfiguration(javaPackage, level2level(level));
+      JsonObject updatedLoggers = LogUtil.updateLogConfiguration(javaPackage, level.name());
       OutStream os = new OutStream();
       os.setData(updatedLoggers);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withJsonOK(os)));
@@ -74,10 +75,6 @@ public class AdminAPI implements AdminResource {
           + e.getMessage())));
       log.error(e.getMessage(), e);
     }
-  }
-
-  private java.util.logging.Level level2level(Level level) {
-    return java.util.logging.Level.parse(level.name());
   }
 
   @Override

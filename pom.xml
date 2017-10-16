@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>15.0.1-SNAPSHOT</version>
+  <version>15.0.2-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -215,7 +215,7 @@
           <properties>
             <property>
               <name>log4j.configuration</name>
-              <value>${project.baseUri}src/main/resources/log4j.properties</value>
+              <value>${project.baseUri}src/main/resources/log4j2.properties</value>
             </property>
           </properties>
         </configuration>

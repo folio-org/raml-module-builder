@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.util.List;
 import java.util.Properties;
 
+import org.apache.log4j.Logger;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -13,8 +14,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ResourceInfo;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
@@ -30,7 +29,7 @@ public enum PomReader {
   private List<Dependency> dependencies = null;
   private String rmbVersion = null;
 
-  private final Logger log = LoggerFactory.getLogger(PomReader.class);
+  private final Logger log = Logger.getLogger(PomReader.class);
 
   @SuppressWarnings("checkstyle:methodlength")
   private PomReader() {

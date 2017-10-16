@@ -16,8 +16,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -125,12 +125,14 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static MetricsService     serverMetrics                   = null;
-  private static ValidatorFactory   validationFactory;
   private static KieSession         droolsSession;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
   private static final String       DEFAULT_SCHEMA                  = "public";
+
+  private static ValidatorFactory   validationFactory;
+  private static String             deploymentId                     = "";
 
   private final Messages            messages                        = Messages.getInstance();
   private int                       port                            = -1;
@@ -176,6 +178,8 @@ public class RestVerticle extends AbstractVerticle {
 
     //process cmd line arguments
     cmdProcessing();
+
+    deploymentId = UUID.randomUUID().toString();
 
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
 
@@ -1096,7 +1100,7 @@ public class RestVerticle extends AbstractVerticle {
           String debugPackage = param.split("=")[1];
           if(debugPackage != null && debugPackage.length() > 0){
             LogUtil.formatLogMessage(className, "cmdProcessing", "Setting package " + debugPackage + " to debug");
-            LogUtil.updateLogConfiguration(debugPackage, Level.FINEST);
+            LogUtil.updateLogConfiguration(debugPackage, "FINE");
           }
         }
         else if (param.startsWith("db_connection=")) {
@@ -1540,5 +1544,9 @@ public class RestVerticle extends AbstractVerticle {
 
   public static void updateDroolsSession(KieSession s) {
     droolsSession = s;
+  }
+
+  public static String getDeploymentId(){
+    return deploymentId;
   }
 }

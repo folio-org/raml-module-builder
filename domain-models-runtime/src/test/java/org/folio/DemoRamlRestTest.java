@@ -175,9 +175,12 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", "abcdefg", false);
 
 
+    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org", null, 200, 0, "application/json", "abcdefg", false);
+
     List<Object> list = getListOfBooks();
 
     checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200); // should be 200
+    checkURLs(context, "http://localhost:" + port + "/admin/loglevel", 200); // should be 200
 
     //use generated client
     checkClientCode(context);
@@ -423,7 +426,9 @@ public class DemoRamlRestTest {
             "multipart/form-data; boundary=MyBoundary");
       }
     }
-    request.write(buffer);
+    if(buffer != null){
+      request.write(buffer);
+    }
     request.end();
   }
 
