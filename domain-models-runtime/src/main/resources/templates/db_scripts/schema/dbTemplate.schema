@@ -126,6 +126,12 @@
                 },
                 "tOps": {
                   "type": "string"
+                },
+                "caseSensitive": {
+                  "type": "boolean"
+                },
+                "whereClause": {
+                  "type": "string"
                 }
               },
               "type": "object"
@@ -150,6 +156,12 @@
                   "type": "string"
                 },
                 "tOps": {
+                  "type": "string"
+                },
+                "caseSensitive": {
+                  "type": "boolean"
+                },
+                "whereClause": {
                   "type": "string"
                 }
               },

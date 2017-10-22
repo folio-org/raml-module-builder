@@ -3,7 +3,8 @@
   <#if table.uniqueIndex??>
     <#list table.uniqueIndex as indexes>
         <#if indexes.tOps.name() == "ADD">
-    CREATE UNIQUE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique ON ${myuniversity}_${mymodule}.${table.tableName}((${indexes.fieldPath}));
+    CREATE UNIQUE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique ON ${myuniversity}_${mymodule}.${table.tableName}(
+      <#if indexes.caseSensitive == false>lower</#if>(${indexes.fieldPath}))<#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
         <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique;
         </#if>
@@ -14,7 +15,8 @@
   <#if table.likeIndex??>
     <#list table.likeIndex as indexes>
       <#if indexes.tOps.name() == "ADD">
-    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_like ON ${myuniversity}_${mymodule}.${table.tableName}(((${indexes.fieldPath})) varchar_pattern_ops);
+    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_like ON ${myuniversity}_${mymodule}.${table.tableName}(
+      <#if indexes.caseSensitive == false>lower</#if>(${indexes.fieldPath}) varchar_pattern_ops)<#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
       <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_like;
       </#if>
