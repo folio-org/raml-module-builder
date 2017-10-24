@@ -3,11 +3,11 @@
   "mode": "new",
   "withMetadata": true,
   "likeQueries": [
-    {"field": "username", "tOps" : "ADD"}
+    {"field": "username", "tOps" : "ADD", "caseSensitive": false}
   ],
   "withAuditing": true,
   "uniqueIndex": [
-      {"field": "username", "tOps" : "ADD"},
+      {"field": "username", "tOps" : "ADD", "caseSensitive": false},
       {"field": "personal.phone", "tOps" : "ADD"}
   ],
   "foreignKeys": [

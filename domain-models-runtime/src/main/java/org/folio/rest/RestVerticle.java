@@ -200,6 +200,7 @@ public class RestVerticle extends AbstractVerticle {
     eventBus = vertx.eventBus();
 
     log.info(context.getInstanceCount() + " verticles deployed ");
+
     try {
       //register codec to be able to pass pojos on the event bus
       eventBus.registerCodec(new PojoEventBusCodec());
@@ -749,6 +750,12 @@ public class RestVerticle extends AbstractVerticle {
       //sent as part of an upload. passing this back will confuse clients as they
       //will think they are getting back a stream of data which may not be the case
       rc.request().headers().remove("Content-type");
+      //remove transfer-encoding from the request header in case the response has no content
+      //since the request headers are appended to the response headers the transfer-encoding
+      //should not be forwarded in cases of no content
+      if(statusCode == 204){
+        rc.request().headers().remove("transfer-encoding");
+      }
 
       mergeIntoResponseHeadersDistinct(response.headers(), rc.request().headers());
 
