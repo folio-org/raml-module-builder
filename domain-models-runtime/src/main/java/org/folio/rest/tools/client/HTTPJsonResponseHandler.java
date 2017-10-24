@@ -1,15 +1,13 @@
 package org.folio.rest.tools.client;
 
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletableFuture;
-
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.DecodeException;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author shale
