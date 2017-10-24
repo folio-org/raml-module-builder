@@ -1,6 +1,7 @@
 package org.folio.rest.tools.client;
 
 import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.DecodeException;
@@ -54,17 +55,7 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
       r.endpoint = this.endpoint;
       r.headers = hcr.headers();
       if(Response.isSuccess(r.code)){
-        if(r.code == 204 || bh.length() == 0) {
-          r.body = null;
-          cf.complete(r);
-        } else  {
-          try {
-            r.body = bh.toJsonObject();
-            cf.complete(r);
-          } catch (DecodeException decodeException) {
-            cf.completeExceptionally(decodeException);
-          }
-        }
+        handleSuccess(bh, r);
       } else{
         String message = hcr.statusMessage();
         if(bh != null){
@@ -96,6 +87,20 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
       }
       cf.completeExceptionally(eh);
     });
+  }
+
+  private void handleSuccess(Buffer bh, Response r) {
+    if(r.code == 204 || bh.length() == 0) {
+      r.body = null;
+      cf.complete(r);
+    } else  {
+      try {
+        r.body = bh.toJsonObject();
+        cf.complete(r);
+      } catch (DecodeException decodeException) {
+        cf.completeExceptionally(decodeException);
+      }
+    }
   }
 
 }
