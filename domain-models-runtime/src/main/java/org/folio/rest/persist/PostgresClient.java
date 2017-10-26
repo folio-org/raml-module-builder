@@ -23,6 +23,8 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.StrSubstitutor;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -57,8 +59,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
@@ -113,7 +113,7 @@ public class PostgresClient {
 
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
 
-  private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
+  private static final Logger log = LogManager.getLogger(PostgresClient.class);
 
   private static int embeddedPort            = -1;
 
@@ -596,7 +596,7 @@ public class PostgresClient {
                         log.error("query saveBatch failed, attempting rollback", query.cause());
                         connection.query("ROLLBACK;", rollbackres -> {
                           if(rollbackres.failed()){
-                            log.error("query saveBatch failed, unable to rollback", rollbackres.cause().getLocalizedMessage());
+                            log.error("query saveBatch failed, unable to rollback", rollbackres.cause());
                           }
                           else {
                             log.info("rollback success. " + new JsonArray(rollbackres.result().getResults()).encodePrettily());
@@ -617,7 +617,7 @@ public class PostgresClient {
                                 commit.cause());
                               connection.query("ROLLBACK;", rollbackres -> {
                                 if(rollbackres.failed()){
-                                  log.error("query saveBatch failed, unable to rollback", rollbackres.cause().getLocalizedMessage());
+                                  log.error("query saveBatch failed, unable to rollback", rollbackres.cause());
                                 }
                                 else{
                                   log.info("rollback success. " + new JsonArray(rollbackres.result().getResults()).encodePrettily());
@@ -2073,7 +2073,7 @@ public class PostgresClient {
       recordsImported[0] = copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
 
     } catch (Exception e) {
-      log.error(messages.getMessage("en", MessageConsts.ImportFailed), e.getMessage(), e);
+      log.error(messages.getMessage("en", MessageConsts.ImportFailed), e);
       dothis.fail(e);
     }
     dothis.complete("Done.");

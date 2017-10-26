@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.io.FilenameUtils;
+import org.apache.log4j.Logger;
 import org.folio.rest.tools.utils.RamlDirCopier;
 import org.folio.rest.utils.GlobalSchemaPojoMapperCache;
 import org.jsonschema2pojo.AnnotationStyle;
@@ -26,8 +27,6 @@ import org.raml.jaxrs.codegen.core.ext.GeneratorExtension;
 import org.raml.v2.api.model.v08.api.GlobalSchema;
 
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Read RAML files and generate .java files from them.
@@ -42,7 +41,7 @@ public class GenerateRunner {
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
 
-  private static final Logger log = LoggerFactory.getLogger(GenerateRunner.class);
+  private static final Logger log = Logger.getLogger(GenerateRunner.class);
 
   private String outputDirectory = null;
   private String outputDirectoryWithPackage = null;
@@ -166,13 +165,12 @@ public class GenerateRunner {
    */
   public static void copyRamlDirToTarget(String inputDirectory, String targetDirectory)
       throws IOException {
-    System.out.println("copying ramls to target directory at: " + targetDirectory);
-
+    log.info("copying ramls to target directory at: " + targetDirectory);
     RamlDirCopier.copy(Paths.get(inputDirectory), Paths.get(targetDirectory));
   }
 
   public void generate(String inputDirectory) throws Exception {
-    System.out.println( "Input directory " + inputDirectory);
+    log.info( "Input directory " + inputDirectory);
 
     configuration.setOutputDirectory(new File(outputDirectory));
     configuration.setSourceDirectory(new File(inputDirectory));
@@ -209,7 +207,7 @@ public class GenerateRunner {
         }
       }
       if(line.startsWith("#%RAML")) {
-        System.out.println("processing " + ramls[j]);
+        log.info("processing " + ramls[j]);
         //generate java interfaces and pojos from raml
         GENERATOR.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
         numMatches++;
@@ -223,7 +221,7 @@ public class GenerateRunner {
         //Set<GlobalSchema> ramlSchemaSet = new HashSet<>(JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]));
         List<GlobalSchema> schemaList = JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]);
         //System.out.print("schemas listed in " + ramls[j]);
-        System.out.println("Schemas found in " + ramls[j]);
+        log.info("Schemas found in " + ramls[j]);
         schemaList.forEach( entry -> System.out.println("* " + entry.key()) );
 
         List<GlobalSchema> unprocessedSchemas = new ArrayList<>();
@@ -239,13 +237,13 @@ public class GenerateRunner {
           String fieldName = jo.getString("fieldname");
           Object fieldValue = jo.getValue("fieldvalue");
           String annotation = jo.getString("annotation");
-          System.out.println("processing referenced schemas. looking for " + fieldName + " with value " + fieldValue);
+          log.info("processing referenced schemas. looking for " + fieldName + " with value " + fieldValue);
           processReferencedSchemas(schemaList, unprocessedSchemas, processedPojos, fieldName, fieldValue, annotation, k);
         }
         globalUnprocessedSchemas.add(unprocessedSchemas);
       }
       else{
-        System.out.println(ramls[j] + " has a .raml suffix but does not start with #%RAML");
+        log.info(ramls[j] + " has a .raml suffix but does not start with #%RAML");
       }
     }
     for (int j = 0; j < schemaCustomFields.length; j++) {
@@ -253,10 +251,10 @@ public class GenerateRunner {
       String fieldName = jo.getString("fieldname");
       Object fieldValue = jo.getValue("fieldvalue");
       String annotation = jo.getString("annotation");
-      System.out.println("processing unreferenced schemas. looking for " + fieldName + " with value " + fieldValue);
+      log.info("processing unreferenced schemas. looking for " + fieldName + " with value " + fieldValue);
       processRemainingSchemas(globalUnprocessedSchemas, processedPojos, fieldName, fieldValue, annotation);
     }
-    System.out.println("processed: " + numMatches + " raml files");
+    log.info("processed: " + numMatches + " raml files");
   }
 
   private void processReferencedSchemas(List<GlobalSchema> schemaList,
@@ -327,9 +325,9 @@ public class GenerateRunner {
             if(j == hierarchyOfObjects.length-2){
               String fieldInPojo = hierarchyOfObjects[hierarchyOfObjects.length-1];
               Set<String> fields2annotate = new HashSet<>();
-              System.out.println("Adding annotation to " + fieldInPojo + " in " + pojoPath);
+              log.info("Adding annotation to " + fieldInPojo + " in " + pojoPath);
               fields2annotate.add(fieldInPojo);
-              System.out.println("updating " + pojoPath + " with " + fields2annotate.size() + " annotations");
+              log.info("updating " + pojoPath + " with " + fields2annotate.size() + " annotations");
               if(!injectedAnnotations.contains(pojoPath+fields2annotate+annotation)){
                 injectedAnnotations.add(pojoPath+fields2annotate+annotation);
                 JsonSchemaPojoUtil.injectAnnotation(pojoPath, annotation, fields2annotate);
@@ -339,7 +337,7 @@ public class GenerateRunner {
         }
       }
     }
-    System.out.println("updating " + rootPojo + " with " + annotateField4RootPojo.size() + " annotations, annotation list: ");
+    log.info("updating " + rootPojo + " with " + annotateField4RootPojo.size() + " annotations, annotation list: ");
     annotateField4RootPojo.forEach(System.out::println);
     if(!injectedAnnotations.contains(rootPojo+annotation)){
       injectedAnnotations.add(rootPojo+annotation);

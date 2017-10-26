@@ -43,6 +43,7 @@ import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -56,6 +57,10 @@ public class DemoRamlRestTest {
   private static Vertx vertx;
   private static int port;
 
+
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
+  }
 
   /**
    * @param context  the test context.
@@ -170,9 +175,12 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", "abcdefg", false);
 
 
+    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org", null, 200, 0, "application/json", "abcdefg", false);
+
     List<Object> list = getListOfBooks();
 
     checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200); // should be 200
+    checkURLs(context, "http://localhost:" + port + "/admin/loglevel", 200); // should be 200
 
     //use generated client
     checkClientCode(context);
@@ -396,6 +404,7 @@ public class DemoRamlRestTest {
       }
     });
     request.setChunked(true);
+    request.putHeader("X-Okapi-Request-Id", "999999999999");
     if(tenant != null){
       request.putHeader("x-okapi-tenant", tenant);
     }
@@ -417,7 +426,9 @@ public class DemoRamlRestTest {
             "multipart/form-data; boundary=MyBoundary");
       }
     }
-    request.write(buffer);
+    if(buffer != null){
+      request.write(buffer);
+    }
     request.end();
   }
 

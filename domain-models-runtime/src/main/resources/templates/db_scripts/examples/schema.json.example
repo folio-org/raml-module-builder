@@ -3,12 +3,12 @@
     {
       "run": "before",
       "snippet": "select * from start; ",
-      "fromModuleVersion" : 15.2
+      "fromModuleVersion": 15.2
     },
     {
       "run": "after",
       "snippet": "select * from end; ",
-      "fromModuleVersion" : 14.2
+      "fromModuleVersion": 14.2
     }
   ],
   "tables": [
@@ -21,6 +21,11 @@
       "likeIndex": [
         {
           "fieldName": "username",
+          "tOps": "ADD",
+          "caseSensitive": false
+        },
+        {
+          "fieldName": "type",
           "tOps": "ADD"
         }
       ],
@@ -34,13 +39,25 @@
         },
         "insert": {
           "declare": "injectedAction2 text;",
-          "statement": "injectedAction2 = '\"inserted\"';OLD.jsonb = jsonb_set(OLD.jsonb, '{action}' , injectedAction2::jsonb , false);"
+          "statement": "injectedAction2 = '\"inserted\"';NEW.jsonb = jsonb_set(NEW.jsonb, '{action}' , injectedAction2::jsonb , false);"
         }
       },
       "uniqueIndex": [
         {
           "fieldName": "username",
-          "tOps": "ADD"
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+        },
+        {
+          "fieldName": "type",
+          "tOps": "ADD",
+          "caseSensitive": false
+        },
+        {
+          "fieldName": "barcode",
+          "tOps": "ADD",
+          "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
         },
         {
           "fieldName": "personal.phone",

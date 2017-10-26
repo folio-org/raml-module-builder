@@ -16,8 +16,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,6 +32,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.MDC;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -103,7 +104,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        OKAPI_HEADER_PERMISSIONS        = "X-Okapi-Permissions";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
   public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
-
+  public static final String        OKAPI_REQUESTID_HEADER          = "X-Okapi-Request-Id";
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
 
@@ -124,12 +125,14 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static MetricsService     serverMetrics                   = null;
-  private static ValidatorFactory   validationFactory;
   private static KieSession         droolsSession;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
   private static final String       DEFAULT_SCHEMA                  = "public";
+
+  private static ValidatorFactory   validationFactory;
+  private static String             deploymentId                     = "";
 
   private final Messages            messages                        = Messages.getInstance();
   private int                       port                            = -1;
@@ -176,6 +179,8 @@ public class RestVerticle extends AbstractVerticle {
     //process cmd line arguments
     cmdProcessing();
 
+    deploymentId = UUID.randomUUID().toString();
+
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
 
     serverMetrics = MetricsService.create(vertx);
@@ -195,6 +200,7 @@ public class RestVerticle extends AbstractVerticle {
     eventBus = vertx.eventBus();
 
     log.info(context.getInstanceCount() + " verticles deployed ");
+
     try {
       //register codec to be able to pass pojos on the event bus
       eventBus.registerCodec(new PojoEventBusCodec());
@@ -344,8 +350,6 @@ public class RestVerticle extends AbstractVerticle {
             // if the path is valid and the http method is options
             // assume a cors request
             if (rc.request().method() == HttpMethod.OPTIONS) {
-              //rc.response().putHeader(CORS_ALLOW_HEADER, CORS_ALLOW_HEADER_VALUE);
-              //rc.response().putHeader(CORS_ALLOW_ORIGIN, CORS_ALLOW_ORIGIN_VALUE);
               rc.response().end();
               return;
             }
@@ -372,7 +376,10 @@ public class RestVerticle extends AbstractVerticle {
               Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
               String []tenantId = new String[]{null};
               getOkapiHeaders(rc, okapiHeaders, tenantId);
-
+              String reqId = okapiHeaders.get(OKAPI_REQUESTID_HEADER);
+              if(reqId != null){
+                MDC.put("reqId", "reqId="+reqId);
+              }
               if(tenantId[0] == null && !rc.request().path().startsWith("/admin")){
                 //if tenant id is not passed in and this is not an /admin request, return error
                 endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest)
@@ -743,6 +750,12 @@ public class RestVerticle extends AbstractVerticle {
       //sent as part of an upload. passing this back will confuse clients as they
       //will think they are getting back a stream of data which may not be the case
       rc.request().headers().remove("Content-type");
+      //remove transfer-encoding from the request header in case the response has no content
+      //since the request headers are appended to the response headers the transfer-encoding
+      //should not be forwarded in cases of no content
+      if(statusCode == 204){
+        rc.request().headers().remove("transfer-encoding");
+      }
 
       mergeIntoResponseHeadersDistinct(response.headers(), rc.request().headers());
 
@@ -1094,7 +1107,7 @@ public class RestVerticle extends AbstractVerticle {
           String debugPackage = param.split("=")[1];
           if(debugPackage != null && debugPackage.length() > 0){
             LogUtil.formatLogMessage(className, "cmdProcessing", "Setting package " + debugPackage + " to debug");
-            LogUtil.updateLogConfiguration(debugPackage, Level.FINEST);
+            LogUtil.updateLogConfiguration(debugPackage, "FINE");
           }
         }
         else if (param.startsWith("db_connection=")) {
@@ -1538,5 +1551,9 @@ public class RestVerticle extends AbstractVerticle {
 
   public static void updateDroolsSession(KieSession s) {
     droolsSession = s;
+  }
+
+  public static String getDeploymentId(){
+    return deploymentId;
   }
 }

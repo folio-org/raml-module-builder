@@ -13,8 +13,8 @@ public class Table {
   private boolean withMetadata;
   private boolean generateId;
   private boolean withAuditing;
-  private List<TableIndexes> likeIndex;
-  private List<TableIndexes> uniqueIndex;
+  private List<LikeIndex> likeIndex;
+  private List<UniqueIndex> uniqueIndex;
   private boolean ginIndex;
   private List<ForeignKeys> foreignKeys;
   private String customSnippetPath;
@@ -73,19 +73,19 @@ public class Table {
     this.customSnippetPath = customSnippetPath;
   }
 
-  public List<TableIndexes> getLikeIndex() {
+  public List<LikeIndex> getLikeIndex() {
     return likeIndex;
   }
 
-  public void setLikeIndex(List<TableIndexes> likeIndex) {
+  public void setLikeIndex(List<LikeIndex> likeIndex) {
     this.likeIndex = likeIndex;
   }
 
-  public List<TableIndexes> getUniqueIndex() {
+  public List<UniqueIndex> getUniqueIndex() {
     return uniqueIndex;
   }
 
-  public void setUniqueIndex(List<TableIndexes> uniqueIndex) {
+  public void setUniqueIndex(List<UniqueIndex> uniqueIndex) {
     this.uniqueIndex = uniqueIndex;
   }
 
