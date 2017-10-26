@@ -3,12 +3,12 @@
     {
       "run": "before",
       "snippet": "select * from start; ",
-      "fromModuleVersion" : 15.2
+      "fromModuleVersion": 15.2
     },
     {
       "run": "after",
       "snippet": "select * from end; ",
-      "fromModuleVersion" : 14.2
+      "fromModuleVersion": 14.2
     }
   ],
   "tables": [
@@ -48,7 +48,7 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
-        },        
+        },
         {
           "fieldName": "type",
           "tOps": "ADD",

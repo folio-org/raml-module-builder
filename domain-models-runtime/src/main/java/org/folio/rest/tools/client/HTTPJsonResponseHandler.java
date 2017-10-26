@@ -1,12 +1,14 @@
 package org.folio.rest.tools.client;
 
-import java.util.concurrent.CompletableFuture;
-
 import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author shale
@@ -53,16 +55,16 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
       r.endpoint = this.endpoint;
       r.headers = hcr.headers();
       if(Response.isSuccess(r.code)){
-        r.body = bh.toJsonObject();
-      }
-      else{
+        handleSuccess(bh, r);
+      } else{
         String message = hcr.statusMessage();
         if(bh != null){
           message = bh.toString();
         }
         r.populateError(this.endpoint, r.code, message);
+        cf.complete(r);
       }
-      cf.complete(r);
+
       if(HttpModuleClient2.cache != null && r.body != null) {
         try {
           HttpModuleClient2.cache.put(endpoint, cf.get());
@@ -85,6 +87,20 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
       }
       cf.completeExceptionally(eh);
     });
+  }
+
+  private void handleSuccess(Buffer bh, Response r) {
+    if(r.code == 204 || bh.length() == 0) {
+      r.body = null;
+      cf.complete(r);
+    } else  {
+      try {
+        r.body = bh.toJsonObject();
+        cf.complete(r);
+      } catch (DecodeException decodeException) {
+        cf.completeExceptionally(decodeException);
+      }
+    }
   }
 
 }
