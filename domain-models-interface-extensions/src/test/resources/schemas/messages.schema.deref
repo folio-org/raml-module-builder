@@ -6,7 +6,6 @@
       "id": "messages",
       "type": "array",
       "items": {
-        "$ref": "message.schema",
         "$schema": "http://json-schema.org/draft-04/schema#",
         "type": "object",
         "properties": {
@@ -20,7 +19,6 @@
             "type": "string"
           },
           "parameters": {
-            "$ref": "parameters.schema",
             "$schema": "http://json-schema.org/draft-04/schema#",
             "type": "array",
             "items": {

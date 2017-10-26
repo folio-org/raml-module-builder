@@ -2,6 +2,7 @@ package org.folio.rest.tools;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -14,8 +15,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.folio.rest.tools.utils.RamlDirCopier;
 import org.folio.rest.utils.GlobalSchemaPojoMapperCache;
 import org.jsonschema2pojo.AnnotationStyle;
 import org.raml.jaxrs.codegen.core.Configuration;
@@ -119,7 +120,7 @@ public class GenerateRunner {
       //checking them in the schema. will probably be further needed in the future
       String rootPath2RamlDir = Paths.get(inputDirectory).getFileName().toString();
       String resourceDirectory = root + RESOURCE_DEFAULT + "/" + rootPath2RamlDir;
-      copyToTarget(inputDirectory, resourceDirectory);
+      copyRamlDirToTarget(inputDirectory, resourceDirectory);
 
       // generate
       generateRunner.generate(inputDirectory);
@@ -156,14 +157,18 @@ public class GenerateRunner {
   }
 
   /**
-   * Copy the files from inputDirectory to targetDirectory.
+   * Copy the files from inputDirectory to targetDirectory and dereference all schemas that
+   * contain a $ref reference.
+   *
    * @param inputDirectory  source
    * @param targetDirectory  destination
    * @throws IOException on file copy error
    */
-  public static void copyToTarget(String inputDirectory, String targetDirectory) throws IOException {
+  public static void copyRamlDirToTarget(String inputDirectory, String targetDirectory)
+      throws IOException {
     System.out.println("copying ramls to target directory at: " + targetDirectory);
-    FileUtils.copyDirectory(new File(inputDirectory), new File(targetDirectory));
+
+    RamlDirCopier.copy(Paths.get(inputDirectory), Paths.get(targetDirectory));
   }
 
   public void generate(String inputDirectory) throws Exception {
@@ -344,16 +349,11 @@ public class GenerateRunner {
 
   private void processRemainingSchemas(List<List<GlobalSchema>> globalUnprocessedSchemas,
       Set<String> processedPojos, String fieldName, Object fieldValue, String annotation) throws Exception {
-    File []pojos = new File(outputDirectoryWithPackage + "/model/").listFiles(new FilenameFilter() {
-
-      @Override
-      public boolean accept(File dir, String name) {
-        if(name.endsWith(".java")){
-          return true;
-        }
-        return false;
-      }
-    });
+    File modelDir = new File(outputDirectoryWithPackage + "/model/");
+    if (! modelDir.exists()) {
+      throw new FileNotFoundException(modelDir.getPath());
+    }
+    File []pojos = modelDir.listFiles( (dir, name) -> name.endsWith(".java") );
     //loop over all pojos in the gen directory, check if the pojos have been processed
     //meaning mapped to a schema and annotated, if not, then process
     for (int k = 0; k < pojos.length; k++) {
