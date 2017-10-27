@@ -1,5 +1,8 @@
-## 15.0.1
+## 15.0.2
 * RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
+
+## 15.0.1
+* RMB-71 move rmb to log4j with proper log patterns 
 
 ## 15.0.0
 
