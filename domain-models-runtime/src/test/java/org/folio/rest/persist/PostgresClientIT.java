@@ -211,19 +211,21 @@ public class PostgresClientIT {
   private void createSchema(TestContext context, String tenant) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
-    executeIgnore(context, "GRANT " + schema + " TO CURRENT_USER");  // Grant membership in the role to that user
-    executeIgnore(context, "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema);
-    executeIgnore(context, "GRANT ALL PRIVILEGES ON SCHEMA "               + schema + " TO " + schema);
-    executeIgnore(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
+    execute(context, "GRANT " + schema + " TO " + schema);  // Grant membership in the role to that user
+    execute(context, "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema);
+    execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
+    execute(context, "CREATE TABLE IF NOT EXISTS " + schema + ".a ( i integer );");
+    execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
-  private void createTable(TestContext context, PostgresClient client, String tenant, int i) {
+  private void fillTable(TestContext context, PostgresClient client, String tenant, int i) {
     Async async = context.async();
     String schema = PostgresClient.convertToPsqlStandard(tenant);
-    execute(context, "CREATE TABLE IF NOT EXISTS " + schema + ".a ( i integer );");
     execute(context, "INSERT INTO "  + schema + ".a (i) VALUES (" + i + ") ON CONFLICT DO NOTHING;");
     client.select("SELECT i FROM " + schema + ".a", reply2 -> {
-      context.assertTrue(reply2.succeeded());
+      if (! reply2.succeeded()) {
+          context.fail(reply2.cause());
+      };
       context.assertEquals(i, reply2.result().getResults().get(0).getInteger(0));
       async.complete();
     });
@@ -255,8 +257,8 @@ public class PostgresClientIT {
     createSchema(context, tenant2);
     PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
     PostgresClient c2 = PostgresClient.getInstance(vertx, tenant2);
-    createTable(context, c1, tenant, 5);
-    createTable(context, c2, tenant2, 8);
+    fillTable(context, c1, tenant, 5);
+    fillTable(context, c2, tenant2, 8);
     // c1 must be blocked from accessing schema TENANT2
     selectFail(context, c1, tenant2);
     // c2 must be blocked from accessing schema TENANT
