@@ -128,7 +128,7 @@ public class PostgresClient {
   private String countClause                 = " count(_id) OVER() AS count, ";
   private String returningId                 = " RETURNING _id ";
 
-  private PostgresClient(Vertx vertx, String tenantId) throws Exception {
+  protected PostgresClient(Vertx vertx, String tenantId) throws Exception {
     init(vertx, tenantId);
   }
 
