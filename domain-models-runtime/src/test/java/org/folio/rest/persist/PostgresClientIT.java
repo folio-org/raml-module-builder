@@ -211,7 +211,6 @@ public class PostgresClientIT {
   private void createSchema(TestContext context, String tenant) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
-    execute(context, "GRANT " + schema + " TO " + schema);  // Grant membership in the role to that user
     execute(context, "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, "CREATE TABLE IF NOT EXISTS " + schema + ".a ( i integer );");
