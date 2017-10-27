@@ -1,10 +1,16 @@
 package org.folio.rest.persist;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -23,6 +29,39 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class PostgresClientIT {
   static private final String TENANT = "tenant";
   static private Vertx vertx;
+
+  private ByteArrayOutputStream myStdErrBytes = new ByteArrayOutputStream();
+  private PrintStream myStdErr = new PrintStream(myStdErrBytes);
+  private PrintStream oldStdErr = null;
+  private Level oldLevel;
+
+  @Before
+  public void oldLevel() {
+    oldLevel = LogManager.getRootLogger().getLevel();
+  }
+
+  @After
+  public void restoreOldLevel() {
+    LogManager.getRootLogger().setLevel(oldLevel);
+  }
+
+  @Before
+  public void enableMyStdErr() {
+    if (oldStdErr == null) {
+      oldStdErr = System.err;
+    }
+    System.setErr(myStdErr);
+    myStdErrBytes.reset();
+  }
+
+  @After
+  public void disableMyStdErr() {
+    if (oldStdErr == null) {
+      return;
+    }
+    System.setErr(oldStdErr);
+    oldStdErr = null;
+  }
 
   @Rule
   public Timeout rule = Timeout.seconds(6);
@@ -133,43 +172,60 @@ public class PostgresClientIT {
     PostgresClient.getInstance(vertx, PostgresClient.DEFAULT_SCHEMA);
   }
 
-  private void createSchema(TestContext context, String tenant) {
+  private void dropSchemaRole(TestContext context, String tenant) {
     Async async = context.async();
     String schema = PostgresClient.convertToPsqlStandard(tenant);
     String sql =
-        "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;\n"
-      + "GRANT " + schema + " TO CURRENT_USER;\n"
-      + "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema + ";\n"
-      + "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema + ";\n";
+        "REASSIGN OWNED BY " + schema + " TO postgres;\n"
+      + "DROP OWNED BY " + schema + " CASCADE;\n"
+      + "DROP ROLE IF EXISTS " + schema + ";\n";
+    PostgresClient.getInstance(vertx).runSQLFile(sql, true, reply -> {
+      context.assertTrue(reply.succeeded());
+      // ignore errors
+      async.complete();
+    });
+    async.await();
+  }
+
+  private void execute(TestContext context, String sql) {
+    Async async = context.async();
     PostgresClient.getInstance(vertx).runSQLFile(sql, false, reply -> {
       context.assertTrue(reply.succeeded());
-      for (String failure : reply.result()) {
-        if (failure.trim().startsWith("CREATE ROLE")) {
-          // role may already exist from previous run
-          continue;
-        }
-        context.fail(failure);
+      for (String result : reply.result()) {
+        context.fail(result);
       }
       async.complete();
     });
     async.await();
   }
 
+  private void executeIgnore(TestContext context, String sql) {
+    Async async = context.async();
+    PostgresClient.getInstance(vertx).runSQLFile(sql, false, reply -> {
+      context.assertTrue(reply.succeeded());
+      async.complete();
+    });
+    async.await();
+  }
+
+  private void createSchema(TestContext context, String tenant) {
+    String schema = PostgresClient.convertToPsqlStandard(tenant);
+    executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
+    executeIgnore(context, "GRANT " + schema + " TO CURRENT_USER");  // Grant membership in the role to that user
+    executeIgnore(context, "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema);
+    executeIgnore(context, "GRANT ALL PRIVILEGES ON SCHEMA "               + schema + " TO " + schema);
+    executeIgnore(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
+  }
+
   private void createTable(TestContext context, PostgresClient client, String tenant, int i) {
     Async async = context.async();
     String schema = PostgresClient.convertToPsqlStandard(tenant);
-    String sql =
-        "drop table if exists " + schema + ".a;\n"
-      + "create table " + schema + ".a ( i integer );\n"
-      + "insert into "  + schema + ".a (i) values (" + i + ");\n";
-    client.runSQLFile(sql, true, reply1 -> {
-      context.assertTrue(reply1.succeeded());
-      context.assertTrue(reply1.result().isEmpty());  // no failures
-      client.select("select i from " + schema + ".a", reply2 -> {
-        context.assertTrue(reply2.succeeded());
-        context.assertEquals(i, reply2.result().getResults().get(0).getInteger(0));
-        async.complete();
-      });
+    execute(context, "CREATE TABLE IF NOT EXISTS " + schema + ".a ( i integer );");
+    execute(context, "INSERT INTO "  + schema + ".a (i) VALUES (" + i + ") ON CONFLICT DO NOTHING;");
+    client.select("SELECT i FROM " + schema + ".a", reply2 -> {
+      context.assertTrue(reply2.succeeded());
+      context.assertEquals(i, reply2.result().getResults().get(0).getInteger(0));
+      async.complete();
     });
     async.await();
   }
@@ -177,7 +233,7 @@ public class PostgresClientIT {
   private void selectFail(TestContext context, PostgresClient client, String tenant) {
     Async async = context.async();
     String schema = PostgresClient.convertToPsqlStandard(tenant);
-    client.select("select i from " + schema + ".a", reply -> {
+    client.select("SELECT i FROM " + schema + ".a", reply -> {
       context.assertFalse(reply.succeeded());
       async.complete();
     });
@@ -186,8 +242,15 @@ public class PostgresClientIT {
 
   @Test
   public void tenantSeparation(TestContext context) {
+    // suppress access violation errors
+    LogManager.getRootLogger().setLevel(Level.FATAL);
+
     String tenant = "tenantSeparation";
     String tenant2 = "tenantSeparation2";
+
+    dropSchemaRole(context, tenant);
+    dropSchemaRole(context, tenant2);
+
     createSchema(context, tenant);
     createSchema(context, tenant2);
     PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
