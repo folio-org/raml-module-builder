@@ -4,7 +4,7 @@ package org.folio.rest.persist.ddlgen;
  * @author shale
  *
  */
-public class UniqueIndex extends TableIndexes {
+public class Index extends TableIndexes {
 
   private boolean caseSensitive = true;
   private String whereClause = null;

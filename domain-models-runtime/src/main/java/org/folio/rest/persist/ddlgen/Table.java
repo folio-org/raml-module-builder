@@ -13,8 +13,9 @@ public class Table {
   private boolean withMetadata;
   private boolean generateId;
   private boolean withAuditing;
-  private List<LikeIndex> likeIndex;
-  private List<UniqueIndex> uniqueIndex;
+  private List<Index> likeIndex;
+  private List<Index> uniqueIndex;
+  private List<Index> index;
   private boolean ginIndex;
   private List<ForeignKeys> foreignKeys;
   private String customSnippetPath;
@@ -73,20 +74,28 @@ public class Table {
     this.customSnippetPath = customSnippetPath;
   }
 
-  public List<LikeIndex> getLikeIndex() {
+  public List<Index> getLikeIndex() {
     return likeIndex;
   }
 
-  public void setLikeIndex(List<LikeIndex> likeIndex) {
+  public void setLikeIndex(List<Index> likeIndex) {
     this.likeIndex = likeIndex;
   }
 
-  public List<UniqueIndex> getUniqueIndex() {
+  public List<Index> getUniqueIndex() {
     return uniqueIndex;
   }
 
-  public void setUniqueIndex(List<UniqueIndex> uniqueIndex) {
+  public void setUniqueIndex(List<Index> uniqueIndex) {
     this.uniqueIndex = uniqueIndex;
+  }
+
+  public List<Index> getIndex() {
+    return index;
+  }
+
+  public void setIndex(List<Index> index) {
+    this.index = index;
   }
 
   public String getMode() {
