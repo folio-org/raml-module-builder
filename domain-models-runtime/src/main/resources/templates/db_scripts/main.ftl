@@ -110,4 +110,6 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
   </#list>
 </#if>
 
+<#include "general_functions.ftl">
+
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};

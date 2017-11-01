@@ -185,6 +185,8 @@ public class SchemaMaker {
 
     templateInput.put("scripts", this.schema.getScripts());
 
+    templateInput.put("exactCount", this.schema.getExactCount()+"");
+
     Template tableTemplate = cfg.getTemplate("main.ftl");
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
@@ -236,7 +238,7 @@ public class SchemaMaker {
     StringBuilder sb = new StringBuilder("jsonb");
     for (int j = 0; j < pathParts.length; j++) {
       if(j == pathParts.length-1){
-        sb.append("->>");
+        sb.append("->");
       } else{
         sb.append("->");
       }
