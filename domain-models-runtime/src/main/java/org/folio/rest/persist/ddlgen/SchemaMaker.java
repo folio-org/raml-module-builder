@@ -238,7 +238,7 @@ public class SchemaMaker {
     StringBuilder sb = new StringBuilder("jsonb");
     for (int j = 0; j < pathParts.length; j++) {
       if(j == pathParts.length-1){
-        sb.append("->");
+        sb.append("->>");
       } else{
         sb.append("->");
       }
