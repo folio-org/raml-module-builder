@@ -12,6 +12,7 @@ public class Schema {
   private List<Table> tables = new ArrayList<>();
   private List<View> views = new ArrayList<>();
   private List<Script> scripts = new ArrayList<>();
+  private int exactCount = 50000;
 
   public List<Table> getTables() {
     return tables;
@@ -31,4 +32,13 @@ public class Schema {
   public void setScripts(List<Script> scripts) {
     this.scripts = scripts;
   }
+
+  public int getExactCount() {
+    return exactCount;
+  }
+
+  public void setExactCount(int exactCount) {
+    this.exactCount = exactCount;
+  }
+
 }

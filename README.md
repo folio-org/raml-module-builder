@@ -1122,12 +1122,17 @@ For each **table**:
 5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
 6. `likeIndex` - indicate which fields in the json will be queried using the LIKE  - needed for fields that will be faceted on
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
+ - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case
+ - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
 7. `ginIndex` - generate an inverted index on the json
 8. `withAuditing` - create an auditing table with triggers populating the audit table whenever an insert, update, or delete occurs on the table
  - the name of the audit table will be `audit_`{tableName}
  - The `auditingSnippet` section allows some customizations to the auditing function by allowing custom sqls in the declare section and the body (for either insert / update / delete)
 9. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the json and creating a FK constraint)
 10. `uniqueIndex` - create a unique index on a field in the json
+ - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
+ - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case
+ - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
 11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
 12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
 13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
