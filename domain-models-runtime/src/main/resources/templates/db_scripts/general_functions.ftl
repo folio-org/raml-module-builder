@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION count_estimate_smart(query text) RETURNS integer AS $$
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart(query text) RETURNS integer AS $$
 DECLARE
   rec   record;
   rows  integer;

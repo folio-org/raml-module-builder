@@ -1,3 +1,14 @@
+## 15.0.2
+
+* RMB-64
+* RMB-63
+* RMB-66
+* RMB-70
+* RMB-71
+* RMB-73
+* RMB-77
+* Support regular BTree indexes
+
 ## 15.0.0
 
 * RMB-61 move sql templates into rmb (break backwards compatibility for implementing modules using the sql scripts to generate a DB schema on tenant creation / update / delete)

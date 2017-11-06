@@ -8,11 +8,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -113,6 +115,8 @@ public class PostgresClient {
 
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
 
+  private static final List<Map.Entry<String,Pattern>> REMOVE_FROM_COUNT_ESTIMATE= new java.util.ArrayList<>();
+
   private static final Logger log = LogManager.getLogger(PostgresClient.class);
 
   private static int embeddedPort            = -1;
@@ -123,10 +127,15 @@ public class PostgresClient {
   private AsyncSQLClient         client;
   private String tenantId;
   private String idField                     = "_id";
-  private String countClauseTemplate         = " count(${id}) OVER() AS count, ";
+  private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count, ";
   private String returningIdTemplate         = " RETURNING ${id} ";
-  private String countClause                 = " count(_id) OVER() AS count, ";
   private String returningId                 = " RETURNING _id ";
+
+  static {
+    REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("LIMIT", Pattern.compile("LIMIT\\s+[\\d]+(?=(([^']*'){2})*[^']*$)", 2)));
+    REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("OFFSET", Pattern.compile("OFFSET\\s+[\\d]+(?=(([^']*'){2})*[^']*$)", 2)));
+    REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("ORDER BY", Pattern.compile("ORDER BY(([^']*'){2})*\\s+(desc|asc|)", 2)));
+  }
 
   private PostgresClient(Vertx vertx, String tenantId) throws Exception {
     init(vertx, tenantId);
@@ -137,7 +146,6 @@ public class PostgresClient {
     Map<String, String> replaceMapping = new HashMap<>();
     replaceMapping.put("id", idField);
     StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-    countClause = sub.replace(countClauseTemplate);
     returningId = sub.replace(returningIdTemplate);
   }
   /**
@@ -954,19 +962,11 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         try {
           String addIdField = "";
-          String localCountClause;
           if(returnIdField){
             addIdField = "," + idField;
-            localCountClause = countClause;
           }
-          else{
-            //remove the idField in count(id) from the count statement and replace with *
-            localCountClause = countClause.replace(idField, "*");
-          }
+
           String select = "SELECT ";
-          if (returnCount) {
-            select = select + localCountClause;
-          }
 
           if(!"null".equals(fieldName) && fieldName.contains("*")){
             //if we are requesting all fields (*) , then dont add the id field to the select
@@ -978,6 +978,18 @@ public class PostgresClient {
             select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
           };
 
+          if (returnCount) {
+            //optimize the entire query building process needed!!
+            Map<String, String> replaceMapping = new HashMap<>();
+            replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
+            replaceMapping.put("query",
+              org.apache.commons.lang.StringEscapeUtils.escapeSql(
+                removeClausesBeforeCount(q[0])));
+            StrSubstitutor sub = new StrSubstitutor(replaceMapping);
+            q[0] = select +
+              sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
+          }
+
           if(facets != null && !facets.isEmpty()){
             q[0] = buildFacetQuery(table , where, facets, q[0]);
           }
@@ -985,16 +997,21 @@ public class PostgresClient {
           connection.query(q[0],
             query -> {
             connection.close();
-            if (query.failed()) {
-              log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
-            }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
-            if(log.isDebugEnabled()){
-              log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
+            try {
+              if (query.failed()) {
+                log.error(query.cause().getMessage(), query.cause());
+                replyHandler.handle(Future.failedFuture(query.cause()));
+              } else {
+                replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
+              }
+              long end = System.nanoTime();
+              StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
+              if(log.isDebugEnabled()){
+                log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
+              }
+            } catch (Exception e) {
+              e.printStackTrace();
+              replyHandler.handle(Future.failedFuture(e.getCause()));
             }
           });
         } catch (Exception e) {
@@ -1258,7 +1275,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          String select = "SELECT " + countClause + " ";
+          String select = "SELECT ";
 
           StringBuffer joinon = new StringBuffer();
           StringBuffer tables = new StringBuffer();
@@ -1287,11 +1304,21 @@ public class PostgresClient {
 
           joinon.append(joinType + " " + convertToPsqlStandard(tenantId) + "." + to.getTableName() + " " + to.getAlias() + " ");
 
-          String q = select + selectFields.toString() + " FROM " + tables.toString() + joinon.toString() +
-              new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter;
-          System.out.println(q);
-          log.debug("query = " + q);
-          connection.query(q,
+          String q[] = new String[]{ select + selectFields.toString() + " FROM " + tables.toString() + joinon.toString() +
+              new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
+
+          //optimize query building in next major
+          Map<String, String> replaceMapping = new HashMap<>();
+          replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
+          replaceMapping.put("query",
+            org.apache.commons.lang.StringEscapeUtils.escapeSql(
+              removeClausesBeforeCount(q[0])));
+          StrSubstitutor sub = new StrSubstitutor(replaceMapping);
+          q[0] = select +
+            sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
+
+          log.debug("query = " + q[0]);
+          connection.query(q[0],
             query -> {
             connection.close();
             if (query.failed()) {
@@ -1309,7 +1336,7 @@ public class PostgresClient {
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".join", (end-start));
             if(log.isDebugEnabled()){
-              log.debug("timer: get " +q+ " (ns) " + (end-start));
+              log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
             }
           });
         } catch (Exception e) {
@@ -2125,6 +2152,121 @@ public class PostgresClient {
         }
     }
     return "set"+sb.toString();
+  }
+
+  private static String removeClausesBeforeCount(String query) {
+    long start = System.nanoTime();
+    StringBuilder sb = new StringBuilder();
+    Map<Integer, Integer> ranges2remove = new TreeMap<>();
+    for (int i = 0; i < REMOVE_FROM_COUNT_ESTIMATE.size(); i++) {
+      int from = 0;
+      int to = 0;
+      int startFrom = Math.max(getStartPos(query, REMOVE_FROM_COUNT_ESTIMATE.get(i).getKey(), true), 0);
+      Matcher m = REMOVE_FROM_COUNT_ESTIMATE.get(i).getValue().matcher(query.substring(startFrom));
+      if (m.find()) {
+        from = m.start();
+        to = m.end();
+      }
+      ranges2remove.put(from+startFrom, to+startFrom);
+    }
+    int startfrom[] = new int[] { 0 };
+    ranges2remove.forEach((begin, end2) -> {
+      sb.append(query.substring(startfrom[0], begin)).append(" ");
+      startfrom[0] = end2;
+    });
+    long end = System.nanoTime();
+    log.debug("clean up query for count_estimate function (ns) " + (end-start));
+    if(sb.toString().trim().length() == 0){
+      return query;
+    }
+    return sb.toString();
+  }
+
+  public static void main(String args[]){
+
+    System.out.println(getStartPos("SELECT * \\'FROM RET' items_mt_view.json' RET r", "RET", true));
+    long start = System.nanoTime();
+    for (int j = 0; j <1; j++) {
+      StringBuilder sb = new StringBuilder();
+      Map<Integer, Integer> ranges2remove = new TreeMap<>();
+     // String query = "SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>'aaa' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>'aaa limit' ' OFFSET 31 limit 10";
+     // String query = "SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDERBY items_mt_view.jsonb->>\\'2aaa\\' \\' ORDERBY items_mt_view.jsonb->>\\' = \\'wwww' ORDER BY items_mt_view.jsonb->>'aaa\\' asc OFFSET 31  \\'  ' DESC OFFSET 31 limit 10";
+      //String query = "select jsonb,_id FROM counter_mod_inventory_storage.item  WHERE jsonb@>'{\"barcode\":4}' order by jsonb->'a'";
+     // String query = "select jsonb,_id FROM counter_mod_inventory_storage.item  WHERE jsonb@>'{\"barcode\":4}'";
+     String query = "SELECT * FROM table WHERE items0_mt_view.jsonb->>' ORDER BY items1_mt_view.jsonb->>''aaa'' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items3_mt_view.jsonb->>''aaa'' '";
+     //String query = "SELECT _id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}'  OFFSET 0  LIMIT 1";
+      for (int i = 0; i < REMOVE_FROM_COUNT_ESTIMATE.size(); i++) {
+        int from = 0;
+        int to = 0;
+        int startFrom = Math.max(getStartPos(query, REMOVE_FROM_COUNT_ESTIMATE.get(i).getKey(), true), 0);
+        Matcher m = REMOVE_FROM_COUNT_ESTIMATE.get(i).getValue().matcher(query.substring(startFrom));
+        if (m.find()) {
+          from = m.start();
+          to = m.end();
+          //System.out.println("from " + from + ", to " + to);
+        }
+        ranges2remove.put(from+startFrom, to+startFrom);
+        System.out.println("from " + from + ", to " + to);
+      }
+      int startfrom[] = new int[] { 0 };
+      ranges2remove.forEach((begin, end2) -> {
+        sb.append(query.substring(startfrom[0], begin)).append(" ");
+        startfrom[0] = end2;
+      });
+      System.out.println( sb.toString());
+    }
+    long end = System.nanoTime();
+
+    System.out.println("from " + (end-start) );
+  }
+
+  private static int getStartPos(String query, String token, boolean last){
+    int len =  query.length();
+    int tLen = token.length();
+    int saveStart = -1;
+    int prevMatch = -1;
+    int currentTokPost = -1;
+    boolean inQuotes = false;
+    for(int j=0; j< len; j++){
+      char t = query.charAt(j);
+      if((t=='\'' && j == 0) || ( t=='\'' && j > 0 && query.charAt(j-1) != '\\')){
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if(!inQuotes){
+        if(currentTokPost > -1){
+          if(Character.toLowerCase(t) == Character.toLowerCase(token.charAt(currentTokPost++))){
+            if(currentTokPost == tLen){
+              if(!last || (currentTokPost+tLen) > (len-j)){
+                //if request for first match, or if not enough chars to complete another match
+                //return match position
+                return saveStart;
+              }
+              else{
+                prevMatch = saveStart;
+                currentTokPost = -1;
+              }
+            }
+          }
+          else{
+            saveStart = -1;
+            currentTokPost = -1;
+          }
+        }
+        else if(Character.toLowerCase(t) == Character.toLowerCase(token.charAt(0))){
+          saveStart = j;
+          currentTokPost = 1;
+          continue;
+        }
+        else{
+          saveStart = -1;
+        }
+      }
+    }
+    if(prevMatch != -1){
+      return prevMatch;
+    }
+    return -1;
   }
 
 }
