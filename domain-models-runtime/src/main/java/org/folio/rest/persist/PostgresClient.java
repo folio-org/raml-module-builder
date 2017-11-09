@@ -1423,8 +1423,8 @@ public class PostgresClient {
     List<String> columnNames = rs.getColumnNames();
     int columnNamesCount = columnNames.size();
     Map<String, org.folio.rest.jaxrs.model.Facet> rInfo = new HashMap<>();
-
     int rowCount = rs.getNumRows();
+    boolean countSet = false;
     if (rowCount > 0 && count) {
       rowCount = rs.getResults().get(0).getInteger(0);
     }
@@ -1467,6 +1467,16 @@ public class PostgresClient {
             continue;
           } catch (Exception e) {
             o = mapper.readValue(jo.toString(), clazz);
+            if(count && !countSet){
+              countSet = true;
+              //will get called multiple times , TODO - fix
+              if(tempList.get(i).getInteger("count") != null){
+                rowCount = tempList.get(i).getInteger("count");
+              }
+              else{
+                rowCount = tempList.get(i).getInteger("count4facets");
+              }
+            }
           }
         }
         else{
@@ -1479,10 +1489,11 @@ public class PostgresClient {
          * as well - also support the audit mode descrbed above.
          * NOTE that the query must request any field it wants to get populated into the jsonb obj*/
         for (int j = 0; j < columnNamesCount; j++) {
-          if(columnNames.get(j).equals("count")){
+/*          if(columnNames.get(j).equals("count") && !countSet){
+          //check if this is reachable
             rowCount = tempList.get(i).getLong(columnNames.get(j)).intValue();
-          }
-          else if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME))
+          }*/
+          if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME))
               && !columnNames.get(j).equals(idField)){
             try {
               Method m[] = o.getClass().getMethods();

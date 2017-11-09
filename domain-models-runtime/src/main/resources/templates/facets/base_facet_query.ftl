@@ -26,9 +26,10 @@ with facets as (
 
 lst999 as (
        ${mainQuery}
-       )
+       ) 
  <#list facets as facet>
   (SELECT <#if isCountQuery == true>count4facets, </#if> ${idField}, jsonb FROM lst${facet_index + 1} limit ${facet.topFacets2return})<#sep> UNION </#sep>
  </#list>
-UNION ALL
-(select <#if isCountQuery == true>count, </#if>${idField}, jsonb from lst999);
+  UNION ALL
+   (select <#if isCountQuery == true>count, </#if>${idField}, jsonb from lst999);
+   
