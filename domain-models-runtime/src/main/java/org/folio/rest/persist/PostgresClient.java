@@ -65,6 +65,11 @@ import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.select.OrderByElement;
+import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.Select;
 import ru.yandex.qatools.embed.postgresql.Command;
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -978,20 +983,26 @@ public class PostgresClient {
             select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
           };
 
+          String []parsedQuery = null;
+
+          if(returnCount || (facets != null && !facets.isEmpty())){
+            parsedQuery = parseQuery(q[0]);
+          }
+
           if (returnCount) {
             //optimize the entire query building process needed!!
             Map<String, String> replaceMapping = new HashMap<>();
             replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
             replaceMapping.put("query",
               org.apache.commons.lang.StringEscapeUtils.escapeSql(
-                removeClausesBeforeCount(q[0])));
+                parsedQuery[0]));
             StrSubstitutor sub = new StrSubstitutor(replaceMapping);
             q[0] = select +
               sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
           }
 
           if(facets != null && !facets.isEmpty()){
-            q[0] = buildFacetQuery(table , where, facets, q[0]);
+            q[0] = buildFacetQuery(table , parsedQuery, facets, returnCount, q[0]);
           }
           log.debug("query = " + q[0]);
           connection.query(q[0],
@@ -1039,25 +1050,22 @@ public class PostgresClient {
    * @return
    * @throws Exception
    */
-  private String buildFacetQuery(String tableName, String where, List<FacetField> facets, String query) throws Exception {
+  private String buildFacetQuery(String tableName, String parsedQuery[], List<FacetField> facets, boolean countRequested, String query) throws Exception {
     long start = System.nanoTime();
-    String limitClause = "OFFSET [\\d]+ LIMIT [\\d]+";
     FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + "." + tableName);
-    //ugly hack to remove the offset , limit and order by, fix this with a private get() getting cql
-    //to remove limit and offset normally
-    String strippedWhere = where.replaceAll(limitClause, "").replaceAll(" ORDER BY .*", "");
-    fm.setWhere(strippedWhere);
+    if(parsedQuery[2] != null){
+      fm.setWhere(" where " + parsedQuery[2]);
+    }
     fm.setSupportFacets(facets);
     fm.setIdField(idField);
-    Pattern pattern = Pattern.compile(limitClause);
-    Matcher matcher = pattern.matcher(where);
-
-    while(matcher.find()) {
-      fm.setLimitClause(matcher.group(0));
-    }
-
-    fm.setMainQuery(query.replaceAll(limitClause, ""));
-    //log.info( "facet query " + fm.generateFacetQuery());
+    fm.setLimitClause(parsedQuery[4]);
+    fm.setOffsetClause(parsedQuery[5]);
+    fm.setMainQuery(query);
+    fm.setSchema(convertToPsqlStandard(tenantId));
+    fm.setCountQuery(countRequested);
+/*    fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(
+      parsedQuery[0]));*/
+    log.info( "facet query " + fm.generateFacetQuery());
     long end = System.nanoTime();
     log.debug( "timer: buildFacetQuery (ns) " + (end - start));
 
@@ -1312,7 +1320,7 @@ public class PostgresClient {
           replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
           replaceMapping.put("query",
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
-              removeClausesBeforeCount(q[0])));
+              parseQuery(q[0])[0]));
           StrSubstitutor sub = new StrSubstitutor(replaceMapping);
           q[0] = select +
             sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
@@ -2154,32 +2162,90 @@ public class PostgresClient {
     return "set"+sb.toString();
   }
 
-  private static String removeClausesBeforeCount(String query) {
+  /**
+   * returns an array in the following order
+   * 1. Original query stripped of the order by, limit and offset clauses (if they existed in the query)
+   * 2. Original query stripped of the limit and offset clauses (if they existed in the query)
+   * 3. where clause part of query (included in the stripped query)
+   * 4. original order by clause that was removed (or null)
+   * 5. original limit clause that was removed (or null)
+   * 6. original offset clause that was removed (or null)
+   * @param query
+   * @return
+   */
+  private static String[] parseQuery(String query) {
+    String []ret = new String[6];
+    List<OrderByElement> orderBy = null;
+    net.sf.jsqlparser.statement.select.Limit limit = null;
+    Expression where = null;
+    net.sf.jsqlparser.statement.select.Offset offset = null;
     long start = System.nanoTime();
-    StringBuilder sb = new StringBuilder();
-    Map<Integer, Integer> ranges2remove = new TreeMap<>();
-    for (int i = 0; i < REMOVE_FROM_COUNT_ESTIMATE.size(); i++) {
-      int from = 0;
-      int to = 0;
-      int startFrom = Math.max(getStartPos(query, REMOVE_FROM_COUNT_ESTIMATE.get(i).getKey(), true), 0);
-      Matcher m = REMOVE_FROM_COUNT_ESTIMATE.get(i).getValue().matcher(query.substring(startFrom));
-      if (m.find()) {
-        from = m.start();
-        to = m.end();
+    String queryWithoutOrderBy = query;
+    try {
+      net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
+      Select selectStatement = (Select) statement;
+      orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
+      limit = ((PlainSelect) selectStatement.getSelectBody()).getLimit();
+      offset = ((PlainSelect) selectStatement.getSelectBody()).getOffset();
+      where = ((PlainSelect) selectStatement.getSelectBody()).getWhere();
+
+      int startOfLimit = getStartPos(query, "limit" , true);
+
+      if(limit != null){
+        String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
+        query = query.substring(0, startOfLimit) + suffix;
+        queryWithoutOrderBy = queryWithoutOrderBy.substring(0, startOfLimit) + suffix;
       }
-      ranges2remove.put(from+startFrom, to+startFrom);
-    }
-    int startfrom[] = new int[] { 0 };
-    ranges2remove.forEach((begin, end2) -> {
-      sb.append(query.substring(startfrom[0], begin)).append(" ");
-      startfrom[0] = end2;
-    });
-    long end = System.nanoTime();
-    log.debug("clean up query for count_estimate function (ns) " + (end-start));
-    if(sb.toString().trim().length() == 0){
-      return query;
-    }
-    return sb.toString();
+      else if(startOfLimit != -1){
+        //offset returns null if it was placed before the limit although postgres does allow this
+        //we are here if offset appears in the query and not within quotes
+        query = query.substring(0, startOfLimit) +
+        Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
+      }
+
+      if(offset != null){
+        int startOfOffset = getStartPos(query, "offset" , true);
+        String suffix = Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
+        query = query.substring(0, startOfOffset) + suffix;
+        queryWithoutOrderBy = queryWithoutOrderBy.substring(0, startOfOffset) + suffix;
+      }
+
+      //in the rare case where the order by clause somehow appears in the where clause
+      if(orderBy != null){
+        int startOfOrderBy = getStartPos(query, "order by" , true);
+        StringBuilder sb = new StringBuilder("order by[ ]+");
+        int size = orderBy.size();
+        for (int i = 0; i < size; i++) {
+          sb.append(orderBy.get(i).toString().replaceAll(" ", "[ ]+"));
+          if(i<size-1){
+            sb.append(",?[ ]+");
+          }
+        }
+        String regex = sb.toString().trim();
+        query = query.substring(0, startOfOrderBy) +
+            Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
+      }
+   }
+   catch(Exception e){
+     log.error(e.getMessage());
+   }
+   ret[0] = query;
+   ret[1] = queryWithoutOrderBy;
+   if(where != null){
+     ret[2] = where.toString();
+   }
+   if(orderBy != null){
+     ret[3] = orderBy.toString();
+   }
+   if(limit != null){
+     ret[4] = limit.toString();
+   }
+   if(offset != null){
+     ret[5] = offset.toString();
+   }
+   long end = System.nanoTime();
+   log.debug("clean up query for count_estimate function (ns) " + (end-start));
+   return ret;
   }
 
   public static void main(String args[]){
@@ -2187,37 +2253,75 @@ public class PostgresClient {
     System.out.println(getStartPos("SELECT * \\'FROM RET' items_mt_view.json' RET r", "RET", true));
     long start = System.nanoTime();
     for (int j = 0; j <1; j++) {
-      StringBuilder sb = new StringBuilder();
       Map<Integer, Integer> ranges2remove = new TreeMap<>();
-     // String query = "SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>'aaa' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>'aaa limit' ' OFFSET 31 limit 10";
-     // String query = "SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDERBY items_mt_view.jsonb->>\\'2aaa\\' \\' ORDERBY items_mt_view.jsonb->>\\' = \\'wwww' ORDER BY items_mt_view.jsonb->>'aaa\\' asc OFFSET 31  \\'  ' DESC OFFSET 31 limit 10";
-      //String query = "select jsonb,_id FROM counter_mod_inventory_storage.item  WHERE jsonb@>'{\"barcode\":4}' order by jsonb->'a'";
-     // String query = "select jsonb,_id FROM counter_mod_inventory_storage.item  WHERE jsonb@>'{\"barcode\":4}'";
-     String query = "SELECT * FROM table WHERE items0_mt_view.jsonb->>' ORDER BY items1_mt_view.jsonb->>''aaa'' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items3_mt_view.jsonb->>''aaa'' '";
-     //String query = "SELECT _id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}'  OFFSET 0  LIMIT 1";
-      for (int i = 0; i < REMOVE_FROM_COUNT_ESTIMATE.size(); i++) {
-        int from = 0;
-        int to = 0;
-        int startFrom = Math.max(getStartPos(query, REMOVE_FROM_COUNT_ESTIMATE.get(i).getKey(), true), 0);
-        Matcher m = REMOVE_FROM_COUNT_ESTIMATE.get(i).getValue().matcher(query.substring(startFrom));
-        if (m.find()) {
-          from = m.start();
-          to = m.end();
-          //System.out.println("from " + from + ", to " + to);
-        }
-        ranges2remove.put(from+startFrom, to+startFrom);
-        System.out.println("from " + from + ", to " + to);
-      }
-      int startfrom[] = new int[] { 0 };
-      ranges2remove.forEach((begin, end2) -> {
-        sb.append(query.substring(startfrom[0], begin)).append(" ");
-        startfrom[0] = end2;
-      });
-      System.out.println( sb.toString());
+     // String query = "SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>\\'aaa\\'  ORDER BY items2_mt_view.jsonb' ORDER BY items_mt_view.jsonb->>'aaa limit' OFFSET 31 limit 10";
+     String query = "SELECT * FROM table WHERE items_mt_view.jsonb->>'title' LIKE '%12345%' ORDER BY items_mt_view.jsonb->>'title' DESC OFFSET 30 limit 10";
+     //String query = "select jsonb,_id FROM counter_mod_inventory_storage.item  WHERE jsonb@>'{\"barcode\":4}' order by jsonb->'a'  asc, jsonb->'b' desc, jsonb->'c'";
+     // String query = "select jsonb,_id FROM counter_mod_inventory_storage.item  WHERE jsonb @> '{\"barcode\":4}' limit 100 offset 0";
+     //String query = "SELECT * FROM table WHERE items0_mt_view.jsonb->>' ORDER BY items1_mt_view.jsonb->>''aaa'' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items3_mt_view.jsonb->>''aaa'' '";
+     // String query = "SELECT _id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}' LIMIT 1 OFFSET 0 ";
+     //String query = "select * from diku999_circulation_storage.audit_loan WHERE audit_loan.jsonb->>'id' = 'cf23adf0-61ba-4887-bf82-956c4aae2260 order by created_date LIMIT 10 OFFSET 0' order by created_date LIMIT 10 OFFSET 0 ";
+
+     try {
+
+       List<String> facets = new ArrayList<>();
+       facets.add("barcode");
+       facets.add("materialTypeId");
+       List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");
+       FacetManager.setCalculateOnFirst(0);
+       String []pQ = parseQuery(query);
+       //buildFacetQuery("tablename", pQ, facetList, true, query);
+
+
+       net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
+       Select selectStatement = (Select) statement;
+       List<OrderByElement> orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
+       net.sf.jsqlparser.statement.select.Limit limit = ((PlainSelect) selectStatement.getSelectBody()).getLimit();
+       net.sf.jsqlparser.statement.select.Offset offset = ((PlainSelect) selectStatement.getSelectBody()).getOffset();
+
+       //in the rare case where the order by clause somehow appears in the where clause
+       if(orderBy != null){
+         int startOfOrderBy = getStartPos(query, "order by" , true);
+         StringBuilder sb = new StringBuilder("order by[ ]+");
+         int size = orderBy.size();
+         for (int i = 0; i < size; i++) {
+           sb.append(orderBy.get(i).toString().replaceAll(" ", "[ ]+"));
+           if(i<size-1){
+             sb.append(",?[ ]+");
+           }
+         }
+         String regex = sb.toString().trim();
+         query = query.substring(0, startOfOrderBy) +
+             Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
+       }
+
+       int startOfLimit = getStartPos(query, "limit" , true);
+
+       if(limit != null){
+         query = query.substring(0, startOfLimit) +
+             Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
+       }
+       else if(startOfLimit != -1){
+         //offset returns null if it was placed before the limit although postgres does allow this
+         //we are here if offset appears in the query and not within quotes
+         query = query.substring(0, startOfLimit) +
+         Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
+       }
+
+       if(offset != null){
+         int startOfOffset = getStartPos(query, "offset" , true);
+         query = query.substring(0, startOfOffset) +
+         Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
+       }
+
+    }
+    catch(Exception e){
+      e.printStackTrace();
     }
     long end = System.nanoTime();
 
-    System.out.println("from " + (end-start) );
+    System.out.println(query + " from " + (end-start) );
+    }
   }
 
   private static int getStartPos(String query, String token, boolean last){

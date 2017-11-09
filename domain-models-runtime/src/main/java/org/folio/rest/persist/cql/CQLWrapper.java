@@ -121,8 +121,8 @@ public class CQLWrapper {
     if (sb.length() > 0) {
       sb.insert(0, " WHERE ");
     }
-    spaceAppend(sb, offset.toString());
     spaceAppend(sb, limit.toString());
+    spaceAppend(sb, offset.toString());
     return sb.toString();
   }
 

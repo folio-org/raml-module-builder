@@ -6,13 +6,13 @@
             json_build_array(
                 jsonb_build_object(
                 'value', ${facet.alias},
-                'count', cnt)
+                'count', count4facets)
             )
         ) AS jsonb,
-        ${idField},
-       count AS count
-    FROM facets
+        count4facets as count4facets,
+        ${idField}
+    FROM grouped_by
      where ${facet.alias} is not null
-     group by ${facet.alias}, cnt, count, ${idField}
-     order by cnt desc
+     group by ${facet.alias}, count4facets, ${idField}
+     order by count4facets desc
      )
