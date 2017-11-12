@@ -35,6 +35,7 @@ import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
+import org.folio.rest.persist.facets.ParsedQuery;
 import org.folio.rest.persist.helpers.JoinBy;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
@@ -983,7 +984,7 @@ public class PostgresClient {
             select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
           };
 
-          String []parsedQuery = null;
+          ParsedQuery parsedQuery = null;
 
           if(returnCount || (facets != null && !facets.isEmpty())){
             parsedQuery = parseQuery(q[0]);
@@ -995,7 +996,7 @@ public class PostgresClient {
             replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
             replaceMapping.put("query",
               org.apache.commons.lang.StringEscapeUtils.escapeSql(
-                parsedQuery[0]));
+                parsedQuery.getOriginalQuery()));
             StrSubstitutor sub = new StrSubstitutor(replaceMapping);
             q[0] = select +
               sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
@@ -1050,22 +1051,21 @@ public class PostgresClient {
    * @return
    * @throws Exception
    */
-  private String buildFacetQuery(String tableName, String parsedQuery[], List<FacetField> facets, boolean countRequested, String query) throws Exception {
+  private String buildFacetQuery(String tableName, ParsedQuery parsedQuery, List<FacetField> facets, boolean countRequested, String query) throws Exception {
     long start = System.nanoTime();
     FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + "." + tableName);
-    if(parsedQuery[2] != null){
-      fm.setWhere(" where " + parsedQuery[2]);
+    if(parsedQuery.getWhereClause() != null){
+      fm.setWhere(" where " + parsedQuery.getWhereClause());
     }
     fm.setSupportFacets(facets);
     fm.setIdField(idField);
-    fm.setLimitClause(parsedQuery[4]);
-    fm.setOffsetClause(parsedQuery[5]);
+    fm.setLimitClause(parsedQuery.getLimitClause());
+    fm.setOffsetClause(parsedQuery.getOffsetClause());
     fm.setMainQuery(query);
     fm.setSchema(convertToPsqlStandard(tenantId));
     fm.setCountQuery(countRequested);
 /*    fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(
       parsedQuery[0]));*/
-    log.info( "facet query " + fm.generateFacetQuery());
     long end = System.nanoTime();
     log.debug( "timer: buildFacetQuery (ns) " + (end - start));
 
@@ -1315,12 +1315,12 @@ public class PostgresClient {
           String q[] = new String[]{ select + selectFields.toString() + " FROM " + tables.toString() + joinon.toString() +
               new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
 
-          //optimize query building in next major
+          //TODO optimize query building
           Map<String, String> replaceMapping = new HashMap<>();
           replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
           replaceMapping.put("query",
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
-              parseQuery(q[0])[0]));
+              parseQuery(q[0]).getOriginalQuery()));
           StrSubstitutor sub = new StrSubstitutor(replaceMapping);
           q[0] = select +
             sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
@@ -1469,7 +1469,6 @@ public class PostgresClient {
             o = mapper.readValue(jo.toString(), clazz);
             if(count && !countSet){
               countSet = true;
-              //will get called multiple times , TODO - fix
               if(tempList.get(i).getInteger("count") != null){
                 rowCount = tempList.get(i).getInteger("count");
               }
@@ -2174,7 +2173,7 @@ public class PostgresClient {
   }
 
   /**
-   * returns an array in the following order
+   * returns ParsedQuery with:
    * 1. Original query stripped of the order by, limit and offset clauses (if they existed in the query)
    * 2. Original query stripped of the limit and offset clauses (if they existed in the query)
    * 3. where clause part of query (included in the stripped query)
@@ -2184,8 +2183,7 @@ public class PostgresClient {
    * @param query
    * @return
    */
-  private static String[] parseQuery(String query) {
-    String []ret = new String[6];
+  private static ParsedQuery parseQuery(String query) {
     List<OrderByElement> orderBy = null;
     net.sf.jsqlparser.statement.select.Limit limit = null;
     Expression where = null;
@@ -2240,23 +2238,25 @@ public class PostgresClient {
    catch(Exception e){
      log.error(e.getMessage());
    }
-   ret[0] = query;
-   ret[1] = queryWithoutOrderBy;
+
+   ParsedQuery pq = new ParsedQuery();
+   pq.setOriginalQuery(query);
+   pq.setQueryWithoutOrderBy(queryWithoutOrderBy);
    if(where != null){
-     ret[2] = where.toString();
+     pq.setWhereClause( where.toString() );
    }
    if(orderBy != null){
-     ret[3] = orderBy.toString();
+     pq.setOrderByClause( orderBy.toString() );
    }
    if(limit != null){
-     ret[4] = limit.toString();
+     pq.setLimitClause( limit.toString() );
    }
    if(offset != null){
-     ret[5] = offset.toString();
+     pq.setOffsetClause( offset.toString() );
    }
    long end = System.nanoTime();
    log.debug("clean up query for count_estimate function (ns) " + (end-start));
-   return ret;
+   return pq;
   }
 
   public static void main(String args[]){
@@ -2280,7 +2280,7 @@ public class PostgresClient {
        facets.add("materialTypeId");
        List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");
        FacetManager.setCalculateOnFirst(0);
-       String []pQ = parseQuery(query);
+       ParsedQuery pQ = parseQuery(query);
        //buildFacetQuery("tablename", pQ, facetList, true, query);
 
 
