@@ -3,7 +3,6 @@ package org.folio.rest.tools;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Paths;
@@ -14,9 +13,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
+import org.folio.rest.tools.utils.RamlDirCopier;
 import org.folio.rest.utils.GlobalSchemaPojoMapperCache;
 import org.jsonschema2pojo.AnnotationStyle;
 import org.raml.jaxrs.codegen.core.Configuration;
@@ -66,7 +65,6 @@ public class GenerateRunner {
    * <code>outputDirectory</code>.
    *
    * @param outputDirectory  where to write the files to
-   * @throws Exception  on error when reading or writing a file
    */
   public GenerateRunner(String outputDirectory) {
     this.outputDirectory = outputDirectory;
@@ -97,7 +95,7 @@ public class GenerateRunner {
    * @param args  are ignored
    * @throws Exception  on file read or file write error
    */
-  public static void main(String args[]) throws Exception{
+  public static void main(String [] args) throws Exception{
 
     String root = System.getProperties().getProperty("project.basedir");
     String outputDirectory = root + ClientGenerator.PATH_TO_GENERATE_TO;
@@ -118,7 +116,7 @@ public class GenerateRunner {
       //checking them in the schema. will probably be further needed in the future
       String rootPath2RamlDir = Paths.get(inputDirectory).getFileName().toString();
       String resourceDirectory = root + RESOURCE_DEFAULT + "/" + rootPath2RamlDir;
-      copyToTarget(inputDirectory, resourceDirectory);
+      copyRamlDirToTarget(inputDirectory, resourceDirectory);
 
       // generate
       generateRunner.generate(inputDirectory);
@@ -155,52 +153,41 @@ public class GenerateRunner {
   }
 
   /**
-   * Copy the files from inputDirectory to targetDirectory.
+   * Copy the files from inputDirectory to targetDirectory and dereference all schemas that
+   * contain a $ref reference.
+   *
    * @param inputDirectory  source
    * @param targetDirectory  destination
    * @throws IOException on file copy error
    */
-  public static void copyToTarget(String inputDirectory, String targetDirectory) throws IOException {
+  public static void copyRamlDirToTarget(String inputDirectory, String targetDirectory)
+      throws IOException {
     log.info("copying ramls to target directory at: " + targetDirectory);
-    FileUtils.copyDirectory(new File(inputDirectory), new File(targetDirectory));
+    RamlDirCopier.copy(Paths.get(inputDirectory), Paths.get(targetDirectory));
   }
 
   public void generate(String inputDirectory) throws Exception {
     log.info( "Input directory " + inputDirectory);
 
-    configuration.setOutputDirectory(new File(outputDirectory));
-    configuration.setSourceDirectory(new File(inputDirectory));
-
-    int numMatches = 0;
-
-    if(!new File(inputDirectory).isDirectory()){
+    File inputDir = new File(inputDirectory);
+    if (! inputDir.isDirectory()) {
       throw new IOException("Input path is not a valid directory: " + inputDirectory);
     }
 
-    File []ramls = new File(inputDirectory).listFiles(new FilenameFilter() {
+    configuration.setOutputDirectory(new File(outputDirectory));
+    configuration.setSourceDirectory(inputDir);
 
-      @Override
-      public boolean accept(File dir, String name) {
-        if(name.endsWith(".raml")){
-          return true;
-        }
-        return false;
-      }
-    });
+    int numMatches = 0;
+
+    File []ramls = new File(inputDirectory).listFiles( (dir, name) -> name.endsWith(".raml") );
 
     Set<String> processedPojos = new HashSet<>();
     List<List<GlobalSchema>> globalUnprocessedSchemas = new ArrayList<>();
 
     for (int j = 0; j < ramls.length; j++) {
       String line;
-      BufferedReader reader = null;
-      try {
-        reader = new BufferedReader(new FileReader(ramls[j]));
+      try (BufferedReader reader = new BufferedReader(new FileReader(ramls[j]))) {
         line = reader.readLine();
-      } finally {
-        if(reader != null){
-          reader.close();
-        }
       }
       if(line.startsWith("#%RAML")) {
         log.info("processing " + ramls[j]);
@@ -214,11 +201,9 @@ public class GenerateRunner {
         //the name of their schema will be the jsonproperty annotation name
         //check if for the top level pojo , the embedded objects need annotating
 
-        //Set<GlobalSchema> ramlSchemaSet = new HashSet<>(JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]));
         List<GlobalSchema> schemaList = JsonSchemaPojoUtil.getSchemasFromRaml(ramls[j]);
-        //System.out.print("schemas listed in " + ramls[j]);
         log.info("Schemas found in " + ramls[j]);
-        schemaList.forEach( entry -> System.out.println("* " + entry.key()) );
+        schemaList.forEach( entry -> log.info("* " + entry.key()) );
 
         List<GlobalSchema> unprocessedSchemas = new ArrayList<>();
         unprocessedSchemas.addAll(schemaList);
@@ -228,7 +213,7 @@ public class GenerateRunner {
           if(usingDefaultCustomField){
             message = "Using default: ";
           }
-          System.out.println(message + " custom field " + schemaCustomFields[k]);
+          log.info(message + " custom field " + schemaCustomFields[k]);
           JsonObject jo = new JsonObject(schemaCustomFields[k]);
           String fieldName = jo.getString("fieldname");
           Object fieldValue = jo.getValue("fieldvalue");
@@ -263,7 +248,6 @@ public class GenerateRunner {
       processedPojos.add(pojo);
       int schemasSize = schemaList.size();
       for (int l = 0; l < schemasSize; l++) {
-        //System.out.println("comparing " + schema + " to " + schemaList.get(l).key());
         if(schemaList.get(l).key().equalsIgnoreCase(schema)){
           //get the fields in the schema that contain the field name we are looking for
           if(k==0){
@@ -273,14 +257,9 @@ public class GenerateRunner {
           List<String> injectFieldList =
               JsonSchemaPojoUtil.getFieldsInSchemaWithType(new JsonObject(schemaList.get(l).value().value()), fieldName, fieldValue);
           String fullPathPojo = outputDirectory + pojo.replace('.', '/') + ".java";
-          //System.out.println("-->schema: " + schema + ", pojo: " + fullPathPojo + ", ");
-          //System.out.println("Schema content " + schemaList.get(l).value().value());
-          //injectFieldList.stream().forEach(System.out::println);
           try {
-            //System.out.println("updating " + fullPathPojo + " with " + injectFieldList.size() + " annotations");
             //check for dot annotation - split by '.'
             inject(fullPathPojo, annotation, injectFieldList);
-            //JsonSchemaPojoUtil.injectAnnotation(fullPathPojo, annotation, new HashSet(injectFieldList));
           } catch (Exception e) {
             log.error(e.getMessage(), e);
           }
@@ -298,19 +277,18 @@ public class GenerateRunner {
       //java type mapped to this json schema field
       Map<Object, Object> schemaFields2JavaTypes = JsonSchemaPojoUtil.jsonFields2Pojo(rootPojo);
       String field = injectFieldList.get(i);
-      //System.out.println("Processing field " + field);
       if(!field.contains(".")){
         annotateField4RootPojo.add(field);
       }
       else {
         //this is an annotation on an embedded object (json object embedded within a schema)
-        String hierarchyOfObjects[] = field.split("\\.");
+        String [] hierarchyOfObjects = field.split("\\.");
         //loop over the hierarchy. the last entry will be the field name
         //so we need to loop over the generated objects and then annotate the field name
         for (int j = 0; j < hierarchyOfObjects.length-1; j++) {
           //get the java type of the field
           Object javaType = schemaFields2JavaTypes.get(hierarchyOfObjects[j]);
-          System.out.println("javaType " + javaType + " for " + hierarchyOfObjects[j]);
+          log.info("javaType " + javaType + " for " + hierarchyOfObjects[j]);
           if(javaType != null){
             //if the type is a list of that type, remove the List<>
             javaType = ((String)javaType).replaceAll("<", "").replaceAll(">", "").replaceAll("List", "");
@@ -334,7 +312,7 @@ public class GenerateRunner {
       }
     }
     log.info("updating " + rootPojo + " with " + annotateField4RootPojo.size() + " annotations, annotation list: ");
-    annotateField4RootPojo.forEach(System.out::println);
+    annotateField4RootPojo.forEach(log::info);
     if(!injectedAnnotations.contains(rootPojo+annotation)){
       injectedAnnotations.add(rootPojo+annotation);
       JsonSchemaPojoUtil.injectAnnotation(rootPojo, annotation, new HashSet<>(annotateField4RootPojo));
@@ -343,21 +321,15 @@ public class GenerateRunner {
 
   private void processRemainingSchemas(List<List<GlobalSchema>> globalUnprocessedSchemas,
       Set<String> processedPojos, String fieldName, Object fieldValue, String annotation) throws Exception {
-    File []pojos = new File(outputDirectoryWithPackage + "/model/").listFiles(new FilenameFilter() {
-
-      @Override
-      public boolean accept(File dir, String name) {
-        if(name.endsWith(".java")){
-          return true;
-        }
-        return false;
-      }
-    });
+    File modelDir = new File(outputDirectoryWithPackage + "/model/");
+    if (! modelDir.exists()) {
+      return;
+    }
+    File []pojos = modelDir.listFiles( (dir, name) -> name.endsWith(".java") );
     //loop over all pojos in the gen directory, check if the pojos have been processed
     //meaning mapped to a schema and annotated, if not, then process
     for (int k = 0; k < pojos.length; k++) {
       if(!processedPojos.contains(MODEL_PACKAGE_DEFAULT + "." + pojos[k].getName().replace(".java", ""))) {
-        //System.out.println("pojo NOT processed.... " + pojos[k].getAbsolutePath());
         //get all fields in the pojo to compare them to all fields in each schema so that we
         //can map a pojo to a schema and then annotate the pojo's field in accordance with the schema
         Map<Object, Object> fieldsInPojo = JsonSchemaPojoUtil.jsonFields2Pojo(pojos[k].getAbsolutePath());
@@ -370,28 +342,21 @@ public class GenerateRunner {
           for (int m = 0; m < size2; m++) {
             int counter = 0;
             GlobalSchema gs = gsList.get(m);
-            //System.out.println("comparing to " + gs.key());
             List<String> schemaFields = JsonSchemaPojoUtil.getAllFieldsInSchema(new JsonObject(gs.value().value()));
             int size3 = schemaFields.size();
             //loop over all fields per schema and check if all fields exist in a specific pojo
             //if so, then we have mapped the pojo to the schema
             for (int n = 0; n < size3; n++) {
-              if(fieldsInPojo.size() != schemaFields.size()){
-                break;
-              }
-              if(!fieldsInPojo.containsKey(schemaFields.get(n))){
-                //System.out.println("pojo does not contain " + schemaFields.get(n));
+              if (   (fieldsInPojo.size() != schemaFields.size())
+                  || (! fieldsInPojo.containsKey(schemaFields.get(n))) ) {
                 break;
               }
               counter++;
             }
             if(counter == fieldsInPojo.size()){
-              //System.out.println("pojo  " + pojos[k].getAbsolutePath() + " is mapped to " + gs.key());
               List<String> injectFieldList =
                   JsonSchemaPojoUtil.getFieldsInSchemaWithType(new JsonObject(gs.value().value()), fieldName, fieldValue);
-              //injectFieldList.stream().forEach(System.out::println);
               try {
-                //JsonSchemaPojoUtil.injectAnnotation(pojos[k].getAbsolutePath(), annotation, new HashSet(injectFieldList));
                 inject(pojos[k].getAbsolutePath(), annotation, injectFieldList);
               } catch (Exception e) {
                 log.error(e.getMessage(), e);

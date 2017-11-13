@@ -13,10 +13,11 @@ import java.io.IOException;
 
 public class GenerateRunnerTest {
   private String userDir = System.getProperty("user.dir");
-  private String resourcesDir = userDir + "/src/test/resources";
+  private String resourcesDir = userDir + "/src/test/resources/schemas";
   private String baseDir = userDir + "/target/GenerateRunnerTest";
-  private String jobJava = baseDir + "/src/main/java/org/folio/rest/jaxrs/model/Job.java";
+  private String jobJava  = baseDir + "/src/main/java/org/folio/rest/jaxrs/model/Job.java";
   private String testJava = baseDir + "/src/main/java/org/folio/rest/jaxrs/model/TestSchema.java";
+  private String messagesSchema = baseDir + "/target/classes/schemas/x/y/messages.schema";
 
   @Before
   public void cleanDir() throws IOException {
@@ -34,6 +35,7 @@ public class GenerateRunnerTest {
         containsString("String getModule("),
         containsString("setModule(String"),
         containsString("withModule(String")));
+    assertThat(IoUtil.toStringUtf8(messagesSchema), containsString("\"value\""));
   }
 
   @Test(expected=IOException.class)
