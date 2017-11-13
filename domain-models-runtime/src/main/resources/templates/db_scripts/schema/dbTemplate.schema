@@ -169,6 +169,28 @@
             },
             "type": "array"
           },
+          "index": {
+            "additionalItems": false,
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fieldName": {
+                  "type": "string"
+                },
+                "tOps": {
+                  "type": "string"
+                },
+                "caseSensitive": {
+                  "type": "boolean"
+                },
+                "whereClause": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
           "withAuditing": {
             "type": "boolean"
           },

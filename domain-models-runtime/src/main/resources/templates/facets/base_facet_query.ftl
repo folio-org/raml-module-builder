@@ -1,14 +1,17 @@
 with facets as (
- SELECT
-  <#list facets as facet>
-    ${facet.fieldPath} as ${facet.alias},
-  </#list>
-  count(*) as cnt,
-  count(${idField}) OVER() AS count,
-  ${idField}
+     SELECT
+      <#list facets as facet>
+        ${facet.fieldPath} as ${facet.alias},
+      </#list>
+        ${idField}
      FROM
       ${table}
-      ${where}
+     <#if where??>${where}</#if>
+     <#if ("0" != calculateOnFirst)>LIMIT ${calculateOnFirst}</#if>
+ )
+ ,
+ grouped_by as (
+    SELECT count(*) as count4facets, * FROM facets
     GROUP BY GROUPING SETS (
       ${idField},
       <#list facets as facet>
@@ -23,9 +26,10 @@ with facets as (
 
 lst999 as (
        ${mainQuery}
-       )
+       ) 
  <#list facets as facet>
-  (SELECT count, ${idField}, jsonb FROM lst${facet_index + 1} limit ${facet.topFacets2return})<#sep> UNION </#sep>
+  (SELECT <#if isCountQuery == true>count4facets, </#if> ${idField}, jsonb FROM lst${facet_index + 1} limit ${facet.topFacets2return})<#sep> UNION </#sep>
  </#list>
-UNION ALL
-(select count, ${idField}, jsonb from lst999 ${limitClause} );
+  UNION ALL
+   (select <#if isCountQuery == true>count, </#if>${idField}, jsonb from lst999);
+   

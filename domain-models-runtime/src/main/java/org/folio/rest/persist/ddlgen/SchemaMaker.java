@@ -134,19 +134,28 @@ public class SchemaMaker {
           }
         }
 
-        List<LikeIndex> tInd = t.getLikeIndex();
-        if(tInd != null){
-          for (int j = 0; j < tInd.size(); j++) {
-            LikeIndex ti = tInd.get(j);
+        List<Index> ind = t.getIndex();
+        if(ind != null){
+          for (int j = 0; j < ind.size(); j++) {
+            Index ti = ind.get(j);
             ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName()));
             ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
           }
         }
 
-        List<UniqueIndex> uInd = t.getUniqueIndex();
+        List<Index> tInd = t.getLikeIndex();
+        if(tInd != null){
+          for (int j = 0; j < tInd.size(); j++) {
+            Index ti = tInd.get(j);
+            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName()));
+            ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
+          }
+        }
+
+        List<Index> uInd = t.getUniqueIndex();
         if(uInd != null){
           for (int j = 0; j < uInd.size(); j++) {
-            UniqueIndex u = uInd.get(j);
+            Index u = uInd.get(j);
             u.setFieldPath(convertDotPath2PostgresNotation(u.getFieldName()));
             //remove . from path since this is incorrect syntax in postgres
             u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
@@ -175,6 +184,8 @@ public class SchemaMaker {
     templateInput.put("views", this.schema.getViews());
 
     templateInput.put("scripts", this.schema.getScripts());
+
+    templateInput.put("exactCount", this.schema.getExactCount()+"");
 
     Template tableTemplate = cfg.getTemplate("main.ftl");
     Writer writer = new StringWriter();
@@ -222,19 +233,6 @@ public class SchemaMaker {
     this.schema = schema;
   }
 
-  public static void main(String args[]) throws Exception {
-
-    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
-
-    String json = IOUtils.toString(
-      SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/examples/schema.json.example"));
-    fm.setSchema(ObjectMapperTool.getMapper().readValue(
-      json, Schema.class));
-
-    System.out.println(fm.generateDDL());
-
-  }
-
   public static String convertDotPath2PostgresNotation(String path){
     String []pathParts = path.split("\\.");
     StringBuilder sb = new StringBuilder("jsonb");
@@ -259,5 +257,19 @@ public class SchemaMaker {
       }
     }
     return sb.append("}'").toString();
+  }
+
+
+  public static void main(String args[]) throws Exception {
+
+    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
+
+    String json = IOUtils.toString(
+      SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/examples/schema.json.example"));
+    fm.setSchema(ObjectMapperTool.getMapper().readValue(
+      json, Schema.class));
+
+    System.out.println(fm.generateDDL());
+
   }
 }

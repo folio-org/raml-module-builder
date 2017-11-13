@@ -24,13 +24,18 @@ import freemarker.template.Version;
  */
 public class FacetManager {
 
+  private static int calculateOnFirst = 10000; //calculate facets on first N records in result set
+
   private static Configuration cfg;
 
   private String table;
   private String mainQuery;
   private String where = "";
-  private String limitClause = "";
+  private String limitClause = ""; // limit of results - should be extracted from original query
+  private String offsetClause = ""; // offset of results - should be extracted from original query
   private String idField ="";
+  private String schema =""; // tenantid_module
+  private boolean isCountQuery = false;
   private List<FacetField> facets;
   private Map<String, Object> templateInput = new HashMap<>();
 
@@ -77,7 +82,15 @@ public class FacetManager {
 
     templateInput.put("limitClause", this.limitClause);
 
+    templateInput.put("offsetClause", this.offsetClause);
+
     templateInput.put("idField", idField);
+
+    templateInput.put("schema", this.schema);
+
+    templateInput.put("isCountQuery", this.isCountQuery);
+
+    templateInput.put("calculateOnFirst" , calculateOnFirst+"");
 
     Template template = cfg.getTemplate("base_facet_query.ftl");
 
@@ -168,6 +181,38 @@ public class FacetManager {
 
   public void setIdField(String idField) {
     this.idField = idField;
+  }
+
+  public String getOffsetClause() {
+    return offsetClause;
+  }
+
+  public String getSchema() {
+    return schema;
+  }
+
+  public void setSchema(String schema) {
+    this.schema = schema;
+  }
+
+  public void setOffsetClause(String offsetClause) {
+    this.offsetClause = offsetClause;
+  }
+
+  public static int getCalculateOnFirst() {
+    return calculateOnFirst;
+  }
+
+  public static void setCalculateOnFirst(int firstN) {
+    calculateOnFirst = firstN;
+  }
+
+  public boolean isCountQuery() {
+    return isCountQuery;
+  }
+
+  public void setCountQuery(boolean isCountQuery) {
+    this.isCountQuery = isCountQuery;
   }
 
   public static void main(String args[]) throws Exception {

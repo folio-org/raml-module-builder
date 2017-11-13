@@ -13,11 +13,22 @@
   ],
   "tables": [
     {
+      "tableName": "groups",
+      "generateId": true
+    },
+    {
       "tableName": "users",
       "generateId": true,
       "fromModuleVersion": 15.2,
       "populateJsonWithId": true,
       "withMetadata": true,
+      "index": [
+        {
+          "fieldName": "group",
+          "tOps": "ADD",
+          "caseSensitive": false
+        }
+      ],
       "likeIndex": [
         {
           "fieldName": "username",

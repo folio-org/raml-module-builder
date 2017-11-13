@@ -1,4 +1,16 @@
 
+  <#-- Create / Drop btree indexes -->
+  <#if table.index??>
+    <#list table.index as indexes>
+        <#if indexes.tOps.name() == "ADD">
+    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx ON ${myuniversity}_${mymodule}.${table.tableName}(
+      <#if indexes.caseSensitive == false>lower</#if>(${indexes.fieldPath}))<#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
+        <#else>
+    DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx;
+        </#if>
+    </#list>
+  </#if>
+  
   <#-- Create / Drop unique indexes -->
   <#if table.uniqueIndex??>
     <#list table.uniqueIndex as indexes>
