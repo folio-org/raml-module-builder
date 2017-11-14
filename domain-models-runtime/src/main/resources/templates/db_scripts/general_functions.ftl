@@ -20,3 +20,19 @@ BEGIN
   RETURN rows;
 END;
 $$ LANGUAGE plpgsql VOLATILE STRICT;
+
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart2(rows bigint, lim bigint, query text) RETURNS integer AS $$
+DECLARE
+  rec   record;
+  cnt integer;
+BEGIN
+  IF rows = lim THEN
+      FOR rec IN EXECUTE 'EXPLAIN ' || query LOOP
+        cnt := substring(rec."QUERY PLAN" FROM ' rows=([[:digit:]]+)');
+        EXIT WHEN cnt IS NOT NULL;
+      END LOOP;
+      RETURN cnt;
+  END IF;
+  RETURN rows;
+END;
+$$ LANGUAGE plpgsql VOLATILE STRICT;

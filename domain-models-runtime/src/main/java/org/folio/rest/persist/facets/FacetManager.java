@@ -35,7 +35,7 @@ public class FacetManager {
   private String offsetClause = ""; // offset of results - should be extracted from original query
   private String idField ="";
   private String schema =""; // tenantid_module
-  private boolean isCountQuery = false;
+  private String countQuery = "";
   private List<FacetField> facets;
   private Map<String, Object> templateInput = new HashMap<>();
 
@@ -88,7 +88,7 @@ public class FacetManager {
 
     templateInput.put("schema", this.schema);
 
-    templateInput.put("isCountQuery", this.isCountQuery);
+    templateInput.put("countQuery", this.countQuery);
 
     templateInput.put("calculateOnFirst" , calculateOnFirst+"");
 
@@ -207,12 +207,12 @@ public class FacetManager {
     calculateOnFirst = firstN;
   }
 
-  public boolean isCountQuery() {
-    return isCountQuery;
+  public String getCountQuery() {
+    return countQuery;
   }
 
-  public void setCountQuery(boolean isCountQuery) {
-    this.isCountQuery = isCountQuery;
+  public void setCountQuery(String countQuery) {
+    this.countQuery = countQuery;
   }
 
   public static void main(String args[]) throws Exception {
@@ -220,9 +220,9 @@ public class FacetManager {
     FacetManager fm = new FacetManager("myuniversity_new1_mod_users.users");
 
     List<FacetField> facets = new ArrayList<>();
-    facets.add(new FacetField("jsonb ->>'lastUpdateDate'", 5));
-    facets.add(new FacetField("jsonb ->'personal'->>'phone'", 5));
-    facets.add(new FacetField("jsonb ->>'username'", 5));
+    facets.add(new FacetField("jsonb->>'lastUpdateDate'", 5));
+    facets.add(new FacetField("jsonb->'personal'->>'phone'", 5));
+    facets.add(new FacetField("jsonb->>'username'", 5));
 
     fm.setSupportFacets(facets);
 

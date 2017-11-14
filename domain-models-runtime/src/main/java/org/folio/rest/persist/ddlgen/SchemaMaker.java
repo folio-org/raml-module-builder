@@ -129,7 +129,7 @@ public class SchemaMaker {
         if(fKeys != null){
           for (int j = 0; j < fKeys.size(); j++) {
             ForeignKeys f = fKeys.get(j);
-            f.setFieldPath(convertDotPath2PostgresNotation(f.getFieldName()));
+            f.setFieldPath(convertDotPath2PostgresNotation(f.getFieldName(), true));
             f.setFieldName(f.getFieldName().replaceAll("\\.", "_"));
           }
         }
@@ -138,7 +138,7 @@ public class SchemaMaker {
         if(ind != null){
           for (int j = 0; j < ind.size(); j++) {
             Index ti = ind.get(j);
-            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName()));
+            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName(), false));
             ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
           }
         }
@@ -147,7 +147,7 @@ public class SchemaMaker {
         if(tInd != null){
           for (int j = 0; j < tInd.size(); j++) {
             Index ti = tInd.get(j);
-            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName()));
+            ti.setFieldPath("("+convertDotPath2PostgresNotation(ti.getFieldName() , false)+")::text");
             ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
           }
         }
@@ -156,7 +156,7 @@ public class SchemaMaker {
         if(uInd != null){
           for (int j = 0; j < uInd.size(); j++) {
             Index u = uInd.get(j);
-            u.setFieldPath(convertDotPath2PostgresNotation(u.getFieldName()));
+            u.setFieldPath(convertDotPath2PostgresNotation(u.getFieldName(), false));
             //remove . from path since this is incorrect syntax in postgres
             u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
           }
@@ -173,9 +173,9 @@ public class SchemaMaker {
           v.setMode("new");
         }
         ViewTable vt = v.getJoinTable();
-        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField() ));
+        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , false));
         vt = v.getTable();
-        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField() ));
+        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , false));
       }
     }
 
@@ -233,12 +233,20 @@ public class SchemaMaker {
     this.schema = schema;
   }
 
-  public static String convertDotPath2PostgresNotation(String path){
+  public static String convertDotPath2PostgresNotation(String path, boolean stringType){
+    //generate index based on paths - note that all indexes will be with a -> to allow
+    //postgres to treat the different data types differently and not ->> which would be all
+    //strings
     String []pathParts = path.split("\\.");
     StringBuilder sb = new StringBuilder("jsonb");
     for (int j = 0; j < pathParts.length; j++) {
       if(j == pathParts.length-1){
-        sb.append("->>");
+        if(stringType){
+          sb.append("->>");
+        }
+        else{
+          sb.append("->");
+        }
       } else{
         sb.append("->");
       }
