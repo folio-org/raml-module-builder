@@ -1,5 +1,9 @@
 ## 15.0.3
 * RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
+* RMB-82 additional / optimize counting of results via postgresClient
+* RMB-84 fix facet mechanism to use new counting RMB-82
+* RMB-88 optimize facet query
+* RMB-91 Remove case insensitive support and use generic ->'' operator
 
 ## 15.0.2
 * RMB-64
