@@ -934,11 +934,15 @@ https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runti
 **Important Note:** The PostgreSQL client currently implemented assumes
 JSONB tables in PostgreSQL. This is not mandatory and developers can work with
 regular PostgreSQL tables but will need to implement their own data access
-layer.
+layer. 
+
+**Important Note:** For performance reasons the Postgres client will return accurate counts for result sets with less than 50,000 results. Queries with over 50,000 results will return an estimated count.
 
 **Important Note:** The embedded Postgres can not run as root.
 
 **Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
+
+**Important Note:** Currently supported Postgres version 9.6+ 
 
 Currently the expected format is:
 
@@ -1131,7 +1135,9 @@ For each **table**:
 9. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the json and creating a FK constraint)
 10. `uniqueIndex` - create a unique index on a field in the json
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
- - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case
+ - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+11. `index` - create a btree index on a field in the json
+ - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
  - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
 11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
 12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
@@ -1200,6 +1206,7 @@ PoLine poline = new PoLine();
 
 postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...
 ```
+Remember to call beginTx and endTx
 
 Querying for similar POJOs in the DB (with or without additional criteria):
 
@@ -1273,6 +1280,9 @@ For example:
     }
 ```
 3. When building your module, an additional parameter will be added to the generated interfaces of the faceted endpoints. `List<String> facets`. You can simply convert this list into a List of Facet objects using the RMB tool as follows: `List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");` and pass the `facetList` returned to the `postgresClient`'s `get()` methods.
+
+You can set the amount of results to facet on by calling (defaults to 10,000) `FacetManager.setCalculateOnFirst(20000);`
+Note that higher numbers will potentially affect performance.
 
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
@@ -1916,3 +1926,4 @@ See project [RMB](https://issues.folio.org/browse/RMB)
 at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
 
 Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
+
