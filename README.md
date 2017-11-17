@@ -214,8 +214,8 @@ See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/d
 ## Local development server
 
 To get going quickly with running a local instance of Okapi, adding a tenant and some test data,
-and deploying some modules, follow these separate brief
-[instructions](https://github.com/folio-org/ui-okapi-console/blob/master/automation/README.md).
+and deploying some modules, run
+[folio/stable-backend, a prebuild Vagrant box](https://github.com/folio-org/folio-ansible/blob/master/doc/index.md#prebuilt-vagrant-boxes)
 
 Ensure that the sample users are loaded, and that a query is successful:
 
@@ -230,19 +230,6 @@ Use the local [API documentation](#documentation-of-the-apis) to view the RAMLs 
 ```
 http://localhost:9131/apidocs/index.html?raml=raml/users.raml
 ```
-
-Now use a similar method to deploy and enable the mod-configuration module that we started to investigate
-[above](#get-started-with-a-sample-working-module).
-
-Use the local [API documentation](#documentation-of-the-apis) to view the RAMLs, and post some entries,
-and conduct some requests:
-```
-http://localhost:9132/apidocs/index.html?raml=raml/configuration/config.raml
-```
-
-Continue to investigate the mod-configuration example.
-
-After getting started with your new module as explained below, it can be similarly deployed and investigated.
 
 ## Creating a new module
 
