@@ -63,7 +63,7 @@
         {
           "fieldName": "type",
           "tOps": "ADD",
-          "caseSensitive": false
+          "stringType": false
         },
         {
           "fieldName": "barcode",

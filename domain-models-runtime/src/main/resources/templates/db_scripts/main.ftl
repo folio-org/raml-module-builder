@@ -2,6 +2,8 @@
 <#if mode.name() == "CREATE">
 <#-- Create needed extensions, schema, role -->
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+
 CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
 GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
 CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
@@ -17,7 +19,7 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (id, jsonb) values (1, '{"r
 
 </#if>
 
-SET search_path TO ${myuniversity}_${mymodule}, public;
+SET search_path TO ${myuniversity}_${mymodule},  public; 
 
 <#if scripts??>
   <#list scripts as script>
@@ -28,6 +30,10 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
     </#if>
   </#list>
 </#if>
+
+SET search_path TO public, ${myuniversity}_${mymodule}; 
+
+<#include "general_functions.ftl">
 
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>
@@ -76,7 +82,7 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
         </#if>
       </#list>
     </#if>
-
+    
     <#include "indexes.ftl">
 
     <#include "foreign_keys.ftl">
@@ -100,6 +106,8 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
 
 <#include "views.ftl">
 
+SET search_path TO ${myuniversity}_${mymodule},  public; 
+
 <#if scripts??>
   <#list scripts as script>
     <#if script.run == "after">
@@ -109,7 +117,5 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
     </#if>
   </#list>
 </#if>
-
-<#include "general_functions.ftl">
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};

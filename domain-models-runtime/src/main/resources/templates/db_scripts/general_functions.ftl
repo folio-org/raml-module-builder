@@ -1,3 +1,4 @@
+-- estimate count for large result sets
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart(query text) RETURNS integer AS $$
 DECLARE
   rec   record;
@@ -21,6 +22,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE STRICT;
 
+-- if the amount of results matches the LIMIT , it means that the result set is larger then the limit and we should return an estimate
+-- for example, this is used in faceting with a limit of lets say 20,000 results. if we got back 20,000 results back (passed in as the rows
+-- parameters , then our result set is larger then the limit most probably and we should estimate a count
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart2(rows bigint, lim bigint, query text) RETURNS integer AS $$
 DECLARE
   rec   record;
@@ -36,3 +40,12 @@ BEGIN
   RETURN rows;
 END;
 $$ LANGUAGE plpgsql VOLATILE STRICT;
+
+-- function used to convert accented strings into unaccented string
+CREATE OR REPLACE FUNCTION f_unaccent(text)
+  RETURNS text AS
+$func$
+SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
+$func$  LANGUAGE sql IMMUTABLE;
+  
+  

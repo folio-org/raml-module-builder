@@ -3,12 +3,13 @@ package org.folio.rest.persist.ddlgen;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import org.apache.commons.io.IOUtils;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 
@@ -138,7 +139,8 @@ public class SchemaMaker {
         if(ind != null){
           for (int j = 0; j < ind.size(); j++) {
             Index ti = ind.get(j);
-            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName(), false));
+            String path = convertDotPath2PostgresNotation(ti.getFieldName(), ti.isStringType());
+            ti.setFieldPath(path);
             ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
           }
         }
@@ -147,7 +149,7 @@ public class SchemaMaker {
         if(tInd != null){
           for (int j = 0; j < tInd.size(); j++) {
             Index ti = tInd.get(j);
-            ti.setFieldPath("("+convertDotPath2PostgresNotation(ti.getFieldName() , false)+")::text");
+            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName() , ti.isStringType()));
             ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
           }
         }
@@ -156,7 +158,8 @@ public class SchemaMaker {
         if(uInd != null){
           for (int j = 0; j < uInd.size(); j++) {
             Index u = uInd.get(j);
-            u.setFieldPath(convertDotPath2PostgresNotation(u.getFieldName(), false));
+            String path = convertDotPath2PostgresNotation(u.getFieldName(), u.isStringType());
+            u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres
             u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
           }
@@ -173,9 +176,9 @@ public class SchemaMaker {
           v.setMode("new");
         }
         ViewTable vt = v.getJoinTable();
-        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , false));
+        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
         vt = v.getTable();
-        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , false));
+        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
       }
     }
 
@@ -270,10 +273,13 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("harvard", "mod_users", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
+    SchemaMaker fm = new SchemaMaker("slowtest98", "mod_inventory_storage", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
+    String f = "C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\templates\\db_scripts\\schema.json";
+    byte[] encoded = Files.readAllBytes(Paths.get(f));
+    String json = new String(encoded, "UTF8");
 
-    String json = IOUtils.toString(
-      SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/examples/schema.json.example"));
+    //SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/examples/schema.json.example"));
+
     fm.setSchema(ObjectMapperTool.getMapper().readValue(
       json, Schema.class));
 

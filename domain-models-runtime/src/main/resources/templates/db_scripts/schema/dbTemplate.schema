@@ -185,6 +185,9 @@
                 },
                 "whereClause": {
                   "type": "string"
+                },
+                "isStringType": {
+                  "type": "boolean"
                 }
               },
               "type": "object"

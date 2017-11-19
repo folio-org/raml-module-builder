@@ -36,7 +36,7 @@
     triggers a compile of that project which if it depends on the api jar will
     cause a compile problem -->
     <generated_files_path>${basedir}/src/main/java</generated_files_path>
-    <vertx-version>3.3.3</vertx-version>
+    <vertx-version>3.4.1</vertx-version>
     <jackson-version>2.2.2</jackson-version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
