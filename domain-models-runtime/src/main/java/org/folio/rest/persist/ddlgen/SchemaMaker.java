@@ -139,6 +139,10 @@ public class SchemaMaker {
         if(ind != null){
           for (int j = 0; j < ind.size(); j++) {
             Index ti = ind.get(j);
+            if(!ti.isStringType()){
+              ti.setCaseSensitive(true);
+              ti.setRemoveAccents(false);
+            }
             String path = convertDotPath2PostgresNotation(ti.getFieldName(), ti.isStringType());
             ti.setFieldPath(path);
             ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
@@ -149,6 +153,10 @@ public class SchemaMaker {
         if(tInd != null){
           for (int j = 0; j < tInd.size(); j++) {
             Index ti = tInd.get(j);
+            if(!ti.isStringType()){
+              ti.setCaseSensitive(true);
+              ti.setRemoveAccents(false);
+            }
             ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName() , ti.isStringType()));
             ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
           }
@@ -158,6 +166,10 @@ public class SchemaMaker {
         if(uInd != null){
           for (int j = 0; j < uInd.size(); j++) {
             Index u = uInd.get(j);
+            if(!u.isStringType()){
+              u.setCaseSensitive(true);
+              u.setRemoveAccents(false);
+            }
             String path = convertDotPath2PostgresNotation(u.getFieldName(), u.isStringType());
             u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres

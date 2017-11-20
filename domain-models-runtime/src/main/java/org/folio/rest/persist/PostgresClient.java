@@ -2232,7 +2232,7 @@ public class PostgresClient {
             sb.append(",?[ ]+");
           }
         }
-        String regex = sb.toString().trim();
+        String regex = escape(sb.toString().trim());
         query = query.substring(0, startOfOrderBy) +
             Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
       }
@@ -2261,6 +2261,24 @@ public class PostgresClient {
    return pq;
   }
 
+  private static String escape(String str){
+    StringBuilder sb = new StringBuilder();
+    for (char c : str.toCharArray())
+    {
+        switch(c)
+        {
+            case '(':
+            case ')':
+            case '\\':
+                sb.append('\\');
+                // intended fall-through
+            default:
+                sb.append(c);
+        }
+    }
+    return sb.toString();
+  }
+
   public static void main(String args[]){
 
     System.out.println(getStartPos("SELECT * \\'FROM RET' items_mt_view.json' RET r", "RET", true));
@@ -2274,7 +2292,8 @@ public class PostgresClient {
      //String query = "SELECT * FROM table WHERE items0_mt_view.jsonb->>' ORDER BY items1_mt_view.jsonb->>''aaa'' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items3_mt_view.jsonb->>''aaa'' '";
      // String query = "SELECT _id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}' LIMIT 1 OFFSET 0 ";
      //String query = "select * from diku999_circulation_storage.audit_loan WHERE audit_loan.jsonb->>'id' = 'cf23adf0-61ba-4887-bf82-956c4aae2260 order by created_date LIMIT 10 OFFSET 0' order by created_date LIMIT 10 OFFSET 0 ";
-     String query = "select * from slowtest99_mod_inventory_storage.item where (item.jsonb->'barcode') = to_jsonb('1000000'::int)  order by a LIMIT 30;";
+     //String query = "select * from slowtest99_mod_inventory_storage.item where (item.jsonb->'barcode') = to_jsonb('1000000'::int)  order by a LIMIT 30;";
+     String query = "SELECT  * FROM slowtest_cql5_mod_inventory_storage.item  WHERE lower(f_unaccent(item.jsonb->>'default')) LIKE lower(f_unaccent('true')) ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC, item.jsonb->>'code' DESC LIMIT 10 OFFSET 0";
      try {
 
        List<String> facets = new ArrayList<>();

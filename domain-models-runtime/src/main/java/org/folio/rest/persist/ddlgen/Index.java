@@ -6,10 +6,10 @@ package org.folio.rest.persist.ddlgen;
  */
 public class Index extends TableIndexes {
 
-  private boolean caseSensitive = true;
+  private boolean caseSensitive = false;
   private String whereClause = null;
   private boolean stringType = true;
-  private boolean removeAccents = false;
+  private boolean removeAccents = true;
 
   public boolean isCaseSensitive() {
     return caseSensitive;
