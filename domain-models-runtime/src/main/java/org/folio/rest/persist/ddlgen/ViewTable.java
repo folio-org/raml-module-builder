@@ -8,8 +8,8 @@ public class ViewTable {
 
   private String tableName;
   private String joinOnField;
-  private boolean indexUsesCaseSensitive = true;
-  private boolean indexUsesRemoveAccents = false;
+  private boolean indexUsesCaseSensitive = false; //right now cql generates everything with case insensitive
+  private boolean indexUsesRemoveAccents = true;  //and remove accents, when that changes, switch back defaults
 
   //needed for the join table, since we can not join two tables
   //with two columns named the same, so the join table / or the root table

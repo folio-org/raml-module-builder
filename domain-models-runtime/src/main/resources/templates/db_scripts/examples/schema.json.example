@@ -107,6 +107,7 @@
     {
       "viewName": "users_groups_view",
       "mode": "new",
+      "joinType": "JOIN",
       "table": {
         "tableName": "users",
         "joinOnField": "patronGroup"
@@ -120,6 +121,7 @@
     {
       "viewName": "items_mt_view",
       "mode": "new",
+      "joinType": "LEFT JOIN",
       "table": {
         "tableName": "item",
         "joinOnField": "materialTypeId"

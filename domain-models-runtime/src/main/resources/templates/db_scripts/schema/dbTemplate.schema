@@ -279,6 +279,9 @@
           },
           "viewName": {
             "type": "string"
+          },
+          "joinType": {
+            "type": "string"
           }
         },
         "type": "object"
