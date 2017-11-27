@@ -40,7 +40,14 @@
           "tOps": "ADD"
         }
       ],
-      "ginIndex": true,
+      "ginIndex": [
+        {
+          "fieldName": "username",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
       "withAuditing": true,
       "pkColumnName": "id",
       "auditingSnippet": {

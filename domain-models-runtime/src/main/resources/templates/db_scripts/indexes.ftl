@@ -58,8 +58,21 @@
     </#list>
   </#if>
 
-  <#if table.ginIndex == true>
-    CREATE INDEX IF NOT EXISTS ${table.tableName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN (jsonb jsonb_path_ops);
-  <#else>
+  <#if table.ginIndex??>
+    <#list table.ginIndex as indexes>
+      <#if indexes.tOps.name() == "ADD">
+    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN
+        (
+      <#if indexes.caseSensitive == false>lower</#if>
+        (
+          <#if indexes.removeAccents == true>f_unaccent(</#if>
+            ${indexes.fieldPath}
+          <#if indexes.removeAccents == true>)</#if>
+        ) 
+    gin_trgm_ops)
+    <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
+      <#else>
     DROP INDEX IF EXISTS ${table.tableName}_idx_gin;
+      </#if>
+    </#list>
   </#if>

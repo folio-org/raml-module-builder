@@ -114,7 +114,32 @@
             "type": "boolean"
           },
           "ginIndex": {
-            "type": "boolean"
+            "additionalItems": false,
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fieldName": {
+                  "type": "string"
+                },
+                "tOps": {
+                  "type": "string"
+                },
+                "caseSensitive": {
+                  "type": "boolean"
+                },                
+                "stringType": {
+                  "type": "boolean"
+                },
+                "whereClause": {
+                  "type": "string"
+                },
+                "removeAccents": {
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
           },
           "likeIndex": {
             "additionalItems": false,
@@ -132,6 +157,9 @@
                 },
                 "whereClause": {
                   "type": "string"
+                },
+                "removeAccents": {
+                  "type": "boolean"
                 }
               },
               "type": "object"
@@ -163,6 +191,12 @@
                 },
                 "whereClause": {
                   "type": "string"
+                },
+                "stringType": {
+                  "type": "boolean"
+                },
+                "removeAccents": {
+                  "type": "boolean"
                 }
               },
               "type": "object"
@@ -186,7 +220,10 @@
                 "whereClause": {
                   "type": "string"
                 },
-                "isStringType": {
+                "stringType": {
+                  "type": "boolean"
+                },
+                "removeAccents": {
                   "type": "boolean"
                 }
               },

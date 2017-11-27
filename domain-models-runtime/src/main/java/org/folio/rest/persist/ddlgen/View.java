@@ -49,5 +49,4 @@ public class View {
   public void setPkColumnName(String pkColumnName) {
     this.pkColumnName = pkColumnName;
   }
-
 }

@@ -96,6 +96,8 @@ public class SchemaMaker {
 
     List<Table> tables = this.schema.getTables();
 
+    Map<String, Index> indexMap = new HashMap<>();
+
     if(tables != null){
       int size = tables.size();
       for (int i = 0; i < size; i++) {
@@ -145,6 +147,7 @@ public class SchemaMaker {
             }
             String path = convertDotPath2PostgresNotation(ti.getFieldName(), ti.isStringType());
             ti.setFieldPath(path);
+            indexMap.put(t.getTableName()+"_"+ti.getFieldName(), ti);
             ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
           }
         }
@@ -162,6 +165,15 @@ public class SchemaMaker {
           }
         }
 
+        List<Index> gInd = t.getGinIndex();
+        if(gInd != null){
+          for (int j = 0; j < gInd.size(); j++) {
+            Index ti = gInd.get(j);
+            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName() , true));
+            ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
+          }
+        }
+
         List<Index> uInd = t.getUniqueIndex();
         if(uInd != null){
           for (int j = 0; j < uInd.size(); j++) {
@@ -173,6 +185,7 @@ public class SchemaMaker {
             String path = convertDotPath2PostgresNotation(u.getFieldName(), u.isStringType());
             u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres
+            indexMap.put(t.getTableName()+"_"+u.getFieldName(), u);
             u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
           }
         }
@@ -188,9 +201,20 @@ public class SchemaMaker {
           v.setMode("new");
         }
         ViewTable vt = v.getJoinTable();
+        Index index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
         vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
+        if(index != null){
+          vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
+          vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
+        }
+
         vt = v.getTable();
+        index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
         vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
+        if(index != null){
+          vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
+          vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
+        }
       }
     }
 
@@ -285,8 +309,9 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("slowtest98", "mod_inventory_storage", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
-    String f = "C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\templates\\db_scripts\\schema.json";
+    SchemaMaker fm = new SchemaMaker("slowtest103", "mod_inventory_storage", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
+    //String f = "C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\templates\\db_scripts\\schema.json";
+    String f = "C:\\Git\\clones\\invstorage-rmb15\\mod-inventory-storage\\src\\main\\resources\\templates\\db_scripts\\schema.json";
     byte[] encoded = Files.readAllBytes(Paths.get(f));
     String json = new String(encoded, "UTF8");
 

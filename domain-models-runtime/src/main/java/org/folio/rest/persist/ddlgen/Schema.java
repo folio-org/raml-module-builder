@@ -12,7 +12,7 @@ public class Schema {
   private List<Table> tables = new ArrayList<>();
   private List<View> views = new ArrayList<>();
   private List<Script> scripts = new ArrayList<>();
-  private int exactCount = 50000;
+  private int exactCount = 10000;
 
   public List<Table> getTables() {
     return tables;
