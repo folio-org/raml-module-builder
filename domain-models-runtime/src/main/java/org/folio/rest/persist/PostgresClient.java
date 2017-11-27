@@ -2193,15 +2193,18 @@ public class PostgresClient {
     long start = System.nanoTime();
     String queryWithoutLimitOffset = "";
     try {
-      net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
-      Select selectStatement = (Select) statement;
-      orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
-      limit = ((PlainSelect) selectStatement.getSelectBody()).getLimit();
-      offset = ((PlainSelect) selectStatement.getSelectBody()).getOffset();
-      where = ((PlainSelect) selectStatement.getSelectBody()).getWhere();
+      try {
+        net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
+        Select selectStatement = (Select) statement;
+        orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
+        limit = ((PlainSelect) selectStatement.getSelectBody()).getLimit();
+        offset = ((PlainSelect) selectStatement.getSelectBody()).getOffset();
+        where = ((PlainSelect) selectStatement.getSelectBody()).getWhere();
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+      }
 
       int startOfLimit = getStartPos(query, "limit" , true);
-
       if(limit != null){
         String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
         query = query.substring(0, startOfLimit) + suffix;
@@ -2213,17 +2216,23 @@ public class PostgresClient {
         Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
       }
 
+      int startOfOffset = getStartPos(query, "offset" , true);
       if(offset != null){
-        int startOfOffset = getStartPos(query, "offset" , true);
         String suffix = Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
         query = query.substring(0, startOfOffset) + suffix;
+      }
+      else if(startOfOffset != -1){
+        //offset returns null if it was placed before the limit although postgres does allow this
+        //we are here if offset appears in the query and not within quotes
+        query = query.substring(0, startOfOffset) +
+        Pattern.compile("offset\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
       }
 
       queryWithoutLimitOffset = query;
 
       //in the rare case where the order by clause somehow appears in the where clause
+      int startOfOrderBy = getStartPos(query, "order by" , true);
       if(orderBy != null){
-        int startOfOrderBy = getStartPos(query, "order by" , true);
         StringBuilder sb = new StringBuilder("order by[ ]+");
         int size = orderBy.size();
         for (int i = 0; i < size; i++) {
@@ -2236,9 +2245,15 @@ public class PostgresClient {
         query = query.substring(0, startOfOrderBy) +
             Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
       }
+      else if(startOfOrderBy != -1){
+        //offset returns null if it was placed before the limit although postgres does allow this
+        //we are here if offset appears in the query and not within quotes
+        query = query.substring(0, startOfOrderBy) +
+        Pattern.compile("order by.*", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
+      }
    }
    catch(Exception e){
-     log.error(e.getMessage());
+     log.error(e.getMessage(), e);
    }
 
    ParsedQuery pq = new ParsedQuery();
@@ -2257,7 +2272,7 @@ public class PostgresClient {
      pq.setOffsetClause( offset.toString() );
    }
    long end = System.nanoTime();
-   log.debug("clean up query for count_estimate function (ns) " + (end-start));
+   log.debug("Parse query for count_estimate function (ns) " + (end-start));
    return pq;
   }
 
@@ -2293,7 +2308,8 @@ public class PostgresClient {
      // String query = "SELECT _id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}' LIMIT 1 OFFSET 0 ";
      //String query = "select * from diku999_circulation_storage.audit_loan WHERE audit_loan.jsonb->>'id' = 'cf23adf0-61ba-4887-bf82-956c4aae2260 order by created_date LIMIT 10 OFFSET 0' order by created_date LIMIT 10 OFFSET 0 ";
      //String query = "select * from slowtest99_mod_inventory_storage.item where (item.jsonb->'barcode') = to_jsonb('1000000'::int)  order by a LIMIT 30;";
-     String query = "SELECT  * FROM slowtest_cql5_mod_inventory_storage.item  WHERE lower(f_unaccent(item.jsonb->>'default')) LIKE lower(f_unaccent('true')) ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC, item.jsonb->>'code' DESC LIMIT 10 OFFSET 0";
+     //String query = "SELECT  * FROM slowtest_cql5_mod_inventory_storage.item  WHERE lower(f_unaccent(item.jsonb->>'default')) LIKE lower(f_unaccent('true')) ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC, item.jsonb->>'code' DESC LIMIT 10 OFFSET 0";
+     String query = "SELECT * FROM harvard_mod_configuration.config_data  WHERE ((true) AND ( (config_data.jsonb->>'userId' ~ '') IS NOT TRUE)) OR (lower(f_unaccent(config_data.jsonb->>'userId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]])joeshmoe($|[[:punct:]]|[[:space:]])')))  ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC, item.jsonb->>'code' DESC LIMIT 10 OFFSET 0";
      try {
 
        List<String> facets = new ArrayList<>();
