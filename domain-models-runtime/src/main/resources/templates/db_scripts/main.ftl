@@ -1,19 +1,18 @@
 
 <#if mode.name() == "CREATE">
-<#-- Create needed extensions, schema, role -->
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
-CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+
+<#include "extensions.ftl">
 
 CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
 GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
 CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
 
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
-      id integer PRIMARY KEY,
+      id SERIAL PRIMARY KEY,
       jsonb JSONB NOT NULL
     );
 
-insert into ${myuniversity}_${mymodule}.rmb_internal (id, jsonb) values (1, '{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
+insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
 
 -- rmb version ${rmbVersion}
 
