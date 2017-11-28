@@ -205,7 +205,7 @@ public class RestVerticle extends AbstractVerticle {
       //register codec to be able to pass pojos on the event bus
       eventBus.registerCodec(new PojoEventBusCodec());
     } catch (Exception e3) {
-      if(context.getInstanceCount() != 1){
+      if (e3.getMessage().startsWith("Already a codec registered with name")) {
         //needed in case we run multiple verticle instances
         //in this vertx instace - re-registering the same codec twice throws an
         //exception
