@@ -30,6 +30,13 @@ DECLARE
   rows  integer;
   q   text;
 BEGIN
+  -- get a fast estimate
+  rows = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount} , ${exactCount} , query);
+  -- if estimate is higher then what we allow for a fast count query (default 20,000) , then return the estimate
+  IF rows > ${exactCount}  THEN
+    RETURN rows;
+  END IF;
+  -- otherwise send the query with a limit of exactCount
   q = 'with counter as (' || 
       regexp_replace(
           query,
@@ -44,9 +51,11 @@ BEGIN
     EXECUTE q INTO rec;
     rows := rec."count";
     -- RAISE NOTICE 'rows %', rows;
+    -- if the query has exactCount results, it means we have more than that and the explain plan is off
     IF rows = ${exactCount}  THEN
+    -- try the explain plan again in case it has corrected itself (unlikely - maybe just remove)
     rows = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
-        -- needed because EXPLAIN my severely under estimate the count
+        -- needed because EXPLAIN may severely under estimate the count
         IF rows < ${exactCount}  THEN
           rows = ${exactCount} ;
         END IF;
