@@ -45,7 +45,7 @@ BEGIN
     rows := rec."count";
     -- RAISE NOTICE 'rows %', rows;
     IF rows = ${exactCount}  THEN
-    rows = cql4_mod_inventory_storage.count_estimate_smart2(${exactCount}, ${exactCount}, query);
+    rows = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
         -- needed because EXPLAIN my severely under estimate the count
         IF rows < ${exactCount}  THEN
           rows = ${exactCount} ;
