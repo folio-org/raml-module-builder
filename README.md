@@ -1125,10 +1125,13 @@ For each **table**:
 4. `mode` - should be used only to indicate `delete`
 5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
 6. `likeIndex` - indicate which fields in the json will be queried using the LIKE  - needed for fields that will be faceted on
+ - `fieldName` the field name in the json to create the index for
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
- - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case
+ - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. *Default: false* should not be changed, temporarily all indexes are created with a `lower()` function wrapper. Index will not be used if this is changed (important on large tables)
+ -  `removeAccents` - normalize accents or leave accented chars as is. *Default: true* should not be changed, temporarily all indexes are created with a `f_unaccent()` function wrapper. Index will not be used if this is changed (important on large tables)
  - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
-7. `ginIndex` - generate an inverted index on the json
+ - `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
+7. `ginIndex` - generate an inverted index on the json using the `gin_trgm_ops` extension. Allows for regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the equality operator (=). See the `likeIndex` for available options (does not support partial indexes - where). removeAccents is set to true and is not case sensitive.
 8. `withAuditing` - create an auditing table with triggers populating the audit table whenever an insert, update, or delete occurs on the table
  - the name of the audit table will be `audit_`{tableName}
  - The `auditingSnippet` section allows some customizations to the auditing function by allowing custom sqls in the declare section and the body (for either insert / update / delete)
@@ -1136,15 +1139,39 @@ For each **table**:
 10. `uniqueIndex` - create a unique index on a field in the json
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
  - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+ - See additional options in the likeIndex section above
 11. `index` - create a btree index on a field in the json
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
  - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+ - See additional options in the likeIndex section above
 11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
 12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
 13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
 
-The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by.
+The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 
+```  "views": [
+    {
+        "viewName": "items_mt_view",
+      "joinType": "JOIN",
+      "table": {
+        "tableName": "item",
+        "joinOnField": "materialTypeId"
+      },
+      "joinTable": {
+        "tableName": "material_type",
+        "joinOnField": "id",
+        "jsonFieldAlias": "mt_jsonb"
+      }
+    }
+  ]```
+
+Behind the scenes this will produce the following statement which will be run as part of the schema creation:
+```CREATE OR REPLACE VIEW ${tenantid}_${module_name}.items_mt_view AS select u._id,u.jsonb as jsonb, g.jsonb as mt_jsonb from ${tenantid}_${module_name}.item u  
+   join ${tenantid}_${module_name}.material_type g on lower(f_unaccent(g.jsonb->>'id')) = lower(f_unaccent(u.jsonb->>'materialTypeId'))```
+
+Notice the  `lower(f_unaccent(` functions, currently, by default , all string fields will be wrapped in these functions (will change in the future) 
+ 
 The **script** section allows a module to run custom SQLs before table / view creation/updates and after all tables/views have been created/updated.
 
 The fields in the **script** section include:
@@ -1639,7 +1666,7 @@ The `HttpModuleClient2 request` function can receive the following parameters:
  - `HttpMethod` - (default: GET)
  - `endpoint` - API endpoint
  - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
- - `RollBackURL` - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
+ - `RollBackURL` - NOT SUPPORTED - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
  - `cachable` - Whether to cache the response
  - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
 `

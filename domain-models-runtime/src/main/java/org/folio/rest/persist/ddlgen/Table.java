@@ -16,7 +16,7 @@ public class Table {
   private List<Index> likeIndex;
   private List<Index> uniqueIndex;
   private List<Index> index;
-  private boolean ginIndex;
+  private List<Index> ginIndex;
   private List<ForeignKeys> foreignKeys;
   private String customSnippetPath;
   private List<AddFields> addFields;
@@ -154,11 +154,11 @@ public class Table {
     this.pkColumnName = pkColumnName;
   }
 
-  public boolean isGinIndex() {
+  public List<Index> getGinIndex() {
     return ginIndex;
   }
 
-  public void setGinIndex(boolean ginIndex) {
+  public void setGinIndex(List<Index> ginIndex) {
     this.ginIndex = ginIndex;
   }
 

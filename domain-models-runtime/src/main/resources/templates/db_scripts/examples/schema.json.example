@@ -40,7 +40,14 @@
           "tOps": "ADD"
         }
       ],
-      "ginIndex": true,
+      "ginIndex": [
+        {
+          "fieldName": "username",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
       "withAuditing": true,
       "pkColumnName": "id",
       "auditingSnippet": {
@@ -63,7 +70,7 @@
         {
           "fieldName": "type",
           "tOps": "ADD",
-          "caseSensitive": false
+          "stringType": false
         },
         {
           "fieldName": "barcode",
@@ -100,6 +107,7 @@
     {
       "viewName": "users_groups_view",
       "mode": "new",
+      "joinType": "JOIN",
       "table": {
         "tableName": "users",
         "joinOnField": "patronGroup"
@@ -113,6 +121,7 @@
     {
       "viewName": "items_mt_view",
       "mode": "new",
+      "joinType": "LEFT JOIN",
       "table": {
         "tableName": "item",
         "joinOnField": "materialTypeId"

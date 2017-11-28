@@ -1,23 +1,24 @@
 
 <#if mode.name() == "CREATE">
-<#-- Create needed extensions, schema, role -->
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+<#include "extensions.ftl">
+
 CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
 GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
 CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
 
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
-      id integer PRIMARY KEY,
+      id SERIAL PRIMARY KEY,
       jsonb JSONB NOT NULL
     );
 
-insert into ${myuniversity}_${mymodule}.rmb_internal (id, jsonb) values (1, '{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
+insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
 
 -- rmb version ${rmbVersion}
 
 </#if>
 
-SET search_path TO ${myuniversity}_${mymodule}, public;
+SET search_path TO ${myuniversity}_${mymodule},  public; 
 
 <#if scripts??>
   <#list scripts as script>
@@ -28,6 +29,10 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
     </#if>
   </#list>
 </#if>
+
+SET search_path TO public, ${myuniversity}_${mymodule}; 
+
+<#include "general_functions.ftl">
 
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>
@@ -76,7 +81,7 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
         </#if>
       </#list>
     </#if>
-
+    
     <#include "indexes.ftl">
 
     <#include "foreign_keys.ftl">
@@ -100,6 +105,8 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
 
 <#include "views.ftl">
 
+SET search_path TO ${myuniversity}_${mymodule},  public; 
+
 <#if scripts??>
   <#list scripts as script>
     <#if script.run == "after">
@@ -109,7 +116,5 @@ SET search_path TO ${myuniversity}_${mymodule}, public;
     </#if>
   </#list>
 </#if>
-
-<#include "general_functions.ftl">
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};

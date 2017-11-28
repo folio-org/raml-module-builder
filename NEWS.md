@@ -1,9 +1,13 @@
-## 15.0.3
+
+## 16.0.0
 * RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
 * RMB-82 additional / optimize counting of results via postgresClient
 * RMB-84 fix facet mechanism to use new counting RMB-82
 * RMB-88 optimize facet query
 * RMB-91 Remove case insensitive support and use generic ->'' operator
+* RMB-89 Performance checklist - various performance issues
+* RMB-99 sql EXPLAIN returns very in-accurate counts on a view , OR queries
+* RMB-77 fix documentation for declaration of json schema
 
 ## 15.0.2
 * RMB-64
