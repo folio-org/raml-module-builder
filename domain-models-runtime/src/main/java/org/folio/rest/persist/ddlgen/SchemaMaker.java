@@ -309,13 +309,10 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("slowtest103", "mod_inventory_storage", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
-    //String f = "C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\templates\\db_scripts\\schema.json";
+    SchemaMaker fm = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
     String f = "C:\\Git\\clones\\invstorage-rmb15\\mod-inventory-storage\\src\\main\\resources\\templates\\db_scripts\\schema.json";
     byte[] encoded = Files.readAllBytes(Paths.get(f));
     String json = new String(encoded, "UTF8");
-
-    //SchemaMaker.class.getClassLoader().getResourceAsStream("templates/db_scripts/examples/schema.json.example"));
 
     fm.setSchema(ObjectMapperTool.getMapper().readValue(
       json, Schema.class));
