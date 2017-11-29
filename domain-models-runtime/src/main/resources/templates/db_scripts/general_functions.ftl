@@ -37,7 +37,7 @@ BEGIN
     RETURN rows;
   END IF;
   -- otherwise send the query with a limit of exactCount
-  q = 'with counter as (' || 
+  q = 'with counter as (' ||
       regexp_replace(
           query,
             '\mselect.*?from',
@@ -101,4 +101,4 @@ CREATE OR REPLACE FUNCTION f_unaccent(text)
 $func$
 SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
 $func$  LANGUAGE sql IMMUTABLE;
-  
+

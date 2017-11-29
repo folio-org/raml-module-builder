@@ -921,7 +921,7 @@ https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runti
 **Important Note:** The PostgreSQL client currently implemented assumes
 JSONB tables in PostgreSQL. This is not mandatory and developers can work with
 regular PostgreSQL tables but will need to implement their own data access
-layer. 
+layer.
 
 **Important Note:** For performance reasons the Postgres client will return accurate counts for result sets with less than 50,000 results. Queries with over 50,000 results will return an estimated count.
 
@@ -929,7 +929,7 @@ layer.
 
 **Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
 
-**Important Note:** Currently supported Postgres version 9.6+ 
+**Important Note:** Currently supported Postgres version 9.6+
 
 Currently the expected format is:
 
@@ -1154,11 +1154,11 @@ The **views** section is a bit more self explanatory as it indicates a viewName 
   ]```
 
 Behind the scenes this will produce the following statement which will be run as part of the schema creation:
-```CREATE OR REPLACE VIEW ${tenantid}_${module_name}.items_mt_view AS select u._id,u.jsonb as jsonb, g.jsonb as mt_jsonb from ${tenantid}_${module_name}.item u  
+```CREATE OR REPLACE VIEW ${tenantid}_${module_name}.items_mt_view AS select u._id,u.jsonb as jsonb, g.jsonb as mt_jsonb from ${tenantid}_${module_name}.item u
    join ${tenantid}_${module_name}.material_type g on lower(f_unaccent(g.jsonb->>'id')) = lower(f_unaccent(u.jsonb->>'materialTypeId'))```
 
-Notice the  `lower(f_unaccent(` functions, currently, by default , all string fields will be wrapped in these functions (will change in the future) 
- 
+Notice the  `lower(f_unaccent(` functions, currently, by default , all string fields will be wrapped in these functions (will change in the future)
+
 The **script** section allows a module to run custom SQLs before table / view creation/updates and after all tables/views have been created/updated.
 
 The fields in the **script** section include:

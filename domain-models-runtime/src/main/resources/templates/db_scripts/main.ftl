@@ -18,7 +18,7 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersi
 
 </#if>
 
-SET search_path TO ${myuniversity}_${mymodule},  public; 
+SET search_path TO ${myuniversity}_${mymodule},  public;
 
 <#if scripts??>
   <#list scripts as script>
@@ -30,7 +30,7 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
   </#list>
 </#if>
 
-SET search_path TO public, ${myuniversity}_${mymodule}; 
+SET search_path TO public, ${myuniversity}_${mymodule};
 
 <#include "general_functions.ftl">
 
@@ -81,7 +81,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
         </#if>
       </#list>
     </#if>
-    
+
     <#include "indexes.ftl">
 
     <#include "foreign_keys.ftl">
@@ -105,7 +105,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
 
 <#include "views.ftl">
 
-SET search_path TO ${myuniversity}_${mymodule},  public; 
+SET search_path TO ${myuniversity}_${mymodule},  public;
 
 <#if scripts??>
   <#list scripts as script>
