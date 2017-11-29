@@ -215,7 +215,7 @@ See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/d
 
 To get going quickly with running a local instance of Okapi, adding a tenant and some test data,
 and deploying some modules, run
-[folio/stable-backend, a prebuild Vagrant box](https://github.com/folio-org/folio-ansible/blob/master/doc/index.md#prebuilt-vagrant-boxes)
+[folio/stable-backend, a prebuilt Vagrant box](https://github.com/folio-org/folio-ansible/blob/master/doc/index.md#prebuilt-vagrant-boxes)
 
 Ensure that the sample users are loaded, and that a query is successful:
 
@@ -1137,9 +1137,10 @@ For each **table**:
 
 The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 
-```  "views": [
+```
+  "views": [
     {
-        "viewName": "items_mt_view",
+      "viewName": "items_mt_view",
       "joinType": "JOIN",
       "table": {
         "tableName": "item",
