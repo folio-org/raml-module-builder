@@ -126,7 +126,7 @@
                 },
                 "caseSensitive": {
                   "type": "boolean"
-                },                
+                },
                 "stringType": {
                   "type": "boolean"
                 },

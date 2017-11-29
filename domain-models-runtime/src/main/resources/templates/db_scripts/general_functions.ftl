@@ -1,6 +1,6 @@
--- if the amount of results matches the LIMIT , it means that the result set is larger then the limit and we should return an estimate
+-- if the amount of results matches the LIMIT , it means that the result set is larger than the limit and we should return an estimate
 -- for example, this is used in faceting with a limit of lets say 20,000 results. if we got back 20,000 results (passed in as the rows
--- parameters , then our result set is larger then the limit most probably and we should estimate a count
+-- parameters , then our result set is larger than the limit most probably and we should estimate a count
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart2(rows bigint, lim bigint, query text) RETURNS integer AS $$
 DECLARE
   rec   record;
@@ -32,12 +32,12 @@ DECLARE
 BEGIN
   -- get a fast estimate
   rows = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount} , ${exactCount} , query);
-  -- if estimate is higher then what we allow for a fast count query (default 20,000) , then return the estimate
+  -- if estimate is higher than what we allow for a fast count query (default 20,000) , then return the estimate
   IF rows > ${exactCount}  THEN
     RETURN rows;
   END IF;
   -- otherwise send the query with a limit of exactCount
-  q = 'with counter as (' || 
+  q = 'with counter as (' ||
       regexp_replace(
           query,
             '\mselect.*?from',
@@ -101,4 +101,4 @@ CREATE OR REPLACE FUNCTION f_unaccent(text)
 $func$
 SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
 $func$  LANGUAGE sql IMMUTABLE;
-  
+
