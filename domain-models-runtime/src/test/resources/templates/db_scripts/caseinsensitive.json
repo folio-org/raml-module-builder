@@ -1,0 +1,16 @@
+{
+  "tables": [
+    {
+      "tableName": "item",
+      "generateId": false,
+      "pkColumnName": "_id",
+      "index": [
+        {
+          "fieldName": "title",
+          "tOps": "ADD",
+          "caseSensitive": false
+        }
+      ]
+    }
+  ]
+}
