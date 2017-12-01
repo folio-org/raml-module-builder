@@ -43,6 +43,7 @@ public class RamlDirCopierTest {
     assertJsonEquals("message.schema", "message.schema.deref");
     assertJsonEquals("a/b/message.schema", "message.schema.deref");
     assertJsonEquals("x/y/messages.schema", "messages.schema.deref");
+    assertJsonEquals("usergroups.json", "usergroups.json.deref");
   }
 
   @Test

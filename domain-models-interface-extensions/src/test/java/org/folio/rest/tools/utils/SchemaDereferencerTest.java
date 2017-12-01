@@ -41,7 +41,8 @@ public class SchemaDereferencerTest {
                "message.schema, message.schema.deref",
                "messages.schema, messages.schema.deref",
                "a/b/message.schema, message.schema.deref",
-               "x/y/messages.schema, messages.schema.deref"
+               "x/y/messages.schema, messages.schema.deref",
+               "usergroups.json, usergroups.json.deref",
               })
   public void deref(String inputFile, String expectedFile) throws IOException {
     assertThat(dereferencedSchema(inputFile), is(readJson(expectedFile)));

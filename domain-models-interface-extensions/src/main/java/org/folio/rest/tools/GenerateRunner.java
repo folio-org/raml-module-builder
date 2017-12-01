@@ -36,7 +36,8 @@ public class GenerateRunner {
   private static final GeneratorProxy GENERATOR = new GeneratorProxy();
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs";
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
-  private static final String SOURCES_DEFAULT = "/ramls/";
+  private static final String SOURCES_DEFAULT1 = "/ramls/";
+  private static final String SOURCES_DEFAULT2 = "/raml-util/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
 
   private static final Logger log = Logger.getLogger(GenerateRunner.class);
@@ -105,8 +106,11 @@ public class GenerateRunner {
     generateRunner.setCustomFields(System.getProperties().getProperty("jsonschema.customfield"));
 
     String ramlsDir = System.getProperty("raml_files");
-    if(ramlsDir == null) {
-      ramlsDir = root + SOURCES_DEFAULT;
+    if (ramlsDir == null) {
+      ramlsDir = root + SOURCES_DEFAULT1;
+      if (new File(root + SOURCES_DEFAULT2).exists()) {
+        ramlsDir += "," + root + SOURCES_DEFAULT2;
+      }
     }
 
     String [] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
@@ -162,6 +166,7 @@ public class GenerateRunner {
    */
   public static void copyRamlDirToTarget(String inputDirectory, String targetDirectory)
       throws IOException {
+    log.info("copying ramls from source directory at: " + inputDirectory);
     log.info("copying ramls to target directory at: " + targetDirectory);
     RamlDirCopier.copy(Paths.get(inputDirectory), Paths.get(targetDirectory));
   }
