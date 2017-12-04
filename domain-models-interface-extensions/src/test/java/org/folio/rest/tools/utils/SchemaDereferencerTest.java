@@ -40,8 +40,6 @@ public class SchemaDereferencerTest {
   @Parameters({"parameters.schema, parameters.schema",
                "message.schema, message.schema.deref",
                "messages.schema, messages.schema.deref",
-               "a/b/message.schema, message.schema.deref",
-               "x/y/messages.schema, messages.schema.deref",
                "usergroups.json, usergroups.json.deref",
               })
   public void deref(String inputFile, String expectedFile) throws IOException {

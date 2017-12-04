@@ -17,7 +17,7 @@ public class GenerateRunnerTest {
   private String baseDir = userDir + "/target/GenerateRunnerTest";
   private String jobJava  = baseDir + "/src/main/java/org/folio/rest/jaxrs/model/Job.java";
   private String testJava = baseDir + "/src/main/java/org/folio/rest/jaxrs/model/TestSchema.java";
-  private String messagesSchema = baseDir + "/target/classes/schemas/x/y/messages.schema";
+  private String messagesSchema = baseDir + "/target/classes/schemas/x/y/msgs.schema";
 
   @Before
   public void cleanDir() throws IOException {
