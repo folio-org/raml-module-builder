@@ -734,6 +734,7 @@ public class RestVerticle extends AbstractVerticle {
       if (statusCode != 204) {
         response.setChunked(true);
       }
+
       response.setStatusCode(statusCode);
 
       // !!!!!!!!!!!!!!!!!!!!!! CORS commented OUT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1451,6 +1452,20 @@ public class RestVerticle extends AbstractVerticle {
       //StringBuffer sb = new StringBuffer();
 
       for (ConstraintViolation<?> cv : validationErrors) {
+
+        if("must be null".equals(cv.getMessage())){
+          /**
+           * read only fields are marked with a 'must be null' annotation @null
+           * so the client should not pass them in, if they were passed in, remove them here
+           * so that they do not reach the implementing function
+           */
+          try {
+            content = JsonObject.mapFrom(content).remove(cv.getPropertyPath().toString());
+            continue;
+          } catch (Exception e) {
+            log.warn("Failed to remove " + cv.getPropertyPath().toString() + " field from body when calling " + rc.request().absoluteURI(), e);
+          }
+        }
         Error error = new Error();
         Parameter p = new Parameter();
         String field = cv.getPropertyPath().toString();
