@@ -17,7 +17,7 @@
     </#if>
     </#list>
   </#if>
-  
+
   <#-- Create / Drop unique indexes -->
   <#if table.uniqueIndex??>
     <#list table.uniqueIndex as indexes>
@@ -49,7 +49,7 @@
           <#if indexes.removeAccents == true>f_unaccent(</#if>
             ${indexes.fieldPath}
           <#if indexes.removeAccents == true>)</#if>
-        ) 
+        )
     text_pattern_ops)
     <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
     <#else>
@@ -68,7 +68,7 @@
           <#if indexes.removeAccents == true>f_unaccent(</#if>
             ${indexes.fieldPath}
           <#if indexes.removeAccents == true>)</#if>
-        ) 
+        )
     gin_trgm_ops)
     <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
       <#else>

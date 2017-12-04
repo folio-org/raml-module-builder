@@ -1,3 +1,5 @@
+## 16.0.1
+* UICHKOUT-39: Update cql2pgjson to v1.3.1 fixing number handling
 
 ## 16.0.0
 * RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
