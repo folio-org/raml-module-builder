@@ -1510,7 +1510,7 @@ public class RestVerticle extends AbstractVerticle {
       }
     }
 
-    return new Object[]{new Boolean(ret), content};
+    return new Object[]{Boolean.valueOf(ret), content};
   }
 
   private void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path){
