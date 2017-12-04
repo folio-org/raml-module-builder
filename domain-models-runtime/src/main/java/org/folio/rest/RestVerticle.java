@@ -1272,7 +1272,9 @@ public class RestVerticle extends AbstractVerticle {
                 //is this request only to validate a field value and not an actual
                 //request for additional processing
                 List<String> field2validate = request.params().getAll("validate_field");
-                boolean isValid = isValidRequest(rc, paramArray[order], errorResp, validRequest, field2validate);
+                Object[] resp = isValidRequest(rc, paramArray[order], errorResp, validRequest, field2validate, entityClazz);
+                boolean isValid = (boolean)resp[0];
+                paramArray[order] = resp[1];
 
                 if(!isValid){
                   endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp) , validRequest);
@@ -1439,13 +1441,16 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   /**
+   * return whether the request is valid [0] and a cleaned up version of the object [1]
+   * cleaned up meaning,
    * @param errorResp
    * @param paramArray
    * @param rc
    * @param validRequest
+ * @param entityClazz
    *
    */
-  private boolean isValidRequest(RoutingContext rc, Object content, Errors errorResp, boolean[] validRequest, List<String> singleField) {
+  private Object[] isValidRequest(RoutingContext rc, Object content, Errors errorResp, boolean[] validRequest, List<String> singleField, Class<?> entityClazz) {
     Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(content);
     boolean ret = true;
     if (validationErrors.size() > 0) {
@@ -1460,7 +1465,10 @@ public class RestVerticle extends AbstractVerticle {
            * so that they do not reach the implementing function
            */
           try {
-            content = JsonObject.mapFrom(content).remove(cv.getPropertyPath().toString());
+            if(!(content instanceof JsonObject)){
+              content = JsonObject.mapFrom(content);
+            }
+            ((JsonObject)content).remove(cv.getPropertyPath().toString());
             continue;
           } catch (Exception e) {
             log.warn("Failed to remove " + cv.getPropertyPath().toString() + " field from body when calling " + rc.request().absoluteURI(), e);
@@ -1492,8 +1500,17 @@ public class RestVerticle extends AbstractVerticle {
         }
         //sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
       }
+      if(content instanceof JsonObject){
+        //we have sanitized the passed in object by removing read-only fields
+        try {
+          content = MAPPER.readValue(((JsonObject)content).encode(), entityClazz);
+        } catch (IOException e) {
+          log.error("Failed to serialize body content after removing read-only fields when calling " + rc.request().absoluteURI(), e);
+        }
+      }
     }
-    return ret;
+
+    return new Object[]{new Boolean(ret), content};
   }
 
   private void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path){
