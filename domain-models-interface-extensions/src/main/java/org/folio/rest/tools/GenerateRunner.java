@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -33,14 +32,15 @@ import io.vertx.core.json.JsonObject;
  */
 public class GenerateRunner {
 
+  private static final Logger log = Logger.getLogger(GenerateRunner.class);
+
   private static final GeneratorProxy GENERATOR = new GeneratorProxy();
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs";
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
-  private static final String SOURCES_DEFAULT1 = "/ramls/";
-  private static final String SOURCES_DEFAULT2 = "/raml-util/";
+  private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
-
-  private static final Logger log = Logger.getLogger(GenerateRunner.class);
+  private static final String DEFAULT_CUSTOM_FIELD =
+      "{\"fieldname\" : \"readonly\" , \"fieldvalue\": true , \"annotation\" : \"javax.validation.constraints.Null\"}";
 
   private String outputDirectory = null;
   private String outputDirectoryWithPackage = null;
@@ -48,9 +48,7 @@ public class GenerateRunner {
   private Configuration configuration = null;
 
   private boolean usingDefaultCustomField = true;
-  private final String defaultCustomField =
-      "{\"fieldname\" : \"readonly\" , \"fieldvalue\": true , \"annotation\" : \"javax.validation.constraints.Null\"}";
-  private String [] schemaCustomFields = { defaultCustomField };
+  private String [] schemaCustomFields = { DEFAULT_CUSTOM_FIELD };
 
   private Set<String> injectedAnnotations = new HashSet<>();
 
@@ -83,15 +81,18 @@ public class GenerateRunner {
   }
 
   /**
-   * Reads RAML and schema files and writes the generated .java files, the
-   * RAML files and the dereferenced schema files.
+   * Reads RAML and schema files and writes the generated .java files. Copy
+   * the /ramls/ directory to /target/classes/ramls/ and dereference schema files.
    * <p>
-   * The input directories of the RAML and schema files are listed
+   * The input directories of the RAML files are listed
    * in system property <code>raml_files</code> and are comma separated.
+   * Default is <code>project.basedir</code>/ramls/.
    * <p>
    * The output directories are relative to the directory
    * specified by the system property <code>project.basedir</code>, see
-   * {@link #GenerateRunner(String)}. Any existing content is removed.
+   * {@link #GenerateRunner(String)}. Default is the current directory.
+   * <p>
+   * Any existing content in the output directories is removed.
    *
    * @param args  are ignored
    * @throws Exception  on file read or file write error
@@ -99,30 +100,20 @@ public class GenerateRunner {
   public static void main(String [] args) throws Exception{
 
     String root = System.getProperties().getProperty("project.basedir");
+    if (root == null) {
+      root = new File(".").getAbsolutePath();
+    }
     String outputDirectory = root + ClientGenerator.PATH_TO_GENERATE_TO;
 
     GenerateRunner generateRunner = new GenerateRunner(outputDirectory);
     generateRunner.cleanDirectories();
     generateRunner.setCustomFields(System.getProperties().getProperty("jsonschema.customfield"));
 
-    String ramlsDir = System.getProperty("raml_files");
-    if (ramlsDir == null) {
-      ramlsDir = root + SOURCES_DEFAULT1;
-      if (new File(root + SOURCES_DEFAULT2).exists()) {
-        ramlsDir += "," + root + SOURCES_DEFAULT2;
-      }
-    }
+    copyRamlDirToTarget(root);
 
+    String ramlsDir = System.getProperty("raml_files", root + SOURCES_DEFAULT);
     String [] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
     for (String inputDirectory : paths) {
-      //copy ramls dir to /target so it is in the classpath. this is needed
-      //for the criteria object to check data types of paths in a json by
-      //checking them in the schema. will probably be further needed in the future
-      String rootPath2RamlDir = Paths.get(inputDirectory).getFileName().toString();
-      String resourceDirectory = root + RESOURCE_DEFAULT + "/" + rootPath2RamlDir;
-      copyRamlDirToTarget(inputDirectory, resourceDirectory);
-
-      // generate
       generateRunner.generate(inputDirectory);
     }
   }
@@ -149,7 +140,7 @@ public class GenerateRunner {
   public void setCustomFields(String customFields) {
     if (customFields == null) {
       usingDefaultCustomField = true;
-      schemaCustomFields = new String [] { defaultCustomField };
+      schemaCustomFields = new String [] { DEFAULT_CUSTOM_FIELD };
     } else {
       usingDefaultCustomField = false;
       schemaCustomFields = customFields.split(";");
@@ -157,20 +148,32 @@ public class GenerateRunner {
   }
 
   /**
-   * Copy the files from inputDirectory to targetDirectory and dereference all schemas that
-   * contain a $ref reference.
+   * Copy the files from the /raml/ directory to the /target/raml/ directory
+   * and dereference all schemas (*.schema, *.json) that contain a $ref reference.
    *
-   * @param inputDirectory  source
-   * @param targetDirectory  destination
+   * @param root  base directory where the /raml/ and the /target/ directory are.
    * @throws IOException on file copy error
    */
-  public static void copyRamlDirToTarget(String inputDirectory, String targetDirectory)
-      throws IOException {
-    log.info("copying ramls from source directory at: " + inputDirectory);
-    log.info("copying ramls to target directory at: " + targetDirectory);
-    RamlDirCopier.copy(Paths.get(inputDirectory), Paths.get(targetDirectory));
+  public static void copyRamlDirToTarget(String root) throws IOException {
+    File input = new File(root + SOURCES_DEFAULT);
+    if (! input.exists()) {
+      // a maven submodule may have the /ramls/ dir in the parent module
+      File parentInput = new File(root + File.separator + ".." + SOURCES_DEFAULT);
+      if (parentInput.exists()) {
+        input = parentInput;
+      }
+    }
+    File output = new File(root + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
+    log.info("copying ramls from source directory at: " + input);
+    log.info("copying ramls to target directory at: " + output);
+    RamlDirCopier.copy(input.toPath(), output.toPath());
   }
 
+  /**
+   * Generate the .java files from the .raml files.
+   * @param inputDirectory  where to search for .raml files
+   * @throws Exception  on read, write or validate error
+   */
   public void generate(String inputDirectory) throws Exception {
     log.info( "Input directory " + inputDirectory);
 
