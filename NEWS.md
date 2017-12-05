@@ -1,5 +1,6 @@
 ## 16.0.2
 * RMB-94: "readonly" fields should be ignored
+* MODINVSTOR-38: Fix number in string by updating cql2pgjson to 1.3.2
 
 ## 16.0.1
 * UICHKOUT-39: Update cql2pgjson to v1.3.1 fixing number handling
