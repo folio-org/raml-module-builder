@@ -1310,7 +1310,7 @@ It is possible to indicate that a field in the json is a readonly field when dec
       "readonly" : true
     }
 ```
-A `readonly` field is not allowed to be passed in as part of the request. A request that contains data for a field that was declared as `readonly` will throw a validation error by RMB.
+A `readonly` field is not allowed to be passed in as part of the request. A request that contains data for a field that was declared as `readonly` will have its read-only fields removed from the passed in data by RMB (the data will be passed into the implementing functions without the read-only fields)
 
 This is part of a framework exposed by RMB which allows creating a field and associating a validation constraint on that field.
 
