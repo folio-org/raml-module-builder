@@ -2,7 +2,9 @@ package org.folio.rest.tools;
 
 import org.apache.commons.io.FileUtils;
 import org.folio.util.IoUtil;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static org.hamcrest.CoreMatchers.*;
@@ -12,9 +14,21 @@ import java.io.File;
 import java.io.IOException;
 
 public class GenerateRunnerTest {
-  private String userDir = System.getProperty("user.dir");
+  private static String userDir = System.getProperty("user.dir");
+  private static File jaxrs    = new File(userDir + "/src/main/java/org/folio/rest/jaxrs");
+  private static File jaxrsBak = new File(userDir + "/src/main/java/org/folio/rest/jaxrs.bak");
   private String resourcesDir = userDir + "/src/test/resources/schemas";
   private String baseDir = userDir + "/target/GenerateRunnerTest";
+
+  @BeforeClass
+  public static void saveJaxrs() {
+    jaxrs.renameTo(jaxrsBak);  // ignore any error
+  }
+
+  @AfterClass
+  public static void restoreJaxrs() {
+    jaxrsBak.renameTo(jaxrs);  // ignore any error
+  }
 
   @Before
   public void cleanDir() throws IOException {
