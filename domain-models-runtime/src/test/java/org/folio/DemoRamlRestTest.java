@@ -32,7 +32,6 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -81,7 +80,6 @@ public class DemoRamlRestTest {
     port = NetworkUtils.nextFreePort();
 
     try {
-      setupPostgres();
       deployRestVerticle(context);
     } catch (Exception e) {
       context.fail(e);
@@ -93,11 +91,6 @@ public class DemoRamlRestTest {
         new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions,
             context.asyncAssertSuccess());
-  }
-
-  private static void setupPostgres() throws Exception {
-    //PostgresClient.setIsEmbedded(true);
-    //PostgresClient.getInstance(vertx).startEmbeddedPostgres();
   }
 
   /**
@@ -160,12 +153,6 @@ public class DemoRamlRestTest {
   @Test
   public void history(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
-  }
-
-  @Ignore
-  @Test
-  public void adminPostgres(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/admin/postgres_active_sessions?dbname=postgres", 200, "application/json");
   }
 
   private void postBook(TestContext context, String parameterString, int expectedStatus) {
