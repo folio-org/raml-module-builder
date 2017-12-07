@@ -79,8 +79,7 @@ public class AdminAPI implements AdminResource {
 
   @Override
   public void putAdminJstack(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
-    // TODO Auto-generated method stub
-
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminJstackResponse.withPlainInternalServerError("NOT IMPLEMENTED")));
   }
 
   @Override
@@ -227,11 +226,25 @@ public class AdminAPI implements AdminResource {
   public void postAdminImportSQL(InputStream entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
+    //TODO BUG, if database is down, this wont get caught and will return an OK
+    //THE sql file must be tenant specific, meaning, to insert into a table the file should
+    //have any table name prefixed with the schema - schema.table_name
+    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
+
+    if(tenantId == null){
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.withPlainBadRequest("tenant not set")));
+    }
     String sqlFile = IOUtils.toString(entity, "UTF8");
-    PostgresClient.getInstance(vertxContext.owner()).runSQLFile(sqlFile, false, reply -> {
+    PostgresClient.getInstance(vertxContext.owner(), tenantId).runSQLFile(sqlFile, false, reply -> {
       if(reply.succeeded()){
-        reply.result();
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.withOK("")));
+        if(reply.result().size() > 0){
+          //some statements failed, transaction aborted
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostAdminImportSQLResponse.withPlainBadRequest("import failed... see logs for details")));
+        }
+        else{
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.withOK("")));
+        }
       }
       else{
         asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
