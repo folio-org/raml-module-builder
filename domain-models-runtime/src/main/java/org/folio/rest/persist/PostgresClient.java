@@ -1942,7 +1942,6 @@ public class PostgresClient {
         }
       }
       copyInStatement = copyInStatement.replace("'"+filePath+"'", "STDIN");
-      //System.out.println("copyInStatement: "+copyInStatement);
       totalInsertedRecords = copyManager.copyIn(copyInStatement, new StringReader(data));
     }
     log.info("Inserted " + totalInsertedRecords + " via COPY IN. Tenant: " + tenantId);

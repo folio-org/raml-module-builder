@@ -237,7 +237,7 @@ public class AdminAPI implements AdminResource {
     String sqlFile = IOUtils.toString(entity, "UTF8");
     PostgresClient.getInstance(vertxContext.owner(), tenantId).runSQLFile(sqlFile, false, reply -> {
       if(reply.succeeded()){
-        if(reply.result().size() > 0){
+        if(!reply.result().isEmpty()){
           //some statements failed, transaction aborted
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             PostAdminImportSQLResponse.withPlainBadRequest("import failed... see logs for details")));
