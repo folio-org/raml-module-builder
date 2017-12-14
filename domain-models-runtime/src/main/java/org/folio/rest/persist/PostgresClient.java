@@ -1908,6 +1908,7 @@ public class PostgresClient {
    * @throws Exception
    */
   private void copyIn(String copyInStatement, Connection connection) throws Exception {
+    long totalInsertedRecords = 0;
     CopyManager copyManager =
         new CopyManager((BaseConnection) connection);
     if(copyInStatement.contains("STDIN")){
@@ -1915,7 +1916,7 @@ public class PostgresClient {
       int sep = copyInStatement.indexOf("\n");
       String copyIn = copyInStatement.substring(0, sep);
       String data = copyInStatement.substring(sep+1);
-      copyManager.copyIn(copyIn, new StringReader(data));
+      totalInsertedRecords = copyManager.copyIn(copyIn, new StringReader(data));
     }
     else{
       //copy from a file,
@@ -1941,10 +1942,9 @@ public class PostgresClient {
         }
       }
       copyInStatement = copyInStatement.replace("'"+filePath+"'", "STDIN");
-      System.out.println("copyInStatement: "+copyInStatement);
-      copyManager.copyIn(copyInStatement, new StringReader(data));
+      totalInsertedRecords = copyManager.copyIn(copyInStatement, new StringReader(data));
     }
-
+    log.info("Inserted " + totalInsertedRecords + " via COPY IN. Tenant: " + tenantId);
   }
 
   private void execute(String[] sql, boolean stopOnError,
