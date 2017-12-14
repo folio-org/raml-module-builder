@@ -382,7 +382,7 @@ Create JSON schemas indicating the objects exposed by the module:
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>13.0.0</version>
+      <version>16.0.2</version>
     </dependency>
   </dependencies>
 ```
