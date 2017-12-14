@@ -1,10 +1,26 @@
-## 15.0.2
+## 16.0.2
+* RMB-94: "readonly" fields should be ignored
+* MODINVSTOR-38: Fix number in string by updating cql2pgjson to 1.3.2
 
+## 16.0.1
+* UICHKOUT-39: Update cql2pgjson to v1.3.1 fixing number handling
+
+## 16.0.0
+* RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
+* RMB-82 additional / optimize counting of results via postgresClient
+* RMB-84 fix facet mechanism to use new counting RMB-82
+* RMB-88 optimize facet query
+* RMB-91 Remove case insensitive support and use generic ->'' operator
+* RMB-89 Performance checklist - various performance issues
+* RMB-99 sql EXPLAIN returns very in-accurate counts on a view , OR queries
+* RMB-77 fix documentation for declaration of json schema
+
+## 15.0.2
 * RMB-64
 * RMB-63
 * RMB-66
 * RMB-70
-* RMB-71
+* RMB-71 move rmb to log4j with proper log patterns
 * RMB-73
 * RMB-77
 * Support regular BTree indexes

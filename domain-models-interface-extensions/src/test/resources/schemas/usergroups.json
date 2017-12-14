@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "usergroups": {
+      "id": "groups",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref": "usergroup.json"
+      }
+    },
+    "total_records": {
+      "type": "integer"
+    }
+  }
+}

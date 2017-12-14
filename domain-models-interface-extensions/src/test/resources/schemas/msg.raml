@@ -1,0 +1,18 @@
+#%RAML 0.8
+
+title: Msg API
+baseUri: http://localhost:8081/v1
+version: v1
+
+schemas:
+  - a/b/msg.schema:    !include a/b/msg.schema
+  - x/y/msgs.schema:   !include x/y/msgs.schema
+  - parameters.schema: !include parameters.schema
+
+/msgs:
+    displayName: Msgs
+    description: Msgs services
+    post:
+      body:
+        application/json:
+          schema: x/y/msgs.schema

@@ -17,7 +17,8 @@ import io.vertx.core.json.JsonObject;
 public class JsonSchemaPojoUtilTest {
 
   private static final String FILE_PATH = "src/test/resources/FacetValue.java";
-  private static final String RAML_PATH = "src/test/resources/jobs.raml";
+  private static final String RAML_PATH = "src/test/resources/schemas/jobs.raml";
+  private static final File RAML_FILE = new File(RAML_PATH);
 
   @Test
   public void jsonFields2Pojo() throws Exception {
@@ -29,14 +30,14 @@ public class JsonSchemaPojoUtilTest {
 
   @Test
   public void raml() throws Exception {
-    List<GlobalSchema> schemas = JsonSchemaPojoUtil.getSchemasFromRaml(new File(RAML_PATH));
+    List<GlobalSchema> schemas = JsonSchemaPojoUtil.getSchemasFromRaml(RAML_FILE);
     assertThat(schemas.size(), is(2));
     assertThat(schemas.get(0).key(), is("jobs.schema"));
     assertThat(schemas.get(1).key(), is("job.schema"));
   }
 
   private JsonObject jobSchema() {
-    List<GlobalSchema> schemas = JsonSchemaPojoUtil.getSchemasFromRaml(new File(RAML_PATH));
+    List<GlobalSchema> schemas = JsonSchemaPojoUtil.getSchemasFromRaml(RAML_FILE);
     assertThat(schemas.get(1).key(), is("job.schema"));
     return new JsonObject(schemas.get(1).value().value());
   }

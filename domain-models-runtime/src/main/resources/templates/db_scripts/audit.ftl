@@ -1,7 +1,7 @@
 
 -- audit table to keep a history of the changes
 -- made to a record.
-CREATE TABLE IF NOT EXISTS audit_${table.tableName} (
+CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} (
    ${table.pkColumnName} UUID PRIMARY KEY,
    orig_id UUID NOT NULL,
    operation char(1) NOT NULL,

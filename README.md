@@ -214,8 +214,8 @@ See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/d
 ## Local development server
 
 To get going quickly with running a local instance of Okapi, adding a tenant and some test data,
-and deploying some modules, follow these separate brief
-[instructions](https://github.com/folio-org/ui-okapi-console/blob/master/automation/README.md).
+and deploying some modules, run
+[folio/stable-backend, a prebuilt Vagrant box](https://github.com/folio-org/folio-ansible/blob/master/doc/index.md#prebuilt-vagrant-boxes)
 
 Ensure that the sample users are loaded, and that a query is successful:
 
@@ -230,19 +230,6 @@ Use the local [API documentation](#documentation-of-the-apis) to view the RAMLs 
 ```
 http://localhost:9131/apidocs/index.html?raml=raml/users.raml
 ```
-
-Now use a similar method to deploy and enable the mod-configuration module that we started to investigate
-[above](#get-started-with-a-sample-working-module).
-
-Use the local [API documentation](#documentation-of-the-apis) to view the RAMLs, and post some entries,
-and conduct some requests:
-```
-http://localhost:9132/apidocs/index.html?raml=raml/configuration/config.raml
-```
-
-Continue to investigate the mod-configuration example.
-
-After getting started with your new module as explained below, it can be similarly deployed and investigated.
 
 ## Creating a new module
 
@@ -650,12 +637,14 @@ as the "raml-util" directory inside your "ramls" directory:
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 
-When any schema file refers to an additional schema file, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Ideally ensure that all such referenced files are below the parent file.
+When any schema file refers to an additional schema file using "$ref" syntax, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Ideally ensure that all such referenced files are below the parent file.
 It is possible to use a relative path with one set of dot-dots "../" but definitely
 [not more](https://issues.folio.org/browse/RMB-30).
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
-NOTE: The schema name of a collection must not end with `.json` to produce the correct class name.
+To create a dereferenced schema with any "$ref" replaced use [SchemaDereferencer](https://github.com/folio-org/raml-module-builder/blob/master/util/src/main/java/org/folio/util/SchemaDereferencer.java).
+
+NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
 Examples are `schemaCollection: noteCollection` in
 [note.raml](https://github.com/folio-org/mod-notes/blob/master/ramls/note.raml) and
 `schemaCollection: addresstypeCollection` in
@@ -934,9 +923,13 @@ JSONB tables in PostgreSQL. This is not mandatory and developers can work with
 regular PostgreSQL tables but will need to implement their own data access
 layer.
 
+**Important Note:** For performance reasons the Postgres client will return accurate counts for result sets with less than 50,000 results. Queries with over 50,000 results will return an estimated count.
+
 **Important Note:** The embedded Postgres can not run as root.
 
 **Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
+
+**Important Note:** Currently supported Postgres version 9.6+
 
 Currently the expected format is:
 
@@ -1119,23 +1112,53 @@ For each **table**:
 4. `mode` - should be used only to indicate `delete`
 5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
 6. `likeIndex` - indicate which fields in the json will be queried using the LIKE  - needed for fields that will be faceted on
+ - `fieldName` the field name in the json to create the index for
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
- - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case
+ - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. *Default: false* should not be changed, temporarily all indexes are created with a `lower()` function wrapper. Index will not be used if this is changed (important on large tables)
+ -  `removeAccents` - normalize accents or leave accented chars as is. *Default: true* should not be changed, temporarily all indexes are created with a `f_unaccent()` function wrapper. Index will not be used if this is changed (important on large tables)
  - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
-7. `ginIndex` - generate an inverted index on the json
+ - `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
+7. `ginIndex` - generate an inverted index on the json using the `gin_trgm_ops` extension. Allows for regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the equality operator (=). See the `likeIndex` for available options (does not support partial indexes - where). removeAccents is set to true and is not case sensitive.
 8. `withAuditing` - create an auditing table with triggers populating the audit table whenever an insert, update, or delete occurs on the table
  - the name of the audit table will be `audit_`{tableName}
  - The `auditingSnippet` section allows some customizations to the auditing function by allowing custom sqls in the declare section and the body (for either insert / update / delete)
 9. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the json and creating a FK constraint)
 10. `uniqueIndex` - create a unique index on a field in the json
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
- - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case
  - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+ - See additional options in the likeIndex section above
+11. `index` - create a btree index on a field in the json
+ - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
+ - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+ - See additional options in the likeIndex section above
 11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
 12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
 13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
 
-The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by.
+The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
+
+```
+  "views": [
+    {
+      "viewName": "items_mt_view",
+      "joinType": "JOIN",
+      "table": {
+        "tableName": "item",
+        "joinOnField": "materialTypeId"
+      },
+      "joinTable": {
+        "tableName": "material_type",
+        "joinOnField": "id",
+        "jsonFieldAlias": "mt_jsonb"
+      }
+    }
+  ]```
+
+Behind the scenes this will produce the following statement which will be run as part of the schema creation:
+```CREATE OR REPLACE VIEW ${tenantid}_${module_name}.items_mt_view AS select u._id,u.jsonb as jsonb, g.jsonb as mt_jsonb from ${tenantid}_${module_name}.item u
+   join ${tenantid}_${module_name}.material_type g on lower(f_unaccent(g.jsonb->>'id')) = lower(f_unaccent(u.jsonb->>'materialTypeId'))```
+
+Notice the  `lower(f_unaccent(` functions, currently, by default , all string fields will be wrapped in these functions (will change in the future)
 
 The **script** section allows a module to run custom SQLs before table / view creation/updates and after all tables/views have been created/updated.
 
@@ -1198,6 +1221,7 @@ PoLine poline = new PoLine();
 
 postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...
 ```
+Remember to call beginTx and endTx
 
 Querying for similar POJOs in the DB (with or without additional criteria):
 
@@ -1272,6 +1296,9 @@ For example:
 ```
 3. When building your module, an additional parameter will be added to the generated interfaces of the faceted endpoints. `List<String> facets`. You can simply convert this list into a List of Facet objects using the RMB tool as follows: `List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");` and pass the `facetList` returned to the `postgresClient`'s `get()` methods.
 
+You can set the amount of results to facet on by calling (defaults to 10,000) `FacetManager.setCalculateOnFirst(20000);`
+Note that higher numbers will potentially affect performance.
+
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
 ## Json Schema fields
@@ -1283,7 +1310,7 @@ It is possible to indicate that a field in the json is a readonly field when dec
       "readonly" : true
     }
 ```
-A `readonly` field is not allowed to be passed in as part of the request. A request that contains data for a field that was declared as `readonly` will throw a validation error by RMB.
+A `readonly` field is not allowed to be passed in as part of the request. A request that contains data for a field that was declared as `readonly` will have its read-only fields removed from the passed in data by RMB (the data will be passed into the implementing functions without the read-only fields)
 
 This is part of a framework exposed by RMB which allows creating a field and associating a validation constraint on that field.
 
@@ -1627,7 +1654,7 @@ The `HttpModuleClient2 request` function can receive the following parameters:
  - `HttpMethod` - (default: GET)
  - `endpoint` - API endpoint
  - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
- - `RollBackURL` - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
+ - `RollBackURL` - NOT SUPPORTED - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
  - `cachable` - Whether to cache the response
  - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
 `
@@ -1914,3 +1941,4 @@ See project [RMB](https://issues.folio.org/browse/RMB)
 at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
 
 Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
+

@@ -13,10 +13,8 @@ import java.io.IOException;
 
 public class GenerateRunnerTest {
   private String userDir = System.getProperty("user.dir");
-  private String resourcesDir = userDir + "/src/test/resources";
+  private String resourcesDir = userDir + "/src/test/resources/schemas";
   private String baseDir = userDir + "/target/GenerateRunnerTest";
-  private String jobJava = baseDir + "/src/main/java/org/folio/rest/jaxrs/model/Job.java";
-  private String testJava = baseDir + "/src/main/java/org/folio/rest/jaxrs/model/TestSchema.java";
 
   @Before
   public void cleanDir() throws IOException {
@@ -25,15 +23,64 @@ public class GenerateRunnerTest {
     System.clearProperty("project.basedir");
   }
 
+  private String jobJava() throws IOException {
+    return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
+        + "/src/main/java/org/folio/rest/jaxrs/model/Job.java");
+  }
+
+  private String testJava() throws IOException {
+    return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
+        + "/src/main/java/org/folio/rest/jaxrs/model/TestSchema.java");
+  }
+
+  private String msgsSchema() throws IOException {
+    return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
+        + "/target/classes/ramls/x/y/msgs.schema");
+  }
+
+  private String testSchema() throws IOException {
+    return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
+        + "/target/classes/ramls/test.schema");
+  }
+
+  private void assertTest() throws IOException {
+    assertThat(testSchema(), containsString("\"name\""));
+    assertThat(testJava(), allOf(
+        containsString("String getName("),
+        containsString("setName(String"),
+        containsString("withName(String")));
+  }
+
+  @Test
+  public void canRunMainDefaultDirs() throws Exception {
+    GenerateRunner.main(null);
+    assertTest();
+  }
+
+  private void assertJobMsgs() throws IOException {
+    assertThat(jobJava(), allOf(
+        containsString("String getModule("),
+        containsString("setModule(String"),
+        containsString("withModule(String")));
+    assertThat(msgsSchema(), containsString("\"value\""));
+  }
+
   @Test
   public void canRunMain() throws Exception {
     System.setProperty("raml_files", resourcesDir);
     System.setProperty("project.basedir", baseDir);
+    FileUtils.copyDirectory(new File(resourcesDir), new File(baseDir + "/ramls/"));
     GenerateRunner.main(null);
-    assertThat(IoUtil.toStringUtf8(jobJava), allOf(
-        containsString("String getModule("),
-        containsString("setModule(String"),
-        containsString("withModule(String")));
+    assertJobMsgs();
+  }
+
+  @Test
+  public void canRunMainParentDir() throws Exception {
+    System.setProperty("raml_files", resourcesDir);
+    System.setProperty("project.basedir", baseDir + "/submodule");
+    FileUtils.copyDirectory(new File(resourcesDir), new File(baseDir + "/ramls/"));
+    GenerateRunner.main(null);
+    assertJobMsgs();
   }
 
   @Test(expected=IOException.class)
@@ -47,9 +94,6 @@ public class GenerateRunnerTest {
     FileUtils.copyDirectory(new File(userDir + "/ramls/"), new File(baseDir + "/ramls/"));
     System.setProperty("project.basedir", baseDir);
     GenerateRunner.main(null);
-    assertThat(IoUtil.toStringUtf8(testJava), allOf(
-        containsString("String getName("),
-        containsString("setName(String"),
-        containsString("withName(String")));
+    assertTest();
   }
 }

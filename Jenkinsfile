@@ -1,7 +1,5 @@
 
-buildMvnMod {
-  doDocker = 'no'
-  publishModDescriptor = 'no'
+buildMvn {
   publishAPI = 'yes'
   mvnDeploy = 'yes'
 }

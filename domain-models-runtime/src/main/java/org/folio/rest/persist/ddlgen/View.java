@@ -12,6 +12,7 @@ public class View {
   private String mode;
   private double fromModuleVersion;
   private String pkColumnName = "id";
+  private String joinType = "JOIN";
 
   public String getViewName() {
     return viewName;
@@ -48,6 +49,12 @@ public class View {
   }
   public void setPkColumnName(String pkColumnName) {
     this.pkColumnName = pkColumnName;
+  }
+  public String getJoinType() {
+    return joinType;
+  }
+  public void setJoinType(String joinType) {
+    this.joinType = joinType;
   }
 
 }

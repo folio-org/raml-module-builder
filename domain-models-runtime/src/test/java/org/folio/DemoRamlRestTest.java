@@ -22,6 +22,7 @@ import org.folio.rest.client.RmbtestsClient;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.parser.JsonPathParser;
@@ -166,6 +167,7 @@ public class DemoRamlRestTest {
     b.setStatus(0);
     b.setSuccess(true);
     book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", "abcdefg", true);
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", "abcdefg", false);
 
@@ -176,6 +178,20 @@ public class DemoRamlRestTest {
 
 
     postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org", null, 200, 0, "application/json", "abcdefg", false);
+
+    Metadata md = new Metadata();
+    md.setCreatedByUserId("12345678-1234-1234-1234-123456789098");
+    md.setCreatedByUsername("you");
+    md.setCreatedDate(new Date());
+    md.setUpdatedDate(new Date());
+    md.setUpdatedByUserId("123456789098");
+    b.setMetadata(md);
+    postData(context, "http://localhost:" + port + "/rmbtests/books",
+      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 422, 1, "application/json", "abcdefg", false);
+
+    md.setUpdatedByUserId("12345678-1234-1234-1234-123456789098");
+    postData(context, "http://localhost:" + port + "/rmbtests/books",
+      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 201, 1, "application/json", "abcdefg", false);
 
     List<Object> list = getListOfBooks();
 
@@ -347,6 +363,10 @@ public class DemoRamlRestTest {
       e.printStackTrace();
     } finally {
     }
+  }
+
+  private void httpClientTest(){
+
   }
 
   /**
