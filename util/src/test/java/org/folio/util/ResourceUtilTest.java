@@ -2,6 +2,7 @@ package org.folio.util;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.folio.rest.testing.UtilityClassTester;
@@ -26,6 +27,11 @@ public class ResourceUtilTest {
   @Test
   public void readEmptyFile() throws IOException {
     assertEquals("", ResourceUtil.asString("ResourceUtilEmpty.bin"));
+  }
+
+  @Test
+  public void readEmptyFileFromOtherClass() throws IOException {
+    assertEquals("", ResourceUtil.asString("ResourceUtilEmpty.bin", File.class));
   }
 
   @Test
