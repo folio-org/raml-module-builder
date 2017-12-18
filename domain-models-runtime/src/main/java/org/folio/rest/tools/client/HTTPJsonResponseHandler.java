@@ -1,14 +1,16 @@
 package org.folio.rest.tools.client;
 
+import java.nio.charset.Charset;
+import java.util.concurrent.CompletableFuture;
+
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
-import java.util.concurrent.CompletableFuture;
 
 /**
  * @author shale
@@ -98,7 +100,19 @@ class HTTPJsonResponseHandler implements Handler<HttpClientResponse> {
         r.body = bh.toJsonObject();
         cf.complete(r);
       } catch (DecodeException decodeException) {
-        cf.completeExceptionally(decodeException);
+        if("text/plain".equals(r.getHeaders().get("Accept"))){
+          //currently only support json responses
+          //best effort to wrap text
+          try {
+            r.body = new JsonObject("{\"wrapped_text\": "+bh.getByteBuf().toString(Charset.defaultCharset())+"}");
+            cf.complete(r);
+          } catch (Exception e) {
+            cf.completeExceptionally(decodeException);
+          }
+        }
+        else{
+          cf.completeExceptionally(decodeException);
+        }
       }
     }
   }
