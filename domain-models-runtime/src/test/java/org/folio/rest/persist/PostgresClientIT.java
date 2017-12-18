@@ -135,6 +135,8 @@ public class PostgresClientIT {
   public void getInstance(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx);
     PostgresClient c2 = PostgresClient.getInstance(vertx);
+    c1.closeClient(context.asyncAssertSuccess());
+    c2.closeClient(context.asyncAssertSuccess());
     context.assertEquals(c1, c2, "same instance");
   }
 
@@ -142,6 +144,8 @@ public class PostgresClientIT {
   public void getInstanceTenant(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
     PostgresClient c2 = PostgresClient.getInstance(vertx, TENANT);
+    c1.closeClient(context.asyncAssertSuccess());
+    c2.closeClient(context.asyncAssertSuccess());
     context.assertEquals(c1, c2, "same instance");
   }
 
@@ -152,6 +156,7 @@ public class PostgresClientIT {
     c1.closeClient(a -> {
       PostgresClient c2 = PostgresClient.getInstance(vertx);
       context.assertNotEquals(c1, c2, "different instance");
+      c2.closeClient(context.asyncAssertSuccess());
       async.complete();
     });
   }
@@ -163,6 +168,7 @@ public class PostgresClientIT {
     c1.closeClient(a -> {
       PostgresClient c2 = PostgresClient.getInstance(vertx, TENANT);
       context.assertNotEquals(c1, c2, "different instance");
+      c2.closeClient(context.asyncAssertSuccess());
       async.complete();
     });
   }
@@ -243,7 +249,7 @@ public class PostgresClientIT {
 
   @Test
   public void tenantSeparation(TestContext context) {
-    // suppress access violation errors
+    // don't log expected access violation errors
     LogManager.getRootLogger().setLevel(Level.FATAL);
 
     String tenant = "tenantSeparation";
@@ -262,13 +268,16 @@ public class PostgresClientIT {
     selectFail(context, c1, tenant2);
     // c2 must be blocked from accessing schema TENANT
     selectFail(context, c2, tenant);
+    c1.closeClient(context.asyncAssertSuccess());
+    c2.closeClient(context.asyncAssertSuccess());
   }
 
   @Test
   public void parallel(TestContext context) {
-    int n = 10;
+    /** number of parallel queries */
+    int n = 20;
     /** sleep time in milliseconds */
-    double sleep = 100;
+    double sleep = 150;
     String selectSleep = "select pg_sleep(" + sleep/1000 + ")";
     /** maximum duration in milliseconds for the completion of all parallel queries */
     long maxDuration = (long) (n * sleep / 2);
@@ -278,6 +287,7 @@ public class PostgresClientIT {
      */
     Async async = context.async();
     PostgresClient client = PostgresClient.getInstance(vertx);
+
     List<Future> futures = new ArrayList<>(n);
     for (int i=0; i<n; i++) {
       Future<ResultSet> future = Future.future();
@@ -286,8 +296,9 @@ public class PostgresClientIT {
     }
     long start = System.currentTimeMillis();
     CompositeFuture.all(futures).setHandler(handler -> {
-      context.assertTrue(handler.succeeded());
       long duration = System.currentTimeMillis() - start;
+      client.closeClient(whenDone -> {});
+      context.assertTrue(handler.succeeded());
       context.assertTrue(duration < maxDuration,
           "duration must be less than " + maxDuration + " ms, it is " + duration + " ms");
       async.complete();
