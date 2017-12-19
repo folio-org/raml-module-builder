@@ -1,3 +1,12 @@
+## 16.0.3
+* RMB-103: Schema dereferencing requires a ramls/ directory with the raml and schema files.
+* RMB-106: Set Locale.US, use Logger, split into separate tests.
+* importSQL tenant sensitive
+* RMB-110: Lift time limit in PostgresClientIT.parallel(...)
+* hack to handle simple text response for rmb http client
+* ResourceUtil.asString(...): more documentation, more options
+* CQLPG-29 "sortBy field" sorts by null (cql2pgjson:1.3.3)
+
 ## 16.0.2
 * RMB-94: "readonly" fields should be ignored
 * MODINVSTOR-38: Fix number in string by updating cql2pgjson to 1.3.2
