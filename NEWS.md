@@ -1,4 +1,4 @@
-## 16.0.3
+## 16.0.3 2017-12-19
 * RMB-103: Schema dereferencing requires a ramls/ directory with the raml and schema files.
 * RMB-106: Set Locale.US, use Logger, split into separate tests.
 * importSQL tenant sensitive
@@ -7,14 +7,14 @@
 * ResourceUtil.asString(...): more documentation, more options
 * CQLPG-29 "sortBy field" sorts by null (cql2pgjson:1.3.3)
 
-## 16.0.2
+## 16.0.2 2017-12-05
 * RMB-94: "readonly" fields should be ignored
 * MODINVSTOR-38: Fix number in string by updating cql2pgjson to 1.3.2
 
-## 16.0.1
+## 16.0.1 2017-12-01
 * UICHKOUT-39: Update cql2pgjson to v1.3.1 fixing number handling
 
-## 16.0.0
+## 16.0.0 2017-11-29
 * RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
 * RMB-82 additional / optimize counting of results via postgresClient
 * RMB-84 fix facet mechanism to use new counting RMB-82
@@ -24,7 +24,7 @@
 * RMB-99 sql EXPLAIN returns very in-accurate counts on a view , OR queries
 * RMB-77 fix documentation for declaration of json schema
 
-## 15.0.2
+## 15.0.2 2017-11-04
 * RMB-64
 * RMB-63
 * RMB-66
@@ -34,7 +34,7 @@
 * RMB-77
 * Support regular BTree indexes
 
-## 15.0.0
+## 15.0.0 2017-09-26
 
 * RMB-61 move sql templates into rmb (break backwards compatibility for implementing modules using the sql scripts to generate a DB schema on tenant creation / update / delete)
 
