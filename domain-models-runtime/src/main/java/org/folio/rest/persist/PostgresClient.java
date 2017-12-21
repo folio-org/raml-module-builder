@@ -2053,8 +2053,10 @@ public class PostgresClient {
         locale = "american_usa";
       }
 
-      final PostgresConfig config = new PostgresConfig(Version.V9_6_5, new AbstractPostgresConfig.Net(DEFAULT_IP, port),
-        new AbstractPostgresConfig.Storage(database), new AbstractPostgresConfig.Timeout(20000),
+      final PostgresConfig config = new PostgresConfig(Version.Main.PRODUCTION,
+        new AbstractPostgresConfig.Net(DEFAULT_IP, port),
+        new AbstractPostgresConfig.Storage(database),
+        new AbstractPostgresConfig.Timeout(20000),
         new AbstractPostgresConfig.Credentials(username, password));
 
       config.getAdditionalInitDbParams().addAll(Arrays.asList(
