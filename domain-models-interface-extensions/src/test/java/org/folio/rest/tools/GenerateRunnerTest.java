@@ -26,7 +26,8 @@ public class GenerateRunnerTest {
   }
 
   @AfterClass
-  public static void restoreJaxrs() {
+  public static void restoreJaxrs() throws IOException {
+    FileUtils.deleteDirectory(jaxrs);
     jaxrsBak.renameTo(jaxrs);  // ignore any error
   }
 
