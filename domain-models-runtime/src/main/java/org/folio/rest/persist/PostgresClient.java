@@ -1860,7 +1860,10 @@ public class PostgresClient {
           if(inCopy)  {
             singleStatement.append("\n");
           }
-          singleStatement.append(" " + allLines[i]);
+          else{
+            singleStatement.append(" ");
+          }
+          singleStatement.append(allLines[i]);
         }
       }
       String lastStatement = singleStatement.toString();
@@ -1966,14 +1969,14 @@ public class PostgresClient {
 
         for (int j = 0; j < sql.length; j++) {
           try {
-            log.info("trying to execute: " + sql[j]);
+            log.info("trying to execute: " + sql[j].substring(0, Math.min(sql[j].length()-1, 400)));
             if(sql[j].trim().toUpperCase().startsWith("COPY ")){
               copyIn(sql[j], connection);
             }
             else{
               statement.executeUpdate(sql[j]); //NOSONAR
             }
-            log.info("Successfully executed: " + sql[j]);
+            log.info("Successfully executed: " + sql[j].substring(0, Math.min(sql[j].length()-1, 400)));
           } catch (Exception e) {
             results.add(sql[j]);
             error = true;

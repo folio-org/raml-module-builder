@@ -48,4 +48,10 @@ public class CQLWrapperTest {
     assertThat(wrapper.toString(), is(" WHERE true and true or true"));
   }
 
+  @Test
+  public void sortBy() throws FieldException {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("field");
+    CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1 sortBy name");
+    assertThat(wrapper.toString(), stringContainsInOrder(" WHERE true ORDER BY ", "name"));
+  }
 }

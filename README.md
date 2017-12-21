@@ -237,7 +237,8 @@ http://localhost:9131/apidocs/index.html?raml=raml/users.raml
 
 Create the new project using the normal layout of files and basic POM file.
 
-Add an area for the RAML, schemas, and examples files, e.g. `/ramls`.
+Add the `/ramls` directory, the area for the RAML, schemas, and examples files.
+For a maven subproject the directory may be at the parent project only.
 (See [notes](#step-6-design-the-raml-files) below.)
 These define the API endpoints.
 Get started by using the following familiar example:
@@ -382,7 +383,7 @@ Create JSON schemas indicating the objects exposed by the module:
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>16.0.2</version>
+      <version>16.0.3</version>
     </dependency>
   </dependencies>
 ```
@@ -642,7 +643,8 @@ It is possible to use a relative path with one set of dot-dots "../" but definit
 [not more](https://issues.folio.org/browse/RMB-30).
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
-To create a dereferenced schema with any "$ref" replaced use [SchemaDereferencer](https://github.com/folio-org/raml-module-builder/blob/master/util/src/main/java/org/folio/util/SchemaDereferencer.java).
+The GenerateRunner automatically dereferences the schema files and places them into the
+`target/classes/ramls/` directory.
 
 NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
 Examples are `schemaCollection: noteCollection` in

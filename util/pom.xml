@@ -5,17 +5,12 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>16.0.3-SNAPSHOT</version>
+    <version>16.0.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>util</artifactId>
 
   <dependencies>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-core</artifactId>
-    </dependency>
-
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
