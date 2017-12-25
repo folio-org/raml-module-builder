@@ -88,7 +88,7 @@ public class AnnotationGrabber {
     Collection<Object> classNames = Collections2.transform(classes, new Function<ClassPath.ClassInfo, Object>() {
       @Override
       public Object apply(ClassPath.ClassInfo input) {
-        System.out.println("Mapping functions in " + input.getName() +" class to appropriate urls");
+        log.info("Mapping functions in " + input.getName() +" class to appropriate urls");
         return input.getName(); // not needed - dont need transform function,
                                 // remove
       }

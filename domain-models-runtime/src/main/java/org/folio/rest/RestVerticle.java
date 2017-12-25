@@ -954,7 +954,7 @@ public class RestVerticle extends AbstractVerticle {
     // loadConfig(JSON_URL_MAPPINGS);
     Set<String> classURLs = jObjClasses.fieldNames();
     classURLs.forEach(classURL -> {
-      System.out.println(classURL);
+      log.info(classURL);
       JsonObject jObjMethods = jObjClasses.getJsonObject(classURL);
       Set<String> methodURLs = jObjMethods.fieldNames();
       jObjMethods.fieldNames();
