@@ -410,13 +410,22 @@ Four plugins need to be declared in the POM file:
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
 
-Add `ramlfiles_path` property indicating the location of the RAML directories:
+Add `ramlfiles_path` property indicating the location of the RAML directory,
+only this directory skipping subdirectories is scanned for .raml files:
 
 ```xml
   <properties>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
   </properties>
 ```
+
+Example: https://github.com/folio-org/mod-circulation-storage/
+
+Alternatively the .raml files can be placed into the https://github.com/folio-org/raml
+repository and included as a git submodule in the raml-util directory,
+an example is https://github.com/folio-org/mod-codex-mock/ with
+
+`<ramlfiles_path>${basedir}/ramls/raml-util/ramls/codex</ramlfiles_path>`
 
 Add the plugins:
 
@@ -644,7 +653,9 @@ It is possible to use a relative path with one set of dot-dots "../" but definit
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
-`target/classes/ramls/` directory.
+`target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
+subdirectories, if not found then `${basedir}/../ramls/` supporting maven submodules with
+common ramls directory.
 
 NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
 Examples are `schemaCollection: noteCollection` in
