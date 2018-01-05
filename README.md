@@ -948,7 +948,7 @@ Currently the expected format is:
 
 ```sql
 create table <schema>.<table_name> (
-  _id SERIAL PRIMARY KEY,
+  _id UUID PRIMARY KEY,
   jsonb JSONB NOT NULL
 );
 ```
