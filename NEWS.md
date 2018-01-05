@@ -1,3 +1,6 @@
+## 16.0.4 not yet released
+* CQLPG-31: CQL number match when invoked without schema (cql2pgjson:1.3.4)
+
 ## 16.0.3 2017-12-19
 * RMB-103: Schema dereferencing requires a ramls/ directory with the raml and schema files.
 * RMB-106: Set Locale.US, use Logger, split into separate tests.
