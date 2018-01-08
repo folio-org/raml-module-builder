@@ -193,27 +193,36 @@ public class SchemaMaker {
     }
 
     List<View> views = this.schema.getViews();
+    int tablePrefix = 0;
     if(views != null){
       int size = views.size();
       for (int i = 0; i < size; i++) {
         View v = views.get(i);
+        //we really only care about deletes from a mode standpoint, since we run CREATE OR REPLACE
         if(v.getMode() == null){
           v.setMode("new");
         }
-        ViewTable vt = v.getJoinTable();
-        Index index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
-        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
-        if(index != null){
-          vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
-          vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
-        }
+        List<Join> joins = v.getJoin();
+        int jSize = joins.size();
+        for (int j = 0; j < jSize; j++) {
+          Join join = joins.get(j);
+          ViewTable vt = join.getJoinTable();
+          vt.setPrefix("p"+tablePrefix++);
+          Index index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
+          vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
+          if(index != null){
+            vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
+            vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
+          }
 
-        vt = v.getTable();
-        index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
-        vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
-        if(index != null){
-          vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
-          vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
+          vt = join.getTable();
+          vt.setPrefix("p"+tablePrefix++);
+          index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
+          vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
+          if(index != null){
+            vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
+            vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
+          }
         }
       }
     }
@@ -310,7 +319,7 @@ public class SchemaMaker {
   public static void main(String args[]) throws Exception {
 
     SchemaMaker fm = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
-    String f = "C:\\Git\\clones\\invstorage-rmb15\\mod-inventory-storage\\src\\main\\resources\\templates\\db_scripts\\schema.json";
+    String f = "C:\\Git\\raml-module-builder\\domain-models-runtime\\src\\main\\resources\\templates\\db_scripts\\examples\\schema.json.example";
     byte[] encoded = Files.readAllBytes(Paths.get(f));
     String json = new String(encoded, "UTF8");
 
