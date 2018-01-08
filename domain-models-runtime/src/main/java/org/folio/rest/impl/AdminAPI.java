@@ -25,6 +25,7 @@ import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.ClientGenerator;
+import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
@@ -617,6 +618,50 @@ public class AdminAPI implements AdminResource {
         }
     });
 
+  }
+
+  @Validate
+  @Override
+  public void postAdminPostgresMaintenance(String table, Command command, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
+    String module = PomReader.INSTANCE.getModuleName();
+
+    String querySuffix = tenantId+"_"+module+"."+table+";";
+    String query = null;
+
+    if(Command.ANALYZE == command){
+      query = "analyze " + querySuffix;
+    }
+    else if(Command.VACUUM == command){
+      query = "vacuum " + querySuffix;
+    }
+    else if(Command.VACUUM_ANALYZE == command){
+      query = "vacuum analyze " + querySuffix;
+    }
+    else if(Command.VACUUM_VERBOSE == command){
+      query = "vacuum verbose " + querySuffix;
+    }
+    try{
+      PostgresClient.getInstance(vertxContext.owner()).select(query, reply -> {
+        if(reply.succeeded()){
+
+          OutStream stream = new OutStream();
+          stream.setData(reply.result().getRows());
+
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminPostgresMaintenanceResponse.
+            withJsonCreated(stream)));
+        }
+        else{
+          log.error(reply.cause().getMessage(), reply.cause());
+          asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+        }
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage());
+      asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+    }
   }
 
 }
