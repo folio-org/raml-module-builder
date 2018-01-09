@@ -38,7 +38,7 @@
     <generated_files_path>${basedir}/src/main/java</generated_files_path>
     <vertx-version>3.4.1</vertx-version>
     <jackson-version>2.2.2</jackson-version>
-    <postgresql-embedded-version>2.6</postgresql-embedded-version>
+    <postgresql-embedded-version>2.2</postgresql-embedded-version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <generate_routing_context>/rmbtests/test</generate_routing_context>

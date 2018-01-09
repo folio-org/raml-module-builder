@@ -2053,7 +2053,7 @@ public class PostgresClient {
         locale = "american_usa";
       }
 
-      final PostgresConfig config = new PostgresConfig(Version.Main.PRODUCTION,
+      final PostgresConfig config = new PostgresConfig(Version.Main.V9_6,
         new AbstractPostgresConfig.Net(DEFAULT_IP, port),
         new AbstractPostgresConfig.Storage(database),
         new AbstractPostgresConfig.Timeout(20000),
