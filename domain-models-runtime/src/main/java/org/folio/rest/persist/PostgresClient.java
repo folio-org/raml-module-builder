@@ -144,7 +144,7 @@ public class PostgresClient {
     REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("ORDER BY", Pattern.compile("ORDER BY(([^']*'){2})*\\s+(desc|asc|)", 2)));
   }
 
-  private PostgresClient(Vertx vertx, String tenantId) throws Exception {
+  protected PostgresClient(Vertx vertx, String tenantId) throws Exception {
     init(vertx, tenantId);
   }
 
