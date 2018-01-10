@@ -1969,7 +1969,7 @@ public class PostgresClient {
 
         for (int j = 0; j < sql.length; j++) {
           try {
-            log.info("trying to execute: " + sql[j].substring(0, Math.min(sql[j].length()-1, 400)));
+            log.info("trying to execute: " + sql[j].substring(0, Math.min(sql[j].length()-1, 800)));
             if(sql[j].trim().toUpperCase().startsWith("COPY ")){
               copyIn(sql[j], connection);
             }

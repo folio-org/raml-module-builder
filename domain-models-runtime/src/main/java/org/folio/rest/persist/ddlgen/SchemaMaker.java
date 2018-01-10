@@ -207,7 +207,7 @@ public class SchemaMaker {
         for (int j = 0; j < jSize; j++) {
           Join join = joins.get(j);
           ViewTable vt = join.getJoinTable();
-          vt.setPrefix("p"+tablePrefix++);
+          vt.setPrefix(vt.getTableName());
           Index index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
           vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
           if(index != null){
@@ -216,7 +216,7 @@ public class SchemaMaker {
           }
 
           vt = join.getTable();
-          vt.setPrefix("p"+tablePrefix++);
+          vt.setPrefix(vt.getTableName());
           index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
           vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
           if(index != null){
