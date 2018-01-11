@@ -226,7 +226,7 @@ public class PostgresRunner extends AbstractVerticle {
     log.debug("startPostgres(postgresPort={0}, username={1}, password [not shown])", postgresPort, username);
     try {
       final PostgresConfig config = new PostgresConfig(
-          Version.Main.PRODUCTION,
+          Version.Main.V9_6,
           new PostgresConfig.Net("localhost", postgresPort),
           new PostgresConfig.Storage("database"),
           new PostgresConfig.Timeout(),
