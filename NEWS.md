@@ -1,5 +1,6 @@
-## 16.0.4 not yet released
-* CQLPG-31: CQL number match when invoked without schema (cql2pgjson:1.3.4)
+## 17.0.0 not yet released
+* RMB-119: CQL's default relation "=" now uses "adj" relation for strings (was "all")
+* CQLPG-30, CQLPG-31: Fix number handling in CQL queries
 
 ## 16.0.3 2017-12-19
 * RMB-103: Schema dereferencing requires a ramls/ directory with the raml and schema files.
