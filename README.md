@@ -942,7 +942,7 @@ layer.
 
 **Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
 
-**Important Note:** Currently supported Postgres version 9.6+
+**Important Note:** Currently we only support Postgres version 9.6; version 10 doesn't work, see [RMB-121](https://issues.folio.org/browse/RMB-121).
 
 Currently the expected format is:
 
