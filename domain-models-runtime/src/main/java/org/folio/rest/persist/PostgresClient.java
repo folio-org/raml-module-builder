@@ -2,6 +2,7 @@ package org.folio.rest.persist;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.sql.Connection;
@@ -155,31 +156,72 @@ public class PostgresClient {
     StrSubstitutor sub = new StrSubstitutor(replaceMapping);
     returningId = sub.replace(returningIdTemplate);
   }
+
   /**
-   * only affect is of setting this is that it sets default connection params
-   * in the init() in case the postgres json config isnt found.
-   * @param embed - whether to use an embedded postgres instance
+   * Enable or disable using embedded specific defaults for the
+   * PostgreSQL configuration. They are used if there is no
+   * postgres json config file.
+   * <p>
+   * This function must be invoked before calling the constructor.
+   * <p>
+   * The embedded specific defaults are:
+   * <ul>
+   * <li><code>username = "username"</code></li>
+   * <li><code>password = "password"</code></li>
+   * <li><code>host = "127.0.0.1"</code></li>
+   * <li><code>port = 6000</code></li>
+   * <li><code>database = "postgres"</code></li>
+   * </ul>
+   *
+   * @param embed - whether to use embedded specific defaults
    */
   public static void setIsEmbedded(boolean embed){
     embeddedMode = embed;
   }
 
+  /**
+   * Set the port that overwrites to port of the embedded PostgreSQL.
+   * This port overwrites any default port and any port set in the
+   * PostgreSQL configuration file. It is only used when <code>isEmbedded() == true</code>
+   * when invoking the constructor.
+   * <p>
+   * This function must be invoked before calling the constructor.
+   * <p>
+   * Use -1 to not overwrite the port.
+   *
+   * @param port  the port for embedded PostgreSQL, or -1 to not overwrite the port
+   */
   public static void setEmbeddedPort(int port){
     embeddedPort = port;
   }
 
+  /**
+   * True if embedded specific defaults for the
+   * PostgreSQL configuration should be used if there is no
+   * postgres json config file.
+   * @return true for using embedded specific defaults
+   * @see #setIsEmbedded(boolean)
+   */
   public static boolean isEmbedded(){
     return embeddedMode;
   }
 
   /**
-   * must be called before getInstance() for this to take affect
-   * @param path
+   * Set the path to the PostgreSQL connection configuration,
+   * must be called before getInstance() to take affect.
+   * <p>
+   * This function must be invoked before calling the constructor.
+   *
+   * @param path  new path, or null to use the default path "/postgres-conf.json"
    */
   public static void setConfigFilePath(String path){
     configPath = path;
   }
 
+  /**
+   * @return the path to the PostgreSQL connection configuration file;
+   *   this is never null
+   */
   public static String getConfigFilePath(){
     if(configPath == null){
       configPath = POSTGRES_LOCALHOST_CONFIG;
@@ -365,7 +407,7 @@ public class PostgresClient {
   }
 
   /**
-   * Log postgreSQLClientConfig
+   * Log postgreSQLClientConfig.
    */
   private void logPostgresConfig() {
     if (! log.isInfoEnabled()) {
@@ -376,6 +418,14 @@ public class PostgresClient {
     log.info("postgreSQLClientConfig = " + passwordRedacted.encode());
   }
 
+  /**
+   * The PostgreSQL connection info to create the connection, see
+   * <a href="http://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration">configuration
+   * documentation</a>.
+   *
+   * @return the configuration
+   * @see io.vertx.ext.asyncsql.PostgreSQLClient#createNonShared(Vertx vertx, JsonObject config)
+   */
   public JsonObject getConnectionConfig(){
     return postgreSQLClientConfig;
   }
@@ -2028,7 +2078,14 @@ public class PostgresClient {
     });
   }
 
-  public void startEmbeddedPostgres() throws Exception {
+  /**
+   * Start an embedded PostgreSQL using the configuration of {@link #getConnectionConfig()}.
+   * It also sets embedded mode to true, see {@link #setIsEmbedded(boolean)}, but
+   * doesn't change the configuration.
+   *
+   * @throws IOException  when starting embedded PostgreSQL fails
+   */
+  public void startEmbeddedPostgres() throws IOException {
     // starting Postgres
     embeddedMode = true;
     if (postgresProcess == null || !postgresProcess.isProcessRunning()) {
@@ -2075,9 +2132,8 @@ public class PostgresClient {
   /**
    * .sql files
    * @param path
-   * @throws Exception
    */
-  public void importFileEmbedded(String path) throws Exception {
+  public void importFileEmbedded(String path) {
     // starting Postgres
     if (embeddedMode) {
       if (postgresProcess != null && postgresProcess.isProcessRunning()) {
