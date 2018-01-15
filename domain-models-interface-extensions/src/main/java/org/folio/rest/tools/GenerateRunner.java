@@ -81,8 +81,9 @@ public class GenerateRunner {
   }
 
   /**
-   * Reads RAML and schema files and writes the generated .java files. Copy
-   * the /ramls/ directory to /target/classes/ramls/ and dereference schema files.
+   * Reads RAML and schema files and writes the generated .java files.
+   * <p>
+   * Copy the /ramls/ directory to /target/classes/ramls/ and dereference schema files.
    * <p>
    * The input directories of the RAML files are listed
    * in system property <code>raml_files</code> and are comma separated.
@@ -109,7 +110,8 @@ public class GenerateRunner {
     generateRunner.cleanDirectories();
     generateRunner.setCustomFields(System.getProperties().getProperty("jsonschema.customfield"));
 
-    copyRamlDirToTarget(root);
+    String parentRoot = System.getProperties().getProperty("maven.multiModuleProjectDirectory");
+    copyRamlDirToTarget(root, parentRoot);
 
     String ramlsDir = System.getProperty("raml_files", root + SOURCES_DEFAULT);
     String [] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
@@ -150,17 +152,21 @@ public class GenerateRunner {
   /**
    * Copy the files from the /raml/ directory to the /target/raml/ directory
    * and dereference all schemas (*.schema, *.json) that contain a $ref reference.
+   * It uses root if it exists, parentRoot otherwise. It does nothing if neither exist.
    *
    * @param root  base directory where the /raml/ and the /target/ directory are.
+   * @param parentRoot  base directory where the /raml/ and the /target/ directory are.
    * @throws IOException on file copy error
    */
-  public static void copyRamlDirToTarget(String root) throws IOException {
+  public static void copyRamlDirToTarget(String root, String parentRoot) throws IOException {
     File input = new File(root + SOURCES_DEFAULT);
     if (! input.exists()) {
-      // a maven submodule may have the /ramls/ dir in the parent module
-      File parentInput = new File(root + File.separator + ".." + SOURCES_DEFAULT);
-      if (parentInput.exists()) {
-        input = parentInput;
+      if (parentRoot == null) {
+        return;
+      }
+      input = new File(parentRoot + SOURCES_DEFAULT);
+      if (! input.exists()) {
+        return;
       }
     }
     File output = new File(root + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);

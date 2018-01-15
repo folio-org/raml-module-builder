@@ -36,6 +36,7 @@ public class GenerateRunnerTest {
     ClientGenerator.makeCleanDir(baseDir);
     System.clearProperty("raml_files");
     System.clearProperty("project.basedir");
+    System.clearProperty("maven.multiModuleProjectDirectory");
   }
 
   private String jobJava() throws IOException {
@@ -93,6 +94,7 @@ public class GenerateRunnerTest {
   public void canRunMainParentDir() throws Exception {
     System.setProperty("raml_files", resourcesDir);
     System.setProperty("project.basedir", baseDir + "/submodule");
+    System.setProperty("maven.multiModuleProjectDirectory", baseDir);
     FileUtils.copyDirectory(new File(resourcesDir), new File(baseDir + "/ramls/"));
     GenerateRunner.main(null);
     assertJobMsgs();
@@ -108,6 +110,7 @@ public class GenerateRunnerTest {
     // create ramls dir at default location
     FileUtils.copyDirectory(new File(userDir + "/ramls/"), new File(baseDir + "/ramls/"));
     System.setProperty("project.basedir", baseDir);
+    System.setProperty("maven.multiModuleProjectDirectory", baseDir + "/foobar");
     GenerateRunner.main(null);
     assertTest();
   }
