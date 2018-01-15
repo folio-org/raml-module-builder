@@ -31,7 +31,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientMultiVertxIT {
   @Rule
-  public Timeout rule = Timeout.seconds(5);
+  public Timeout rule = Timeout.seconds(15);
 
   @Rule
   public RunTestOnContext contextRule = new RunTestOnContext();  // different vertx for each @Test
