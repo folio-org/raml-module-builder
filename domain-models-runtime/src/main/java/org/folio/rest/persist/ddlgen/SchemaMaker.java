@@ -193,7 +193,6 @@ public class SchemaMaker {
     }
 
     List<View> views = this.schema.getViews();
-    int tablePrefix = 0;
     if(views != null){
       int size = views.size();
       for (int i = 0; i < size; i++) {
