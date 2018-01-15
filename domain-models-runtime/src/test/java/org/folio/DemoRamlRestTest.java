@@ -436,6 +436,7 @@ public class DemoRamlRestTest {
    * for POST
    */
   private void postData(TestContext context, String url, Buffer buffer, int errorCode, int mode, String contenttype, String tenant, boolean userIdHeader) {
+    Exception stacktrace = new RuntimeException();  // save stacktrace for async handler
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request = null;
@@ -450,7 +451,7 @@ public class DemoRamlRestTest {
     }
     request.exceptionHandler(error -> {
       async.complete();
-      context.fail(error.getMessage());
+      context.fail(new RuntimeException(error.getMessage(), stacktrace));
     }).handler(response -> {
       int statusCode = response.statusCode();
       // is it 2XX
@@ -464,23 +465,26 @@ public class DemoRamlRestTest {
             context.assertTrue(true);
           }
           else{
-            context.fail("422 response code should contain a content type header of application/json");
+            context.fail(new RuntimeException(
+                "422 response code should contain a content type header of application/json",
+                stacktrace));
           }
         }
         else if (statusCode == 201) {
           response.bodyHandler(responseData -> {
             String date = (String)new JsonPathParser(responseData.toJsonObject()).getValueAt("metadata.createdDate");
             if(date == null && userIdHeader){
-              context.fail("metaData schema createdDate missing from returned json");
+              context.fail(new RuntimeException(
+                  "metaData schema createdDate missing from returned json", stacktrace));
             }
           });
         }
         context.assertTrue(true);
       } else {
         response.bodyHandler(responseData -> {
-          context.fail("got unexpected response code, expected: " +
+          context.fail(new RuntimeException("got unexpected response code, expected: " +
               errorCode + ", received code: " + statusCode + " mode " + mode + " for url " +  url +
-              "\ndata:" + responseData.toString());
+              "\ndata:" + responseData.toString(), stacktrace));
         });
       }
       if(!async.isCompleted()){
