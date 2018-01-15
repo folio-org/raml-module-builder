@@ -108,29 +108,67 @@
       "viewName": "users_groups_view",
       "mode": "new",
       "joinType": "JOIN",
-      "table": {
-        "tableName": "users",
-        "joinOnField": "patronGroup"
-      },
-      "joinTable": {
-        "tableName": "groups",
-        "joinOnField": "id",
-        "jsonFieldAlias": "group_jsonb"
-      }
+      "join": [
+        {
+          "table": {
+            "tableName": "users",
+            "joinOnField": "patronGroup"
+          },
+          "joinTable": {
+            "tableName": "groups",
+            "joinOnField": "id",
+            "jsonFieldAlias": "group_jsonb"
+          }
+        }
+      ]
+    },
+    {
+      "viewName": "users_groups_view2",
+      "mode": "new",
+      "joinType": "JOIN",
+      "join": [
+        {
+          "table": {
+            "tableName": "users",
+            "joinOnField": "patronGroup"
+          },
+          "joinTable": {
+            "tableName": "groups",
+            "joinOnField": "id",
+            "jsonFieldAlias": "group_jsonb"
+          }
+        },
+        {
+          "table": {
+            "tableName": "groups",
+            "joinOnField": "id",
+            "jsonFieldAlias": "group2_jsonb"
+          },
+          "joinTable": {
+            "tableName": "users",
+            "joinOnField": "id",
+            "jsonFieldAlias": "users_jsonb"
+          }
+        }
+      ]
     },
     {
       "viewName": "items_mt_view",
       "mode": "new",
       "joinType": "LEFT JOIN",
-      "table": {
-        "tableName": "item",
-        "joinOnField": "materialTypeId"
-      },
-      "joinTable": {
-        "tableName": "material_type",
-        "joinOnField": "id",
-        "jsonFieldAlias": "mt_jsonb"
-      }
+      "join": [
+        {
+          "table": {
+            "tableName": "item",
+            "joinOnField": "materialTypeId"
+          },
+          "joinTable": {
+            "tableName": "material_type",
+            "joinOnField": "id",
+            "jsonFieldAlias": "mt_jsonb"
+          }
+        }
+      ]
     }
   ]
 }

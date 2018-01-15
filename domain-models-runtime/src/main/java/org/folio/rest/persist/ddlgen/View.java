@@ -1,5 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
+import java.util.List;
+
 /**
  * @author shale
  *
@@ -7,30 +9,20 @@ package org.folio.rest.persist.ddlgen;
 public class View {
 
   private String viewName;
-  private ViewTable table;
-  private ViewTable joinTable;
   private String mode;
   private double fromModuleVersion;
+  //pkColumnName should be the id column (not in jsonb) of the table within the view whose results
+  //we will be returning from the select on this view, since the postgresClient exposes mapping the id
+  //into the jsonb or returning that id for the pojos it maps to from the returned jsons
   private String pkColumnName = "id";
   private String joinType = "JOIN";
+  private List<Join> join;
 
   public String getViewName() {
     return viewName;
   }
   public void setViewName(String viewName) {
     this.viewName = viewName;
-  }
-  public ViewTable getTable() {
-    return table;
-  }
-  public void setTable(ViewTable table) {
-    this.table = table;
-  }
-  public ViewTable getJoinTable() {
-    return joinTable;
-  }
-  public void setJoinTable(ViewTable joinTable) {
-    this.joinTable = joinTable;
   }
   public String getMode() {
     return mode;
@@ -55,6 +47,12 @@ public class View {
   }
   public void setJoinType(String joinType) {
     this.joinType = joinType;
+  }
+  public List<Join> getJoin() {
+    return join;
+  }
+  public void setJoin(List<Join> join) {
+    this.join = join;
   }
 
 }
