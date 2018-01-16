@@ -1,8 +1,8 @@
 
 -- auto populate the meta data schema
 
--- on create of ${table.tableName} record - pull creation date and creator into dedicated column - rmb auto-populates these fields in the md fields
-CREATE OR REPLACE FUNCTION ${table.tableName}_set_md()
+-- on create of ${myuniversity}_${mymodule}.${table.tableName} record - pull creation date and creator into dedicated column - rmb auto-populates these fields in the md fields
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.${table.tableName}_set_md()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.creation_date = to_timestamp(NEW.jsonb->'metadata'->>'createdDate', 'YYYY-MM-DD"T"HH24:MI:SS.MS');
@@ -14,11 +14,11 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS set_${table.tableName}_md_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
 
 CREATE TRIGGER set_${table.tableName}_md_trigger BEFORE INSERT ON ${myuniversity}_${mymodule}.${table.tableName}
-   FOR EACH ROW EXECUTE PROCEDURE ${table.tableName}_set_md();
+   FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.${table.tableName}_set_md();
 
 -- on update populate md fields from the creation date and creator fields
 
-CREATE OR REPLACE FUNCTION set_${table.tableName}_md_json()
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_${table.tableName}_md_json()
 RETURNS TRIGGER AS $$
 DECLARE
   createdDate timestamp WITH TIME ZONE;
@@ -55,6 +55,6 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS set_${table.tableName}_md_json_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
 
 CREATE TRIGGER set_${table.tableName}_md_json_trigger BEFORE UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
-  FOR EACH ROW EXECUTE PROCEDURE set_${table.tableName}_md_json();
+  FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_${table.tableName}_md_json();
 
 ----- end auto populate meta data schema ------------
