@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} 
    created_date timestamp not null
    );
 
-CREATE OR REPLACE FUNCTION audit_${table.tableName}_changes() RETURNS TRIGGER AS $${table.tableName}_audit$
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_changes() RETURNS TRIGGER AS $${table.tableName}_audit$
     <#if table.auditingSnippet??>
     DECLARE
       <#if table.auditingSnippet.delete??>
@@ -46,8 +46,8 @@ CREATE OR REPLACE FUNCTION audit_${table.tableName}_changes() RETURNS TRIGGER AS
     END;
 $${table.tableName}_audit$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS audit_${table.tableName} ON ${table.tableName} CASCADE;
+DROP TRIGGER IF EXISTS audit_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
 
-CREATE TRIGGER audit_${table.tableName} AFTER INSERT OR UPDATE OR DELETE ON ${table.tableName} FOR EACH ROW EXECUTE PROCEDURE audit_${table.tableName}_changes();
+CREATE TRIGGER audit_${table.tableName} AFTER INSERT OR UPDATE OR DELETE ON ${myuniversity}_${mymodule}.${table.tableName} FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.audit_${table.tableName}_changes();
 
 GRANT ALL PRIVILEGES ON audit_${table.tableName} TO ${myuniversity}_${mymodule};
