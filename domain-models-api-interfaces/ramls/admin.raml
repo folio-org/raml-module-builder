@@ -141,6 +141,31 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
+  /postgres_maintenance:
+    post:
+      description: run one of the following maintenance jobs on the Postgres DB. |
+        analyze, vacuum, vacuum analyze, vacuum verbose
+      is: [secured]
+      queryParameters:
+        table:
+          description: Table name to run command on
+          required: true
+        command:
+          description: |
+            The command to run
+          enum: [ANALYZE, VACUUM, VACUUM_ANALYZE, VACUUM_VERBOSE]
+          default: ANALYZE
+          required: false
+      responses:
+        201:
+          description: "Command requested successful"
+          body:
+            application/json:
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
   /postgres_active_sessions:
     get:
       description: Get active PostgreSQL sessions
