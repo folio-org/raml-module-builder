@@ -1,3 +1,4 @@
+
 # Raml-Module-Builder
 
 Copyright (C) 2016-2018 The Open Library Foundation
@@ -1149,23 +1150,27 @@ For each **table**:
 13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
 
 The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
-
-    "views": [
-      {
-        "viewName": "items_mt_view",
-        "joinType": "JOIN",
-        "table": {
-          "tableName": "item",
-          "joinOnField": "materialTypeId"
-        },
-        "joinTable": {
-          "tableName": "material_type",
-          "joinOnField": "id",
-          "jsonFieldAlias": "mt_jsonb"
+```
+  "views": [
+    {
+      "viewName": "items_mt_view",
+      "pkColumnName": "_id",
+      "join": [
+        {
+          "table": {
+            "tableName": "item",
+            "joinOnField": "materialTypeId"
+          },
+          "joinTable": {
+            "tableName": "material_type",
+            "joinOnField": "id",
+            "jsonFieldAlias": "mt_jsonb"
+          }
         }
-      }
-    ]
-
+      ]
+    }
+  ]
+```
 Behind the scenes this will produce the following statement which will be run as part of the schema creation:
 
     CREATE OR REPLACE VIEW ${tenantid}_${module_name}.items_mt_view AS
@@ -1175,6 +1180,40 @@ Behind the scenes this will produce the following statement which will be run as
         ON lower(f_unaccent(g.jsonb->>'id')) = lower(f_unaccent(u.jsonb->>'materialTypeId'))
 
 Notice the `lower(f_unaccent(` functions, currently, by default, all string fields will be wrapped in these functions (will change in the future).
+
+A three table join would look something like this:
+
+```
+    {
+      "viewName": "instance_holding_item_view",
+      "pkColumnName": "_id",
+      "join": [
+        {
+          "table": {
+            "tableName": "instance",
+            "joinOnField": "id"
+          },
+          "joinTable": {
+            "tableName": "holdings_record",
+            "joinOnField": "instanceId",
+            "jsonFieldAlias": "ho_jsonb"
+          }
+        },
+        {
+          "table": {
+            "tableName": "holdings_record",
+            "joinOnField": "id",
+            "jsonFieldAlias": "ho2_jsonb"
+          },
+          "joinTable": {
+            "tableName": "item",
+            "joinOnField": "holdingsRecordId",
+            "jsonFieldAlias": "it_jsonb"
+          }
+        }        
+      ]
+    }
+```
 
 The **script** section allows a module to run custom SQLs before table / view creation/updates and after all tables/views have been created/updated.
 

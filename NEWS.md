@@ -1,6 +1,18 @@
-## 17.0.0 not yet released
+## 17.0.0 2017-01-17
 * RMB-119: CQL's default relation "=" now uses "adj" relation for strings (was "all")
 * CQLPG-30, CQLPG-31: Fix number handling in CQL queries
+* RMB-124: Lift time limit of PostgresClientMultiVertxIT
+* RMB-122: Setting caseSensitive= true, removeAccents = false in regular index declaration corrupts generated schema
+* RMB-121: mod-configuration doesn't build with Postgres 10
+* RMB-120: README should suggest to use UUID, not SERIAL
+* RMB-119: CQL's default relation "=" should use "adj" for a string
+* RMB-118: add a /admin/db_maintenance api
+* RMB-115: jaxrs test cleanup results in compile failure
+* RMB-114: Security update postgres-embedded:2.6
+* RMB-113: Dereference raml-util if ramls directory does not exist
+* RMB-112: Use logger rather than standard output/standard error
+* RMB-104: optimize join views + add support for more than 2 tables
+* RMB-98: Foreign key trigger created in public schema and not in tenant's schema
 
 ## 16.0.3 2017-12-19
 * RMB-103: Schema dereferencing requires a ramls/ directory with the raml and schema files.
