@@ -1,5 +1,8 @@
 package org.folio.rest.persist;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -10,6 +13,7 @@ import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.facets.ParsedQuery;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import net.sf.jsqlparser.JSQLParserException;
@@ -56,7 +60,7 @@ public class PostgresClientTest {
 
     //in the rare case where the order by clause somehow appears in the where clause
     if(orderBy != null){
-      int startOfOrderBy = PostgresClient.getStartPos(query, "order by" , true);
+      int startOfOrderBy = PostgresClient.getLastStartPos(query, "order by");
       StringBuilder sb = new StringBuilder("order by[ ]+");
       int size = orderBy.size();
       for (int i = 0; i < size; i++) {
@@ -70,7 +74,7 @@ public class PostgresClientTest {
           Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
     }
 
-    int startOfLimit = PostgresClient.getStartPos(query, "limit" , true);
+    int startOfLimit = PostgresClient.getLastStartPos(query, "limit");
 
     if(limit != null){
       query = query.substring(0, startOfLimit) +
@@ -84,7 +88,7 @@ public class PostgresClientTest {
     }
 
     if(offset != null){
-      int startOfOffset = PostgresClient.getStartPos(query, "offset" , true);
+      int startOfOffset = PostgresClient.getLastStartPos(query, "offset");
       query = query.substring(0, startOfOffset) +
       Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
     }
@@ -92,5 +96,36 @@ public class PostgresClientTest {
     long end = System.nanoTime();
 
     log.info(query + " from " + (end-start));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "limit 'limit'," +
+    "^",
+    "limit 'limit' limit," +
+    "--------------^",
+    "limit 'limit' limit 1," +
+    "--------------^",
+    "limit 'limit limit limit' limit 'limit limit limit' limit," +
+    "----------------------------------------------------^",
+    "LIMIT LIMIT LIMIT," +
+    "------------^",
+    "LIMIT 1 SQL_SELECT_LIMIT 2," +
+    "^",
+    "LIMIT 1 LIMIT_SQL_SELECT 2," +
+    "^",
+    "limit 'limit''limit'," +
+    "^",
+    "limit E'limit''limit'," +   // C-style string
+    "^",
+    "limit 'limit\\' limit," +   // backslash does not escape in standard SQL strings
+    "------------\\--^",
+    "limit e'limit\\'limit'," +  // but in C-style strings
+    "^",
+  })
+  void getLastStartPos(String query, String expectedPosMarker) {
+    int expectedPos = expectedPosMarker.indexOf('^');
+    assertThat(PostgresClient.getLastStartPos(query, "limit"), is(expectedPos));
+    assertThat(PostgresClient.getLastStartPos(query, "LIMIT"), is(expectedPos));
   }
 }

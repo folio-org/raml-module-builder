@@ -15,7 +15,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -2265,7 +2264,7 @@ public class PostgresClient {
         log.error(e.getMessage(), e);
       }
 
-      int startOfLimit = getStartPos(query, "limit" , true);
+      int startOfLimit = getLastStartPos(query, "limit");
       if(limit != null){
         String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
         query = query.substring(0, startOfLimit) + suffix;
@@ -2277,7 +2276,7 @@ public class PostgresClient {
         Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
       }
 
-      int startOfOffset = getStartPos(query, "offset" , true);
+      int startOfOffset = getLastStartPos(query, "offset");
       if(offset != null){
         String suffix = Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
         query = query.substring(0, startOfOffset) + suffix;
@@ -2292,7 +2291,7 @@ public class PostgresClient {
       queryWithoutLimitOffset = query;
 
       //in the rare case where the order by clause somehow appears in the where clause
-      int startOfOrderBy = getStartPos(query, "order by" , true);
+      int startOfOrderBy = getLastStartPos(query, "order by");
       if(orderBy != null){
         StringBuilder sb = new StringBuilder("order by[ ]+");
         int size = orderBy.size();
@@ -2355,53 +2354,22 @@ public class PostgresClient {
     return sb.toString();
   }
 
-  static int getStartPos(String query, String token, boolean last){
-    int len =  query.length();
-    int tLen = token.length();
-    int saveStart = -1;
-    int prevMatch = -1;
-    int currentTokPost = -1;
-    boolean inQuotes = false;
-    for(int j=0; j< len; j++){
-      char t = query.charAt(j);
-      if((t=='\'' && j == 0) || ( t=='\'' && j > 0 && query.charAt(j-1) != '\\')){
-        inQuotes = !inQuotes;
-        continue;
-      }
-      if(!inQuotes){
-        if(currentTokPost > -1){
-          if(Character.toLowerCase(t) == Character.toLowerCase(token.charAt(currentTokPost++))){
-            if(currentTokPost == tLen){
-              if(!last || (currentTokPost+tLen) > (len-j)){
-                //if request for first match, or if not enough chars to complete another match
-                //return match position
-                return saveStart;
-              }
-              else{
-                prevMatch = saveStart;
-                currentTokPost = -1;
-              }
-            }
-          }
-          else{
-            saveStart = -1;
-            currentTokPost = -1;
-          }
-        }
-        else if(Character.toLowerCase(t) == Character.toLowerCase(token.charAt(0))){
-          saveStart = j;
-          currentTokPost = 1;
-          continue;
-        }
-        else{
-          saveStart = -1;
-        }
-      }
+  /**
+   * Return the last position of <code>token</code> in <code>query</code> skipping
+   * standard SQL strings like 'some string' and C-style SQL strings like E'some string'.
+   * @param query  where to search
+   * @param token  what to search for
+   * @return position (starting at 0), or -1 if not found
+   */
+  static int getLastStartPos(String query, String token) {
+    String quotedString       = "(?<!E)'(?:[^']|'')*'";
+    String quotedStringCStyle = "(?<=E)'(?:[^'\\\\]|\\.)*'";
+    Matcher matcher = Pattern.compile(
+        "(?:[^'\\\\]|\\.|" + quotedString + "|" + quotedStringCStyle + ")*"
+        + "\\b(" + Pattern.quote(token) + ")\\b.*", Pattern.CASE_INSENSITIVE).matcher(query);
+    if (! matcher.matches()) {
+      return -1;
     }
-    if(prevMatch != -1){
-      return prevMatch;
-    }
-    return -1;
+    return matcher.start(1);
   }
-
 }
