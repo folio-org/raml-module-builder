@@ -1,6 +1,7 @@
 package org.folio.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -11,6 +12,8 @@ import org.folio.rest.testing.UtilityClassTester;
 import org.junit.Test;
 
 public class IoUtilTest {
+  private static final String example = "first line\numlauts: äöü\n";
+
   @Test
   public void utilityClass() {
     UtilityClassTester.assertUtilityClass(IoUtil.class);
@@ -32,15 +35,13 @@ public class IoUtilTest {
 
   @Test
   public void readUmlauts() throws IOException {
-    String s = "first line\numlauts: äöü\n";
-    assertEquals(s, IoUtil.toStringUtf8(inputStream(s)));
+    assertEquals(example, IoUtil.toStringUtf8(inputStream(example)));
   }
 
   @Test
   public void readUmlautsEncoding() throws IOException {
-    String s = "first line\numlauts: äöü\n";
-    assertEquals(s, IoUtil.toString(inputStream(s), StandardCharsets.UTF_8));
-    assertNotEquals(s, IoUtil.toString(inputStream(s), StandardCharsets.ISO_8859_1));
+    assertEquals(example, IoUtil.toString(inputStream(example), StandardCharsets.UTF_8));
+    assertNotEquals(example, IoUtil.toString(inputStream(example), StandardCharsets.ISO_8859_1));
   }
 
   @Test
@@ -51,5 +52,11 @@ public class IoUtilTest {
     }
     String s = new String(expected);
     assertEquals(s, IoUtil.toStringUtf8(inputStream(s)));
+  }
+
+  @Test
+  public void readFile() throws IOException {
+    String path = System.getProperty("user.dir") + "/src/test/resources/ResourceUtilExample.bin";
+    assertEquals(example, IoUtil.toStringUtf8(path));
   }
 }
