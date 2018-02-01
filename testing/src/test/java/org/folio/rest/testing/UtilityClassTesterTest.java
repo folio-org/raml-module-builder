@@ -44,6 +44,11 @@ public class UtilityClassTesterTest {
   }
 
   @Test
+  public void constructorDoesntThrowException() {
+    assertMessage(ConstructorWithoutException.class, "must throw UnsupportedOperationException");
+  }
+
+  @Test
   public void constructorThrowsWrongException() {
     assertMessage(ConstructorThrowsWrongException.class, "must throw UnsupportedOperationException");
   }
@@ -58,6 +63,11 @@ public class UtilityClassTesterTest {
   public void nonStaticMethod2() {
     assertMessage(NonStaticMethod2.class, "method must be static");
     assertMessage(NonStaticMethod2.class, "six()");
+  }
+
+  @Test(expected = InternalError.class)
+  public void internalError() {
+    UtilityClassTester.assertUtilityClass(Class.class);
   }
 }
 
@@ -82,6 +92,11 @@ final class TwoConstructors {
 final class PublicConstructor {
   public PublicConstructor() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
+  }
+}
+
+final class ConstructorWithoutException {
+  private ConstructorWithoutException() {
   }
 }
 

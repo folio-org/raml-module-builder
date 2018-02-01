@@ -1,7 +1,6 @@
 package org.folio.rest.testing;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -24,17 +23,17 @@ public final class UtilityClassTester {
   private static void assertInvocationException(Constructor<?> constructor) {
     try {
       constructor.setAccessible(true);
+
       // This invocation gives 100% code coverage for the private constructor and
       // also checks that it throws the required exception.
       constructor.newInstance();
-    } catch (InvocationTargetException e) {
+    } catch (Exception e) {
       if (e.getCause() instanceof UnsupportedOperationException) {
         return;   // this is the required exception
       }
-    } catch (Exception e) {
-      throw new InternalError(e);
     }
-    Assert.fail("Private constructor of utiliy class must throw UnsupportedOperationException "
+    throw new AssertionError(
+        "Private constructor of utiliy class must throw UnsupportedOperationException "
         + "to fail unintended invocation via reflection.");
   }
 
