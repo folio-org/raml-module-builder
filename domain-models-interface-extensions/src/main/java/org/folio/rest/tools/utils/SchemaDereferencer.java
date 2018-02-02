@@ -16,6 +16,7 @@ import java.util.stream.StreamSupport;
 
 import org.folio.util.IoUtil;
 
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -51,6 +52,14 @@ public class SchemaDereferencer {
   }
 
   /**
+   * The paths in descending order, comma separated.
+   */
+  private String allPaths(Deque<Path> dereferenceStack) {
+    Iterable<Path> reverseStack = dereferenceStack::descendingIterator;
+    return stream(reverseStack).map(Path::toString).collect(Collectors.joining(", "));
+  }
+
+  /**
    * Return a schema with all $ref dereferenced.
    *
    * @param inputPath  path of the schema file, may be relative to the current directory
@@ -58,6 +67,7 @@ public class SchemaDereferencer {
    * @return dereferenced RAML
    * @throws IOException  when any $ref file cannot be read
    * @throws IllegalStateException  when the $ref chain has a loop
+   * @throws DecodeException  when the $ref file is not a JSON
    */
   protected JsonObject dereferencedSchema(Path inputPath, Deque<Path> dereferenceStack) throws IOException {
     Path path = inputPath.normalize().toAbsolutePath();
@@ -70,16 +80,19 @@ public class SchemaDereferencer {
     dereferenceStack.push(path);
 
     if (loop) {
-      Iterable<Path> reverseStack = dereferenceStack::descendingIterator;
-      String allPaths = stream(reverseStack).map(Path::toString).collect(Collectors.joining(", "));
-      throw new IllegalStateException("$ref chain has a loop: " + allPaths);
+      throw new IllegalStateException("$ref chain has a loop: " + allPaths(dereferenceStack));
     }
 
     String schemaString;
     try (InputStream reader = new FileInputStream(path.toFile())) {
       schemaString = IoUtil.toStringUtf8(reader);
     }
-    JsonObject schema = new JsonObject(schemaString);
+    JsonObject schema;
+    try {
+      schema = new JsonObject(schemaString);
+    } catch (DecodeException e) {
+      throw new DecodeException(allPaths(dereferenceStack), e);
+    }
     dereference(schema, inputPath, dereferenceStack);
 
     dereferenceStack.pop();
