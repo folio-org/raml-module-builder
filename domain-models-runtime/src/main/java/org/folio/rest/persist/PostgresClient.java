@@ -454,7 +454,7 @@ public class PostgresClient {
    * @param done
    */
   //@Timer
-  public void startTx(Handler<Object> done) {
+  public void startTx(Handler<AsyncResult<Object>> done) {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -470,43 +470,48 @@ public class PostgresClient {
             }
           });
         } catch (Exception e) {
-          log.error(e);
+          log.error(e.getMessage(), e);
           if (connection != null) {
             connection.close();
           }
           done.handle(Future.failedFuture(e));
         }
       }
+      else{
+        log.error(res.cause().getMessage(), res.cause());
+        done.handle(Future.failedFuture(res.cause()));
+      }
     });
   }
 
   //@Timer
   @SuppressWarnings("unchecked")
-  public void rollbackTx(Object conn, Handler<Object> done) {
+  public void rollbackTx(Object conn, Handler<AsyncResult<Object>> done) {
     SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     sqlConnection.rollback(res -> {
       if (res.failed()) {
         sqlConnection.close();
-        throw new RuntimeException(res.cause());
+        done.handle(Future.failedFuture(res.cause()));
       } else {
         sqlConnection.close();
+        done.handle(Future.succeededFuture(res));
       }
-      done.handle(null);
     });
   }
 
   //@Timer
   @SuppressWarnings("unchecked")
-  public void endTx(Object conn, Handler<Object> done) {
+  public void endTx(Object conn, Handler<AsyncResult<Object>> done) {
     SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     sqlConnection.commit(res -> {
       if (res.failed()) {
+        res.cause().printStackTrace();
         sqlConnection.close();
-        throw new RuntimeException(res.cause());
+        done.handle(Future.failedFuture(res.cause()));
       } else {
         sqlConnection.close();
+        done.handle(Future.succeededFuture(res));
       }
-      done.handle(null);
     });
   }
 
@@ -805,53 +810,88 @@ public class PostgresClient {
     update(table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
   }
 
+  public void update(Object conn, String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    String where = "";
+    if(filter != null){
+      where = filter.toString();
+    }
+    update(conn, table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
+  }
+
+  public void update(Object conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
+  {
+    SQLConnection connection = null;
+    try {
+      connection = ((Future<SQLConnection>) conn).result();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+    doUpdate(connection, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
+  }
+
   public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
       throws Exception {
-    long start = System.nanoTime();
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        StringBuilder sb = new StringBuilder();
-        if (whereClause != null) {
-          sb.append(whereClause);
-        }
-        StringBuilder returning = new StringBuilder();
-        if (returnUpdatedIds) {
-          returning.append(returningId);
-        }
-        try {
-          String q = "UPDATE " + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = ?::jsonb"  + whereClause
-              + " " + returning;
-          log.debug("query = " + q);
-
-          connection.updateWithParams(q, new JsonArray().add(pojo2json(entity)), query -> {
-            connection.close();
-            if (query.failed()) {
-              log.error(query.cause().getMessage(),query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(query.result()));
-            }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
-            if(log.isDebugEnabled()){
-              log.debug("timer: get " +q+ " (ns) " + (end-start));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-
-      } else {
+        doUpdate(connection, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
+      }
+      else{
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
 
+  private void doUpdate(SQLConnection connection, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
+      Handler<AsyncResult<UpdateResult>> replyHandler){
+
+    long start = System.nanoTime();
+
+    boolean transactionMode[] = new boolean[]{ false };
+    if(connection != null){
+      transactionMode[0] = true;
+    }
+    StringBuilder sb = new StringBuilder();
+    if (whereClause != null) {
+      sb.append(whereClause);
+    }
+    StringBuilder returning = new StringBuilder();
+    if (returnUpdatedIds) {
+      returning.append(returningId);
+    }
+    try {
+      String q = "UPDATE " + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
+          + " " + returning;
+      log.debug("query = " + q);
+
+      connection.updateWithParams(q, new JsonArray().add(pojo2json(entity)), query -> {
+        if(!transactionMode[0]){
+          connection.close();
+        }
+        if (query.failed()) {
+          log.error(query.cause().getMessage(),query.cause());
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(query.result()));
+        }
+        long end = System.nanoTime();
+        StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
+        if(log.isDebugEnabled()){
+          log.debug("timer: get " +q+ " (ns) " + (end-start));
+        }
+      });
+    } catch (Exception e) {
+      if(!transactionMode[0]){
+        if(connection != null){
+          connection.close();
+        }
+      }
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+
+  }
   /**
    * update a section / field / object in the pojo -
    * <br>
