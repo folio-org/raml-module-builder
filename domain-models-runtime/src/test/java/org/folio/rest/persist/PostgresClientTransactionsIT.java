@@ -67,7 +67,7 @@ public class PostgresClientTransactionsIT {
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema + ";\n");
   }
 
-  private void fillTable(TestContext context, String schema, int i) {
+  private void fillTable(TestContext context, String schema) {
     execute(context,
       "INSERT INTO " + schema + ".z (jsonb) VALUES (" + "'{\"id\": 1,\"name\": \"d\" }'" + ");\n");
   }
@@ -90,7 +90,6 @@ public class PostgresClientTransactionsIT {
           context.fail(e1);
         }
         CQLWrapper cql = new CQLWrapper(cql2pgJson, "id==1");
-        System.out.println(cql.toString());
         c1.update(handler,
           "z", z, cql, true, reply -> {
             if(reply.succeeded()){
@@ -207,7 +206,7 @@ public class PostgresClientTransactionsIT {
 
     createSchema(context, schema);
 
-    fillTable(context, schema, 5);
+    fillTable(context, schema);
 
     transaction(context, schema);
 
