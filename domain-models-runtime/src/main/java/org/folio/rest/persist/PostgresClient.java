@@ -796,7 +796,7 @@ public class PostgresClient {
    *
    */
   public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
-      throws Exception {
+  {
     String where = null;
     if(filter != null){
       where = filter.toString();
@@ -805,7 +805,7 @@ public class PostgresClient {
   }
 
   public void update(String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
-      throws Exception {
+  {
     String where = "";
     if(filter != null){
       where = filter.toString();
@@ -834,7 +834,7 @@ public class PostgresClient {
   }
 
   public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
-      throws Exception {
+  {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -886,7 +886,7 @@ public class PostgresClient {
         }
       });
     } catch (Exception e) {
-      if(!transactionMode && connection != null){
+      if(!transactionMode){
         connection.close();
       }
       log.error(e.getMessage(), e);
