@@ -738,7 +738,7 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+  public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) {
     update(table, entity, DEFAULT_JSONB_FIELD_NAME, WHERE + idField + "='" + id + "'", false, replyHandler);
   }
 
