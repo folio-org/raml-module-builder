@@ -59,6 +59,8 @@ public class PostgresClientTransactionsIT {
   }
 
   private void createSchema(TestContext context, String schema) {
+    execute(context,"CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;\n");
+    execute(context,"CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;\n");
     execute(context,
       "CREATE ROLE " + schema + " PASSWORD '" + TENANT + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;\n");
     execute(context, "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema + ";\n");
