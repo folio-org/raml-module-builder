@@ -15,7 +15,9 @@ import java.util.function.BiConsumer;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.HeaderParam;
+import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 
 import com.google.common.base.Function;
@@ -29,10 +31,9 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 public class AnnotationGrabber {
-
   public static final String  DELIMITER              = "&!!&";
   public static final String  PATH_MAPPING_FILE      = "API_PATH_MAPPINGS";
-  public static final String  PATH_ANNOTATION        = "javax.ws.rs.Path";
+  public static final String  PATH_ANNOTATION        = Path.class.getName();
   public static final String  CLASS_NAME             = "class";
   public static final String  INTERFACE_NAME         = "interface";
   public static final String  FUNCTION_NAME          = "function";
@@ -121,7 +122,7 @@ public class AnnotationGrabber {
           // function
           for (Method method : type.getDeclaredMethods()) {
             Object value = method.invoke(annotations[i], (Object[]) null);
-            if (PATH_ANNOTATION.equals(type.getName())) {
+            if (type.isAssignableFrom(Path.class)) {
               classSpecificMapping.put(CLASS_URL, "^/" + value);
               if(generateClient){
                 cGen.generateClassMeta(val.toString(), value);
@@ -172,7 +173,7 @@ public class AnnotationGrabber {
               methodObj.put(HTTP_METHOD, type.getName());
             }
             boolean replaceAccept = false;
-            if(PRODUCES.equals(type.getName())){
+            if (type.isAssignableFrom(Produces.class)) {
               //this is the accept header, right now can not send */*
               //so if accept header equals any/ - change this to */*
               replaceAccept = true;
@@ -195,7 +196,7 @@ public class AnnotationGrabber {
                 // since they can have multi values
                 methodObj.put(type.getName(), retList);
               } else {
-                if (PATH_ANNOTATION.equals(type.getName())) {
+                if (type.isAssignableFrom(Path.class)) {
                   String path = classSpecificMapping.getString(CLASS_URL) + URL_PATH_DELIMITER + value;
                   String regexPath = getRegexForPath(path);
                   // put path to function
@@ -343,7 +344,7 @@ public class AnnotationGrabber {
           obj.put("type", parameterType.getCanonicalName());
           obj.put("order", k - 1);
           obj.put("param_type", QUERY_PARAM);
-        } else if (a instanceof DefaultValue) {
+        } else if (a instanceof DefaultValue && prevObjForDefaultVal != null) {
           // default values originate in the raml and appear after the parameter
           // they are to be applied to
           String defaultValue = ((DefaultValue) a).value();
