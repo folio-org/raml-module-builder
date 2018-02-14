@@ -59,8 +59,12 @@ public class PostgresClientTransactionsIT {
   }
 
   private void createSchema(TestContext context, String schema) {
+
     execute(context,"CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;\n");
     execute(context,"CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;\n");
+    execute(context,"CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ "+
+        "SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary " +
+        "$func$  LANGUAGE sql IMMUTABLE;\n");
     execute(context,
       "CREATE ROLE " + schema + " PASSWORD '" + TENANT + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;\n");
     execute(context, "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema + ";\n");
