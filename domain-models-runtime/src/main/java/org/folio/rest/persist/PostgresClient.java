@@ -525,27 +525,27 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void save(String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void save(String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
     save(table, null, entity, true, replyHandler);
   }
 
-  public void save(String table, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void save(String table, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) {
     save(table, null, entity, returnId, replyHandler);
   }
 
-  public void save(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void save(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
     save(table, id, entity, true, replyHandler);
   }
 
-  public void save(String table, String id, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void save(String table, String id, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) {
     save(table, id, entity, returnId, false, replyHandler);
   }
 
-  public void upsert(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void upsert(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
     save(table, id, entity, true, true, replyHandler);
   }
 
-  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, Handler<AsyncResult<String>> replyHandler) {
     long start = System.nanoTime();
 
     client.getConnection(res -> {
@@ -598,19 +598,21 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(e));
         }
       } else {
+        log.error(res.cause().getMessage(), res.cause());
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
 
   @SuppressWarnings("unchecked")
-  public void save(Object sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) throws Exception {
+  public void save(Object sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
     long start = System.nanoTime();
 
     log.debug("save called on " + table);
-    // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
-    SQLConnection connection = ((Future<SQLConnection>) sqlConnection).result();
+    SQLConnection connection = null;
     try {
+      // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
+      connection = ((Future<SQLConnection>) sqlConnection).result();
       connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
         new JsonArray().add(pojo2json(entity)), query -> {
@@ -822,13 +824,13 @@ public class PostgresClient {
   public void update(Object conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
   {
     SQLConnection connection = null;
-    try {
+    if(conn != null){
       connection = ((Future<SQLConnection>) conn).result();
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
+      doUpdate(connection, true, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
     }
-    doUpdate(connection, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
+    else{
+      replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
+    }
   }
 
   public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
@@ -836,7 +838,7 @@ public class PostgresClient {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        doUpdate(connection, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
+        doUpdate(connection, false, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
       }
       else{
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -844,15 +846,16 @@ public class PostgresClient {
     });
   }
 
-  private void doUpdate(SQLConnection connection, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
+  private void doUpdate(SQLConnection connection, boolean transactionMode, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
       Handler<AsyncResult<UpdateResult>> replyHandler){
+
+    if(connection == null){
+      replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
+      return;
+    }
 
     long start = System.nanoTime();
 
-    boolean transactionMode[] = new boolean[]{ false };
-    if(connection != null){
-      transactionMode[0] = true;
-    }
     StringBuilder sb = new StringBuilder();
     if (whereClause != null) {
       sb.append(whereClause);
@@ -867,7 +870,7 @@ public class PostgresClient {
       log.debug("query = " + q);
 
       connection.updateWithParams(q, new JsonArray().add(pojo2json(entity)), query -> {
-        if(!transactionMode[0]){
+        if(!transactionMode){
           connection.close();
         }
         if (query.failed()) {
@@ -883,10 +886,8 @@ public class PostgresClient {
         }
       });
     } catch (Exception e) {
-      if(!transactionMode[0]){
-        if(connection != null){
-          connection.close();
-        }
+      if(!transactionMode && connection != null){
+        connection.close();
       }
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
