@@ -17,6 +17,7 @@ import org.folio.util.IoUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
@@ -90,6 +91,16 @@ public class SchemaDereferencerTest {
       fail();
     } catch (IOException e) {
       assertThat(e.getMessage(), containsString(filename));
+    }
+  }
+
+  @Test
+  public void fileNoJson() throws IOException {
+    try {
+      dereferencedSchema("../badschemas/no_json.schema");
+      fail();
+    } catch (DecodeException e) {
+      assertThat(e.getMessage(), containsString("no_json.schema"));
     }
   }
 
