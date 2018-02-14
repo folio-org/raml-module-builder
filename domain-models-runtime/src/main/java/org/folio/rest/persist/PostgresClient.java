@@ -490,6 +490,7 @@ public class PostgresClient {
     SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     sqlConnection.rollback(res -> {
       if (res.failed()) {
+        log.error(res.cause().getMessage(), res.cause());
         sqlConnection.close();
         done.handle(Future.failedFuture(res.cause()));
       } else {
@@ -505,7 +506,7 @@ public class PostgresClient {
     SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     sqlConnection.commit(res -> {
       if (res.failed()) {
-        res.cause().printStackTrace();
+        log.error(res.cause().getMessage(), res.cause());
         sqlConnection.close();
         done.handle(Future.failedFuture(res.cause()));
       } else {
@@ -1050,22 +1051,7 @@ public class PostgresClient {
     get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null, replyHandler);
   }
 
-  public void getFromTableSelectInView(String table, String view, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
-      boolean setId, Handler<AsyncResult<Results>> replyHandler) throws Exception {
-    get(table, view, clazz, fieldName, where, returnCount, returnIdField, setId, null, replyHandler);
-  }
-
-  private String generateINQuery(String view, ParsedQuery pq){
-    StringBuilder sb = new StringBuilder("SELECT " + idField + " FROM " + convertToPsqlStandard(tenantId) + "." + view);
-
-    if(pq.getWhereClause() != null){
-      sb.append(" where ").append(pq.getWhereClause());
-    }
-
-    return  sb.toString();
-  }
-
-  private void get(String table, String view, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
+  public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
       boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) throws Exception {
     long start = System.nanoTime();
 
@@ -1090,22 +1076,10 @@ public class PostgresClient {
             select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
           };
 
-          ParsedQuery parsedQuery =  parseQuery(q[0]);
+          ParsedQuery parsedQuery = null;
 
-          if(view != null){
-            StringBuilder sb = new StringBuilder();
-            if(parsedQuery.getOrderByClause() != null){
-              sb.append(" order by ").append(parsedQuery.getOrderByClause());
-            }
-            if(parsedQuery.getOffsetClause() != null){
-              sb.append(" ").append(parsedQuery.getOffsetClause());
-            }
-            if(parsedQuery.getLimitClause() != null){
-              sb.append(" ").append(parsedQuery.getLimitClause());
-            }
-            q[0] = select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table
-                  + " " + "WHERE " + idField +
-                  " IN (" + generateINQuery(view, parsedQuery) + ") " + sb.toString();
+          if(returnCount || (facets != null && !facets.isEmpty())){
+            parsedQuery = parseQuery(q[0]);
           }
 
           if (returnCount) {
@@ -1157,11 +1131,6 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
-  }
-
-  public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
-      boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) throws Exception {
-    get(table, null, clazz, fieldName, where, returnCount, returnIdField, setId, facets, replyHandler);
   }
 
   /**
