@@ -63,6 +63,7 @@ public class DemoRamlRestTest {
   private static Vertx vertx;
   private static int port;
   private static Locale oldLocale = Locale.getDefault();
+  private static String TENANT = "abcdefg";
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
@@ -171,7 +172,7 @@ public class DemoRamlRestTest {
       context.fail(e);
     }
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book),
-        expectedStatus, 1, "application/json", "abcdefg", false);
+        expectedStatus, 1, "application/json", TENANT, false);
   }
 
   @Test
@@ -223,7 +224,7 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
       200, 1, null, null, false);
     postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 200, 1,
-      "application/json", "abcdefg", false);
+      "application/json", TENANT, false);
 
     d.setDatetime(new Datetime());
     d.setTitle("title");
@@ -232,16 +233,16 @@ public class DemoRamlRestTest {
     b.setSuccess(true);
     book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
 
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", "abcdefg", true);
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", "abcdefg", false);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", TENANT, true);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", TENANT, false);
 
     //check that additionalProperties (fields not appearing in schema) - returns 422
     JsonObject jo = new JsonObject(book);
     jo.put("lalala", "non existant");
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", "abcdefg", false);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", TENANT, false);
 
 
-    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org", null, 200, 0, "application/json", "abcdefg", false);
+    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org", null, 200, 0, "application/json", TENANT, false);
 
     Metadata md = new Metadata();
     md.setCreatedByUserId("12345678-1234-1234-1234-123456789098");
@@ -251,11 +252,11 @@ public class DemoRamlRestTest {
     md.setUpdatedByUserId("123456789098");
     b.setMetadata(md);
     postData(context, "http://localhost:" + port + "/rmbtests/books",
-      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 422, 1, "application/json", "abcdefg", false);
+      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 422, 1, "application/json", TENANT, false);
 
     md.setUpdatedByUserId("12345678-1234-1234-1234-123456789098");
     postData(context, "http://localhost:" + port + "/rmbtests/books",
-      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 201, 1, "application/json", "abcdefg", false);
+      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 201, 1, "application/json", TENANT, false);
 
     List<Object> list = getListOfBooks();
 
@@ -361,13 +362,13 @@ public class DemoRamlRestTest {
         checkURLs(context, "http://localhost:" + port + url, 200);
         try {
           postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs"
-          , Buffer.buffer(getFile("job.json")), 201, 1, "application/json", "abcdefg", false);
+          , Buffer.buffer(getFile("job.json")), 201, 1, "application/json", TENANT, false);
           postData(context, "http://localhost:" + port + url + "/" +location
-          , Buffer.buffer(getFile("job_conf_post.json")), 204, 0, null, "abcdefg", false);
+          , Buffer.buffer(getFile("job_conf_post.json")), 204, 0, null, TENANT, false);
           postData(context, "http://localhost:" + port + url + "/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, "abcdefg", false);
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, TENANT, false);
           postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, "abcdefg", false);
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, TENANT, false);
         } catch (Exception e) {
           log.error(e.getMessage(), e);
           context.fail();
@@ -418,7 +419,7 @@ public class DemoRamlRestTest {
         context.fail(url + " - " + error.getMessage());
         async.complete();
       });
-      request.headers().add("x-okapi-tenant", "abcdefg");
+      request.headers().add("x-okapi-tenant", TENANT);
       request.headers().add("Accept", accept);
       request.setChunked(true);
       request.end();
