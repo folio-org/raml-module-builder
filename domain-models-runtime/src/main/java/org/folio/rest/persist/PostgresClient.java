@@ -429,7 +429,7 @@ public class PostgresClient {
     return postgreSQLClientConfig;
   }
 
-  public static String pojo2json(Object entity) throws Exception {
+  public static String pojo2json(Object entity) {
     // SimpleModule module = new SimpleModule();
     // module.addSerializer(entity.getClass(), new PoJoJsonSerializer());
     // mapper.registerModule(module);
@@ -440,11 +440,11 @@ public class PostgresClient {
         try {
           return mapper.writeValueAsString(entity);
         } catch (JsonProcessingException e) {
-          log.error(e);
+          log.error(e.getMessage(), e);
         }
       }
     }
-    throw new Exception("Entity can not be null");
+    return null;
   }
 
   /**
@@ -563,18 +563,23 @@ public class PostgresClient {
         }
 
         try {
-
           String upsertClause = "";
           if(upsert){
             upsertClause = " ON CONFLICT ("+idField+") DO UPDATE SET " +
               DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + " ";
           }
 
+          String pojo = pojo2json(entity);
+          if(pojo == null){
+            replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+            return;
+          }
+
           /* do not change to updateWithParams as this will not return the generated id in the reply */
           connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
             ") VALUES ("+clientId+"?::JSON)" + upsertClause + returning,
-            new JsonArray().add(pojo2json(entity)), query -> {
+            new JsonArray().add(pojo), query -> {
               connection.close();
               if (query.failed()) {
                 replyHandler.handle(Future.failedFuture(query.cause()));
@@ -612,9 +617,16 @@ public class PostgresClient {
     try {
       // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
       connection = ((Future<SQLConnection>) sqlConnection).result();
+
+      String pojo = pojo2json(entity);
+      if(pojo == null){
+        replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+        return;
+      }
+
       connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
-        new JsonArray().add(pojo2json(entity)), query -> {
+        new JsonArray().add(pojo), query -> {
           if (query.failed()) {
             replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
@@ -735,7 +747,6 @@ public class PostgresClient {
    * @param entity - pojo to save
    * @param id - key of the entitiy being updated
    * @param replyHandler
-   * @throws Exception
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) {
     update(table, entity, DEFAULT_JSONB_FIELD_NAME, WHERE + idField + "='" + id + "'", false, replyHandler);
@@ -791,7 +802,6 @@ public class PostgresClient {
    * @param filter - see example below
    * @param returnUpdatedIds - return ids of updated records
    * @param replyHandler
-   * @throws Exception
    *
    */
   public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
@@ -868,7 +878,13 @@ public class PostgresClient {
           + " " + returning;
       log.debug("query = " + q);
 
-      connection.updateWithParams(q, new JsonArray().add(pojo2json(entity)), query -> {
+      String pojo = pojo2json(entity);
+      if(pojo == null){
+        replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+        return;
+      }
+
+      connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
         if(!transactionMode){
           connection.close();
         }
@@ -925,11 +941,10 @@ public class PostgresClient {
    * @param section - see UpdateSection class
    * @param when - Criterion object
    * @param replyHandler
-   * @throws Exception
    *
    */
   public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
-      Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+      Handler<AsyncResult<UpdateResult>> replyHandler) {
     long start = System.nanoTime();
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -968,12 +983,13 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(e));
         }
       } else {
+        log.error(res.cause().getMessage(), res.cause());
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
 
-  public void delete(String table, CQLWrapper cql, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+  public void delete(String table, CQLWrapper cql, Handler<AsyncResult<UpdateResult>> replyHandler) {
     String where = "";
     if(cql != null){
       where = cql.toString();
@@ -986,9 +1002,8 @@ public class PostgresClient {
    * @param table
    * @param id
    * @param replyHandler
-   * @throws Exception
    */
-  public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+  public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) {
     delete(table, WHERE + idField + "='" + id + "'", false, replyHandler);
   }
 
@@ -997,9 +1012,8 @@ public class PostgresClient {
    * @param table
    * @param filter
    * @param replyHandler
-   * @throws Exception
    */
-  public void delete(String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+  public void delete(String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) {
     StringBuilder sb = new StringBuilder();
     if (filter != null) {
       sb.append(filter.toString());
@@ -1007,11 +1021,16 @@ public class PostgresClient {
     delete(table, sb.toString(), false, replyHandler);
   }
 
-  public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
-    delete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo2json(entity) + "' ", false, replyHandler);
+  public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    String pojo = pojo2json(entity);
+    if(pojo == null){
+      replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+      return;
+    }
+    delete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", false, replyHandler);
   }
 
-  private void delete(String table, String where, boolean dbPrefix, Handler<AsyncResult<UpdateResult>> replyHandler) throws Exception {
+  private void delete(String table, String where, boolean dbPrefix, Handler<AsyncResult<UpdateResult>> replyHandler) {
     long start = System.nanoTime();
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -1041,18 +1060,19 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(e));
         }
       } else {
+        log.error(res.cause().getMessage(), res.cause());
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
 
   public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
-      boolean setId, Handler<AsyncResult<Results>> replyHandler) throws Exception {
+      boolean setId, Handler<AsyncResult<Results>> replyHandler) {
     get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
-      boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) throws Exception {
+      boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
     long start = System.nanoTime();
 
     client.getConnection(res -> {
@@ -1114,8 +1134,8 @@ public class PostgresClient {
                 log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
               }
             } catch (Exception e) {
-              e.printStackTrace();
-              replyHandler.handle(Future.failedFuture(e.getCause()));
+              log.error(e.getMessage(), e);
+              replyHandler.handle(Future.failedFuture(e));
             }
           });
         } catch (Exception e) {
@@ -1175,26 +1195,32 @@ public class PostgresClient {
    * @throws Exception
    */
   //@Timer
-  public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Results>> replyHandler) throws Exception {
-    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
-      + "@>'" + pojo2json(entity) + "' ", returnCount, true, true, replyHandler);
+  public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Results>> replyHandler) {
+    get(table,  entity, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Object entity, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Results>> replyHandler) throws Exception {
+  public void get(String table, Object entity, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Results>> replyHandler) {
     boolean setId = true;
     if(returnIdField == false){
       //if no id fields then cannot setId from external column into json object
       setId = false;
     }
+
+    String pojo = pojo2json(entity);
+    if(pojo == null){
+      replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+      return;
+    }
+
     get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
-      + "@>'" + pojo2json(entity) + "' ", returnCount, returnIdField, setId, replyHandler);
+      + "@>'" + pojo + "' ", returnCount, returnIdField, setId, replyHandler);
   }
 
-  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Results>> replyHandler) throws Exception {
+  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Results>> replyHandler) {
     get(table, entity, fields, returnCount, returnIdField, -1, -1, replyHandler);
   }
 
-  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, int offset, int limit, Handler<AsyncResult<Results>> replyHandler) throws Exception {
+  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, int offset, int limit, Handler<AsyncResult<Results>> replyHandler) {
     boolean setId = true;
     if(returnIdField == false){
       //if no id fields then cannot setId from extrnal column into json object
@@ -1207,9 +1233,14 @@ public class PostgresClient {
     if(limit != -1){
       sb.append(" ").append(new Limit(limit).toString()).append(" ");
     }
+    String pojo = pojo2json(entity);
+    if(pojo == null){
+      replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+      return;
+    }
     String fieldsStr = Arrays.toString(fields);
     get(table, entity.getClass(), fieldsStr.substring(1, fieldsStr.length()-1), WHERE + DEFAULT_JSONB_FIELD_NAME
-      + "@>'" + pojo2json(entity) + "' "+sb.toString(), returnCount, returnIdField, setId, replyHandler);
+      + "@>'" + pojo + "' "+sb.toString(), returnCount, returnIdField, setId, replyHandler);
   }
 
   /**
@@ -1222,18 +1253,17 @@ public class PostgresClient {
    * @throws Exception
    */
   public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
-    throws Exception {
+  {
     get(table, clazz, filter, returnCount, true, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results>> replyHandler) throws Exception {
+      Handler<AsyncResult<Results>> replyHandler) {
     get(table, clazz, fields, filter, returnCount, setId, null, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId,
-      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler)
-      throws Exception {
+      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
     String where = "";
     if(filter != null){
       where = filter.toString();
@@ -1243,7 +1273,7 @@ public class PostgresClient {
   }
 
   public void get(String table, Class<?> clazz, String[] fields, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
-      throws Exception {
+  {
     String where = "";
     if(filter != null){
       where = filter;
@@ -1253,7 +1283,7 @@ public class PostgresClient {
   }
 
   public void get(String table, Class<?> clazz, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
-      throws Exception {
+  {
     String where = "";
     if(filter != null){
       where = filter;
@@ -1262,23 +1292,22 @@ public class PostgresClient {
   }
 
   public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
-      throws Exception {
+  {
     get(table, clazz, fields, filter, returnCount, true, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
-      throws Exception {
+  {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, true, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
-      throws Exception {
+  {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, boolean setId, List<FacetField> facets,
-      Handler<AsyncResult<Results>> replyHandler)
-      throws Exception {
+      Handler<AsyncResult<Results>> replyHandler) {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, facets, replyHandler);
   }
 
@@ -1293,7 +1322,7 @@ public class PostgresClient {
    * @throws Exception
    */
   public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
-      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) throws Exception {
+      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
 
     StringBuilder sb = new StringBuilder();
     StringBuilder fromClauseFromCriteria = new StringBuilder();
@@ -1309,7 +1338,7 @@ public class PostgresClient {
   }
 
   public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results>> replyHandler) throws Exception {
+      Handler<AsyncResult<Results>> replyHandler) {
     get(table, clazz, filter, returnCount, setId, null, replyHandler);
   }
 
