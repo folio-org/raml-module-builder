@@ -1,3 +1,9 @@
+## 18.0.0 2018-02-19
+* RMB-133: start , rollback and end transactions should use a handler of type handler<asyncresult<object>>
+* RMB-132: Allow update() method to be called within a transaction.
+* RMB-131: PostgresClient: asynchronous functions must not throw exceptions
+* RMB-128: Upgrade to postgres v10
+
 ## 17.0.0 2017-01-17
 * RMB-119: CQL's default relation "=" now uses "adj" relation for strings (was "all")
 * CQLPG-30, CQLPG-31: Fix number handling in CQL queries
