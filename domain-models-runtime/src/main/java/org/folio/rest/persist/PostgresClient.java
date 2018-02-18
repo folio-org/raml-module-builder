@@ -981,7 +981,7 @@ public class PostgresClient {
     if(cql != null){
       where = cql.toString();
     }
-    delete(table, where, false, replyHandler);
+    doDelete(table, where, replyHandler);
   }
 
   /**
@@ -991,7 +991,7 @@ public class PostgresClient {
    * @param replyHandler
    */
   public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    delete(table, WHERE + idField + "='" + id + "'", false, replyHandler);
+    doDelete(table, WHERE + idField + "='" + id + "'", replyHandler);
   }
 
   /**
@@ -1005,7 +1005,7 @@ public class PostgresClient {
     if (filter != null) {
       sb.append(filter.toString());
     }
-    delete(table, sb.toString(), false, replyHandler);
+    doDelete(table, sb.toString(), replyHandler);
   }
 
   public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
@@ -1016,10 +1016,10 @@ public class PostgresClient {
       replyHandler.handle(Future.failedFuture(e));
       return;
     }
-    delete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", false, replyHandler);
+    doDelete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", replyHandler);
   }
 
-  private void delete(String table, String where, boolean dbPrefix, Handler<AsyncResult<UpdateResult>> replyHandler) {
+  private void doDelete(String table, String where, Handler<AsyncResult<UpdateResult>> replyHandler) {
     long start = System.nanoTime();
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -1209,7 +1209,8 @@ public class PostgresClient {
     get(table, entity, fields, returnCount, returnIdField, -1, -1, replyHandler);
   }
 
-  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, int offset, int limit, Handler<AsyncResult<Results>> replyHandler) {
+  public void get(String table, Object entity, String[] fields, boolean returnCount,
+      boolean returnIdField, int offset, int limit, Handler<AsyncResult<Results>> replyHandler) { //NOSONAR
     boolean setId = true;
     if(returnIdField == false){
       //if no id fields then cannot setId from extrnal column into json object
