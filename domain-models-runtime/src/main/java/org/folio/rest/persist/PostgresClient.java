@@ -429,7 +429,7 @@ public class PostgresClient {
     return postgreSQLClientConfig;
   }
 
-  public static String pojo2json(Object entity) {
+  public static String pojo2json(Object entity) throws Exception {
     // SimpleModule module = new SimpleModule();
     // module.addSerializer(entity.getClass(), new PoJoJsonSerializer());
     // mapper.registerModule(module);
@@ -441,10 +441,11 @@ public class PostgresClient {
           return mapper.writeValueAsString(entity);
         } catch (JsonProcessingException e) {
           log.error(e.getMessage(), e);
+          throw e;
         }
       }
     }
-    return null;
+    throw new Exception("Entity can not be null");
   }
 
   /**
@@ -568,13 +569,7 @@ public class PostgresClient {
             upsertClause = " ON CONFLICT ("+idField+") DO UPDATE SET " +
               DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + " ";
           }
-
           String pojo = pojo2json(entity);
-          if(pojo == null){
-            replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
-            return;
-          }
-
           /* do not change to updateWithParams as this will not return the generated id in the reply */
           connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
@@ -617,13 +612,7 @@ public class PostgresClient {
     try {
       // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
       connection = ((Future<SQLConnection>) sqlConnection).result();
-
       String pojo = pojo2json(entity);
-      if(pojo == null){
-        replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
-        return;
-      }
-
       connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
         new JsonArray().add(pojo), query -> {
@@ -653,17 +642,21 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void saveBatch(String table, List<Object> entities, Handler<AsyncResult<ResultSet>> replyHandler) throws Exception {
+  public void saveBatch(String table, List<Object> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
     long start = System.nanoTime();
 
     int size = entities.size();
 
     StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < size; i++) {
-      sb.append("('").append( pojo2json(entities.get(i)) ).append("')");
-      if(i+1 < size){
-        sb.append(",");
+    try {
+      for (int i = 0; i < size; i++) {
+        sb.append("('").append( pojo2json(entities.get(i)) ).append("')");
+        if(i+1 < size){
+          sb.append(",");
+        }
       }
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
     }
 
     client.getConnection(res -> {
@@ -877,13 +870,7 @@ public class PostgresClient {
       String q = "UPDATE " + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
           + " " + returning;
       log.debug("query = " + q);
-
       String pojo = pojo2json(entity);
-      if(pojo == null){
-        replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
-        return;
-      }
-
       connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
         if(!transactionMode){
           connection.close();
@@ -1022,9 +1009,11 @@ public class PostgresClient {
   }
 
   public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    String pojo = pojo2json(entity);
-    if(pojo == null){
-      replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+    String pojo = null;
+    try {
+      pojo = pojo2json(entity);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
       return;
     }
     delete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", false, replyHandler);
@@ -1205,13 +1194,13 @@ public class PostgresClient {
       //if no id fields then cannot setId from external column into json object
       setId = false;
     }
-
-    String pojo = pojo2json(entity);
-    if(pojo == null){
-      replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+    String pojo = null;
+    try {
+      pojo = pojo2json(entity);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
       return;
     }
-
     get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo + "' ", returnCount, returnIdField, setId, replyHandler);
   }
@@ -1233,9 +1222,11 @@ public class PostgresClient {
     if(limit != -1){
       sb.append(" ").append(new Limit(limit).toString()).append(" ");
     }
-    String pojo = pojo2json(entity);
-    if(pojo == null){
-      replyHandler.handle(Future.failedFuture(new Exception("Error when converting entity into json")));
+    String pojo = null;
+    try {
+      pojo = pojo2json(entity);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
       return;
     }
     String fieldsStr = Arrays.toString(fields);
