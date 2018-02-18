@@ -2172,7 +2172,7 @@ public class PostgresClient {
         locale = "american_usa";
       }
 
-      final PostgresConfig config = new PostgresConfig(Version.Main.V9_6,
+      final PostgresConfig config = new PostgresConfig(Version.Main.V10,
         new AbstractPostgresConfig.Net(DEFAULT_IP, port),
         new AbstractPostgresConfig.Storage(database),
         new AbstractPostgresConfig.Timeout(20000),

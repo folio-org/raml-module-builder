@@ -1,10 +1,5 @@
 package org.folio.rest.persist;
 
-import ru.yandex.qatools.embed.postgresql.PostgresProcess;
-import ru.yandex.qatools.embed.postgresql.PostgresStarter;
-import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
-import ru.yandex.qatools.embed.postgresql.distribution.Version;
-
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -24,6 +19,10 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import ru.yandex.qatools.embed.postgresql.PostgresProcess;
+import ru.yandex.qatools.embed.postgresql.PostgresStarter;
+import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
+import ru.yandex.qatools.embed.postgresql.distribution.Version;
 
 /**
  * Starts embedded Postgres if the desired PostgresPort if free, and provide a port that allows to stop it.
@@ -226,7 +225,7 @@ public class PostgresRunner extends AbstractVerticle {
     log.debug("startPostgres(postgresPort={0}, username={1}, password [not shown])", postgresPort, username);
     try {
       final PostgresConfig config = new PostgresConfig(
-          Version.Main.V9_6,
+          Version.Main.V10,
           new PostgresConfig.Net("localhost", postgresPort),
           new PostgresConfig.Storage("database"),
           new PostgresConfig.Timeout(),
