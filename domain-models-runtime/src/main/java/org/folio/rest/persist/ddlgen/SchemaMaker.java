@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -25,6 +27,7 @@ import freemarker.template.Version;
  */
 public class SchemaMaker {
 
+  private static Pattern semverPat = Pattern.compile("^*([0-9]*[.][0-9]*).*$");
   private static Configuration cfg;
   private Map<String, Object> templateInput = new HashMap<>();
   private String tenant;
@@ -76,9 +79,9 @@ public class SchemaMaker {
 
     if(pVersion != null){
       //will be null on deletes unless its read from db by rmb
-      int loc = pVersion.lastIndexOf(".");
-      if(loc != -1){
-        pVersion = this.previousVersion.substring(0, loc);
+      Matcher matcher = semverPat.matcher(pVersion);
+      if(matcher.find()){
+        pVersion = matcher.group(1);
       }
     }
     else{
