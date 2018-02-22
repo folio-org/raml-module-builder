@@ -48,7 +48,6 @@ public class SchemaMaker {
       cfg.setLocale(Locale.US);
       cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
     }
-    System.out.println("aaaaa " + previousVersion + "   " + newVersion );
     this.tenant = tenant;
     this.module = module;
     this.mode = mode;
