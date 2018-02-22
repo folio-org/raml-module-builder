@@ -19,7 +19,7 @@ public abstract class SQLEntity {
     }
     ComparableVersion cv = new ComparableVersion(fromModuleVersion);
     int res = cv.compareTo(new ComparableVersion(prevVersion));
-    if(res >= 0){
+    if(res > 0){
       return true;
     }
     return false;
