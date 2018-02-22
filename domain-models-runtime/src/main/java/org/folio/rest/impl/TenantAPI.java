@@ -263,12 +263,14 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               TenantOperation op = TenantOperation.CREATE;
 
               String previousVersion = null;
+              String newVersion = null;
               if(isUpdateMode[0]){
                 op = TenantOperation.UPDATE;
                 previousVersion = entity.getModuleFrom();
+                newVersion = entity.getModuleTo();
               }
 
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, PomReader.INSTANCE.getRmbVersion());
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
 
               String tableInputStr = null;
               if(tableInput != null){

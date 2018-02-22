@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
       jsonb JSONB NOT NULL
     );
 
-insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
+insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}!0"}'::jsonb);
 
 -- rmb version ${rmbVersion}
 
@@ -23,7 +23,10 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
 <#if scripts??>
   <#list scripts as script>
     <#if script.run == "before">
-      <#if (version < (script.fromModuleVersion)!"0") || mode.name() == "CREATE">
+      <#if (script.isNewForThisInstall(version)) || mode.name() == "CREATE">
+        <#if mode.name() != "CREATE">
+-- Run script - created in version ${(script.fromModuleVersion)!0}
+        </#if>
         ${script.snippet}
       </#if>
     </#if>
@@ -39,11 +42,12 @@ SET search_path TO public, ${myuniversity}_${mymodule};
 
 <#-- the table version indicates which version introduced this feature hence all versions before this need the schema upgrade-->
 <#-- the from module version - if not set, is set to zero as it assumes that a version not set indicates to create the table always -->
-<#if (version < (table.fromModuleVersion)!"0") || mode.name() == "CREATE">
+<#if (table.isNewForThisInstall(version)) || mode.name() == "CREATE">
 
 -- Previous module version ${version}
+  <#if mode.name() != "CREATE">
 -- Run upgrade of table: ${table.tableName} since table created in version ${(table.fromModuleVersion)!0}
-
+  </#if>
   <#if table.mode != "delete">
     CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.tableName} (
       ${table.pkColumnName} UUID PRIMARY KEY <#if table.generateId == true>DEFAULT gen_random_uuid()</#if>,
@@ -110,7 +114,10 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
 <#if scripts??>
   <#list scripts as script>
     <#if script.run == "after">
-      <#if (version < (script.fromModuleVersion)!"0") || mode.name() == "CREATE">
+      <#if (script.isNewForThisInstall(version)) || mode.name() == "CREATE">
+        <#if mode.name() != "CREATE">
+-- Run script - created in version ${(script.fromModuleVersion)!0}
+        </#if>      
         ${script.snippet}
       </#if>
     </#if>

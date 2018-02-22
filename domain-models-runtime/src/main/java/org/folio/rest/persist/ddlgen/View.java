@@ -6,11 +6,10 @@ import java.util.List;
  * @author shale
  *
  */
-public class View {
+public class View extends SQLEntity {
 
   private String viewName;
   private String mode;
-  private double fromModuleVersion;
   //pkColumnName should be the id column (not in jsonb) of the table within the view whose results
   //we will be returning from the select on this view, since the postgresClient exposes mapping the id
   //into the jsonb or returning that id for the pojos it maps to from the returned jsons
@@ -29,12 +28,6 @@ public class View {
   }
   public void setMode(String mode) {
     this.mode = mode;
-  }
-  public double getFromModuleVersion() {
-    return fromModuleVersion;
-  }
-  public void setFromModuleVersion(double fromModuleVersion) {
-    this.fromModuleVersion = fromModuleVersion;
   }
   public String getPkColumnName() {
     return pkColumnName;

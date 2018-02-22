@@ -6,7 +6,7 @@ import java.util.List;
  * @author shale
  *
  */
-public class Table {
+public class Table extends SQLEntity {
 
   private String mode;
   private String tableName;
@@ -22,7 +22,6 @@ public class Table {
   private List<AddFields> addFields;
   private List<DeleteFields> deleteFields;
   private boolean populateJsonWithId;
-  private double fromModuleVersion;
   private AuditingSnippet auditingSnippet;
   private String pkColumnName = "id";
 
@@ -128,14 +127,6 @@ public class Table {
 
   public void setPopulateJsonWithId(boolean populateJsonWithId) {
     this.populateJsonWithId = populateJsonWithId;
-  }
-
-  public double getFromModuleVersion() {
-    return fromModuleVersion;
-  }
-
-  public void setFromModuleVersion(double fromModuleVersion) {
-    this.fromModuleVersion = fromModuleVersion;
   }
 
   public AuditingSnippet getAuditingSnippet() {
