@@ -1,19 +1,15 @@
 package org.folio.rest.tools.parser;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.commons.io.IOUtils;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
- * @author shale
- * Based on the vertx json object implementation which is mapped based
- * allow setting / getting nested paths
- *
+ * Based on the vertx json object implementation which is mapped based.
+ * <p>
+ * Allow setting / getting nested paths.
  */
 public class JsonPathParser {
 
@@ -132,7 +128,7 @@ public class JsonPathParser {
    * @return either a jsonobject / jsonarray when a specific value is requested or a List when a
    * wildcard is included in the path
    */
-  private Object getValueAt(String path, boolean returnParent, boolean returnPaths){
+  Object getValueAt(String path, boolean returnParent, boolean returnPaths){
     String []subPathsList = getPathAsList(path);
     Object o = j;
     List<StringBuilder> currentPaths = new ArrayList<>();
@@ -499,97 +495,5 @@ public class JsonPathParser {
 
   public JsonObject getJsonObject(){
     return j;
-  }
-
-  @SuppressWarnings("unused")
-  public static void main(String args[]) throws IOException{
-
-    //for (int i = 0; i < 3; i++) {
-      long start = System.currentTimeMillis();
-
-      JsonObject j22 = new JsonObject(
-        IOUtils.toString(JsonPathParser.class.getClassLoader().
-          getResourceAsStream("userdata.json"), "UTF-8"));
-      JsonPathParser jp2 = new JsonPathParser(j22, true);
-      System.out.println(jp2.getValueAt("personal.preferredContact.desc.type", false, false));
-      System.out.println(jp2.getValueAt("personals.preferredContact.desc.type", false, false));
-      System.out.println(jp2.getValueAt("personal.properties.preferredContact.properties.desc.type", false, false));
-      System.out.println(jp2.getAbsolutePaths("personal.preferredContact.desc.type"));
-      System.out.println(jp2.getValueAndParentPair("personal.preferredContact.desc.type").getRequestedValue());
-      System.out.println(jp2.getValueAndParentPair("personal2.preferredContact.desc.type"));
-
-      JsonObject j1 = new JsonObject(
-        IOUtils.toString(JsonPathParser.class.getClassLoader().
-          getResourceAsStream("pathTest.json"), "UTF-8"));
-      JsonPathParser jp = new JsonPathParser(j1);
-
-      List<StringBuilder> o5 = jp.getAbsolutePaths("c.arr[0].a2.'aaa.ccc'");
-
-      List<StringBuilder> o6 = jp.getAbsolutePaths("c.arr[*].a2.'aaa.ccc'");
-
-      List<StringBuilder> o7 = jp.getAbsolutePaths("c.arr[*].a2.arr2[*].arr3[*]");
-
-      List<StringBuilder> o8 = jp.getAbsolutePaths("c.arr[*].a2.arr2[*].arr3[*].a32");
-
-      Object o = jp.getValueAndParentPair("c.arr[0].a2.'aaa.ccc'"); //fix
-
-      Object o3a = jp.getValueAndParentPair("c.arr[1].a2.arr2[1]");
-
-      Object o3 = jp.getValueAndParentPair("c.arr[3].a2.arr2[2].arr3[1]");
-
-      Object o11 = jp.getValueAndParentPair("c.arr[0]");
-
-      Object o1 = jp.getValueAndParentPair("c.arr[0].a2.'aaa.ccc'");
-
-      Object o2 = jp.getValueAndParentPair("c.a1");
-
-      Object o4 = jp.getValueAndParentPair("c.arr[*].a2.arr2[*].arr3[*].a32");
-
-      System.out.println("c.arr[*].a2.'aaa.ccc': (with parent) " + jp.getValueAt("c.arr[*].a2.'aaa.ccc'", true, false));
-
-      System.out.println("c.arr[*].a2: (with parent) " + jp.getValueAt("c.arr[*].a2", true, false));
-
-      System.out.println("c.arr[0].a2: (with parent) " + jp.getValueAt("c.arr[0].a2", true, false));
-
-      System.out.println("c.arr[*].a2.arr2[*].arr3[*]: " + jp.getValueAt("c.arr[*].a2.arr2[*].arr3[*]"));
-
-      System.out.println("c.arr[*].a2.arr2[*].arr3[*]: " + jp.getValueAt("c.arr[*].a2.arr2[*].arr3[*]"));
-
-      System.out.println("c.arr[*].a2.'aaa.ccc': " + jp.getValueAt("c.arr[*].a2.'aaa.ccc'"));
-      jp.setValueAt("c.arr[0].a2.'aaa.ccc'", "aaa.ccc");
-      jp.setValueAt("c.arr[2].a2.'aaa.ccc'", "aaa.ddd");
-
-      System.out.println("c.arr[*].a2.'aaa.ccc': " +jp.getValueAt("c.arr[*].a2.'aaa.ccc'"));
-
-      System.out.println("c.arr[*].a2.arr2[*]: " + jp.getValueAt("c.arr[*].a2.arr2[*]"));
-      jp.setValueAt("c.arr[0].a2.arr2[0]", "yyy");
-      System.out.println("c.arr[*].a2.'aaa.ccc': " +jp.getValueAt("c.arr[*].a2.arr2[*]"));
-
-      System.out.println("c.arr[1].a2.'aaa.ccc': " + jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
-      jp.setValueAt("c.arr[1].a2.'aaa.ccc'", "aaa.ddd");
-      System.out.println("c.arr[1].a2.'aaa.ccc': " +jp.getValueAt("c.arr[1].a2.'aaa.ccc'"));
-
-      jp.setValueAt("c.arr[*]", new JsonObject());
-
-      System.out.println("c.arr[1].a2 " + ((JsonObject)jp.getValueAt("c.arr[0].a2.arr2[2]")).getJsonArray("arr3"));
-      jp.setValueAt("c.arr[1].a2", new JsonObject("{\"xqq\":\"xaa\"}"));
-      System.out.println("c.arr[1].a2 " + jp.getValueAt("c.arr[1].a2"));
-
-      System.out.println("c.arr[1] " + jp.getValueAt("c.arr[1]"));
-      jp.setValueAt("c.arr[1]", new JsonArray("[{\"xqq\":\"xaa\"}]"));
-      System.out.println("c.arr[1] " + jp.getValueAt("c.arr[1]"));
-
-      System.out.println("c.arr " + jp.getValueAt("c.arr"));
-      jp.setValueAt("c.arr", new JsonArray("[{\"xqq\":\"xaa\"}]"));
-      System.out.println("c.arr " + jp.getValueAt("c.arr"));
-
-      System.out.println("c " + jp.getValueAt("c"));
-      jp.setValueAt("c", new JsonObject("{\"xz\":\"xc\"}"));
-      System.out.println("c " + jp.getValueAt("c"));
-
-      long end = System.currentTimeMillis();
-      System.out.println("time: " + (end - start));
-
-    //}
   }
 }
