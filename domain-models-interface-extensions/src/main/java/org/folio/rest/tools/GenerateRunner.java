@@ -56,9 +56,9 @@ public class GenerateRunner {
    * Create a GenerateRunner for a specific target directory.
    * <p>
    * The output directory of the .java client is
-   * <code>src/main/java/org/folio/rest/client</code>,
+   * <code>target/generated-sources/raml-jaxrs/org/folio/rest/client</code>,
    * the output directory of the .java pojos is
-   * <code>src/main/java/org/folio/rest/jaxrs/model</code>,
+   * <code>target/generated-sources/raml-jaxrs/org/folio/rest/jaxrs/model</code>,
    * the output directory of the RAML and dereferenced schema files is
    * <code>target/classes</code>; they are relative to the parameter
    * <code>outputDirectory</code>.

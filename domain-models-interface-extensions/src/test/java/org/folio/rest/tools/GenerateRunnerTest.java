@@ -15,8 +15,9 @@ import java.io.IOException;
 
 public class GenerateRunnerTest {
   private static String userDir = System.getProperty("user.dir");
-  private static File jaxrs    = new File(userDir + "/src/main/java/org/folio/rest/jaxrs");
-  private static File jaxrsBak = new File(userDir + "/src/main/java/org/folio/rest/jaxrs.bak");
+  private static String jaxrsDir = "/target/generated-sources/raml-jaxrs/org/folio/rest/jaxrs";
+  private static File jaxrs    = new File(userDir + jaxrsDir);
+  private static File jaxrsBak = new File(userDir + jaxrsDir + ".bak");
   private String resourcesDir = userDir + "/src/test/resources/schemas";
   private String baseDir = userDir + "/target/GenerateRunnerTest";
 
@@ -41,12 +42,12 @@ public class GenerateRunnerTest {
 
   private String jobJava() throws IOException {
     return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
-        + "/src/main/java/org/folio/rest/jaxrs/model/Job.java");
+        + jaxrsDir + "/model/Job.java");
   }
 
   private String testJava() throws IOException {
     return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
-        + "/src/main/java/org/folio/rest/jaxrs/model/TestSchema.java");
+        + jaxrsDir + "/model/TestSchema.java");
   }
 
   private String msgsSchema() throws IOException {

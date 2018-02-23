@@ -124,23 +124,6 @@
         </configuration>
       </plugin>
 
-
-      <!-- this is only needed because of the refactoring done and the moving
-      of raml files from the interface project to the runtime project , can be
-      removed in a month -->
-      <plugin>
-        <artifactId>maven-clean-plugin</artifactId>
-        <version>3.0.0</version>
-        <configuration>
-          <filesets>
-            <fileset>
-              <directory>src/main/java/com</directory>
-              <followSymlinks>false</followSymlinks>
-            </fileset>
-          </filesets>
-        </configuration>
-      </plugin>
-
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>

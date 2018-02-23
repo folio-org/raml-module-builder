@@ -616,7 +616,8 @@ This should:
 
 - POJOs -- The JSON schemas will be generated into java objects.
 
-- All generated code can be found in the `org.folio.rest.jaxrs` package.
+- All generated code can be found in the `org.folio.rest.jaxrs` package in the
+  `target/generated-sources/raml-jaxrs/` directory.
 
 ### Step 5: Implement the generated interfaces
 

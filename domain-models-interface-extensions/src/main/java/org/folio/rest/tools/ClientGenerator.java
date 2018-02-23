@@ -51,7 +51,7 @@ public class ClientGenerator {
 
   public static final String  PATH_ANNOTATION        = "javax.ws.rs.Path";
   public static final String  CLIENT_CLASS_SUFFIX    = "Client";
-  public static final String  PATH_TO_GENERATE_TO    = "/src/main/java/";
+  public static final String  PATH_TO_GENERATE_TO    = "/target/generated-sources/raml-jaxrs/";
   public static final String  OKAPI_HEADER_TENANT = "x-okapi-tenant";
 
   private static final Logger log = LoggerFactory.getLogger(ClientGenerator.class);
