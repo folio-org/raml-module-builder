@@ -85,10 +85,8 @@ public class SchemaMaker {
     }
 
     templateInput.put("version", pVersion);
-    System.out.println("updating from version " + pVersion);
 
     templateInput.put("newVersion", this.newVersion);
-    System.out.println("updating to version " + newVersion);
 
     //TODO - check the rmbVersion in the internal_rmb table and compare to this passed in
     //version, to check if core rmb scripts need updating due to an update
@@ -317,18 +315,12 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    //SchemaMaker fm = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.UPDATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
     SchemaMaker fm = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.UPDATE, "mod-foo-18.2.1-SNAPSHOT.2", "mod-foo-18.2.4-SNAPSHOT.2");
-    SchemaMaker fm1 = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.UPDATE, "18.2.1-SNAPSHOT.2", "mod-foo-18.2.4-SNAPSHOT.2");
-    SchemaMaker fm2 = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.UPDATE, "18.2.1", "mod-foo-18.2.4-SNAPSHOT.2");
     String f = "C:\\Git\\raml-module-builder\\domain-models-runtime\\src\\main\\resources\\templates\\db_scripts\\examples\\schema.json.example";
     byte[] encoded = Files.readAllBytes(Paths.get(f));
     String json = new String(encoded, "UTF8");
-
     fm.setSchema(ObjectMapperTool.getMapper().readValue(
       json, Schema.class));
-
     System.out.println(fm.generateDDL());
-
   }
 }
