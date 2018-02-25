@@ -6,7 +6,7 @@ import java.util.List;
  * @author shale
  *
  */
-public class View extends SQLEntity {
+public class View extends Versioned {
 
   private String viewName;
   private String mode;

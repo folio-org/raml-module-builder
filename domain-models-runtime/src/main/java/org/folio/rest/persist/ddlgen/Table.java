@@ -6,7 +6,7 @@ import java.util.List;
  * @author shale
  *
  */
-public class Table extends SQLEntity {
+public class Table extends Versioned {
 
   private String mode;
   private String tableName;

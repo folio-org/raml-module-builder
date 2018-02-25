@@ -4,7 +4,7 @@ package org.folio.rest.persist.ddlgen;
  * @author shale
  *
  */
-public class Script extends SQLEntity {
+public class Script extends Versioned {
 
   private String run;
   private String snippet;

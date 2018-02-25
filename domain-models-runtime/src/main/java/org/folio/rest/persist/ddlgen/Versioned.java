@@ -2,7 +2,7 @@ package org.folio.rest.persist.ddlgen;
 
 import org.drools.compiler.kie.builder.impl.KieRepositoryImpl.ComparableVersion;
 
-public abstract class SQLEntity {
+public abstract class Versioned {
 
   private String fromModuleVersion;
 
