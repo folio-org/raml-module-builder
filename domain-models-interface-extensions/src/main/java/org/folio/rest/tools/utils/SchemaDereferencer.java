@@ -1,5 +1,8 @@
 package org.folio.rest.tools.utils;
 
+import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.JsonObject;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,9 +18,6 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.folio.util.IoUtil;
-
-import io.vertx.core.json.DecodeException;
-import io.vertx.core.json.JsonObject;
 
 /**
  * Dereference JSON schemas of RAML files by replacing {@code ("$ref": <filename>)}
@@ -38,7 +38,7 @@ public class SchemaDereferencer {
    * @throws IOException  when any $ref file cannot be read
    * @throws IllegalStateException  when the $ref chain has a loop
    */
-  public JsonObject dereferencedSchema(Path path) throws IOException {
+  protected JsonObject dereferencedSchema(Path path) throws IOException {
     return dereferencedSchema(path, new ArrayDeque<>());
   }
 
@@ -47,7 +47,7 @@ public class SchemaDereferencer {
    * @param iterable  what to iterate
    * @return the stream
    */
-  private static <T> Stream<T> stream(Iterable<T> iterable){
+  private static <T> Stream<T> stream(Iterable<T> iterable) {
     return StreamSupport.stream(iterable.spliterator(), false);
   }
 
@@ -69,7 +69,9 @@ public class SchemaDereferencer {
    * @throws IllegalStateException  when the $ref chain has a loop
    * @throws DecodeException  when the $ref file is not a JSON
    */
-  protected JsonObject dereferencedSchema(Path inputPath, Deque<Path> dereferenceStack) throws IOException {
+  protected JsonObject dereferencedSchema(Path inputPath, Deque<Path> dereferenceStack)
+      throws IOException {
+
     Path path = inputPath.normalize().toAbsolutePath();
 
     if (dereferenced.containsKey(path)) {
@@ -87,13 +89,20 @@ public class SchemaDereferencer {
     try (InputStream reader = new FileInputStream(path.toFile())) {
       schemaString = IoUtil.toStringUtf8(reader);
     }
+
     JsonObject schema;
-    try {
-      schema = new JsonObject(schemaString);
-    } catch (DecodeException e) {
-      throw new DecodeException(allPaths(dereferenceStack), e);
+    if (schemaString.indexOf('{') == -1) {
+      // schemaString contains the filename to open
+      Path newInputPath = inputPath.resolveSibling(Paths.get(schemaString)).normalize();
+      schema = dereferencedSchema(newInputPath, dereferenceStack);
+    } else {
+      try {
+        schema = new JsonObject(schemaString);
+      } catch (DecodeException e) {
+        throw new DecodeException(allPaths(dereferenceStack), e);
+      }
+      dereference(schema, inputPath, dereferenceStack);
     }
-    dereference(schema, inputPath, dereferenceStack);
 
     dereferenceStack.pop();
     dereferenced.put(path, schema);
@@ -111,7 +120,8 @@ public class SchemaDereferencer {
    * @throws IOException  when any $ref file cannot be read
    * @throws ClassCastException  when $ref is not a String
    */
-  private void dereference(JsonObject jsonObject, Path jsonPath, Deque<Path> dereferenceStack) throws IOException {
+  private void dereference(JsonObject jsonObject, Path jsonPath, Deque<Path> dereferenceStack)
+      throws IOException {
     for (Entry<String,Object> entry : jsonObject) {
       Object value = entry.getValue();
       if (value instanceof JsonObject) {
