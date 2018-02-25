@@ -3,12 +3,12 @@
     {
       "run": "before",
       "snippet": "select * from start; ",
-      "fromModuleVersion": 15.2
+      "fromModuleVersion": "mod-foo-18.2.2"
     },
     {
       "run": "after",
       "snippet": "select * from end; ",
-      "fromModuleVersion": 14.2
+      "fromModuleVersion": "mod-foo-18.2.1-SNAPSHOT.8"
     }
   ],
   "tables": [

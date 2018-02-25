@@ -31,13 +31,14 @@ public class SchemaMaker {
   private String module;
   private TenantOperation mode;
   private String previousVersion;
+  private String newVersion;
   private String rmbVersion;
   private Schema schema;
 
   /**
    * @param onTable
    */
-  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion, String rmbVersion){
+  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion, String newVersion){
     if(SchemaMaker.cfg == null){
       //do this ONLY ONCE
       SchemaMaker.cfg = new Configuration(new Version(2, 3, 26));
@@ -51,7 +52,8 @@ public class SchemaMaker {
     this.module = module;
     this.mode = mode;
     this.previousVersion = previousVersion;
-    this.rmbVersion = rmbVersion;
+    this.newVersion = newVersion;
+    this.rmbVersion = PomReader.INSTANCE.getRmbVersion();
   }
 
   public String generateDDL() throws IOException, TemplateException {
@@ -74,21 +76,17 @@ public class SchemaMaker {
 
     String pVersion = this.previousVersion;
 
-    if(pVersion != null){
+    if(pVersion == null){
       //will be null on deletes unless its read from db by rmb
-      int loc = pVersion.lastIndexOf(".");
-      if(loc != -1){
-        pVersion = this.previousVersion.substring(0, loc);
-      }
-    }
-    else{
       pVersion = "0.0";
     }
+    if(newVersion == null){
+      newVersion = "0.0";
+    }
 
-    templateInput.put("version", Double.parseDouble(pVersion));
-    System.out.println("updating from version " + Double.parseDouble(pVersion));
+    templateInput.put("version", pVersion);
 
-    templateInput.put("newVersion", PomReader.INSTANCE.getVersion());
+    templateInput.put("newVersion", this.newVersion);
 
     //TODO - check the rmbVersion in the internal_rmb table and compare to this passed in
     //version, to check if core rmb scripts need updating due to an update
@@ -317,15 +315,12 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.CREATE, PomReader.INSTANCE.getVersion(), PomReader.INSTANCE.getRmbVersion());
+    SchemaMaker fm = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.UPDATE, "mod-foo-18.2.1-SNAPSHOT.2", "mod-foo-18.2.4-SNAPSHOT.2");
     String f = "C:\\Git\\raml-module-builder\\domain-models-runtime\\src\\main\\resources\\templates\\db_scripts\\examples\\schema.json.example";
     byte[] encoded = Files.readAllBytes(Paths.get(f));
     String json = new String(encoded, "UTF8");
-
     fm.setSchema(ObjectMapperTool.getMapper().readValue(
       json, Schema.class));
-
     System.out.println(fm.generateDDL());
-
   }
 }

@@ -1,0 +1,14 @@
+{
+  "scripts": [
+    {
+      "run": "before",
+      "snippet": "select * from start; ",
+      "fromModuleVersion": "mod-foo-18.2.2"
+    },
+    {
+      "run": "after",
+      "snippet": "select * from end; ",
+      "fromModuleVersion": "mod-foo-18.2.1-SNAPSHOT.8"
+    }
+  ]
+}

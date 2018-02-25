@@ -4,11 +4,10 @@ package org.folio.rest.persist.ddlgen;
  * @author shale
  *
  */
-public class Script {
+public class Script extends Versioned {
 
   private String run;
   private String snippet;
-  private double fromModuleVersion;
 
   public String getRun() {
     return run;
@@ -22,10 +21,5 @@ public class Script {
   public void setSnippet(String snippet) {
     this.snippet = snippet;
   }
-  public double getFromModuleVersion() {
-    return fromModuleVersion;
-  }
-  public void setFromModuleVersion(double fromModuleVersion) {
-    this.fromModuleVersion = fromModuleVersion;
-  }
+
 }

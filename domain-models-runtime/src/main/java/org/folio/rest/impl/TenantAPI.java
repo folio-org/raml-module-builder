@@ -195,6 +195,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
     /**
      * http://host:port/tenant
+     * Validation by rmb means the entity is either properly populated on is null
+     * depending on whether this is an upgrade or a create tenant
      */
 
     context.runOnContext(v -> {
@@ -263,12 +265,14 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               TenantOperation op = TenantOperation.CREATE;
 
               String previousVersion = null;
+              String newVersion = null;
               if(isUpdateMode[0]){
                 op = TenantOperation.UPDATE;
                 previousVersion = entity.getModuleFrom();
+                newVersion = entity.getModuleTo();
               }
 
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, PomReader.INSTANCE.getRmbVersion());
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
 
               String tableInputStr = null;
               if(tableInput != null){
