@@ -1008,6 +1008,15 @@ public class PostgresClient {
     doDelete(table, sb.toString(), replyHandler);
   }
 
+  public void delete(Object conn, String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+    StringBuilder sb = new StringBuilder();
+    if (filter != null) {
+      sb.append(filter.toString());
+    }
+    doDelete(sqlConnection, true, table, sb.toString(), replyHandler);
+  }
+
   public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
     String pojo = null;
     try {
@@ -1019,40 +1028,58 @@ public class PostgresClient {
     doDelete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", replyHandler);
   }
 
+  public void delete(Object conn, String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+    String pojo = null;
+    try {
+      pojo = pojo2json(entity);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
+      return;
+    }
+    doDelete(sqlConnection, true, table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", replyHandler);
+  }
+
   private void doDelete(String table, String where, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    long start = System.nanoTime();
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        try {
-          String q = "DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
-          log.debug("query = " + q);
-          connection.update(q, query -> {
-            connection.close();
-            if (query.failed()) {
-              log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(query.result()));
-            }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".delete", (end-start));
-            if(log.isDebugEnabled()){
-              log.debug("timer: get " +q+ " (ns) " + (end-start));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      } else {
-        log.error(res.cause().getMessage(), res.cause());
+        doDelete(connection, false, table, where, replyHandler);
+      }
+      else{
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
+  }
+
+  private void doDelete(SQLConnection connection, boolean transactionMode, String table, String where, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    long start = System.nanoTime();
+    try {
+      String q = "DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+      log.debug("query = " + q);
+      connection.update(q, query -> {
+        if(!transactionMode){
+          connection.close();
+        }
+        if (query.failed()) {
+          log.error(query.cause().getMessage(), query.cause());
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(query.result()));
+        }
+        long end = System.nanoTime();
+        StatsTracker.addStatElement(STATS_KEY+".delete", (end-start));
+        if(log.isDebugEnabled()){
+          log.debug("timer: get " +q+ " (ns) " + (end-start));
+        }
+      });
+    } catch (Exception e) {
+      if(!transactionMode){
+        connection.close();
+      }
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
@@ -1062,84 +1089,88 @@ public class PostgresClient {
 
   public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
       boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
-    long start = System.nanoTime();
 
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        try {
-          String addIdField = "";
-          if(returnIdField){
-            addIdField = "," + idField;
-          }
-
-          String select = "SELECT ";
-
-          if(!"null".equals(fieldName) && fieldName.contains("*")){
-            //if we are requesting all fields (*) , then dont add the id field to the select
-            //this will return two id columns which will create ambiguity in facet queries
-            addIdField = "";
-          }
-
-          String []q = new String[]{
-            select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
-          };
-
-          ParsedQuery parsedQuery = null;
-
-          if(returnCount || (facets != null && !facets.isEmpty())){
-            parsedQuery = parseQuery(q[0]);
-          }
-
-          if (returnCount) {
-            //optimize the entire query building process needed!!
-            Map<String, String> replaceMapping = new HashMap<>();
-            replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
-            replaceMapping.put("query",
-              org.apache.commons.lang.StringEscapeUtils.escapeSql(
-                parsedQuery.getCountFuncQuery()));
-            StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-            q[0] = select +
-              sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
-          }
-
-          if(facets != null && !facets.isEmpty()){
-            q[0] = buildFacetQuery(table , parsedQuery, facets, returnCount, q[0]);
-          }
-          log.debug("query = " + q[0]);
-          connection.query(q[0],
-            query -> {
-            connection.close();
-            try {
-              if (query.failed()) {
-                log.error(query.cause().getMessage(), query.cause());
-                replyHandler.handle(Future.failedFuture(query.cause()));
-              } else {
-                replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
-              }
-              long end = System.nanoTime();
-              StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
-              if(log.isDebugEnabled()){
-                log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
-              }
-            } catch (Exception e) {
-              log.error(e.getMessage(), e);
-              replyHandler.handle(Future.failedFuture(e));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-
-      } else {
-        log.error(res.cause().getMessage(), res.cause());
+        doGet(connection, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, replyHandler);
+      }
+      else{
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
+  }
+
+  private void doGet(SQLConnection connection, String table, Class<?> clazz, String fieldName, String where, boolean returnCount,
+      boolean returnIdField, boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
+    long start = System.nanoTime();
+    try {
+      String addIdField = "";
+      if(returnIdField){
+        addIdField = "," + idField;
+      }
+
+      String select = "SELECT ";
+
+      if(!"null".equals(fieldName) && fieldName.contains("*")){
+        //if we are requesting all fields (*) , then dont add the id field to the select
+        //this will return two id columns which will create ambiguity in facet queries
+        addIdField = "";
+      }
+
+      String []q = new String[]{
+        select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
+      };
+
+      ParsedQuery parsedQuery = null;
+
+      if(returnCount || (facets != null && !facets.isEmpty())){
+        parsedQuery = parseQuery(q[0]);
+      }
+
+      if (returnCount) {
+        //optimize the entire query building process needed!!
+        Map<String, String> replaceMapping = new HashMap<>();
+        replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
+        replaceMapping.put("query",
+          org.apache.commons.lang.StringEscapeUtils.escapeSql(
+            parsedQuery.getCountFuncQuery()));
+        StrSubstitutor sub = new StrSubstitutor(replaceMapping);
+        q[0] = select +
+          sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
+      }
+
+      if(facets != null && !facets.isEmpty()){
+        q[0] = buildFacetQuery(table , parsedQuery, facets, returnCount, q[0]);
+      }
+      log.debug("query = " + q[0]);
+      connection.query(q[0],
+        query -> {
+        connection.close();
+        try {
+          if (query.failed()) {
+            log.error(query.cause().getMessage(), query.cause());
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
+          }
+          long end = System.nanoTime();
+          StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
+          if(log.isDebugEnabled()){
+            log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
+          }
+        } catch (Exception e) {
+          log.error(e.getMessage(), e);
+          replyHandler.handle(Future.failedFuture(e));
+        }
+      });
+    } catch (Exception e) {
+      if(connection != null){
+        connection.close();
+      }
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   /**
@@ -1303,6 +1334,17 @@ public class PostgresClient {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, facets, replyHandler);
   }
 
+
+  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results>> replyHandler) {
+    get(table, clazz, filter, returnCount, setId, null, replyHandler);
+  }
+
+  public void get(Object conn, String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results>> replyHandler) {
+    get(conn, table, clazz, filter, returnCount, setId, null, replyHandler);
+  }
+
   /**
    * select query
    * @param table - table to query
@@ -1316,6 +1358,12 @@ public class PostgresClient {
   public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
       List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
 
+    get(null, table, clazz, filter, returnCount, setId, facets, replyHandler);
+  }
+
+  public void get(Object conn, String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
+      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
+
     StringBuilder sb = new StringBuilder();
     StringBuilder fromClauseFromCriteria = new StringBuilder();
     if (filter != null) {
@@ -1325,15 +1373,15 @@ public class PostgresClient {
         fromClauseFromCriteria.insert(0, ",");
       }
     }
-    get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
-      returnCount, true, setId, facets, replyHandler);
+    if(conn == null){
+      get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
+        returnCount, true, setId, facets, replyHandler);
+    }
+    else{
+     doGet((SQLConnection)conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
+       fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, replyHandler);
+    }
   }
-
-  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results>> replyHandler) {
-    get(table, clazz, filter, returnCount, setId, null, replyHandler);
-  }
-
 
   /**
    * run simple join queries between two tables
