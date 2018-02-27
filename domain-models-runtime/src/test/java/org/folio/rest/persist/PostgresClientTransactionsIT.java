@@ -1,7 +1,12 @@
 package org.folio.rest.persist;
 
+import java.io.IOException;
+
+import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
+import org.folio.rest.persist.Criteria.Criteria;
+import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.helpers.SimplePojo;
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -58,7 +63,7 @@ public class PostgresClientTransactionsIT {
     async.await();
   }
 
-  private void createSchema(TestContext context, String schema) {
+  private void createSchema(TestContext context, String schema) throws IOException {
 
     execute(context,"CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;\n");
     execute(context,"CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;\n");
@@ -71,14 +76,17 @@ public class PostgresClientTransactionsIT {
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema + ";\n");
     execute(context, "CREATE TABLE IF NOT EXISTS " + schema + ".z (_id SERIAL PRIMARY KEY, jsonb jsonb);\n");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema + ";\n");
+    execute(context, IOUtils.toString(
+      getClass().getClassLoader().getResourceAsStream("templates/db_scripts/funcs.sql"), "UTF-8"));
+
   }
 
-  private void fillTable(TestContext context, String schema) {
+  private void fillTable(TestContext context, String schema, String value) {
     execute(context,
-      "INSERT INTO " + schema + ".z (jsonb) VALUES (" + "'{\"id\": 1,\"name\": \"d\" }'" + ");\n");
+      "INSERT INTO " + schema + ".z (jsonb) VALUES (" + value + ");\n");
   }
 
-  private void transaction(TestContext context, String schema) {
+  private void updateTransaction(TestContext context, String schema) {
     PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
     Async async = context.async();
     //create connection
@@ -140,7 +148,6 @@ public class PostgresClientTransactionsIT {
               });
             }
             else{
-              System.out.println("BBBBB");
               context.fail(reply.cause());
             }
           });
@@ -201,6 +208,91 @@ public class PostgresClientTransactionsIT {
     c1.closeClient(context.asyncAssertSuccess());
   }
 
+  private void deleteTransaction(TestContext context, String schema) {
+    PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
+    Async async = context.async();
+    //create connection
+    c1.startTx( handler -> {
+      if(handler.succeeded()){
+        Criteria c = new Criteria();
+        c.addField("'id'").setOperation(Criteria.OP_EQUAL).setValue("2");
+        c1.delete(handler, "z", new Criterion(c) , reply -> {
+            if(reply.succeeded()){
+              //make sure record is deleted when querying using this connection
+              //but since not committed yet we should still get it back
+              //when sending the query on a different connection
+              c1.get(handler, "z", SimplePojo.class , new Criterion(c) ,
+                  true, true, reply2 -> {
+                if (! reply2.succeeded()) {
+                  context.fail(reply2.cause());
+                  async.complete();
+                }
+                else{
+                  try {
+                    int size = reply2.result().getResults().size();
+                    context.assertEquals(0, size);
+                    //call get() without the connection. since we did not commit yet
+                    //this should still return the deleted record
+                    c1.get("z", SimplePojo.class , new Criterion(c) ,
+                      true, true, reply3 -> {
+                        if (! reply3.succeeded()) {
+                          context.fail(reply3.cause());
+                          async.complete();
+                        }
+                        else{
+                          int size2 = reply3.result().getResults().size();
+                          context.assertEquals(1, size2);
+                          //end transaction / commit
+                          //doesnt seem like a good idea to reuse the handler within the get()
+                          //which lives outside of this connection, but for testing ok.
+                          c1.endTx(handler, done -> {
+                            if(done.succeeded()){
+                              //record should have been deleted, so only one record should return
+                              //not both
+                              c1.select("SELECT jsonb FROM " + schema + ".z;", selectReply -> {
+                                if (! selectReply.succeeded()) {
+                                  context.fail(selectReply.cause());
+                                  async.complete();
+                                }
+                                else{
+                                  try {
+                                    int size3 = selectReply.result().getResults().size();
+                                    context.assertEquals(1, size3);
+                                   } catch (Exception e) {
+                                     e.printStackTrace();
+                                     context.fail(e.getMessage());
+                                   }
+                                  async.complete();
+                                }
+                              });
+                            }
+                            else{
+                              context.fail(done.cause());
+                            }
+                          });
+                        }
+                    });
+                   } catch (Exception e) {
+                     e.printStackTrace();
+                     context.fail(e.getMessage());
+                     async.complete();
+                   }
+                }
+              });
+            }
+            else{
+              context.fail(reply.cause());
+            }
+          });
+      }
+      else{
+        context.fail(handler.cause());
+      }
+    });
+    async.await();
+    c1.closeClient(context.asyncAssertSuccess());
+  }
+
   @Test
   public void test(TestContext context) {
     // don't log expected access violation errors
@@ -210,13 +302,22 @@ public class PostgresClientTransactionsIT {
 
     dropSchemaRole(context, schema);
 
-    createSchema(context, schema);
+    try {
+      createSchema(context, schema);
+    } catch (IOException e) {
+      e.printStackTrace();
+      context.fail(e);
+    }
 
-    fillTable(context, schema);
+    fillTable(context, schema, "'{\"id\": 1,\"name\": \"d\" }'");
 
-    transaction(context, schema);
+    updateTransaction(context, schema);
 
     rollback(context, schema);
+
+    fillTable(context, schema, "'{\"id\": 2,\"name\": \"del test\" }'");
+
+    deleteTransaction(context, schema);
   }
 
 }

@@ -489,12 +489,11 @@ public class PostgresClient {
   public void rollbackTx(Object conn, Handler<AsyncResult<Object>> done) {
     SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     sqlConnection.rollback(res -> {
+      sqlConnection.close();
       if (res.failed()) {
         log.error(res.cause().getMessage(), res.cause());
-        sqlConnection.close();
         done.handle(Future.failedFuture(res.cause()));
       } else {
-        sqlConnection.close();
         done.handle(Future.succeededFuture(res));
       }
     });
@@ -505,12 +504,11 @@ public class PostgresClient {
   public void endTx(Object conn, Handler<AsyncResult<Object>> done) {
     SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     sqlConnection.commit(res -> {
+      sqlConnection.close();
       if (res.failed()) {
         log.error(res.cause().getMessage(), res.cause());
-        sqlConnection.close();
         done.handle(Future.failedFuture(res.cause()));
       } else {
-        sqlConnection.close();
         done.handle(Future.succeededFuture(res));
       }
     });
@@ -1093,7 +1091,7 @@ public class PostgresClient {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        doGet(connection, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, replyHandler);
+        doGet(connection, false, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, replyHandler);
       }
       else{
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -1101,7 +1099,7 @@ public class PostgresClient {
     });
   }
 
-  private void doGet(SQLConnection connection, String table, Class<?> clazz, String fieldName, String where, boolean returnCount,
+  private void doGet(SQLConnection connection, boolean transactionMode, String table, Class<?> clazz, String fieldName, String where, boolean returnCount,
       boolean returnIdField, boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
     long start = System.nanoTime();
     try {
@@ -1144,32 +1142,33 @@ public class PostgresClient {
         q[0] = buildFacetQuery(table , parsedQuery, facets, returnCount, q[0]);
       }
       log.debug("query = " + q[0]);
-      connection.query(q[0],
-        query -> {
-        connection.close();
-        try {
-          if (query.failed()) {
-            log.error(query.cause().getMessage(), query.cause());
-            replyHandler.handle(Future.failedFuture(query.cause()));
-          } else {
-            replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
+      connection.query(q[0], query -> {
+          if(!transactionMode){
+            connection.close();
           }
-          long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
-          if(log.isDebugEnabled()){
-            log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
+          try {
+            if (query.failed()) {
+              log.error(query.cause().getMessage(), query.cause());
+              replyHandler.handle(Future.failedFuture(query.cause()));
+            } else {
+              replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
+            }
+            long end = System.nanoTime();
+            StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
+            if(log.isDebugEnabled()){
+              log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
+            }
+          } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            replyHandler.handle(Future.failedFuture(e));
           }
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
       });
     } catch (Exception e) {
-      if(connection != null){
-        connection.close();
-      }
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
+        if(!transactionMode){
+          connection.close();
+        }
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
     }
   }
 
@@ -1378,8 +1377,9 @@ public class PostgresClient {
         returnCount, true, setId, facets, replyHandler);
     }
     else{
-     doGet((SQLConnection)conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
-       fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, replyHandler);
+      SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+      doGet(sqlConnection, true, table, clazz, DEFAULT_JSONB_FIELD_NAME,
+        fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, replyHandler);
     }
   }
 
