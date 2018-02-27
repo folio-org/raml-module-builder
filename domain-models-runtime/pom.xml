@@ -242,10 +242,10 @@
         <version>3.0.0</version>
         <executions>
           <execution>
-            <id>add-test-source</id>
-            <phase>generate-test-sources</phase>
+            <id>add-raml-jaxrs-source</id>
+            <phase>generate-sources</phase>
             <goals>
-              <goal>add-test-source</goal>
+              <goal>add-source</goal>
             </goals>
             <configuration>
               <sources>
