@@ -249,8 +249,8 @@ Get started by using the following familiar example:
 ```raml
 #%RAML 0.8
 
-title: e-BookMobile API
-baseUri: http://api.e-bookmobile.com/{version}
+title: E-book API
+baseUri: http://api.example.com/{version}
 version: v1
 
 schemas:
@@ -318,30 +318,38 @@ Create JSON schemas indicating the objects exposed by the module:
 ```json
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Record of an e-book",
   "type": "object",
   "properties": {
     "bookdata": {
       "type": "object",
       "properties": {
         "id": {
+          "description": "Unique ID (UUID) of this record",
           "type": "string"
         },
         "title": {
+          "description": "Title of the e-book",
           "type": "string"
         },
         "description": {
+          "description": "Description of the content and the usage limitations of the e-book",
           "type": "null"
         },
         "datetime": {
+          "description": "The last time this record has been changed",
           "type": "integer"
         },
         "genre": {
+          "description": "Genre of the e-book",
           "type": "string"
         },
         "author": {
+          "description": "Author of the e-book. Several authors are separated by comma.",
           "type": "string"
         },
         "link": {
+          "description": "URL to access the e-book.",
           "type": "string"
         }
       },
@@ -356,9 +364,11 @@ Create JSON schemas indicating the objects exposed by the module:
       ]
     },
     "success": {
+      "description": "False if there was some error during the request, true otherwise. An empty result can also have success=true.",
       "type": "boolean"
     },
     "status": {
+      "description": "HTTP status code returned from the knowledge base.",
       "type": "integer"
     }
   },
@@ -369,6 +379,9 @@ Create JSON schemas indicating the objects exposed by the module:
   ]
 }
 ```
+
+Use the `description` field alongside the `type` field to explain the content and
+usage and to add documentation.
 
 ### <a name="step-2"></a>Step 2: Include the jars in your project pom.xml
 
