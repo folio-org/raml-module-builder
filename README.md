@@ -444,6 +444,26 @@ Add the plugins:
 
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <execution>
+            <id>add_generated_sources_folder</id>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <phase>initialize</phase>
+            <configuration>
+              <sources>
+                <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.5.0</version>
         <executions>
@@ -616,7 +636,8 @@ This should:
 
 - POJOs -- The JSON schemas will be generated into java objects.
 
-- All generated code can be found in the `org.folio.rest.jaxrs` package.
+- All generated code can be found in the `org.folio.rest.jaxrs` package in the
+  `target/generated-sources/raml-jaxrs/` directory.
 
 ### Step 5: Implement the generated interfaces
 
