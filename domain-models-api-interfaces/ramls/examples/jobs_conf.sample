@@ -6,6 +6,7 @@
   "type": "MANUAL",
   "category": "IMPORTS",
   "enabled": true,
+  "inst_id": "my_inst",
   "creator": "joe",
   "parameters": [
     {"key1": "value"},
