@@ -1,3 +1,9 @@
+## 18.0.1 2018-02-28
+* RMB-130: Use target/generated-sources for generated code
+* RMB-135: Parse version from Module ID in module_{from,to}
+* RMB-137: Move JsonPathParser.main() to JsonPathParserTest; use JUnit
+* RMB-139: Add transaction support for get() and delete()
+
 ## 18.0.0 2018-02-19
 * RMB-133: start , rollback and end transactions should use a handler of type handler<asyncresult<object>>
 * RMB-132: Allow update() method to be called within a transaction.
