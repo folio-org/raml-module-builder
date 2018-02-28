@@ -1,0 +1,20 @@
+{
+  "job_confs": [
+    {
+      "_id": "987654321",
+      "module": "IMPORT",
+      "name": "Generic file import job",
+      "description": "Import",
+      "type": "MANUAL",
+      "category": "IMPORTS",
+      "enabled": true,
+      "inst_id": "my_inst",
+      "creator": "joe",
+      "parameters": [
+        {"key1": "value"},
+        {"key1": "value"}
+      ]
+    }
+  ],
+  "total_records": 1
+}
