@@ -1,3 +1,24 @@
+## 19.0.0 2018-03-01
+* RMB-140: Move to v19, 18.0.1 requires entry in pom
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <execution>
+            <id>add-raml-jaxrs-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 ## 18.0.1 2018-02-28
 * RMB-130: Use target/generated-sources for generated code
 * RMB-135: Parse version from Module ID in module_{from,to}
