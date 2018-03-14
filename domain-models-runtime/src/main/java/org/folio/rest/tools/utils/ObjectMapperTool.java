@@ -11,9 +11,9 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
  */
 public class ObjectMapperTool {
 
-  private final static ObjectMapper DEFAULT_MAPPER = new ObjectMapper();
+  private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper();
 
-  private final static ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   static {
     DEFAULT_MAPPER.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
