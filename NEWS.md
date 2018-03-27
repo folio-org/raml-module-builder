@@ -1,32 +1,34 @@
 ## 19.0.0 2018-03-01
 * RMB-140: Move to v19, 18.0.1 requires entry in pom
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.0.0</version>
-        <executions>
-          <execution>
-            <id>add-raml-jaxrs-source</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
+
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <version>3.0.0</version>
+          <executions>
+            <execution>
+              <id>add-raml-jaxrs-source</id>
+              <phase>generate-sources</phase>
+              <goals>
+                <goal>add-source</goal>
+              </goals>
+              <configuration>
+                <sources>
+                  <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
+                </sources>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+
 ## 18.0.1 2018-02-28
 * RMB-130: Use target/generated-sources for generated code
-* RMB-135: Parse version from Module ID in module_{from,to}
+* RMB-135: Parse version from Module ID in ´module_{from,to}´
 * RMB-137: Move JsonPathParser.main() to JsonPathParserTest; use JUnit
 * RMB-139: Add transaction support for get() and delete()
 
 ## 18.0.0 2018-02-19
-* RMB-133: start , rollback and end transactions should use a handler of type handler<asyncresult<object>>
+* RMB-133: start, rollback and end transactions should use a handler of type `handler<asyncresult<object>>`
 * RMB-132: Allow update() method to be called within a transaction.
 * RMB-131: PostgresClient: asynchronous functions must not throw exceptions
 * RMB-128: Upgrade to postgres v10
@@ -39,7 +41,7 @@
 * RMB-121: mod-configuration doesn't build with Postgres 10
 * RMB-120: README should suggest to use UUID, not SERIAL
 * RMB-119: CQL's default relation "=" should use "adj" for a string
-* RMB-118: add a /admin/db_maintenance api
+* RMB-118: add a `/admin/db_maintenance` api
 * RMB-115: jaxrs test cleanup results in compile failure
 * RMB-114: Security update postgres-embedded:2.6
 * RMB-113: Dereference raml-util if ramls directory does not exist
