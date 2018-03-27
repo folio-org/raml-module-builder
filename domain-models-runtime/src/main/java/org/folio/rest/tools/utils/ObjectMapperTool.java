@@ -1,7 +1,9 @@
 package org.folio.rest.tools.utils;
 
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 
 /**
  * @author shale
@@ -9,10 +11,27 @@ import com.fasterxml.jackson.databind.SerializationFeature;
  */
 public class ObjectMapperTool {
 
-  public static ObjectMapper getMapper(){
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-    return mapper;
+  private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper();
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  static {
+    DEFAULT_MAPPER.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+    MAPPER.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+  }
+
+  public static ObjectMapper getDefaultMapper() {
+    return DEFAULT_MAPPER;
+  }
+
+  public static ObjectMapper getMapper() {
+    return MAPPER;
+  }
+
+  public static <M, D extends JsonDeserializer<M>> void registerDeserializer(Class<M> clazz, D deserializer) {
+    SimpleModule module = new SimpleModule();
+    module.addDeserializer(clazz, deserializer);
+    MAPPER.registerModule(module);
   }
 
 }
