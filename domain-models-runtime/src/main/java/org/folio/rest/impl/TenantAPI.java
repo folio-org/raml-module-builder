@@ -238,7 +238,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                   log.error("Can not update non-existant tenant " + tenantId);
                   handlers.handle(io.vertx.core.Future.succeededFuture(
                     PostTenantResponse.withPlainBadRequest(
-                      "Update tenant requested for tenant " + tenantId + ", but tenant doe not exist")));
+                      "Update tenant requested for tenant " + tenantId + ", but tenant does not exist")));
                   return;
                 }
                 else{
