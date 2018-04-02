@@ -13,8 +13,9 @@ import freemarker.template.TemplateException;
 
 public class FacetTest {
 
-  private static final String REASON = "Generated facet field path %s does not match the extected %s";
-  private static final String ALIAS_REASON = "Generated facet alias %s does not match the extected %s";
+  private static final String REASON = "Generated facet field path %s does not match the expected %s";
+  private static final String ALIAS_REASON = "Generated facet alias %s does not match the expected %s";
+  private static final String FORMAT_REASON = "Numeric formatting does not match the expected %s";
 
   @Test
   public void stringsToFacet() throws IOException, TemplateException {
@@ -29,7 +30,7 @@ public class FacetTest {
     facetsStrings.add("personal.secondaryAddress[].postalCode2:5");
     facetsStrings.add("addresses[].secondaryAddress[].postalCode2:5");
     facetsStrings.add("personal.secondaryAddress[].address.a[]:5");
-    facetsStrings.add("personal.secondaryAddress[].address.a[].b:5");
+    facetsStrings.add("personal.secondaryAddress[].address.a[].b:1000");
 
     List<FacetField> fList = FacetManager.convertFacetStrings2FacetFields(facetsStrings, "jsonb");
 
@@ -111,5 +112,20 @@ public class FacetTest {
     assertThat(String.format(ALIAS_REASON, fList.get(8).getAlias(),"b"),
         fList.get(8).getAlias(), CoreMatchers.is( "b" ));
 
+    FacetManager fm = new FacetManager("myuniversity_new1_mod_users.users");
+
+    List<FacetField> facets = new ArrayList<>();
+    facets.add(new FacetField("jsonb->'username[]'->'username2[]'->>'abc'", 1000));
+
+    fm.setSupportFacets(facets);
+
+    fm.setWhere("where username=jha* OR username=szeev*");
+
+    fm.setMainQuery("SELECT jsonb FROM myuniversity_new1_mod_users.users where jsonb->>'username' like 'jha%' OR jsonb->>'username' like 'szeev%'" );
+
+    String facetQuery = fm.generateFacetQuery();
+
+    assertThat(String.format(FORMAT_REASON, "1000"), facetQuery, CoreMatchers.containsString( "jsonb FROM lst1 limit 1000" ));
+    System.out.println(facetQuery);
   }
 }

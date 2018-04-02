@@ -30,7 +30,7 @@ ret_records as (
        select ${idField} as ${idField}, jsonb  FROM facets
        )
  <#list facets as facet>
-  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as ${idField}, jsonb FROM lst${facet_index + 1} limit ${facet.topFacets2return})
+  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as ${idField}, jsonb FROM lst${facet_index + 1} limit ${facet.topFacets2return?c})
   <#sep> UNION </#sep>
  </#list>
   UNION
