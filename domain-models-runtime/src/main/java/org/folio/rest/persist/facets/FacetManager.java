@@ -111,7 +111,6 @@ public class FacetManager {
    */
   public static List<FacetField> convertFacetStrings2FacetFields(List<String> facets, String columnName){
     List<FacetField> facetList = null;
-    String prefix = "jsonb";
     if(facets != null){
       facetList = new ArrayList<>();
       for (int i = 0; i < facets.size(); i++) {
@@ -144,7 +143,7 @@ public class FacetManager {
             sb.append("'").append(pathParts[j]).append("'");
           }
         }
-        FacetField ff = new FacetField(prefix+sb.toString());
+        FacetField ff = new FacetField(sb.toString());
         if(pathAndCount.length == 1){
           //default
           ff.setTopFacets2return(5);
