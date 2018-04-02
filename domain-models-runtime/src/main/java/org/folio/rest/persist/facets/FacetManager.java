@@ -249,9 +249,6 @@ public class FacetManager {
 
     FacetManager.convertFacetStrings2FacetFields(facetsStrings, "jsonb");
     List<FacetField> facets = new ArrayList<>();
-    //facets.add(new FacetField("jsonb->>'lastUpdateDate'", 5));
-    //facets.add(new FacetField("jsonb->'personal'->>'phone'", 5));
-    //facets.add(new FacetField("jsonb->>'username'", 5));
     facets.add(new FacetField("jsonb->'username[]'->'username2[]'->>'abc'", 5));
 
     fm.setSupportFacets(facets);
