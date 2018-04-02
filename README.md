@@ -1388,6 +1388,9 @@ For example:
 You can set the amount of results to facet on by calling (defaults to 10,000) `FacetManager.setCalculateOnFirst(20000);`
 Note that higher numbers will potentially affect performance.
 
+4. Faceting on array fields can be done in the following manner:
+`personal.secondaryAddress[].postalCode`
+
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
 ## Json Schema fields

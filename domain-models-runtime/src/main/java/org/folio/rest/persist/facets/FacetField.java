@@ -1,10 +1,15 @@
 package org.folio.rest.persist.facets;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * @author shale
  *
  */
 public class FacetField {
+
+  private static final Pattern QUOTES_PATTERN = Pattern.compile("(\'[^\']*\')", Pattern.CASE_INSENSITIVE);
 
   private String fieldPath;
   private int topFacets2return;
@@ -26,6 +31,16 @@ public class FacetField {
     }
     //alias is the last field name wrapped in ''
     this.alias = path2facet.trim().replaceAll(".*->>'|'$", "");
+
+    if(path2facet.contains("jsonb_array_elements(")){
+      //array path , get last occurrence of what is in between ''
+      Matcher m = QUOTES_PATTERN.matcher(path2facet);
+      while (m.find()){
+        this.alias = m.group();
+        //remove ''
+        this.alias = this.alias.substring(1, this.alias.length()-1);
+      }
+    }
   }
 
   public String getFieldPath() {

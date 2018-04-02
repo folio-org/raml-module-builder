@@ -115,18 +115,35 @@ public class FacetManager {
       facetList = new ArrayList<>();
       for (int i = 0; i < facets.size(); i++) {
         //move to an rmb util
-        String []pathAndCount = facets.get(i).split(":");
+        String facetPath = facets.get(i);
+        boolean isFacetOnArrayField = false;
+        if(facetPath.contains("[]")){
+          isFacetOnArrayField= true;
+        }
+        String []pathAndCount = facetPath.split(":");
         String []pathParts = pathAndCount[0].split("\\.");
         StringBuilder sb = new StringBuilder();
         for (int j = 0; j < pathParts.length; j++) {
-          if(j == pathParts.length-1){
-            sb.append("->>");
-          } else{
-            sb.append("->");
+          if(j==0){
+            //always start the paths with the column name, only once at the beginning
+            sb.append("jsonb");
           }
-          sb.append("'").append(pathParts[j]).append("'");
+          if(pathParts[j].endsWith("[]")){
+            //build a path ->... once you reach a [] wrap the path in a jsonb_array_elements
+            String fieldName = pathParts[j].substring(0,  pathParts[j].length()-2);
+            String soFar = sb.toString()+"->'"+fieldName +"'";
+            sb = new StringBuilder( buildPathForArray(soFar) );
+          }
+          else{
+            if(j == pathParts.length-1 && !isFacetOnArrayField){
+              sb.append("->>");
+            } else{
+              sb.append("->");
+            }
+            sb.append("'").append(pathParts[j]).append("'");
+          }
         }
-        FacetField ff = new FacetField("jsonb"+sb.toString());
+        FacetField ff = new FacetField(sb.toString());
         if(pathAndCount.length == 1){
           //default
           ff.setTopFacets2return(5);
@@ -137,6 +154,10 @@ public class FacetManager {
       }
     }
     return facetList;
+  }
+
+  private static String buildPathForArray(String path) {
+    return "(jsonb_array_elements(("+ path + "))::jsonb)";
   }
 
   public String getWhere() {
@@ -219,10 +240,16 @@ public class FacetManager {
 
     FacetManager fm = new FacetManager("myuniversity_new1_mod_users.users");
 
+    List<String> facetsStrings = new ArrayList<>();
+    facetsStrings.add("username.abc.cde:5");
+    facetsStrings.add("username[].abc:5");
+    facetsStrings.add("username[].username2[].abc:5");
+    facetsStrings.add("username.username[].username2[].abc:5");
+    facetsStrings.add("username.username[].username2.abc[].dc:5");
+
+    FacetManager.convertFacetStrings2FacetFields(facetsStrings, "jsonb");
     List<FacetField> facets = new ArrayList<>();
-    facets.add(new FacetField("jsonb->>'lastUpdateDate'", 5));
-    facets.add(new FacetField("jsonb->'personal'->>'phone'", 5));
-    facets.add(new FacetField("jsonb->>'username'", 5));
+    facets.add(new FacetField("jsonb->'username[]'->'username2[]'->>'abc'", 5));
 
     fm.setSupportFacets(facets);
 
