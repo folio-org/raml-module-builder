@@ -63,7 +63,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               exists = h.result();
               if(!exists){
                 handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.
-                  withPlainInternalServerError("Tenant does not exist: " + tenantId)));
+                  withPlainBadRequest("Tenant does not exist: " + tenantId)));
                 log.error("Can not delete. Tenant does not exist: " + tenantId);
                 return;
               }
