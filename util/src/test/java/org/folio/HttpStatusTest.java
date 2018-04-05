@@ -1,37 +1,36 @@
 package org.folio;
 
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-@RunWith(JUnitParamsRunner.class)
-public class HttpStatusTest {
-  @Test
-  @Parameters({
+class HttpStatusTest {
+  @ParameterizedTest
+  @CsvSource({
     "200, HTTP_ACCEPTED",
     "201, HTTP_CREATED",
     "501, HTTP_NOT_IMPLEMENTED",
   })
-  public void existingStatus(int code, String name) {
+  void existingStatus(int code, String name) {
     HttpStatus status = HttpStatus.get(code);
-    assertEquals(name, status.name());
-    assertEquals(code, status.toInt());
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void getUndefined() {
-    HttpStatus.get(299);
+    assertThat(status.name(), is(name));
+    assertThat(status.toInt(), is(code));
   }
 
   @Test
-  public void codeIsUnique() {
+  void getUndefined() {
+    assertThrows(IllegalArgumentException.class, () -> HttpStatus.get(299));
+  }
+
+  @Test
+  void codeIsUnique() {
     for (HttpStatus status : HttpStatus.values()) {
       HttpStatus statusByCode = HttpStatus.get(status.toInt());
-      assertEquals(status.name(), status, statusByCode);
+      assertThat(status.name(), status, is(statusByCode));
     }
   }
 }
