@@ -6,6 +6,8 @@ package org.folio.rest.tools.utils;
  */
 public class Enum2Annotation {
 
+  private Enum2Annotation(){}
+
   public static String getAnnotation(String anno){
 
     switch(anno.toUpperCase()){
