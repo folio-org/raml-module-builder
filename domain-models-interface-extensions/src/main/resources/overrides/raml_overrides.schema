@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "overrideConfig": {
+      "id": "overrideConfig",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "verb": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE"
+            ]
+          },
+          "url": {
+            "description": "raml endpoint associated with the parameter to override ex. /a/{aId}/b",
+            "type": "string"
+          },
+          "paramName": {
+            "description": "The parameter who's constraint should be overridden. ex. limit",
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PATTERN",
+              "MIN",
+              "MAX",
+              "REQUIRED",
+              "DEFAULTVALUE",
+              "SIZE"
+            ]
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

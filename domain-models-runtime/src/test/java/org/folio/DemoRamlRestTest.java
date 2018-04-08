@@ -133,7 +133,7 @@ public class DemoRamlRestTest {
 
   @Test
   public void year1(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1&author=me", 200);
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1&author=me", 400);
   }
 
   @Test
@@ -268,7 +268,7 @@ public class DemoRamlRestTest {
 
     RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
     String[] facets = new String[]{"author:10", "name:5"};
-    testClient.getBooks("aaa", new BigDecimal(1999), null, null, facets, handler -> {
+    testClient.getBooks("aaa", new BigDecimal(1999), new BigDecimal(1999), null, facets, handler -> {
       if(handler.statusCode() != 200){
         context.fail();
       }
