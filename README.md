@@ -1442,6 +1442,8 @@ A module can create an `raml_overrides.json` file and place it in the `/resource
 The file is defined in the schema:
 `domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.schema`
 
+Note that `DEFAULTVALUE` only allows string values. `SIZE` requires a range ex. `"15, 20"`. `REQUIRED` does not accept a `"value"`, meaning an optional parameter can become required but not vice versa.
+
 example:
 `domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.json`
 
