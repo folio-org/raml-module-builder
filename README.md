@@ -1,4 +1,5 @@
 
+
 # Raml-Module-Builder
 
 Copyright (C) 2016-2018 The Open Library Foundation
@@ -1420,6 +1421,29 @@ for example:
 the `jsonschema.customfield` key can contain multiple json values (delimited by a `;`). Each json indicates a field name + a field value to match against - and a validation annotation to apply. So, getting back to the readonly field, the example above indicates that a field in the json schema that has been tagged with the `readonly` field can not contain data when passed in as part of the request.
 A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
+
+## Overriding RAML query parameters
+
+A module may require slight changes to existing RAML traits.
+For example, a `limit`trait may be defined in the following manner:
+ ```
+        limit:
+          description: Limit the number of elements returned in the response
+          type: integer
+          required: false
+          example: 10
+          default: 10
+          minimum: 1
+          maximum: 2147483647
+```
+However, a module may not want to allow such a high maximum as this may cause a crash. 
+A module can create an `raml_overrides.json` file and place it in the `/resources/overrides/`directory.
+
+The file is defined in the schema:
+`domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.schema`
+
+example:
+`domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.json`
 
 ## Drools integration
 
