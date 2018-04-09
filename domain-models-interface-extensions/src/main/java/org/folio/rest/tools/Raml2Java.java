@@ -31,6 +31,8 @@ import io.vertx.core.logging.LoggerFactory;
 
 public class Raml2Java extends AbstractGeneratorExtension {
 
+  private static final String ANNOTATION_VALUE = "value";
+
   private static final Logger log = LoggerFactory.getLogger(Raml2Java.class);
 
   private static Table<String, String, JsonObject> overrideMap = HashBasedTable.create();
@@ -143,7 +145,7 @@ public class Raml2Java extends AbstractGeneratorExtension {
     if(overrideEntry != null){
       //this endpoint was found in the config file and has an override associated with one of
       //its parameters
-      JVar[] params = method.listParams();
+      JVar []params = method.listParams();
       int []i = new int[]{0};
       for (i[0] = 0; i[0] < params.length; i[0]++) {
         Set<Entry<String, JsonObject>> entries = overrideEntry.entrySet();
@@ -156,7 +158,7 @@ public class Raml2Java extends AbstractGeneratorExtension {
           String paramName = job.getString("paramName");
           if(!action.getResource().getUri().equalsIgnoreCase(job.getString("verb"))){
             //make sure the verb is aligned
-            JAnnotationUse ann[] = new JAnnotationUse[]{null};
+            JAnnotationUse []ann = new JAnnotationUse[]{null};
             if(paramName.equalsIgnoreCase(params[i[0]].name())){
               //we found the paramter that should be overridden
               boolean []found = new boolean[]{false};
@@ -202,14 +204,14 @@ public class Raml2Java extends AbstractGeneratorExtension {
           ann.param("regexp", (String)value);
         }
         else{
-          ann.param("value", (String)value);
+          ann.param(ANNOTATION_VALUE, (String)value);
         }
       }
       else if(value instanceof Boolean){
-        ann.param("value", (Boolean)value);
+        ann.param(ANNOTATION_VALUE, (Boolean)value);
       }
       else if(value instanceof Integer){
-        ann.param("value", (Integer)value);
+        ann.param(ANNOTATION_VALUE, (Integer)value);
       }
     }
   }

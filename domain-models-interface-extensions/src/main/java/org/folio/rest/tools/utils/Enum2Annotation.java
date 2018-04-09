@@ -29,11 +29,8 @@ public class Enum2Annotation {
   }
 
   public static boolean isVerbEnum(String verb){
-    if(verb != null &&
+    return (verb != null &&
         (verb.equalsIgnoreCase("GET") || verb.equalsIgnoreCase("POST") ||
-            verb.equalsIgnoreCase("PUT") || verb.equalsIgnoreCase("DELETE"))){
-      return true;
-    }
-    return false;
+            verb.equalsIgnoreCase("PUT") || verb.equalsIgnoreCase("DELETE")));
   }
 }
