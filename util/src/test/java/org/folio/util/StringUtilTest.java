@@ -23,8 +23,8 @@ class StringUtilTest {
     "key=a-umlaut-ä, ISO-8859-1, key%3Da-umlaut-%E4   ",
     "key=a-umlaut-ä, UTF-8     , key%3Da-umlaut-%C3%A4",
   })
-  void urlencode(String source, String encoding, String expected) {
-    assertThat(StringUtil.urlencode(source, encoding), is(expected));
+  void urlEncode(String source, String encoding, String expected) {
+    assertThat(StringUtil.urlEncode(source, encoding), is(expected));
   }
 
   @ParameterizedTest
@@ -33,7 +33,7 @@ class StringUtilTest {
     "abc           , abc                  ",
     "key=a-umlaut-ä, key%3Da-umlaut-%C3%A4",
   })
-  void urlencode(String source, String expected) {
-    assertThat(StringUtil.urlencode(source), is(expected));
+  void urlEncode(String source, String expected) {
+    assertThat(StringUtil.urlEncode(source), is(expected));
   }
 }

@@ -19,7 +19,7 @@ public final class StringUtil {
    * @param charset  name of the charset to use
    * @return the encoded String, "" if source is null, or null if charset is not supported or null
    */
-  public static String urlencode(String source, String charset) {
+  public static String urlEncode(String source, String charset) {
     if (source == null) {
       return "";
     }
@@ -41,9 +41,9 @@ public final class StringUtil {
    * @param source  String to encode
    * @return the encoded String or "" if source is null.
    */
-  public static String urlencode(String source) {
+  public static String urlEncode(String source) {
     // Using this standard charset is always supported and therefore will
     // never trigger an UnsupportedEncodingException.
-    return urlencode(source, StandardCharsets.UTF_8.name());
+    return urlEncode(source, StandardCharsets.UTF_8.name());
   }
 }
