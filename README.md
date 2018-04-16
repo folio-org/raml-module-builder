@@ -128,7 +128,7 @@ Some sample projects:
 - https://github.com/folio-org/mod-configuration
 - https://github.com/folio-org/mod-notes
 
-and other [modules](http://dev.folio.org/source-code/#server-side) (not all do use the RMB).
+and other [modules](https://dev.folio.org/source-code/#server-side) (not all do use the RMB).
 
 
 ## Get started with a sample working module
@@ -676,7 +676,7 @@ It is beneficial at this stage to take some time to design and prepare the RAML 
 Investigate the other FOLIO modules for guidance.
 The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
 
-Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files,
+Add the shared suite of [RAML utility](https://dev.folio.org/source-code/#server-side) files,
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
@@ -1564,7 +1564,7 @@ The RMB also automatically provides other documentation, such as the "Admin API"
 http://localhost:8081/apidocs/index.html?raml=raml/admin.raml
 ```
 
-All current API documentation is also available at [dev.folio.org/doc/api](http://dev.folio.org/doc/api/)
+All current API documentation is also available at [dev.folio.org/doc/api](https://dev.folio.org/reference/api/)
 
 ## Logging
 
@@ -2030,10 +2030,10 @@ http://localhost:8080/patrons
 
 ## Additional information
 
-Other [modules](http://dev.folio.org/source-code/#server-side).
+Other [modules](https://dev.folio.org/source-code/#server-side).
 
 See project [RMB](https://issues.folio.org/browse/RMB)
-at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
+at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).
 
-Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
+Other FOLIO Developer documentation is at [dev.folio.org](https://dev.folio.org/)
 

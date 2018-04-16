@@ -170,7 +170,7 @@
                 <requireJavaVersion>
                   <message>
                     JDK &gt;= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
-                    http://dev.folio.org/doc/troubleshooting#missing-certificate-authority-for-lets-encrypt
+                    https://dev.folio.org/guides/troubleshooting/#missing-certificate-authority-for-lets-encrypt
                   </message>
                   <version>1.8.0-101</version>
                 </requireJavaVersion>
