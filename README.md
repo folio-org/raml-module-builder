@@ -706,6 +706,9 @@ There are some useful tools to assist with command-line validation,
 and some can be integrated with text editors, e.g.
 [raml-cop](https://github.com/thebinarypenguin/raml-cop).
 
+See the guide to [Use raml-cop to assess RAML, schema, and examples](https://dev.folio.org/guides/raml-cop/)
+and the [Primer for RAML and JSON Schema](https://dev.folio.org/start/primer-raml/) quick-start document.
+
 RAML-aware text editors are very helpful, such as
 [api-workbench](https://github.com/mulesoft/api-workbench) for Atom.
 
