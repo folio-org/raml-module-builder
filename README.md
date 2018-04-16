@@ -687,16 +687,16 @@ It is possible to use a relative path with one set of dot-dots "../" but definit
 [not more](https://issues.folio.org/browse/RMB-30).
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
-The GenerateRunner automatically dereferences the schema files and places them into the
-`target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
-subdirectories, if not found then `${basedir}/../ramls/` supporting maven submodules with
-common ramls directory.
-
 NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
 Examples are `schemaCollection: noteCollection` in
 [note.raml](https://github.com/folio-org/mod-notes/blob/master/ramls/note.raml) and
 `schemaCollection: addresstypeCollection` in
 [addressTypes.raml](https://github.com/folio-org/raml/blob/master/ramls/mod-users/addressTypes.raml).
+
+The GenerateRunner automatically dereferences the schema files and places them into the
+`target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
+subdirectories, if not found then `${basedir}/../ramls/` supporting maven submodules with
+common ramls directory.
 
 The documentation of HTTP response codes
 is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java)
@@ -705,6 +705,9 @@ The RMB does do some validation of RAML files at compile-time.
 There are some useful tools to assist with command-line validation,
 and some can be integrated with text editors, e.g.
 [raml-cop](https://github.com/thebinarypenguin/raml-cop).
+
+See the guide to [Use raml-cop to assess RAML, schema, and examples](https://dev.folio.org/guides/raml-cop/)
+and the [Primer for RAML and JSON Schema](https://dev.folio.org/start/primer-raml/) quick-start document.
 
 RAML-aware text editors are very helpful, such as
 [api-workbench](https://github.com/mulesoft/api-workbench) for Atom.
