@@ -543,7 +543,16 @@ public class PostgresClient {
     save(table, id, entity, true, true, replyHandler);
   }
 
-  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, Handler<AsyncResult<String>> replyHandler) {
+  /**
+   * @param convertEntity - should the entity object be passed in as is to the prepared statement,
+   * needed if upserting binary data as base64 where converting it to a json will corrupt the data
+   * otherwise this function is not needed as the default is true
+   */
+  public void upsert(String table, String id, Object entity, boolean convertEntity, Handler<AsyncResult<String>> replyHandler) {
+    save(table, id, entity, true, true, false, replyHandler);
+  }
+
+  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, boolean convertEntity, Handler<AsyncResult<String>> replyHandler) {
     long start = System.nanoTime();
 
     client.getConnection(res -> {
@@ -567,12 +576,20 @@ public class PostgresClient {
             upsertClause = " ON CONFLICT ("+idField+") DO UPDATE SET " +
               DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + " ";
           }
-          String pojo = pojo2json(entity);
+          JsonArray queryArg = new JsonArray();
+          String type = "?::JSON)";
+          if(convertEntity){
+            queryArg.add(pojo2json(entity));
+          }
+          else{
+            queryArg = (JsonArray)entity;
+            type = "?::text)";
+          }
           /* do not change to updateWithParams as this will not return the generated id in the reply */
           connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
             " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
-            ") VALUES ("+clientId+"?::JSON)" + upsertClause + returning,
-            new JsonArray().add(pojo), query -> {
+            ") VALUES ("+clientId+type + upsertClause + returning,
+            queryArg, query -> {
               connection.close();
               if (query.failed()) {
                 replyHandler.handle(Future.failedFuture(query.cause()));
@@ -599,6 +616,10 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
+  }
+
+  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, Handler<AsyncResult<String>> replyHandler) {
+    save(table, id, entity, returnId, upsert, true, replyHandler);
   }
 
   @SuppressWarnings("unchecked")
