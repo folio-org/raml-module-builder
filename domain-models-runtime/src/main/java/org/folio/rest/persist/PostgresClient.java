@@ -2378,6 +2378,7 @@ public class PostgresClient {
    * @return
    */
   static ParsedQuery parseQuery(String query) {
+    log.debug("parseQuery " + query);
     List<OrderByElement> orderBy = null;
     net.sf.jsqlparser.statement.select.Limit limit = null;
     Expression where = null;
