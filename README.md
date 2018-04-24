@@ -129,7 +129,7 @@ Some sample projects:
 - https://github.com/folio-org/mod-configuration
 - https://github.com/folio-org/mod-notes
 
-and other [modules](http://dev.folio.org/source-code/#server-side) (not all do use the RMB).
+and other [modules](https://dev.folio.org/source-code/#server-side) (not all do use the RMB).
 
 
 ## Get started with a sample working module
@@ -678,7 +678,7 @@ It is beneficial at this stage to take some time to design and prepare the RAML 
 Investigate the other FOLIO modules for guidance.
 The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
 
-Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files,
+Add the shared suite of [RAML utility](https://dev.folio.org/source-code/#server-side) files,
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
@@ -689,16 +689,16 @@ It is possible to use a relative path with one set of dot-dots "../" but definit
 [not more](https://issues.folio.org/browse/RMB-30).
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
-The GenerateRunner automatically dereferences the schema files and places them into the
-`target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
-subdirectories, if not found then `${basedir}/../ramls/` supporting maven submodules with
-common ramls directory.
-
 NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
 Examples are `schemaCollection: noteCollection` in
 [note.raml](https://github.com/folio-org/mod-notes/blob/master/ramls/note.raml) and
 `schemaCollection: addresstypeCollection` in
 [addressTypes.raml](https://github.com/folio-org/raml/blob/master/ramls/mod-users/addressTypes.raml).
+
+The GenerateRunner automatically dereferences the schema files and places them into the
+`target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
+subdirectories, if not found then `${basedir}/../ramls/` supporting maven submodules with
+common ramls directory.
 
 The documentation of HTTP response codes
 is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java)
@@ -707,6 +707,9 @@ The RMB does do some validation of RAML files at compile-time.
 There are some useful tools to assist with command-line validation,
 and some can be integrated with text editors, e.g.
 [raml-cop](https://github.com/thebinarypenguin/raml-cop).
+
+See the guide to [Use raml-cop to assess RAML, schema, and examples](https://dev.folio.org/guides/raml-cop/)
+and the [Primer for RAML and JSON Schema](https://dev.folio.org/start/primer-raml/) quick-start document.
 
 RAML-aware text editors are very helpful, such as
 [api-workbench](https://github.com/mulesoft/api-workbench) for Atom.
@@ -1588,7 +1591,7 @@ The RMB also automatically provides other documentation, such as the "Admin API"
 http://localhost:8081/apidocs/index.html?raml=raml/admin.raml
 ```
 
-All current API documentation is also available at [dev.folio.org/doc/api](http://dev.folio.org/doc/api/)
+All current API documentation is also available at [dev.folio.org/doc/api](https://dev.folio.org/reference/api/)
 
 ## Logging
 
@@ -2054,10 +2057,10 @@ http://localhost:8080/patrons
 
 ## Additional information
 
-Other [modules](http://dev.folio.org/source-code/#server-side).
+Other [modules](https://dev.folio.org/source-code/#server-side).
 
 See project [RMB](https://issues.folio.org/browse/RMB)
-at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
+at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).
 
-Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
+Other FOLIO Developer documentation is at [dev.folio.org](https://dev.folio.org/)
 
