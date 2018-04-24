@@ -547,6 +547,10 @@ public class PostgresClient {
    * @param convertEntity - should the entity object be passed in as is to the prepared statement,
    * needed if upserting binary data as base64 where converting it to a json will corrupt the data
    * otherwise this function is not needed as the default is true
+   * example:
+   *     byte[] data = ......;
+   *     JsonArray jsonArray = new JsonArray().add(data);
+   *     .upsert(TABLE_NAME, id, jsonArray, false, replyHandler -> {
    */
   public void upsert(String table, String id, Object entity, boolean convertEntity, Handler<AsyncResult<String>> replyHandler) {
     save(table, id, entity, true, true, false, replyHandler);
