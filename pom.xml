@@ -25,7 +25,7 @@
 
   <properties>
     <aspectj.version>1.8.9</aspectj.version>
-    <junit-jupiter-version>5.0.3</junit-jupiter-version>
+    <junit-jupiter-version>5.1.0</junit-jupiter-version>
     <postgresql-embedded-version>2.8</postgresql-embedded-version>
     <vertx-version>3.4.1</vertx-version>
 
@@ -101,6 +101,11 @@
       </dependency>
       <dependency>
         <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-engine</artifactId>
+        <version>${junit-jupiter-version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-params</artifactId>
         <version>${junit-jupiter-version}</version>
       </dependency>
@@ -142,6 +147,7 @@
   <build>
 
     <plugins>
+
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.3</version>
@@ -151,6 +157,7 @@
           <compilerArgument>-Xlint:unchecked</compilerArgument>
         </configuration>
       </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
@@ -179,6 +186,7 @@
           </execution>
         </executions>
       </plugin>
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>properties-maven-plugin</artifactId>
@@ -199,6 +207,7 @@
           </properties>
         </configuration>
       </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
@@ -218,6 +227,24 @@
           <excludes>**/LastModified_.java</excludes>
         </configuration>
       </plugin>
+
+      <plugin>    <!-- JUnit5 + JUnit4 -->
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.19.1</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-surefire-provider</artifactId>
+            <version>1.1.0</version>
+          </dependency>
+          <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <version>${junit-jupiter-version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
@@ -229,6 +256,7 @@
           <localCheckout>true</localCheckout>
         </configuration>
       </plugin>
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
@@ -252,6 +280,7 @@
           </execution>
         </executions>
       </plugin>
+
     </plugins>
   </build>
 
