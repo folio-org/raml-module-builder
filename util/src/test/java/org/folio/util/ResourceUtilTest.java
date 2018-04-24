@@ -1,50 +1,52 @@
 package org.folio.util;
 
-import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
 import java.io.IOException;
 
 import org.folio.rest.testing.UtilityClassTester;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class ResourceUtilTest {
+class ResourceUtilTest {
   @Test
-  public void utilityClass() {
+  void utilityClass() {
     UtilityClassTester.assertUtilityClass(ResourceUtil.class);
   }
 
-  @Test(expected = NullPointerException.class)
-  public void nullFilename() throws IOException {
-    ResourceUtil.asString(null);
-  }
-
-  @Test(expected = IOException.class)
-  public void fileDoesNotExist() throws IOException {
-    ResourceUtil.asString("foobar");
+  @Test
+  void nullFilename() throws IOException {
+    assertThrows(NullPointerException.class, () -> ResourceUtil.asString(null));
   }
 
   @Test
-  public void readEmptyFile() throws IOException {
-    assertEquals("", ResourceUtil.asString("ResourceUtilEmpty.bin"));
+  void fileDoesNotExist() {
+    assertThrows(IOException.class, () -> ResourceUtil.asString("foobar"));
   }
 
   @Test
-  public void readEmptyFileFromOtherClass() throws IOException {
-    assertEquals("", ResourceUtil.asString("ResourceUtilEmpty.bin", File.class));
+  void readEmptyFile() throws IOException {
+    assertThat(ResourceUtil.asString("ResourceUtilEmpty.bin"), is(""));
   }
 
   @Test
-  public void readExampleFile() throws IOException {
-    assertEquals("first line\numlauts: äöü\n", ResourceUtil.asString("ResourceUtilExample.bin"));
+  void readEmptyFileFromOtherClass() throws IOException {
+    assertThat(ResourceUtil.asString("ResourceUtilEmpty.bin", File.class), is(""));
   }
 
   @Test
-  public void read3000() throws IOException {
+  void readExampleFile() throws IOException {
+    assertThat(ResourceUtil.asString("ResourceUtilExample.bin"), is("first line\numlauts: äöü\n"));
+  }
+
+  @Test
+  void read3000() throws IOException {
     char [] expected = new char [3000];
     for (int i=0; i<expected.length; i++) {
       expected[i] = 'a';
     }
-    assertEquals(new String(expected), ResourceUtil.asString("ResourceUtil3000.bin"));
+    assertThat(ResourceUtil.asString("ResourceUtil3000.bin"), is(new String(expected)));
   }
 }
