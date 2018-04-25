@@ -1,3 +1,21 @@
+## 19.1.0 2018-04-24
+* RMB-136: Default paging in storage modules prevents operations on entire contents
+* RMB-138: SchemaDereferencer: Support name to name.schema resolution
+* RMB-143: Version update: vertx 3.5.1, jackson 2.9.4 
+* RMB-144: Security update PostgreSQL 10.2 
+* RMB-146: Add support for faceting on fields in arrays
+* RMB-148: Configure implementation specific paging limits per endpoint
+* RMB-150: High number of facets seems to cause error
+* RMB-151: AspectJ not running when recompiling
+* RMB-152: /_/tenant DELETE: consider to use 4xx over 500 if tenant does not exist
+* RMB-153: Add folio/util/StringUtil.urlencode(String)
+* RMB-156: Allow saving base64 econded data as a jsonarray
+* RMB-157: Helper for error handling
+* RMB-160: allow registering a custom deserializater to the static object mapper
+* FOLIO-1202: improve README raml section
+* FOLIO-1179: Fix dev URLs 
+* FOLIO-1187: Add lint-raml-cop.sh
+ 
 ## 19.0.0 2018-03-01
 * RMB-140: Move to v19, 18.0.1 requires entry in pom
 
