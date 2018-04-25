@@ -1,5 +1,6 @@
 
 
+
 # Raml-Module-Builder
 
 Copyright (C) 2016-2018 The Open Library Foundation
@@ -982,13 +983,13 @@ layer.
 
 **Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
 
-**Important Note:** Currently we only support Postgres version 9.6; version 10 doesn't work, see [RMB-121](https://issues.folio.org/browse/RMB-121).
+**Important Note:** Currently we only support Postgres version 10.
 
-Currently the expected format is:
+The PostgresClient expects tables in the following format:
 
 ```sql
 create table <schema>.<table_name> (
-  _id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY,
   jsonb JSONB NOT NULL
 );
 ```
@@ -1049,6 +1050,16 @@ where the "jsonb" field references a JSON schema that will exist in the "jsonb" 
 
 The example above refers to querying only. As of now, saving a record will only save the "jsonb" and "id" fields (the above example uses triggers to populate the operation, creation data, and original id).
 
+#### Saving binary data
+
+As indicated, the PostgresClient is jsonb oriented. If there is a need to store data in binary form, this can be done in the following manner (only id based upsert is currently supported):
+```
+byte[] data = ......;
+JsonArray jsonArray = new JsonArray().add(data);
+client.upsert(TABLE_NAME, id, jsonArray, false, replyHandler -> {
+.....
+});
+```
 ### Credentials
 
 When running in embedded mode, credentials are read from `resources/postgres-conf.json`. If a file is not found, then the following configuration will be used by default:
@@ -1395,6 +1406,7 @@ Note that higher numbers will potentially affect performance.
 
 4. Faceting on array fields can be done in the following manner:
 `personal.secondaryAddress[].postalCode`
+`personal.secondaryAddress[].address[].postalCode`
 
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
@@ -1425,7 +1437,7 @@ the `jsonschema.customfield` key can contain multiple json values (delimited by 
 A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
 
-## Overriding RAML query parameters
+## Overriding RAML (traits) / query parameters
 
 A module may require slight changes to existing RAML traits.
 For example, a `limit`trait may be defined in the following manner:
@@ -1949,6 +1961,59 @@ Query parameters and header validation
     <generate_routing_context>/rmbtests/test</generate_routing_context>
   </properties>
 ```
+
+## Additional Tools    
+
+#### De-Serializers
+At runtime RMB will serialize /deserialize the received JSON in the request body of PUT / POST requests into a POJO and pass this on to an implementing function as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User json is passed in as part of a request  
+```  
+ObjectMapperTool.registerDeserializer(User.class, new UserDeserializer());
+
+public class UserDeserializer extends JsonDeserializer<User> {
+
+  @Override
+  public User deserialize(JsonParser parser, DeserializationContext context) throws IOException, JsonProcessingException {
+    ObjectMapper mapper = ObjectMapperTool.getDefaultMapper();
+    ObjectCodec objectCodec = parser.getCodec();
+    JsonNode node = objectCodec.readTree(parser);
+    User user = mapper.treeToValue(node, User.class);
+    Optional<Date> expirationDate = Optional.ofNullable(user.getExpirationDate());
+    if (expirationDate.isPresent()) {
+      Date now = new Date();
+      if (now.compareTo(expirationDate.get()) > 0) {
+        user.setActive(false);
+      }
+    }
+    return user;
+  }
+}  
+```
+#### Error handling tool
+
+Making async calls to the PostgresClient requires handling failures of different  kinds. RMB exposes a tool that can handle the basic error cases , and return them as a 422 validation error status falling back to a 500 error status when the error is not one of the standard DB errors.
+
+Usage:
+
+```
+if(reply.succeeded()){
+  ..........
+}
+else{
+   ValidationHelper.handleError(reply.cause(), asyncResultHandler);
+}
+``` 
+RMB will return a response to the client as follows:
+
+- invalid uui - 422 status
+- duplicate key violation - 422 status
+- Foreign key violation - 422 status
+- tenant does not exist / auth error to db - 401 status
+- Various CQL errors - 422 status
+- Anything else will fall back to a 500 status error
+
+RMB will not cross check the raml to see that these statuses have been defined for the endpoint , this is the developer's responsability.
+
+
 
 ## Some REST examples
 
