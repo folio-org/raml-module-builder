@@ -1,6 +1,3 @@
-
-
-
 # Raml-Module-Builder
 
 Copyright (C) 2016-2018 The Open Library Foundation
@@ -1260,7 +1257,7 @@ A three table join would look something like this:
             "joinOnField": "holdingsRecordId",
             "jsonFieldAlias": "it_jsonb"
           }
-        }        
+        }
       ]
     }
 ```
@@ -1451,7 +1448,7 @@ For example, a `limit`trait may be defined in the following manner:
           minimum: 1
           maximum: 2147483647
 ```
-However, a module may not want to allow such a high maximum as this may cause a crash. 
+However, a module may not want to allow such a high maximum as this may cause a crash.
 A module can create an `raml_overrides.json` file and place it in the `/resources/overrides/`directory.
 
 The file is defined in the schema:
@@ -1962,11 +1959,11 @@ Query parameters and header validation
   </properties>
 ```
 
-## Additional Tools    
+## Additional Tools
 
 #### De-Serializers
-At runtime RMB will serialize /deserialize the received JSON in the request body of PUT / POST requests into a POJO and pass this on to an implementing function as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User json is passed in as part of a request  
-```  
+At runtime RMB will serialize /deserialize the received JSON in the request body of PUT / POST requests into a POJO and pass this on to an implementing function as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User json is passed in as part of a request
+```
 ObjectMapperTool.registerDeserializer(User.class, new UserDeserializer());
 
 public class UserDeserializer extends JsonDeserializer<User> {
@@ -1986,7 +1983,7 @@ public class UserDeserializer extends JsonDeserializer<User> {
     }
     return user;
   }
-}  
+}
 ```
 #### Error handling tool
 
@@ -2001,7 +1998,7 @@ if(reply.succeeded()){
 else{
    ValidationHelper.handleError(reply.cause(), asyncResultHandler);
 }
-``` 
+```
 RMB will return a response to the client as follows:
 
 - invalid uui - 422 status

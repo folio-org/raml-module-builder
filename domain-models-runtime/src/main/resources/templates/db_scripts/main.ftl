@@ -117,7 +117,7 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
       <#if (script.isNewForThisInstall(version)) || mode.name() == "CREATE">
         <#if mode.name() != "CREATE">
 -- Run script - created in version ${(script.fromModuleVersion)!0}
-        </#if>      
+        </#if>
         ${script.snippet}
       </#if>
     </#if>
