@@ -1437,7 +1437,7 @@ https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summar
 ## Overriding RAML (traits) / query parameters
 
 A module may require slight changes to existing RAML traits.
-For example, a `limit`trait may be defined in the following manner:
+For example, a `limit` trait may be defined in the following manner:
  ```
         limit:
           description: Limit the number of elements returned in the response
@@ -1449,7 +1449,7 @@ For example, a `limit`trait may be defined in the following manner:
           maximum: 2147483647
 ```
 However, a module may not want to allow such a high maximum as this may cause a crash.
-A module can create an `raml_overrides.json` file and place it in the `/resources/overrides/`directory.
+A module can create a `raml_overrides.json` file and place it in the `/resources/overrides/` directory.
 
 The file is defined in the schema:
 `domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.schema`
@@ -1962,7 +1962,7 @@ Query parameters and header validation
 ## Additional Tools
 
 #### De-Serializers
-At runtime RMB will serialize /deserialize the received JSON in the request body of PUT / POST requests into a POJO and pass this on to an implementing function as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User json is passed in as part of a request
+At runtime RMB will serialize/deserialize the received JSON in the request body of PUT and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
 ```
 ObjectMapperTool.registerDeserializer(User.class, new UserDeserializer());
 
@@ -1987,7 +1987,7 @@ public class UserDeserializer extends JsonDeserializer<User> {
 ```
 #### Error handling tool
 
-Making async calls to the PostgresClient requires handling failures of different  kinds. RMB exposes a tool that can handle the basic error cases , and return them as a 422 validation error status falling back to a 500 error status when the error is not one of the standard DB errors.
+Making async calls to the PostgresClient requires handling failures of different kinds. RMB exposes a tool that can handle the basic error cases, and return them as a 422 validation error status falling back to a 500 error status when the error is not one of the standard DB errors.
 
 Usage:
 
@@ -2001,14 +2001,14 @@ else{
 ```
 RMB will return a response to the client as follows:
 
-- invalid uui - 422 status
+- invalid UUID - 422 status
 - duplicate key violation - 422 status
 - Foreign key violation - 422 status
 - tenant does not exist / auth error to db - 401 status
 - Various CQL errors - 422 status
 - Anything else will fall back to a 500 status error
 
-RMB will not cross check the raml to see that these statuses have been defined for the endpoint , this is the developer's responsability.
+RMB will not cross check the raml to see that these statuses have been defined for the endpoint. This is the developer's responsibility.
 
 
 

@@ -7,11 +7,11 @@
 * RMB-148: Configure implementation specific paging limits per endpoint
 * RMB-150: High number of facets seems to cause error
 * RMB-151: AspectJ not running when recompiling
-* RMB-152: /_/tenant DELETE: consider to use 4xx over 500 if tenant does not exist
+* RMB-152: `/_/tenant` DELETE: consider to use 4xx over 500 if tenant does not exist
 * RMB-153: Add folio/util/StringUtil.urlencode(String)
-* RMB-156: Allow saving base64 econded data as a jsonarray
+* RMB-156: Allow saving base64 encoded data as a jsonarray
 * RMB-157: Helper for error handling
-* RMB-160: allow registering a custom deserializater to the static object mapper
+* RMB-160: allow registering a custom deserializer to the static object mapper
 * FOLIO-1202: improve README raml section
 * FOLIO-1179: Fix dev URLs
 * FOLIO-1187: Add lint-raml-cop.sh
@@ -41,7 +41,7 @@
 
 ## 18.0.1 2018-02-28
 * RMB-130: Use target/generated-sources for generated code
-* RMB-135: Parse version from Module ID in ´module_{from,to}´
+* RMB-135: Parse version from Module ID in `module_{from,to}`
 * RMB-137: Move JsonPathParser.main() to JsonPathParserTest; use JUnit
 * RMB-139: Add transaction support for get() and delete()
 
