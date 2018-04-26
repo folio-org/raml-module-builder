@@ -26,14 +26,14 @@
       "paramName": "rating",
       "type": "MIN",
       "value": 1
-    },     
+    },
     {
       "verb": "GET",
       "url": "/rmbtests/books",
       "paramName": "rating",
       "type": "MAX",
       "value": 9999
-    },        
+    },
     {
       "verb": "GET",
       "url": "/jobs/jobconfs/{jobconfsId}",
