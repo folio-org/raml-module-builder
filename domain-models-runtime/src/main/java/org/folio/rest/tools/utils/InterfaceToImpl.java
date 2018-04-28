@@ -52,7 +52,7 @@ public class InterfaceToImpl {
       }
       try {
         Class<?> clazz = Class.forName(info.getName());
-        if(!clazz.getSuperclass().getName().equals("java.lang.Object")){ //NOSONAR
+        if(!clazz.getSuperclass().getName().equals("java.lang.Object") && clazz.getSuperclass().getInterfaces().length > 0){ //NOSONAR
           /** user defined class which overrides one of the out of the box RMB implementations
            * set the clazz to the interface. find the correct implementation below */
           userImpl = clazz;
