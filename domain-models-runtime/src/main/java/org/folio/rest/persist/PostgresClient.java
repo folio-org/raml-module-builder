@@ -1125,50 +1125,52 @@ public class PostgresClient {
   }
 
   private void doGet(SQLConnection connection, boolean transactionMode, String table, Class<?> clazz, String fieldName, String where, boolean returnCount,
-      boolean returnIdField, boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
+    boolean returnIdField, boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
     long start = System.nanoTime();
-    try {
-      String addIdField = "";
-      if(returnIdField){
-        addIdField = "," + idField;
-      }
 
-      String select = "SELECT ";
+    vertx.runOnContext(v -> {
+      try {
+        String addIdField = "";
+        if (returnIdField) {
+          addIdField = "," + idField;
+        }
 
-      if(!"null".equals(fieldName) && fieldName.contains("*")){
-        //if we are requesting all fields (*) , then dont add the id field to the select
-        //this will return two id columns which will create ambiguity in facet queries
-        addIdField = "";
-      }
+        String select = "SELECT ";
 
-      String []q = new String[]{
-        select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
-      };
+        if (!"null".equals(fieldName) && fieldName.contains("*")) {
+          //if we are requesting all fields (*) , then dont add the id field to the select
+          //this will return two id columns which will create ambiguity in facet queries
+          addIdField = "";
+        }
 
-      ParsedQuery parsedQuery = null;
+        String[] q = new String[]{
+          select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
+        };
 
-      if(returnCount || (facets != null && !facets.isEmpty())){
-        parsedQuery = parseQuery(q[0]);
-      }
+        ParsedQuery parsedQuery = null;
 
-      if (returnCount) {
-        //optimize the entire query building process needed!!
-        Map<String, String> replaceMapping = new HashMap<>();
-        replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
-        replaceMapping.put("query",
-          org.apache.commons.lang.StringEscapeUtils.escapeSql(
-            parsedQuery.getCountFuncQuery()));
-        StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-        q[0] = select +
-          sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
-      }
+        if (returnCount || (facets != null && !facets.isEmpty())) {
+          parsedQuery = parseQuery(q[0]);
+        }
 
-      if(facets != null && !facets.isEmpty()){
-        q[0] = buildFacetQuery(table , parsedQuery, facets, returnCount, q[0]);
-      }
-      log.debug("query = " + q[0]);
-      connection.query(q[0], query -> {
-          if(!transactionMode){
+        if (returnCount) {
+          //optimize the entire query building process needed!!
+          Map<String, String> replaceMapping = new HashMap<>();
+          replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
+          replaceMapping.put("query",
+            org.apache.commons.lang.StringEscapeUtils.escapeSql(
+              parsedQuery.getCountFuncQuery()));
+          StrSubstitutor sub = new StrSubstitutor(replaceMapping);
+          q[0] = select
+            + sub.replace(countClauseTemplate) + q[0].replaceFirst(select, " ");
+        }
+
+        if (facets != null && !facets.isEmpty()) {
+          q[0] = buildFacetQuery(table, parsedQuery, facets, returnCount, q[0]);
+        }
+        log.debug("query = " + q[0]);
+        connection.query(q[0], query -> {
+          if (!transactionMode) {
             connection.close();
           }
           try {
@@ -1179,22 +1181,23 @@ public class PostgresClient {
               replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
             }
             long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".get", (end-start));
-            if(log.isDebugEnabled()){
-              log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
+            StatsTracker.addStatElement(STATS_KEY + ".get", (end - start));
+            if (log.isDebugEnabled()) {
+              log.debug("timer: get " + q[0] + " (ns) " + (end - start));
             }
           } catch (Exception e) {
             log.error(e.getMessage(), e);
             replyHandler.handle(Future.failedFuture(e));
           }
-      });
-    } catch (Exception e) {
-        if(!transactionMode){
+        });
+      } catch (Exception e) {
+        if (!transactionMode) {
           connection.close();
         }
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
-    }
+      }
+    });
   }
 
   /**
