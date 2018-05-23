@@ -280,7 +280,7 @@ public class PostgresClientIT {
     double sleep = 150;
     String selectSleep = "select pg_sleep(" + sleep/1000 + ")";
     /** maximum duration in milliseconds for the completion of all parallel queries */
-    long maxDuration = (long) (n * sleep / 2);
+    long maxDuration = (long) (n * sleep);
     /* create n queries in parallel, each sleeping for some time.
      * If vert.x properly processes them in parallel it finishes
      * in less than half of the time needed for sequential processing.
