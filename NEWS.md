@@ -1,3 +1,7 @@
+## 19.1.1 2018-05-23
+* RMB-163 Fail to find API implementation due to subtle class loading order difference
+* RMB-166 Reduce stack size for SQL queries
+
 ## 19.1.0 2018-04-24
 * RMB-136: Default paging in storage modules prevents operations on entire contents
 * RMB-138: SchemaDereferencer: Support name to name.schema resolution
