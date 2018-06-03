@@ -321,7 +321,11 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
             }
           });
       } catch (Exception e) {
-        log.error(e.getMessage(), e);
+        if(e.getMessage() != null){
+          //if no db connection, the caught exception is a NPE which has a null for a message
+          //which will print an NPE trace to the log which we dont want
+          log.error(e.getMessage(), e);
+        }
         handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
           withPlainInternalServerError(e.getMessage())));
       }
