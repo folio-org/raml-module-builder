@@ -1,3 +1,6 @@
+## 19.1.2 2018-06-03
+* RMB-168 PostgresClient makes a wrong callback
+
 ## 19.1.1 2018-05-23
 * RMB-163 Fail to find API implementation due to subtle class loading order difference
 * RMB-166 Reduce stack size for SQL queries
