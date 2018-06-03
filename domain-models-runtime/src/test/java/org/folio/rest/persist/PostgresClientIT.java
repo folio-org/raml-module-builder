@@ -22,6 +22,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
+
   static private final String TENANT = "tenant";
   static private Vertx vertx;
 
@@ -59,7 +60,7 @@ public class PostgresClientIT {
   }
 
   @Rule
-  public Timeout rule = Timeout.seconds(6);
+  public Timeout rule = Timeout.seconds(15);
 
   @BeforeClass
   public static void setUpClass() throws Exception {
