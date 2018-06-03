@@ -281,8 +281,6 @@ public class PostgresClientIT {
     String selectSleep = "select pg_sleep(" + sleep/1000 + ")";
     /** maximum duration in milliseconds for the completion of all parallel queries
      * NOTE: seems like current embedded postgres does not run in parallel, only one concur connection?
-     * this works fine when on a regular postgres, for not added the x2 */
-    long maxDuration = (long) (n * sleep) * 2;
     /* create n queries in parallel, each sleeping for some time.
      * If vert.x properly processes them in parallel it finishes
      * in less than half of the time needed for sequential processing.
