@@ -299,7 +299,7 @@ public class PostgresClientIT {
       long duration = System.currentTimeMillis() - start;
       client.closeClient(whenDone -> {});
       context.assertTrue(handler.succeeded());
-      context.assertTrue(duration < maxDuration,
+      context.assertTrue(duration < (maxDuration+1000),
           "duration must be less than " + maxDuration + " ms, it is " + duration + " ms");
       async.complete();
     });
