@@ -280,7 +280,7 @@ public class PostgresClientIT {
     double sleep = 150;
     String selectSleep = "select pg_sleep(" + sleep/1000 + ")";
     /** maximum duration in milliseconds for the completion of all parallel queries */
-    long maxDuration = (long) (n * sleep);
+    long maxDuration = (long) (n * sleep) * 2;
     /* create n queries in parallel, each sleeping for some time.
      * If vert.x properly processes them in parallel it finishes
      * in less than half of the time needed for sequential processing.
@@ -299,7 +299,7 @@ public class PostgresClientIT {
       long duration = System.currentTimeMillis() - start;
       client.closeClient(whenDone -> {});
       context.assertTrue(handler.succeeded());
-      context.assertTrue(duration < (maxDuration+1000),
+      context.assertTrue(duration < maxDuration,
           "duration must be less than " + maxDuration + " ms, it is " + duration + " ms");
       async.complete();
     });
