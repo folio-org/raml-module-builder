@@ -680,6 +680,7 @@ public class PostgresClient {
       }
     } catch (Exception e) {
       replyHandler.handle(Future.failedFuture(e));
+      return;
     }
 
     client.getConnection(res -> {
@@ -840,10 +841,14 @@ public class PostgresClient {
 
   public void update(Object conn, String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
     String where = "";
-    if(filter != null){
-      where = filter.toString();
+    try {
+      if (filter != null) {
+        where = filter.toString();
+      }
+      update(conn, table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
     }
-    update(conn, table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
   }
 
   public void update(Object conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
@@ -1001,10 +1006,14 @@ public class PostgresClient {
 
   public void delete(String table, CQLWrapper cql, Handler<AsyncResult<UpdateResult>> replyHandler) {
     String where = "";
-    if(cql != null){
-      where = cql.toString();
+    try {
+      if (cql != null) {
+        where = cql.toString();
+      }
+      doDelete(table, where, replyHandler);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
     }
-    doDelete(table, where, replyHandler);
   }
 
   /**
@@ -1315,11 +1324,15 @@ public class PostgresClient {
   public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId,
       List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
     String where = "";
-    if(filter != null){
-      where = filter.toString();
+    try {
+      if (filter != null) {
+        where = filter.toString();
+      }
+      String fieldsStr = Arrays.toString(fields);
+      get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, facets, replyHandler);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
     }
-    String fieldsStr = Arrays.toString(fields);
-    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, facets, replyHandler);
   }
 
   public void get(String table, Class<?> clazz, String[] fields, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
