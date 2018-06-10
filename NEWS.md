@@ -1,4 +1,4 @@
-## 19.1.3 2018-06-04
+## 19.1.3 2018-06-10
 * RMB-167 consistently use runOnContext for DB operations
 * RMB-172 add /admin api to drop , create indexes per module
 
