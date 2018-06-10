@@ -2081,6 +2081,7 @@ public class PostgresClient {
       execute(execStatements.toArray(new String[]{}), stopOnError, replyHandler);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
     }
   }
 

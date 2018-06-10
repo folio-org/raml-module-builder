@@ -57,6 +57,10 @@ public class SchemaMaker {
   }
 
   public String generateDDL() throws IOException, TemplateException {
+    return generateDDL(false);
+  }
+
+  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException {
 
     templateInput.put("myuniversity", this.tenant);
 
@@ -232,7 +236,11 @@ public class SchemaMaker {
 
     templateInput.put("exactCount", this.schema.getExactCount()+"");
 
-    Template tableTemplate = cfg.getTemplate("main.ftl");
+    String template = "main.ftl";
+    if(recreateIndexMode){
+      template = "indexes_only.ftl";
+    }
+    Template tableTemplate = cfg.getTemplate(template);
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
 

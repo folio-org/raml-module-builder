@@ -9,6 +9,7 @@ import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.text.DecimalFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -23,19 +24,25 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.AdminResource;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.rest.persist.ddlgen.SchemaMaker;
+import org.folio.rest.persist.ddlgen.TenantOperation;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.sql.ResultSet;
 
 public class AdminAPI implements AdminResource {
 
@@ -662,6 +669,143 @@ public class AdminAPI implements AdminResource {
       log.error(e.getMessage());
       asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
+  }
+
+  @Validate
+  @Override
+  public void putAdminPostgresDropIndexes(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
+
+    if(tenantId == null){
+      asyncResultHandler.handle(io.vertx.core.Future.failedFuture("tenantId cannot be null"));
+      return;
+    }
+    String moduleName = PomReader.INSTANCE.getModuleName();
+    String schema = tenantId.toLowerCase() + "_" + moduleName;
+    String query =
+        "SELECT * FROM pg_catalog.pg_class c JOIN pg_catalog.pg_index i ON (c.oid = i.indexrelid ) "
+        + "JOIN pg_class t ON (i.indrelid = t.oid ) JOIN pg_namespace n ON (c.relnamespace = n.oid ) "
+        + "WHERE c.relkind = 'i' AND n.nspname = '"+schema+"';";
+    try{
+      PostgresClient.getInstance(vertxContext.owner()).select(query, reply -> {
+        if(reply.succeeded()){
+          int indexes2delete[] = new int[]{ 0 };
+          ResultSet rs = reply.result();
+          List<JsonArray> rows = rs.getResults();
+          StringBuilder concatIndexNames = new StringBuilder();
+          for( int i=0; i< rows.size(); i++)  {
+            String indexName = rows.get(i).getString(0);
+            if(!indexName.endsWith("_pkey")){
+              indexes2delete[0]++;
+              if(concatIndexNames.length() > 0){
+                concatIndexNames.append(", ");
+              }
+              concatIndexNames.append(schema).append(".").append(indexName);
+            }
+          }
+
+          String dropIndexQuery = "DROP INDEX " + concatIndexNames.toString() + ";";
+          if(indexes2delete[0] > 0){
+            PostgresClient.getInstance(vertxContext.owner()).select(dropIndexQuery, reply2 -> {
+              if(reply2.succeeded()){
+                log.info("Deleted " + indexes2delete[0] + " indexes");
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresDropIndexesResponse.withNoContent()));
+              }
+              else{
+                log.error(reply.cause().getMessage(), reply.cause());
+                asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply2.cause().getMessage()));
+              }
+            });
+          }
+          else{
+            log.info("No indexes to delete");
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+              PutAdminPostgresDropIndexesResponse.withPlainBadRequest("No indexes to delete, for tenant " + tenantId)));
+          }
+        }
+        else{
+          log.error(reply.cause().getMessage(), reply.cause());
+          asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+        }
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage());
+      asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+    }
+  }
+
+  @Validate
+  @Override
+  public void putAdminPostgresCreateIndexes(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
+
+    if(tenantId == null){
+      asyncResultHandler.handle(io.vertx.core.Future.failedFuture("tenantId cannot be null"));
+      return;
+    }
+
+    try {
+
+      String moduleName = PomReader.INSTANCE.getModuleName();
+
+      SchemaMaker sMaker = new SchemaMaker(tenantId, moduleName,
+        TenantOperation.CREATE, null, null);
+
+      InputStream tableInput = AdminAPI.class.getClassLoader().getResourceAsStream(
+        TenantAPI.TABLE_JSON);
+
+      String tableInputStr = null;
+      if(tableInput != null){
+        tableInputStr = IOUtils.toString(tableInput, "UTF8");
+        Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+        sMaker.setSchema(schema);
+      }
+
+      String sqlFile = sMaker.generateDDL(true);
+
+      System.out.println(sqlFile);
+
+      PostgresClient.getInstance(vertxContext.owner()).runSQLFile(sqlFile, true,
+        reply -> {
+          try {
+            StringBuffer res = new StringBuffer();
+            if (reply.succeeded()) {
+              boolean failuresExist = false;
+              if(reply.result().size() > 0){
+                failuresExist = true;
+              }
+              res.append(new JsonArray(reply.result()).encodePrettily());
+              OutStream os = new OutStream();
+              if(failuresExist){
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+                  PutAdminPostgresCreateIndexesResponse.withPlainBadRequest(res.toString())));
+              }
+              else{
+                os.setData(res);
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+                  PutAdminPostgresCreateIndexesResponse.withNoContent()));
+              }
+            } else {
+              log.error(reply.cause().getMessage(), reply.cause());
+              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
+                withPlainInternalServerError(reply.cause().getMessage())));
+            }
+          } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
+              withPlainInternalServerError(e.getMessage())));
+          }
+        });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
+        withPlainInternalServerError(e.getMessage())));
+    }
+
   }
 
 }

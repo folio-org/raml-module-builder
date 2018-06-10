@@ -345,6 +345,42 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
+  /postgres_drop_indexes:
+    put:
+      description: Drop indexes, useful before a large batch load, tenantid will be used to select the correct schema to use
+      is: [secured]
+      responses:
+        204:
+          description: "Indexes dropped"
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "No indexes to delete"           
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /postgres_create_indexes:
+    put:
+      description: Create indexes, useful if prior to a large batch load the indexes were dropped, tenantid will be used to select the correct schema to use
+      is: [secured]
+      responses:
+        204:
+          description: "Indexes created"
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "example message"          
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
   /set_AES_key:
     post:
       description: Sets the AES secret key that the postgres config file password was encrypted with. The key will only be checked |
