@@ -767,12 +767,10 @@ public class AdminAPI implements AdminResource {
 
       String sqlFile = sMaker.generateDDL(true);
 
-      System.out.println(sqlFile);
-
       PostgresClient.getInstance(vertxContext.owner()).runSQLFile(sqlFile, true,
         reply -> {
           try {
-            StringBuffer res = new StringBuffer();
+            StringBuilder res = new StringBuilder();
             if (reply.succeeded()) {
               boolean failuresExist = false;
               if(reply.result().size() > 0){
