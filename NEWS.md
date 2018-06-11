@@ -1,3 +1,7 @@
+## 19.1.3 2018-06-10
+* RMB-167 consistently use runOnContext for DB operations
+* RMB-172 add /admin api to drop , create indexes per module
+
 ## 19.1.2 2018-06-03
 * RMB-168 PostgresClient makes a wrong callback
 

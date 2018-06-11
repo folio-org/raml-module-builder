@@ -557,68 +557,70 @@ public class PostgresClient {
   }
 
   public void save(String table, String id, Object entity, boolean returnId, boolean upsert, boolean convertEntity, Handler<AsyncResult<String>> replyHandler) {
+
     long start = System.nanoTime();
+    vertx.runOnContext(v -> {
+      client.getConnection(res -> {
+        if (res.succeeded()) {
+          SQLConnection connection = res.result();
 
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
+          StringBuilder clientIdField = new StringBuilder("");
+          StringBuilder clientId = new StringBuilder("");
+          if(id != null){
+            clientId.append("'").append(id).append("',");
+            clientIdField.append(idField).append(",");
+          }
+          String returning = "";
+          if(returnId){
+            returning = " RETURNING " + idField;
+          }
 
-        StringBuilder clientIdField = new StringBuilder("");
-        StringBuilder clientId = new StringBuilder("");
-        if(id != null){
-          clientId.append("'").append(id).append("',");
-          clientIdField.append(idField).append(",");
-        }
-        String returning = "";
-        if(returnId){
-          returning = " RETURNING " + idField;
-        }
-
-        try {
-          String upsertClause = "";
-          if(upsert){
-            upsertClause = " ON CONFLICT ("+idField+") DO UPDATE SET " +
-              DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + " ";
-          }
-          JsonArray queryArg = new JsonArray();
-          String type = "?::JSON)";
-          if(convertEntity){
-            queryArg.add(pojo2json(entity));
-          }
-          else{
-            queryArg = (JsonArray)entity;
-            type = "?::text)";
-          }
-          /* do not change to updateWithParams as this will not return the generated id in the reply */
-          connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
-            " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
-            ") VALUES ("+clientId+type + upsertClause + returning,
-            queryArg, query -> {
-              connection.close();
-              if (query.failed()) {
-                replyHandler.handle(Future.failedFuture(query.cause()));
-              } else {
-                List<JsonArray> resList = query.result().getResults();
-                String response = "";
-                if(!resList.isEmpty()){
-                  response = resList.get(0).getValue(0).toString();
+          try {
+            String upsertClause = "";
+            if(upsert){
+              upsertClause = " ON CONFLICT ("+idField+") DO UPDATE SET " +
+                DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + " ";
+            }
+            JsonArray queryArg = new JsonArray();
+            String type = "?::JSON)";
+            if(convertEntity){
+              queryArg.add(pojo2json(entity));
+            }
+            else{
+              queryArg = (JsonArray)entity;
+              type = "?::text)";
+            }
+            /* do not change to updateWithParams as this will not return the generated id in the reply */
+            connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
+              " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
+              ") VALUES ("+clientId+type + upsertClause + returning,
+              queryArg, query -> {
+                connection.close();
+                if (query.failed()) {
+                  replyHandler.handle(Future.failedFuture(query.cause()));
+                } else {
+                  List<JsonArray> resList = query.result().getResults();
+                  String response = "";
+                  if(!resList.isEmpty()){
+                    response = resList.get(0).getValue(0).toString();
+                  }
+                  replyHandler.handle(Future.succeededFuture(response));
                 }
-                replyHandler.handle(Future.succeededFuture(response));
-              }
-              long end = System.nanoTime();
-              StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
-            });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
+                long end = System.nanoTime();
+                StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
+              });
+          } catch (Exception e) {
+            if(connection != null){
+              connection.close();
+            }
+            log.error(e.getMessage(), e);
+            replyHandler.handle(Future.failedFuture(e));
           }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
+        } else {
+          log.error(res.cause().getMessage(), res.cause());
+          replyHandler.handle(Future.failedFuture(res.cause()));
         }
-      } else {
-        log.error(res.cause().getMessage(), res.cause());
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
+      });
     });
   }
 
@@ -879,50 +881,51 @@ public class PostgresClient {
   private void doUpdate(SQLConnection connection, boolean transactionMode, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
       Handler<AsyncResult<UpdateResult>> replyHandler){
 
-    if(connection == null){
-      replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
-      return;
-    }
+    vertx.runOnContext(v -> {
+      if(connection == null){
+        replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
+        return;
+      }
 
-    long start = System.nanoTime();
+      long start = System.nanoTime();
 
-    StringBuilder sb = new StringBuilder();
-    if (whereClause != null) {
-      sb.append(whereClause);
-    }
-    StringBuilder returning = new StringBuilder();
-    if (returnUpdatedIds) {
-      returning.append(returningId);
-    }
-    try {
-      String q = "UPDATE " + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
-          + " " + returning;
-      log.debug("query = " + q);
-      String pojo = pojo2json(entity);
-      connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
+      StringBuilder sb = new StringBuilder();
+      if (whereClause != null) {
+        sb.append(whereClause);
+      }
+      StringBuilder returning = new StringBuilder();
+      if (returnUpdatedIds) {
+        returning.append(returningId);
+      }
+      try {
+        String q = "UPDATE " + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
+            + " " + returning;
+        log.debug("query = " + q);
+        String pojo = pojo2json(entity);
+        connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
+          if(!transactionMode){
+            connection.close();
+          }
+          if (query.failed()) {
+            log.error(query.cause().getMessage(),query.cause());
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            replyHandler.handle(Future.succeededFuture(query.result()));
+          }
+          long end = System.nanoTime();
+          StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
+          if(log.isDebugEnabled()){
+            log.debug("timer: get " +q+ " (ns) " + (end-start));
+          }
+        });
+      } catch (Exception e) {
         if(!transactionMode){
           connection.close();
         }
-        if (query.failed()) {
-          log.error(query.cause().getMessage(),query.cause());
-          replyHandler.handle(Future.failedFuture(query.cause()));
-        } else {
-          replyHandler.handle(Future.succeededFuture(query.result()));
-        }
-        long end = System.nanoTime();
-        StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
-        if(log.isDebugEnabled()){
-          log.debug("timer: get " +q+ " (ns) " + (end-start));
-        }
-      });
-    } catch (Exception e) {
-      if(!transactionMode){
-        connection.close();
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
       }
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
-
+    });
   }
   /**
    * update a section / field / object in the pojo -
@@ -961,46 +964,48 @@ public class PostgresClient {
   public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
       Handler<AsyncResult<UpdateResult>> replyHandler) {
     long start = System.nanoTime();
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        StringBuilder sb = new StringBuilder();
-        if (when != null) {
-          sb.append(when.toString());
-        }
-        StringBuilder returning = new StringBuilder();
-        if (returnUpdatedIdsCount) {
-          returning.append(returningId);
-        }
-        try {
-          String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
-              + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning;
-          log.debug("query = " + q);
-          connection.update(q, query -> {
-            connection.close();
-            if (query.failed()) {
-              log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(query.result()));
-            }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
-            if(log.isDebugEnabled()){
-              log.debug("timer: get " +q+ " (ns) " + (end-start));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
+    vertx.runOnContext(v -> {
+      client.getConnection(res -> {
+        if (res.succeeded()) {
+          SQLConnection connection = res.result();
+          StringBuilder sb = new StringBuilder();
+          if (when != null) {
+            sb.append(when.toString());
           }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
+          StringBuilder returning = new StringBuilder();
+          if (returnUpdatedIdsCount) {
+            returning.append(returningId);
+          }
+          try {
+            String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
+                + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning;
+            log.debug("query = " + q);
+            connection.update(q, query -> {
+              connection.close();
+              if (query.failed()) {
+                log.error(query.cause().getMessage(), query.cause());
+                replyHandler.handle(Future.failedFuture(query.cause()));
+              } else {
+                replyHandler.handle(Future.succeededFuture(query.result()));
+              }
+              long end = System.nanoTime();
+              StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
+              if(log.isDebugEnabled()){
+                log.debug("timer: get " +q+ " (ns) " + (end-start));
+              }
+            });
+          } catch (Exception e) {
+            if(connection != null){
+              connection.close();
+            }
+            log.error(e.getMessage(), e);
+            replyHandler.handle(Future.failedFuture(e));
+          }
+        } else {
+          log.error(res.cause().getMessage(), res.cause());
+          replyHandler.handle(Future.failedFuture(res.cause()));
         }
-      } else {
-        log.error(res.cause().getMessage(), res.cause());
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
+      });
     });
   }
 
@@ -1086,32 +1091,34 @@ public class PostgresClient {
 
   private void doDelete(SQLConnection connection, boolean transactionMode, String table, String where, Handler<AsyncResult<UpdateResult>> replyHandler) {
     long start = System.nanoTime();
-    try {
-      String q = "DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
-      log.debug("query = " + q);
-      connection.update(q, query -> {
+    vertx.runOnContext(v -> {
+      try {
+        String q = "DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+        log.debug("query = " + q);
+        connection.update(q, query -> {
+          if(!transactionMode){
+            connection.close();
+          }
+          if (query.failed()) {
+            log.error(query.cause().getMessage(), query.cause());
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            replyHandler.handle(Future.succeededFuture(query.result()));
+          }
+          long end = System.nanoTime();
+          StatsTracker.addStatElement(STATS_KEY+".delete", (end-start));
+          if(log.isDebugEnabled()){
+            log.debug("timer: get " +q+ " (ns) " + (end-start));
+          }
+        });
+      } catch (Exception e) {
         if(!transactionMode){
           connection.close();
         }
-        if (query.failed()) {
-          log.error(query.cause().getMessage(), query.cause());
-          replyHandler.handle(Future.failedFuture(query.cause()));
-        } else {
-          replyHandler.handle(Future.succeededFuture(query.result()));
-        }
-        long end = System.nanoTime();
-        StatsTracker.addStatElement(STATS_KEY+".delete", (end-start));
-        if(log.isDebugEnabled()){
-          log.debug("timer: get " +q+ " (ns) " + (end-start));
-        }
-      });
-    } catch (Exception e) {
-      if(!transactionMode){
-        connection.close();
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
       }
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+    });
   }
 
   public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
@@ -2074,6 +2081,7 @@ public class PostgresClient {
       execute(execStatements.toArray(new String[]{}), stopOnError, replyHandler);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
     }
   }
 
