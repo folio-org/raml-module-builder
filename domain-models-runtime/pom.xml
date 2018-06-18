@@ -121,6 +121,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-mysql-postgresql-client</artifactId>
+      <version>3.5.1-FOLIO.1</version>
     </dependency>
     <dependency>
       <groupId>xerces</groupId>
