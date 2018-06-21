@@ -1370,7 +1370,7 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Metadata
 
-RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/master/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed in json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using triggers see [metadata.sql](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata/metadata.sql)
+RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/master/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed in json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl)
 
 ## Facet Support
 
