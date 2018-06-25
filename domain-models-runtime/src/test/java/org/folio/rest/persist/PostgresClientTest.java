@@ -1,19 +1,20 @@
 package org.folio.rest.persist;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.facets.ParsedQuery;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import net.sf.jsqlparser.JSQLParserException;
@@ -46,11 +47,11 @@ public class PostgresClientTest {
     List<String> facets = new ArrayList<>();
     facets.add("barcode");
     facets.add("materialTypeId");
-    List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");
     FacetManager.setCalculateOnFirst(0);
-    ParsedQuery pQ = PostgresClient.parseQuery(query);
-    // buildFacetQuery("tablename", pQ, facetList, true, query);
-
+    ParsedQuery pq = PostgresClient.parseQuery(query);
+    if (pq.getOrderByClause() == null && pq.getLimitClause() == null && pq.getOrderByClause() == null) {
+      fail();
+    }
 
     net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
     Select selectStatement = (Select) statement;
@@ -58,39 +59,8 @@ public class PostgresClientTest {
     net.sf.jsqlparser.statement.select.Limit limit = ((PlainSelect) selectStatement.getSelectBody()).getLimit();
     net.sf.jsqlparser.statement.select.Offset offset = ((PlainSelect) selectStatement.getSelectBody()).getOffset();
 
-    //in the rare case where the order by clause somehow appears in the where clause
-    if(orderBy != null){
-      int startOfOrderBy = PostgresClient.getLastStartPos(query, "order by");
-      StringBuilder sb = new StringBuilder("order by[ ]+");
-      int size = orderBy.size();
-      for (int i = 0; i < size; i++) {
-        sb.append(orderBy.get(i).toString().replaceAll(" ", "[ ]+"));
-        if(i<size-1){
-          sb.append(",?[ ]+");
-        }
-      }
-      String regex = sb.toString().trim();
-      query = query.substring(0, startOfOrderBy) +
-          Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
-    }
-
-    int startOfLimit = PostgresClient.getLastStartPos(query, "limit");
-
-    if(limit != null){
-      query = query.substring(0, startOfLimit) +
-          Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
-    }
-    else if(startOfLimit != -1){
-      //offset returns null if it was placed before the limit although postgres does allow this
-      //we are here if offset appears in the query and not within quotes
-      query = query.substring(0, startOfLimit) +
-      Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
-    }
-
-    if(offset != null){
-      int startOfOffset = PostgresClient.getLastStartPos(query, "offset");
-      query = query.substring(0, startOfOffset) +
-      Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
+    if (orderBy == null && limit == null && offset == null) {
+      fail();
     }
 
     long end = System.nanoTime();
@@ -98,34 +68,42 @@ public class PostgresClientTest {
     log.info(query + " from " + (end-start));
   }
 
-  @ParameterizedTest
-  @CsvSource({
-    "limit 'limit'," +
-    "^",
-    "limit 'limit' limit," +
-    "--------------^",
-    "limit 'limit' limit 1," +
-    "--------------^",
-    "limit 'limit limit limit' limit 'limit limit limit' limit," +
-    "----------------------------------------------------^",
-    "LIMIT LIMIT LIMIT," +
-    "------------^",
-    "LIMIT 1 SQL_SELECT_LIMIT 2," +
-    "^",
-    "LIMIT 1 LIMIT_SQL_SELECT 2," +
-    "^",
-    "limit 'limit''limit'," +
-    "^",
-    "limit E'limit''limit'," +   // C-style string
-    "^",
-    "limit 'limit\\' limit," +   // backslash does not escape in standard SQL strings
-    "------------\\--^",
-    "limit e'limit\\'limit'," +  // but in C-style strings
-    "^",
-  })
-  void getLastStartPos(String query, String expectedPosMarker) {
-    int expectedPos = expectedPosMarker.indexOf('^');
-    assertThat(PostgresClient.getLastStartPos(query, "limit"), is(expectedPos));
-    assertThat(PostgresClient.getLastStartPos(query, "LIMIT"), is(expectedPos));
+  @Test void parseQuerySimple() {
+    ParsedQuery pq = PostgresClient.parseQuery("SELECT * FROM t WHERE TRUE ORDER BY a LIMIT 2 OFFSET 3");
+    assertThat(pq.getQueryWithoutLimOff(), equalToIgnoringWhiteSpace("SELECT * FROM t WHERE TRUE ORDER BY a"));
+    assertThat(pq.getCountFuncQuery(),     equalToIgnoringWhiteSpace("SELECT * FROM t WHERE TRUE"));
+    assertThat(pq.getLimitClause(),        equalToIgnoringWhiteSpace("LIMIT 2"));
+    assertThat(pq.getOffsetClause(),       equalToIgnoringWhiteSpace("OFFSET 3"));
+    assertThat(pq.getOrderByClause(), is("[a]"));
+  }
+
+  @Test void parseWhereOrderBy() {
+    ParsedQuery pq = PostgresClient.parseQuery("SELECT * FROM t WHERE TRUE ORDER BY a");
+    assertThat(pq.getQueryWithoutLimOff(), equalToIgnoringWhiteSpace("SELECT * FROM t WHERE TRUE ORDER BY a"));
+    assertThat(pq.getCountFuncQuery(),     equalToIgnoringWhiteSpace("SELECT * FROM t WHERE TRUE"));
+    assertThat(pq.getLimitClause(),        is(nullValue()));
+    assertThat(pq.getOffsetClause(),       is(nullValue()));
+    assertThat(pq.getOrderByClause(), is("[a]"));
+  }
+
+  @Test void parseOffset() {
+    ParsedQuery pq = PostgresClient.parseQuery("SELECT * FROM t OFFSET 5");
+    assertThat(pq.getQueryWithoutLimOff(), equalToIgnoringWhiteSpace("SELECT * FROM t"));
+    assertThat(pq.getCountFuncQuery(),     equalToIgnoringWhiteSpace("SELECT * FROM t"));
+    assertThat(pq.getLimitClause(),        is(nullValue()));
+    assertThat(pq.getOffsetClause(),       equalToIgnoringWhiteSpace("OFFSET 5"));
+    assertThat(pq.getOrderByClause(),      is(nullValue()));
+  }
+
+  @Test
+  public void deeplyNestedQuery() throws JSQLParserException {
+    // causes StackOverflowError in java.util.regex.Pattern:
+    // https://issues.folio.org/browse/CIRC-119
+    String sql = "(TRUE)";
+    for (int i=0; i<10; i++) {
+      sql = sql.replaceAll("TRUE", "(TRUE OR TRUE)");
+    }
+
+    PostgresClient.parseQuery("SELECT * FROM t WHERE " + sql);
   }
 }

@@ -93,7 +93,6 @@ public class PostgresClient {
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
-  private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
   private static final String   UPDATE = "UPDATE ";
   private static final String   SET = " SET ";
@@ -2407,130 +2406,75 @@ public class PostgresClient {
    */
   static ParsedQuery parseQuery(String query) {
     log.debug("parseQuery " + query);
+    Select selectStatement = null;
+    PlainSelect plainSelect = null;
     List<OrderByElement> orderBy = null;
     net.sf.jsqlparser.statement.select.Limit limit = null;
     Expression where = null;
     net.sf.jsqlparser.statement.select.Offset offset = null;
     long start = System.nanoTime();
-    String queryWithoutLimitOffset = "";
+
     try {
-      try {
-        net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
-        Select selectStatement = (Select) statement;
-        orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
-        limit = ((PlainSelect) selectStatement.getSelectBody()).getLimit();
-        offset = ((PlainSelect) selectStatement.getSelectBody()).getOffset();
-        where = ((PlainSelect) selectStatement.getSelectBody()).getWhere();
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-      }
+      selectStatement = (Select) CCJSqlParserUtil.parse(query);
+      plainSelect = (PlainSelect) selectStatement.getSelectBody();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return null;
+    }
 
-      int startOfLimit = getLastStartPos(query, "limit");
-      if(limit != null){
-        String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
-        query = query.substring(0, startOfLimit) + suffix;
-      }
-      else if(startOfLimit != -1){
-        //offset returns null if it was placed before the limit although postgres does allow this
-        //we are here if offset appears in the query and not within quotes
-        query = query.substring(0, startOfLimit) +
-        Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
-      }
+    try {
+      orderBy = plainSelect.getOrderByElements();
+      limit = plainSelect.getLimit();
+      offset = plainSelect.getOffset();
+      where = plainSelect.getWhere();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+    }
 
-      int startOfOffset = getLastStartPos(query, "offset");
-      if(offset != null){
-        String suffix = Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
-        query = query.substring(0, startOfOffset) + suffix;
-      }
-      else if(startOfOffset != -1){
-        //offset returns null if it was placed before the limit although postgres does allow this
-        //we are here if offset appears in the query and not within quotes
-        query = query.substring(0, startOfOffset) +
-        Pattern.compile("offset\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
-      }
+    ParsedQuery pq = new ParsedQuery();
+    try {
+       plainSelect.setOffset(null);
+       plainSelect.setLimit(null);
+       pq.setQueryWithoutLimOff(toString(selectStatement));
+       plainSelect.setOrderByElements(null);
+       pq.setCountFuncQuery(toString(selectStatement));
+       pq.setWhereClause(toString(where));
+       pq.setOrderByClause(toString(orderBy));
+       pq.setLimitClause(toString(limit));
+       pq.setOffsetClause(toString(offset));
+       debug(pq);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+    }
 
-      queryWithoutLimitOffset = query;
-
-      //in the rare case where the order by clause somehow appears in the where clause
-      int startOfOrderBy = getLastStartPos(query, "order by");
-      if(orderBy != null){
-        StringBuilder sb = new StringBuilder("order by[ ]+");
-        int size = orderBy.size();
-        for (int i = 0; i < size; i++) {
-          sb.append(orderBy.get(i).toString().replaceAll(" ", "[ ]+"));
-          if(i<size-1){
-            sb.append(",?[ ]+");
-          }
-        }
-        String regex = escape(sb.toString().trim());
-        query = query.substring(0, startOfOrderBy) +
-            Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
-      }
-      else if(startOfOrderBy != -1){
-        //offset returns null if it was placed before the limit although postgres does allow this
-        //we are here if offset appears in the query and not within quotes
-        query = query.substring(0, startOfOrderBy) +
-        Pattern.compile("order by.*", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
-      }
-   }
-   catch(Exception e){
-     log.error(e.getMessage(), e);
-   }
-
-   ParsedQuery pq = new ParsedQuery();
-   pq.setCountFuncQuery(query);
-   pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
-   if(where != null){
-     pq.setWhereClause( where.toString() );
-   }
-   if(orderBy != null){
-     pq.setOrderByClause( orderBy.toString() );
-   }
-   if(limit != null){
-     pq.setLimitClause( limit.toString() );
-   }
-   if(offset != null){
-     pq.setOffsetClause( offset.toString() );
-   }
    long end = System.nanoTime();
    log.debug("Parse query for count_estimate function (ns) " + (end-start));
+
    return pq;
   }
 
-  private static String escape(String str){
-    StringBuilder sb = new StringBuilder();
-    for (char c : str.toCharArray())
-    {
-        switch(c)
-        {
-            case '(':
-            case ')':
-            case '\\':
-                sb.append('\\');
-                // intended fall-through
-            default:
-                sb.append(c);
-        }
+  /**
+   * Returns o.toString(), or null if o is null.
+   * @param o the object to get the String from.
+   * @return a String, or null
+   */
+  private static String toString(Object s) {
+    if (s == null) {
+      return null;
     }
-    return sb.toString();
+
+    return s.toString();
   }
 
-  /**
-   * Return the last position of <code>token</code> in <code>query</code> skipping
-   * standard SQL strings like 'some string' and C-style SQL strings like E'some string'.
-   * @param query  where to search
-   * @param token  what to search for
-   * @return position (starting at 0), or -1 if not found
-   */
-  static int getLastStartPos(String query, String token) {
-    String quotedString       = "(?<!E)'(?:[^']|'')*'";
-    String quotedStringCStyle = "(?<=E)'(?:[^'\\\\]|\\.)*'";
-    Matcher matcher = Pattern.compile(
-        "(?:[^'\\\\]|\\.|" + quotedString + "|" + quotedStringCStyle + ")*"
-        + "\\b(" + Pattern.quote(token) + ")\\b.*", Pattern.CASE_INSENSITIVE).matcher(query);
-    if (! matcher.matches()) {
-      return -1;
+  private static void debug(ParsedQuery parsedQuery) {
+    if (! log.isDebugEnabled()) {
+      return;
     }
-    return matcher.start(1);
+    log.debug("parsedQuery countFuncQuery=" + parsedQuery.getCountFuncQuery());
+    log.debug("parsedQuery queryWithoutLimOff=" + parsedQuery.getQueryWithoutLimOff());
+    log.debug("parsedQuery where=" + parsedQuery.getWhereClause());
+    log.debug("parsedQuery order=" + parsedQuery.getOrderByClause());
+    log.debug("parsedQuery limit=" + parsedQuery.getLimitClause());
+    log.debug("parsedQuery offset=" + parsedQuery.getOffsetClause());
   }
 }
