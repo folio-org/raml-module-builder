@@ -72,7 +72,6 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.statement.select.SelectBody;
 import ru.yandex.qatools.embed.postgresql.Command;
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -94,7 +93,6 @@ public class PostgresClient {
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
-  private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
   private static final String   UPDATE = "UPDATE ";
   private static final String   SET = " SET ";
