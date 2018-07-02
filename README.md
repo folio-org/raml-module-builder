@@ -1276,6 +1276,25 @@ The tables / views will be generated in the schema named tenantid_modulename
 The x-okapi-tenant header passed in to the API call will be used to get the tenant id.
 The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
 
+#### Important information
+Right now all indexes on string fields in the jsonb should be declared as case in-sensitive and lower cased. This is how the CQL to Postgres converter generates SQL queries , so in order for the indexes generated to be used during query time, the indexes must be declared in a similar manner
+```
+  {
+    "fieldName": "title",
+    "tOps": "ADD",
+    "caseSensitive": false,
+    "removeAccents": true
+  }
+```
+
+Behind the scenes, the CQL to Postgres query converter will generate regex queries for `=` queries. 
+For example: `?query=fieldA=ABC` will generate an SQL regex query, which will require a gin index to perform on large tables. 
+
+The converter will generate LIKE queries for `==` queries. For example `?query=fieldA==ABC` will generate an SQL LIKE query that will use a btree index (if it exists). For queries that only look up specific ids, etc... the preferred approach would be to query with two equals `==` and hence, declare a regular btree (index). 
+
+
+##### Posting information
+
 Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
 
 ##### Encrypting Tenant passwords

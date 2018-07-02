@@ -1,3 +1,6 @@
+## 19.1.4 2018-07-02
+* RMB-154 Investigate postgresql connection pool
+
 ## 19.1.3 2018-06-10
 * RMB-167 consistently use runOnContext for DB operations
 * RMB-172 add /admin api to drop , create indexes per module
