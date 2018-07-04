@@ -21,6 +21,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
+import org.folio.rest.tools.utils.NaiveSQLParse;
 
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
@@ -60,7 +61,7 @@ public class PostgresClientTest {
 
     //in the rare case where the order by clause somehow appears in the where clause
     if(orderBy != null){
-      int startOfOrderBy = PostgresClient.getLastStartPos(query, "order by");
+      int startOfOrderBy = NaiveSQLParse.getLastStartPos(query, "order by");
       StringBuilder sb = new StringBuilder("order by[ ]+");
       int size = orderBy.size();
       for (int i = 0; i < size; i++) {
@@ -74,7 +75,7 @@ public class PostgresClientTest {
           Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
     }
 
-    int startOfLimit = PostgresClient.getLastStartPos(query, "limit");
+    int startOfLimit = NaiveSQLParse.getLastStartPos(query, "limit");
 
     if(limit != null){
       query = query.substring(0, startOfLimit) +
@@ -88,7 +89,7 @@ public class PostgresClientTest {
     }
 
     if(offset != null){
-      int startOfOffset = PostgresClient.getLastStartPos(query, "offset");
+      int startOfOffset = NaiveSQLParse.getLastStartPos(query, "offset");
       query = query.substring(0, startOfOffset) +
       Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
     }
@@ -125,7 +126,7 @@ public class PostgresClientTest {
   })
   void getLastStartPos(String query, String expectedPosMarker) {
     int expectedPos = expectedPosMarker.indexOf('^');
-    assertThat(PostgresClient.getLastStartPos(query, "limit"), is(expectedPos));
-    assertThat(PostgresClient.getLastStartPos(query, "LIMIT"), is(expectedPos));
+    assertThat(NaiveSQLParse.getLastStartPos(query, "limit"), is(expectedPos));
+    assertThat(NaiveSQLParse.getLastStartPos(query, "LIMIT"), is(expectedPos));
   }
 }
