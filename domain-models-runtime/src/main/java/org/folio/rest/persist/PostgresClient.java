@@ -73,6 +73,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
+import org.folio.rest.tools.utils.NaiveSQLParse;
 import ru.yandex.qatools.embed.postgresql.Command;
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -2432,8 +2433,7 @@ public class PostgresClient {
 
       //TEMPORARY HACK - see above - back to original query after parsing completes
       query = query.replaceAll(" AND \\(\\(\\(FALSE\\)\\)\\)", " IS NOT TRUE").replaceAll(" AND \\(\\(\\(TRUE\\)\\)\\)", " IS TRUE");
-      
-      int startOfLimit = getLastStartPos(query, "limit");
+      int startOfLimit = NaiveSQLParse.getLastStartPos(query, "limit");
       if(limit != null){
         String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
         query = query.substring(0, startOfLimit) + suffix;
@@ -2445,7 +2445,7 @@ public class PostgresClient {
         Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
       }
 
-      int startOfOffset = getLastStartPos(query, "offset");
+      int startOfOffset = NaiveSQLParse.getLastStartPos(query, "offset");
       if(offset != null){
         String suffix = Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
         query = query.substring(0, startOfOffset) + suffix;
@@ -2460,7 +2460,7 @@ public class PostgresClient {
       queryWithoutLimitOffset = query;
 
       //in the rare case where the order by clause somehow appears in the where clause
-      int startOfOrderBy = getLastStartPos(query, "order by");
+      int startOfOrderBy = NaiveSQLParse.getLastStartPos(query, "order by");
       if(orderBy != null){
         StringBuilder sb = new StringBuilder("order by[ ]+");
         int size = orderBy.size();
@@ -2523,46 +2523,5 @@ public class PostgresClient {
         }
     }
     return sb.toString();
-  }
-
-  /**
-   * Return the last position of <code>token</code> in <code>query</code> skipping
-   * standard SQL strings like 'some string' and C-style SQL strings like E'some string'.
-   * @param query  where to search
-   * @param token  what to search for
-   * @return position (starting at 0), or -1 if not found
-   */
-  static int getLastStartPos(String query, String token) {
-    String quotedString       = "(?<!E)'(?:[^']|'')*'";
-    String quotedStringCStyle = "(?<=E)'(?:[^'\\\\]|\\.)*'";
-    Matcher matcher = Pattern.compile(
-        "(?:[^'\\\\]|\\.|" + quotedString + "|" + quotedStringCStyle + ")*"
-        + "\\b(" + Pattern.quote(token) + ")\\b.*", Pattern.CASE_INSENSITIVE).matcher(query);
-    if (! matcher.matches()) {
-      return -1;
-    }
-    return matcher.start(1);
-  }
-
-  public static void main() {
-   String[] queries = new String[]{"SELECT * FROM t WHERE (((lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]])).*($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'contributors')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\"name\":([[:punct:]]|[[:space:]]) \".*\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'identifiers')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\"value\":([[:punct:]]|[[:space:]]) \".*\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) AND ((((((((true) AND ( (instance_holding_item_view.ho_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))) OR ((((true) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))))) OR (((true) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.it_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.it_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))))) OR ((lower(f_unaccent(instance_holding_item_view.it_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.it_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))) ORDER BY lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) LIMIT 30 OFFSET 0"};
-    for (int i = 0; i < queries.length; i++) {
-      long start = System.nanoTime();  
-      System.out.println("--------------------------->" + queries[i]); 
-      List<String> facets = new ArrayList<>();
-      facets.add("barcode");
-      facets.add("materialTypeId");
-      List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");
-      FacetManager.setCalculateOnFirst(0);
-      ParsedQuery pQ = PostgresClient.parseQuery(queries[i]);
-
-     System.out.println("-----> limit: " +  pQ.getLimitClause());
-     System.out.println("-----> offset: " +  pQ.getOffsetClause());
-     System.out.println("-----> order: " +  pQ.getOrderByClause());
-     System.out.println("-----> where: " +  pQ.getWhereClause());
-     System.out.println("-----> count: " +  pQ.getCountFuncQuery());
-     long end = System.nanoTime();
-     log.info(queries[i] + " from " + (end - start));
-   }
   }
 }

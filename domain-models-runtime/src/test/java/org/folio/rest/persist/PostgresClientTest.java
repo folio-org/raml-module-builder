@@ -28,6 +28,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
+import org.folio.rest.tools.utils.NaiveSQLParse;
 
 
 public class PostgresClientTest {
@@ -111,7 +112,7 @@ public class PostgresClientTest {
   })
   void getLastStartPos(String query, String expectedPosMarker) {
     int expectedPos = expectedPosMarker.indexOf('^');
-    assertThat(PostgresClient.getLastStartPos(query, "limit"), is(expectedPos));
-    assertThat(PostgresClient.getLastStartPos(query, "LIMIT"), is(expectedPos));
+    assertThat(NaiveSQLParse.getLastStartPos(query, "limit"), is(expectedPos));
+    assertThat(NaiveSQLParse.getLastStartPos(query, "LIMIT"), is(expectedPos));
   }
 }
