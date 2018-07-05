@@ -67,6 +67,7 @@ import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
+import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
@@ -2415,6 +2416,10 @@ public class PostgresClient {
     String queryWithoutLimitOffset = "";
     try {
       try {
+        //TEMPORARY HACK SINCE PARSER CANT HANDLE "IS NOT TRUE" , so replace it with IS NOT NULL
+        //parse, and then below return the "IS NOT TRUE" - this is buggy as if this appears for some
+        //strange reason outside a where clause this will fail
+        query = query.replaceAll(" IS NOT TRUE", " AND \\(\\(\\(FALSE\\)\\)\\)").replaceAll(" IS TRUE", " AND \\(\\(\\(TRUE\\)\\)\\)");
         net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
         Select selectStatement = (Select) statement;
         orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
@@ -2425,6 +2430,9 @@ public class PostgresClient {
         log.error(e.getMessage(), e);
       }
 
+      //TEMPORARY HACK - see above - back to original query after parsing completes
+      query = query.replaceAll(" AND \\(\\(\\(FALSE\\)\\)\\)", " IS NOT TRUE").replaceAll(" AND \\(\\(\\(TRUE\\)\\)\\)", " IS TRUE");
+      
       int startOfLimit = getLastStartPos(query, "limit");
       if(limit != null){
         String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
@@ -2481,7 +2489,9 @@ public class PostgresClient {
    pq.setCountFuncQuery(query);
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){
-     pq.setWhereClause( where.toString() );
+     //TEMPORARY HACK see above
+     pq.setWhereClause( where.toString().replaceAll(" AND \\(\\(\\(FALSE\\)\\)\\)", " IS NOT TRUE")
+       .replaceAll(" AND \\(\\(\\(TRUE\\)\\)\\)", " IS TRUE") );
    }
    if(orderBy != null){
      pq.setOrderByClause( orderBy.toString() );
@@ -2532,5 +2542,27 @@ public class PostgresClient {
       return -1;
     }
     return matcher.start(1);
+  }
+
+  public static void main() {
+   String[] queries = new String[]{"SELECT * FROM t WHERE (((lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]])).*($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'contributors')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\"name\":([[:punct:]]|[[:space:]]) \".*\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'identifiers')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\"value\":([[:punct:]]|[[:space:]]) \".*\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) AND ((((((((true) AND ( (instance_holding_item_view.ho_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))) OR ((((true) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))))) OR (((true) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.it_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.it_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))))) OR ((lower(f_unaccent(instance_holding_item_view.it_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.it_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))) ORDER BY lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) LIMIT 30 OFFSET 0"};
+    for (int i = 0; i < queries.length; i++) {
+      long start = System.nanoTime();  
+      System.out.println("--------------------------->" + queries[i]); 
+      List<String> facets = new ArrayList<>();
+      facets.add("barcode");
+      facets.add("materialTypeId");
+      List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");
+      FacetManager.setCalculateOnFirst(0);
+      ParsedQuery pQ = PostgresClient.parseQuery(queries[i]);
+
+     System.out.println("-----> limit: " +  pQ.getLimitClause());
+     System.out.println("-----> offset: " +  pQ.getOffsetClause());
+     System.out.println("-----> order: " +  pQ.getOrderByClause());
+     System.out.println("-----> where: " +  pQ.getWhereClause());
+     System.out.println("-----> count: " +  pQ.getCountFuncQuery());
+     long end = System.nanoTime();
+     log.info(queries[i] + " from " + (end - start));
+   }
   }
 }
