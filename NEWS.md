@@ -1,3 +1,6 @@
+## 19.1.5 2018-07-05
+* RMB-179 net.sf.jsqlparser does not support "IS TRUE" and "a@>b"
+
 ## 19.1.4 2018-07-02
 * RMB-154 Investigate postgresql connection pool
 
