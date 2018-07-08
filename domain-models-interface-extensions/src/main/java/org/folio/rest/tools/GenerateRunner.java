@@ -68,6 +68,7 @@ public class GenerateRunner {
     configuration.setTypeConfiguration(new String[]{"core.one"});
     Map<String, String> config = new HashMap<>();
     config.put("customAnnotator", "org.folio.rest.tools.plugins.CustomTypeAnnotator");
+    config.put("isIncludeJsr303Annotations", "true");
     configuration.setJsonMapperConfiguration(config);
 
   }

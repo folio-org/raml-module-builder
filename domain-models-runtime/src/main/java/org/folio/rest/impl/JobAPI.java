@@ -36,7 +36,7 @@ import io.vertx.core.logging.LoggerFactory;
  * Jobs are saved into the folio_shared schema declared in the MongoCRUD with each record containing an institution id
  *
  */
-public class JobAPI implements org.folio.rest.jaxrs.Jobs {
+public class JobAPI implements org.folio.rest.jaxrs.resources.Jobs {
 
   private static final Logger log = LoggerFactory.getLogger(JobAPI.class);
   private static final String JOB_CONF_CLASS_NAME   = JobConf.class.getName();

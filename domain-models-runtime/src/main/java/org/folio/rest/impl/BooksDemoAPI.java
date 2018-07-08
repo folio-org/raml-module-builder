@@ -6,7 +6,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.Rmbtests;
+import org.folio.rest.jaxrs.resources.Rmbtests;
 import org.folio.rest.tools.utils.OutStream;
 
 import io.vertx.core.AsyncResult;
@@ -69,7 +69,7 @@ public class BooksDemoAPI implements Rmbtests {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
         PostRmbtestsTestResponse.respond200WithApplicationJson(os)));
     } catch (Exception e) {
-      log.error( e );
+      log.error( e.getMessage(),  e );
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(null));
     }
   }
