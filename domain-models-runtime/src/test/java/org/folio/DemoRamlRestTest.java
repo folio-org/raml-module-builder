@@ -2,7 +2,6 @@ package org.folio;
 
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -10,7 +9,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 
-import javax.crypto.SecretKey;
 import javax.mail.BodyPart;
 import javax.mail.internet.InternetHeaders;
 import javax.mail.internet.MimeBodyPart;
@@ -18,14 +16,10 @@ import javax.mail.internet.MimeMultipart;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.client.AdminClient;
-import org.folio.rest.client.RmbtestsClient;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.model.Metadata;
-import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
-import org.folio.rest.security.AES;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -220,9 +214,9 @@ public class DemoRamlRestTest {
     String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
 
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null, false);
-    postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
-      200, 1, null, null, false);
+   // postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null, false);
+   // postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
+   //   200, 1, null, null, false);
     postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 200, 1,
       "application/json", TENANT, false);
 
@@ -266,16 +260,16 @@ public class DemoRamlRestTest {
     //use generated client
     checkClientCode(context);
 
-    RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
+/*    RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
     String[] facets = new String[]{"author:10", "name:5"};
-    testClient.getBooks("aaa", new BigDecimal(1999), new BigDecimal(1999), null, facets, handler -> {
+    testClient.getRmbtestsBooks("aaa", new BigDecimal(1999), new BigDecimal(1999), null, facets, handler -> {
       if(handler.statusCode() != 200){
         context.fail();
       }
       else{
         log.info(handler.statusCode() + "----------------------------------------- passed ---------------------------");
       }
-    });
+    });*/
   }
 
   /**
@@ -298,8 +292,9 @@ public class DemoRamlRestTest {
       log.debug("--- bp content --- "+bp.getContent());
       mmp.addBodyPart(bp);
       mmp.addBodyPart(bp2);
-      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
-      aClient.postUploadmultipart(PersistMethod.SAVE, null, "abc",
+/*      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
+      aClient.postAdminUploadmultipart(null, "abc",
+
         mmp, reply -> {
         if(reply.statusCode() != 200){
           context.fail();
@@ -330,7 +325,7 @@ public class DemoRamlRestTest {
         } catch (Exception e) {
           log.error(e.getMessage(), e);
         }
-      });
+      });*/
     }
     catch (Exception e) {
       log.error(e.getMessage(), e);

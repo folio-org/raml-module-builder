@@ -1,30 +1,30 @@
-#%RAML 0.8
+#%RAML 1.0
 
 title: Admin API
 baseUri: http://localhost:8081/v1
 version: v1
 
-schemas:
-  - last_modified.schema: !include last_modified.schema
-  - jobs: !include jobs.schema
-  - job.schema: !include job.schema
-  - jobs_conf.schema: !include jobs_conf.schema
-  - jobs_confs: !include jobs_confs.schema
-  - raml-util/schemas/parameters.schema: !include raml-util/schemas/parameters.schema
-  - parameter: !include parameter.schema
-  - bulks: !include bulks.schema
-  - bulk.schema: !include bulk.schema
+types:
+  last_modified: !include last_modified.schema
+  jobs: !include jobs.schema
+  job: !include job.schema
+  job_conf: !include jobs_conf.schema
+  jobs_confs: !include jobs_confs.schema
+  parameters: !include raml-util/schemas/parameters.schema
+  parameter: !include parameter.schema
+  bulks: !include bulks.schema
+  bulk: !include bulk.schema
 
 traits:
-  - orderable: !include raml-util/traits/orderable.raml
-  - pageable:  !include raml-util/traits/pageable.raml
-  - searchable: !include raml-util/traits/searchable.raml
-  - language: !include raml-util/traits/language.raml
-  - secured: !include raml-util/traits/auth.raml
+  orderable: !include raml-util/traits/orderable.raml
+  pageable:  !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
+  language: !include raml-util/traits/language.raml
+  secured: !include raml-util/traits/auth.raml
 
 resourceTypes:
-  - collection: !include raml-util/rtypes/collection.raml
-  - collection-item: !include raml-util/rtypes/item-collection.raml
+  collection: !include raml-util/rtypes/collection.raml
+  collection-item: !include raml-util/rtypes/item-collection.raml
 
 /jobs:
   /jobconfs:
@@ -35,7 +35,7 @@ resourceTypes:
         exampleCollection: !include examples/jobs_confs.sample
         exampleItem: !include examples/jobs_conf.sample
         schemaCollection: jobs_confs
-        schemaItem: jobs_conf.schema
+        schemaItem: job_conf
     get:
       is: [
         searchable: {description: "native mongodb query syntax with valid searchable fields: for example location", example: "{\"module\":\"IMPORTS\"}"},
@@ -49,14 +49,14 @@ resourceTypes:
       type:
         collection-item:
           exampleItem: !include examples/jobs_conf.sample
-          schema: jobs_conf.schema
+          schema: job_conf
       /jobs:
         type:
           collection:
             exampleCollection: !include examples/jobs.sample
             exampleItem: !include examples/job.sample
             schemaCollection: jobs
-            schemaItem: job.schema
+            schemaItem: job
         get:
           is: [
             searchable: {description: "native mongodb query syntax with valid searchable fields: for example location", example: "{\"job_conf_id\":\"12345\"}"},
@@ -67,11 +67,11 @@ resourceTypes:
           type:
             collection-item:
               exampleItem: !include examples/job.sample
-              schema: job.schema
+              schema: job
           /bulks:
             type:
               collection:
                 exampleCollection: !include examples/bulks.sample
                 exampleItem: !include examples/bulk.sample
                 schemaCollection: bulks
-                schemaItem: bulk.schema
+                schemaItem: bulk

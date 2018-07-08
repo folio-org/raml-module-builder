@@ -1,0 +1,17 @@
+{
+  "data": {
+    "title": "ABCDEFGHIJKLMNOPQ",
+    "description": "string",
+    "genre": "ABCDEFGHIJKLMNOPQRSTUVWXYZAB",
+    "author": "ABCDE",
+    "link": "ABCDEFGHIJ",
+    "_id": "ABCDEFGH",
+    "datetime": {
+      "$date": "ABCD"
+    }
+  },
+  "success": false,
+  "status": 165,
+  "_id": "ABCDEFGHIJKLMNOPQRSTUVWX",
+  "image": "ABCDEFGHIJKLMNOPQRSTUVWX"
+}

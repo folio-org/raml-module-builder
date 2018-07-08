@@ -1,22 +1,8 @@
 package org.folio.rest.tools;
 
-import static org.hamcrest.CoreMatchers.hasItems;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.junit.Assert.assertThat;
-
-import java.io.File;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Test;
-import org.raml.v2.api.model.v08.api.GlobalSchema;
-
-import io.vertx.core.json.JsonObject;
-
 public class JsonSchemaPojoUtilTest {
 
-  private static final String FILE_PATH = "src/test/resources/FacetValue.java";
+/*  private static final String FILE_PATH = "src/test/resources/FacetValue.java";
   private static final String RAML_PATH = "src/test/resources/schemas/jobs.raml";
   private static final File RAML_FILE = new File(RAML_PATH);
 
@@ -59,5 +45,5 @@ public class JsonSchemaPojoUtilTest {
     List<String> fields = JsonSchemaPojoUtil.getAllFieldsInSchema(jobSchema());
     assertThat(fields.size(), is(5));
     assertThat(fields, hasItems("_id", "name", "module", "creator", "creator_date"));
-  }
+  }*/
 }

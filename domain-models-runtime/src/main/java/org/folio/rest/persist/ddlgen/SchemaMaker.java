@@ -92,6 +92,16 @@ public class SchemaMaker {
 
     templateInput.put("newVersion", this.newVersion);
 
+    FullText fullText = this.schema.getFullText();
+
+    String defaultDictionary = FullText.DEFAULT_DICTIONARY;
+
+    if(fullText != null && fullText.getDefaultDictionary() != null){
+      defaultDictionary = fullText.getDefaultDictionary();
+    }
+
+    templateInput.put("ft_defaultDictionary", defaultDictionary);
+
     //TODO - check the rmbVersion in the internal_rmb table and compare to this passed in
     //version, to check if core rmb scripts need updating due to an update
     templateInput.put("rmbVersion", this.rmbVersion);

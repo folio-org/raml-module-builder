@@ -62,15 +62,7 @@
     <#list table.ginIndex as indexes>
       <#if indexes.tOps.name() == "ADD">
     CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN
-        (
-      <#if indexes.caseSensitive == false>lower</#if>
-        (
-          <#if indexes.removeAccents == true>f_unaccent(</#if>
-            ${indexes.fieldPath}
-          <#if indexes.removeAccents == true>)</#if>
-        )
-    gin_trgm_ops)
-    <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
+        ( to_tsvector('${ft_defaultDictionary}', ${indexes.fieldPath}) );
       <#else>
     DROP INDEX IF EXISTS ${table.tableName}_idx_gin;
       </#if>

@@ -25,8 +25,6 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.StrSubstitutor;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -63,6 +61,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
@@ -124,7 +124,7 @@ public class PostgresClient {
 
   private static final List<Map.Entry<String,Pattern>> REMOVE_FROM_COUNT_ESTIMATE= new java.util.ArrayList<>();
 
-  private static final Logger log = LogManager.getLogger(PostgresClient.class);
+  private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
   private static int embeddedPort            = -1;
 
@@ -2532,5 +2532,9 @@ public class PostgresClient {
       return -1;
     }
     return matcher.start(1);
+  }
+
+  public static void main(String args[]){
+    parseQuery("SELECT * FROM harvard_mod_configuration.config_data  WHERE (config_data.jsonb->>'userId' ~ '') <> ''");
   }
 }

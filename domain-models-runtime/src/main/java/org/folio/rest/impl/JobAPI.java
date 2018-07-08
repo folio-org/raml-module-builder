@@ -12,7 +12,8 @@ import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.JobConf;
 import org.folio.rest.jaxrs.model.Jobs;
 import org.folio.rest.jaxrs.model.JobsConfs;
-import org.folio.rest.jaxrs.resource.JobsResource;
+import org.folio.rest.jaxrs.model.JobsJobconfsGetOrder;
+import org.folio.rest.jaxrs.model.JobsJobconfsJobconfsIdJobsGetOrder;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -35,7 +36,7 @@ import io.vertx.core.logging.LoggerFactory;
  * Jobs are saved into the folio_shared schema declared in the MongoCRUD with each record containing an institution id
  *
  */
-public class JobAPI implements JobsResource {
+public class JobAPI implements org.folio.rest.jaxrs.Jobs {
 
   private static final Logger log = LoggerFactory.getLogger(JobAPI.class);
   private static final String JOB_CONF_CLASS_NAME   = JobConf.class.getName();
@@ -44,9 +45,9 @@ public class JobAPI implements JobsResource {
 
   @Validate
   @Override
-  public void getJobsJobconfs(String query, String orderBy, Order order, int offset, int limit,
+  public void getJobsJobconfs(String query, String orderBy, JobsJobconfsGetOrder order, int offset, int limit,
       String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     try {
       Criterion criterion = Criterion.json2Criterion(query);
@@ -66,19 +67,20 @@ public class JobAPI implements JobsResource {
                 List<JobConf> jobConfs = (List<JobConf>) reply.result().getResults();
                 ps.setJobConfs(jobConfs);
                 ps.setTotalRecords(jobConfs.size());
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsResponse.withJsonOK(ps)));
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsResponse.
+                  respond200WithApplicationJson(ps)));
           });
         }
         catch (Exception e) {
           log.error(e);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
@@ -86,7 +88,7 @@ public class JobAPI implements JobsResource {
   @Validate
   @Override
   public void postJobsJobconfs(String lang, JobConf entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     System.out.println("sending... postJobsJobconfs");
     try {
@@ -97,20 +99,20 @@ public class JobAPI implements JobsResource {
 
               OutStream stream = new OutStream();
               stream.setData(entity);
-              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsResponse.withJsonCreated(
-                reply.result(), stream)));
+              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsResponse.respond201WithApplicationJson(
+                stream , PostJobsJobconfsResponse.headersFor201().withLocation(reply.result()))));
             });
         }
         catch (Exception e) {
           log.error(e);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
@@ -119,7 +121,7 @@ public class JobAPI implements JobsResource {
   @Override
   public void getJobsJobconfsByJobconfsId(String jobconfsId, String lang,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) throws Exception {
+      Context vertxContext) {
 
     System.out.println("sending... getJobsJobconfsByJobconfsId");
     try {
@@ -136,24 +138,24 @@ public class JobAPI implements JobsResource {
               List<JobConf> confs = (List<JobConf>) reply.result().getResults();
               if (confs.isEmpty()) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  GetJobsJobconfsByJobconfsIdResponse.withPlainNotFound("JobConf "
+                  GetJobsJobconfsByJobconfsIdResponse.respond404WithTextPlain("JobConf "
                     + messages.getMessage(lang, "10008"))));
                 return;
               }
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                GetJobsJobconfsByJobconfsIdResponse.withJsonOK(confs.get(0))));
+                GetJobsJobconfsByJobconfsIdResponse.respond200WithApplicationJson(confs.get(0))));
             });
         }
         catch (Exception e) {
           log.error(e);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
@@ -162,7 +164,7 @@ public class JobAPI implements JobsResource {
   @Override
   public void deleteJobsJobconfsByJobconfsId(String jobconfsId, String lang,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) throws Exception {
+      Context vertxContext) {
 
     System.out.println("sending... deleteJobsJobconfsByJobconfsId");
     try {
@@ -174,32 +176,32 @@ public class JobAPI implements JobsResource {
             if(reply.succeeded()){
               if(reply.result().getUpdated() == 1){
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  DeleteJobsJobconfsByJobconfsIdResponse.withNoContent()));
+                  DeleteJobsJobconfsByJobconfsIdResponse.respond204()));
               }
               else{
                 String message = messages.getMessage(lang, MessageConsts.DeletedCountError, 1,reply.result().getUpdated());
                 log.error(message);
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdResponse
-                  .withPlainNotFound(message)));
+                  .respond400WithTextPlain(message)));
               }
             }
             else{
               log.error(reply.cause());
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdResponse
-                .withPlainInternalServerError(messages.getMessage(lang,  MessageConsts.InternalServerError))));
+                .respond500WithTextPlain(messages.getMessage(lang,  MessageConsts.InternalServerError))));
             }
           });
         }
         catch(Exception e){
           log.error(e.getMessage(), e);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
@@ -208,7 +210,7 @@ public class JobAPI implements JobsResource {
   @Override
   public void putJobsJobconfsByJobconfsId(String jobconfsId, String lang, JobConf entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) throws Exception {
+      Context vertxContext) {
 
     JobConf query = new JobConf();
     query.setId(jobconfsId);
@@ -223,28 +225,28 @@ public class JobAPI implements JobsResource {
             reply -> {
               if (reply.succeeded() && reply.result().getUpdated() == 0) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  PutJobsJobconfsByJobconfsIdResponse.withPlainNotFound(jobconfsId)));
+                  PutJobsJobconfsByJobconfsIdResponse.respond400WithTextPlain(jobconfsId)));
               } else {
                 try {
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                    PutJobsJobconfsByJobconfsIdResponse.withNoContent()));
+                    PutJobsJobconfsByJobconfsIdResponse.respond204()));
                 } catch (Exception e) {
                   log.error(e);
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsByJobconfsIdResponse
-                    .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+                    .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
                 }
               }
             });
         } catch (Exception e) {
           log.error(e.getMessage(), e);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsByJobconfsIdResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsByJobconfsIdResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
@@ -252,9 +254,9 @@ public class JobAPI implements JobsResource {
 
   @Validate
   @Override
-  public void getJobsJobconfsByJobconfsIdJobs(String jobconfsId, String query, String orderBy,
-      Order order, int offset, int limit, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void getJobsJobconfsJobsByJobconfsId(String jobconfsId, String query, String orderBy,
+      JobsJobconfsJobconfsIdJobsGetOrder order, int offset, int limit, String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     System.out.println("sending... getJobsJobconfsByJobconfsIdJobs");
     try {
@@ -275,32 +277,32 @@ public class JobAPI implements JobsResource {
                 jobList.setJobs(jobs);
                 jobList.setTotalRecords(jobs.size());
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  GetJobsJobconfsByJobconfsIdJobsResponse.withJsonOK(jobList)));
+                  GetJobsJobconfsJobsByJobconfsIdResponse.respond200WithApplicationJson(jobList)));
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsResponse
-                  .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsByJobconfsIdResponse
+                  .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
               }
             });
         } catch (Exception e) {
           log.error(e.getMessage(), e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsByJobconfsIdResponse
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsByJobconfsIdResponse
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
 
   @Validate
   @Override
-  public void postJobsJobconfsByJobconfsIdJobs(String jobconfsId, String lang, Job entity,
+  public void postJobsJobconfsJobsByJobconfsId(String jobconfsId, String lang, org.folio.rest.jaxrs.model.Job entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) throws Exception {
+      Context vertxContext) {
 
     System.out.println("sending... postJobsJobconfsByJobconfsIdJobs");
 
@@ -315,31 +317,33 @@ public class JobAPI implements JobsResource {
                 OutStream stream = new OutStream();
                 stream.setData(entity);
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  PostJobsJobconfsByJobconfsIdJobsResponse.withJsonCreated(reply.result(), stream)));
+                  PostJobsJobconfsJobsByJobconfsIdResponse.
+                  respond201WithApplicationJson(stream,
+                    PostJobsJobconfsJobsByJobconfsIdResponse.headersFor201().withLocation(reply.result()))));
               } catch (Exception e) {
                 log.error(e);
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsByJobconfsIdJobsResponse
-                  .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsJobsByJobconfsIdResponse
+                  .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
               }
           });
         } catch (Exception e) {
           log.error(e.getMessage(), e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsByJobconfsIdJobsResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsJobsByJobconfsIdResponse
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsByJobconfsIdJobsResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostJobsJobconfsJobsByJobconfsIdResponse
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
   }
 
   @Validate
   @Override
-  public void getJobsJobconfsByJobconfsIdJobsByJobId(String jobId, String jobconfsId, String lang,
+  public void getJobsJobconfsJobsByJobconfsIdAndJobId(String jobId, String jobconfsId, String lang,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) throws Exception {
+      Context vertxContext) {
 
     Job query = new Job();
     query.setId(jobId);
@@ -356,28 +360,28 @@ public class JobAPI implements JobsResource {
                 List<Job> job = (List<Job>) reply.result().getResults();
                 if (job.isEmpty()) {
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                    GetJobsJobconfsByJobconfsIdJobsByJobIdResponse.withPlainNotFound("Job "
+                    GetJobsJobconfsJobsByJobconfsIdAndJobIdResponse.respond404WithTextPlain("Job "
                       + messages.getMessage(lang, "10008"))));
                   return;
                 }
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  GetJobsJobconfsByJobconfsIdJobsByJobIdResponse.withJsonOK(job.get(0))));
+                  GetJobsJobconfsJobsByJobconfsIdAndJobIdResponse.respond200WithApplicationJson(job.get(0))));
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsByJobIdResponse
-                  .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+                  .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
               }
             });
         } catch (Exception e) {
           log.error(e.getMessage(), e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsByJobIdResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsByJobIdResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
@@ -385,9 +389,9 @@ public class JobAPI implements JobsResource {
 
   @Validate
   @Override
-  public void deleteJobsJobconfsByJobconfsIdJobsByJobId(String jobId, String jobconfsId,
+  public void deleteJobsJobconfsJobsByJobconfsIdAndJobId(String jobId, String jobconfsId,
       String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     Job query = new Job();
     query.setId(jobId);
@@ -402,39 +406,39 @@ public class JobAPI implements JobsResource {
               if(reply.succeeded()){
                 if(reply.result().getUpdated() == 1){
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                    DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse.withNoContent()));
+                    DeleteJobsJobconfsJobsByJobconfsIdAndJobIdResponse.respond204()));
                 }
                 else{
                   String message = messages.getMessage(lang, MessageConsts.DeletedCountError, 1,reply.result().getUpdated());
                   log.error(message);
-                  asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse
-                    .withPlainNotFound(message)));
+                  asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+                    .respond404WithTextPlain(message)));
                 }
               }
               else{
                 log.error(reply.cause());
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse
-                  .withPlainInternalServerError(messages.getMessage(lang,  MessageConsts.InternalServerError))));
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+                  .respond500WithTextPlain(messages.getMessage(lang,  MessageConsts.InternalServerError))));
               }
             });
         } catch (Exception e) {
           log.error(e.getMessage(), e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdJobsByJobIdResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
   }
 
   @Validate
   @Override
-  public void putJobsJobconfsByJobconfsIdJobsByJobId(String jobId, String jobconfsId, String lang,
-      Job entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void putJobsJobconfsJobsByJobconfsIdAndJobId(String jobId, String jobconfsId, String lang,
+      org.folio.rest.jaxrs.model.Job entity, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     System.out.println("sending... putJobsJobconfsByJobconfsId");
 
@@ -456,37 +460,37 @@ public class JobAPI implements JobsResource {
             reply -> {
               if (reply.succeeded() && reply.result().getUpdated() == 0) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  PutJobsJobconfsByJobconfsIdJobsByJobIdResponse.withPlainNotFound(jobId)));
+                  PutJobsJobconfsJobsByJobconfsIdAndJobIdResponse.respond404WithTextPlain(jobId)));
               } else {
                 try {
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                    PutJobsJobconfsByJobconfsIdJobsByJobIdResponse.withNoContent()));
+                    PutJobsJobconfsJobsByJobconfsIdAndJobIdResponse.respond204()));
                 } catch (Exception e) {
                   log.error(e);
-                  asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsByJobconfsIdJobsByJobIdResponse
-                    .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+                  asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+                    .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
                 }
               }
             });
         } catch (Exception e) {
           log.error(e.getMessage(), e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsByJobconfsIdJobsByJobIdResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsByJobconfsIdJobsByJobIdResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutJobsJobconfsJobsByJobconfsIdAndJobIdResponse
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
 
 
   @Override
-  public void getJobsJobconfsByJobconfsIdJobsByJobIdBulks(String jobId, String jobconfsId,
+  public void getJobsJobconfsJobsBulksByJobconfsIdAndJobId(String jobId, String jobconfsId,
       String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     Bulk query = new Bulk();
     query.setJobId(jobId);
@@ -504,38 +508,38 @@ public class JobAPI implements JobsResource {
                 bulkList.setBulks(bulks);
                 bulkList.setTotalRecords(bulks.size());
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  GetJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse.withJsonOK(bulkList)));
+                  GetJobsJobconfsJobsBulksByJobconfsIdAndJobIdResponse.respond200WithApplicationJson(bulkList)));
               } catch (Exception e) {
                 log.error(e);
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse
-                  .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsBulksByJobconfsIdAndJobIdResponse
+                  .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
               }
             });
         } catch (Exception e) {
           log.error(e.getMessage(), e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse
-            .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsBulksByJobconfsIdAndJobIdResponse
+            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
         }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse
-        .withPlainInternalServerError(messages.getMessage(lang, MessageConsts.InternalServerError))));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsJobsBulksByJobconfsIdAndJobIdResponse
+        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
     }
 
   }
 
   @Override
-  public void postJobsJobconfsByJobconfsIdJobsByJobIdBulks(String jobId, String jobconfsId,
+  public void postJobsJobconfsJobsBulksByJobconfsIdAndJobId(String jobId, String jobconfsId,
       String lang, Bulk entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-      PostJobsJobconfsByJobconfsIdJobsByJobIdBulksResponse.withPlainBadRequest("Not implemented yet")));
+      PostJobsJobconfsJobsBulksByJobconfsIdAndJobIdResponse.respond400WithTextPlain("Not implemented yet")));
 
   }
 
-  private org.folio.rest.persist.Criteria.Order getOrder(Order order, String field) {
+  private org.folio.rest.persist.Criteria.Order getOrder(Enum order, String field) {
 
     if (field == null) {
       return null;
@@ -548,4 +552,5 @@ public class JobAPI implements JobsResource {
 
     return new org.folio.rest.persist.Criteria.Order(field, ORDER.valueOf(sortOrder.toUpperCase()));
   }
+
 }

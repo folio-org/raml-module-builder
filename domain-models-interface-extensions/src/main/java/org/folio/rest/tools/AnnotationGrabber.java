@@ -98,7 +98,7 @@ public class AnnotationGrabber {
     classNames.forEach(val -> {
       try {
 
-        ClientGenerator cGen = new ClientGenerator();
+        //ClientGenerator cGen = new ClientGenerator();
 
         // ----------------- class level annotations -----------------------//
         // -----------------------------------------------------------------//
@@ -123,10 +123,10 @@ public class AnnotationGrabber {
           for (Method method : type.getDeclaredMethods()) {
             Object value = method.invoke(annotations[i], (Object[]) null);
             if (type.isAssignableFrom(Path.class)) {
-              classSpecificMapping.put(CLASS_URL, "^/" + value);
-              if(generateClient){
-                cGen.generateClassMeta(val.toString(), value);
-              }
+              classSpecificMapping.put(CLASS_URL, "^" + value);
+/*              if(generateClient){
+                //cGen.generateClassMeta(val.toString(), value);
+              }*/
               if(generateModDescrptor && classSpecificMapping.getString(CLASS_URL) != null){
                 String url = classSpecificMapping.getString(CLASS_URL).substring(2);
                 if(!url.contains("rmbtests")){
@@ -197,7 +197,7 @@ public class AnnotationGrabber {
                 methodObj.put(type.getName(), retList);
               } else {
                 if (type.isAssignableFrom(Path.class)) {
-                  String path = classSpecificMapping.getString(CLASS_URL) + URL_PATH_DELIMITER + value;
+                  String path = classSpecificMapping.getString(CLASS_URL) + value;
                   String regexPath = getRegexForPath(path);
                   // put path to function
                   methodObj.put(METHOD_URL, path);
@@ -208,14 +208,14 @@ public class AnnotationGrabber {
               }
             }
           }
-          if(generateClient){
+/*          if(generateClient){
             cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
               methodObj.getJsonObject(METHOD_PARAMS),
               methodObj.getString(METHOD_URL),
               methodObj.getString(HTTP_METHOD),
               methodObj.getJsonArray(CONSUMES),
               methodObj.getJsonArray(PRODUCES));
-          }
+          }*/
           // if there was no @Path annotation - use the one declared on the
           // class
           if (methodObj.getString(METHOD_URL) == null) {
@@ -257,9 +257,9 @@ public class AnnotationGrabber {
         // System.out.println( val.toString() );
         globalClassMapping.put(classSpecificMapping.getString(CLASS_URL), classSpecificMapping);
 
-        if(generateClient){
-          cGen.generateClass(classSpecificMapping);
-        }
+/*        if(generateClient){
+          //cGen.generateClass(classSpecificMapping);
+        }*/
         if(generateModDescrptor){
           BiConsumer<String, Set<String>> biConsumer = (key, value) -> {
             if(!key.contains("_/tenant") && !key.contains("rmbtests")){

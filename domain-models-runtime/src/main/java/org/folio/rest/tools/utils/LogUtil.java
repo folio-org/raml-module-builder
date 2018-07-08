@@ -1,10 +1,14 @@
 package org.folio.rest.tools.utils;
 
 import java.util.Enumeration;
+import java.util.Map;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.folio.rest.RestVerticle;
 
 import io.vertx.core.Vertx;
@@ -13,7 +17,8 @@ import io.vertx.core.json.JsonObject;
 
 public class LogUtil {
 
-  private static final Logger log = Logger.getLogger(LogUtil.class);
+
+  private static final Logger log = LogManager.getLogger(LogUtil.class);
 
   public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int ResponseCode, long responseTime,
       long responseSize, String url, String queryParams, String message) {
@@ -42,12 +47,15 @@ public class LogUtil {
     log.error(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(funtion).append(" ").append(message));
   }
 
+  /**
+   * NOT SUPPORTED ANY MORE
+   */
   public static void closeLogger() {
-    LogManager.getLogger(LogUtil.class).removeAllAppenders();
+
   }
 
   private static String injectDeploymentId(){
-    if(Logger.getLogger(RestVerticle.class).isDebugEnabled()){
+    if(LogManager.getLogger(RestVerticle.class).isDebugEnabled()){
       if(Vertx.currentContext() != null && Vertx.currentContext().getInstanceCount() > 1 &&
           RestVerticle.getDeploymentId() != null){
         return RestVerticle.getDeploymentId() + " ";
@@ -67,16 +75,18 @@ public class LogUtil {
     JsonObject updatedLoggers = new JsonObject();
 
     //log4j logs
-    Enumeration<Logger> loggers = LogManager.getLoggerRepository().getCurrentLoggers();
-    while (loggers.hasMoreElements()) {
-      Logger log = loggers.nextElement();
+    LoggerContext ctx = (LoggerContext) LogManager.getContext();
+    Configuration cfg = ctx.getConfiguration();
+    Map<String, LoggerConfig> loggerMap = cfg.getLoggers();
+    //Enumeration<Logger> logger = LogManager.getLoggerRepository().getCurrentLoggers();
+    loggerMap.forEach( (string, log) -> {
       if(log != null && packageName != null && (log.getName().startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
         if(log != null){
-          log.setLevel(org.apache.log4j.Level.toLevel(level));
+          log.setLevel(Level.toLevel(level));
           updatedLoggers.put(log.getName(), log.getLevel().toString());
         }
       }
-    }
+    });
 
     //JUL logs
     java.util.logging.LogManager manager = java.util.logging.LogManager.getLogManager();
@@ -103,13 +113,15 @@ public class LogUtil {
     JsonObject loggers = new JsonObject();
 
     //log4j logs
-    Enumeration<Logger> logger = LogManager.getLoggerRepository().getCurrentLoggers();
-    while (logger.hasMoreElements()) {
-      Logger log = logger.nextElement();
+    LoggerContext ctx = (LoggerContext) LogManager.getContext();
+    Configuration cfg = ctx.getConfiguration();
+    Map<String, LoggerConfig> logger = cfg.getLoggers();
+    //Enumeration<Logger> logger = LogManager.getLoggerRepository().getCurrentLoggers();
+    logger.forEach( (string, log) -> {
       if(log != null && log.getLevel() != null && log.getName() != null){
         loggers.put(log.getName(), log.getLevel().toString());
       }
-    }
+    });
 
     //JUL logs
     java.util.logging.LogManager manager = java.util.logging.LogManager.getLogManager();
@@ -127,4 +139,11 @@ public class LogUtil {
     return loggers;
   }
 
+  public static void setLevelForLoggers(Level level){
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+    Configuration config = ctx.getConfiguration();
+    LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+    loggerConfig.setLevel(level);
+    ctx.updateLoggers();
+  }
 }

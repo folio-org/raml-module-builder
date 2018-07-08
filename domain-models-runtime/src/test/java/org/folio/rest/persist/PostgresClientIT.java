@@ -3,8 +3,9 @@ package org.folio.rest.persist;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -38,7 +39,7 @@ public class PostgresClientIT {
 
   @After
   public void restoreOldLevel() {
-    LogManager.getRootLogger().setLevel(oldLevel);
+    LogUtil.setLevelForLoggers(oldLevel);
   }
 
   @Before
@@ -246,8 +247,7 @@ public class PostgresClientIT {
   @Test
   public void tenantSeparation(TestContext context) {
     // don't log expected access violation errors
-    LogManager.getRootLogger().setLevel(Level.FATAL);
-
+    LogUtil.setLevelForLoggers(Level.FATAL);
     String tenant = "tenantSeparation";
     String tenant2 = "tenantSeparation2";
 

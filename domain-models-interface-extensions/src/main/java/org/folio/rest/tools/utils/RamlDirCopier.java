@@ -2,14 +2,12 @@ package org.folio.rest.tools.utils;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.Set;
@@ -42,14 +40,14 @@ public class RamlDirCopier extends SimpleFileVisitor<Path> {
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
       Path sourcePath = baseSourceDir.relativize(file);
       Path targetPath = baseTargetDir.resolve(sourcePath);
-      if (sourcePath.toString().matches(".*(\\.json|\\.schema)$")) {
+/*      if (sourcePath.toString().matches(".*(\\.json|\\.schema)$")) {
         String json = schemaDereferencer.dereferencedSchema(file).encodePrettily();
         try (PrintWriter printWriter = new PrintWriter(targetPath.toFile())) {
           printWriter.println(json);
         }
       } else {
         Files.copy(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
-      }
+      }*/
       return FileVisitResult.CONTINUE;
     }
   };

@@ -8,8 +8,10 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.Tenant;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.ddlgen.FullText;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.TenantOperation;
@@ -33,7 +35,7 @@ import io.vertx.core.logging.LoggerFactory;
  * @author shale
  *
  */
-public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
+public class TenantAPI implements Tenant {
 
   public static final String       TABLE_JSON = "templates/db_scripts/schema.json";
   public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
@@ -41,6 +43,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
   private static final String      UPGRADE_FROM_VERSION          = "module_from";
   private static final String      UPGRADE_TO_VERSION            = "module_to";
 
+  private static final String     CONTENT_LANGUAGE = "x-okapi-language";
 
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
   private final Messages            messages          = Messages.getInstance();
@@ -49,7 +52,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
   @Validate
   @Override
   public void deleteTenant(Map<String, String> headers,
-      Handler<AsyncResult<Response>> handlers, Context context) throws Exception {
+      Handler<AsyncResult<Response>> handlers, Context context) {
 
     context.runOnContext(v -> {
       try {
@@ -63,7 +66,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               exists = h.result();
               if(!exists){
                 handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.
-                  withPlainBadRequest("Tenant does not exist: " + tenantId)));
+                  respond400WithTextPlain("Tenant does not exist: " + tenantId)));
                 log.error("Can not delete. Tenant does not exist: " + tenantId);
                 return;
               }
@@ -107,30 +110,30 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                       if(reply.result().size() > 0){
                         log.error("Unable to run the following commands during tenant delete: ");
                         reply.result().forEach(System.out::println);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withPlainBadRequest(res)));
+                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
                       }
                       else {
                         OutStream os = new OutStream();
                         os.setData(res);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withNoContent()));
+                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.respond204()));
                       }
                     }
                     else {
                       log.error(reply.cause().getMessage(), reply.cause());
                       handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
-                        .withPlainInternalServerError(reply.cause().getMessage())));
+                        .respond500WithTextPlain(reply.cause().getMessage())));
                     }
                   } catch (Exception e) {
                     log.error(e.getMessage(), e);
                     handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
-                      .withPlainInternalServerError(e.getMessage())));
+                      .respond500WithTextPlain(e.getMessage())));
                   }
                 });
           });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
-          .withPlainInternalServerError(e.getMessage())));
+          .respond500WithTextPlain(e.getMessage())));
       }
     });
   }
@@ -158,7 +161,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
   @Validate
   @Override
   public void getTenant(Map<String, String> headers, Handler<AsyncResult<Response>> handlers,
-      Context context) throws Exception {
+      Context context)  {
 
     context.runOnContext(v -> {
       try {
@@ -170,19 +173,19 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
           boolean exists = false;
           if(res.succeeded()){
             exists = res.result();
-            handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse.withPlainOK(String.valueOf(
+            handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse.respond200WithTextPlain(String.valueOf(
               exists))));
           }
           else{
             log.error(res.cause().getMessage(), res.cause());
             handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
-              .withPlainInternalServerError(res.cause().getMessage())));
+              .respond500WithTextPlain(res.cause().getMessage())));
           }
         });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
-          .withPlainInternalServerError(e.getMessage())));
+          .respond500WithTextPlain(e.getMessage())));
       }
     });
   }
@@ -191,7 +194,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
   @Validate
   @Override
   public void postTenant(TenantAttributes entity, Map<String, String> headers,
-      Handler<AsyncResult<Response>> handlers, Context context) throws Exception {
+      Handler<AsyncResult<Response>> handlers, Context context)  {
 
     /**
      * http://host:port/tenant
@@ -201,6 +204,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
     context.runOnContext(v -> {
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
+      String ftLanguage = getLanguage4FT(headers.get(CONTENT_LANGUAGE));
+
       log.info("sending... postTenant for " + tenantId);
       try {
         boolean isUpdateMode[] = new boolean[]{false};
@@ -214,7 +219,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
           } catch (Exception e) {
             log.error(e.getMessage(), e);
             handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-              withPlainBadRequest(e.getMessage())));
+              respond400WithTextPlain(e.getMessage())));
             return;
           }
         }
@@ -229,7 +234,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                   //tenant exists and a create tenant request was made, then this should do nothing
                   //if tenant exists then only update tenant request is acceptable
                   handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-                    .withNoContent()));
+                    .respond204()));
                   log.warn("Tenant already exists: " + tenantId);
                   return;
                 }
@@ -237,7 +242,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                   //update requested for a non-existant tenant
                   log.error("Can not update non-existant tenant " + tenantId);
                   handlers.handle(io.vertx.core.Future.succeededFuture(
-                    PostTenantResponse.withPlainBadRequest(
+                    PostTenantResponse.respond400WithTextPlain(
                       "Update tenant requested for tenant " + tenantId + ", but tenant does not exist")));
                   return;
                 }
@@ -256,7 +261,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
               if(tableInput == null) {
                 handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-                  .withNoContent()));
+                  .respond204()));
                 log.info("Could not find templates/db_scripts/schema.json , "
                     + " RMB will not run any scripts for " + tenantId);
                 return;
@@ -278,6 +283,9 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               if(tableInput != null){
                 tableInputStr = IOUtils.toString(tableInput, "UTF8");
                 Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+                FullText ft = new FullText();
+                ft.setDefaultDictionary(ftLanguage);
+                schema.setFullText(ft);
                 sMaker.setSchema(schema);
               }
 
@@ -297,27 +305,27 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                       OutStream os = new OutStream();
                       if(failuresExist){
                         handlers.handle(io.vertx.core.Future.succeededFuture(
-                          PostTenantResponse.withPlainBadRequest(res.toString())));
+                          PostTenantResponse.respond400WithTextPlain(res.toString())));
                       }
                       else{
                         os.setData(res);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.withJsonCreated(os)));
+                        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(os)));
                       }
                     } else {
                       log.error(reply.cause().getMessage(), reply.cause());
                       handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                        withPlainInternalServerError(reply.cause().getMessage())));
+                        respond500WithTextPlain(reply.cause().getMessage())));
                     }
                   } catch (Exception e) {
                     log.error(e.getMessage(), e);
                     handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                      withPlainInternalServerError(e.getMessage())));
+                      respond500WithTextPlain(e.getMessage())));
                   }
                 });
             } catch (Exception e) {
               log.error(e.getMessage(), e);
               handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                withPlainInternalServerError(e.getMessage())));
+                respond500WithTextPlain(e.getMessage())));
             }
           });
       } catch (Exception e) {
@@ -327,9 +335,62 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
           log.error(e.getMessage(), e);
         }
         handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-          withPlainInternalServerError(e.getMessage())));
+          respond500WithTextPlain(e.getMessage())));
       }
     });
+  }
+
+  /**
+   * @param string
+   * @return
+   */
+  private String getLanguage4FT(String language) {
+    if(language == null){
+      return "english";
+    }
+    if(language.startsWith("en")){
+      return "english";
+    }
+    else if(language.startsWith("da")){
+      return "danish";
+    }
+    else if(language.startsWith("fi")){
+      return "finnish";
+    }
+    else if(language.startsWith("ru")){
+      return "russian";
+    }
+    else if(language.startsWith("ro")){
+      return "romanian";
+    }
+    else if(language.startsWith("no")){
+      return "norwegian";
+    }
+    else if(language.startsWith("it")){
+      return "italian";
+    }
+    else if(language.startsWith("hu")){
+      return "hungarian";
+    }
+    else if(language.startsWith("de")){
+      return "german";
+    }
+    else if(language.startsWith("fr")){
+      return "french";
+    }
+    else if(language.startsWith("pt") || language.startsWith("por")){
+      return "portuguese";
+    }
+    else if(language.startsWith("es") || language.startsWith("spa")){
+      return "spanish";
+    }
+    else if(language.startsWith("tr") || language.startsWith("tur")){
+      return "turkish";
+    }
+    else if(language.startsWith("sv") || language.startsWith("swe")){
+      return "swedish";
+    }
+    return "english";
   }
 
   /**

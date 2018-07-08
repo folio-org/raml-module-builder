@@ -3,8 +3,6 @@ package org.folio.rest.persist;
 import java.io.IOException;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -296,7 +294,7 @@ public class PostgresClientTransactionsIT {
   @Test
   public void test(TestContext context) {
     // don't log expected access violation errors
-    LogManager.getRootLogger().setLevel(Level.FATAL);
+    //LogManager.getRootLogger().setLevel(Level.FATAL);
 
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
 

@@ -6,10 +6,6 @@ import javax.mail.BodyPart;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 
-import org.folio.rest.client.AdminClient;
-import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
-
 /**
  * @author shale
  *
@@ -30,16 +26,16 @@ public class Test {
     bp2.setFileName("abcd.raml");
     mmp.addBodyPart(bp);
     mmp.addBodyPart(bp2);
-    AdminClient aClient = new AdminClient("localhost", 8888, null, null, false);
+/*    AdminClient aClient = new AdminClient("localhost", 8888, null, null, false);
     aClient.postUploadmultipart(PersistMethod.SAVE, null, "abc",
       mmp, reply -> {
       reply.statusCode();
     });
 
-/*    aClient.postImportSQL(
+    aClient.postImportSQL(
       Test.class.getClassLoader().getResourceAsStream("create_config.sql"), reply -> {
       reply.statusCode();
-    });*/
+    });
     aClient.getJstack( trace -> {
       trace.bodyHandler( content -> {
         System.out.println(content);
@@ -76,6 +72,6 @@ public class Test {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
-    });
+    });*/
   }
 }

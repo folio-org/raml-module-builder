@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+    },
+    "module": {
+      "type": "string",
+      "test": true
+    },
+    "configName": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string",
+      "test2": false
+    },
+    "description": {
+      "type": "string"
+    },
+    "default": {
+      "type": "boolean"
+    },
+    "enabled": {
+      "type": "boolean",
+      "test2": true
+    },
+    "value": {
+      "type": "string"
+    },
+    "userId": {
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "metadata",
+      "readonly": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "module",
+    "configName"
+  ]
+}

@@ -1,27 +1,13 @@
 package org.folio.rest.tools.utils;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.*;
-
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import org.folio.rest.tools.ClientGenerator;
-import org.folio.util.IoUtil;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import io.vertx.core.json.JsonObject;
 
 public class RamlDirCopierTest {
   private Path source = Paths.get("src/test/resources/schemas");
   private Path target = Paths.get("target/RamlDirCopierTest");
 
-  @Before
+/*  @Before
   @After
   public void deleteTarget() throws IOException {
     ClientGenerator.makeCleanDir(target.toString());
@@ -65,6 +51,6 @@ public class RamlDirCopierTest {
     RamlDirCopier.copy(source, target);
     RamlDirCopier.copy(source, target);
     assertSchemas();
-  }
+  }*/
 
 }
