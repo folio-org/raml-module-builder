@@ -72,6 +72,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
+import org.folio.rest.tools.utils.NaiveSQLParse;
 import ru.yandex.qatools.embed.postgresql.Command;
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -2407,6 +2408,11 @@ public class PostgresClient {
    */
   static ParsedQuery parseQuery(String query) {
     log.debug("parseQuery " + query);
+    String notTrue = " IS NOT TRUE";
+    String notTrueReplacement = " AND \\(\\(\\(FALSE\\)\\)\\)";
+    String isTrue = " IS TRUE";
+    String isTrueReplacement = " AND \\(\\(\\(TRUE\\)\\)\\)";
+    
     List<OrderByElement> orderBy = null;
     net.sf.jsqlparser.statement.select.Limit limit = null;
     Expression where = null;
@@ -2415,6 +2421,10 @@ public class PostgresClient {
     String queryWithoutLimitOffset = "";
     try {
       try {
+        //TEMPORARY HACK SINCE PARSER CANT HANDLE "IS NOT TRUE" , so replace it with IS NOT NULL
+        //parse, and then below return the "IS NOT TRUE" - this is buggy as if this appears for some
+        //strange reason outside a where clause this will fail
+        query = query.replaceAll(notTrue, notTrueReplacement).replaceAll(isTrue, isTrueReplacement);
         net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
         Select selectStatement = (Select) statement;
         orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
@@ -2425,7 +2435,9 @@ public class PostgresClient {
         log.error(e.getMessage(), e);
       }
 
-      int startOfLimit = getLastStartPos(query, "limit");
+      //TEMPORARY HACK - see above - back to original query after parsing completes
+      query = query.replaceAll(notTrueReplacement, notTrue).replaceAll(isTrueReplacement, isTrue);
+      int startOfLimit = NaiveSQLParse.getLastStartPos(query, "limit");
       if(limit != null){
         String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
         query = query.substring(0, startOfLimit) + suffix;
@@ -2437,7 +2449,7 @@ public class PostgresClient {
         Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
       }
 
-      int startOfOffset = getLastStartPos(query, "offset");
+      int startOfOffset = NaiveSQLParse.getLastStartPos(query, "offset");
       if(offset != null){
         String suffix = Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
         query = query.substring(0, startOfOffset) + suffix;
@@ -2452,7 +2464,7 @@ public class PostgresClient {
       queryWithoutLimitOffset = query;
 
       //in the rare case where the order by clause somehow appears in the where clause
-      int startOfOrderBy = getLastStartPos(query, "order by");
+      int startOfOrderBy = NaiveSQLParse.getLastStartPos(query, "order by");
       if(orderBy != null){
         StringBuilder sb = new StringBuilder("order by[ ]+");
         int size = orderBy.size();
@@ -2481,7 +2493,9 @@ public class PostgresClient {
    pq.setCountFuncQuery(query);
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){
-     pq.setWhereClause( where.toString() );
+     //TEMPORARY HACK see above
+     pq.setWhereClause( where.toString().replaceAll(notTrueReplacement, notTrue)
+       .replaceAll(isTrueReplacement, isTrue) );
    }
    if(orderBy != null){
      pq.setOrderByClause( orderBy.toString() );
@@ -2513,24 +2527,5 @@ public class PostgresClient {
         }
     }
     return sb.toString();
-  }
-
-  /**
-   * Return the last position of <code>token</code> in <code>query</code> skipping
-   * standard SQL strings like 'some string' and C-style SQL strings like E'some string'.
-   * @param query  where to search
-   * @param token  what to search for
-   * @return position (starting at 0), or -1 if not found
-   */
-  static int getLastStartPos(String query, String token) {
-    String quotedString       = "(?<!E)'(?:[^']|'')*'";
-    String quotedStringCStyle = "(?<=E)'(?:[^'\\\\]|\\.)*'";
-    Matcher matcher = Pattern.compile(
-        "(?:[^'\\\\]|\\.|" + quotedString + "|" + quotedStringCStyle + ")*"
-        + "\\b(" + Pattern.quote(token) + ")\\b.*", Pattern.CASE_INSENSITIVE).matcher(query);
-    if (! matcher.matches()) {
-      return -1;
-    }
-    return matcher.start(1);
   }
 }
