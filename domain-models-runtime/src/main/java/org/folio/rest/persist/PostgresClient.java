@@ -2409,6 +2409,11 @@ public class PostgresClient {
    */
   static ParsedQuery parseQuery(String query) {
     log.debug("parseQuery " + query);
+    String notTrue = " IS NOT TRUE";
+    String notTrueReplacement = " AND \\(\\(\\(FALSE\\)\\)\\)";
+    String isTrue = " IS TRUE";
+    String isTrueReplacement = " AND \\(\\(\\(TRUE\\)\\)\\)";
+    
     List<OrderByElement> orderBy = null;
     net.sf.jsqlparser.statement.select.Limit limit = null;
     Expression where = null;
@@ -2420,7 +2425,7 @@ public class PostgresClient {
         //TEMPORARY HACK SINCE PARSER CANT HANDLE "IS NOT TRUE" , so replace it with IS NOT NULL
         //parse, and then below return the "IS NOT TRUE" - this is buggy as if this appears for some
         //strange reason outside a where clause this will fail
-        query = query.replaceAll(" IS NOT TRUE", " AND \\(\\(\\(FALSE\\)\\)\\)").replaceAll(" IS TRUE", " AND \\(\\(\\(TRUE\\)\\)\\)");
+        query = query.replaceAll(notTrue, notTrueReplacement).replaceAll(isTrue, isTrueReplacement);
         net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
         Select selectStatement = (Select) statement;
         orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
@@ -2432,7 +2437,7 @@ public class PostgresClient {
       }
 
       //TEMPORARY HACK - see above - back to original query after parsing completes
-      query = query.replaceAll(" AND \\(\\(\\(FALSE\\)\\)\\)", " IS NOT TRUE").replaceAll(" AND \\(\\(\\(TRUE\\)\\)\\)", " IS TRUE");
+      query = query.replaceAll(notTrueReplacement, notTrue).replaceAll(isTrueReplacement, isTrue);
       int startOfLimit = NaiveSQLParse.getLastStartPos(query, "limit");
       if(limit != null){
         String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
@@ -2490,8 +2495,8 @@ public class PostgresClient {
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){
      //TEMPORARY HACK see above
-     pq.setWhereClause( where.toString().replaceAll(" AND \\(\\(\\(FALSE\\)\\)\\)", " IS NOT TRUE")
-       .replaceAll(" AND \\(\\(\\(TRUE\\)\\)\\)", " IS TRUE") );
+     pq.setWhereClause( where.toString().replaceAll(notTrueReplacement, notTrue)
+       .replaceAll(isTrueReplacement, isTrue) );
    }
    if(orderBy != null){
      pq.setOrderByClause( orderBy.toString() );
