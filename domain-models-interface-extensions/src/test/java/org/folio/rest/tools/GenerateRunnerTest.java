@@ -14,7 +14,14 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import io.vertx.core.logging.LoggerFactory;
+
 public class GenerateRunnerTest {
+
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
+  }
+
   private static String userDir = System.getProperty("user.dir");
   private static String jaxrsDir = "/target/generated-sources/raml-jaxrs/org/folio/rest/jaxrs";
   private static File jaxrs    = new File(userDir + jaxrsDir);

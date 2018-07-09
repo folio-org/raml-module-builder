@@ -25,6 +25,10 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class GenerateRunner {
 
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
+  }
+
   static final Logger log = LoggerFactory.getLogger(GenerateRunner.class);
 
   private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs.resources";

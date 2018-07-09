@@ -20,7 +20,6 @@ import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.model.Metadata;
-import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.VertxUtils;
@@ -52,16 +51,17 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
  */
 @RunWith(VertxUnitRunner.class)
 public class DemoRamlRestTest {
-  private static final Logger log = LoggerFactory.getLogger(Messages.class);
+
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
+  }
+
+  private static final Logger log = LoggerFactory.getLogger(DemoRamlRestTest.class);
 
   private static Vertx vertx;
   private static int port;
   private static Locale oldLocale = Locale.getDefault();
   private static String TENANT = "abcdefg";
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
-  }
 
   /**
    * @param context  the test context.
@@ -156,7 +156,11 @@ public class DemoRamlRestTest {
     d.setAuthor("a");
     d.setGenre("g");
     d.setDescription("asdfss");
+//    d.setLink("link");
+//    d.setTitle("title");
     b.setData(d);
+/*    b.setStatus(0);
+    b.setSuccess(true);*/
     ObjectMapper om = new ObjectMapper();
     String book = "";
     try {
@@ -165,7 +169,7 @@ public class DemoRamlRestTest {
     catch (JsonProcessingException e) {
       context.fail(e);
     }
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book),
+    postData(context, "http://localhost:" + port + "/rmbtests/books"+parameterString, Buffer.buffer(book),
         expectedStatus, 1, "application/json", TENANT, false);
   }
 
@@ -176,22 +180,22 @@ public class DemoRamlRestTest {
 
   @Test
   public void postBookValidateAuthor(TestContext context) {
-    postBook(context, "validate_field=author", 200);
+    postBook(context, "?validate_field=author", 200);
   }
 
   @Test
   public void postBookValidateDescription(TestContext context) {
-    postBook(context, "validate_field=data.description", 200);
+    postBook(context, "?validate_field=data.description", 200);
   }
 
   @Test
   public void postBookValidateTitle(TestContext context) {
-    postBook(context, "validate_field=data.title", 422);
+    postBook(context, "?validate_field=data.title", 422);
   }
 
   @Test
   public void postBookValidateTitleAndDescription(TestContext context) {
-    postBook(context, "validate_field=data.title&validate_field=data.description", 422);
+    postBook(context, "?validate_field=data.title&validate_field=data.description", 422);
   }
 
   /**
@@ -258,7 +262,7 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/admin/loglevel", 200); // should be 200
 
     //use generated client
-    checkClientCode(context);
+    //checkClientCode(context);
 
 /*    RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
     String[] facets = new String[]{"author:10", "name:5"};
@@ -447,6 +451,7 @@ public class DemoRamlRestTest {
     }
     request.exceptionHandler(error -> {
       async.complete();
+      System.out.println(" ---------------xxxxxx-------------------- " + error.getMessage());
       context.fail(new RuntimeException(error.getMessage(), stacktrace));
     }).handler(response -> {
       int statusCode = response.statusCode();
@@ -478,6 +483,8 @@ public class DemoRamlRestTest {
         context.assertTrue(true);
       } else {
         response.bodyHandler(responseData -> {
+          System.out.println(" ---------------xxxxxx-1------------------- " + responseData.toString());
+
           context.fail(new RuntimeException("got unexpected response code, expected: " +
               errorCode + ", received code: " + statusCode + " mode " + mode + " for url " +  url +
               "\ndata:" + responseData.toString(), stacktrace));
