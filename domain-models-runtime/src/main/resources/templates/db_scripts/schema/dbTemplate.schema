@@ -2,6 +2,14 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "additionalProperties": false,
   "properties": {
+    "fullText": {
+      "type": "object",
+      "properties": {
+        "defaultDictionary": {
+          "type": "string"
+        }
+      }
+    },
     "scripts": {
       "additionalItems": false,
       "items": {
@@ -225,6 +233,22 @@
                 },
                 "removeAccents": {
                   "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "ftIndex": {
+            "additionalItems": false,
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fieldName": {
+                  "type": "string"
+                },
+                "tOps": {
+                  "type": "string"
                 }
               },
               "type": "object"
