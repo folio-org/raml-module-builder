@@ -135,7 +135,7 @@ public class PostgresClient {
   private AsyncSQLClient         client;
   private String tenantId;
   private String idField                     = "_id";
-  private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count, ";
+  private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count ";
   private String returningIdTemplate         = " RETURNING ${id} ";
   private String returningId                 = " RETURNING _id ";
 
@@ -1046,6 +1046,13 @@ public class PostgresClient {
     doDelete(table, sb.toString(), replyHandler);
   }
 
+  /**
+   * Delete as part of a transaction
+   * @param conn
+   * @param table
+   * @param filter
+   * @param replyHandler
+   */
   public void delete(Object conn, String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) {
     SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
     StringBuilder sb = new StringBuilder();
@@ -1055,6 +1062,13 @@ public class PostgresClient {
     doDelete(sqlConnection, true, table, sb.toString(), replyHandler);
   }
 
+  /**
+   * delete based on jsons matching the field/value pairs in the pojo (which is first converted to json and then similar jsons are searched)
+   *  --> do not use on large tables without checking as the @> will not use a btree
+   * @param table
+   * @param entity
+   * @param replyHandler
+   */
   public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
     String pojo = null;
     try {
@@ -1160,9 +1174,9 @@ public class PostgresClient {
           addIdField = "";
         }
 
-        String[] q = new String[]{
-          select + fieldName + addIdField + " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where
-        };
+        String from2where = " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+        
+        String[] q = new String[]{select + fieldName + addIdField + from2where};
 
         ParsedQuery parsedQuery = null;
 
@@ -1178,14 +1192,13 @@ public class PostgresClient {
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
               parsedQuery.getCountFuncQuery()));
           StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = select
-            + sub.replace(countClauseTemplate) + q[0].replaceFirst(select, " ");
+          q[0] = select + fieldName + addIdField + "," + sub.replace(countClauseTemplate) + from2where;
         }
 
         if (facets != null && !facets.isEmpty()) {
           q[0] = buildFacetQuery(table, parsedQuery, facets, returnCount, q[0]);
         }
-        log.debug("query = " + q[0]);
+        log.debug("Attempting query: " + q[0]);
         connection.query(q[0], query -> {
           if (!transactionMode) {
             connection.close();
@@ -1532,7 +1545,7 @@ public class PostgresClient {
               parseQuery(q[0]).getCountFuncQuery()));
           StrSubstitutor sub = new StrSubstitutor(replaceMapping);
           q[0] = select +
-            sub.replace(countClauseTemplate) + q[0].replaceFirst(select , " ");
+            sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(select , " ");
 
           log.debug("query = " + q[0]);
           connection.query(q[0],
@@ -1624,26 +1637,49 @@ public class PostgresClient {
     return processResult(rs, clazz, count, true);
   }
 
+  /**
+   * converts a result set into pojos - handles 3 types of queries:
+   * 1. a regular query will return N rows, where each row contains Y columns. one of those columns is the jsonb 
+   * column which is mapped into a pojo. each row will also contain the count column (if count was requested for
+   * the query), other fields , like updated date may also be returned if they were requested in the select.
+   *    1a. note that there is an attempt to map external (non jsonb) columns to fields in the pojo. for example,
+   *    a column called update_date will attempt to map its value to a field called updateDate in the pojo. however,
+   *    for this to happen, the query must select the update_date -> select id,jsonb,update_date from ....
+   * 2. a facet query returns 2 columns, a uuid and a jsonb column. the results of the query are returned as
+   * id and json rows. facets are returned as jsonb values: 
+   * {"facetValues": [{"count": 542,"value": "11 ed."}], "type": "name"}
+   * (along with a static '00000000-0000-0000-0000-000000000000' uuid)
+   * the count for a facet query is returned in the following manner: 
+   * {"count": 501312} , with a static uuid as the facets
+   * 3. audit queries - queries that query an audit table, meaning the clazz parameter passed in has a jsonb member.
+   * 
+   * @param rs
+   * @param clazz
+   * @param count
+   * @param setId
+   * @return
+   */
   private Results processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count, boolean setId) {
     long start = System.nanoTime();
-    Object[] ret = new Object[2];
+    String countField = "count";    
     List<Object> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
     List<String> columnNames = rs.getColumnNames();
     int columnNamesCount = columnNames.size();
     Map<String, org.folio.rest.jaxrs.model.Facet> rInfo = new HashMap<>();
     int rowCount = rs.getNumRows(); //this is incorrect in facet queries which add a row per facet value
-    boolean countSet = false;
     if (rowCount > 0 && count) {
       //if facet query, this wont set the count as it doesnt have a count column at this location,
-      Object firstColFirstVal = rs.getResults().get(0).getValue(0);
+      Object firstColFirstVal = rs.getRows().get(0).getValue(countField);
       if(null != firstColFirstVal && "Integer".equals(firstColFirstVal.getClass().getSimpleName())){
-        //regular query with count requested since count is the first column for each record
-        rowCount = rs.getResults().get(0).getInteger(0);
+        //regular query with count requested since count is of type integer. with a facet query.
+        //the count would be in a json - see description of function above
+        rowCount = rs.getRows().get(0).getInteger(countField);
       }
     }
-    /* an exception to having the jsonb column get mapped to the corresponding clazz is a case where the
-     * clazz has an jsonb field, for example an audit class which contains a field called
+    /* an exception to having the jsonb column and the fields within the json
+     * get mapped to the corresponding clazz is a case where the
+     * clazz has a jsonb field (member), for example an audit class which contains a field called
      * jsonb - meaning it encapsulates the real object for example for auditing purposes
      * (contains the jsonb object as well as some other fields). In such a
      * case, do not map the clazz to the content of the jsonb - but rather set the jsonb named field of the clazz
@@ -1684,7 +1720,7 @@ public class PostgresClient {
               o = mapper.readValue(jo.toString(), clazz);
             } catch (UnrecognizedPropertyException e1) {
               // this is a facet query , and this is the count entry {"count": 11}
-              rowCount = new JsonObject(tempList.get(i).getString("jsonb")).getInteger("count");
+              rowCount = new JsonObject(tempList.get(i).getString("jsonb")).getInteger(countField);
               continue;
             }
           }
@@ -1699,10 +1735,6 @@ public class PostgresClient {
          * as well - also support the audit mode descrbed above.
          * NOTE that the query must request any field it wants to get populated into the jsonb obj*/
         for (int j = 0; j < columnNamesCount; j++) {
-/*          if(columnNames.get(j).equals("count") && !countSet){
-          //check if this is reachable
-            rowCount = tempList.get(i).getLong(columnNames.get(j)).intValue();
-          }*/
           if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME))
               && !columnNames.get(j).equals(idField)){
             try {
