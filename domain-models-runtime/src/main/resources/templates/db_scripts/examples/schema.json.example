@@ -1,4 +1,7 @@
 {
+  "fullText": {
+    "defaultDictionary": "english"
+  },
   "scripts": [
     {
       "run": "before",
@@ -29,6 +32,12 @@
           "caseSensitive": false
         }
       ],
+      "fullTextIndex": [
+        {
+          "fieldName": "barcode",
+          "tOps": "ADD"
+        }
+      ],      
       "likeIndex": [
         {
           "fieldName": "username",

@@ -91,6 +91,16 @@ public class SchemaMaker {
     templateInput.put("version", pVersion);
 
     templateInput.put("newVersion", this.newVersion);
+    
+    FullText fullText = this.schema.getFullText();
+
+    String defaultDictionary = FullText.DEFAULT_DICTIONARY;
+
+    if(fullText != null && fullText.getDefaultDictionary() != null){
+      defaultDictionary = fullText.getDefaultDictionary();
+    }
+
+    templateInput.put("ft_defaultDictionary", defaultDictionary);
 
     //TODO - check the rmbVersion in the internal_rmb table and compare to this passed in
     //version, to check if core rmb scripts need updating due to an update
@@ -185,6 +195,18 @@ public class SchemaMaker {
               u.setRemoveAccents(false);
             }
             String path = convertDotPath2PostgresNotation(u.getFieldName(), u.isStringType());
+            u.setFieldPath(path);
+            //remove . from path since this is incorrect syntax in postgres
+            indexMap.put(t.getTableName()+"_"+u.getFieldName(), u);
+            u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
+          }
+        }
+        
+        List<Index> ftInd = t.getFullTextIndex();
+        if(ftInd != null){
+          for (int j = 0; j < ftInd.size(); j++) {
+            Index u = ftInd.get(j);
+            String path = convertDotPath2PostgresNotation(u.getFieldName(), true);
             u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres
             indexMap.put(t.getTableName()+"_"+u.getFieldName(), u);

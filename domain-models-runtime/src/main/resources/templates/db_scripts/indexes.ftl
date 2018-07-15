@@ -72,7 +72,18 @@
     gin_trgm_ops)
     <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
       <#else>
-    DROP INDEX IF EXISTS ${table.tableName}_idx_gin;
+    DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin;
+      </#if>
+    </#list>
+  </#if>
+
+  <#if table.fullTextIndex??>
+    <#list table.fullTextIndex as indexes>
+      <#if indexes.tOps.name() == "ADD">
+     CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_ft ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN
+        ( to_tsvector('${ft_defaultDictionary}', ${indexes.fieldPath}) );
+      <#else>
+     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_ft;
       </#if>
     </#list>
   </#if>
