@@ -10,6 +10,7 @@ import org.apache.commons.io.IOUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.ddlgen.FullText;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.TenantOperation;
@@ -38,17 +39,18 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
   public static final String       TABLE_JSON = "templates/db_scripts/schema.json";
   public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
 
-  private static final String      UPGRADE_FROM_VERSION          = "module_from";
-  private static final String      UPGRADE_TO_VERSION            = "module_to";
+  private static final String      UPGRADE_FROM_VERSION     = "module_from";
+  private static final String      UPGRADE_TO_VERSION       = "module_to";
 
-
+  private static final String     CONTENT_LANGUAGE          = "x-okapi-language";
+  
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
   private final Messages            messages          = Messages.getInstance();
 
 
   @Validate
   @Override
-  public void deleteTenant(Map<String, String> headers,
+ public void deleteTenant(Map<String, String> headers,
       Handler<AsyncResult<Response>> handlers, Context context) throws Exception {
 
     context.runOnContext(v -> {
@@ -201,6 +203,8 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
 
     context.runOnContext(v -> {
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
+      String ftLanguage = getLanguage4FT(headers.get(CONTENT_LANGUAGE));
+      
       log.info("sending... postTenant for " + tenantId);
       try {
         boolean isUpdateMode[] = new boolean[]{false};
@@ -278,6 +282,13 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
               if(tableInput != null){
                 tableInputStr = IOUtils.toString(tableInput, "UTF8");
                 Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+                if(ftLanguage != null) {
+                  //FT default language was passed in for the tenant, override the default language in the 
+                  //schema.json
+                  FullText ft = new FullText();
+                  ft.setDefaultDictionary(ftLanguage);
+                  schema.setFullText(ft);
+                }
                 sMaker.setSchema(schema);
               }
 
@@ -332,6 +343,59 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     });
   }
 
+  /**
+   * @param string
+   * @return
+   */
+  private String getLanguage4FT(String language) {
+    if(language == null){
+      return null;
+    }
+    if(language.startsWith("en")){
+      return "english";
+    }
+    else if(language.startsWith("da")){
+      return "danish";
+    }
+    else if(language.startsWith("fi")){
+      return "finnish";
+    }
+    else if(language.startsWith("ru")){
+      return "russian";
+    }
+    else if(language.startsWith("ro")){
+      return "romanian";
+    }
+    else if(language.startsWith("no")){
+      return "norwegian";
+    }
+    else if(language.startsWith("it")){
+      return "italian";
+    }
+    else if(language.startsWith("hu")){
+      return "hungarian";
+    }
+    else if(language.startsWith("de")){
+      return "german";
+    }
+    else if(language.startsWith("fr")){
+      return "french";
+    }
+    else if(language.startsWith("pt") || language.startsWith("por")){
+      return "portuguese";
+    }
+    else if(language.startsWith("es") || language.startsWith("spa")){
+      return "spanish";
+    }
+    else if(language.startsWith("tr") || language.startsWith("tur")){
+      return "turkish";
+    }
+    else if(language.startsWith("sv") || language.startsWith("swe")){
+      return "swedish";
+    }
+    return "english";
+  }
+  
   /**
    * @param jar
    * @return
