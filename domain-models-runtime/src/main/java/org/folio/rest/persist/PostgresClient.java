@@ -1720,7 +1720,7 @@ public class PostgresClient {
               o = mapper.readValue(jo.toString(), clazz);
             } catch (UnrecognizedPropertyException e1) {
               // this is a facet query , and this is the count entry {"count": 11}
-              rowCount = new JsonObject(tempList.get(i).getString("jsonb")).getInteger(countField);
+              rowCount = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
               continue;
             }
           }
