@@ -221,7 +221,7 @@ public class SchemaMaker {
       int size = views.size();
       for (int i = 0; i < size; i++) {
         View v = views.get(i);
-        //we really only care about deletes from a mode standpoint, since we run CREATE OR REPLACE
+        //we really only care about deletes from a mode standpoint, since we run sql statements with "CREATE OR REPLACE"
         if(v.getMode() == null){
           v.setMode("new");
         }
@@ -234,6 +234,9 @@ public class SchemaMaker {
           Index index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
           vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
           if(index != null){
+          //when creating the join on condition, we want to create it the same way as we created the index
+          //so that the index will get used, for example:
+          //ON lower(f_unaccent(instance.jsonb->>'id'::text))=lower(f_unaccent(holdings_record.jsonb->>'instanceId'))
             vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
             vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
           }
