@@ -1,3 +1,7 @@
+## 19.2.0 2018-07-16
+* RMB-184 new "fulltext" index type in schema.json
+* RMB-183 add ability to set the result set distinct
+
 ## 19.1.5 2018-07-05
 * RMB-179 net.sf.jsqlparser does not support "IS TRUE" and "a@>b"
 * RMB-178 parseQuery throws StackOverflowError for deeply nested SQL query
