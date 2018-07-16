@@ -199,6 +199,9 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
      * http://host:port/tenant
      * Validation by rmb means the entity is either properly populated on is null
      * depending on whether this is an upgrade or a create tenant
+     * 
+     * Modules that are not DB bound but are still RMB modules should override this API and do
+     * any tenant bootstrapping they need
      */
 
     context.runOnContext(v -> {
