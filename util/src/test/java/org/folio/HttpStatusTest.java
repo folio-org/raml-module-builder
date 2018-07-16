@@ -11,8 +11,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 class HttpStatusTest {
   @ParameterizedTest
   @CsvSource({
-    "200, HTTP_ACCEPTED",
+    "200, HTTP_OK",
     "201, HTTP_CREATED",
+    "202, HTTP_ACCEPTED",
     "501, HTTP_NOT_IMPLEMENTED",
   })
   void existingStatus(int code, String name) {
