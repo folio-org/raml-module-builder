@@ -91,6 +91,16 @@ public class SchemaMaker {
     templateInput.put("version", pVersion);
 
     templateInput.put("newVersion", this.newVersion);
+    
+    FullText fullText = this.schema.getFullText();
+
+    String defaultDictionary = FullText.DEFAULT_DICTIONARY;
+
+    if(fullText != null && fullText.getDefaultDictionary() != null){
+      defaultDictionary = fullText.getDefaultDictionary();
+    }
+
+    templateInput.put("ft_defaultDictionary", defaultDictionary);
 
     //TODO - check the rmbVersion in the internal_rmb table and compare to this passed in
     //version, to check if core rmb scripts need updating due to an update
@@ -191,6 +201,18 @@ public class SchemaMaker {
             u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
           }
         }
+        
+        List<Index> ftInd = t.getFullTextIndex();
+        if(ftInd != null){
+          for (int j = 0; j < ftInd.size(); j++) {
+            Index u = ftInd.get(j);
+            String path = convertDotPath2PostgresNotation(u.getFieldName(), true);
+            u.setFieldPath(path);
+            //remove . from path since this is incorrect syntax in postgres
+            indexMap.put(t.getTableName()+"_"+u.getFieldName(), u);
+            u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
+          }
+        }
       }
     }
 
@@ -199,7 +221,7 @@ public class SchemaMaker {
       int size = views.size();
       for (int i = 0; i < size; i++) {
         View v = views.get(i);
-        //we really only care about deletes from a mode standpoint, since we run CREATE OR REPLACE
+        //we really only care about deletes from a mode standpoint, since we run sql statements with "CREATE OR REPLACE"
         if(v.getMode() == null){
           v.setMode("new");
         }
@@ -212,6 +234,9 @@ public class SchemaMaker {
           Index index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
           vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
           if(index != null){
+          //when creating the join on condition, we want to create it the same way as we created the index
+          //so that the index will get used, for example:
+          //ON lower(f_unaccent(instance.jsonb->>'id'::text))=lower(f_unaccent(holdings_record.jsonb->>'instanceId'))
             vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
             vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
           }
