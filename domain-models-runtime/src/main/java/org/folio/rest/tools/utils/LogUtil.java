@@ -1,11 +1,10 @@
 package org.folio.rest.tools.utils;
 
+import java.util.Collection;
 import java.util.Enumeration;
-import java.util.Map;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
@@ -13,12 +12,13 @@ import org.folio.rest.RestVerticle;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 public class LogUtil {
 
-
-  private static final Logger log = LogManager.getLogger(LogUtil.class);
+  private static final Logger log = LoggerFactory.getLogger(LogUtil.class);
 
   public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int ResponseCode, long responseTime,
       long responseSize, String url, String queryParams, String message) {
@@ -75,14 +75,19 @@ public class LogUtil {
     JsonObject updatedLoggers = new JsonObject();
 
     //log4j logs
-    LoggerContext ctx = (LoggerContext) LogManager.getContext();
-    Configuration cfg = ctx.getConfiguration();
-    Map<String, LoggerConfig> loggerMap = cfg.getLoggers();
-    //Enumeration<Logger> logger = LogManager.getLoggerRepository().getCurrentLoggers();
-    loggerMap.forEach( (string, log) -> {
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+    Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
+
+    //Configurator.setLevel(loggerName, level);
+    allLoggers.forEach( log -> {
+      System.out.println("recieved package " + packageName + " with level " + level);
+      System.out.println("checking log " + log.getName());
+
       if(log != null && packageName != null && (log.getName().startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
         if(log != null){
-          log.setLevel(Level.toLevel(level));
+          //Configurator.setLevel(log.getName(), getLog4jLevel(level));
+          System.out.println("setting log " + log.getName() + " to " + level);
+          log.setLevel(getLog4jLevel(level));
           updatedLoggers.put(log.getName(), log.getLevel().toString());
         }
       }
@@ -93,14 +98,16 @@ public class LogUtil {
     Enumeration<String> julLogs = manager.getLoggerNames();
     while (julLogs.hasMoreElements()) {
       String log = julLogs.nextElement();
+      System.out.println("checking log " + log);
       if(log != null && packageName != null && (log.startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
         java.util.logging.Logger logger = manager.getLogger(log);
         if(logger != null){
+          System.out.println("setting log " + log);
           logger.setLevel(java.util.logging.Level.parse(level));
           updatedLoggers.put(logger.getName(), logger.getLevel().getName());
         }
       }
-}
+    }
     return updatedLoggers;
   }
 
@@ -113,11 +120,9 @@ public class LogUtil {
     JsonObject loggers = new JsonObject();
 
     //log4j logs
-    LoggerContext ctx = (LoggerContext) LogManager.getContext();
-    Configuration cfg = ctx.getConfiguration();
-    Map<String, LoggerConfig> logger = cfg.getLoggers();
-    //Enumeration<Logger> logger = LogManager.getLoggerRepository().getCurrentLoggers();
-    logger.forEach( (string, log) -> {
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+    Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
+    allLoggers.forEach( (log) -> {
       if(log != null && log.getLevel() != null && log.getName() != null){
         loggers.put(log.getName(), log.getLevel().toString());
       }
@@ -139,11 +144,30 @@ public class LogUtil {
     return loggers;
   }
 
-  public static void setLevelForLoggers(Level level){
+  public static void setLevelForRootLoggers(Level level){
     LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
     Configuration config = ctx.getConfiguration();
-    LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+    LoggerConfig loggerConfig = config.getRootLogger();
     loggerConfig.setLevel(level);
     ctx.updateLoggers();
+  }
+
+  private static Level getLog4jLevel(String level){
+    if(level.equalsIgnoreCase("SEVERE")){
+      return Level.ERROR;
+    }
+    else if(level.equalsIgnoreCase("WARNING")){
+      return Level.WARN;
+    }
+    else if(level.equalsIgnoreCase("INFO")){
+      return Level.INFO;
+    }
+    else if(level.equalsIgnoreCase("FINE")){
+      return Level.DEBUG;
+    }
+    else if(level.equalsIgnoreCase("FINER") || level.equalsIgnoreCase("FINEST")){
+      return Level.TRACE;
+    }
+    return Level.INFO;
   }
 }
