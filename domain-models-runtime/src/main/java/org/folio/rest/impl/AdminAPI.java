@@ -23,7 +23,7 @@ import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 import org.folio.rest.jaxrs.model.AdminPostgresMaintenancePostCommand;
 import org.folio.rest.jaxrs.model.AdminUploadmultipartPostMultipartFormData;
 import org.folio.rest.jaxrs.model.AdminUploadmultipartPostPersistMethod;
-import org.folio.rest.jaxrs.resources.Admin;
+import org.folio.rest.jaxrs.resource.Admin;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;

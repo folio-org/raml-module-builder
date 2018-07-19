@@ -9,7 +9,7 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.jaxrs.resources.Tenant;
+import org.folio.rest.jaxrs.resource.Tenant;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.ddlgen.FullText;
 import org.folio.rest.persist.ddlgen.Schema;

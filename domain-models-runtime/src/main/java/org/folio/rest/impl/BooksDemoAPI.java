@@ -6,7 +6,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.resources.Rmbtests;
+import org.folio.rest.jaxrs.resource.Rmbtests;
 import org.folio.rest.tools.utils.OutStream;
 
 import io.vertx.core.AsyncResult;

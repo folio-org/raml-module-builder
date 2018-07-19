@@ -31,7 +31,6 @@ public class GenerateRunner {
 
   static final Logger log = LoggerFactory.getLogger(GenerateRunner.class);
 
-  private static final String PACKAGE_DEFAULT = "org.folio.rest.jaxrs.resources";
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
   private static final String SOURCES_DEFAULT = "/ramls/";
   private static final String RESOURCE_DEFAULT = "/target/classes";
@@ -60,13 +59,13 @@ public class GenerateRunner {
    */
   public GenerateRunner(String outputDirectory) {
     this.outputDirectory = outputDirectory;
-    outputDirectoryWithPackage = outputDirectory + PACKAGE_DEFAULT.replace('.', '/');
+    outputDirectoryWithPackage = outputDirectory + RTFConsts.INTERFACE_PACKAGE.replace('.', '/');
     modelDirectory = outputDirectory + MODEL_PACKAGE_DEFAULT.replace('.', '/');
 
     configuration = new Configuration();
     configuration.setModelPackage(MODEL_PACKAGE_DEFAULT);
-    configuration.setResourcePackage(PACKAGE_DEFAULT);
-    configuration.setSupportPackage(PACKAGE_DEFAULT);
+    configuration.setResourcePackage(RTFConsts.INTERFACE_PACKAGE);
+    configuration.setSupportPackage(RTFConsts.INTERFACE_PACKAGE +".support");
     configuration.setOutputDirectory(new File(this.outputDirectory));
     configuration.setJsonMapper(AnnotationStyle.valueOf(("jackson2").toUpperCase()));
     configuration.setTypeConfiguration(new String[]{"core.one"});

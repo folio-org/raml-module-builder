@@ -11,6 +11,7 @@ import org.folio.rest.jaxrs.model.Bulks;
 import org.folio.rest.jaxrs.model.Job;
 import org.folio.rest.jaxrs.model.JobConf;
 import org.folio.rest.jaxrs.model.Jobs;
+import org.folio.rest.jaxrs.model.JobsConf;
 import org.folio.rest.jaxrs.model.JobsConfs;
 import org.folio.rest.jaxrs.model.JobsJobconfsGetOrder;
 import org.folio.rest.jaxrs.model.JobsJobconfsJobconfsIdJobsGetOrder;
@@ -36,7 +37,7 @@ import io.vertx.core.logging.LoggerFactory;
  * Jobs are saved into the folio_shared schema declared in the MongoCRUD with each record containing an institution id
  *
  */
-public class JobAPI implements org.folio.rest.jaxrs.resources.Jobs {
+public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
 
   private static final Logger log = LoggerFactory.getLogger(JobAPI.class);
   private static final String JOB_CONF_CLASS_NAME   = JobConf.class.getName();
@@ -87,7 +88,7 @@ public class JobAPI implements org.folio.rest.jaxrs.resources.Jobs {
 
   @Validate
   @Override
-  public void postJobsJobconfs(String lang, JobConf entity, Map<String, String> okapiHeaders,
+  public void postJobsJobconfs(String lang, JobsConf entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     System.out.println("sending... postJobsJobconfs");
@@ -135,7 +136,7 @@ public class JobAPI implements org.folio.rest.jaxrs.resources.Jobs {
           PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.JOB_CONF_COLLECTION, JobConf.class,
             new Criterion(c), true, reply -> {
               @SuppressWarnings("unchecked")
-              List<JobConf> confs = (List<JobConf>) reply.result().getResults();
+              List<JobsConf> confs = (List<JobsConf>) reply.result().getResults();
               if (confs.isEmpty()) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
                   GetJobsJobconfsByJobconfsIdResponse.respond404WithTextPlain("JobConf "
@@ -208,7 +209,7 @@ public class JobAPI implements org.folio.rest.jaxrs.resources.Jobs {
 
   @Validate
   @Override
-  public void putJobsJobconfsByJobconfsId(String jobconfsId, String lang, JobConf entity,
+  public void putJobsJobconfsByJobconfsId(String jobconfsId, String lang, JobsConf entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
 
@@ -552,5 +553,4 @@ public class JobAPI implements org.folio.rest.jaxrs.resources.Jobs {
 
     return new org.folio.rest.persist.Criteria.Order(field, ORDER.valueOf(sortOrder.toUpperCase()));
   }
-
 }
