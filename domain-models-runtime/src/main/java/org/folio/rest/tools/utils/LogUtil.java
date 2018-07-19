@@ -78,15 +78,9 @@ public class LogUtil {
     LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
     Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
 
-    //Configurator.setLevel(loggerName, level);
     allLoggers.forEach( log -> {
-      System.out.println("recieved package " + packageName + " with level " + level);
-      System.out.println("checking log " + log.getName());
-
       if(log != null && packageName != null && (log.getName().startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
         if(log != null){
-          //Configurator.setLevel(log.getName(), getLog4jLevel(level));
-          System.out.println("setting log " + log.getName() + " to " + level);
           log.setLevel(getLog4jLevel(level));
           updatedLoggers.put(log.getName(), log.getLevel().toString());
         }
@@ -98,11 +92,9 @@ public class LogUtil {
     Enumeration<String> julLogs = manager.getLoggerNames();
     while (julLogs.hasMoreElements()) {
       String log = julLogs.nextElement();
-      System.out.println("checking log " + log);
       if(log != null && packageName != null && (log.startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
         java.util.logging.Logger logger = manager.getLogger(log);
         if(logger != null){
-          System.out.println("setting log " + log);
           logger.setLevel(java.util.logging.Level.parse(level));
           updatedLoggers.put(logger.getName(), logger.getLevel().getName());
         }
