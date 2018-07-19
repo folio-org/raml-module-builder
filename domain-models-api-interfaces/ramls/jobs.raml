@@ -8,7 +8,7 @@ types:
   last_modified: !include last_modified.schema
   jobs: !include jobs.schema
   job: !include job.schema
-  job_conf: !include jobs_conf.schema
+  jobs_conf: !include jobs_conf.schema
   jobs_confs: !include jobs_confs.schema
   parameters: !include raml-util/schemas/parameters.schema
   parameter: !include parameter.schema
@@ -35,7 +35,7 @@ resourceTypes:
         exampleCollection: !include examples/jobs_confs.sample
         exampleItem: !include examples/jobs_conf.sample
         schemaCollection: jobs_confs
-        schemaItem: job_conf
+        schemaItem: jobs_conf
     get:
       is: [
         searchable: {description: "native mongodb query syntax with valid searchable fields: for example location", example: "{\"module\":\"IMPORTS\"}"},
@@ -49,7 +49,7 @@ resourceTypes:
       type:
         collection-item:
           exampleItem: !include examples/jobs_conf.sample
-          schema: job_conf
+          schema: jobs_conf
       /jobs:
         type:
           collection:
