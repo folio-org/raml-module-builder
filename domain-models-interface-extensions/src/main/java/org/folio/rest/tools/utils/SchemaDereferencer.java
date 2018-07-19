@@ -1,8 +1,6 @@
 package org.folio.rest.tools.utils;
 
-import io.vertx.core.json.DecodeException;
-import io.vertx.core.json.JsonObject;
-
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,6 +17,11 @@ import java.util.stream.StreamSupport;
 
 import org.folio.util.IoUtil;
 
+import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
 /**
  * Dereference JSON schemas of RAML files by replacing {@code ("$ref": <filename>)}
  * with the JSON content of that file.
@@ -27,6 +30,9 @@ import org.folio.util.IoUtil;
  * file it has already used.
  */
 public class SchemaDereferencer {
+
+  static final Logger log = LoggerFactory.getLogger(SchemaDereferencer.class);
+
   /** cache */
   private Map<Path,JsonObject> dereferenced = new HashMap<>();
 
@@ -85,14 +91,12 @@ public class SchemaDereferencer {
       throw new IllegalStateException("$ref chain has a loop: " + allPaths(dereferenceStack));
     }
 
-    String schemaString;
-    try (InputStream reader = new FileInputStream(path.toFile())) {
-      schemaString = IoUtil.toStringUtf8(reader);
-    }
+    String schemaString = findCorrectSchemaPath(path);
 
     JsonObject schema;
     if (schemaString.indexOf('{') == -1) {
       // schemaString contains the filename to open
+      System.out.println("denorm ---------------------------------.>.>>>>>>>> " + schemaString);
       Path newInputPath = inputPath.resolveSibling(Paths.get(schemaString)).normalize();
       schema = dereferencedSchema(newInputPath, dereferenceStack);
     } else {
@@ -109,6 +113,35 @@ public class SchemaDereferencer {
 
     return schema;
   }
+
+  private String findCorrectSchemaPath(Path refPath) throws IOException {
+    Path path = refPath;
+    boolean exists = refPath.toFile().exists();
+    if(!exists){
+      //add a .schema suffix and retry
+      String wSchemaSuffix = refPath.toAbsolutePath().toString() + ".schema";
+      //add a .json suffix and retry
+      String wJsonSuffix = refPath.toAbsolutePath().toString() + ".json";
+      if(new File(wSchemaSuffix).exists()){
+        path = Paths.get(new File(wSchemaSuffix).toURI());
+      }
+      else if(new File(wJsonSuffix).exists()){
+        path = Paths.get(new File(wJsonSuffix).toURI());
+      }
+      else{
+        //go to the raml map and find the real path as the value in the $ref does not lead to an actual file
+        String schema = RamlDirCopier.TYPE2PATH_MAP.get(refPath.getFileName().toString());
+        if(schema == null){
+          throw new IOException(refPath.getFileName() + " not found");
+        }
+        return schema;
+      }
+    }
+    try (InputStream reader = new FileInputStream(path.toFile())) {
+      return IoUtil.toStringUtf8(reader);
+    }
+  }
+
 
   /**
    * Merge the file content of any {@code ("$ref": <filename>)} into jsonObject.
