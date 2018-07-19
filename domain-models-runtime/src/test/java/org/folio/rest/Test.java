@@ -1,10 +1,7 @@
 package org.folio.rest;
 
-import java.io.FileInputStream;
-
-import javax.mail.BodyPart;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
+import org.folio.rest.client.AdminClient;
+import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 
 /**
  * @author shale
@@ -17,7 +14,7 @@ public class Test {
    */
   public static void main(String[] args) throws Exception {
     // TODO Auto-generated method stub
-    MimeMultipart mmp = new MimeMultipart();
+/*    MimeMultipart mmp = new MimeMultipart();
     BodyPart bp = new MimeBodyPart(new FileInputStream("C:\\Git\\mod-files\\ramls\\mod-files\\files.raml"));
     bp.setDisposition("form-data");
     bp.setFileName("abc.raml");
@@ -25,8 +22,9 @@ public class Test {
     bp2.setDisposition("form-data");
     bp2.setFileName("abcd.raml");
     mmp.addBodyPart(bp);
-    mmp.addBodyPart(bp2);
-/*    AdminClient aClient = new AdminClient("localhost", 8888, null, null, false);
+    mmp.addBodyPart(bp2);*/
+    AdminClient aClient = new AdminClient("localhost", 8888, null, null, false);
+/*
     aClient.postUploadmultipart(PersistMethod.SAVE, null, "abc",
       mmp, reply -> {
       reply.statusCode();
@@ -53,25 +51,31 @@ public class Test {
         });
       });
     });
-    aClient.getPostgresActiveSessions("postgres",  reply -> {
+    */
+    aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
     });
-    aClient.getPostgresLoad("postgres",  reply -> {
+    aClient.getAdminPostgresActiveSessions("postgres",  reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
     });
-    aClient.getPostgresTableAccessStats( reply -> {
+    aClient.getAdminPostgresLoad("postgres",  reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
     });
-    aClient.getPostgresTableSize("postgres", reply -> {
+    aClient.getAdminPostgresTableAccessStats( reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
-    });*/
+    });
+    aClient.getAdminPostgresTableSize("postgres", reply -> {
+      reply.bodyHandler( body -> {
+        System.out.println(body.toString("UTF8"));
+      });
+    });
   }
 }
