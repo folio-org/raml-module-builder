@@ -1396,8 +1396,6 @@ public class RestVerticle extends AbstractVerticle {
               }
             } else { // enum object type
               try {
-                String enumClazz = replaceLast(valueType, ".", "$");
-                System.out.println("Looking for class " + valueType + "  " + enumClazz);
                 Class<?> enumClazz1 = Class.forName(valueType);
                 if (enumClazz1.isEnum()) {
                   Object defaultEnum = null;

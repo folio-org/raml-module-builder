@@ -490,8 +490,7 @@ public class ClientGenerator {
           addParameter(methodBody, queryParams, valueName, encode, false, true);
         }else { // enum object type
           try {
-            String enumClazz = replaceLast(valueType, ".", "$");
-            Class<?> enumClazz1 = Class.forName(enumClazz);
+            Class<?> enumClazz1 = Class.forName(valueType);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
               addParameter(methodBody, queryParams, valueName, encode, false, false);
