@@ -28,6 +28,7 @@ import javax.mail.internet.MimeMultipart;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.ValidatorFactory;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -246,7 +247,7 @@ public class RestVerticle extends AbstractVerticle {
           // startup periodic impl if exists
           runPeriodicHook();
         } catch (Exception e2) {
-          log.error(e2);
+          log.error(e2.getMessage(), e2);
         }
         //single handler for all url calls other then documentation
         //which is handled separately
@@ -688,7 +689,7 @@ public class RestVerticle extends AbstractVerticle {
             mmp.addBodyPart(mbp);
             content = null;
           } catch (MessagingException e) {
-            log.error(e);
+            log.error(e.getMessage(), e);
           }
         }
       });
@@ -740,10 +741,7 @@ public class RestVerticle extends AbstractVerticle {
       // !!!!!!!!!!!!!!!!!!!!!! CORS commented OUT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       // response.putHeader("Access-Control-Allow-Origin", "*");
 
-      for (Entry<String, List<String>> entry : result.getStringHeaders().entrySet()) {
-        String jointValue = Joiner.on("; ").join(entry.getValue());
-        response.headers().add(entry.getKey(), jointValue);
-      }
+      copyHeadersJoin(result.getStringHeaders(), response.headers());
 
       //response.headers().add(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
       //forward all headers except content-type that was passed in by the client
@@ -779,7 +777,7 @@ public class RestVerticle extends AbstractVerticle {
         response.write(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       }
     } catch (Exception e) {
-      log.error(e);
+      log.error(e.getMessage(), e);
     } finally {
       rc.response().end();
     }
@@ -802,6 +800,21 @@ public class RestVerticle extends AbstractVerticle {
     LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
       rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
       rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), tenantId, sb.toString());
+  }
+
+  /**
+   * Copy the headers from source to destination. Join several headers of same key using "; ".
+   */
+  private void copyHeadersJoin(MultivaluedMap<String,String> source, MultiMap destination) {
+    for (Entry<String, List<String>> entry : source.entrySet()) {
+      String jointValue = Joiner.on("; ").join(entry.getValue());
+      try {
+        destination.add(entry.getKey(), jointValue);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+            e.getMessage() + ": " + entry.getKey() + " - " + jointValue, e);
+      }
+    }
   }
 
   private void mergeIntoResponseHeadersDistinct(MultiMap responseHeaders, MultiMap requestHeaders){
@@ -911,7 +924,7 @@ public class RestVerticle extends AbstractVerticle {
         // response.setChunked(true);
         // response.setStatusCode(((Response)result).getStatus());
       } catch (Exception e) {
-        log.error(e);
+        log.error(e.getMessage(), e);
         String message;
         try {
           // catch exception for now in case of null point and show generic
@@ -931,7 +944,7 @@ public class RestVerticle extends AbstractVerticle {
       byte[] jsonData = ByteStreams.toByteArray(getClass().getClassLoader().getResourceAsStream(configFile));
       return new JsonObject(new String(jsonData));
     } catch (IOException e) {
-      log.error(e);
+      log.error(e.getMessage(), e);
     }
     return new JsonObject();
   }
@@ -949,7 +962,7 @@ public class RestVerticle extends AbstractVerticle {
     try {
       jObjClasses.mergeIn(AnnotationGrabber.generateMappings());
     } catch (Exception e) {
-      log.error(e);
+      log.error(e.getMessage(), e);
     }
     // loadConfig(JSON_URL_MAPPINGS);
     Set<String> classURLs = jObjClasses.fieldNames();
@@ -1132,7 +1145,7 @@ public class RestVerticle extends AbstractVerticle {
             System.out.println("Setting path to import DB file....  " + importDataPath);
           } catch (Exception e) {
             // any problems - print exception and continue
-            log.error(e);
+            log.error(e.getMessage(), e);
           }
         }
         else{
@@ -1163,7 +1176,7 @@ public class RestVerticle extends AbstractVerticle {
     try {
       droolsSession = new Rules(droolsPath).buildSession();
     } catch (Exception e) {
-      log.error(e);
+      log.error(e.getMessage(), e);
     }
   }
 
@@ -1322,7 +1335,7 @@ public class RestVerticle extends AbstractVerticle {
               populateMetaData(paramArray[order], okapiHeaders, rc.request().path());
             }
           } catch (Exception e) {
-            log.error(e);
+            log.error(e.getMessage(), e);
             endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), validRequest);
 
           }
