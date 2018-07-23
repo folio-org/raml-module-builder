@@ -12,6 +12,7 @@ public class Schema {
   private List<Table> tables = new ArrayList<>();
   private List<View> views = new ArrayList<>();
   private List<Script> scripts = new ArrayList<>();
+  private FullText fullText = new FullText();
   private int exactCount = 20000;
 
   public List<Table> getTables() {
@@ -39,6 +40,14 @@ public class Schema {
 
   public void setExactCount(int exactCount) {
     this.exactCount = exactCount;
+  }
+
+  public FullText getFullText() {
+    return fullText;
+  }
+  
+  public void setFullText(FullText fullText) {
+    this.fullText = fullText;
   }
 
 }

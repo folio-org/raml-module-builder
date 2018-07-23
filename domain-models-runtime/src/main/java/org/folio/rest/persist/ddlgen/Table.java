@@ -17,6 +17,7 @@ public class Table extends Versioned {
   private List<Index> uniqueIndex;
   private List<Index> index;
   private List<Index> ginIndex;
+  private List<Index> fullTextIndex;
   private List<ForeignKeys> foreignKeys;
   private String customSnippetPath;
   private List<AddFields> addFields;
@@ -151,6 +152,14 @@ public class Table extends Versioned {
 
   public void setGinIndex(List<Index> ginIndex) {
     this.ginIndex = ginIndex;
+  }
+
+  public List<Index> getFullTextIndex() {
+    return fullTextIndex;
+  }
+
+  public void setFullTextIndex(List<Index> fullTextIndex) {
+    this.fullTextIndex = fullTextIndex;
   }
 
 }

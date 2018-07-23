@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>19.0.1-SNAPSHOT</version>
+    <version>19.2.1-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -121,6 +121,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-mysql-postgresql-client</artifactId>
+      <version>3.5.1-FOLIO.1</version>
     </dependency>
     <dependency>
       <groupId>xerces</groupId>
@@ -271,6 +272,7 @@
           <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
+          <forceAjcCompile>true</forceAjcCompile>
           <aspectLibraries>
             <aspectLibrary>
               <groupId>org.folio</groupId>

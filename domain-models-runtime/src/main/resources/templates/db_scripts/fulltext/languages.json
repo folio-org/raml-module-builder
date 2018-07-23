@@ -1,0 +1,88 @@
+{
+  "languages": [
+    {
+      "langauge": "english",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "danish",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "spanish",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "french",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "finnish",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "german",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "hungarian",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "italian",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "norwegian",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "portuguese",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "romanian",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "russian",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "swedish",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    },
+    {
+      "langauge": "turkish",
+      "synonyms": "",
+      "thes": "",
+      "stopwords": ""
+    }
+  ]
+}

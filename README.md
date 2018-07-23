@@ -1,4 +1,3 @@
-
 # Raml-Module-Builder
 
 Copyright (C) 2016-2018 The Open Library Foundation
@@ -128,7 +127,7 @@ Some sample projects:
 - https://github.com/folio-org/mod-configuration
 - https://github.com/folio-org/mod-notes
 
-and other [modules](http://dev.folio.org/source-code/#server-side) (not all do use the RMB).
+and other [modules](https://dev.folio.org/source-code/#server-side) (not all do use the RMB).
 
 
 ## Get started with a sample working module
@@ -520,6 +519,7 @@ Add the plugins:
           <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
+          <forceAjcCompile>true</forceAjcCompile>
           <aspectLibraries>
             <aspectLibrary>
               <groupId>org.folio</groupId>
@@ -676,7 +676,7 @@ It is beneficial at this stage to take some time to design and prepare the RAML 
 Investigate the other FOLIO modules for guidance.
 The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
 
-Add the shared suite of [RAML utility](http://dev.folio.org/source-code/#server-side) files,
+Add the shared suite of [RAML utility](https://dev.folio.org/source-code/#server-side) files,
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
@@ -687,16 +687,16 @@ It is possible to use a relative path with one set of dot-dots "../" but definit
 [not more](https://issues.folio.org/browse/RMB-30).
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
-The GenerateRunner automatically dereferences the schema files and places them into the
-`target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
-subdirectories, if not found then `${basedir}/../ramls/` supporting maven submodules with
-common ramls directory.
-
 NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
 Examples are `schemaCollection: noteCollection` in
 [note.raml](https://github.com/folio-org/mod-notes/blob/master/ramls/note.raml) and
 `schemaCollection: addresstypeCollection` in
 [addressTypes.raml](https://github.com/folio-org/raml/blob/master/ramls/mod-users/addressTypes.raml).
+
+The GenerateRunner automatically dereferences the schema files and places them into the
+`target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
+subdirectories, if not found then `${basedir}/../ramls/` supporting maven submodules with
+common ramls directory.
 
 The documentation of HTTP response codes
 is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java)
@@ -705,6 +705,9 @@ The RMB does do some validation of RAML files at compile-time.
 There are some useful tools to assist with command-line validation,
 and some can be integrated with text editors, e.g.
 [raml-cop](https://github.com/thebinarypenguin/raml-cop).
+
+See the guide to [Use raml-cop to assess RAML, schema, and examples](https://dev.folio.org/guides/raml-cop/)
+and the [Primer for RAML and JSON Schema](https://dev.folio.org/start/primer-raml/) quick-start document.
 
 RAML-aware text editors are very helpful, such as
 [api-workbench](https://github.com/mulesoft/api-workbench) for Atom.
@@ -977,13 +980,13 @@ layer.
 
 **Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
 
-**Important Note:** Currently we only support Postgres version 9.6; version 10 doesn't work, see [RMB-121](https://issues.folio.org/browse/RMB-121).
+**Important Note:** Currently we only support Postgres version 10.
 
-Currently the expected format is:
+The PostgresClient expects tables in the following format:
 
 ```sql
 create table <schema>.<table_name> (
-  _id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY,
   jsonb JSONB NOT NULL
 );
 ```
@@ -1044,6 +1047,16 @@ where the "jsonb" field references a JSON schema that will exist in the "jsonb" 
 
 The example above refers to querying only. As of now, saving a record will only save the "jsonb" and "id" fields (the above example uses triggers to populate the operation, creation data, and original id).
 
+#### Saving binary data
+
+As indicated, the PostgresClient is jsonb oriented. If there is a need to store data in binary form, this can be done in the following manner (only id based upsert is currently supported):
+```
+byte[] data = ......;
+JsonArray jsonArray = new JsonArray().add(data);
+client.upsert(TABLE_NAME, id, jsonArray, false, replyHandler -> {
+.....
+});
+```
 ### Credentials
 
 When running in embedded mode, credentials are read from `resources/postgres-conf.json`. If a file is not found, then the following configuration will be used by default:
@@ -1244,7 +1257,7 @@ A three table join would look something like this:
             "joinOnField": "holdingsRecordId",
             "jsonFieldAlias": "it_jsonb"
           }
-        }        
+        }
       ]
     }
 ```
@@ -1262,6 +1275,25 @@ The tables / views will be generated in the schema named tenantid_modulename
 
 The x-okapi-tenant header passed in to the API call will be used to get the tenant id.
 The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
+
+#### Important information
+Right now all indexes on string fields in the jsonb should be declared as case in-sensitive and lower cased. This is how the CQL to Postgres converter generates SQL queries , so in order for the indexes generated to be used during query time, the indexes must be declared in a similar manner
+```
+  {
+    "fieldName": "title",
+    "tOps": "ADD",
+    "caseSensitive": false,
+    "removeAccents": true
+  }
+```
+
+Behind the scenes, the CQL to Postgres query converter will generate regex queries for `=` queries. 
+For example: `?query=fieldA=ABC` will generate an SQL regex query, which will require a gin index to perform on large tables. 
+
+The converter will generate LIKE queries for `==` queries. For example `?query=fieldA==ABC` will generate an SQL LIKE query that will use a btree index (if it exists). For queries that only look up specific ids, etc... the preferred approach would be to query with two equals `==` and hence, declare a regular btree (index). 
+
+
+##### Posting information
 
 Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
 
@@ -1357,7 +1389,7 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Metadata
 
-RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/master/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed in json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using triggers see [metadata.sql](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata/metadata.sql)
+RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/master/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed in json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl)
 
 ## Facet Support
 
@@ -1388,6 +1420,10 @@ For example:
 You can set the amount of results to facet on by calling (defaults to 10,000) `FacetManager.setCalculateOnFirst(20000);`
 Note that higher numbers will potentially affect performance.
 
+4. Faceting on array fields can be done in the following manner:
+`personal.secondaryAddress[].postalCode`
+`personal.secondaryAddress[].address[].postalCode`
+
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
 ## Json Schema fields
@@ -1416,6 +1452,31 @@ for example:
 the `jsonschema.customfield` key can contain multiple json values (delimited by a `;`). Each json indicates a field name + a field value to match against - and a validation annotation to apply. So, getting back to the readonly field, the example above indicates that a field in the json schema that has been tagged with the `readonly` field can not contain data when passed in as part of the request.
 A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
+
+## Overriding RAML (traits) / query parameters
+
+A module may require slight changes to existing RAML traits.
+For example, a `limit` trait may be defined in the following manner:
+ ```
+        limit:
+          description: Limit the number of elements returned in the response
+          type: integer
+          required: false
+          example: 10
+          default: 10
+          minimum: 1
+          maximum: 2147483647
+```
+However, a module may not want to allow such a high maximum as this may cause a crash.
+A module can create a `raml_overrides.json` file and place it in the `/resources/overrides/` directory.
+
+The file is defined in the schema:
+`domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.schema`
+
+Note that `DEFAULTVALUE` only allows string values. `SIZE` requires a range ex. `"15, 20"`. `REQUIRED` does not accept a `"value"`, meaning an optional parameter can become required but not vice versa.
+
+example:
+`domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.json`
 
 ## Drools integration
 
@@ -1558,7 +1619,7 @@ The RMB also automatically provides other documentation, such as the "Admin API"
 http://localhost:8081/apidocs/index.html?raml=raml/admin.raml
 ```
 
-All current API documentation is also available at [dev.folio.org/doc/api](http://dev.folio.org/doc/api/)
+All current API documentation is also available at [dev.folio.org/doc/api](https://dev.folio.org/reference/api/)
 
 ## Logging
 
@@ -1917,6 +1978,59 @@ Query parameters and header validation
   </properties>
 ```
 
+## Additional Tools
+
+#### De-Serializers
+At runtime RMB will serialize/deserialize the received JSON in the request body of PUT and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
+```
+ObjectMapperTool.registerDeserializer(User.class, new UserDeserializer());
+
+public class UserDeserializer extends JsonDeserializer<User> {
+
+  @Override
+  public User deserialize(JsonParser parser, DeserializationContext context) throws IOException, JsonProcessingException {
+    ObjectMapper mapper = ObjectMapperTool.getDefaultMapper();
+    ObjectCodec objectCodec = parser.getCodec();
+    JsonNode node = objectCodec.readTree(parser);
+    User user = mapper.treeToValue(node, User.class);
+    Optional<Date> expirationDate = Optional.ofNullable(user.getExpirationDate());
+    if (expirationDate.isPresent()) {
+      Date now = new Date();
+      if (now.compareTo(expirationDate.get()) > 0) {
+        user.setActive(false);
+      }
+    }
+    return user;
+  }
+}
+```
+#### Error handling tool
+
+Making async calls to the PostgresClient requires handling failures of different kinds. RMB exposes a tool that can handle the basic error cases, and return them as a 422 validation error status falling back to a 500 error status when the error is not one of the standard DB errors.
+
+Usage:
+
+```
+if(reply.succeeded()){
+  ..........
+}
+else{
+   ValidationHelper.handleError(reply.cause(), asyncResultHandler);
+}
+```
+RMB will return a response to the client as follows:
+
+- invalid UUID - 422 status
+- duplicate key violation - 422 status
+- Foreign key violation - 422 status
+- tenant does not exist / auth error to db - 401 status
+- Various CQL errors - 422 status
+- Anything else will fall back to a 500 status error
+
+RMB will not cross check the raml to see that these statuses have been defined for the endpoint. This is the developer's responsibility.
+
+
+
 ## Some REST examples
 
 Have these in the headers - currently not validated hence not mandatory:
@@ -2024,10 +2138,10 @@ http://localhost:8080/patrons
 
 ## Additional information
 
-Other [modules](http://dev.folio.org/source-code/#server-side).
+Other [modules](https://dev.folio.org/source-code/#server-side).
 
 See project [RMB](https://issues.folio.org/browse/RMB)
-at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
+at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).
 
-Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
+Other FOLIO Developer documentation is at [dev.folio.org](https://dev.folio.org/)
 

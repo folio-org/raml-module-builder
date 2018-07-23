@@ -1,5 +1,5 @@
 -- left join between tables
-CREATE OR REPLACE VIEW ${myuniversity}_${mymodule}.${view.viewName} AS select 
+CREATE OR REPLACE VIEW ${myuniversity}_${mymodule}.${view.viewName} AS select
   <#list view.join as joins>
     <#if joins?index==0>
     ${joins.table.prefix}.${view.pkColumnName},

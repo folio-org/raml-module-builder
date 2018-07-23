@@ -1,0 +1,45 @@
+{
+  "overrides": [
+    {
+      "verb": "GET",
+      "url": "/rmbtests/books",
+      "paramName": "rating",
+      "type": "REQUIRED"
+    },
+    {
+      "verb": "GET",
+      "url": "/rmbtests/books",
+      "paramName": "isbn",
+      "type": "SIZE",
+      "value": "15, 20"
+    },
+    {
+      "verb": "GET",
+      "url": "/rmbtests/books",
+      "paramName": "author",
+      "type": "DEFAULTVALUE",
+      "value": "AUTHOR"
+    },
+    {
+      "verb": "GET",
+      "url": "/rmbtests/books",
+      "paramName": "rating",
+      "type": "MIN",
+      "value": 1
+    },
+    {
+      "verb": "GET",
+      "url": "/rmbtests/books",
+      "paramName": "rating",
+      "type": "MAX",
+      "value": 9999
+    },
+    {
+      "verb": "GET",
+      "url": "/jobs/jobconfs/{jobconfsId}",
+      "paramName": "lang",
+      "type": "PATTERN",
+      "value": "[a-z][A-Z]{3}"
+    }
+  ]
+}

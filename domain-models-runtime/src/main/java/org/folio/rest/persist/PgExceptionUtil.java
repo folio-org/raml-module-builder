@@ -1,9 +1,9 @@
 package org.folio.rest.persist;
 
+import java.util.Map;
+
 import com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException;
 import com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage;
-
-import java.util.Map;
 
 import scala.collection.JavaConverters;
 
@@ -51,5 +51,16 @@ public final class PgExceptionUtil {
     default:
       return null;
     }
+  }
+
+  public static Map<Object,String> getBadRequestFields(Throwable throwable) {
+    if (!(throwable instanceof GenericDatabaseException)) {
+      return null;
+    }
+
+    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).errorMessage();
+    Map<Object,String> fields = JavaConverters.mapAsJavaMapConverter(errorMessage.fields()).asJava();
+
+    return fields;
   }
 }
