@@ -21,8 +21,6 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 import org.folio.rest.jaxrs.model.AdminPostgresMaintenancePostCommand;
-import org.folio.rest.jaxrs.model.AdminUploadmultipartPostMultipartFormData;
-import org.folio.rest.jaxrs.model.AdminUploadmultipartPostPersistMethod;
 import org.folio.rest.jaxrs.resource.Admin;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.ddlgen.Schema;
@@ -197,37 +195,6 @@ public class AdminAPI implements Admin {
       result -> {
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.respond200WithTextHtml(result.result().toString())));
       });
-  }
-
-  @Validate
-  @Override
-  public void postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod persistMethod, String busAddress,
-      String fileName, AdminUploadmultipartPostMultipartFormData entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
-/*    if(entity != null){
-      int parts = entity.getCount();
-      for (int i = 0; i < parts; i++) {
-        BodyPart bp = entity.getBodyPart(i);
-        System.out.println(bp.getFileName());
-        //System.out.println(bp.getContent());
-        //System.out.println("-----------------------------------------");
-      }
-      String name = "";
-      try{
-        if(fileName == null){
-          name = entity.getBodyPart(0).getFileName();
-        }
-        else{
-          name = fileName;
-        }
-      }
-      catch(Exception e){
-        log.error(e.getMessage(), e);
-      }
-    }*/
-
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadmultipartResponse.respond200(null)));
   }
 
   @Validate

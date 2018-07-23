@@ -1,7 +1,7 @@
 package org.folio.rest;
 
 import org.folio.rest.client.AdminClient;
-import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
+
 
 /**
  * @author shale
@@ -24,9 +24,17 @@ public class Test {
     mmp.addBodyPart(bp);
     mmp.addBodyPart(bp2);*/
     AdminClient aClient = new AdminClient("localhost", 8888, null, null, false);
-/*
-    aClient.postUploadmultipart(PersistMethod.SAVE, null, "abc",
-      mmp, reply -> {
+    /*
+    AdminUploadmultipartPostMultipartFormData data =
+        new AdminUploadmultipartPostMultipartFormDataImpl();
+
+    List<File> a = new ArrayList<>();
+    org.folio.rest.jaxrs.model.File t = new org.folio.rest.jaxrs.model.FileImpl();
+    t.setFile(new java.io.File("create_config.sql"));
+    a.add(t);
+    data.setFiles(a);
+    aClient.postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod.SAVE, null, "abc",
+      data, reply -> {
       reply.statusCode();
     });
 
@@ -52,10 +60,15 @@ public class Test {
       });
     });
     */
-    aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
+
+/*    aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
+    });*/
+    aClient.postAdminImportSQL(
+      Test.class.getClassLoader().getResourceAsStream("job.json"), reply -> {
+      reply.statusCode();
     });
     aClient.getAdminPostgresActiveSessions("postgres",  reply -> {
       reply.bodyHandler( body -> {

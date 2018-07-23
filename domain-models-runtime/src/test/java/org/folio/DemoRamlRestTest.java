@@ -9,13 +9,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 
-import javax.mail.BodyPart;
-import javax.mail.internet.InternetHeaders;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
-
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.client.AdminClient;
+import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
@@ -240,7 +237,7 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", TENANT, false);
 
 
-    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org", null, 200, 0, "application/json", TENANT, false);
+    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org.folio.rest", null, 200, 0, "application/json", TENANT, false);
 
     Metadata md = new Metadata();
     md.setCreatedByUserId("12345678-1234-1234-1234-123456789098");
@@ -280,56 +277,103 @@ public class DemoRamlRestTest {
    * @param context
    *
    */
-  private void checkClientCode(TestContext context)  {
-    Async async = context.async(1);
-    log.info("checkClientCode test");
+  @Test
+  public void checkClientCode(TestContext context)  {
+
     try {
-      MimeMultipart mmp = new MimeMultipart();
-      BodyPart bp = new MimeBodyPart(new InternetHeaders(),
-        IOUtils.toByteArray(getClass().getClassLoader().getResourceAsStream("job.json")));
-      bp.setDisposition("form-data");
-      bp.setFileName("abc.raml");
-      BodyPart bp2 = new MimeBodyPart(new InternetHeaders(),
-        IOUtils.toByteArray(getClass().getClassLoader().getResourceAsStream("job.json")));
-      bp2.setDisposition("form-data");
-      bp2.setFileName("abcd.raml");
-      log.debug("--- bp content --- "+bp.getContent());
-      mmp.addBodyPart(bp);
-      mmp.addBodyPart(bp2);
-/*      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
-      aClient.postAdminUploadmultipart(null, "abc",
+      Async async = context.async(3);
 
-        mmp, reply -> {
-        if(reply.statusCode() != 200){
-          context.fail();
-        }
-        log.debug("checkClientCode statusCode 1 " + reply.statusCode());
-        String key;
-        try {
-          SecretKey sk = AES.generateSecretKey();
-          key = AES.convertSecretKeyToString(sk);
-          final String expected = AES.encryptPasswordAsBase64("abc", sk);
-          aClient.postGetPassword(key, reply2 -> {
-            reply2.bodyHandler(bodyHandler -> {
-              if(!expected.equals(bodyHandler.toString())){
-                context.fail("expected : " + expected + " got " + bodyHandler.toString());
-              }
-              else{
-                log.info("received expected password: " + expected);
-                aClient.getModuleStats( r -> {
-                  r.bodyHandler( br -> {
-                    log.info("received: " + br.toString());
-                  });
-                  async.countDown();
-                });
-              }
+      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
+      /*
+      AdminUploadmultipartPostMultipartFormData data =
+          new AdminUploadmultipartPostMultipartFormDataImpl();
+
+      List<org.folio.rest.jaxrs.model.File> a = new ArrayList<>();
+      org.folio.rest.jaxrs.model.File t = new org.folio.rest.jaxrs.model.FileImpl();
+      t.setFile(new java.io.File("create_config.sql"));
+      a.add(t);
+      data.setFiles(a);
+      aClient.postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod.SAVE, "address", "abc",
+        data, reply -> {
+        reply.statusCode();
+        async.countDown();
+      });
+
+      aClient.postImportSQL(
+        Test.class.getClassLoader().getResourceAsStream("create_config.sql"), reply -> {
+        reply.statusCode();
+      });
+      aClient.getJstack( trace -> {
+        trace.bodyHandler( content -> {
+          System.out.println(content);
+        });
+      });
+
+      TenantClient tc = new TenantClient("localhost", 8888, "harvard", "harvard");
+      tc.post(null, response -> {
+        response.bodyHandler( body -> {
+          System.out.println(body.toString());
+          tc.delete( reply -> {
+            reply.bodyHandler( body2 -> {
+              System.out.println(body2.toString());
             });
-
           });
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-        }
-      });*/
+        });
+      });
+      */
+
+      aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
+        reply.bodyHandler( body -> {
+          //System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+
+      aClient.getAdminJstack( trace -> {
+        trace.bodyHandler( content -> {
+          //System.out.println(content);
+          async.countDown();
+        });
+      });
+
+      aClient.getAdminMemory(false , resp -> {
+        resp.bodyHandler( content -> {
+          //System.out.println(content);
+          async.countDown();
+        });
+      });
+
+      /*
+      aClient.postAdminImportSQL(
+        Test.class.getClassLoader().getResourceAsStream("job.json"), reply -> {
+        reply.statusCode();
+        async.countDown();
+      });
+      aClient.getAdminPostgresActiveSessions("postgres",  reply -> {
+        reply.bodyHandler( body -> {
+          System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+      aClient.getAdminPostgresLoad("postgres",  reply -> {
+        reply.bodyHandler( body -> {
+          System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+      aClient.getAdminPostgresTableAccessStats( reply -> {
+        reply.bodyHandler( body -> {
+          System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+      aClient.getAdminPostgresTableSize("postgres", reply -> {
+        reply.bodyHandler( body -> {
+          System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+*/
     }
     catch (Exception e) {
       log.error(e.getMessage(), e);
