@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>19.1.4-SNAPSHOT</version>
+  <version>19.1.7-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -151,34 +151,6 @@
         </configuration>
       </plugin>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-enforcer-plugin</artifactId>
-        <version>1.4.1</version>
-        <executions>
-          <execution>
-            <id>enforce-java</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                 <requireMavenVersion>
-                  <message>Maven &gt;= 3.3 required</message>
-                  <version>3.3</version>
-                </requireMavenVersion>
-                <requireJavaVersion>
-                  <message>
-                    JDK &gt;= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
-                    https://dev.folio.org/guides/troubleshooting/#missing-certificate-authority-for-lets-encrypt
-                  </message>
-                  <version>1.8.0-101</version>
-                </requireJavaVersion>
-              </rules>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
 
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
