@@ -39,7 +39,7 @@ public class PostgresClientIT {
 
   @After
   public void restoreOldLevel() {
-    LogUtil.setLevelForLoggers(oldLevel);
+    LogUtil.setLevelForRootLoggers(oldLevel);
   }
 
   @Before
@@ -247,7 +247,7 @@ public class PostgresClientIT {
   @Test
   public void tenantSeparation(TestContext context) {
     // don't log expected access violation errors
-    LogUtil.setLevelForLoggers(Level.FATAL);
+    LogUtil.setLevelForRootLoggers(Level.FATAL);
     String tenant = "tenantSeparation";
     String tenant2 = "tenantSeparation2";
 
