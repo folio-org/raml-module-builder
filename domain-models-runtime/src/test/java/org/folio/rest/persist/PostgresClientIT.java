@@ -31,7 +31,6 @@ public class PostgresClientIT {
 
   static private final String TENANT = "tenant";
   static private Vertx vertx;
-  static private boolean embedded = false;
 
   private ByteArrayOutputStream myStdErrBytes = new ByteArrayOutputStream();
   private PrintStream myStdErr = new PrintStream(myStdErrBytes);
@@ -74,8 +73,7 @@ public class PostgresClientIT {
     vertx = VertxUtils.getVertxWithExceptionHandler();
 
     String embed = System.getProperty("embed_postgres", "").toLowerCase().trim();
-    embedded = "true".equals(embed);
-    if (embedded) {
+    if ("true".equals(embed)) {
       PostgresClient.setIsEmbedded(true);
       PostgresClient.getInstance(vertx).startEmbeddedPostgres();
     }
@@ -280,7 +278,7 @@ public class PostgresClientIT {
   public void parallel(TestContext context) {
     // NOTE: seems like current embedded postgres does not run in parallel, only one concur connection?
     // this works fine when on a regular postgres
-    Assume.assumeFalse(embedded);
+    Assume.assumeFalse(PostgresClient.isEmbedded());
 
     /** number of parallel queries */
     int n = 20;
