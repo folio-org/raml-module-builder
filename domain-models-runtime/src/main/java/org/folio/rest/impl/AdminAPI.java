@@ -116,7 +116,7 @@ public class AdminAPI implements AdminResource {
           dump.append("</body></html>");
           code.complete(dump);
         } catch (Exception e) {
-          log.error(e);
+          log.error(e.getMessage(), e);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.withPlainInternalServerError("ERROR"
               + e.getMessage())));
         }
@@ -187,7 +187,7 @@ public class AdminAPI implements AdminResource {
             code.complete(dump);
           }
         } catch (Exception e) {
-          log.error(e);
+          log.error(e.getMessage(), e);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.withPlainInternalServerError("ERROR"
               + e.getMessage())));
         }
@@ -455,7 +455,7 @@ public class AdminAPI implements AdminResource {
           }
         });
     } catch (Exception e) {
-      log.error(e.getMessage());
+      log.error(e.getMessage(), e);
       asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
   }
@@ -666,7 +666,7 @@ public class AdminAPI implements AdminResource {
         }
       });
     } catch (Exception e) {
-      log.error(e.getMessage());
+      log.error(e.getMessage(), e);
       asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
   }
@@ -731,7 +731,7 @@ public class AdminAPI implements AdminResource {
         }
       });
     } catch (Exception e) {
-      log.error(e.getMessage());
+      log.error(e.getMessage(), e);
       asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
   }
