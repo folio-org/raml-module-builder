@@ -30,13 +30,30 @@
           "fieldName": "group",
           "tOps": "ADD",
           "caseSensitive": false
-        }
+        },
+        {
+          "fieldName": "patronGroup",
+          "tOps": "ADD",
+          "caseSensitive": true
+        }        
       ],
       "fullTextIndex": [
         {
           "fieldName": "barcode",
           "tOps": "ADD"
-        }
+        },
+        {
+          "fieldName": "username",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false         
+        },
+        {
+          "fieldName": "username, type",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false
+        }         
       ],      
       "likeIndex": [
         {
@@ -46,7 +63,15 @@
         },
         {
           "fieldName": "type",
-          "tOps": "ADD"
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false          
+        },
+        {
+          "fieldName": "username,type",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false          
         }
       ],
       "ginIndex": [
@@ -55,7 +80,19 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true
-        }
+        },      
+        {
+          "fieldName": "username, type",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "type",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false
+        }        
       ],
       "withAuditing": true,
       "pkColumnName": "id",
@@ -71,7 +108,7 @@
       },
       "uniqueIndex": [
         {
-          "fieldName": "username",
+          "fieldName": "username, type",
           "tOps": "ADD",
           "caseSensitive": false,
           "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
@@ -98,7 +135,6 @@
           "tOps": "ADD"
         }
       ],
-      "customSnippetPath": "insertAsSelect.sql",
       "deleteFields": [
         {
           "fieldName": "a.b"

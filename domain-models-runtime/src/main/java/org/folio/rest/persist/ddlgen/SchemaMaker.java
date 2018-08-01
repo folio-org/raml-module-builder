@@ -143,9 +143,12 @@ public class SchemaMaker {
         List<ForeignKeys> fKeys = t.getForeignKeys();
         if(fKeys != null){
           for (int j = 0; j < fKeys.size(); j++) {
+            //NOTE , FK are created on fields without the lowercasing / unaccenting
+            //meaning, there needs to be an index created without lowercasing / unaccenting
+            //otherwise no index will be used
             ForeignKeys f = fKeys.get(j);
-            f.setFieldPath(convertDotPath2PostgresNotation(f.getFieldName(), true));
-            f.setFieldName(f.getFieldName().replaceAll("\\.", "_"));
+            f.setFieldPath(convertDotPath2PostgresNotation(null,f.getFieldName(), true , null, false));
+            f.setFieldName(normalizeFieldName(f.getFieldName()));
           }
         }
 
@@ -157,10 +160,10 @@ public class SchemaMaker {
               ti.setCaseSensitive(true);
               ti.setRemoveAccents(false);
             }
-            String path = convertDotPath2PostgresNotation(ti.getFieldName(), ti.isStringType());
+            String path = convertDotPath2PostgresNotation(null,ti.getFieldName(), ti.isStringType() , ti, false);
             ti.setFieldPath(path);
-            indexMap.put(t.getTableName()+"_"+ti.getFieldName(), ti);
-            ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
+            indexMap.put(t.getTableName()+"_"+normalizeFieldName(ti.getFieldName()), ti);
+            ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
         }
 
@@ -172,8 +175,8 @@ public class SchemaMaker {
               ti.setCaseSensitive(true);
               ti.setRemoveAccents(false);
             }
-            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName() , ti.isStringType()));
-            ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
+            ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , ti.isStringType(), ti, true));
+            ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
         }
 
@@ -181,8 +184,8 @@ public class SchemaMaker {
         if(gInd != null){
           for (int j = 0; j < gInd.size(); j++) {
             Index ti = gInd.get(j);
-            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName() , true));
-            ti.setFieldName(ti.getFieldName().replaceAll("\\.", "_"));
+            ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , true , ti, true));
+            ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
         }
 
@@ -193,12 +196,13 @@ public class SchemaMaker {
             if(!u.isStringType()){
               u.setCaseSensitive(true);
               u.setRemoveAccents(false);
-            }
-            String path = convertDotPath2PostgresNotation(u.getFieldName(), u.isStringType());
+            }            
+            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), u.isStringType(), u, false);
             u.setFieldPath(path);
+            String normalized = normalizeFieldName(u.getFieldName());
             //remove . from path since this is incorrect syntax in postgres
-            indexMap.put(t.getTableName()+"_"+u.getFieldName(), u);
-            u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
+            indexMap.put(t.getTableName()+"_"+normalized, u);
+            u.setFieldName(normalized);
           }
         }
         
@@ -206,11 +210,12 @@ public class SchemaMaker {
         if(ftInd != null){
           for (int j = 0; j < ftInd.size(); j++) {
             Index u = ftInd.get(j);
-            String path = convertDotPath2PostgresNotation(u.getFieldName(), true);
+            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), true, u, true);
             u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres
-            indexMap.put(t.getTableName()+"_"+u.getFieldName(), u);
-            u.setFieldName(u.getFieldName().replaceAll("\\.", "_"));
+            String normalized = normalizeFieldName(u.getFieldName());
+            indexMap.put(t.getTableName()+"_"+normalized, u);
+            u.setFieldName(normalized);
           }
         }
       }
@@ -231,8 +236,9 @@ public class SchemaMaker {
           Join join = joins.get(j);
           ViewTable vt = join.getJoinTable();
           vt.setPrefix(vt.getTableName());
-          Index index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
-          vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
+          Index index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
+          vt.setJoinOnField(convertDotPath2PostgresNotation(vt.getPrefix(), 
+            vt.getPrefix() +"." + vt.getJoinOnField()  , true, index, false));
           if(index != null){
           //when creating the join on condition, we want to create it the same way as we created the index
           //so that the index will get used, for example:
@@ -243,8 +249,9 @@ public class SchemaMaker {
 
           vt = join.getTable();
           vt.setPrefix(vt.getTableName());
-          index = indexMap.get(vt.getTableName()+"_"+vt.getJoinOnField());
-          vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true));
+          index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
+          vt.setJoinOnField( convertDotPath2PostgresNotation(vt.getPrefix(), 
+            vt.getJoinOnField() , true, index, false));
           if(index != null){
             vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
             vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
@@ -311,26 +318,68 @@ public class SchemaMaker {
     this.schema = schema;
   }
 
-  public static String convertDotPath2PostgresNotation(String path, boolean stringType){
-    //generate index based on paths - note that all indexes will be with a -> to allow
-    //postgres to treat the different data types differently and not ->> which would be all
-    //strings
-    String []pathParts = path.split("\\.");
-    StringBuilder sb = new StringBuilder("jsonb");
-    for (int j = 0; j < pathParts.length; j++) {
-      if(j == pathParts.length-1){
-        if(stringType){
-          sb.append("->>");
+  private static String normalizeFieldName(String path) {
+    return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
+  }
+  
+  public static String convertDotPath2PostgresNotation(String prefix, 
+    String path, boolean stringType, Index index, boolean isFullText){
+    //when an index is on multiple columns, this will be defined something like "username,type"
+    //so split on command and build a path for each and then combine
+    String []requestIndexPath = path.split(",");
+    StringBuilder finalClause = new StringBuilder();
+    for (int i = 0; i < requestIndexPath.length; i++) {
+      if(finalClause.length() > 0) {
+        if(isFullText) {
+          finalClause.append(" || ' ' || "); 
         }
-        else{
+        else {
+          finalClause.append(" , ");
+        }        
+      }
+      //generate index based on paths - note that all indexes will be with a -> to allow
+      //postgres to treat the different data types differently and not ->> which would be all
+      //strings
+      String []pathParts = requestIndexPath[i].trim().split("\\.");
+      String prefixString = "jsonb";
+      if(prefix != null) {
+        prefixString = prefix +".jsonb";
+      }
+      StringBuilder sb = new StringBuilder(prefixString);
+      for (int j = 0; j < pathParts.length; j++) {
+        if(j == pathParts.length-1){
+          if(stringType){
+            sb.append("->>");
+          }
+          else{
+            sb.append("->");
+          }
+        } else{
           sb.append("->");
         }
-      } else{
-        sb.append("->");
+        sb.append("'").append(pathParts[j]).append("'");
       }
-      sb.append("'").append(pathParts[j]).append("'");
+      if(index != null && stringType) {
+        if(index.isRemoveAccents() || !index.isCaseSensitive()) {
+          if(index.isRemoveAccents()) {
+            sb.insert(0, "f_unaccent(").append(")");
+          }
+          if(!index.isCaseSensitive()) {
+            sb.insert(0, "lower(").append(")");
+          }
+        }
+        else {
+          //need to wrap path expression in () if lower / unaccent isnt
+          //appended to the path
+          sb.insert(0, "(").append(")");
+        }
+      }
+      else {
+        sb.insert(0, "(").append(")");
+      }
+      finalClause.append(sb.toString());
     }
-    return sb.toString();
+    return finalClause.toString();
   }
 
   public static String convertDotPath2PostgresMutateNotation(String path){
@@ -348,8 +397,8 @@ public class SchemaMaker {
 
   public static void main(String args[]) throws Exception {
 
-    SchemaMaker fm = new SchemaMaker("cql5", "mod_inventory_storage", TenantOperation.UPDATE, "mod-foo-18.2.1-SNAPSHOT.2", "mod-foo-18.2.4-SNAPSHOT.2");
-    String f = "C:\\Git\\raml-module-builder\\domain-models-runtime\\src\\main\\resources\\templates\\db_scripts\\examples\\schema.json.example";
+    SchemaMaker fm = new SchemaMaker("cql7", "mod_inventory_storage", TenantOperation.UPDATE, "mod-foo-18.2.1-SNAPSHOT.2", "mod-foo-18.2.4-SNAPSHOT.2");
+    String f = "C:\\Git\\clones\\rmb_release\\master\\raml-module-builder\\domain-models-runtime\\src\\main\\resources\\templates\\db_scripts\\examples\\schema.json.example.json";
     byte[] encoded = Files.readAllBytes(Paths.get(f));
     String json = new String(encoded, "UTF8");
     fm.setSchema(ObjectMapperTool.getMapper().readValue(

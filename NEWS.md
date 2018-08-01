@@ -1,3 +1,6 @@
+## 19.3.0 2018-08-01
+*RMB-176 Support index for multiple properties in declarative schema
+
 ## 19.2.0 2018-07-16
 * RMB-184 new "fulltext" index type in schema.json
 * RMB-183 add ability to set the result set distinct

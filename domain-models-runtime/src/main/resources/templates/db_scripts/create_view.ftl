@@ -15,15 +15,7 @@ CREATE OR REPLACE VIEW ${myuniversity}_${mymodule}.${view.viewName} AS select
     ${view.joinType}
     ${myuniversity}_${mymodule}.${joins.joinTable.tableName} ${joins.joinTable.prefix}
     on
-    <#if joins.table.indexUsesCaseSensitive == false>lower(</#if>
-    <#if joins.table.indexUsesRemoveAccents == true>f_unaccent(</#if>
-    ${joins.table.prefix}.${joins.table.joinOnField}
-    <#if joins.table.indexUsesCaseSensitive == false>)</#if>
-    <#if joins.table.indexUsesRemoveAccents == true>)</#if>
+    ${joins.table.joinOnField}
     =
-    <#if joins.joinTable.indexUsesCaseSensitive == false>lower(</#if>
-    <#if joins.joinTable.indexUsesRemoveAccents == true>f_unaccent(</#if>
-    ${joins.joinTable.prefix}.${joins.joinTable.joinOnField}
-    <#if joins.joinTable.indexUsesCaseSensitive == false>)</#if>
-    <#if joins.joinTable.indexUsesRemoveAccents == true>)</#if>
+    ${joins.joinTable.joinOnField}
   </#list>;
