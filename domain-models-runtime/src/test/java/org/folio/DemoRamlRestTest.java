@@ -321,6 +321,20 @@ public class DemoRamlRestTest {
         });
       });
       */
+/*      AdminUploadmultipartPostMultipartFormData data =
+          new AdminUploadmultipartPostMultipartFormDataImpl();
+      List<org.folio.rest.jaxrs.model.File> a = new ArrayList<>();
+      org.folio.rest.jaxrs.model.File t = new org.folio.rest.jaxrs.model.FileImpl();
+      t.setFile(new java.io.File("create_config.sql"));
+      t.setContent("content");
+      a.add(t);
+      data.setFile(a);
+      aClient.postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod.SAVE, "address", "abc",
+        data, reply -> {
+        reply.statusCode();
+        System.out.println("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
+        async.countDown();
+      });*/
 
       aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
         reply.bodyHandler( body -> {
