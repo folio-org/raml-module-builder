@@ -1,3 +1,6 @@
+## 19.3.1 2018-08-01
+Fix regression caused by RMB-176
+
 ## 19.3.0 2018-08-01
 *RMB-176 Support index for multiple properties in declarative schema
 
