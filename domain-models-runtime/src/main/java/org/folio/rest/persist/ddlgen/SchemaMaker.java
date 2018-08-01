@@ -147,7 +147,7 @@ public class SchemaMaker {
             //meaning, there needs to be an index created without lowercasing / unaccenting
             //otherwise no index will be used
             ForeignKeys f = fKeys.get(j);
-            f.setFieldPath(convertDotPath2PostgresNotation(null,f.getFieldName(), true , null, false));
+            f.setFieldPath(convertDotPath2PostgresNotation("NEW",f.getFieldName(), true , null, false));
             f.setFieldName(normalizeFieldName(f.getFieldName()));
           }
         }

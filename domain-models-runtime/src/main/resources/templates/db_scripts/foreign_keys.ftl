@@ -18,7 +18,7 @@
     RETURNS TRIGGER AS $$
     BEGIN
       <#list table.foreignKeys as key>
-      NEW.${key.fieldName} = NEW.${key.fieldPath};
+      NEW.${key.fieldName} = ${key.fieldPath};
       </#list>
       RETURN NEW;
     END;
