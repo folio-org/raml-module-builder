@@ -147,7 +147,7 @@ public class SchemaMaker {
             //meaning, there needs to be an index created without lowercasing / unaccenting
             //otherwise no index will be used
             ForeignKeys f = fKeys.get(j);
-            f.setFieldPath(convertDotPath2PostgresNotation(f.getFieldName(), true , null, false));
+            f.setFieldPath(convertDotPath2PostgresNotation(null,f.getFieldName(), true , null, false));
             f.setFieldName(normalizeFieldName(f.getFieldName()));
           }
         }
@@ -160,7 +160,7 @@ public class SchemaMaker {
               ti.setCaseSensitive(true);
               ti.setRemoveAccents(false);
             }
-            String path = convertDotPath2PostgresNotation(ti.getFieldName(), ti.isStringType() , ti, false);
+            String path = convertDotPath2PostgresNotation(null,ti.getFieldName(), ti.isStringType() , ti, false);
             ti.setFieldPath(path);
             indexMap.put(t.getTableName()+"_"+normalizeFieldName(ti.getFieldName()), ti);
             ti.setFieldName(normalizeFieldName(ti.getFieldName()));
@@ -175,7 +175,7 @@ public class SchemaMaker {
               ti.setCaseSensitive(true);
               ti.setRemoveAccents(false);
             }
-            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName() , ti.isStringType(), ti, true));
+            ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , ti.isStringType(), ti, true));
             ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
         }
@@ -184,7 +184,7 @@ public class SchemaMaker {
         if(gInd != null){
           for (int j = 0; j < gInd.size(); j++) {
             Index ti = gInd.get(j);
-            ti.setFieldPath(convertDotPath2PostgresNotation(ti.getFieldName() , true , ti, true));
+            ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , true , ti, true));
             ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
         }
@@ -197,7 +197,7 @@ public class SchemaMaker {
               u.setCaseSensitive(true);
               u.setRemoveAccents(false);
             }            
-            String path = convertDotPath2PostgresNotation(u.getFieldName(), u.isStringType(), u, false);
+            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), u.isStringType(), u, false);
             u.setFieldPath(path);
             String normalized = normalizeFieldName(u.getFieldName());
             //remove . from path since this is incorrect syntax in postgres
@@ -210,7 +210,7 @@ public class SchemaMaker {
         if(ftInd != null){
           for (int j = 0; j < ftInd.size(); j++) {
             Index u = ftInd.get(j);
-            String path = convertDotPath2PostgresNotation(u.getFieldName(), true, u, true);
+            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), true, u, true);
             u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres
             String normalized = normalizeFieldName(u.getFieldName());
@@ -237,7 +237,8 @@ public class SchemaMaker {
           ViewTable vt = join.getJoinTable();
           vt.setPrefix(vt.getTableName());
           Index index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
-          vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField()  , true, index, false));
+          vt.setJoinOnField(convertDotPath2PostgresNotation(vt.getPrefix(), 
+            vt.getPrefix() +"." + vt.getJoinOnField()  , true, index, false));
           if(index != null){
           //when creating the join on condition, we want to create it the same way as we created the index
           //so that the index will get used, for example:
@@ -249,7 +250,8 @@ public class SchemaMaker {
           vt = join.getTable();
           vt.setPrefix(vt.getTableName());
           index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
-          vt.setJoinOnField(convertDotPath2PostgresNotation( vt.getJoinOnField() , true, index, false));
+          vt.setJoinOnField( convertDotPath2PostgresNotation(vt.getPrefix(), 
+            vt.getJoinOnField() , true, index, false));
           if(index != null){
             vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
             vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
@@ -317,10 +319,11 @@ public class SchemaMaker {
   }
 
   private static String normalizeFieldName(String path) {
-	return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
+    return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
   }
   
-  public static String convertDotPath2PostgresNotation(String path, boolean stringType, Index index, boolean isFullText){
+  public static String convertDotPath2PostgresNotation(String prefix, 
+    String path, boolean stringType, Index index, boolean isFullText){
     //when an index is on multiple columns, this will be defined something like "username,type"
     //so split on command and build a path for each and then combine
     String []requestIndexPath = path.split(",");
@@ -331,14 +334,18 @@ public class SchemaMaker {
           finalClause.append(" || ' ' || "); 
         }
         else {
-          finalClause.append(" , ");	
+          finalClause.append(" , ");
         }        
       }
       //generate index based on paths - note that all indexes will be with a -> to allow
       //postgres to treat the different data types differently and not ->> which would be all
       //strings
       String []pathParts = requestIndexPath[i].trim().split("\\.");
-      StringBuilder sb = new StringBuilder("jsonb");
+      String prefixString = "jsonb";
+      if(prefix != null) {
+        prefixString = prefix +".jsonb";
+      }
+      StringBuilder sb = new StringBuilder(prefixString);
       for (int j = 0; j < pathParts.length; j++) {
         if(j == pathParts.length-1){
           if(stringType){
@@ -368,7 +375,7 @@ public class SchemaMaker {
         }
       }
       else {
-    	  sb.insert(0, "(").append(")");
+        sb.insert(0, "(").append(")");
       }
       finalClause.append(sb.toString());
     }

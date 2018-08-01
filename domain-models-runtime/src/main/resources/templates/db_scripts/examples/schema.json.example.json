@@ -30,7 +30,12 @@
           "fieldName": "group",
           "tOps": "ADD",
           "caseSensitive": false
-        }
+        },
+        {
+          "fieldName": "patronGroup",
+          "tOps": "ADD",
+          "caseSensitive": true
+        }        
       ],
       "fullTextIndex": [
         {
@@ -70,6 +75,12 @@
         }
       ],
       "ginIndex": [
+        {
+          "fieldName": "username",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },      
         {
           "fieldName": "username, type",
           "tOps": "ADD",
