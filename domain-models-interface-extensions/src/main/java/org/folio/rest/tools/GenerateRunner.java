@@ -5,9 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import org.folio.rest.tools.plugins.CustomTypeAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
@@ -37,7 +35,6 @@ public class GenerateRunner {
 
   private String outputDirectory = null;
   private String outputDirectoryWithPackage = null;
-  private String modelDirectory = null;
   private Configuration configuration = null;
 
   /**

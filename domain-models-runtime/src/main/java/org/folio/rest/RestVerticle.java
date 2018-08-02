@@ -936,13 +936,6 @@ public class RestVerticle extends AbstractVerticle {
     return new JsonObject();
   }
 
-  private static String replaceLast(String string, String substring, String replacement) {
-    int index = string.lastIndexOf(substring);
-    if (index == -1)
-      return string;
-    return string.substring(0, index) + replacement + string.substring(index + substring.length());
-  }
-
   private MappedClasses populateConfig() {
     MappedClasses mappedURLs = new MappedClasses();
     JsonObject jObjClasses = new JsonObject();

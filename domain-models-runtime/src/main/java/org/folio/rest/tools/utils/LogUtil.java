@@ -114,7 +114,7 @@ public class LogUtil {
     //log4j logs
     LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
     Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
-    allLoggers.forEach( (log) -> {
+    allLoggers.forEach( log -> {
       if(log != null && log.getLevel() != null && log.getName() != null){
         loggers.put(log.getName(), log.getLevel().toString());
       }
