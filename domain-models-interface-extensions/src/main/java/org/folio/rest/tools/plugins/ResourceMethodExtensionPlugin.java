@@ -70,31 +70,26 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     try {
       handleOverrides();
       addRoutingContext(methodSpec, method);
-      Builder builder = generateOverrides(method.resource().resourcePath(), method.method(), method, methodSpec);
-      addParams(method, builder);
+      Builder builder = generateOverrides(method.resource().resourcePath(), method.method(), methodSpec);
+      addParams(builder);
       generateJavaDocs(method, builder);
       return builder;
     } catch ( Exception e) {
-      e.printStackTrace();
+      log.error(e.getMessage(), e);
     }
     return null;
   }
 
-  private void addRoutingContext(Builder methodSpec, GMethod method) throws Exception {
+  private void addRoutingContext(Builder methodSpec, GMethod method) {
     //add routingContext param if indicated in generate runner plugin in pom
-    //PomReader.INSTANCE.getProps().list(System.out);
     String endpoints2addRoutingContext = PomReader.INSTANCE.getProps().getProperty("generate_routing_context");
     if(endpoints2addRoutingContext != null){
       String []rcFuncs = endpoints2addRoutingContext.split(",");
       for (int i = 0; i < rcFuncs.length; i++) {
         try {
-          //System.out.println("endpoints2addRoutingContext = " + endpoints2addRoutingContext +
-           // ", current path = " + action.getResource().getUri());
           if(rcFuncs[i].equalsIgnoreCase(method.resource().resourcePath())){
             methodSpec.addParameter(io.vertx.ext.web.RoutingContext.class, "routingContext");
-            /*methodSpec.addJavadoc("RoutingContext of the request. Note that the RMB framework handles all routing."
-                + "This should only be used if a third party add-on to vertx needs the RC as input ");
-*/          }
+          }
         } catch (Exception e) {
           log.error(e.getMessage(), e);
         }
@@ -102,7 +97,7 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     }
   }
 
-  private void addParams(GMethod method, MethodSpec.Builder methodSpec){
+  private void addParams(MethodSpec.Builder methodSpec){
 
     ParameterizedTypeName okapiHeader =
         ParameterizedTypeName.get(ClassName.get(java.util.Map.class),
@@ -127,8 +122,6 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
   private void generateJavaDocs(GMethod method, MethodSpec.Builder methodSpec){
 
     methodSpec.addJavadoc(method.getDescription() +"\n");
-    //methodSpec.addJavadoc(method.resource().getDescription() + "\n");
-
     List<GParameter> methodParams = method.queryParameters();
 
     for(int i=0; i<methodParams.size(); i++){
@@ -228,7 +221,7 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     return new ArrayList<>(spec.annotations);
   }
 
-  private Builder generateOverrides(String path, String verb, GMethod method, Builder methodSpec){
+  private Builder generateOverrides(String path, String verb, Builder methodSpec){
 
     //clone the method without the params as we will need to update params with new / updated
     //annotations and this cannot be done directly on the method as these lists are immutable
@@ -262,29 +255,28 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
           //for the parameter whose annotation we need to override
           JsonObject job = entry.getValue();
           String type = job.getString("type");
-          Object value = job.getValue("value");
+          Object value = job.getValue(ANNOTATION_VALUE);
           String paramName = job.getString("paramName");
-          if(verb.equalsIgnoreCase(job.getString("verb"))){
+          if(verb.equalsIgnoreCase(job.getString("verb")) && 
+            paramName.equalsIgnoreCase(paramSpec.get(i[0]).name)){
             //make sure the verb is aligned
-            if(paramName.equalsIgnoreCase(paramSpec.get(i[0]).name)){
-              //we found the parameter that should be overridden, for the path, and for the verb
-              //we cannot update the param, so we need to recreate it and then update the list
-              //by removing the old and adding the recreated param
-              //we need the original annotations so that we can add the ones that were not updated
-              for(int j=0; j<originalAnnotations.size(); j++ ){
-                if(originalAnnotations.get(j).type.toString() != null
-                    && Enum2Annotation.getAnnotation(type).endsWith(originalAnnotations.get(j).type.toString())){
+            //we found the parameter that should be overridden, for the path, and for the verb
+            //we cannot update the param, so we need to recreate it and then update the list
+            //by removing the old and adding the recreated param
+            //we need the original annotations so that we can add the ones that were not updated
+            for(int j=0; j<originalAnnotations.size(); j++ ){
+              if(originalAnnotations.get(j).type.toString() != null
+                && Enum2Annotation.getAnnotation(type).endsWith(originalAnnotations.get(j).type.toString())){
                   originalAnnotations.remove(j);
-                  break;
-                }
+                break;
               }
-              try {
-                AnnotationSpec aSpec =
-                    buildAnnotation(Class.forName(Enum2Annotation.getAnnotation(type)), value, type);
-                originalAnnotations.add(aSpec);
-              } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-              }
+            }
+            try {
+              AnnotationSpec aSpec =
+                  buildAnnotation(Class.forName(Enum2Annotation.getAnnotation(type)), value, type);
+              originalAnnotations.add(aSpec);
+            } catch (ClassNotFoundException e) {
+              log.error(e.getMessage(), e);
             }
           }
         });

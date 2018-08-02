@@ -40,10 +40,6 @@ public class GenerateRunner {
   private String modelDirectory = null;
   private Configuration configuration = null;
 
-  private boolean usingDefaultCustomField = true;
-
-  private Set<String> injectedAnnotations = new HashSet<>();
-
   /**
    * Create a GenerateRunner for a specific target directory.
    * <p>
@@ -171,7 +167,6 @@ public class GenerateRunner {
       throw new IOException("Input path is not a valid directory: " + inputDirectory);
     }
     configuration.setOutputDirectory(new File(outputDirectory));
-    //configuration.setSourceDirectory(inputDir);
     int numMatches = 0;
 
     File []ramls = new File(inputDirectory).listFiles( (dir, name) -> name.endsWith(".raml") );
@@ -186,21 +181,12 @@ public class GenerateRunner {
         //generate java interfaces and pojos from raml
         scanner.handle(ramls[j]);
         log.info("processed " + ramls[j]);
-        //GENERATOR.run(new FileReader(ramls[j]), configuration, ramls[j].getAbsolutePath());
         numMatches++;
       }
       else{
         log.info(ramls[j] + " has a .raml suffix but does not start with #%RAML");
       }
     }
-/*    for (int j = 0; j < schemaCustomFields.length; j++) {
-      JsonObject jo = new JsonObject(schemaCustomFields[j]);
-      String fieldName = jo.getString("fieldname");
-      Object fieldValue = jo.getValue("fieldvalue");
-      String annotation = jo.getString("annotation");
-      log.info("processing unreferenced schemas. looking for " + fieldName + " with value " + fieldValue);
-      processRemainingSchemas(globalUnprocessedSchemas, processedPojos, fieldName, fieldValue, annotation);
-    }*/
     log.info("processed: " + numMatches + " raml files");
   }
 
