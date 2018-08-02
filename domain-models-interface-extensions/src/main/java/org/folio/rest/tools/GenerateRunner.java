@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.folio.rest.tools.plugins.CustomTypeAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
@@ -53,8 +54,6 @@ public class GenerateRunner {
   public GenerateRunner(String outputDirectory) {
     this.outputDirectory = outputDirectory;
     outputDirectoryWithPackage = outputDirectory + RTFConsts.INTERFACE_PACKAGE.replace('.', '/');
-    modelDirectory = outputDirectory + MODEL_PACKAGE_DEFAULT.replace('.', '/');
-
     configuration = new Configuration();
     configuration.setModelPackage(MODEL_PACKAGE_DEFAULT);
     configuration.setResourcePackage(RTFConsts.INTERFACE_PACKAGE);
