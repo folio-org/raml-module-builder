@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>19.3.2-SNAPSHOT</version>
+    <version>20.0.0-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-interface-extensions</artifactId>
 
@@ -13,10 +13,10 @@
       <artifactId>vertx-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.raml</groupId>
-      <artifactId>raml-jaxrs-codegen-core</artifactId>
-      <version>1.3.4</version>
-      <scope>compile</scope>
+        <groupId>org.raml.jaxrs</groupId>
+        <artifactId>jaxrs-code-generator</artifactId>
+        <version>3.0.2</version>
+         <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -74,12 +74,17 @@
         <groupId>com.github.javaparser</groupId>
         <artifactId>javaparser-core</artifactId>
         <version>3.3.0</version>
+    </dependency>  
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.9.1</version>
     </dependency>
     <dependency>
-        <groupId>org.raml</groupId>
-        <artifactId>raml-parser-2</artifactId>
-        <version>1.0.13</version>
-    </dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <version>2.9.1</version>
+    </dependency>    
   </dependencies>
 
   <build>
@@ -105,12 +110,6 @@
               <artifactId>domain-models-api-aspects</artifactId>
             </aspectLibrary>
           </aspectLibraries>
-          <weaveDependencies>
-            <weaveDependency>
-              <groupId>org.jsonschema2pojo</groupId>
-              <artifactId>jsonschema2pojo-core</artifactId>
-            </weaveDependency>
-          </weaveDependencies>
         </configuration>
         <executions>
           <execution>

@@ -12,7 +12,7 @@ import io.vertx.ext.dropwizard.MatchType;
 public class RestLauncher extends Launcher {
 
   static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
 
   public static void main(String[] args) {

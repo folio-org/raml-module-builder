@@ -29,14 +29,14 @@
     },
     "last_modified": {
       "type": "object",
-      "$ref" : "last_modified.schema"
+      "$ref" : "last_modified"
     },
     "inst_id": {
       "type": "string"
     },
     "parameters": {
       "type": "object",
-      "$ref" : "raml-util/schemas/parameters.schema",
+      "$ref" : "parameters",
       "readonly": true
     }
   },

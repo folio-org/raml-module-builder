@@ -1,19 +1,24 @@
 package org.folio.rest.tools.utils;
 
+import java.util.Collection;
 import java.util.Enumeration;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.folio.rest.RestVerticle;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 public class LogUtil {
 
-  private static final Logger log = Logger.getLogger(LogUtil.class);
+  private static final Logger log = LoggerFactory.getLogger(LogUtil.class);
 
   public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int ResponseCode, long responseTime,
       long responseSize, String url, String queryParams, String message) {
@@ -42,12 +47,15 @@ public class LogUtil {
     log.error(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(funtion).append(" ").append(message));
   }
 
+  /**
+   * NOT SUPPORTED ANY MORE
+   */
   public static void closeLogger() {
-    LogManager.getLogger(LogUtil.class).removeAllAppenders();
+
   }
 
   private static String injectDeploymentId(){
-    if(Logger.getLogger(RestVerticle.class).isDebugEnabled()){
+    if(LogManager.getLogger(RestVerticle.class).isDebugEnabled()){
       if(Vertx.currentContext() != null && Vertx.currentContext().getInstanceCount() > 1 &&
           RestVerticle.getDeploymentId() != null){
         return RestVerticle.getDeploymentId() + " ";
@@ -67,16 +75,17 @@ public class LogUtil {
     JsonObject updatedLoggers = new JsonObject();
 
     //log4j logs
-    Enumeration<Logger> loggers = LogManager.getLoggerRepository().getCurrentLoggers();
-    while (loggers.hasMoreElements()) {
-      Logger log = loggers.nextElement();
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+    Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
+
+    allLoggers.forEach( log -> {
       if(log != null && packageName != null && (log.getName().startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
         if(log != null){
-          log.setLevel(org.apache.log4j.Level.toLevel(level));
+          log.setLevel(getLog4jLevel(level));
           updatedLoggers.put(log.getName(), log.getLevel().toString());
         }
       }
-    }
+    });
 
     //JUL logs
     java.util.logging.LogManager manager = java.util.logging.LogManager.getLogManager();
@@ -90,7 +99,7 @@ public class LogUtil {
           updatedLoggers.put(logger.getName(), logger.getLevel().getName());
         }
       }
-}
+    }
     return updatedLoggers;
   }
 
@@ -103,13 +112,13 @@ public class LogUtil {
     JsonObject loggers = new JsonObject();
 
     //log4j logs
-    Enumeration<Logger> logger = LogManager.getLoggerRepository().getCurrentLoggers();
-    while (logger.hasMoreElements()) {
-      Logger log = logger.nextElement();
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+    Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
+    allLoggers.forEach( (log) -> {
       if(log != null && log.getLevel() != null && log.getName() != null){
         loggers.put(log.getName(), log.getLevel().toString());
       }
-    }
+    });
 
     //JUL logs
     java.util.logging.LogManager manager = java.util.logging.LogManager.getLogManager();
@@ -127,4 +136,30 @@ public class LogUtil {
     return loggers;
   }
 
+  public static void setLevelForRootLoggers(Level level){
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+    Configuration config = ctx.getConfiguration();
+    LoggerConfig loggerConfig = config.getRootLogger();
+    loggerConfig.setLevel(level);
+    ctx.updateLoggers();
+  }
+
+  private static Level getLog4jLevel(String level){
+    if(level.equalsIgnoreCase("SEVERE")){
+      return Level.ERROR;
+    }
+    else if(level.equalsIgnoreCase("WARNING")){
+      return Level.WARN;
+    }
+    else if(level.equalsIgnoreCase("INFO")){
+      return Level.INFO;
+    }
+    else if(level.equalsIgnoreCase("FINE")){
+      return Level.DEBUG;
+    }
+    else if(level.equalsIgnoreCase("FINER") || level.equalsIgnoreCase("FINEST")){
+      return Level.TRACE;
+    }
+    return Level.INFO;
+  }
 }
