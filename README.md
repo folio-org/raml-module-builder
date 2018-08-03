@@ -31,7 +31,7 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
             kv_configuration.schema: !include ../_schemas/kv_configuration.schema
         TO:
             kv_configuration: !include ../_schemas/kv_configuration.schema
-        WHEN: 
+        WHEN:
 	        kv_configuration is referenced anywhere in the raml
 7.    Paths cannot be used as keys in the raml
         CHANGE:
@@ -40,18 +40,18 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
             kv_configuration: !include /_schemas/kv_configuration.schema
 8. resource type examples must not be strict (will result in invalid json content otherwise)
         CHANGE:
-            example: <<exampleItem>>  
-        TO: 
+            example: <<exampleItem>>
+        TO:
             example:
                 strict: false
                 value: <<exampleItem>>
-9. Generated interfaces dont have the 'Resource' suffix 
+9. Generated interfaces dont have the 'Resource' suffix
 	10. ConfigurationsResource -> Configurations
 10. Names of generated pojos (also referenced by the generated interfaces) may change
-    Example:   
+    Example:
         kv_configuration: !include ../_schemas/kv_configuration.schema
         will produce a pojo called: KvConfiguration
-        
+
         referencing the kv_configuration in a schema (below, will produce a pojo called Config - which means the same pojo will be created twice with different names. Therefore, it is preferable to synchronize names)
             "configs": {
               "id": "configurationData",
@@ -72,8 +72,8 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
         withJsonUnprocessableEntity -> respond422WithApplicationJson
         withAnyOK -> respond200WithAnyAny
         withPlainOK -> respond200WithTextPlain
-        withJsonCreated -> respond201WithApplicationJson 
-        
+        withJsonCreated -> respond201WithApplicationJson
+
             Note: For 201 / created codes, the location header has changed and is no longer a string but an object and should be passed in as:
                 PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
 14. Multipart formdata is currently not supported
@@ -1360,10 +1360,10 @@ Right now all indexes on string fields in the jsonb should be declared as case i
   }
 ```
 
-Behind the scenes, the CQL to Postgres query converter will generate regex queries for `=` queries. 
-For example: `?query=fieldA=ABC` will generate an SQL regex query, which will require a gin index to perform on large tables. 
+Behind the scenes, the CQL to Postgres query converter will generate regex queries for `=` queries.
+For example: `?query=fieldA=ABC` will generate an SQL regex query, which will require a gin index to perform on large tables.
 
-The converter will generate LIKE queries for `==` queries. For example `?query=fieldA==ABC` will generate an SQL LIKE query that will use a btree index (if it exists). For queries that only look up specific ids, etc... the preferred approach would be to query with two equals `==` and hence, declare a regular btree (index). 
+The converter will generate LIKE queries for `==` queries. For example `?query=fieldA==ABC` will generate an SQL LIKE query that will use a btree index (if it exists). For queries that only look up specific ids, etc... the preferred approach would be to query with two equals `==` and hence, declare a regular btree (index).
 
 
 ##### Posting information
