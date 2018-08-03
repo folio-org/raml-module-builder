@@ -8,19 +8,21 @@ See the file ["LICENSE"](LICENSE) for more information.
 
 ## Upgrading to v20
 
-RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there are multiple changes that must be implemented by module's that upgrade to this version.
+RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there are multiple changes that must be implemented by modules that upgrade to this version.
 
 ```
+0. Update the "raml-util" git submodule to use its "raml1.0" branch.
 1. MUST CHANGE 0.8 to 1.0 in all RAML files (first line)
 2. MUST remove the '-' signs from the RAML
-	3. CHANGE:  - configs: !include... TO configs: !include...
+	e.g. CHANGE:  - configs: !include... TO configs: !include...
+2b. MUST change the "schemas:" section to "types:"
 3. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
 4. MUST change documentation field to this format
-    documentation:
+   documentation:
      - title: Configuration API updating system wide configurations
        content: <b>This documents the API calls that can be made to update configurations in the system</b>
 5. In resource types change 'schema:' to 'type:' - this also means that the '- schema:' in the raml is replaced with 'type:'
-	6. For example:
+	For example:
           body:
             application/json:
               type: <<schema>>
@@ -46,7 +48,7 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
                 strict: false
                 value: <<exampleItem>>
 9. Generated interfaces dont have the 'Resource' suffix
-	10. ConfigurationsResource -> Configurations
+	e.g. ConfigurationsResource -> Configurations
 10. Names of generated pojos (also referenced by the generated interfaces) may change
     Example:
         kv_configuration: !include ../_schemas/kv_configuration.schema
