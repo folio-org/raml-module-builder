@@ -12,34 +12,37 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
 
 ```
 0. Update the "raml-util" git submodule to use its "raml1.0" branch.
-1. MUST CHANGE 0.8 to 1.0 in all RAML files (first line)
+1. MUST change 0.8 to 1.0 in all RAML files (first line)
 2. MUST remove the '-' signs from the RAML
-	e.g. CHANGE:  - configs: !include... TO configs: !include...
+	 e.g. CHANGE:  - configs: !include... TO configs: !include...
 2b. MUST change the "schemas:" section to "types:"
 3. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
-4. MUST change documentation field to this format
+4. MUST ensure that documentation field is this format:
    documentation:
-     - title: Configuration API updating system wide configurations
-       content: <b>This documents the API calls that can be made to update configurations in the system</b>
-5. In resource types change 'schema:' to 'type:' - this also means that the '- schema:' in the raml is replaced with 'type:'
-	For example:
+     - title: Foo
+       content: Bar
+5. In resource types change 'schema:' to 'type:'
+   This also means that the '- schema:' in the raml is replaced with 'type:'
+	 For example:
           body:
             application/json:
               type: <<schema>>
-6. remove suffixes - any suffix causes a problem - even `.json` when it is used to populate placeholders in the raml.
-    declaring schemas with a suffix , like metadata.schema and only referencing them from other schemas is ok.
-    Example:
+6. Remove suffixes. Any suffix causes a problem (even `.json`) when it is used to populate
+   placeholders in the RAML file.
+   Declaring schemas with a suffix (such as metadata.schema) and only referencing them
+   from other schemas, is okay to use a suffix.
+   For example:
         CHANGE:
             kv_configuration.schema: !include ../_schemas/kv_configuration.schema
         TO:
             kv_configuration: !include ../_schemas/kv_configuration.schema
         WHEN:
 	        kv_configuration is referenced anywhere in the raml
-7.    Paths cannot be used as keys in the raml
+7. Paths cannot be used as keys in the raml
         CHANGE:
-            /_schemas/kv_configuration.schema: !include /_schemas/kv_configuration.schema
+            _schemas/kv_configuration.schema: !include _schemas/kv_configuration.schema
         TO
-            kv_configuration: !include /_schemas/kv_configuration.schema
+            kv_configuration: !include _schemas/kv_configuration.schema
 8. resource type examples must not be strict (will result in invalid json content otherwise)
         CHANGE:
             example: <<exampleItem>>
@@ -48,13 +51,15 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
                 strict: false
                 value: <<exampleItem>>
 9. Generated interfaces dont have the 'Resource' suffix
-	e.g. ConfigurationsResource -> Configurations
+	 e.g. ConfigurationsResource -> Configurations
 10. Names of generated pojos (also referenced by the generated interfaces) may change
-    Example:
+    For example:
         kv_configuration: !include ../_schemas/kv_configuration.schema
         will produce a pojo called: KvConfiguration
 
-        referencing the kv_configuration in a schema (below, will produce a pojo called Config - which means the same pojo will be created twice with different names. Therefore, it is preferable to synchronize names)
+    Referencing the kv_configuration in a schema (example below will produce a pojo called Config)
+    which means the same pojo will be created twice with different names.
+    Therefore, it is preferable to synchronize names.
             "configs": {
               "id": "configurationData",
               "type": "array",
@@ -62,10 +67,11 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
                 "type": "object",
                 "$ref": "kv_configuration"
             }
-    this may affect which pojo is referenced by the interface - best to use the same name.
-11. Generated methods do not throw exceptions anymore. This will require removing the 'throws Exception' from the implementing methods.
+    This may affect which pojo is referenced by the interface - best to use the same name.
+11. Generated methods do not throw exceptions anymore.
+    This will require removing the 'throws Exception' from the implementing methods.
 12. Names of generated methods has changed
-13. response codes changed
+13. The response codes have changed:
         withJsonOK -> respond200WithApplicationJson
         withNoContent -> respond204
         withPlainBadRequest -> respond400WithTextPlain
@@ -77,8 +83,9 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
         withPlainOK -> respond200WithTextPlain
         withJsonCreated -> respond201WithApplicationJson
 
-            Note: For 201 / created codes, the location header has changed and is no longer a string but an object and should be passed in as:
-                PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
+    Note: For 201 / created codes, the location header has changed and is no longer a string
+    but an object and should be passed in as:
+      PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
 14. Multipart formdata is currently not supported
 ```
 ## Introduction
