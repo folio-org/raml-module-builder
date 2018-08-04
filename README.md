@@ -71,6 +71,7 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
         withPlainBadRequest -> respond400WithTextPlain
         withPlainNotFound -> respond404WithTextPlain
         withPlainInternalServerError -> respond500WithTextPlain
+        withPlainUnauthorized -> respond401WithTextPlain
         withJsonUnprocessableEntity -> respond422WithApplicationJson
         withAnyOK -> respond200WithAnyAny
         withPlainOK -> respond200WithTextPlain
