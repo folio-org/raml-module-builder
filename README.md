@@ -11,23 +11,23 @@ See the file ["LICENSE"](LICENSE) for more information.
 RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there are multiple changes that must be implemented by modules that upgrade to this version.
 
 ```
-0. Update the "raml-util" git submodule to use its "raml1.0" branch.
-1. MUST change 0.8 to 1.0 in all RAML files (first line)
-2. MUST remove the '-' signs from the RAML
+1. Update the "raml-util" git submodule to use its "raml1.0" branch.
+2. MUST change 0.8 to 1.0 in all RAML files (first line)
+3. MUST remove the '-' signs from the RAML
 	 e.g. CHANGE:  - configs: !include... TO configs: !include...
-2b. MUST change the "schemas:" section to "types:"
-3. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
-4. MUST ensure that documentation field is this format:
+4. MUST change the "schemas:" section to "types:"
+5. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
+6. MUST ensure that documentation field is this format:
    documentation:
      - title: Foo
        content: Bar
-5. In resource types change 'schema:' to 'type:'
+7. In resource types change 'schema:' to 'type:'
    This also means that the '- schema:' in the raml is replaced with 'type:'
 	 For example:
           body:
             application/json:
               type: <<schema>>
-6. Remove suffixes. Any suffix causes a problem (even `.json`) when it is used to populate
+8. Remove suffixes. Any suffix causes a problem (even `.json`) when it is used to populate
    placeholders in the RAML file.
    Declaring schemas with a suffix (such as metadata.schema) and only referencing them
    from other schemas, is okay to use a suffix.
@@ -38,21 +38,21 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
             kv_configuration: !include ../_schemas/kv_configuration.schema
         WHEN:
 	        kv_configuration is referenced anywhere in the raml
-7. Paths cannot be used as keys in the raml
+9. Paths cannot be used as keys in the raml
         CHANGE:
             _schemas/kv_configuration.schema: !include _schemas/kv_configuration.schema
         TO
             kv_configuration: !include _schemas/kv_configuration.schema
-8. resource type examples must not be strict (will result in invalid json content otherwise)
+10. The resource type examples must not be strict (will result in invalid json content otherwise)
         CHANGE:
             example: <<exampleItem>>
         TO:
             example:
                 strict: false
                 value: <<exampleItem>>
-9. Generated interfaces dont have the 'Resource' suffix
-	 e.g. ConfigurationsResource -> Configurations
-10. Names of generated pojos (also referenced by the generated interfaces) may change
+11. Generated interfaces dont have the 'Resource' suffix
+	  e.g. ConfigurationsResource -> Configurations
+12. Names of generated pojos (also referenced by the generated interfaces) may change
     For example:
         kv_configuration: !include ../_schemas/kv_configuration.schema
         will produce a pojo called: KvConfiguration
@@ -68,10 +68,10 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
                 "$ref": "kv_configuration"
             }
     This may affect which pojo is referenced by the interface - best to use the same name.
-11. Generated methods do not throw exceptions anymore.
+13. Generated methods do not throw exceptions anymore.
     This will require removing the 'throws Exception' from the implementing methods.
-12. Names of generated methods has changed
-13. The response codes have changed:
+14. Names of generated methods has changed
+15. The response codes have changed:
         withJsonOK -> respond200WithApplicationJson
         withNoContent -> respond204
         withPlainBadRequest -> respond400WithTextPlain
@@ -86,7 +86,7 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
     Note: For 201 / created codes, the location header has changed and is no longer a string
     but an object and should be passed in as:
       PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
-14. Multipart formdata is currently not supported
+16. Multipart formdata is currently not supported
 ```
 ## Introduction
 
