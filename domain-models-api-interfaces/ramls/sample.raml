@@ -1,16 +1,16 @@
-#%RAML 0.8
+#%RAML 1.0
 
 title: e-BookMobile API
 baseUri: http://localhost:8081/{version}
 version: v1
 
-schemas:
-  - book: !include book.schema
-  - raml-util/schemas/metadata.schema: !include raml-util/schemas/metadata.schema
-  - raml-util/schemas/resultInfo.schema: !include raml-util/schemas/resultInfo.schema
+types:
+  book: !include book.schema
+  metadata: !include raml-util/schemas/metadata.schema
+  resultInfo: !include raml-util/schemas/resultInfo.schema
 
 traits:
-  - facets: !include raml-util/traits/facets.raml
+  facets: !include raml-util/traits/facets.raml
 
 /rmbtests:
   /books:
@@ -45,15 +45,14 @@ traits:
          body:
            application/json:
             schema: book
-            example: |
+            example: 
+              strict: false
+              value: |
                {
                  "data": {
                    "id": "SbBGk",
                    "title": "Stiff: The Curious Lives of Human Cadavers",
-                   "description": null,
-                   "datetime": {
-                     "date": "2117-08-03"
-                   },
+                   "description": "aaaaaa",
                    "genre": "science",
                    "author": "Mary Roach",
                    "link": "http://e-bookmobile.com/books/Stiff"
@@ -81,7 +80,7 @@ traits:
         201:
           body:
             application/json:
-              example: !include examples/bulk.sample
+              example: !include examples/book.sample
           headers:
             Location:
   /test:

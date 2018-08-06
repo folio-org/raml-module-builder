@@ -1,5 +1,12 @@
 package org.folio.rest.tools;
 
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertThat;
+
+import java.io.File;
+import java.io.IOException;
+
 import org.apache.commons.io.FileUtils;
 import org.folio.util.IoUtil;
 import org.junit.AfterClass;
@@ -7,13 +14,14 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.assertThat;
-
-import java.io.File;
-import java.io.IOException;
+import io.vertx.core.logging.LoggerFactory;
 
 public class GenerateRunnerTest {
+
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
+  }
+
   private static String userDir = System.getProperty("user.dir");
   private static String jaxrsDir = "/target/generated-sources/raml-jaxrs/org/folio/rest/jaxrs";
   private static File jaxrs    = new File(userDir + jaxrsDir);
@@ -47,7 +55,7 @@ public class GenerateRunnerTest {
 
   private String testJava() throws IOException {
     return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
-        + jaxrsDir + "/model/TestSchema.java");
+        + jaxrsDir + "/model/Test.java");
   }
 
   private String msgsSchema() throws IOException {

@@ -1,50 +1,20 @@
-#%RAML 0.8
+#%RAML 1.0
 
 title: Admin API
 baseUri: http://localhost:8081/{version}
 version: v1
 
 traits:
-  - log-level: !include traits/log-level.raml
-  - upload-handler: !include traits/upload-handler.raml
-  - history: !include traits/history.raml
-  - dbname: !include traits/dbname.raml
-  - secured: !include raml-util/traits/auth.raml
-  - secret-key: !include traits/secret-key.raml
-  - slow-query: !include traits/slow-query.raml
-  - pid: !include traits/pid.raml
+  log-level: !include traits/log-level.raml
+  upload-handler: !include traits/upload-handler.raml
+  history: !include traits/history.raml
+  dbname: !include traits/dbname.raml
+  secured: !include raml-util/traits/auth.raml
+  secret-key: !include traits/secret-key.raml
+  slow-query: !include traits/slow-query.raml
+  pid: !include traits/pid.raml
 
 /admin:
-  /uploadmultipart:
-    description: Uploads a file and saves it to a directory configured on the server
-    post:
-      is: [secured, upload-handler]
-      description: |
-          Uploads a file and saves it to a directory configured on the server
-      body:
-        multipart/form-data:
-          formParameters:
-            file:
-              description: The file to be uploaded
-              required: true
-              type: file
-      responses:
-        200:
-          description: "Saved"
-          headers:
-            Location:
-              description: URI to the created <<resourcePathName|!singularize>> item
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: |
-                "unable to add <<resourcePathName|!singularize>>"
-        500:
-          description: "Internal server error, e.g. due to misconfiguration"
-          body:
-            text/plain:
-              example: "Internal server error, contact administrator"
   /importSQL:
     description: Uploads a file and saves it to a directory configured on the server
     post:

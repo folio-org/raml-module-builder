@@ -1,3 +1,4 @@
+
 # Raml-Module-Builder
 
 Copyright (C) 2016-2018 The Open Library Foundation
@@ -5,6 +6,88 @@ Copyright (C) 2016-2018 The Open Library Foundation
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
 
+## Upgrading to v20
+
+RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there are multiple changes that must be implemented by modules that upgrade to this version.
+
+```
+1. Update the "raml-util" git submodule to use its "raml1.0" branch.
+2. MUST change 0.8 to 1.0 in all RAML files (first line)
+3. MUST remove the '-' signs from the RAML
+	 e.g. CHANGE:  - configs: !include... TO configs: !include...
+4. MUST change the "schemas:" section to "types:"
+5. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
+6. MUST ensure that documentation field is this format:
+   documentation:
+     - title: Foo
+       content: Bar
+7. In resource types change 'schema:' to 'type:'
+   This also means that the '- schema:' in the raml is replaced with 'type:'
+	 For example:
+          body:
+            application/json:
+              type: <<schema>>
+8. Remove suffixes. Any suffix causes a problem (even `.json`) when it is used to populate
+   placeholders in the RAML file.
+   Declaring schemas with a suffix (such as metadata.schema) and only referencing them
+   from other schemas, is okay to use a suffix.
+   For example:
+        CHANGE:
+            kv_configuration.schema: !include ../_schemas/kv_configuration.schema
+        TO:
+            kv_configuration: !include ../_schemas/kv_configuration.schema
+        WHEN:
+	        kv_configuration is referenced anywhere in the raml
+9. Paths cannot be used as keys in the raml
+        CHANGE:
+            _schemas/kv_configuration.schema: !include _schemas/kv_configuration.schema
+        TO
+            kv_configuration: !include _schemas/kv_configuration.schema
+10. The resource type examples must not be strict (will result in invalid json content otherwise)
+        CHANGE:
+            example: <<exampleItem>>
+        TO:
+            example:
+                strict: false
+                value: <<exampleItem>>
+11. Generated interfaces dont have the 'Resource' suffix
+	  e.g. ConfigurationsResource -> Configurations
+12. Names of generated pojos (also referenced by the generated interfaces) may change
+    For example:
+        kv_configuration: !include ../_schemas/kv_configuration.schema
+        will produce a pojo called: KvConfiguration
+
+    Referencing the kv_configuration in a schema (example below will produce a pojo called Config)
+    which means the same pojo will be created twice with different names.
+    Therefore, it is preferable to synchronize names.
+            "configs": {
+              "id": "configurationData",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "$ref": "kv_configuration"
+            }
+    This may affect which pojo is referenced by the interface - best to use the same name.
+13. Generated methods do not throw exceptions anymore.
+    This will require removing the 'throws Exception' from the implementing methods.
+14. Names of generated methods has changed
+15. The response codes have changed:
+        withJsonOK -> respond200WithApplicationJson
+        withNoContent -> respond204
+        withPlainBadRequest -> respond400WithTextPlain
+        withPlainNotFound -> respond404WithTextPlain
+        withPlainInternalServerError -> respond500WithTextPlain
+        withPlainUnauthorized -> respond401WithTextPlain
+        withJsonUnprocessableEntity -> respond422WithApplicationJson
+        withAnyOK -> respond200WithAnyAny
+        withPlainOK -> respond200WithTextPlain
+        withJsonCreated -> respond201WithApplicationJson
+
+    Note: For 201 / created codes, the location header has changed and is no longer a string
+    but an object and should be passed in as:
+      PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
+16. Multipart formdata is currently not supported
+```
 ## Introduction
 
 This documentation includes information about the Raml-Module-Builder (RMB) framework
@@ -682,6 +765,8 @@ as the "raml-util" directory inside your "ramls" directory:
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 
+NOTE: When using RMB v20+ then the following notes about JSON schema $ref have changed (see notes [Upgrading to v20](#upgrading-to-v20) above).
+
 When any schema file refers to an additional schema file using "$ref" syntax, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Ideally ensure that all such referenced files are below the parent file.
 It is possible to use a relative path with one set of dot-dots "../" but definitely
 [not more](https://issues.folio.org/browse/RMB-30).
@@ -1287,10 +1372,10 @@ Right now all indexes on string fields in the jsonb should be declared as case i
   }
 ```
 
-Behind the scenes, the CQL to Postgres query converter will generate regex queries for `=` queries. 
-For example: `?query=fieldA=ABC` will generate an SQL regex query, which will require a gin index to perform on large tables. 
+Behind the scenes, the CQL to Postgres query converter will generate regex queries for `=` queries.
+For example: `?query=fieldA=ABC` will generate an SQL regex query, which will require a gin index to perform on large tables.
 
-The converter will generate LIKE queries for `==` queries. For example `?query=fieldA==ABC` will generate an SQL LIKE query that will use a btree index (if it exists). For queries that only look up specific ids, etc... the preferred approach would be to query with two equals `==` and hence, declare a regular btree (index). 
+The converter will generate LIKE queries for `==` queries. For example `?query=fieldA==ABC` will generate an SQL LIKE query that will use a btree index (if it exists). For queries that only look up specific ids, etc... the preferred approach would be to query with two equals `==` and hence, declare a regular btree (index).
 
 
 ##### Posting information
