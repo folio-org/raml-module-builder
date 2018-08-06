@@ -765,6 +765,8 @@ as the "raml-util" directory inside your "ramls" directory:
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 
+NOTE: When using RMB v20+ then the following notes about JSON schema $ref have changed (see notes [Upgrading to v20](#upgrading-to-v20) above).
+
 When any schema file refers to an additional schema file using "$ref" syntax, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Ideally ensure that all such referenced files are below the parent file.
 It is possible to use a relative path with one set of dot-dots "../" but definitely
 [not more](https://issues.folio.org/browse/RMB-30).
