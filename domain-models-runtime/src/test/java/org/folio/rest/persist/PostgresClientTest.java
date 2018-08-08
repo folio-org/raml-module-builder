@@ -16,6 +16,7 @@ import org.junit.runner.RunWith;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
+
 import net.sf.jsqlparser.JSQLParserException;
 
 public class PostgresClientTest {
@@ -64,5 +65,6 @@ public class PostgresClientTest {
 						containsString(isTrue))));
 	}
  }
+
 
 }

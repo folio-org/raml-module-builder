@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -13,16 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import javax.mail.BodyPart;
-import javax.mail.internet.MimeMultipart;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.resource.AdminResource;
+import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
+import org.folio.rest.jaxrs.model.AdminPostgresMaintenancePostCommand;
+import org.folio.rest.jaxrs.resource.Admin;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
@@ -43,27 +42,28 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 
-public class AdminAPI implements AdminResource {
+public class AdminAPI implements Admin {
 
-  private static final Logger log              = LogManager.getLogger(AdminAPI.class);
+  private static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger(BooksDemoAPI.class);
   // format of the percentages returned by the /memory api
   private static final DecimalFormat                DECFORMAT        = new DecimalFormat("###.##");
   private static LRUCache<Date, String>             jvmMemoryHistory = LRUCache.newInstance(100);
 
   @Validate
   @Override
-  public void putAdminLoglevel(Level level, String javaPackage, java.util.Map<String, String>okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void putAdminLoglevel(AdminLoglevelPutLevel level, String javaPackage, java.util.Map<String, String>okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     try {
       JsonObject updatedLoggers = LogUtil.updateLogConfiguration(javaPackage, level.name());
       OutStream os = new OutStream();
       os.setData(updatedLoggers);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withJsonOK(os)));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.respond200WithApplicationJson(os)));
     } catch (Exception e) {
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withPlainInternalServerError("ERROR"
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.respond500WithTextPlain("ERROR"
           + e.getMessage())));
       log.error(e.getMessage(), e);
     }
@@ -72,27 +72,27 @@ public class AdminAPI implements AdminResource {
 
   @Validate
   @Override
-  public void getAdminLoglevel(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void getAdminLoglevel(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     try {
       JsonObject loggers = LogUtil.getLogConfiguration();
       OutStream os = new OutStream();
       os.setData(loggers);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withJsonOK(os)));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.respond200WithApplicationJson(os)));
     } catch (Exception e) {
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.withPlainInternalServerError("ERROR"
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminLoglevelResponse.respond500WithTextPlain("ERROR"
           + e.getMessage())));
       log.error(e.getMessage(), e);
     }
   }
 
   @Override
-  public void putAdminJstack(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminJstackResponse.withPlainInternalServerError("NOT IMPLEMENTED")));
+  public void putAdminJstack(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminJstackResponse.respond500WithTextPlain("NOT IMPLEMENTED")));
   }
 
   @Override
-  public void getAdminJstack(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void getAdminJstack(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     final StringBuilder dump = new StringBuilder();
     vertxContext.owner().executeBlocking(
@@ -118,19 +118,19 @@ public class AdminAPI implements AdminResource {
           code.complete(dump);
         } catch (Exception e) {
           log.error(e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.withPlainInternalServerError("ERROR"
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.respond500WithTextPlain("ERROR"
               + e.getMessage())));
         }
       },
       result -> {
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.withHtmlOK(result.result().toString())));
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.respond200WithTextHtml(result.result().toString())));
       });
   }
 
   @Validate
   @Override
   public void getAdminMemory(boolean history, java.util.Map<String, String>okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     final StringBuilder dump = new StringBuilder();
     vertxContext.owner().executeBlocking(
       code -> {
@@ -189,51 +189,19 @@ public class AdminAPI implements AdminResource {
           }
         } catch (Exception e) {
           log.error(e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.withPlainInternalServerError("ERROR"
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.respond500WithTextPlain("ERROR"
               + e.getMessage())));
         }
       },
       result -> {
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.withHtmlOK(result.result().toString())));
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.respond200WithTextHtml(result.result().toString())));
       });
   }
 
   @Validate
   @Override
-  public void postAdminUploadmultipart(PersistMethod persistMethod, String busAddress,
-      String fileName, MimeMultipart entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
-
-    if(entity != null){
-      int parts = entity.getCount();
-      for (int i = 0; i < parts; i++) {
-        BodyPart bp = entity.getBodyPart(i);
-        System.out.println(bp.getFileName());
-        //System.out.println(bp.getContent());
-        //System.out.println("-----------------------------------------");
-      }
-      String name = "";
-      try{
-        if(fileName == null){
-          name = entity.getBodyPart(0).getFileName();
-        }
-        else{
-          name = fileName;
-        }
-      }
-      catch(Exception e){
-        log.error(e.getMessage(), e);
-      }
-    }
-
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminUploadmultipartResponse.withOK("TODO"
-        )));
-  }
-
-  @Validate
-  @Override
   public void postAdminImportSQL(InputStream entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     //TODO BUG, if database is down, this wont get caught and will return an OK
     //THE sql file must be tenant specific, meaning, to insert into a table the file should
@@ -241,9 +209,8 @@ public class AdminAPI implements AdminResource {
 
     try {
       String tenantId = TenantTool.tenantId(okapiHeaders);
-      PostgresClient postgresClient = PostgresClient.getInstance(vertxContext.owner(), tenantId);
       String sqlFile = IOUtils.toString(entity, "UTF8");
-      postgresClient.runSQLFile(sqlFile, false, reply -> {
+      PostgresClient.getInstance(vertxContext.owner(), tenantId).runSQLFile(sqlFile, false, reply -> {
         if (! reply.succeeded()) {
           log.error(reply.cause().getMessage(), reply.cause());
           asyncResultHandler.handle(Future.failedFuture(reply.cause().getMessage()));
@@ -253,24 +220,22 @@ public class AdminAPI implements AdminResource {
           // some statements failed, transaction aborted
           String msg = "postAdminImportSQL failed:\n  " + String.join("\n  ", reply.result());
           log.error(msg);
-          asyncResultHandler.handle(Future.succeededFuture(
-            PostAdminImportSQLResponse.withPlainBadRequest(msg)));
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostAdminImportSQLResponse.respond400WithTextPlain(msg)));
           return;
         }
-        asyncResultHandler.handle(Future.succeededFuture(PostAdminImportSQLResponse.withOK("")));
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.respond200(null)));
       });
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       log.error(e.getMessage(), e);
-      asyncResultHandler.handle(Future.succeededFuture(
-          PostAdminImportSQLResponse.withPlainBadRequest(e.getMessage())));
+      asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
   }
 
   @Validate
   @Override
   public void getAdminPostgresActiveSessions(String dbname, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner(), "public").select("SELECT pid , usename, "
         + "application_name, client_addr, client_hostname, "
@@ -282,7 +247,7 @@ public class AdminAPI implements AdminResource {
             stream.setData(reply.result().getRows());
 
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresActiveSessionsResponse.
-              withJsonOK(stream)));
+              respond200WithApplicationJson(stream)));
           }
           else{
             log.error(reply.cause().getMessage(), reply.cause());
@@ -294,7 +259,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void getAdminPostgresLoad(String dbname, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select("SELECT pg_stat_reset()", reply -> {
 
@@ -312,12 +277,12 @@ public class AdminAPI implements AdminResource {
                     OutStream stream = new OutStream();
                     stream.setData(reply2.result().getRows());
                     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresLoadResponse.
-                      withJsonOK(stream)));
+                      respond200WithApplicationJson(stream)));
                   }
                   else{
                     log.error(reply2.cause().getMessage(), reply2.cause());
                     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresLoadResponse.
-                      withPlainInternalServerError(reply2.cause().getMessage())));
+                      respond500WithTextPlain(reply2.cause().getMessage())));
                   }
                 });
               }
@@ -333,7 +298,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void getAdminPostgresTableAccessStats(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
         "SELECT schemaname,relname,seq_scan,idx_scan,cast(idx_scan "
@@ -347,7 +312,7 @@ public class AdminAPI implements AdminResource {
             stream.setData(reply.result().getRows());
 
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresTableAccessStatsResponse.
-              withJsonOK(stream)));
+              respond200WithApplicationJson(stream)));
           }
           else{
             log.error(reply.cause().getMessage(), reply.cause());
@@ -359,7 +324,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void getAdminPostgresTableSize(String dbname, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
       "SELECT relname as \"Table\", pg_size_pretty(pg_relation_size(relid)) As \" Table Size\","
@@ -371,7 +336,7 @@ public class AdminAPI implements AdminResource {
           stream.setData(reply.result().getRows());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresTableAccessStatsResponse.
-            withJsonOK(stream)));
+            respond200WithApplicationJson(stream)));
         }
         else{
           log.error(reply.cause().getMessage(), reply.cause());
@@ -384,31 +349,31 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void postAdminSetAESKey(String key, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     AES.setSecretKey(key);
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminSetAESKeyResponse.withNoContent()));
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminSetAESKeyResponse.respond204()));
   }
 
   @Validate
   @Override
   public void postAdminGetPassword(String key, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
 
     if(tenantId == null){
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-        PostAdminGetPasswordResponse.withPlainBadRequest("Tenant id is null")));
+        PostAdminGetPasswordResponse.respond400WithTextPlain("Tenant id is null")));
     }
     else{
       try {
         String password = AES.encryptPasswordAsBase64(tenantId, AES.getSecretKeyObject(key));
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminGetPasswordResponse.withPlainOK(password)));
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminGetPasswordResponse.respond200WithTextPlain(password)));
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          PostAdminGetPasswordResponse.withPlainInternalServerError(e.getMessage())));
+          PostAdminGetPasswordResponse.respond500WithTextPlain(e.getMessage())));
       }
 
     }
@@ -417,7 +382,7 @@ public class AdminAPI implements AdminResource {
 
   @Override
   public void getAdminTableIndexUsage(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
       "SELECT relname, 100 * idx_scan / (seq_scan + idx_scan) percent_of_times_index_used, n_live_tup rows_in_table "+
@@ -429,7 +394,7 @@ public class AdminAPI implements AdminResource {
           stream.setData(reply.result().getRows());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminTableIndexUsageResponse.
-            withJsonOK(stream)));
+            respond200WithApplicationJson(stream)));
         }
         else{
           log.error(reply.cause().getMessage(), reply.cause());
@@ -440,7 +405,7 @@ public class AdminAPI implements AdminResource {
 
   @Override
   public void getAdminCacheHitRates(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     try {
       PostgresClient.getInstance(vertxContext.owner()).select(
@@ -453,7 +418,7 @@ public class AdminAPI implements AdminResource {
             stream.setData(reply.result().getRows());
 
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminCacheHitRatesResponse.
-              withJsonOK(stream)));
+              respond200WithApplicationJson(stream)));
           }
           else{
             log.error(reply.cause().getMessage(), reply.cause());
@@ -469,7 +434,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void getAdminSlowQueries(int querytimerunning, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     /** the queries returned are of this backend's most recent query. If state is active this field shows the currently
      * executing query. In all other states, it shows the last query that was executed.*/
@@ -484,7 +449,7 @@ public class AdminAPI implements AdminResource {
           stream.setData(reply.result().getRows());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminSlowQueriesResponse.
-            withJsonOK(stream)));
+            respond200WithApplicationJson(stream)));
         }
         else{
           log.error(reply.cause().getMessage(), reply.cause());
@@ -495,17 +460,17 @@ public class AdminAPI implements AdminResource {
 
   @Override
   public void getAdminHealth(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     OutStream stream = new OutStream();
     stream.setData("OK");
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminHealthResponse.withAnyOK(stream)));
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminHealthResponse.respond200WithAnyAny(stream)));
 
   }
 
   @Override
   public void getAdminModuleStats(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     //vertx.http.servers.open-connections
     //vertx.eventbus
@@ -518,7 +483,7 @@ public class AdminAPI implements AdminResource {
       o.mergeIn(metrics);
     }
     asyncResultHandler.handle(
-      io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.withPlainOK(
+      io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.respond200WithTextPlain(
         o.encodePrettily())));
 
   }
@@ -526,7 +491,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void getAdminTotalDbSize(String dbname, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     PostgresClient.getInstance(vertxContext.owner()).select(
       "select pg_size_pretty(pg_database_size('"+dbname+"')) as db_size", reply -> {
         if(reply.succeeded()){
@@ -535,7 +500,7 @@ public class AdminAPI implements AdminResource {
           stream.setData(reply.result().getRows());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminTotalDbSizeResponse.
-            withJsonOK(stream)));
+            respond200WithApplicationJson(stream)));
         }
         else{
           log.error(reply.cause().getMessage(), reply.cause());
@@ -546,7 +511,7 @@ public class AdminAPI implements AdminResource {
 
   @Override
   public void getAdminDbCacheSummary(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
       "CREATE EXTENSION IF NOT EXISTS \"pg_buffercache\"", reply1 -> {
@@ -564,7 +529,7 @@ public class AdminAPI implements AdminResource {
                 stream.setData(reply2.result().getRows());
 
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminDbCacheSummaryResponse.
-                  withJsonOK(stream)));
+                  respond200WithApplicationJson(stream)));
               }
               else{
                 log.error(reply2.cause().getMessage(), reply2.cause());
@@ -582,7 +547,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void getAdminListLockingQueries(String dbname, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
       "SELECT blockedq.pid AS blocked_pid, blockedq.query as blocked_query, "
@@ -599,7 +564,7 @@ public class AdminAPI implements AdminResource {
           System.out.println("locking q -> " + new io.vertx.core.json.JsonArray( reply.result().getResults() ).encode());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminListLockingQueriesResponse.
-            withJsonOK(stream)));
+            respond200WithApplicationJson(stream)));
         }
         else{
           log.error(reply.cause().getMessage(), reply.cause());
@@ -611,7 +576,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void deleteAdminKillQuery(String pid, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
       "SELECT pg_terminate_backend('"+pid+"');", reply -> {
@@ -619,10 +584,10 @@ public class AdminAPI implements AdminResource {
           System.out.println("locking q -> " + reply.result().getResults().get(0).getBoolean(0));
 
           if(false == (reply.result().getResults().get(0).getBoolean(0))){
-            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteAdminKillQueryResponse.withPlainNotFound(pid)));
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteAdminKillQueryResponse.respond404WithTextPlain(pid)));
           }
           else{
-            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteAdminKillQueryResponse.withNoContent()));
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteAdminKillQueryResponse.respond204()));
           }
         }
         else{
@@ -635,8 +600,8 @@ public class AdminAPI implements AdminResource {
 
   @Validate
   @Override
-  public void postAdminPostgresMaintenance(String table, Command command, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+  public void postAdminPostgresMaintenance(String table, AdminPostgresMaintenancePostCommand command, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
     String module = PomReader.INSTANCE.getModuleName();
@@ -644,16 +609,16 @@ public class AdminAPI implements AdminResource {
     String querySuffix = tenantId+"_"+module+"."+table+";";
     String query = null;
 
-    if(Command.ANALYZE == command){
+    if(AdminPostgresMaintenancePostCommand.ANALYZE == command){
       query = "analyze " + querySuffix;
     }
-    else if(Command.VACUUM == command){
+    else if(AdminPostgresMaintenancePostCommand.VACUUM == command){
       query = "vacuum " + querySuffix;
     }
-    else if(Command.VACUUM_ANALYZE == command){
+    else if(AdminPostgresMaintenancePostCommand.VACUUMANALYZE == command){
       query = "vacuum analyze " + querySuffix;
     }
-    else if(Command.VACUUM_VERBOSE == command){
+    else if(AdminPostgresMaintenancePostCommand.VACUUMVERBOSE == command){
       query = "vacuum verbose " + querySuffix;
     }
     try{
@@ -664,7 +629,7 @@ public class AdminAPI implements AdminResource {
           stream.setData(reply.result().getRows());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminPostgresMaintenanceResponse.
-            withJsonCreated(stream)));
+            respond201WithApplicationJson(stream)));
         }
         else{
           log.error(reply.cause().getMessage(), reply.cause());
@@ -680,7 +645,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void putAdminPostgresDropIndexes(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
 
@@ -717,7 +682,7 @@ public class AdminAPI implements AdminResource {
             PostgresClient.getInstance(vertxContext.owner()).select(dropIndexQuery, reply2 -> {
               if(reply2.succeeded()){
                 log.info("Deleted " + indexes2delete[0] + " indexes");
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresDropIndexesResponse.withNoContent()));
+                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresDropIndexesResponse.respond204()));
               }
               else{
                 log.error(reply.cause().getMessage(), reply.cause());
@@ -728,7 +693,7 @@ public class AdminAPI implements AdminResource {
           else{
             log.info("No indexes to delete");
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-              PutAdminPostgresDropIndexesResponse.withPlainBadRequest("No indexes to delete, for tenant " + tenantId)));
+              PutAdminPostgresDropIndexesResponse.respond400WithTextPlain("No indexes to delete, for tenant " + tenantId)));
           }
         }
         else{
@@ -745,7 +710,7 @@ public class AdminAPI implements AdminResource {
   @Validate
   @Override
   public void putAdminPostgresCreateIndexes(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
 
@@ -783,31 +748,29 @@ public class AdminAPI implements AdminResource {
                 failuresExist = true;
               }
               res.append(new JsonArray(reply.result()).encodePrettily());
-              OutStream os = new OutStream();
               if(failuresExist){
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  PutAdminPostgresCreateIndexesResponse.withPlainBadRequest(res.toString())));
+                  PutAdminPostgresCreateIndexesResponse.respond400WithTextPlain(res.toString())));
               }
               else{
-                os.setData(res);
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  PutAdminPostgresCreateIndexesResponse.withNoContent()));
+                  PutAdminPostgresCreateIndexesResponse.respond204()));
               }
             } else {
               log.error(reply.cause().getMessage(), reply.cause());
               asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
-                withPlainInternalServerError(reply.cause().getMessage())));
+                respond500WithTextPlain(reply.cause().getMessage())));
             }
           } catch (Exception e) {
             log.error(e.getMessage(), e);
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
-              withPlainInternalServerError(e.getMessage())));
+              respond500WithTextPlain(e.getMessage())));
           }
         });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
-        withPlainInternalServerError(e.getMessage())));
+        respond500WithTextPlain(e.getMessage())));
     }
 
   }

@@ -138,7 +138,7 @@ public class ClientGenerator {
 
     try {
       /* Giving Class Name to Generate */
-      this.className = className.substring(RTFConsts.INTERFACE_PACKAGE.length()+1, className.indexOf("Resource"));
+      this.className = className.substring(RTFConsts.INTERFACE_PACKAGE.length()+1);
       jc = jp._class(this.className+CLIENT_CLASS_SUFFIX);
       JDocComment com = jc.javadoc();
       com.add("Auto-generated code - based on class " + className);
@@ -240,9 +240,7 @@ public class ClientGenerator {
 
     /* Adding method to the Class which is public and returns void */
 
-    String conciseName = massageMethodName(methodName);
-
-    JMethod jmCreate = method(JMod.PUBLIC, void.class, conciseName);
+    JMethod jmCreate = method(JMod.PUBLIC, void.class, methodName);
     JBlock body = jmCreate.body();
 
     /* create the query parameter string builder */
@@ -363,27 +361,6 @@ public class ClientGenerator {
   }
 
   /**
-   * @param methodName
-   * @return
-   */
-  private String massageMethodName(String methodName) {
-    int idx = methodName.lastIndexOf("By");
-    if(idx == -1){
-      //just remove the class name from the method
-      //everything else should be concise enough
-      return methodName.replaceFirst(this.className, "");
-    }
-    idx = idx+2;
-    int redundantClassNameInFunction = methodName.indexOf(this.className);
-    if(redundantClassNameInFunction == -1){
-      return methodName;
-    }
-    //maintain the http method
-    String httpVerb = methodName.substring(0, redundantClassNameInFunction);
-    return httpVerb + methodName.substring(idx);
-  }
-
-  /**
    * @param paramType
    * @param valueType
    */
@@ -498,7 +475,11 @@ public class ClientGenerator {
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
           addParameter(methodBody, queryParams, valueName, encode, false, false);
-        } else if (valueType.contains("Integer")) {
+        } else if (valueType.contains("Number")) {
+          method.param(Number.class, valueName);
+          addParameter(methodBody, queryParams, valueName, encode, false, false);
+        }
+        else if (valueType.contains("Integer")) {
             method.param(Integer.class, valueName);
             addParameter(methodBody, queryParams, valueName, encode, false, false);
         } else if (valueType.contains("Boolean")) {
@@ -509,8 +490,7 @@ public class ClientGenerator {
           addParameter(methodBody, queryParams, valueName, encode, false, true);
         }else { // enum object type
           try {
-            String enumClazz = replaceLast(valueType, ".", "$");
-            Class<?> enumClazz1 = Class.forName(enumClazz);
+            Class<?> enumClazz1 = Class.forName(valueType);
             if (enumClazz1.isEnum()) {
               method.param(enumClazz1, valueName);
               addParameter(methodBody, queryParams, valueName, encode, false, false);
@@ -535,10 +515,4 @@ public class ClientGenerator {
     jCodeModel.build(new File(genPath));
   }
 
-  private static String replaceLast(String string, String substring, String replacement) {
-    int index = string.lastIndexOf(substring);
-    if (index == -1)
-      return string;
-    return string.substring(0, index) + replacement + string.substring(index + substring.length());
-  }
 }

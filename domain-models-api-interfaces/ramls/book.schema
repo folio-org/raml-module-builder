@@ -12,7 +12,7 @@
           "type":"string"
         },
         "description":{
-          "type": "null"
+          "type": "string"
         },
         "datetime":{
           "type":"object",
@@ -54,11 +54,11 @@
       "type":"integer"
     },
     "metadata": {
-      "$ref": "raml-util/schemas/metadata.schema",
+      "$ref": "metadata",
       "readonly" : true
     },
     "resultInfo": {
-      "$ref": "raml-util/schemas/resultInfo.schema",
+      "$ref": "resultInfo",
       "readonly" : true
     }
   },

@@ -12,4 +12,5 @@
   <suppress checks="AvoidStaticImport" files=".*[\\/]src[\\/](test|it)[\\/]"/>
   <suppress checks="WriteTag"          files=".*[\\/]src[\\/](test|it)[\\/]"/>
   <suppress checks="MethodCount"       files=".*[\\/]src[\\/](test|it)[\\/]"/>
+  <suppress checks="."                 files="[\\/]generated-sources[\\/]"/>
 </suppressions>

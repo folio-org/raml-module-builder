@@ -1,8 +1,12 @@
 package org.folio.rest.tools.utils;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.text.StringContainsInOrder.*;
-import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -11,6 +15,7 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 
 import org.folio.util.IoUtil;
@@ -55,7 +60,7 @@ public class SchemaDereferencerTest {
     } catch (IllegalStateException e) {
       assertThat(e.getMessage(), allOf(
           startsWith("$ref chain has a loop: "),
-          stringContainsInOrder("loop.schema", "loop.schema")));
+          stringContainsInOrder(Arrays.asList("loop.schema", "loop.schema"))));
     }
   }
 
@@ -67,7 +72,7 @@ public class SchemaDereferencerTest {
     } catch (IllegalStateException e) {
       assertThat(e.getMessage(), allOf(
           startsWith("$ref chain has a loop: "),
-          stringContainsInOrder("loop1.schema", "loop.schema")));
+          stringContainsInOrder(Arrays.asList("loop1.schema", "loop.schema"))));
     }
   }
 
@@ -79,7 +84,7 @@ public class SchemaDereferencerTest {
     } catch (IllegalStateException e) {
       assertThat(e.getMessage(), allOf(
           startsWith("$ref chain has a loop: "),
-          stringContainsInOrder("loop_a.schema", "loop_b.schema", "loop_a.schema")));
+          stringContainsInOrder(Arrays.asList("loop_a.schema", "loop_b.schema", "loop_a.schema"))));
     }
   }
 

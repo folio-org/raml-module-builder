@@ -123,7 +123,7 @@ public class AnnotationGrabber {
           for (Method method : type.getDeclaredMethods()) {
             Object value = method.invoke(annotations[i], (Object[]) null);
             if (type.isAssignableFrom(Path.class)) {
-              classSpecificMapping.put(CLASS_URL, "^/" + value);
+              classSpecificMapping.put(CLASS_URL, "^" + value);
               if(generateClient){
                 cGen.generateClassMeta(val.toString(), value);
               }
@@ -197,7 +197,7 @@ public class AnnotationGrabber {
                 methodObj.put(type.getName(), retList);
               } else {
                 if (type.isAssignableFrom(Path.class)) {
-                  String path = classSpecificMapping.getString(CLASS_URL) + URL_PATH_DELIMITER + value;
+                  String path = classSpecificMapping.getString(CLASS_URL) + value;
                   String regexPath = getRegexForPath(path);
                   // put path to function
                   methodObj.put(METHOD_URL, path);

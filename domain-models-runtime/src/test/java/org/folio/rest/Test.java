@@ -1,14 +1,7 @@
 package org.folio.rest;
 
-import java.io.FileInputStream;
-
-import javax.mail.BodyPart;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
-
 import org.folio.rest.client.AdminClient;
-import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
+
 
 /**
  * @author shale
@@ -21,7 +14,7 @@ public class Test {
    */
   public static void main(String[] args) throws Exception {
     // TODO Auto-generated method stub
-    MimeMultipart mmp = new MimeMultipart();
+/*    MimeMultipart mmp = new MimeMultipart();
     BodyPart bp = new MimeBodyPart(new FileInputStream("C:\\Git\\mod-files\\ramls\\mod-files\\files.raml"));
     bp.setDisposition("form-data");
     bp.setFileName("abc.raml");
@@ -29,17 +22,26 @@ public class Test {
     bp2.setDisposition("form-data");
     bp2.setFileName("abcd.raml");
     mmp.addBodyPart(bp);
-    mmp.addBodyPart(bp2);
+    mmp.addBodyPart(bp2);*/
     AdminClient aClient = new AdminClient("localhost", 8888, null, null, false);
-    aClient.postUploadmultipart(PersistMethod.SAVE, null, "abc",
-      mmp, reply -> {
+    /*
+    AdminUploadmultipartPostMultipartFormData data =
+        new AdminUploadmultipartPostMultipartFormDataImpl();
+
+    List<File> a = new ArrayList<>();
+    org.folio.rest.jaxrs.model.File t = new org.folio.rest.jaxrs.model.FileImpl();
+    t.setFile(new java.io.File("create_config.sql"));
+    a.add(t);
+    data.setFiles(a);
+    aClient.postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod.SAVE, null, "abc",
+      data, reply -> {
       reply.statusCode();
     });
 
-/*    aClient.postImportSQL(
+    aClient.postImportSQL(
       Test.class.getClassLoader().getResourceAsStream("create_config.sql"), reply -> {
       reply.statusCode();
-    });*/
+    });
     aClient.getJstack( trace -> {
       trace.bodyHandler( content -> {
         System.out.println(content);
@@ -57,22 +59,33 @@ public class Test {
         });
       });
     });
-    aClient.getPostgresActiveSessions("postgres",  reply -> {
+    */
+
+/*    aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
+      reply.bodyHandler( body -> {
+        System.out.println(body.toString("UTF8"));
+      });
+    });*/
+    aClient.postAdminImportSQL(
+      Test.class.getClassLoader().getResourceAsStream("job.json"), reply -> {
+      reply.statusCode();
+    });
+    aClient.getAdminPostgresActiveSessions("postgres",  reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
     });
-    aClient.getPostgresLoad("postgres",  reply -> {
+    aClient.getAdminPostgresLoad("postgres",  reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
     });
-    aClient.getPostgresTableAccessStats( reply -> {
+    aClient.getAdminPostgresTableAccessStats( reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });
     });
-    aClient.getPostgresTableSize("postgres", reply -> {
+    aClient.getAdminPostgresTableSize("postgres", reply -> {
       reply.bodyHandler( body -> {
         System.out.println(body.toString("UTF8"));
       });

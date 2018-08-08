@@ -32,7 +32,6 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.MDC;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -62,6 +61,7 @@ import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.rulez.Rules;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
+import org.slf4j.MDC;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
@@ -936,13 +936,6 @@ public class RestVerticle extends AbstractVerticle {
     return new JsonObject();
   }
 
-  private static String replaceLast(String string, String substring, String replacement) {
-    int index = string.lastIndexOf(substring);
-    if (index == -1)
-      return string;
-    return string.substring(0, index) + replacement + string.substring(index + substring.length());
-  }
-
   private MappedClasses populateConfig() {
     MappedClasses mappedURLs = new MappedClasses();
     JsonObject jObjClasses = new JsonObject();
@@ -1380,7 +1373,7 @@ public class RestVerticle extends AbstractVerticle {
               else {
                 paramArray[order] = vals;
               }
-            } else if (valueType.contains("BigDecimal")) {
+            } else if (valueType.contains("BigDecimal") || valueType.contains("Number")) {
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = new BigDecimal((String) defaultVal);
@@ -1396,8 +1389,7 @@ public class RestVerticle extends AbstractVerticle {
               }
             } else { // enum object type
               try {
-                String enumClazz = replaceLast(valueType, ".", "$");
-                Class<?> enumClazz1 = Class.forName(enumClazz);
+                Class<?> enumClazz1 = Class.forName(valueType);
                 if (enumClazz1.isEnum()) {
                   Object defaultEnum = null;
                   Object[] vals = enumClazz1.getEnumConstants();
