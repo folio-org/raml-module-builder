@@ -2,7 +2,6 @@ package org.folio;
 
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -10,23 +9,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 
-import javax.crypto.SecretKey;
-import javax.mail.BodyPart;
-import javax.mail.internet.InternetHeaders;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
-
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
-import org.folio.rest.client.RmbtestsClient;
+import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.model.Metadata;
-import org.folio.rest.jaxrs.resource.AdminResource.PersistMethod;
-import org.folio.rest.security.AES;
-import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.VertxUtils;
@@ -58,16 +48,17 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
  */
 @RunWith(VertxUnitRunner.class)
 public class DemoRamlRestTest {
-  private static final Logger log = LoggerFactory.getLogger(Messages.class);
+
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
+  }
+
+  private static final Logger log = LoggerFactory.getLogger(DemoRamlRestTest.class);
 
   private static Vertx vertx;
   private static int port;
   private static Locale oldLocale = Locale.getDefault();
   private static String TENANT = "abcdefg";
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
-  }
 
   /**
    * @param context  the test context.
@@ -162,7 +153,11 @@ public class DemoRamlRestTest {
     d.setAuthor("a");
     d.setGenre("g");
     d.setDescription("asdfss");
+//    d.setLink("link");
+//    d.setTitle("title");
     b.setData(d);
+/*    b.setStatus(0);
+    b.setSuccess(true);*/
     ObjectMapper om = new ObjectMapper();
     String book = "";
     try {
@@ -171,7 +166,7 @@ public class DemoRamlRestTest {
     catch (JsonProcessingException e) {
       context.fail(e);
     }
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book),
+    postData(context, "http://localhost:" + port + "/rmbtests/books"+parameterString, Buffer.buffer(book),
         expectedStatus, 1, "application/json", TENANT, false);
   }
 
@@ -182,22 +177,22 @@ public class DemoRamlRestTest {
 
   @Test
   public void postBookValidateAuthor(TestContext context) {
-    postBook(context, "validate_field=author", 200);
+    postBook(context, "?validate_field=author", 200);
   }
 
   @Test
   public void postBookValidateDescription(TestContext context) {
-    postBook(context, "validate_field=data.description", 200);
+    postBook(context, "?validate_field=data.description", 200);
   }
 
   @Test
   public void postBookValidateTitle(TestContext context) {
-    postBook(context, "validate_field=data.title", 422);
+    postBook(context, "?validate_field=data.title", 422);
   }
 
   @Test
   public void postBookValidateTitleAndDescription(TestContext context) {
-    postBook(context, "validate_field=data.title&validate_field=data.description", 422);
+    postBook(context, "?validate_field=data.title&validate_field=data.description", 422);
   }
 
   /**
@@ -220,9 +215,9 @@ public class DemoRamlRestTest {
     String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
 
     //check File Uploads
-    postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null, false);
-    postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
-      200, 1, null, null, false);
+   // postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null, false);
+   // postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
+   //   200, 1, null, null, false);
     postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 200, 1,
       "application/json", TENANT, false);
 
@@ -242,7 +237,7 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", TENANT, false);
 
 
-    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org", null, 200, 0, "application/json", TENANT, false);
+    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org.folio.rest", null, 200, 0, "application/json", TENANT, false);
 
     Metadata md = new Metadata();
     md.setCreatedByUserId("12345678-1234-1234-1234-123456789098");
@@ -264,73 +259,135 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/admin/loglevel", 200); // should be 200
 
     //use generated client
-    checkClientCode(context);
+    //checkClientCode(context);
 
-    RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
+/*    RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
     String[] facets = new String[]{"author:10", "name:5"};
-    testClient.getBooks("aaa", new BigDecimal(1999), new BigDecimal(1999), null, facets, handler -> {
+    testClient.getRmbtestsBooks("aaa", new BigDecimal(1999), new BigDecimal(1999), null, facets, handler -> {
       if(handler.statusCode() != 200){
         context.fail();
       }
       else{
         log.info(handler.statusCode() + "----------------------------------------- passed ---------------------------");
       }
-    });
+    });*/
   }
 
   /**
    * @param context
    *
    */
-  private void checkClientCode(TestContext context)  {
-    Async async = context.async(1);
-    log.info("checkClientCode test");
-    try {
-      MimeMultipart mmp = new MimeMultipart();
-      BodyPart bp = new MimeBodyPart(new InternetHeaders(),
-        IOUtils.toByteArray(getClass().getClassLoader().getResourceAsStream("job.json")));
-      bp.setDisposition("form-data");
-      bp.setFileName("abc.raml");
-      BodyPart bp2 = new MimeBodyPart(new InternetHeaders(),
-        IOUtils.toByteArray(getClass().getClassLoader().getResourceAsStream("job.json")));
-      bp2.setDisposition("form-data");
-      bp2.setFileName("abcd.raml");
-      log.debug("--- bp content --- "+bp.getContent());
-      mmp.addBodyPart(bp);
-      mmp.addBodyPart(bp2);
-      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
-      aClient.postUploadmultipart(PersistMethod.SAVE, null, "abc",
-        mmp, reply -> {
-        if(reply.statusCode() != 200){
-          context.fail();
-        }
-        log.debug("checkClientCode statusCode 1 " + reply.statusCode());
-        String key;
-        try {
-          SecretKey sk = AES.generateSecretKey();
-          key = AES.convertSecretKeyToString(sk);
-          final String expected = AES.encryptPasswordAsBase64("abc", sk);
-          aClient.postGetPassword(key, reply2 -> {
-            reply2.bodyHandler(bodyHandler -> {
-              if(!expected.equals(bodyHandler.toString())){
-                context.fail("expected : " + expected + " got " + bodyHandler.toString());
-              }
-              else{
-                log.info("received expected password: " + expected);
-                aClient.getModuleStats( r -> {
-                  r.bodyHandler( br -> {
-                    log.info("received: " + br.toString());
-                  });
-                  async.countDown();
-                });
-              }
-            });
+  @Test
+  public void checkClientCode(TestContext context)  {
 
-          });
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-        }
+    try {
+      Async async = context.async(3);
+
+      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
+      /*
+      AdminUploadmultipartPostMultipartFormData data =
+          new AdminUploadmultipartPostMultipartFormDataImpl();
+
+      List<org.folio.rest.jaxrs.model.File> a = new ArrayList<>();
+      org.folio.rest.jaxrs.model.File t = new org.folio.rest.jaxrs.model.FileImpl();
+      t.setFile(new java.io.File("create_config.sql"));
+      a.add(t);
+      data.setFiles(a);
+      aClient.postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod.SAVE, "address", "abc",
+        data, reply -> {
+        reply.statusCode();
+        async.countDown();
       });
+
+      aClient.postImportSQL(
+        Test.class.getClassLoader().getResourceAsStream("create_config.sql"), reply -> {
+        reply.statusCode();
+      });
+      aClient.getJstack( trace -> {
+        trace.bodyHandler( content -> {
+          System.out.println(content);
+        });
+      });
+
+      TenantClient tc = new TenantClient("localhost", 8888, "harvard", "harvard");
+      tc.post(null, response -> {
+        response.bodyHandler( body -> {
+          System.out.println(body.toString());
+          tc.delete( reply -> {
+            reply.bodyHandler( body2 -> {
+              System.out.println(body2.toString());
+            });
+          });
+        });
+      });
+      */
+/*      AdminUploadmultipartPostMultipartFormData data =
+          new AdminUploadmultipartPostMultipartFormDataImpl();
+      List<org.folio.rest.jaxrs.model.File> a = new ArrayList<>();
+      org.folio.rest.jaxrs.model.File t = new org.folio.rest.jaxrs.model.FileImpl();
+      t.setFile(new java.io.File("create_config.sql"));
+      t.setContent("content");
+      a.add(t);
+      data.setFile(a);
+      aClient.postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod.SAVE, "address", "abc",
+        data, reply -> {
+        reply.statusCode();
+        System.out.println("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
+        async.countDown();
+      });*/
+
+      aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
+        reply.bodyHandler( body -> {
+          //System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+
+      aClient.getAdminJstack( trace -> {
+        trace.bodyHandler( content -> {
+          //System.out.println(content);
+          async.countDown();
+        });
+      });
+
+      aClient.getAdminMemory(false , resp -> {
+        resp.bodyHandler( content -> {
+          //System.out.println(content);
+          async.countDown();
+        });
+      });
+
+      /*
+      aClient.postAdminImportSQL(
+        Test.class.getClassLoader().getResourceAsStream("job.json"), reply -> {
+        reply.statusCode();
+        async.countDown();
+      });
+      aClient.getAdminPostgresActiveSessions("postgres",  reply -> {
+        reply.bodyHandler( body -> {
+          System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+      aClient.getAdminPostgresLoad("postgres",  reply -> {
+        reply.bodyHandler( body -> {
+          System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+      aClient.getAdminPostgresTableAccessStats( reply -> {
+        reply.bodyHandler( body -> {
+          System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+      aClient.getAdminPostgresTableSize("postgres", reply -> {
+        reply.bodyHandler( body -> {
+          System.out.println(body.toString("UTF8"));
+          async.countDown();
+        });
+      });
+*/
     }
     catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -452,6 +509,7 @@ public class DemoRamlRestTest {
     }
     request.exceptionHandler(error -> {
       async.complete();
+      System.out.println(" ---------------xxxxxx-------------------- " + error.getMessage());
       context.fail(new RuntimeException(error.getMessage(), stacktrace));
     }).handler(response -> {
       int statusCode = response.statusCode();
@@ -483,6 +541,8 @@ public class DemoRamlRestTest {
         context.assertTrue(true);
       } else {
         response.bodyHandler(responseData -> {
+          System.out.println(" ---------------xxxxxx-1------------------- " + responseData.toString());
+
           context.fail(new RuntimeException("got unexpected response code, expected: " +
               errorCode + ", received code: " + statusCode + " mode " + mode + " for url " +  url +
               "\ndata:" + responseData.toString(), stacktrace));
