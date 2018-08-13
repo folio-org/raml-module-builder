@@ -2,15 +2,21 @@ package org.folio.rest.persist;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,6 +31,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class PostgresClientIT {
 
   static private final String TENANT = "tenant";
+  /** table name */
+  static private final String FOO = "foo";
   static private Vertx vertx;
 
   private ByteArrayOutputStream myStdErrBytes = new ByteArrayOutputStream();
@@ -303,4 +311,98 @@ public class PostgresClientIT {
     });
   }
 */
+
+  private PostgresClient createFoo(TestContext context) {
+    String schema = PostgresClient.convertToPsqlStandard(TENANT);
+    execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
+    execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
+    executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + TENANT + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
+    execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
+    execute(context, "CREATE TABLE " + schema + "." + FOO
+      + " ( _id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL );");
+    execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
+    execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
+    return PostgresClient.getInstance(vertx, TENANT);
+  }
+
+  public class StringPojo {
+    public String key;
+    public StringPojo(String key) {
+      this.key = key;
+    }
+  }
+
+  /** simple test case */
+  StringPojo xPojo = new StringPojo("x");
+  /** a single quote may be used for SQL injection */
+  StringPojo singleQuotePojo = new StringPojo("'");
+
+  @Test
+  public void deleteX(TestContext context) {
+    createFoo(context)
+      .delete(FOO, xPojo, context.asyncAssertSuccess());
+  }
+
+  @Ignore("fails: unterminated quoted identifier")
+  @Test
+  public void deleteSingleQuote(TestContext context) {
+    createFoo(context)
+      .delete(FOO, singleQuotePojo, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void updateX(TestContext context) {
+    createFoo(context)
+      .update(FOO, xPojo, UUID.randomUUID().toString(), context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void updateSingleQuote(TestContext context) {
+    createFoo(context)
+      .update(FOO, singleQuotePojo, UUID.randomUUID().toString(), context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void updateSectionX(TestContext context) {
+    UpdateSection updateSection = new UpdateSection();
+    updateSection.addField("key").setValue("x");
+    createFoo(context)
+      .update(FOO, updateSection, (Criterion) null, false, context.asyncAssertSuccess());
+  }
+
+  @Ignore("fails: unterminated quoted identifier")
+  @Test
+  public void updateSectionSingleQuote(TestContext context) {
+    UpdateSection updateSection = new UpdateSection();
+    updateSection.addField("key").setValue("'");
+    createFoo(context)
+      .update(FOO, updateSection, (Criterion) null, false, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void upsertX(TestContext context) {
+    createFoo(context)
+      .upsert(FOO, UUID.randomUUID().toString(), xPojo, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void upsertSingleQuote(TestContext context) {
+    createFoo(context)
+      .upsert(FOO, UUID.randomUUID().toString(), singleQuotePojo, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void saveBatchX(TestContext context) {
+    List<Object> list = Collections.singletonList(xPojo);
+    createFoo(context)
+      .saveBatch(FOO, list, context.asyncAssertSuccess());
+  }
+
+  @Ignore("fails: unterminated quoted identifier")
+  @Test
+  public void saveBatchSingleQuote(TestContext context) {
+    List<Object> list = Collections.singletonList(singleQuotePojo);
+    createFoo(context)
+      .saveBatch(FOO, list, context.asyncAssertSuccess());
+  }
 }
