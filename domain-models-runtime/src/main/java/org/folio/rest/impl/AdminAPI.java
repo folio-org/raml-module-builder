@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -38,6 +37,7 @@ import org.folio.rest.tools.utils.TenantTool;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -205,32 +205,30 @@ public class AdminAPI implements Admin {
     //TODO BUG, if database is down, this wont get caught and will return an OK
     //THE sql file must be tenant specific, meaning, to insert into a table the file should
     //have any table name prefixed with the schema - schema.table_name
-    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
 
-    if(tenantId == null){
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.respond500WithTextPlain("tenant not set")));
-    }
     try {
+      String tenantId = TenantTool.tenantId(okapiHeaders);
       String sqlFile = IOUtils.toString(entity, "UTF8");
       PostgresClient.getInstance(vertxContext.owner(), tenantId).runSQLFile(sqlFile, false, reply -> {
-        if(reply.succeeded()){
-          if(!reply.result().isEmpty()){
-            //some statements failed, transaction aborted
-            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-              PostAdminImportSQLResponse.respond400WithTextPlain("import failed... see logs for details")));
-          }
-          else{
-            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.respond200(null)));
-          }
+        if (! reply.succeeded()) {
+          log.error(reply.cause().getMessage(), reply.cause());
+          asyncResultHandler.handle(Future.failedFuture(reply.cause().getMessage()));
+          return;
         }
-        else{
-          asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
+        if (! reply.result().isEmpty()) {
+          // some statements failed, transaction aborted
+          String msg = "postAdminImportSQL failed:\n  " + String.join("\n  ", reply.result());
+          log.error(msg);
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostAdminImportSQLResponse.respond400WithTextPlain(msg)));
+          return;
         }
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.respond200(null)));
       });
-    } catch (IOException e) {
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
       asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
-
   }
 
   @Validate
