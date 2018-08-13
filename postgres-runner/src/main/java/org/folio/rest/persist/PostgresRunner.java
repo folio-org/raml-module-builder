@@ -166,7 +166,10 @@ public class PostgresRunner extends AbstractVerticle {
     } else {
       PostgresProcess oldPostgresProcess = postgresProcess;
       postgresProcess = null;
-      vertx.executeBlocking(future -> oldPostgresProcess.stop(), h -> postgresFuture.complete());
+      vertx.executeBlocking(future -> {
+        oldPostgresProcess.stop();
+        future.complete();
+      }, h -> postgresFuture.complete());
     }
 
     Handler<AsyncResult<Void>> handler = h -> {
