@@ -12,6 +12,7 @@ import java.sql.Statement;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -659,106 +660,80 @@ public class PostgresClient {
     }
   }
 
+  /**
+   * Insert the entities into table using a single INSERT statement.
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table
+   * @param replyHandler  result, containing the id field for each inserted element of entities
+   */
+  public void saveBatch(String table, JsonArray entities, Handler<AsyncResult<ResultSet>> replyHandler) {
+    long start = System.nanoTime();
+    if (entities == null || entities.isEmpty()) {
+      // return empty result
+      ResultSet resultSet = new ResultSet(
+          Collections.singletonList(idField), Collections.emptyList(), null);
+      replyHandler.handle(Future.succeededFuture(resultSet));
+      return;
+    }
+    client.getConnection(res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+
+      if (log.isInfoEnabled()) {
+        log.info("starting: saveBatch size=" + entities.size());
+      }
+      SQLConnection connection = res.result();
+      StringBuilder sql = new StringBuilder()
+          .append(INSERT_CLAUSE)
+          .append(convertToPsqlStandard(tenantId)).append(".").append(table)
+          .append(" (").append(DEFAULT_JSONB_FIELD_NAME).append(") VALUES (?)");
+      for (int i=1; i<entities.size(); i++) {
+        sql.append(",(?)");
+      }
+      sql.append(" RETURNING ").append(idField);
+
+      connection.queryWithParams(sql.toString(), entities, queryRes -> {
+        long end = System.nanoTime();
+        if (queryRes.failed()) {
+          log.error("saveBatch size=" + entities.size()
+            + " " +
+              queryRes.cause().getMessage(),
+              queryRes.cause());
+          StatsTracker.addStatElement(STATS_KEY + ".saveBatchFailed", (end-start));
+          replyHandler.handle(Future.failedFuture(queryRes.cause()));
+          return;
+        }
+        if (log.isInfoEnabled()) {
+          log.info("success: saveBatch size=" + entities.size());
+        }
+        StatsTracker.addStatElement(STATS_KEY + ".saveBatch", (end-start));
+        replyHandler.handle(Future.succeededFuture(queryRes.result()));
+      });
+    });
+  }
+
   /***
-   * save a list of pojos.
-   * pojos are converted to json and saved in a single sql call. the generated IDs of the inserted records are returned
-   * in the result set
-   * @param table
-   * @param entities
-   * @param replyHandler
-   * @throws Exception
+   * Save a list of POJOs.
+   * POJOs are converted to json and saved in a single sql call. The generated IDs of the
+   * inserted records are returned in the ResultSet.
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @param replyHandler  result, containing the id field for each inserted POJO
    */
   public void saveBatch(String table, List<Object> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
-    long start = System.nanoTime();
-
-    int size = entities.size();
-
-    StringBuilder sb = new StringBuilder();
+    JsonArray jsonArray = new JsonArray();
     try {
-      for (int i = 0; i < size; i++) {
-        sb.append("('").append( pojo2json(entities.get(i)) ).append("')");
-        if(i+1 < size){
-          sb.append(",");
-        }
+      for (Object entity : entities) {
+        String json = pojo2json(entity);
+        jsonArray.add(json);
       }
     } catch (Exception e) {
       replyHandler.handle(Future.failedFuture(e));
       return;
     }
-
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        try {
-            try {
-              connection.query("BEGIN;", begin -> {
-                if(begin.succeeded()){
-                  connection.query(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
-                    " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES "+sb.toString()+" RETURNING " + idField + ";",
-                    query -> {
-                      if (query.failed()) {
-                        log.error("query saveBatch failed, attempting rollback", query.cause());
-                        connection.query("ROLLBACK;", rollbackres -> {
-                          if(rollbackres.failed()){
-                            log.error("query saveBatch failed, unable to rollback", rollbackres.cause());
-                          }
-                          else {
-                            log.info("rollback success. " + new JsonArray(rollbackres.result().getResults()).encodePrettily());
-                          }
-                          connection.close();
-                          replyHandler.handle(Future.failedFuture(query.cause()));
-                        });
-                      } else {
-                          connection.query("COMMIT;", commit -> {
-                            if(commit.succeeded()){
-                              long end = System.nanoTime();
-                              StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
-                              connection.close();
-                              replyHandler.handle(Future.succeededFuture(query.result()));
-                            }
-                            else {
-                              log.error("query saveBatch failed to commit, attempting rollback ",
-                                commit.cause());
-                              connection.query("ROLLBACK;", rollbackres -> {
-                                if(rollbackres.failed()){
-                                  log.error("query saveBatch failed, unable to rollback", rollbackres.cause());
-                                }
-                                else{
-                                  log.info("rollback success. " + new JsonArray(rollbackres.result().getResults()).encodePrettily());
-                                }
-                                connection.close();
-                                replyHandler.handle(Future.failedFuture(commit.cause()));
-                              });
-                            }
-                          });
-                      }
-                    });
-                }
-                else{
-                  connection.close();
-                  log.error("query saveBatch failed", begin.cause());
-                  replyHandler.handle(Future.failedFuture(begin.cause()));
-                }
-              });
-
-            } catch (Exception e) {
-              if(connection != null){
-                connection.close();
-              }
-              log.error(e.getMessage(), e);
-              replyHandler.handle(Future.failedFuture(e));
-            }
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      } else {
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
+    saveBatch(table, jsonArray, replyHandler);
   }
 
   /**
@@ -1175,7 +1150,7 @@ public class PostgresClient {
         }
 
         String from2where = " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
-        
+
         String[] q = new String[]{select + fieldName + addIdField + from2where};
 
         ParsedQuery parsedQuery = null;
@@ -1639,20 +1614,20 @@ public class PostgresClient {
 
   /**
    * converts a result set into pojos - handles 3 types of queries:
-   * 1. a regular query will return N rows, where each row contains Y columns. one of those columns is the jsonb 
+   * 1. a regular query will return N rows, where each row contains Y columns. one of those columns is the jsonb
    * column which is mapped into a pojo. each row will also contain the count column (if count was requested for
    * the query), other fields , like updated date may also be returned if they were requested in the select.
    *    1a. note that there is an attempt to map external (non jsonb) columns to fields in the pojo. for example,
    *    a column called update_date will attempt to map its value to a field called updateDate in the pojo. however,
    *    for this to happen, the query must select the update_date -> select id,jsonb,update_date from ....
    * 2. a facet query returns 2 columns, a uuid and a jsonb column. the results of the query are returned as
-   * id and json rows. facets are returned as jsonb values: 
+   * id and json rows. facets are returned as jsonb values:
    * {"facetValues": [{"count": 542,"value": "11 ed."}], "type": "name"}
    * (along with a static '00000000-0000-0000-0000-000000000000' uuid)
-   * the count for a facet query is returned in the following manner: 
+   * the count for a facet query is returned in the following manner:
    * {"count": 501312} , with a static uuid as the facets
    * 3. audit queries - queries that query an audit table, meaning the clazz parameter passed in has a jsonb member.
-   * 
+   *
    * @param rs
    * @param clazz
    * @param count
@@ -1661,7 +1636,7 @@ public class PostgresClient {
    */
   private Results processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count, boolean setId) {
     long start = System.nanoTime();
-    String countField = "count";    
+    String countField = "count";
     List<Object> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
     List<String> columnNames = rs.getColumnNames();
@@ -2444,7 +2419,7 @@ public class PostgresClient {
     String notTrueReplacement = " AND \\(\\(\\(FALSE\\)\\)\\)";
     String isTrue = " IS TRUE";
     String isTrueReplacement = " AND \\(\\(\\(TRUE\\)\\)\\)";
-    
+
     List<OrderByElement> orderBy = null;
     net.sf.jsqlparser.statement.select.Limit limit = null;
     Expression where = null;
