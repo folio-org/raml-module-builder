@@ -14,6 +14,7 @@
     <module>domain-models-interface-extensions</module>
     <module>domain-models-api-interfaces</module>
     <module>domain-models-runtime</module>
+    <module>sample</module>
   </modules>
 
   <licenses>
