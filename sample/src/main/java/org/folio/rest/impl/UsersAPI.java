@@ -14,7 +14,8 @@ public class UsersAPI implements UsersId {
   private static Logger log = LoggerFactory.getLogger(UsersAPI.class);
   
   private class MyUser implements User {
-    private String firstName, lastName;
+    private String firstName;
+    private String lastName;
     private Number age;
     
     @Override
