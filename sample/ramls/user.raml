@@ -1,12 +1,8 @@
 #%RAML 1.0
 title: API with Types
 types:
-  User:
-    type: object
-    properties:
-      firstname: string
-      lastname:  string
-      age:       number
+  User: !include user.schema
+
 /users/{id}:
   get:
     responses:
