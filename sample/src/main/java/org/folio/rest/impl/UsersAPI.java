@@ -12,48 +12,12 @@ import org.folio.rest.jaxrs.resource.UsersId;
 
 public class UsersAPI implements UsersId {
   private static Logger log = LoggerFactory.getLogger(UsersAPI.class);
-  
-  private class MyUser implements User {
-    private String firstName;
-    private String lastName;
-    private Number age;
-    
-    @Override
-    public String getFirstname() {
-      return firstName;
-    }
-
-    @Override
-    public void setFirstname(String firstname) {
-      this.firstName = firstname;
-    }
-
-    @Override
-    public String getLastname() {
-      return lastName;
-    }
-
-    @Override
-    public void setLastname(String lastname) {
-      this.lastName = lastname;
-    }
-
-    @Override
-    public Number getAge() {
-      return age;
-    }
-
-    @Override
-    public void setAge(Number age) {
-      this.age = age;
-    }    
-  }
 
   @Override
   public void getUsersById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     log.info("getUsersById called");
   
-    User user = new MyUser();
+    User user = new User();
     user.setAge(20);
     user.setFirstname("John");
     user.setLastname("Bar");
