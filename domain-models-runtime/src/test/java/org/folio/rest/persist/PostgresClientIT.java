@@ -22,6 +22,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -398,7 +401,38 @@ public class PostgresClientIT {
       .saveBatch(FOO, list, context.asyncAssertSuccess());
   }
 
-  @Ignore("fails: unterminated quoted identifier")
+  @Test
+  public void saveBatchJson(TestContext context) {
+    Async async = context.async();
+    JsonArray array = new JsonArray()
+        .add("{ \"x\" : \"a\" }")
+        .add("{ \"y\" : \"'\" }");
+    createFoo(context)
+      .saveBatch(FOO, array, res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        context.assertEquals(2, res.result().getRows().size());
+        context.assertEquals("_id", res.result().getColumnNames().get(0));
+        async.complete();
+      });
+  }
+
+  @Test
+  public void saveBatchEmpty(TestContext context) {
+    Async async = context.async();
+    List<Object> list = Collections.emptyList();
+    createFoo(context)
+      .saveBatch(FOO, list, res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        context.assertEquals(0, res.result().getRows().size());
+        context.assertEquals("_id", res.result().getColumnNames().get(0));
+        async.complete();
+      });
+  }
+
   @Test
   public void saveBatchSingleQuote(TestContext context) {
     List<Object> list = Collections.singletonList(singleQuotePojo);
