@@ -97,19 +97,28 @@ public class GenerateRunner {
     //generateRunner.cleanDirectories();
     CustomTypeAnnotator.setCustomFields(System.getProperties().getProperty("jsonschema.customfield"));
 
-    String parentRoot = System.getProperties().getProperty("maven.multiModuleProjectDirectory");
-    copyRamlDirToTarget(root, parentRoot);
-
-    String ramlsDir = System.getProperty("raml_files", SOURCES_DEFAULT);
-    String[] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
-    for (String inputDirectory : paths) {
-      File f = new File(inputDirectory);
-      String d = f.getAbsolutePath();
-      if (d.startsWith(root)) {
-        d = inputDirectory.replace(root, root + File.separator + RESOURCE_DEFAULT);
-        log.info("Runner map " + inputDirectory);
-        log.info(" -> " + d);
+    String [] ramlFiles = System.getProperty("raml_files", SOURCES_DEFAULT).split(",");
+    String pre = ramlFiles[0];
+    File x0 = new File(pre);
+    File x1 = x0;
+    while (true) {
+      x1 = x1.getParentFile();
+      if (x1 == null) {
+        break;
+      } else {
+        if (x1.getName().equals(SOURCES_DEFAULT)) {
+          x0 = x1;
+        }
       }
+    }
+    File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
+    String input = x0.getPath();
+    log.info("copying ramls from source directory at: " + input);
+    log.info("copying ramls to target directory at: " + output);
+    RamlDirCopier.copy(x0.toPath(), output.toPath());
+
+    for (String d : ramlFiles) {
+      d = d.replace(input, output.getAbsolutePath());
       generateRunner.generate(d);
     }
   }
@@ -127,33 +136,6 @@ public class GenerateRunner {
     //the client generated code to cause compilation errors
     String clientDir = outputDirectory + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
     ClientGenerator.makeCleanDir(clientDir);
-  }
-
-
-  /**
-   * Copy the files from the /raml/ directory to the /target/raml/ directory
-   * and dereference all schemas (*.schema, *.json) that contain a $ref reference.
-   * It uses root if it exists, parentRoot otherwise. It does nothing if neither exist.
-   *
-   * @param root  base directory where the /raml/ and the /target/ directory are.
-   * @param parentRoot  base directory where the /raml/ and the /target/ directory are.
-   * @throws IOException on file copy error
-   */
-  public static void copyRamlDirToTarget(String root, String parentRoot) throws IOException {
-    File input = new File(root + File.separator + SOURCES_DEFAULT);
-    if (! input.exists()) {
-      if (parentRoot == null) {
-        return;
-      }
-      input = new File(parentRoot + File.separator + SOURCES_DEFAULT);
-      if (! input.exists()) {
-        return;
-      }
-    }
-    File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
-    log.info("copying ramls from source directory at: " + input);
-    log.info("copying ramls to target directory at: " + output);
-    RamlDirCopier.copy(input.toPath(), output.toPath());
   }
 
   /**

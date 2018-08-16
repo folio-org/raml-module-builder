@@ -99,16 +99,6 @@ public class GenerateRunnerTest {
     assertJobMsgs();
   }
 
-  @Test
-  public void canRunMainParentDir() throws Exception {
-    System.setProperty("raml_files", resourcesDir);
-    System.setProperty("project.basedir", baseDir + "/submodule");
-    System.setProperty("maven.multiModuleProjectDirectory", baseDir);
-    FileUtils.copyDirectory(new File(resourcesDir), new File(baseDir + "/ramls/"));
-    GenerateRunner.main(null);
-    assertJobMsgs();
-  }
-
   @Test(expected=IOException.class)
   public void invalidInputDirectory() throws Exception {
     new GenerateRunner(baseDir).generate(resourcesDir + "/job.schema");
