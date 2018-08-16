@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.folio.rest.tools.plugins.CustomTypeAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
@@ -31,8 +30,8 @@ public class GenerateRunner {
   static final Logger log = LoggerFactory.getLogger(GenerateRunner.class);
 
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
-  private static final String SOURCES_DEFAULT = "/ramls/";
-  private static final String RESOURCE_DEFAULT = "/target/classes";
+  private static final String SOURCES_DEFAULT = "ramls";
+  private static final String RESOURCE_DEFAULT = "target/classes";
 
   private String outputDirectory = null;
   private String outputDirectoryWithPackage = null;
@@ -86,7 +85,7 @@ public class GenerateRunner {
    * @param args  are ignored
    * @throws Exception  on file read or file write error
    */
-  public static void main(String [] args) throws Exception {
+  public static void main(String[] args) throws Exception {
 
     String root = System.getProperties().getProperty("project.basedir");
     if (root == null) {
@@ -101,12 +100,18 @@ public class GenerateRunner {
     String parentRoot = System.getProperties().getProperty("maven.multiModuleProjectDirectory");
     copyRamlDirToTarget(root, parentRoot);
 
-    String ramlsDir = System.getProperty("raml_files", root + SOURCES_DEFAULT);
-    String [] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
+    String ramlsDir = System.getProperty("raml_files", SOURCES_DEFAULT);
+    String[] paths = ramlsDir.split(","); //if multiple paths are indicated with a , delimiter
     for (String inputDirectory : paths) {
-      generateRunner.generate(inputDirectory);
+      File f = new File(inputDirectory);
+      String d = f.getAbsolutePath();
+      if (d.startsWith(root)) {
+        d = inputDirectory.replace(root, root + File.separator + RESOURCE_DEFAULT);
+        log.info("Runner map " + inputDirectory);
+        log.info(" -> " + d);
+      }
+      generateRunner.generate(d);
     }
-
   }
 
   /**
@@ -135,17 +140,17 @@ public class GenerateRunner {
    * @throws IOException on file copy error
    */
   public static void copyRamlDirToTarget(String root, String parentRoot) throws IOException {
-    File input = new File(root + SOURCES_DEFAULT);
+    File input = new File(root + File.separator + SOURCES_DEFAULT);
     if (! input.exists()) {
       if (parentRoot == null) {
         return;
       }
-      input = new File(parentRoot + SOURCES_DEFAULT);
+      input = new File(parentRoot + File.separator + SOURCES_DEFAULT);
       if (! input.exists()) {
         return;
       }
     }
-    File output = new File(root + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
+    File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
     log.info("copying ramls from source directory at: " + input);
     log.info("copying ramls to target directory at: " + output);
     RamlDirCopier.copy(input.toPath(), output.toPath());
