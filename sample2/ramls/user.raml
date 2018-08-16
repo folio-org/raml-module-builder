@@ -1,0 +1,14 @@
+#%RAML 1.0
+title: API with Types
+types:
+  User: !include user.schema
+
+/users/{id}:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            type: User
+      404:
+        description: not found
