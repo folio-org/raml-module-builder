@@ -102,16 +102,14 @@ public class GenerateRunner {
     File x0 = new File(pre);
     File x1 = x0;
     while (true) {
-      File x2 = x1.getParentFile();
-      if (x2 == null) {
-        x1 = x0;
+      x1 = x1.getParentFile();
+      if (x1 == null) {
         break;
       } else {
-        if (x2.getName().equals("ramls")) {
-          x0 = x2;
+        if (x1.getName().equals(SOURCES_DEFAULT)) {
+          x0 = x1;
         }
       }
-      x1 = x2;
     }
     File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
     String input = x0.getPath();
