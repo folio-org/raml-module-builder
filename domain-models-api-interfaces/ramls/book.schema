@@ -54,11 +54,11 @@
       "type":"integer"
     },
     "metadata": {
-      "$ref": "metadata",
+      "$ref": "raml-util/schemas/metadata.schema",
       "readonly" : true
     },
     "resultInfo": {
-      "$ref": "resultInfo",
+      "$ref": "raml-util/schemas/resultInfo.schema",
       "readonly" : true
     }
   },
