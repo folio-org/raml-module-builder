@@ -7,7 +7,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "$ref" : "bulk",
+        "$ref" : "bulk.schema",
         "readonly": true
       }
     },
