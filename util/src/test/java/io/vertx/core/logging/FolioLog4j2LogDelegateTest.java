@@ -13,19 +13,19 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public class FolioLog4j2LogDelegateTest {
-  private static PrintStream oldErr;
+  private static PrintStream oldOut;
   private static ByteArrayOutputStream stream = new ByteArrayOutputStream();
   private Logger log = new Logger(new FolioLog4j2LogDelegate(getClass().getName()));
 
   @BeforeAll
   static void beforeAll() {
-    oldErr = System.out;
+    oldOut = System.out;
     System.setOut(new PrintStream(stream));
   }
 
   @AfterAll
   static void afterAll() {
-    System.setOut(oldErr);
+    System.setOut(oldOut);
   }
 
   private void init(Level level) {
