@@ -29,20 +29,17 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
               type: <<schema>>
 8. Remove suffixes. Any suffix causes a problem (even `.json`) when it is used to populate
    placeholders in the RAML file.
-   Declaring schemas with a suffix (such as metadata.schema) and only referencing them
-   from other schemas, is okay to use a suffix.
+   Declare only types/schemas in RAML that is used in RAML (no need to declare types only used in JSON schema references).
    For example:
         CHANGE:
-            kv_configuration.schema: !include ../_schemas/kv_configuration.schema
+            notify.json: !include notify.json
         TO:
-            kv_configuration: !include ../_schemas/kv_configuration.schema
+            notify: !include notify.json
         WHEN:
-	        kv_configuration is referenced anywhere in the raml
-9. Paths cannot be used as keys in the raml
-        CHANGE:
-            _schemas/kv_configuration.schema: !include _schemas/kv_configuration.schema
-        TO
-            kv_configuration: !include _schemas/kv_configuration.schema
+	    notify is referenced anywhere in the raml
+9. JSON schema references may use relative filename (RMB will turn them
+        to absolute filenames). No need to declare them in the RAML file.
+
 10. The resource type examples must not be strict (will result in invalid json content otherwise)
         CHANGE:
             example: <<exampleItem>>
