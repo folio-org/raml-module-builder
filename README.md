@@ -28,9 +28,11 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
           body:
             application/json:
               type: <<schema>>
-8. Remove suffixes. Any suffix causes a problem (even `.json`) when it is used to populate
+8. Remove suffixes from key names in the RAML file.
+   Any suffix causes a problem (even `.json`) when it is used to populate
    placeholders in the RAML file.
-   Declare only types/schemas in RAML that is used in RAML (no need to declare types only used in JSON schema references).
+   Declare only types/schemas in RAML that are used in RAML (no need to declare types
+   that are only used in JSON schema references).
    For example:
         CHANGE:
             notify.json: !include notify.json
@@ -39,7 +41,7 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
         WHEN:
             "notify" is referenced anywhere in the raml
 9. JSON schema references may use relative filename (RMB will turn them
-        to absolute filenames). No need to declare them in the RAML file.
+   to absolute filenames). No need to declare them in the RAML file.
 
 10. The resource type examples must not be strict (will result in invalid json content otherwise)
         CHANGE:
