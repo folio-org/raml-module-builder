@@ -14,7 +14,8 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
 1. Update the "raml-util" git submodule to use its "raml1.0" branch.
 2. MUST change 0.8 to 1.0 in all RAML files (first line)
 3. MUST remove the '-' signs from the RAML
-	 e.g. CHANGE:  - configs: !include... TO configs: !include...
+   For example:
+        CHANGE:  - configs: !include... TO: configs: !include...
 4. MUST change the "schemas:" section to "types:"
 5. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
 6. MUST ensure that documentation field is this format:
@@ -23,7 +24,7 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
        content: Bar
 7. In resource types change 'schema:' to 'type:'
    This also means that the '- schema:' in the raml is replaced with 'type:'
-	 For example:
+   For example:
           body:
             application/json:
               type: <<schema>>
@@ -36,7 +37,7 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
         TO:
             notify: !include notify.json
         WHEN:
-	    notify is referenced anywhere in the raml
+            "notify" is referenced anywhere in the raml
 9. JSON schema references may use relative filename (RMB will turn them
         to absolute filenames). No need to declare them in the RAML file.
 
@@ -48,7 +49,8 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
                 strict: false
                 value: <<exampleItem>>
 11. Generated interfaces dont have the 'Resource' suffix
-	  e.g. ConfigurationsResource -> Configurations
+    For example:
+        ConfigurationsResource -> Configurations
 12. Names of generated pojos (also referenced by the generated interfaces) may change
     For example:
         kv_configuration: !include ../_schemas/kv_configuration.schema
@@ -767,7 +769,7 @@ as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
-Note: At this stage ensure that using head of its "raml1.0" branch.
+NOTE: At this stage ensure that using head of its "raml1.0" branch.
 
 NOTE: When using RMB v20+ then the following notes about JSON schema $ref have changed (see notes [Upgrading to v20](#upgrading-to-v20) above).
 
