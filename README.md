@@ -14,7 +14,8 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
 1. Update the "raml-util" git submodule to use its "raml1.0" branch.
 2. MUST change 0.8 to 1.0 in all RAML files (first line)
 3. MUST remove the '-' signs from the RAML
-	 e.g. CHANGE:  - configs: !include... TO configs: !include...
+   For example:
+        CHANGE:  - configs: !include... TO: configs: !include...
 4. MUST change the "schemas:" section to "types:"
 5. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
 6. MUST ensure that documentation field is this format:
@@ -23,22 +24,24 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
        content: Bar
 7. In resource types change 'schema:' to 'type:'
    This also means that the '- schema:' in the raml is replaced with 'type:'
-	 For example:
+   For example:
           body:
             application/json:
               type: <<schema>>
-8. Remove suffixes. Any suffix causes a problem (even `.json`) when it is used to populate
+8. Remove suffixes from key names in the RAML file.
+   Any suffix causes a problem (even `.json`) when it is used to populate
    placeholders in the RAML file.
-   Declare only types/schemas in RAML that is used in RAML (no need to declare types only used in JSON schema references).
+   Declare only types/schemas in RAML that are used in RAML (no need to declare types
+   that are only used in JSON schema references).
    For example:
         CHANGE:
             notify.json: !include notify.json
         TO:
             notify: !include notify.json
         WHEN:
-	    notify is referenced anywhere in the raml
+            "notify" is referenced anywhere in the raml
 9. JSON schema references may use relative filename (RMB will turn them
-        to absolute filenames). No need to declare them in the RAML file.
+   to absolute filenames). No need to declare them in the RAML file.
 
 10. The resource type examples must not be strict (will result in invalid json content otherwise)
         CHANGE:
@@ -48,7 +51,8 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
                 strict: false
                 value: <<exampleItem>>
 11. Generated interfaces dont have the 'Resource' suffix
-	  e.g. ConfigurationsResource -> Configurations
+    For example:
+        ConfigurationsResource -> Configurations
 12. Names of generated pojos (also referenced by the generated interfaces) may change
     For example:
         kv_configuration: !include ../_schemas/kv_configuration.schema
@@ -89,6 +93,9 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
 
 This documentation includes information about the Raml-Module-Builder (RMB) framework
 and examples of how to use it.
+
+(Note: This version of the README is for RMB v20+ version.
+If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.)
 
 The goal of the project is to abstract away as much boilerplate functionality as
 possible and allow a developer to focus on implementing business functions. In
@@ -756,24 +763,20 @@ It is beneficial at this stage to take some time to design and prepare the RAML 
 Investigate the other FOLIO modules for guidance.
 The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
 
+(Note: This version of the README is for RMB v20+ version (see notes [Upgrading to v20](#upgrading-to-v20) above).
+If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.)
+
 Add the shared suite of [RAML utility](https://dev.folio.org/source-code/#server-side) files,
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
+NOTE: At this stage ensure that using head of its "raml1.0" branch.
 
-NOTE: When using RMB v20+ then the following notes about JSON schema $ref have changed (see notes [Upgrading to v20](#upgrading-to-v20) above).
-
-When any schema file refers to an additional schema file using "$ref" syntax, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Ideally ensure that all such referenced files are below the parent file.
+Ideally ensure that all referenced files are below the parent file.
 It is possible to use a relative path with one set of dot-dots "../" but definitely
 [not more](https://issues.folio.org/browse/RMB-30).
 This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
-
-NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
-Examples are `schemaCollection: noteCollection` in
-[note.raml](https://github.com/folio-org/mod-notes/blob/master/ramls/note.raml) and
-`schemaCollection: addresstypeCollection` in
-[addressTypes.raml](https://github.com/folio-org/raml/blob/master/ramls/mod-users/addressTypes.raml).
 
 The GenerateRunner automatically dereferences the schema files and places them into the
 `target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
@@ -799,9 +802,6 @@ with your application via the local [API documentation](#documentation-of-the-ap
 
 NOTE: The FOLIO project is currently using `RAML 0.8` version until the
 `RAML 1.0` tools have [settled](https://issues.folio.org/browse/FOLIO-523).
-
-NOTE: RAML files must declare at least two endpoints, see
-[RMB-1](https://issues.folio.org/browse/RMB-1).
 
 ## Adding an init() implementation
 
