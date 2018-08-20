@@ -90,6 +90,9 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
 This documentation includes information about the Raml-Module-Builder (RMB) framework
 and examples of how to use it.
 
+(Note: This version of the README is for RMB v20+ version.
+If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.)
+
 The goal of the project is to abstract away as much boilerplate functionality as
 possible and allow a developer to focus on implementing business functions. In
 other words: **simplify the process of developing a micro service module**.
@@ -755,6 +758,9 @@ for example implementations.
 It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
 Investigate the other FOLIO modules for guidance.
 The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
+
+(Note: This version of the README is for RMB v20+ version (see notes [Upgrading to v20](#upgrading-to-v20) above).
+If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.)
 
 Add the shared suite of [RAML utility](https://dev.folio.org/source-code/#server-side) files,
 as the "raml-util" directory inside your "ramls" directory:
