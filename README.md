@@ -767,6 +767,7 @@ as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
+Note: At this stage ensure that using head of its "raml1.0" branch.
 
 NOTE: When using RMB v20+ then the following notes about JSON schema $ref have changed (see notes [Upgrading to v20](#upgrading-to-v20) above).
 
