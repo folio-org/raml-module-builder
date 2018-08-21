@@ -98,6 +98,8 @@ public class PostgresClient {
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
+  private static final String   SELECT = "SELECT ";
+  private static final String   FROM = " FROM ";
   private static final String   UPDATE = "UPDATE ";
   private static final String   SET = " SET ";
   private static final String   WHERE = " WHERE ";
@@ -1142,17 +1144,15 @@ public class PostgresClient {
           addIdField = "," + idField;
         }
 
-        String select = "SELECT ";
-
         if (!"null".equals(fieldName) && fieldName.contains("*")) {
           //if we are requesting all fields (*) , then dont add the id field to the select
           //this will return two id columns which will create ambiguity in facet queries
           addIdField = "";
         }
 
-        String from2where = " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+        String from2where = FROM + convertToPsqlStandard(tenantId) + "." + table + " " + where;
 
-        String[] q = new String[]{select + fieldName + addIdField + from2where};
+        String[] q = new String[]{SELECT + fieldName + addIdField + from2where};
 
         ParsedQuery parsedQuery = null;
 
@@ -1168,7 +1168,7 @@ public class PostgresClient {
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
               parsedQuery.getCountFuncQuery()));
           StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = select + fieldName + addIdField + "," + sub.replace(countClauseTemplate) + from2where;
+          q[0] = SELECT + fieldName + addIdField + "," + sub.replace(countClauseTemplate) + from2where;
         }
 
         if (facets != null && !facets.isEmpty()) {
@@ -1435,8 +1435,8 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(res.cause()));
         return;
       }
-      String sql = "SELECT " + DEFAULT_JSONB_FIELD_NAME
-          + " FROM " + convertToPsqlStandard(tenantId) + "." + table
+      String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
+          + FROM + convertToPsqlStandard(tenantId) + "." + table
           + WHERE + idField + "= ?";
       res.result().querySingleWithParams(sql, new JsonArray().add(id), query -> {
         if (query.failed()) {
@@ -1499,8 +1499,8 @@ public class PostgresClient {
       }
 
       StringBuilder sql = new StringBuilder()
-          .append("SELECT ").append(idField).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
-          .append(" FROM ").append(convertToPsqlStandard(tenantId)).append(".").append(table)
+          .append(SELECT).append(idField).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
+          .append(FROM).append(convertToPsqlStandard(tenantId)).append(".").append(table)
           .append(WHERE).append(idField).append(" IN (?");
       for (int i=1; i<ids.size(); i++) {
         sql.append(",?");
@@ -1603,8 +1603,6 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          String select = "SELECT ";
-
           StringBuffer joinon = new StringBuffer();
           StringBuffer tables = new StringBuffer();
           StringBuffer selectFields = new StringBuffer();
@@ -1632,7 +1630,7 @@ public class PostgresClient {
 
           joinon.append(joinType + " " + convertToPsqlStandard(tenantId) + "." + to.getTableName() + " " + to.getAlias() + " ");
 
-          String q[] = new String[]{ select + selectFields.toString() + " FROM " + tables.toString() + joinon.toString() +
+          String q[] = new String[]{ SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() +
               new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
 
           //TODO optimize query building
@@ -1642,8 +1640,8 @@ public class PostgresClient {
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
               parseQuery(q[0]).getCountFuncQuery()));
           StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = select +
-            sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(select , " ");
+          q[0] = SELECT +
+            sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(SELECT , " ");
 
           log.debug("query = " + q[0]);
           connection.query(q[0],
