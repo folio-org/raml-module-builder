@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -133,7 +134,7 @@ public class PostgresClient {
   private Vertx vertx                       = null;
   private JsonObject postgreSQLClientConfig = null;
   private final Messages messages           = Messages.getInstance();
-  private AsyncSQLClient         client;
+  AsyncSQLClient client;
   private String tenantId;
   private String idField                     = "_id";
   private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count ";
@@ -1418,6 +1419,128 @@ public class PostgresClient {
       doGet(sqlConnection, true, table, clazz, DEFAULT_JSONB_FIELD_NAME,
         fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, replyHandler);
     }
+  }
+
+  /**
+   * Get the jsonb by id.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param function  how to convert the (String encoded) JSON
+   * @param replyHandler  the result after applying function
+   */
+  private <R> void getById(String table, String id,
+      Function<String, R> function, Handler<AsyncResult<R>> replyHandler) {
+    client.getConnection(res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      String sql = "SELECT " + DEFAULT_JSONB_FIELD_NAME
+          + " FROM " + convertToPsqlStandard(tenantId) + "." + table
+          + WHERE + idField + "= ?";
+      res.result().querySingleWithParams(sql, new JsonArray().add(id), query -> {
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        JsonArray result = query.result();
+        if (result == null || result.size() == 0) {
+          replyHandler.handle(Future.succeededFuture(null));
+          return;
+        }
+        String string = result.getString(0);
+        R r = function.apply(string);
+        replyHandler.handle(Future.succeededFuture(r));
+      });
+    });
+  }
+
+  /**
+   * Get the jsonb by id and return it as a String.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a String
+   */
+  public void getByIdAsString(String table, String id, Handler<AsyncResult<String>> replyHandler) {
+    getById(table, id, string -> string, replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id and return it as a JsonObject.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a JsonObject
+   */
+  public void getById(String table, String id, Handler<AsyncResult<JsonObject>> replyHandler) {
+    getById(table, id, JsonObject::new, replyHandler);
+  }
+
+  /**
+   * Get jsonb by id for a list of ids.
+   * <p>
+   * The result is a map of all found records where the key is the id
+   * and the value is the jsonb.
+   *
+   * @param table  the table to search in
+   * @param ids  the value of the id field
+   * @param function  how to convert the (String encoded) JSON
+   * @param replyHandler  the result after applying function
+   */
+  private <R> void getById(String table, JsonArray ids,
+      Function<String, R> function, Handler<AsyncResult<Map<String,R>>> replyHandler) {
+    if (ids == null || ids.isEmpty()) {
+      replyHandler.handle(Future.succeededFuture(Collections.emptyMap()));
+      return;
+    }
+    client.getConnection(res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+
+      StringBuilder sql = new StringBuilder()
+          .append("SELECT ").append(idField).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
+          .append(" FROM ").append(convertToPsqlStandard(tenantId)).append(".").append(table)
+          .append(WHERE).append(idField).append(" IN (?");
+      for (int i=1; i<ids.size(); i++) {
+        sql.append(",?");
+      }
+      sql.append(")");
+      res.result().queryWithParams(sql.toString(), ids, query -> {
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        ResultSet resultSet = query.result();
+        Map<String,R> result = new HashMap<>();
+        for (JsonArray jsonArray : resultSet.getResults()) {
+          result.put(jsonArray.getString(0), function.apply(jsonArray.getString(1)));
+        }
+        replyHandler.handle(Future.succeededFuture(result));
+      });
+    });
+  }
+
+  /**
+   * Get the jsonb by id and return it as a String.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a String
+   */
+  public void getByIdAsString(String table, JsonArray ids,
+      Handler<AsyncResult<Map<String,String>>> replyHandler) {
+    getById(table, ids, string -> string, replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id and return it as a JsonObject.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a JsonObject
+   */
+  public void getById(String table, JsonArray ids,
+      Handler<AsyncResult<Map<String,JsonObject>>> replyHandler) {
+    getById(table, ids, JsonObject::new, replyHandler);
   }
 
   /**
