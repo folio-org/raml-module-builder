@@ -31,7 +31,7 @@ import io.vertx.core.logging.Log4j2LogDelegate;
  */
 public class FolioLog4j2LogDelegate extends Log4j2LogDelegate {
   public FolioLog4j2LogDelegate(final String name) {
-    // the super constructor is package protected, therefore
+    // the super constructor is package private, therefore
     // FolioLog4j2LogDelegate must be in package io.vertx.core.logging
     super(name);
   }
