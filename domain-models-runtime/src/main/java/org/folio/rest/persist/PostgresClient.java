@@ -134,7 +134,7 @@ public class PostgresClient {
   private Vertx vertx                       = null;
   private JsonObject postgreSQLClientConfig = null;
   private final Messages messages           = Messages.getInstance();
-  AsyncSQLClient client;
+  private AsyncSQLClient client;
   private String tenantId;
   private String idField                     = "_id";
   private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count ";
