@@ -1482,7 +1482,7 @@ public class PostgresClient {
    * and the value is the jsonb.
    *
    * @param table  the table to search in
-   * @param ids  the value of the id field
+   * @param ids  the values of the id field
    * @param function  how to convert the (String encoded) JSON
    * @param replyHandler  the result after applying function
    */
@@ -1522,9 +1522,9 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a String.
+   * Get the jsonb by id for a list of ids and return each jsonb as a String.
    * @param table  the table to search in
-   * @param id  the value of the id field
+   * @param ids  the values of the id field
    * @param replyHandler  the result; the JSON is encoded as a String
    */
   public void getByIdAsString(String table, JsonArray ids,
@@ -1533,9 +1533,9 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a JsonObject.
+   * Get the jsonb by id for a list of ids and return each jsonb as a JsonObject.
    * @param table  the table to search in
-   * @param id  the value of the id field
+   * @param ids  the values of the id field
    * @param replyHandler  the result; the JSON is encoded as a JsonObject
    */
   public void getById(String table, JsonArray ids,
