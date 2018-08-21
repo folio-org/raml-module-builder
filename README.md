@@ -40,8 +40,8 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
             notify: !include notify.json
         WHEN:
             "notify" is referenced anywhere in the raml
-9. JSON schema references may use relative filename (RMB will turn them
-   to absolute filenames). No need to declare them in the RAML file.
+9. JSON schema references may use relative pathname (RMB will dereference them).
+   No need to declare them in the RAML file.
 
 10. The resource type examples must not be strict (will result in invalid json content otherwise)
         CHANGE:
@@ -50,7 +50,7 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
             example:
                 strict: false
                 value: <<exampleItem>>
-11. Generated interfaces dont have the 'Resource' suffix
+11. Generated interfaces do not have the 'Resource' suffix
     For example:
         ConfigurationsResource -> Configurations
 12. Names of generated pojos (also referenced by the generated interfaces) may change
@@ -772,11 +772,6 @@ as the "raml-util" directory inside your "ramls" directory:
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 NOTE: At this stage ensure that using head of its "raml1.0" branch.
-
-Ideally ensure that all referenced files are below the parent file.
-It is possible to use a relative path with one set of dot-dots "../" but definitely
-[not more](https://issues.folio.org/browse/RMB-30).
-This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
 `target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
