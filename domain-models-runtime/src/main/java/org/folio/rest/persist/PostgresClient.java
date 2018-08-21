@@ -1630,7 +1630,7 @@ public class PostgresClient {
 
           joinon.append(joinType + " " + convertToPsqlStandard(tenantId) + "." + to.getTableName() + " " + to.getAlias() + " ");
 
-          String q[] = new String[]{ SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() +
+          String [] q = new String[]{ SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() +
               new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
 
           //TODO optimize query building
