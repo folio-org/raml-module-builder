@@ -135,8 +135,8 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
         try {
           PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.JOB_CONF_COLLECTION, JobConf.class,
             new Criterion(c), true, reply -> {
-              @SuppressWarnings("unchecked")
-              List<JobsConf> confs = (List<JobsConf>) reply.result().getResults();
+              // FIXME
+              List<JobsConf> confs = (List<JobsConf>) (List) reply.result().getResults();
               if (confs.isEmpty()) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
                   GetJobsJobconfsByJobconfsIdResponse.respond404WithTextPlain("JobConf "
