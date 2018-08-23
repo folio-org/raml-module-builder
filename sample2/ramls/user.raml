@@ -5,10 +5,18 @@ types:
 
 /users/{id}:
   get:
+    queryParameters:
+      lang:
+        description: Requested language
+        type: string
+        default: en
+        pattern: "[a-zA-Z]{2}"
     responses:
       200:
         body:
           application/json:
             type: User
+      400:
+        description: Bad Request
       404:
-        description: not found
+        description: Not Found
