@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1111,13 +1112,15 @@ public class PostgresClient {
     });
   }
 
-  public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
-      boolean setId, Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
+      boolean returnCount, boolean returnIdField, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String fieldName, String where, boolean returnCount, boolean returnIdField,
-      boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
+      boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
 
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -1130,8 +1133,10 @@ public class PostgresClient {
     });
   }
 
-  private void doGet(SQLConnection connection, boolean transactionMode, String table, Class<?> clazz, String fieldName, String where, boolean returnCount,
-    boolean returnIdField, boolean setId, List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
+  private <T> void doGet(SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
+      String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
+      List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
+
     long start = System.nanoTime();
 
     vertx.runOnContext(v -> {
@@ -1241,17 +1246,19 @@ public class PostgresClient {
    * populated fields in the entity - note that this queries the jsonb object, so should not be used to query external
    * fields
    *
-   * @param table
-   * @param entity
-   * @param replyHandler
-   * @throws Exception
+   * @param <T>  type of the query entity and the result entity
+   * @param table  database table to query
+   * @param entity  contains the fields to use for the query
+   * @param replyHandler  the result contains the entities found
    */
   //@Timer
-  public void get(String table, Object entity, boolean returnCount, Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, T entity, boolean returnCount,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table,  entity, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Object entity, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, T entity, boolean returnCount, boolean returnIdField,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     boolean setId = true;
     if(returnIdField == false){
       //if no id fields then cannot setId from external column into json object
@@ -1264,16 +1271,19 @@ public class PostgresClient {
       replyHandler.handle(Future.failedFuture(e));
       return;
     }
-    get(table, entity.getClass(), DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
+    Class<T> clazz = (Class<T>) entity.getClass();
+    get(table, clazz, DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo + "' ", returnCount, returnIdField, setId, replyHandler);
   }
 
-  public void get(String table, Object entity, String[] fields, boolean returnCount, boolean returnIdField, Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, T entity, String[] fields, boolean returnCount, boolean returnIdField,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, entity, fields, returnCount, returnIdField, -1, -1, replyHandler);
   }
 
-  public void get(String table, Object entity, String[] fields, boolean returnCount,
-      boolean returnIdField, int offset, int limit, Handler<AsyncResult<Results>> replyHandler) { //NOSONAR
+  public <T> void get(String table, T entity, String[] fields, boolean returnCount,
+      boolean returnIdField, int offset, int limit,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     boolean setId = true;
     if(returnIdField == false){
       //if no id fields then cannot setId from extrnal column into json object
@@ -1294,7 +1304,8 @@ public class PostgresClient {
       return;
     }
     String fieldsStr = Arrays.toString(fields);
-    get(table, entity.getClass(), fieldsStr.substring(1, fieldsStr.length()-1), WHERE + DEFAULT_JSONB_FIELD_NAME
+    Class<T> clazz = (Class<T>) entity.getClass();
+    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), WHERE + DEFAULT_JSONB_FIELD_NAME
       + "@>'" + pojo + "' "+sb.toString(), returnCount, returnIdField, setId, replyHandler);
   }
 
@@ -1307,18 +1318,20 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
-  {
+  public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, filter, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
+      boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, fields, filter, returnCount, setId, null, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, boolean setId,
-      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
+      boolean returnCount, boolean setId, List<FacetField> facets,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     String where = "";
     try {
       if (filter != null) {
@@ -1331,8 +1344,9 @@ public class PostgresClient {
     }
   }
 
-  public void get(String table, Class<?> clazz, String[] fields, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
-  {
+  public <T> void get(String table, Class<T> clazz, String[] fields, String filter,
+      boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     String where = "";
     if(filter != null){
       where = filter;
@@ -1341,8 +1355,9 @@ public class PostgresClient {
     get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
-  {
+  public <T> void get(String table, Class<T> clazz, String filter,
+      boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     String where = "";
     if(filter != null){
       where = filter;
@@ -1350,34 +1365,34 @@ public class PostgresClient {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, where, returnCount, setId, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, String[] fields, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
-  {
+  public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
+      boolean returnCount, Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, fields, filter, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, Handler<AsyncResult<Results>> replyHandler)
-  {
+  public <T> void get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, true, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, boolean setId, Handler<AsyncResult<Results>> replyHandler)
-  {
+  public <T> void get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, replyHandler);
   }
 
-  public void get(String table, Class<?> clazz, CQLWrapper filter, boolean returnCount, boolean setId, List<FacetField> facets,
-      Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, Class<T> clazz, CQLWrapper filter,
+      boolean returnCount, boolean setId, List<FacetField> facets,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, facets, replyHandler);
   }
 
-
-  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, filter, returnCount, setId, null, replyHandler);
   }
 
-  public void get(Object conn, String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(Object conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
     get(conn, table, clazz, filter, returnCount, setId, null, replyHandler);
   }
 
@@ -1391,14 +1406,14 @@ public class PostgresClient {
    * @param replyHandler
    * @throws Exception
    */
-  public void get(String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
-      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+      List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     get(null, table, clazz, filter, returnCount, setId, facets, replyHandler);
   }
 
-  public void get(Object conn, String table, Class<?> clazz, Criterion filter, boolean returnCount, boolean setId,
-      List<FacetField> facets, Handler<AsyncResult<Results>> replyHandler) {
+  public <T> void get(Object conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+      List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     StringBuilder sb = new StringBuilder();
     StringBuilder fromClauseFromCriteria = new StringBuilder();
@@ -1471,9 +1486,27 @@ public class PostgresClient {
    *  Criterion cr =
    *      new Criterion().addGroupOfCriterias(gc).addGroupOfCriterias(gc1).setOrder(new Order("c1._id", ORDER.DESC));
    *
-   * */
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr, Class<?> returnedClass,
-      boolean setId, Handler<AsyncResult<?>> replyHandler){
+   */
+  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
+      Class<T> returnedClass, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
+
+    Function<ResultSet, Results<T>> resultSetMapper =
+        resultSet -> processResult(resultSet, returnedClass, true, setId);
+    join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
+  }
+
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
+      Handler<AsyncResult<ResultSet>> replyHandler) {
+
+    Function<ResultSet, ResultSet> resultSetMapper = resultSet -> resultSet;
+    join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
+  }
+
+  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
+      Function<ResultSet, T> resultSetMapper,
+      Handler<AsyncResult<T>> replyHandler) {
+
     long start = System.nanoTime();
 
     client.getConnection(res -> {
@@ -1530,13 +1563,8 @@ public class PostgresClient {
               log.error(query.cause().getMessage(), query.cause());
               replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
-              if(returnedClass != null){
-                replyHandler.handle(Future.succeededFuture(
-                  processResult(query.result(), returnedClass, true, setId)));
-              }
-              else{
-                replyHandler.handle(Future.succeededFuture(query.result()));
-              }
+              T result = resultSetMapper.apply(query.result());
+              replyHandler.handle(Future.succeededFuture(result));
             }
             long end = System.nanoTime();
             StatsTracker.addStatElement(STATS_KEY+".join", (end-start));
@@ -1558,31 +1586,32 @@ public class PostgresClient {
     });
   }
 
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr, Class<?> returnedClass,
-      Handler<AsyncResult<?>> replyHandler){
+  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType, String cr, Class<T> returnedClass,
+      Handler<AsyncResult<Results<T>>> replyHandler){
     join(from, to, operation, joinType, cr, returnedClass, true, replyHandler);
   }
 
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, Criterion cr
-      ,Handler<AsyncResult<?>> replyHandler){
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, Criterion cr,
+      Handler<AsyncResult<ResultSet>> replyHandler){
     String filter = "";
     if(cr != null){
       filter = cr.toString();
     }
-    join(from, to, operation, joinType, filter, null, true, replyHandler);
+    join(from, to, operation, joinType, filter, replyHandler);
   }
 
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, CQLWrapper cr
-      ,Handler<AsyncResult<?>> replyHandler){
+  public void join(JoinBy from, JoinBy to, String operation, String joinType, CQLWrapper cr,
+      Handler<AsyncResult<ResultSet>> replyHandler){
     String filter = "";
     if(cr != null){
       filter = cr.toString();
     }
-    join(from, to, operation, joinType, filter, null, true, replyHandler);
+    join(from, to, operation, joinType, filter, replyHandler);
   }
 
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, Class<?> returnedClazz, CQLWrapper cr
-      ,Handler<AsyncResult<?>> replyHandler){
+  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType,
+      Class<T> returnedClazz, CQLWrapper cr,
+      Handler<AsyncResult<Results<T>>> replyHandler){
     String filter = "";
     if(cr != null){
       filter = cr.toString();
@@ -1590,8 +1619,9 @@ public class PostgresClient {
     join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
   }
 
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, Class<?> returnedClazz, CQLWrapper cr
-      , boolean setId, Handler<AsyncResult<?>> replyHandler){
+  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType,
+      Class<T> returnedClazz, CQLWrapper cr, boolean setId,
+      Handler<AsyncResult<Results<T>>> replyHandler){
     String filter = "";
     if(cr != null){
       filter = cr.toString();
@@ -1599,17 +1629,14 @@ public class PostgresClient {
     join(from, to, operation, joinType, filter, returnedClazz, setId, replyHandler);
   }
 
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, Class<?> returnedClazz, String where
-      ,Handler<AsyncResult<?>> replyHandler){
+  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType,
+      Class<T> returnedClazz, String where,
+      Handler<AsyncResult<Results<T>>> replyHandler){
     String filter = "";
     if(where != null){
       filter = where;
     }
     join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
-  }
-
-  private Results processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count) {
-    return processResult(rs, clazz, count, true);
   }
 
   /**
@@ -1634,10 +1661,10 @@ public class PostgresClient {
    * @param setId
    * @return
    */
-  private Results processResult(io.vertx.ext.sql.ResultSet rs, Class<?> clazz, boolean count, boolean setId) {
+  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, boolean count, boolean setId) {
     long start = System.nanoTime();
     String countField = "count";
-    List<Object> list = new ArrayList<>();
+    List<T> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
     List<String> columnNames = rs.getColumnNames();
     int columnNamesCount = columnNames.size();
@@ -1730,7 +1757,7 @@ public class PostgresClient {
           o.getClass().getMethod(columnNametoCamelCaseWithset(idField),
             new Class[] { String.class }).invoke(o, new String[] { id.toString() });
         }
-        list.add(o);
+        list.add((T) o);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         list.add(null);
@@ -1743,7 +1770,7 @@ public class PostgresClient {
     });
     rn.setTotalRecords(rowCount);
 
-    Results r = new Results();
+    Results<T> r = new Results();
     r.setResults(list);
     r.setResultInfo(rn);
 
@@ -1760,7 +1787,7 @@ public class PostgresClient {
    * @param sql - the sql to run
    * @param replyHandler
    */
-  public void select(String sql, Handler<AsyncResult<io.vertx.ext.sql.ResultSet>> replyHandler) {
+  public void select(String sql, Handler<AsyncResult<ResultSet>> replyHandler) {
 
     client.getConnection(res -> {
       if (res.succeeded()) {
