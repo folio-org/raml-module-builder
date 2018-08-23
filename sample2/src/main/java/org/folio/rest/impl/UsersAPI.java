@@ -7,15 +7,17 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Address;
 import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.jaxrs.resource.UsersId;
 
 public class UsersAPI implements UsersId {
   private static Logger log = LoggerFactory.getLogger(UsersAPI.class);
-  
+
   @Override
-  public void getUsersById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  @Validate
+  public void getUsersById(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     log.info("getUsersById called");
   
     User user = new User();
@@ -30,6 +32,10 @@ public class UsersAPI implements UsersId {
     address.setCountry("Denmark");
     user.setAddress(address);
     
+    if (!"en".equals(lang)) {
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond400()));
+      return;
+    }
     if ("1".equals(id)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond200WithApplicationJson(user)));
     } else {
