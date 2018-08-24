@@ -1,8 +1,12 @@
+## 19.4.0 2018-08-24
+ * Use CQL2PGJSON 2.2.0 with fulltext support
+ * RMB-174 Mvn install leaves a postgres process running
+
 ## 19.3.1 2018-08-01
 Fix regression caused by RMB-176
 
 ## 19.3.0 2018-08-01
-*RMB-176 Support index for multiple properties in declarative schema
+* RMB-176 Support index for multiple properties in declarative schema
 
 ## 19.2.0 2018-07-16
 * RMB-184 new "fulltext" index type in schema.json
