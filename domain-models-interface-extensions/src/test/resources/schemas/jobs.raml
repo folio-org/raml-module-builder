@@ -6,12 +6,11 @@ version: v1
 
 types:
   jobs: !include jobs.schema
-  job: !include job.schema
 
 /jobs:
-    displayName: Jobs
-    description: Jobs services
-    post:
-      body:
-        application/json:
-          schema: jobs
+  displayName: Jobs
+  description: Jobs services
+  post:
+    body:
+      application/json:
+        schema: jobs
