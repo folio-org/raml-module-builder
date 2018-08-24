@@ -454,12 +454,21 @@ public class PostgresClient {
   }
 
   /**
-   * end transaction must be called or the connection will remain open
+   * Start a SQL transaction.
    *
-   * @param done
+   * <p>Use the AsyncResult<SQLConnection> result to invoke any of the
+   * functions that take that result as first parameter for the commands
+   * within the transaction.
+   *
+   * <p>To close the open connection invoke the END or ROLLBACK
+   * function.
+   *
+   * @see #endTx(Object, Handler)
+   * @see #rollbackTx(Future, Handler)
+   * @param done - the result is the current connection
    */
   //@Timer
-  public void startTx(Handler<AsyncResult<Object>> done) {
+  public void startTx(Handler<AsyncResult<SQLConnection>> done) {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -489,32 +498,44 @@ public class PostgresClient {
     });
   }
 
+  /**
+   * Rollback a SQL transaction started on the connection. This closes the connection.
+   *
+   * @see #startTx(Handler)
+   * @param conn  the connection with an open transaction
+   * @param done  success or failure
+   */
   //@Timer
-  @SuppressWarnings("unchecked")
-  public void rollbackTx(Object conn, Handler<AsyncResult<Object>> done) {
-    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+  public void rollbackTx(AsyncResult<SQLConnection> conn, Handler<AsyncResult<Void>> done) {
+    SQLConnection sqlConnection = conn.result();
     sqlConnection.rollback(res -> {
       sqlConnection.close();
       if (res.failed()) {
         log.error(res.cause().getMessage(), res.cause());
         done.handle(Future.failedFuture(res.cause()));
       } else {
-        done.handle(Future.succeededFuture(res));
+        done.handle(Future.succeededFuture());
       }
     });
   }
 
+  /**
+   * Ends a SQL transaction (commit) started on the connection. This closes the connection.
+   *
+   * @see #startTx(Handler)
+   * @param conn  the connection with an open transaction
+   * @param done  success or failure
+   */
   //@Timer
-  @SuppressWarnings("unchecked")
-  public void endTx(Object conn, Handler<AsyncResult<Object>> done) {
-    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+  public void endTx(AsyncResult<SQLConnection> conn, Handler<AsyncResult<Void>> done) {
+    SQLConnection sqlConnection = conn.result();
     sqlConnection.commit(res -> {
       sqlConnection.close();
       if (res.failed()) {
         log.error(res.cause().getMessage(), res.cause());
         done.handle(Future.failedFuture(res.cause()));
       } else {
-        done.handle(Future.succeededFuture(res));
+        done.handle(Future.succeededFuture());
       }
     });
   }
@@ -633,15 +654,14 @@ public class PostgresClient {
     save(table, id, entity, returnId, upsert, true, replyHandler);
   }
 
-  @SuppressWarnings("unchecked")
-  public void save(Object sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
+  public void save(AsyncResult<SQLConnection> sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
     long start = System.nanoTime();
 
     log.debug("save called on " + table);
     SQLConnection connection = null;
     try {
       // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
-      connection = ((Future<SQLConnection>) sqlConnection).result();
+      connection = sqlConnection.result();
       String pojo = pojo2json(entity);
       connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
@@ -820,7 +840,7 @@ public class PostgresClient {
     update(table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
   }
 
-  public void update(Object conn, String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
+  public void update(AsyncResult<SQLConnection> conn, String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
     String where = "";
     try {
       if (filter != null) {
@@ -832,11 +852,11 @@ public class PostgresClient {
     }
   }
 
-  public void update(Object conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
+  public void update(AsyncResult<SQLConnection> conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
   {
     SQLConnection connection = null;
     if(conn != null){
-      connection = ((Future<SQLConnection>) conn).result();
+      connection = conn.result();
       doUpdate(connection, true, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
     }
     else{
@@ -859,7 +879,6 @@ public class PostgresClient {
 
   private void doUpdate(SQLConnection connection, boolean transactionMode, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
       Handler<AsyncResult<UpdateResult>> replyHandler){
-
     vertx.runOnContext(v -> {
       if(connection == null){
         replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
@@ -1031,8 +1050,8 @@ public class PostgresClient {
    * @param filter
    * @param replyHandler
    */
-  public void delete(Object conn, String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+  public void delete(AsyncResult<SQLConnection> conn, String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    SQLConnection sqlConnection = conn.result();
     StringBuilder sb = new StringBuilder();
     if (filter != null) {
       sb.append(filter.toString());
@@ -1058,8 +1077,8 @@ public class PostgresClient {
     doDelete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", replyHandler);
   }
 
-  public void delete(Object conn, String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+  public void delete(AsyncResult<SQLConnection> conn, String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    SQLConnection sqlConnection = conn.result();
     String pojo = null;
     try {
       pojo = pojo2json(entity);
@@ -1391,7 +1410,7 @@ public class PostgresClient {
     get(table, clazz, filter, returnCount, setId, null, replyHandler);
   }
 
-  public <T> void get(Object conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+  public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(conn, table, clazz, filter, returnCount, setId, null, replyHandler);
   }
@@ -1412,7 +1431,7 @@ public class PostgresClient {
     get(null, table, clazz, filter, returnCount, setId, facets, replyHandler);
   }
 
-  public <T> void get(Object conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+  public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
       List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     StringBuilder sb = new StringBuilder();
@@ -1429,7 +1448,7 @@ public class PostgresClient {
         returnCount, true, setId, facets, replyHandler);
     }
     else{
-      SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+      SQLConnection sqlConnection = conn.result();
       doGet(sqlConnection, true, table, clazz, DEFAULT_JSONB_FIELD_NAME,
         fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, replyHandler);
     }
@@ -1969,7 +1988,7 @@ public class PostgresClient {
 
   /**
    * send a query to update within a transaction
-   * @param conn - connection - see startTx
+   * @param conn - connection - see {@link #startTx(Handler)}
    * @param sql - the sql to run
    * @param replyHandler
    * Example:
@@ -1977,9 +1996,8 @@ public class PostgresClient {
    *        try {
    *          postgresClient.mutate(beginTx, sql, reply -> {...
    */
-  @SuppressWarnings("unchecked")
-  public void mutate(Object conn, String sql, Handler<AsyncResult<String>> replyHandler){
-    SQLConnection sqlConnection = ((Future<SQLConnection>) conn).result();
+  public void mutate(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<String>> replyHandler){
+    SQLConnection sqlConnection = conn.result();
     try {
       sqlConnection.update(sql, query -> {
         if (query.failed()) {
