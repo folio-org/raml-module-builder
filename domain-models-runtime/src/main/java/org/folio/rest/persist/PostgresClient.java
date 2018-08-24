@@ -98,6 +98,8 @@ public class PostgresClient {
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
+  private static final String   SELECT = "SELECT ";
+  private static final String   FROM = " FROM ";
   private static final String   UPDATE = "UPDATE ";
   private static final String   SET = " SET ";
   private static final String   WHERE = " WHERE ";
@@ -134,7 +136,7 @@ public class PostgresClient {
   private Vertx vertx                       = null;
   private JsonObject postgreSQLClientConfig = null;
   private final Messages messages           = Messages.getInstance();
-  private AsyncSQLClient         client;
+  private AsyncSQLClient client;
   private String tenantId;
   private String idField                     = "_id";
   private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count ";
@@ -1146,17 +1148,15 @@ public class PostgresClient {
           addIdField = "," + idField;
         }
 
-        String select = "SELECT ";
-
         if (!"null".equals(fieldName) && fieldName.contains("*")) {
           //if we are requesting all fields (*) , then dont add the id field to the select
           //this will return two id columns which will create ambiguity in facet queries
           addIdField = "";
         }
 
-        String from2where = " FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+        String from2where = FROM + convertToPsqlStandard(tenantId) + "." + table + " " + where;
 
-        String[] q = new String[]{select + fieldName + addIdField + from2where};
+        String[] q = new String[]{SELECT + fieldName + addIdField + from2where};
 
         ParsedQuery parsedQuery = null;
 
@@ -1172,7 +1172,7 @@ public class PostgresClient {
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
               parsedQuery.getCountFuncQuery()));
           StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = select + fieldName + addIdField + "," + sub.replace(countClauseTemplate) + from2where;
+          q[0] = SELECT + fieldName + addIdField + "," + sub.replace(countClauseTemplate) + from2where;
         }
 
         if (facets != null && !facets.isEmpty()) {
@@ -1436,6 +1436,128 @@ public class PostgresClient {
   }
 
   /**
+   * Get the jsonb by id.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param function  how to convert the (String encoded) JSON
+   * @param replyHandler  the result after applying function
+   */
+  private <R> void getById(String table, String id,
+      Function<String, R> function, Handler<AsyncResult<R>> replyHandler) {
+    client.getConnection(res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
+          + FROM + convertToPsqlStandard(tenantId) + "." + table
+          + WHERE + idField + "= ?";
+      res.result().querySingleWithParams(sql, new JsonArray().add(id), query -> {
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        JsonArray result = query.result();
+        if (result == null || result.size() == 0) {
+          replyHandler.handle(Future.succeededFuture(null));
+          return;
+        }
+        String string = result.getString(0);
+        R r = function.apply(string);
+        replyHandler.handle(Future.succeededFuture(r));
+      });
+    });
+  }
+
+  /**
+   * Get the jsonb by id and return it as a String.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a String
+   */
+  public void getByIdAsString(String table, String id, Handler<AsyncResult<String>> replyHandler) {
+    getById(table, id, string -> string, replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id and return it as a JsonObject.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a JsonObject
+   */
+  public void getById(String table, String id, Handler<AsyncResult<JsonObject>> replyHandler) {
+    getById(table, id, JsonObject::new, replyHandler);
+  }
+
+  /**
+   * Get jsonb by id for a list of ids.
+   * <p>
+   * The result is a map of all found records where the key is the id
+   * and the value is the jsonb.
+   *
+   * @param table  the table to search in
+   * @param ids  the values of the id field
+   * @param function  how to convert the (String encoded) JSON
+   * @param replyHandler  the result after applying function
+   */
+  private <R> void getById(String table, JsonArray ids,
+      Function<String, R> function, Handler<AsyncResult<Map<String,R>>> replyHandler) {
+    if (ids == null || ids.isEmpty()) {
+      replyHandler.handle(Future.succeededFuture(Collections.emptyMap()));
+      return;
+    }
+    client.getConnection(res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+
+      StringBuilder sql = new StringBuilder()
+          .append(SELECT).append(idField).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
+          .append(FROM).append(convertToPsqlStandard(tenantId)).append(".").append(table)
+          .append(WHERE).append(idField).append(" IN (?");
+      for (int i=1; i<ids.size(); i++) {
+        sql.append(",?");
+      }
+      sql.append(")");
+      res.result().queryWithParams(sql.toString(), ids, query -> {
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        ResultSet resultSet = query.result();
+        Map<String,R> result = new HashMap<>();
+        for (JsonArray jsonArray : resultSet.getResults()) {
+          result.put(jsonArray.getString(0), function.apply(jsonArray.getString(1)));
+        }
+        replyHandler.handle(Future.succeededFuture(result));
+      });
+    });
+  }
+
+  /**
+   * Get the jsonb by id for a list of ids and return each jsonb as a String.
+   * @param table  the table to search in
+   * @param ids  the values of the id field
+   * @param replyHandler  the result; the JSON is encoded as a String
+   */
+  public void getByIdAsString(String table, JsonArray ids,
+      Handler<AsyncResult<Map<String,String>>> replyHandler) {
+    getById(table, ids, string -> string, replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id for a list of ids and return each jsonb as a JsonObject.
+   * @param table  the table to search in
+   * @param ids  the values of the id field
+   * @param replyHandler  the result; the JSON is encoded as a JsonObject
+   */
+  public void getById(String table, JsonArray ids,
+      Handler<AsyncResult<Map<String,JsonObject>>> replyHandler) {
+    getById(table, ids, JsonObject::new, replyHandler);
+  }
+
+  /**
    * run simple join queries between two tables
    *
    * for example, to generate the following query:
@@ -1513,8 +1635,6 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         try {
-          String select = "SELECT ";
-
           StringBuffer joinon = new StringBuffer();
           StringBuffer tables = new StringBuffer();
           StringBuffer selectFields = new StringBuffer();
@@ -1542,7 +1662,7 @@ public class PostgresClient {
 
           joinon.append(joinType + " " + convertToPsqlStandard(tenantId) + "." + to.getTableName() + " " + to.getAlias() + " ");
 
-          String q[] = new String[]{ select + selectFields.toString() + " FROM " + tables.toString() + joinon.toString() +
+          String [] q = new String[]{ SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() +
               new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
 
           //TODO optimize query building
@@ -1552,8 +1672,8 @@ public class PostgresClient {
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
               parseQuery(q[0]).getCountFuncQuery()));
           StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = select +
-            sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(select , " ");
+          q[0] = SELECT +
+            sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(SELECT , " ");
 
           log.debug("query = " + q[0]);
           connection.query(q[0],
