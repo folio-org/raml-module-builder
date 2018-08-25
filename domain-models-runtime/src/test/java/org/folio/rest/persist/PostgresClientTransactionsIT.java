@@ -42,7 +42,6 @@ public class PostgresClientTransactionsIT {
     Async async = context.async();
     String sql =
         "DROP SCHEMA IF EXISTS " + schema + " CASCADE;\n"
-      + "REASSIGN OWNED BY " + schema + " TO postgres;\n"
       + "DROP ROLE IF EXISTS " + schema + ";\n";
     PostgresClient.getInstance(vertx).runSQLFile(sql, true, reply -> {
       context.assertTrue(reply.succeeded());
