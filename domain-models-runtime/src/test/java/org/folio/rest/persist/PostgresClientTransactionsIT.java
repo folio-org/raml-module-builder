@@ -3,12 +3,10 @@ package org.folio.rest.persist;
 import java.io.IOException;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.logging.log4j.Level;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.helpers.SimplePojo;
-import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
@@ -31,6 +29,8 @@ public class PostgresClientTransactionsIT {
   @BeforeClass
   public static void setUpClass() throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
+    // init PostgresClient.moduleName
+    PostgresClient.getInstance(vertx);
   }
 
   @AfterClass
@@ -41,11 +41,14 @@ public class PostgresClientTransactionsIT {
   private void dropSchemaRole(TestContext context, String schema) {
     Async async = context.async();
     String sql =
-        "REASSIGN OWNED BY " + schema + " TO postgres;\n"
-      + "DROP OWNED BY " + schema + " CASCADE;\n"
+        "DROP SCHEMA IF EXISTS " + schema + " CASCADE;\n"
+      + "REASSIGN OWNED BY " + schema + " TO postgres;\n"
       + "DROP ROLE IF EXISTS " + schema + ";\n";
     PostgresClient.getInstance(vertx).runSQLFile(sql, true, reply -> {
       context.assertTrue(reply.succeeded());
+      for (String result : reply.result()) {
+        context.fail(result);
+      }
       async.complete();
     });
     async.await();
@@ -295,9 +298,6 @@ public class PostgresClientTransactionsIT {
 
   @Test
   public void test(TestContext context) {
-    // don't log expected access violation errors
-    LogUtil.setLevelForRootLoggers(Level.FATAL);
-
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
 
     dropSchemaRole(context, schema);
