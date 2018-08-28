@@ -12,12 +12,12 @@ import com.sun.codemodel.JFieldVar;
 
 public class CustomArrayAnnotator extends AbstractAnnotator {
 
-  final private static String REGEXP  = "regexp",
-                              TYPE    = "type",
-                              ITEMS   = "items",
-                              ARRAY   = "array",
-                              STRING  = "string",
-                              PATTERN = "pattern";
+  final private static String REGEXP  = "regexp";
+  final private static String TYPE    = "type";
+  final private static String ITEMS   = "items";
+  final private static String ARRAY   = "array";
+  final private static String STRING  = "string";
+  final private static String PATTERN = "pattern";
 
   @Override
   public void propertyField(final JFieldVar field, final JDefinedClass clazz, final String propertyName, final JsonNode propertyNode) {
