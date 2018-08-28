@@ -2,7 +2,6 @@ package org.folio.rest.validators;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Optional;
 
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
@@ -13,24 +12,20 @@ public class NoNullElementsValidator implements ConstraintValidator<NoNullElemen
 
   @Override
   public void initialize(final NoNullElements noNullElements) {
-
+    // Nothing to do here.
   }
 
   @Override
   public boolean isValid(final Collection<?> collection, final ConstraintValidatorContext context) {
-    Optional<Collection<?>> items = Optional.ofNullable(collection);
-    boolean valid = true;
-    if (items.isPresent() && items.get().size() > 0) {
-      Iterator<?> iterator = items.get().iterator();
+    if (collection != null && !collection.isEmpty()) {
+      Iterator<?> iterator = collection.iterator();
       while (iterator.hasNext()) {
-        Optional<Object> element = Optional.ofNullable(iterator.next());
-        if (!element.isPresent()) {
-          valid = false;
-          break;
+        if (iterator.next() == null) {
+          return false;
         }
       }
     }
-    return valid;
+    return true;
   }
 
 }
