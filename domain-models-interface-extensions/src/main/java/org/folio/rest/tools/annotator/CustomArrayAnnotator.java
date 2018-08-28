@@ -15,6 +15,8 @@ public class CustomArrayAnnotator extends AbstractAnnotator {
   private static final String REGEXP  = "regexp";
   private static final String TYPE    = "type";
   private static final String ITEMS   = "items";
+  private static final String NOT     = "not";
+  private static final String NULL    = "null";
   private static final String ARRAY   = "array";
   private static final String STRING  = "string";
   private static final String PATTERN = "pattern";
@@ -23,12 +25,27 @@ public class CustomArrayAnnotator extends AbstractAnnotator {
   public void propertyField(final JFieldVar field, final JDefinedClass clazz, final String propertyName, final JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
     if(isArray(propertyNode)) {
-      field.annotate(NoNullElements.class);
+      if(isItemsNotNull(propertyNode)) {
+        field.annotate(NoNullElements.class);
+      }
       Optional<String> pattern = getPattern(propertyNode);
       if(pattern.isPresent()) {
         field.annotate(ElementsPattern.class).param(REGEXP, pattern.get());
       }
     }
+  }
+
+  private boolean isItemsNotNull(JsonNode propertyNode) {
+    if (propertyNode.has(ITEMS)) {
+      JsonNode itemNode = propertyNode.get(ITEMS);
+      if (itemNode.has(NOT)) {
+        JsonNode notNode = propertyNode.get(NOT);
+        if(notNode.has(TYPE) && NULL.equals(notNode.get(TYPE).asText())) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private boolean isArray(final JsonNode propertyNode) {
