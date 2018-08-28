@@ -1,7 +1,6 @@
 package org.folio.rest.validators;
 
 import java.util.Collection;
-import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.folio.rest.annotations.ElementsPattern;
@@ -16,8 +15,8 @@ public class ElementsPatternValidator extends AbstractCollectionValidator<Elemen
   }
 
   @Override
-  public boolean isEntityValid(Optional<String> element) {
-    return element.isPresent() && pattern.matcher(element.get()).matches();
+  public boolean isElementValid(final String element) {
+    return pattern.matcher(element).matches();
   }
 
 }

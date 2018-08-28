@@ -12,21 +12,37 @@ import com.sun.codemodel.JFieldVar;
 
 public class CustomArrayAnnotator extends AbstractAnnotator {
 
+  final private static String REGEXP  = "regexp";
+  final private static String TYPE    = "type";
+  final private static String ITEMS   = "items";
+  final private static String ARRAY   = "array";
+  final private static String STRING  = "string";
+  final private static String PATTERN = "pattern";
+
   @Override
-  public void propertyField(JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
+  public void propertyField(final JFieldVar field, final JDefinedClass clazz, final String propertyName, final JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
-    Optional<JsonNode> typeNode = Optional.ofNullable(propertyNode.get("type"));
-    if (typeNode.isPresent() && typeNode.get().asText().equals("array")) {
+    if(isArray(propertyNode)) {
       field.annotate(NoNullElements.class);
-      Optional<JsonNode> itemsNode = Optional.ofNullable(propertyNode.get("items"));
-      if (itemsNode.isPresent()) {
-        Optional<JsonNode> itemsTypeNode = Optional.ofNullable(itemsNode.get().get("type"));
-        Optional<JsonNode> patternNode = Optional.ofNullable(itemsNode.get().get("pattern"));
-        if (itemsTypeNode.isPresent() && itemsTypeNode.get().asText().equals("string") && patternNode.isPresent()) {
-          field.annotate(ElementsPattern.class).param("regexp", patternNode.get().asText());
-        }
+      Optional<String> pattern = getPattern(propertyNode);
+      if(pattern.isPresent()) {
+        field.annotate(ElementsPattern.class).param(REGEXP, pattern.get());
       }
     }
+  }
+
+  private boolean isArray(final JsonNode propertyNode) {
+    return propertyNode.has(TYPE) && ARRAY.equals(propertyNode.get(TYPE).asText());
+  }
+
+  private Optional<String> getPattern(final JsonNode propertyNode) {
+    if (propertyNode.has(ITEMS)) {
+      JsonNode itemNode = propertyNode.get(ITEMS);
+      if (itemNode.has(TYPE) && STRING.equals(itemNode.get(TYPE).asText()) && itemNode.has(PATTERN)) {
+        return Optional.of(itemNode.get(PATTERN).asText());
+      }
+    }
+    return Optional.empty();
   }
 
 }
