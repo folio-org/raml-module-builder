@@ -1,3 +1,6 @@
+## 19.4.1 2018-08-29
+ * RMB-231: Fix noather regression caused by RMB-176: Views were broken
+
 ## 19.4.0 2018-08-24
  * Use CQL2PGJSON 2.2.0 with fulltext support
  * RMB-174 Mvn install leaves a postgres process running
