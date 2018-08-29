@@ -9,13 +9,13 @@ import java.lang.annotation.Target;
 import javax.validation.Constraint;
 import javax.validation.Payload;
 
-import org.folio.rest.validators.NoNullElementsValidator;
+import org.folio.rest.validators.ElementsNotNullValidator;
 
-@Constraint(validatedBy = { NoNullElementsValidator.class })
+@Constraint(validatedBy = { ElementsNotNullValidator.class })
 @Target({ ElementType.FIELD, ElementType.PARAMETER })
 @Retention(value = RetentionPolicy.RUNTIME)
 @Documented
-public @interface NoNullElements {
+public @interface ElementsNotNull {
   String message() default "list can not contain null";
 
   Class<?>[] groups() default {};

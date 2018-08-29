@@ -6,12 +6,12 @@ import java.util.Iterator;
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
 
-import org.folio.rest.annotations.NoNullElements;
+import org.folio.rest.annotations.ElementsNotNull;
 
-public class NoNullElementsValidator implements ConstraintValidator<NoNullElements, Collection<?>> {
+public class ElementsNotNullValidator implements ConstraintValidator<ElementsNotNull, Collection<?>> {
 
   @Override
-  public void initialize(final NoNullElements noNullElements) {
+  public void initialize(final ElementsNotNull elementsNotNull) {
     // Nothing to do here.
   }
 
