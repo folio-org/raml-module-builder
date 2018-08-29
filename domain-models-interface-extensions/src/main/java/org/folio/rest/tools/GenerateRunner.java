@@ -14,6 +14,7 @@ import java.util.Set;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
+import org.folio.rest.tools.annotator.CustomArrayAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
 import org.folio.rest.utils.GlobalSchemaPojoMapperCache;
 import org.jsonschema2pojo.AnnotationStyle;
@@ -78,6 +79,7 @@ public class GenerateRunner {
     configuration.setJsonMapper(AnnotationStyle.JACKSON2);
     configuration.setBasePackageName(PACKAGE_DEFAULT);
     configuration.setExtensions(extensions);
+    configuration.setCustomAnnotator(CustomArrayAnnotator.class);
   }
 
   /**
