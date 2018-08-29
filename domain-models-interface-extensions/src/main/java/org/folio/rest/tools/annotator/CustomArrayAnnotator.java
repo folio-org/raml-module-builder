@@ -39,7 +39,7 @@ public class CustomArrayAnnotator extends AbstractAnnotator {
     if (propertyNode.has(ITEMS)) {
       JsonNode itemNode = propertyNode.get(ITEMS);
       if (itemNode.has(NOT)) {
-        JsonNode notNode = propertyNode.get(NOT);
+        JsonNode notNode = itemNode.get(NOT);
         if(notNode.has(TYPE) && NULL.equals(notNode.get(TYPE).asText())) {
           return true;
         }
