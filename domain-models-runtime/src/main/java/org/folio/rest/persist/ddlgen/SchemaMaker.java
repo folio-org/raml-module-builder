@@ -238,7 +238,7 @@ public class SchemaMaker {
           vt.setPrefix(vt.getTableName());
           Index index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
           vt.setJoinOnField(convertDotPath2PostgresNotation(vt.getPrefix(), 
-            vt.getPrefix() +"." + vt.getJoinOnField()  , true, index, false));
+            vt.getJoinOnField(), true, index, false));
           if(index != null){
           //when creating the join on condition, we want to create it the same way as we created the index
           //so that the index will get used, for example:
@@ -321,7 +321,7 @@ public class SchemaMaker {
   private static String normalizeFieldName(String path) {
     return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
   }
-  
+
   public static String convertDotPath2PostgresNotation(String prefix, 
     String path, boolean stringType, Index index, boolean isFullText){
     //when an index is on multiple columns, this will be defined something like "username,type"
