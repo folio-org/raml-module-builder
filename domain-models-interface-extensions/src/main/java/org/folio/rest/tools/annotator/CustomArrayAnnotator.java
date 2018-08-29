@@ -3,7 +3,7 @@ package org.folio.rest.tools.annotator;
 import java.util.Optional;
 
 import org.folio.rest.annotations.ElementsPattern;
-import org.folio.rest.annotations.NoNullElements;
+import org.folio.rest.annotations.ElementsNotNull;
 import org.jsonschema2pojo.AbstractAnnotator;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,7 +26,7 @@ public class CustomArrayAnnotator extends AbstractAnnotator {
     super.propertyField(field, clazz, propertyName, propertyNode);
     if(isArray(propertyNode)) {
       if(isItemsNotNull(propertyNode)) {
-        field.annotate(NoNullElements.class);
+        field.annotate(ElementsNotNull.class);
       }
       Optional<String> pattern = getPattern(propertyNode);
       if(pattern.isPresent()) {
