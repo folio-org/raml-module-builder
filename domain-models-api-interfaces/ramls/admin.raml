@@ -9,7 +9,6 @@ traits:
   upload-handler: !include traits/upload-handler.raml
   history: !include traits/history.raml
   dbname: !include traits/dbname.raml
-  secured: !include raml-util/traits/auth.raml
   secret-key: !include traits/secret-key.raml
   slow-query: !include traits/slow-query.raml
   pid: !include traits/pid.raml
@@ -18,7 +17,6 @@ traits:
   /importSQL:
     description: Uploads a file and saves it to a directory configured on the server
     post:
-      is: [secured]
       description: |
           Uploads a file and saves it to a directory configured on the server
       body:
@@ -43,7 +41,7 @@ traits:
   /loglevel:
     put:
       description: Set logging level for all loggers in the JVM or just for a specific package / class
-      is: [secured, log-level]
+      is: [log-level]
       responses:
         200:
           description: "Returns packages with log level of the updated packages"
@@ -57,7 +55,6 @@ traits:
               example: "Internal server error, contact administrator"
     get:
       description: Get the logging level for all loggers in the JVM
-      is: [secured]
       responses:
         200:
           description: "Returns packages with log level"
@@ -73,7 +70,6 @@ traits:
     put:
       description: dumps jstacks every N seconds to a jstack file to find potential bottlenecks. Looking at this |
         file you can see if there are functions blocking for too long
-      is: [secured]
       responses:
         204:
           description: "Jstack request successful"
@@ -84,7 +80,6 @@ traits:
               example: "Internal server error, contact administrator"
     get:
       description: Get stack trace
-      is: [secured]
       responses:
         200:
           description: "Returns the stack trace of all threads in the JVM"
@@ -99,7 +94,7 @@ traits:
   /memory:
     get:
       description: Get JVM memory info
-      is: [secured, history]
+      is: [history]
       responses:
         200:
           description: "Returns JVM memory info"
@@ -115,7 +110,6 @@ traits:
     post:
       description: run one of the following maintenance jobs on the Postgres DB. |
         analyze, vacuum, vacuum analyze, vacuum verbose
-      is: [secured]
       queryParameters:
         table:
           description: Table name to run command on
@@ -139,7 +133,7 @@ traits:
   /postgres_active_sessions:
     get:
       description: Get active PostgreSQL sessions
-      is: [secured, dbname]
+      is: [dbname]
       responses:
         200:
           description: |
@@ -158,7 +152,7 @@ traits:
   /postgres_load:
     get:
       description: Get load information on PostgreSQL
-      is: [secured, dbname]
+      is: [ dbname]
       responses:
         200:
           description: |
@@ -179,7 +173,6 @@ traits:
   /postgres_table_access_stats:
     get:
       description: Get access stats on the PostgreSQL tables
-      is: [secured]
       responses:
         200:
           description: |
@@ -194,7 +187,7 @@ traits:
   /postgres_table_size:
     get:
       description: amount of disk usage for a specific database and its associated tables and indexes.
-      is: [secured, dbname]
+      is: [dbname]
       responses:
         200:
           description: |
@@ -209,7 +202,6 @@ traits:
   /table_index_usage:
     get:
       description: table index usage rates per table
-      is: [secured]
       responses:
         200:
           description: |
@@ -224,7 +216,6 @@ traits:
   /cache_hit_rates:
     get:
       description: cache hit rates
-      is: [secured]
       responses:
         200:
           description: |
@@ -239,7 +230,7 @@ traits:
   /slow_queries:
     get:
       description: Check for currently running queries that have been executing longer than X seconds
-      is: [secured, slow-query]
+      is: [slow-query]
       responses:
         200:
           description: |
@@ -254,7 +245,7 @@ traits:
   /total_db_size:
     get:
       description: Returns the size of the entire database for example, db_size = 711 MB
-      is: [secured, dbname]
+      is: [dbname]
       responses:
         200:
           description: |
@@ -271,7 +262,6 @@ traits:
     get:
       description: Returns a list of the tables / indexes in the shared_buffers (cache) and their size. This is |
         an expensive API from a DB resource perspective and should not run frequently (every few hours should suffice)
-      is: [secured]
       responses:
         200:
           description: |
@@ -287,7 +277,7 @@ traits:
     get:
       description: Returns a list of queries in transactions that are blocking other queries. The result includes
         the blocking query, the query being blocked, and their pids
-      is: [secured, dbname]
+      is: [dbname]
       responses:
         200:
           body:
@@ -300,7 +290,7 @@ traits:
   /kill_query:
     delete:
       description: Stops a query from running based on its PID using the pg_terminate_backend command
-      is: [secured, pid]
+      is: [pid]
       responses:
         204:
           description: "Query terminated successfully"
@@ -318,7 +308,6 @@ traits:
   /postgres_drop_indexes:
     put:
       description: Drop indexes, useful before a large batch load, tenantid will be used to select the correct schema to use
-      is: [secured]
       responses:
         204:
           description: "Indexes dropped"
@@ -336,7 +325,6 @@ traits:
   /postgres_create_indexes:
     put:
       description: Create indexes, useful if prior to a large batch load the indexes were dropped, tenantid will be used to select the correct schema to use
-      is: [secured]
       responses:
         204:
           description: "Indexes created"
@@ -355,7 +343,7 @@ traits:
     post:
       description: Sets the AES secret key that the postgres config file password was encrypted with. The key will only be checked |
         when the configuration file is read in and the DB connection is created
-      is: [secured, secret-key]
+      is: [secret-key]
       responses:
         204:
           description: "Secret key set"
@@ -363,7 +351,7 @@ traits:
     post:
       description: The API takes the secret key passed in and the x-okapi-tenant header and returns the DB password generated for |
         that tenant's schema
-      is: [secured, secret-key]
+      is: [secret-key]
       responses:
         200:
           description: "returned password"
@@ -385,7 +373,6 @@ traits:
     get:
       description: The API returns 200 if service is up and responding. Should be overridden |
         by individual services that want to actually run some business logic to determine health.
-      is: [secured]
       responses:
         200:
           body:
@@ -405,7 +392,6 @@ traits:
     get:
       description: The API returns service specific statistics. Should be overridden |
         by individual services that run a set of business logic functions / gather stats and return.
-      is: [secured]
       responses:
         200:
           description: "returned status"
