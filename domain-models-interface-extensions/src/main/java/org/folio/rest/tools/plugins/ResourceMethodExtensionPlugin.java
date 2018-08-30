@@ -72,6 +72,7 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
 
     try {
       handleOverrides();
+      methodSpec = addAnnotations(method, methodSpec);
       addRoutingContext(methodSpec, method);
       Builder builder = generateOverrides(method.resource().resourcePath(), method.method(), methodSpec);
       addParams(builder);
@@ -100,8 +101,67 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     }
   }
 
-  private void addParams(MethodSpec.Builder methodSpec){
+  private Builder addAnnotations(GMethod method, MethodSpec.Builder methodSpec) {
+    MethodSpec.Builder ret = cloneMethodWithoutParams(methodSpec);
 
+    MethodSpec spec = methodSpec.build();
+
+    List<ParameterSpec> modifiedParams = new ArrayList<>(spec.parameters);
+
+    List<GParameter> methodParams = method.queryParameters();
+    int j = 0;
+    for (int i = 0; i < methodParams.size(); i++) {
+      ParameterSpec orgParam = null;
+      while (true) {
+        orgParam = modifiedParams.get(j);
+        boolean gotIt = false;
+        List<AnnotationSpec> an = orgParam.annotations;
+        for (AnnotationSpec a : an) {
+          if (a.type.toString().equals("javax.ws.rs.QueryParam")) {
+            gotIt = true;
+          }
+        }
+        if (gotIt) {
+          break;
+        }
+        j++;
+      }
+      GParameter get = methodParams.get(i);
+      TypeDeclaration typeDeclaration = (TypeDeclaration) get.implementation();
+
+      ParameterSpec.Builder newParam = cloneSingleParamNoAnnotations(orgParam);
+      List<AnnotationSpec> newAnnotations = getAnnotationsAsModifiableList(orgParam);
+
+      if (typeDeclaration instanceof StringTypeDeclaration) {
+        StringTypeDeclaration n = (StringTypeDeclaration) typeDeclaration;
+        if (n.pattern() != null) {
+          AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Pattern.class);
+          annoBuilder.addMember("regexp", "$S", n.pattern());
+          newAnnotations.add(annoBuilder.build());
+        }
+      }
+      if (typeDeclaration instanceof NumberTypeDeclaration) {
+        NumberTypeDeclaration n = (NumberTypeDeclaration) typeDeclaration;
+        if (n.minimum() != null) {
+          AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Min.class);
+          annoBuilder.addMember(ANNOTATION_VALUE, "$L", (Long) n.minimum().longValue());
+          newAnnotations.add(annoBuilder.build());
+        }
+        if (n.maximum() != null) {
+          AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Max.class);
+          annoBuilder.addMember(ANNOTATION_VALUE, "$L", (Long) n.maximum().longValue());
+          newAnnotations.add(annoBuilder.build());
+        }
+      }
+      newParam.addAnnotations(newAnnotations);
+      modifiedParams.set(j, newParam.build());
+      j++;
+    }
+    ret.addParameters(modifiedParams);
+    return ret;
+  }
+
+  private void addParams(MethodSpec.Builder methodSpec){
     ParameterizedTypeName okapiHeader =
         ParameterizedTypeName.get(ClassName.get(java.util.Map.class),
           ClassName.get(String.class).box(), ClassName.get(String.class).box());
