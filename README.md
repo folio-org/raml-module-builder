@@ -1275,6 +1275,10 @@ For each **table**:
 11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
 12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
 13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
+14. `fullTextIndex` - create a full text index using teh tsvector features of postgres. These do their
+ - own normalizing, so there is no need to use `caseSensitive` or `removeAccents`. The `tOps`
+ - is optional (like for all indexes), and defaults to ADDing the index. `whereClause` and
+ - `stringType` work as for `likeIndex` above.
 
 The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```
