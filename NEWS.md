@@ -1,5 +1,27 @@
+## 20.0.0 2018-08-31
+* RMB-221 Single quote SQL Injection in PostgresClient.saveBatch(table, list, handler)
+* RMB-231 Errors in mod-inventory-storage when upgrading RMB from 19.1.5 to 19.3.1
+* RMB-1 Specifying a RAML that only uses GET fails with RMB
+* RMB-44 use generics for PostgresClient.get(...) and .join(...)
+* RMB-109 RAML 1.0 support: use raml-for-jax-rs rather than obsolete raml-jaxrs-codegen
+* RMB-149 Security update PostgreSQL 10.3 CVE-2018-1058 search_path
+* RMB-174 mvn install leaves a postgres process running
+* RMB-186 HTTP_ACCEPTED = 202, HTTP_OK = 200
+* RMB-191 Reenable JUnit 5
+* RMB-192 Add AdminAPI.postAdminImportSQL error reporting
+* RMB-193 Add RestVerticle stacktrace error reporting
+* RMB-195 Stacktrace logging on exception in AdminAPI
+* RMB-202 Create small RMB example
+* RMB-203 $ref should follow the JSON schema spec
+* RMB-206 Add PostgresClient.getById
+* RMB-207 Upgrade to maven-compiler-plugin 3.8.0
+* RMB-225 PostgresClient: Replace "Object conn" by "Future<SQLConnection> conn"
+* RMB-227 raml-cop rejects jobs.raml of RMB
+* RMB-229 PostgresClientTransactionsIT hangs on old database
+* RMB-234 Do NOT create tsvector indexes with lowercase/unaccent
+
 ## 19.3.1 2018-08-01
-Fix regression caused by RMB-176
+*Fix regression caused by RMB-176
 
 ## 19.3.0 2018-08-01
 *RMB-176 Support index for multiple properties in declarative schema
