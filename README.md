@@ -88,7 +88,10 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
     but an object and should be passed in as:
       PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
 16. Multipart formdata is currently not supported
+17. Remove the declaration of trait "secured" auth.raml and its use from RAML files.
+    It has been removed from the shared raml-util.
 ```
+
 ## Introduction
 
 This documentation includes information about the Raml-Module-Builder (RMB) framework
