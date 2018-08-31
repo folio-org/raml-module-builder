@@ -91,7 +91,7 @@ public class SchemaMaker {
     templateInput.put("version", pVersion);
 
     templateInput.put("newVersion", this.newVersion);
-    
+
     FullText fullText = this.schema.getFullText();
 
     String defaultDictionary = FullText.DEFAULT_DICTIONARY;
@@ -196,7 +196,7 @@ public class SchemaMaker {
             if(!u.isStringType()){
               u.setCaseSensitive(true);
               u.setRemoveAccents(false);
-            }            
+            }
             String path = convertDotPath2PostgresNotation(null,u.getFieldName(), u.isStringType(), u, false);
             u.setFieldPath(path);
             String normalized = normalizeFieldName(u.getFieldName());
@@ -205,7 +205,7 @@ public class SchemaMaker {
             u.setFieldName(normalized);
           }
         }
-        
+
         List<Index> ftInd = t.getFullTextIndex();
         if(ftInd != null){
           for (int j = 0; j < ftInd.size(); j++) {
@@ -237,7 +237,7 @@ public class SchemaMaker {
           ViewTable vt = join.getJoinTable();
           vt.setPrefix(vt.getTableName());
           Index index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
-          vt.setJoinOnField(convertDotPath2PostgresNotation(vt.getPrefix(), 
+          vt.setJoinOnField(convertDotPath2PostgresNotation(vt.getPrefix(),
             vt.getJoinOnField(), true, index, false));
           if(index != null){
           //when creating the join on condition, we want to create it the same way as we created the index
@@ -250,7 +250,7 @@ public class SchemaMaker {
           vt = join.getTable();
           vt.setPrefix(vt.getTableName());
           index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
-          vt.setJoinOnField( convertDotPath2PostgresNotation(vt.getPrefix(), 
+          vt.setJoinOnField( convertDotPath2PostgresNotation(vt.getPrefix(),
             vt.getJoinOnField() , true, index, false));
           if(index != null){
             vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
@@ -322,7 +322,7 @@ public class SchemaMaker {
     return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
   }
 
-  public static String convertDotPath2PostgresNotation(String prefix, 
+  public static String convertDotPath2PostgresNotation(String prefix,
     String path, boolean stringType, Index index, boolean isFullText){
     //when an index is on multiple columns, this will be defined something like "username,type"
     //so split on command and build a path for each and then combine
@@ -331,11 +331,11 @@ public class SchemaMaker {
     for (int i = 0; i < requestIndexPath.length; i++) {
       if(finalClause.length() > 0) {
         if(isFullText) {
-          finalClause.append(" || ' ' || "); 
+          finalClause.append(" || ' ' || ");
         }
         else {
           finalClause.append(" , ");
-        }        
+        }
       }
       //generate index based on paths - note that all indexes will be with a -> to allow
       //postgres to treat the different data types differently and not ->> which would be all
@@ -359,7 +359,8 @@ public class SchemaMaker {
         }
         sb.append("'").append(pathParts[j]).append("'");
       }
-      if(index != null && stringType) {
+      if (index != null && stringType && !isFullText) {
+        // fulltext indexes let PG do all unaccent/lowercase stuff
         if(index.isRemoveAccents() || !index.isCaseSensitive()) {
           if(index.isRemoveAccents()) {
             sb.insert(0, "f_unaccent(").append(")");
