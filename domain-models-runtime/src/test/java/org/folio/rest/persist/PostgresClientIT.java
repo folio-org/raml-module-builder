@@ -22,9 +22,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -340,6 +338,10 @@ public class PostgresClientIT {
   /** a single quote may be used for SQL injection */
   StringPojo singleQuotePojo = new StringPojo("'");
 
+  private String randomUuid() {
+    return UUID.randomUUID().toString();
+  }
+
   @Test
   public void deleteX(TestContext context) {
     createFoo(context)
@@ -356,13 +358,13 @@ public class PostgresClientIT {
   @Test
   public void updateX(TestContext context) {
     createFoo(context)
-      .update(FOO, xPojo, UUID.randomUUID().toString(), context.asyncAssertSuccess());
+      .update(FOO, xPojo, randomUuid(), context.asyncAssertSuccess());
   }
 
   @Test
   public void updateSingleQuote(TestContext context) {
     createFoo(context)
-      .update(FOO, singleQuotePojo, UUID.randomUUID().toString(), context.asyncAssertSuccess());
+      .update(FOO, singleQuotePojo, randomUuid(), context.asyncAssertSuccess());
   }
 
   @Test
@@ -385,20 +387,30 @@ public class PostgresClientIT {
   @Test
   public void upsertX(TestContext context) {
     createFoo(context)
-      .upsert(FOO, UUID.randomUUID().toString(), xPojo, context.asyncAssertSuccess());
+      .upsert(FOO, randomUuid(), xPojo, context.asyncAssertSuccess());
   }
 
   @Test
   public void upsertSingleQuote(TestContext context) {
     createFoo(context)
-      .upsert(FOO, UUID.randomUUID().toString(), singleQuotePojo, context.asyncAssertSuccess());
+      .upsert(FOO, randomUuid(), singleQuotePojo, context.asyncAssertSuccess());
   }
 
   @Test
   public void saveBatchX(TestContext context) {
+    Async async = context.async();
     List<Object> list = Collections.singletonList(xPojo);
-    createFoo(context)
-      .saveBatch(FOO, list, context.asyncAssertSuccess());
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.saveBatch(FOO, list, res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      String id = res.result().getResults().get(0).getString(0);
+      postgresClient.getById(FOO, id, get -> {
+        context.assertEquals("x", get.result().getString("key"));
+        async.complete();
+      });
+    });
   }
 
   @Test
@@ -407,36 +419,175 @@ public class PostgresClientIT {
     JsonArray array = new JsonArray()
         .add("{ \"x\" : \"a\" }")
         .add("{ \"y\" : \"'\" }");
-    createFoo(context)
-      .saveBatch(FOO, array, res -> {
-        if (res.failed()) {
-          context.fail(res.cause());
-        }
-        context.assertEquals(2, res.result().getRows().size());
-        context.assertEquals("_id", res.result().getColumnNames().get(0));
-        async.complete();
-      });
+    createFoo(context).saveBatch(FOO, array, res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      context.assertEquals(2, res.result().getRows().size());
+      context.assertEquals("_id", res.result().getColumnNames().get(0));
+      async.complete();
+    });
   }
 
   @Test
   public void saveBatchEmpty(TestContext context) {
     Async async = context.async();
     List<Object> list = Collections.emptyList();
-    createFoo(context)
-      .saveBatch(FOO, list, res -> {
-        if (res.failed()) {
-          context.fail(res.cause());
-        }
-        context.assertEquals(0, res.result().getRows().size());
-        context.assertEquals("_id", res.result().getColumnNames().get(0));
-        async.complete();
-      });
+    createFoo(context).saveBatch(FOO, list, res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      context.assertEquals(0, res.result().getRows().size());
+      context.assertEquals("_id", res.result().getColumnNames().get(0));
+      async.complete();
+    });
   }
 
   @Test
   public void saveBatchSingleQuote(TestContext context) {
     List<Object> list = Collections.singletonList(singleQuotePojo);
-    createFoo(context)
-      .saveBatch(FOO, list, context.asyncAssertSuccess());
+    createFoo(context).saveBatch(FOO, list, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void getByIdAsString(TestContext context) {
+    Async async = context.async();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.save(FOO, xPojo, res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      String id = res.result();
+      postgresClient.getByIdAsString(FOO, id, get -> {
+        context.assertTrue(get.result().contains("\"key\""));
+        context.assertTrue(get.result().contains(":"));
+        context.assertTrue(get.result().contains("\"x\""));
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void getByIdConnectionFailure(TestContext context) throws Exception {
+    PostgresClient postgresClient = new PostgresClient(Vertx.vertx(), "nonexistingTenant");
+    postgresClient.getByIdAsString(
+        FOO, randomUuid(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void getByIdFailure(TestContext context) {
+    createFoo(context).getByIdAsString(
+        "nonexistingTable", randomUuid(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void getByIdEmpty(TestContext context) {
+    Async async = context.async();
+    createFoo(context).getByIdAsString(FOO, randomUuid(), res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      context.assertNull(res.result());
+      async.complete();
+    });
+  }
+
+  private PostgresClient insertXAndSingleQuotePojo(TestContext context, JsonArray ids) {
+    Async async = context.async();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.save(FOO, ids.getString(0), xPojo, res1 -> {
+      if (res1.failed()) {
+        context.fail(res1.cause());
+      }
+      postgresClient.save(FOO, ids.getString(1), singleQuotePojo, res2 -> {
+        if (res2.failed()) {
+          context.fail(res2.cause());
+        }
+        async.complete();
+      });
+    });
+    async.await();
+    return postgresClient;
+  }
+
+  @Test
+  public void getByIdsAsString(TestContext context) {
+    Async async = context.async();
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    JsonArray ids = new JsonArray().add(id1).add(id2);
+    insertXAndSingleQuotePojo(context, ids).getByIdAsString(FOO, ids, get -> {
+      context.assertEquals(2, get.result().size());
+      context.assertTrue(get.result().get(id1).contains("\"x\""));
+      context.assertTrue(get.result().get(id2).contains("\"'\""));
+      async.complete();
+    });
+  }
+
+  @Test
+  public void getByIds(TestContext context) {
+    Async async = context.async();
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    JsonArray ids = new JsonArray().add(id1).add(id2);
+    insertXAndSingleQuotePojo(context, ids).getById(FOO, ids, get -> {
+      context.assertEquals(2, get.result().size());
+      context.assertEquals("x", get.result().get(id1).getString("key"));
+      context.assertEquals("'", get.result().get(id2).getString("key"));
+      async.complete();
+    });
+  }
+
+  /** one random UUID in a JsonArray */
+  private JsonArray randomUuidArray() {
+    return new JsonArray().add(randomUuid());
+  }
+
+  @Test
+  public void getByIdsConnectionFailure(TestContext context) throws Exception {
+    PostgresClient postgresClient = new PostgresClient(Vertx.vertx(), "nonexistingTenant");
+    postgresClient.getByIdAsString(FOO, randomUuidArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void getByIdsFailure(TestContext context) {
+    createFoo(context).getByIdAsString(
+        "nonexistingTable", randomUuidArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void getByIdsNotFound(TestContext context) {
+    Async async = context.async();
+    createFoo(context).getByIdAsString(FOO, randomUuidArray(), res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      context.assertTrue(res.result().isEmpty());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void getByIdsEmpty(TestContext context) {
+    Async async = context.async();
+    createFoo(context).getByIdAsString(FOO, new JsonArray(), res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      context.assertTrue(res.result().isEmpty());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void getByIdsNull(TestContext context) {
+    Async async = context.async();
+    createFoo(context).getByIdAsString(FOO, (JsonArray) null, res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      context.assertTrue(res.result().isEmpty());
+      async.complete();
+    });
   }
 }

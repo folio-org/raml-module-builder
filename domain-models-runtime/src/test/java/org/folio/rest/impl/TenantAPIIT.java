@@ -30,7 +30,7 @@ public class TenantAPIIT {
   }
 
   @Rule
-  public Timeout rule = Timeout.seconds(10);
+  public Timeout rule = Timeout.seconds(20);
 
   @BeforeClass
   public static void setUpClass() {

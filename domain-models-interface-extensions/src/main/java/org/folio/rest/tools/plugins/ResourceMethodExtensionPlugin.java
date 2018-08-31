@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.Enum2Annotation;
+import org.folio.rest.annotations.Validate;
 import org.raml.jaxrs.generator.extension.resources.api.ResourceContext;
 import org.raml.jaxrs.generator.extension.resources.api.ResourceMethodExtension;
 import org.raml.jaxrs.generator.ramltypes.GMethod;
@@ -117,6 +118,8 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     methodSpec.addParameter(io.vertx.core.Context.class, "vertxContext");
 
     methodSpec.returns(TypeName.VOID);
+
+    methodSpec.addAnnotation(Validate.class);
   }
 
   private void generateJavaDocs(GMethod method, MethodSpec.Builder methodSpec){

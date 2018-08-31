@@ -13,7 +13,7 @@
     },
     "parameters": {
       "type": "object",
-      "$ref": "parameters"
+      "$ref": "../../parameters.schema"
     }
   },
   "required": [
