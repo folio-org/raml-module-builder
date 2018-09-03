@@ -1455,6 +1455,23 @@ public class PostgresClient {
   }
 
   /**
+   * A FunctionalInterface that may throw an Exception.
+   *
+   * @param <T>  input type
+   * @param <R>  output type
+   * @param <E>  the type of Exception
+   */
+  @FunctionalInterface
+  public interface FunctionWithException<T, R, E extends Exception> {
+    /**
+     * @param t  some input
+     * @return some output
+     * @throws Exception of type E
+     */
+    R apply(T t) throws E;
+  }
+
+  /**
    * Get the jsonb by id.
    * @param table  the table to search in
    * @param id  the value of the id field
@@ -1462,7 +1479,8 @@ public class PostgresClient {
    * @param replyHandler  the result after applying function
    */
   private <R> void getById(String table, String id,
-      Function<String, R> function, Handler<AsyncResult<R>> replyHandler) {
+      FunctionWithException<String, R, Exception> function,
+      Handler<AsyncResult<R>> replyHandler) {
     client.getConnection(res -> {
       if (res.failed()) {
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -1481,9 +1499,12 @@ public class PostgresClient {
           replyHandler.handle(Future.succeededFuture(null));
           return;
         }
-        String string = result.getString(0);
-        R r = function.apply(string);
-        replyHandler.handle(Future.succeededFuture(r));
+        try {
+          R r = function.apply(result.getString(0));
+          replyHandler.handle(Future.succeededFuture(r));
+        } catch (Exception e) {
+          replyHandler.handle(Future.failedFuture(e));
+        }
       });
     });
   }
@@ -1509,6 +1530,18 @@ public class PostgresClient {
   }
 
   /**
+   * Get the jsonb by id and return it as a pojo of type T.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param clazz  the type of the pojo
+   * @param replyHandler  the result; the JSON is converted into a T pojo.
+   */
+  public <T> void getById(String table, String id, Class<T> clazz,
+      Handler<AsyncResult<T>> replyHandler) {
+    getById(table, id, json -> mapper.readValue(json, clazz), replyHandler);
+  }
+
+  /**
    * Get jsonb by id for a list of ids.
    * <p>
    * The result is a map of all found records where the key is the id
@@ -1520,7 +1553,8 @@ public class PostgresClient {
    * @param replyHandler  the result after applying function
    */
   private <R> void getById(String table, JsonArray ids,
-      Function<String, R> function, Handler<AsyncResult<Map<String,R>>> replyHandler) {
+      FunctionWithException<String, R, Exception> function,
+      Handler<AsyncResult<Map<String,R>>> replyHandler) {
     if (ids == null || ids.isEmpty()) {
       replyHandler.handle(Future.succeededFuture(Collections.emptyMap()));
       return;
@@ -1544,12 +1578,16 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(query.cause()));
           return;
         }
-        ResultSet resultSet = query.result();
-        Map<String,R> result = new HashMap<>();
-        for (JsonArray jsonArray : resultSet.getResults()) {
-          result.put(jsonArray.getString(0), function.apply(jsonArray.getString(1)));
+        try {
+          ResultSet resultSet = query.result();
+          Map<String,R> result = new HashMap<>();
+          for (JsonArray jsonArray : resultSet.getResults()) {
+            result.put(jsonArray.getString(0), function.apply(jsonArray.getString(1)));
+          }
+          replyHandler.handle(Future.succeededFuture(result));
+        } catch (Exception e) {
+          replyHandler.handle(Future.failedFuture(e));
         }
-        replyHandler.handle(Future.succeededFuture(result));
       });
     });
   }
@@ -1574,6 +1612,18 @@ public class PostgresClient {
   public void getById(String table, JsonArray ids,
       Handler<AsyncResult<Map<String,JsonObject>>> replyHandler) {
     getById(table, ids, JsonObject::new, replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id for a list of ids and return each jsonb as pojo of type T.
+   * @param table  the table to search in
+   * @param ids  the values of the id field
+   * @param clazz  the type of the pojo
+   * @param replyHandler  the result; the JSON is encoded as a T pojo
+   */
+  public <T> void getById(String table, JsonArray ids, Class<T> clazz,
+      Handler<AsyncResult<Map<String,T>>> replyHandler) {
+    getById(table, ids, json -> mapper.readValue(json, clazz), replyHandler);
   }
 
   /**
