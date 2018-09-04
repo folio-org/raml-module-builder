@@ -1679,7 +1679,12 @@ Note: parameters can also be passed when relevant. The raml-module-builder runti
 ## Documentation of the APIs
 
 The runtime framework includes a web application which exposes RAMLs in a
-view-friendly HTML format. The `maven-resources-plugin` plugin described earlier
+view-friendly HTML format.
+This uses [api-console](https://github.com/mulesoft/api-console)
+(Powered by [MuleSoft](http://www.MuleSoft.org) for RAML
+Copyright (c) 2013 MuleSoft, Inc.)
+
+The `maven-resources-plugin` plugin described earlier
 copies the RAML files into the correct directory in your project, so that the
 runtime framework can access it and show local API documentation.
 
