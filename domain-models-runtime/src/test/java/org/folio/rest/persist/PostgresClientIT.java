@@ -21,6 +21,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.unit.Async;
@@ -34,6 +35,9 @@ public class PostgresClientIT {
   static private final String TENANT = "tenant";
   /** table name */
   static private final String FOO = "foo";
+  /** table name */
+  static private final String INVALID_JSON = "invalid_json";
+  static private final String INVALID_JSON_UUID = "49999999-4999-4999-8999-899999999999";
   static private Vertx vertx;
 
   private ByteArrayOutputStream myStdErrBytes = new ByteArrayOutputStream();
@@ -87,6 +91,12 @@ public class PostgresClientIT {
   public static void tearDownClass(TestContext context) {
     PostgresClient.stopEmbeddedPostgres();
     vertx.close(context.asyncAssertSuccess());
+  }
+
+  private <T> void assertSuccess(TestContext context, AsyncResult<T> result) {
+    if (result.failed()) {
+      context.fail(result.cause());
+    }
   }
 
   @Test
@@ -160,6 +170,7 @@ public class PostgresClientIT {
     Async async = context.async();
     PostgresClient c1 = PostgresClient.getInstance(vertx);
     c1.closeClient(a -> {
+      assertSuccess(context, a);
       PostgresClient c2 = PostgresClient.getInstance(vertx);
       context.assertNotEquals(c1, c2, "different instance");
       c2.closeClient(context.asyncAssertSuccess());
@@ -172,6 +183,7 @@ public class PostgresClientIT {
     Async async = context.async();
     PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
     c1.closeClient(a -> {
+      assertSuccess(context, a);
       PostgresClient c2 = PostgresClient.getInstance(vertx, TENANT);
       context.assertNotEquals(c1, c2, "different instance");
       c2.closeClient(context.asyncAssertSuccess());
@@ -184,25 +196,10 @@ public class PostgresClientIT {
     PostgresClient.getInstance(vertx, PostgresClient.DEFAULT_SCHEMA);
   }
 
-  private void dropSchemaRole(TestContext context, String tenant) {
-    Async async = context.async();
-    String schema = PostgresClient.convertToPsqlStandard(tenant);
-    String sql =
-        "REASSIGN OWNED BY " + schema + " TO postgres;\n"
-      + "DROP OWNED BY " + schema + " CASCADE;\n"
-      + "DROP ROLE IF EXISTS " + schema + ";\n";
-    PostgresClient.getInstance(vertx).runSQLFile(sql, true, reply -> {
-      context.assertTrue(reply.succeeded());
-      // ignore errors
-      async.complete();
-    });
-    async.await();
-  }
-
   private void execute(TestContext context, String sql) {
     Async async = context.async();
     PostgresClient.getInstance(vertx).runSQLFile(sql, false, reply -> {
-      context.assertTrue(reply.succeeded());
+      assertSuccess(context, reply);
       for (String result : reply.result()) {
         context.fail(result);
       }
@@ -212,38 +209,64 @@ public class PostgresClientIT {
   }
 
   private void executeIgnore(TestContext context, String sql) {
+    Level localOldLevel = LogManager.getRootLogger().getLevel();
+    LogUtil.setLevelForRootLoggers(Level.FATAL);
+
     Async async = context.async();
     PostgresClient.getInstance(vertx).runSQLFile(sql, false, reply -> {
-      context.assertTrue(reply.succeeded());
+      assertSuccess(context, reply);
       async.complete();
     });
     async.await();
+
+    LogUtil.setLevelForRootLoggers(localOldLevel);
   }
 
-  private void createSchema(TestContext context, String tenant) {
+  private PostgresClient createTable(TestContext context,
+      String tenant, String table, String tableDefinition) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
+    execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
+    execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
-    execute(context, "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema);
+    execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
-    execute(context, "CREATE TABLE IF NOT EXISTS " + schema + ".a ( i integer );");
+    execute(context, "CREATE TABLE " + schema + "." + table + " (" + tableDefinition + ");");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
+    return PostgresClient.getInstance(vertx, tenant);
   }
 
-  private void fillTable(TestContext context, PostgresClient client, String tenant, int i) {
+  /** create table a (i INTEGER) */
+  private PostgresClient createA(TestContext context, String tenant) {
+    return createTable(context, tenant, "a", "i INTEGER");
+  }
+
+  private PostgresClient createFoo(TestContext context) {
+    return createTable(context, TENANT, FOO,
+        "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL");
+  }
+
+  private PostgresClient createInvalidJson(TestContext context) {
+    String schema = PostgresClient.convertToPsqlStandard(TENANT);
+    PostgresClient postgresClient = createTable(context, TENANT, INVALID_JSON,
+        "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb VARCHAR(99) NOT NULL");
+    execute(context, "INSERT INTO " + schema + "." + INVALID_JSON + " VALUES "
+        +"('" + INVALID_JSON_UUID + "', '}');");
+    return postgresClient;
+  }
+
+  private void fillA(TestContext context, PostgresClient client, String tenant, int i) {
     Async async = context.async();
     String schema = PostgresClient.convertToPsqlStandard(tenant);
     execute(context, "INSERT INTO "  + schema + ".a (i) VALUES (" + i + ") ON CONFLICT DO NOTHING;");
     client.select("SELECT i FROM " + schema + ".a", reply2 -> {
-      if (! reply2.succeeded()) {
-          context.fail(reply2.cause());
-      };
+      assertSuccess(context, reply2);
       context.assertEquals(i, reply2.result().getResults().get(0).getInteger(0));
       async.complete();
     });
     async.await();
   }
 
-  private void selectFail(TestContext context, PostgresClient client, String tenant) {
+  private void selectAFail(TestContext context, PostgresClient client, String tenant) {
     Async async = context.async();
     String schema = PostgresClient.convertToPsqlStandard(tenant);
     client.select("SELECT i FROM " + schema + ".a", reply -> {
@@ -260,19 +283,14 @@ public class PostgresClientIT {
     String tenant = "tenantSeparation";
     String tenant2 = "tenantSeparation2";
 
-    dropSchemaRole(context, tenant);
-    dropSchemaRole(context, tenant2);
-
-    createSchema(context, tenant);
-    createSchema(context, tenant2);
-    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
-    PostgresClient c2 = PostgresClient.getInstance(vertx, tenant2);
-    fillTable(context, c1, tenant, 5);
-    fillTable(context, c2, tenant2, 8);
+    PostgresClient c1 = createA(context, tenant);
+    PostgresClient c2 = createA(context, tenant2);
+    fillA(context, c1, tenant, 5);
+    fillA(context, c2, tenant2, 8);
     // c1 must be blocked from accessing schema TENANT2
-    selectFail(context, c1, tenant2);
+    selectAFail(context, c1, tenant2);
     // c2 must be blocked from accessing schema TENANT
-    selectFail(context, c2, tenant);
+    selectAFail(context, c2, tenant);
     c1.closeClient(context.asyncAssertSuccess());
     c2.closeClient(context.asyncAssertSuccess());
   }
@@ -313,21 +331,11 @@ public class PostgresClientIT {
   }
 */
 
-  private PostgresClient createFoo(TestContext context) {
-    String schema = PostgresClient.convertToPsqlStandard(TENANT);
-    execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
-    execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
-    executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + TENANT + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
-    execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
-    execute(context, "CREATE TABLE " + schema + "." + FOO
-      + " ( _id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL );");
-    execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
-    execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
-    return PostgresClient.getInstance(vertx, TENANT);
-  }
-
-  public class StringPojo {
+  public static class StringPojo {
     public String key;
+    public StringPojo() {
+      // required by ObjectMapper.readValue for JSON to POJO conversion
+    }
     public StringPojo(String key) {
       this.key = key;
     }
@@ -402,9 +410,7 @@ public class PostgresClientIT {
     List<Object> list = Collections.singletonList(xPojo);
     PostgresClient postgresClient = createFoo(context);
     postgresClient.saveBatch(FOO, list, res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
+      assertSuccess(context, res);
       String id = res.result().getResults().get(0).getString(0);
       postgresClient.getById(FOO, id, get -> {
         context.assertEquals("x", get.result().getString("key"));
@@ -420,9 +426,7 @@ public class PostgresClientIT {
         .add("{ \"x\" : \"a\" }")
         .add("{ \"y\" : \"'\" }");
     createFoo(context).saveBatch(FOO, array, res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
+      assertSuccess(context, res);
       context.assertEquals(2, res.result().getRows().size());
       context.assertEquals("_id", res.result().getColumnNames().get(0));
       async.complete();
@@ -434,9 +438,7 @@ public class PostgresClientIT {
     Async async = context.async();
     List<Object> list = Collections.emptyList();
     createFoo(context).saveBatch(FOO, list, res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
+      assertSuccess(context, res);
       context.assertEquals(0, res.result().getRows().size());
       context.assertEquals("_id", res.result().getColumnNames().get(0));
       async.complete();
@@ -454,14 +456,28 @@ public class PostgresClientIT {
     Async async = context.async();
     PostgresClient postgresClient = createFoo(context);
     postgresClient.save(FOO, xPojo, res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
+      assertSuccess(context, res);
       String id = res.result();
       postgresClient.getByIdAsString(FOO, id, get -> {
+        assertSuccess(context, get);
         context.assertTrue(get.result().contains("\"key\""));
         context.assertTrue(get.result().contains(":"));
         context.assertTrue(get.result().contains("\"x\""));
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void getByIdAsPojo(TestContext context) {
+    Async async = context.async();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.save(FOO, xPojo, res -> {
+      assertSuccess(context, res);
+      String id = res.result();
+      postgresClient.getById(FOO, id, StringPojo.class, get -> {
+        assertSuccess(context, get);
+        context.assertEquals(xPojo.key, get.result().key);
         async.complete();
       });
     });
@@ -481,12 +497,17 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void getByIdInvalidJson(TestContext context) {
+    // let the JSON to POJO conversion fail
+    createInvalidJson(context).getById(
+        INVALID_JSON, INVALID_JSON_UUID, StringPojo.class, context.asyncAssertFailure());
+  }
+
+  @Test
   public void getByIdEmpty(TestContext context) {
     Async async = context.async();
     createFoo(context).getByIdAsString(FOO, randomUuid(), res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
+      assertSuccess(context, res);
       context.assertNull(res.result());
       async.complete();
     });
@@ -496,13 +517,9 @@ public class PostgresClientIT {
     Async async = context.async();
     PostgresClient postgresClient = createFoo(context);
     postgresClient.save(FOO, ids.getString(0), xPojo, res1 -> {
-      if (res1.failed()) {
-        context.fail(res1.cause());
-      }
+      assertSuccess(context, res1);
       postgresClient.save(FOO, ids.getString(1), singleQuotePojo, res2 -> {
-        if (res2.failed()) {
-          context.fail(res2.cause());
-        }
+        assertSuccess(context, res2);
         async.complete();
       });
     });
@@ -517,9 +534,25 @@ public class PostgresClientIT {
     String id2 = randomUuid();
     JsonArray ids = new JsonArray().add(id1).add(id2);
     insertXAndSingleQuotePojo(context, ids).getByIdAsString(FOO, ids, get -> {
+      assertSuccess(context, get);
       context.assertEquals(2, get.result().size());
       context.assertTrue(get.result().get(id1).contains("\"x\""));
       context.assertTrue(get.result().get(id2).contains("\"'\""));
+      async.complete();
+    });
+  }
+
+  @Test
+  public void getByIdsPojo(TestContext context) {
+    Async async = context.async();
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    JsonArray ids = new JsonArray().add(id1).add(id2);
+    insertXAndSingleQuotePojo(context, ids).getById(FOO, ids, StringPojo.class, get -> {
+      assertSuccess(context, get);
+      context.assertEquals(2, get.result().size());
+      context.assertEquals("x", get.result().get(id1).key);
+      context.assertEquals("'", get.result().get(id2).key);
       async.complete();
     });
   }
@@ -531,6 +564,7 @@ public class PostgresClientIT {
     String id2 = randomUuid();
     JsonArray ids = new JsonArray().add(id1).add(id2);
     insertXAndSingleQuotePojo(context, ids).getById(FOO, ids, get -> {
+      assertSuccess(context, get);
       context.assertEquals(2, get.result().size());
       context.assertEquals("x", get.result().get(id1).getString("key"));
       context.assertEquals("'", get.result().get(id2).getString("key"));
@@ -556,12 +590,18 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void getByIdsInvalidJson(TestContext context) {
+    // let the JSON to POJO conversion fail
+    createInvalidJson(context).getById(
+        INVALID_JSON, new JsonArray().add(INVALID_JSON_UUID), StringPojo.class,
+        context.asyncAssertFailure());
+  }
+
+  @Test
   public void getByIdsNotFound(TestContext context) {
     Async async = context.async();
     createFoo(context).getByIdAsString(FOO, randomUuidArray(), res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
+      assertSuccess(context, res);
       context.assertTrue(res.result().isEmpty());
       async.complete();
     });
@@ -571,9 +611,7 @@ public class PostgresClientIT {
   public void getByIdsEmpty(TestContext context) {
     Async async = context.async();
     createFoo(context).getByIdAsString(FOO, new JsonArray(), res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
+      assertSuccess(context, res);
       context.assertTrue(res.result().isEmpty());
       async.complete();
     });
@@ -583,9 +621,7 @@ public class PostgresClientIT {
   public void getByIdsNull(TestContext context) {
     Async async = context.async();
     createFoo(context).getByIdAsString(FOO, (JsonArray) null, res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
+      assertSuccess(context, res);
       context.assertTrue(res.result().isEmpty());
       async.complete();
     });
