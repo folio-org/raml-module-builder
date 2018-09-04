@@ -44,7 +44,7 @@ public class TenantAPI implements Tenant {
   private static final String      UPGRADE_FROM_VERSION     = "module_from";
   private static final String      UPGRADE_TO_VERSION       = "module_to";
   private static final String      CONTENT_LANGUAGE         = "x-okapi-language";
-  
+
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
   private final Messages            messages          = Messages.getInstance();
 
@@ -200,7 +200,7 @@ public class TenantAPI implements Tenant {
      * http://host:port/tenant
      * Validation by rmb means the entity is either properly populated on is null
      * depending on whether this is an upgrade or a create tenant
-     * 
+     *
      * Modules that are not DB bound but are still RMB modules should override this API and do
      * any tenant bootstrapping they need
      */
@@ -286,7 +286,7 @@ public class TenantAPI implements Tenant {
                 tableInputStr = IOUtils.toString(tableInput, "UTF8");
                 Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
                 if(ftLanguage != null) {
-                  //FT default language was passed in for the tenant, override the default language in the 
+                  //FT default language was passed in for the tenant, override the default language in the
                   //schema.json
                   FullText ft = new FullText();
                   ft.setDefaultDictionary(ftLanguage);
