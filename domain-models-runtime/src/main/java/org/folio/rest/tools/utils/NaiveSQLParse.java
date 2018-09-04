@@ -36,11 +36,11 @@ public class NaiveSQLParse {
               break;
             }
           }
-        }        
+        }
       } else {
         int i1 = i + token.length();
         if (i1 <= query.length()) {
-          String sub = query.substring(i, i1);          
+          String sub = query.substring(i, i1);
           boolean before = i == 0 || !Character.isJavaIdentifierPart(query.charAt(i - 1));
           boolean after = i1 >= query.length() || !Character.isJavaIdentifierPart(query.charAt(i1));
           if (before && after && sub.equalsIgnoreCase(token))  {

@@ -16,12 +16,12 @@ public class UsersAPI implements UsersId {
   @Override
   public void getUsersById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     log.info("getUsersById called");
-  
+
     User user = new User();
     user.setAge(20);
     user.setFirstname("John");
     user.setLastname("Bar");
-    
+
     if ("1".equals(id)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond200WithApplicationJson(user)));
     } else {

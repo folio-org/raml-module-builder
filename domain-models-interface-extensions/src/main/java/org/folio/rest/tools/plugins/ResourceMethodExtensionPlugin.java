@@ -339,7 +339,7 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
           String type = job.getString("type");
           Object value = job.getValue(ANNOTATION_VALUE);
           String paramName = job.getString("paramName");
-          if(verb.equalsIgnoreCase(job.getString("verb")) && 
+          if(verb.equalsIgnoreCase(job.getString("verb")) &&
             paramName.equalsIgnoreCase(paramSpec.get(i[0]).name)){
             //make sure the verb is aligned
             //we found the parameter that should be overridden, for the path, and for the verb
