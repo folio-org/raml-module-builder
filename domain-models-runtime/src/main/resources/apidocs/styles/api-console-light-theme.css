@@ -601,6 +601,10 @@ input.ng-dirty.ng-invalid-required {
   border: 1px solid red;
 }
 
+input[type="file"].ng-dirty.ng-invalid-required + span.raml-console-field-validation-error::after {
+  margin-top: 0;
+}
+
 input.ng-dirty.ng-invalid-required + span.raml-console-field-validation-error::after {
   content: 'Required';
   color: white;
@@ -616,6 +620,10 @@ input.ng-dirty.ng-invalid-min-length {
   border: 1px solid red;
 }
 
+input[type="file"].ng-invalid-min-length + span.raml-console-field-validation-error::after {
+  margin-top: 0;
+}
+
 input.ng-invalid-min-length + span.raml-console-field-validation-error::after {
   content: 'Invalid min length';
   color: white;
@@ -629,6 +637,10 @@ input.ng-invalid-min-length + span.raml-console-field-validation-error::after {
 
 input.ng-dirty.ng-invalid-max-length {
   border: 1px solid red;
+}
+
+input[type="file"].ng-dirty.ng-invalid-max-length + span.raml-console-field-validation-error::after {
+  margin-top: 0;
 }
 
 input.ng-dirty.ng-invalid-max-length + span.raml-console-field-validation-error::after {
@@ -708,6 +720,43 @@ input.ng-dirty.ng-invalid-pattern {
 
 input.ng-dirty.ng-invalid-pattern + span.raml-console-field-validation-error::after {
   content: 'Invalid pattern';
+  color: white;
+  position: absolute;
+  margin-top: -20px;
+  font-size: 13px;
+  background-color: red;
+  width: 100%;
+  text-align: center;
+}
+
+input.ng-dirty.ng-invalid-min-items, input.ng-dirty.ng-invalid-max-items, input.ng-dirty.ng-invalid-unique-items {
+  border: 1px solid red;
+}
+
+input.ng-dirty.ng-invalid-min-items + span.raml-console-field-validation-error::after {
+  content: 'Invalid minItems';
+  color: white;
+  position: absolute;
+  margin-top: -20px;
+  font-size: 13px;
+  background-color: red;
+  width: 100%;
+  text-align: center;
+}
+
+input.ng-dirty.ng-invalid-max-items + span.raml-console-field-validation-error::after {
+  content: 'Invalid maxItems';
+  color: white;
+  position: absolute;
+  margin-top: -20px;
+  font-size: 13px;
+  background-color: red;
+  width: 100%;
+  text-align: center;
+}
+
+input.ng-dirty.ng-invalid-unique-items + span.raml-console-field-validation-error::after {
+  content: 'Repeated items';
   color: white;
   position: absolute;
   margin-top: -20px;
@@ -1256,6 +1305,20 @@ th {
   -webkit-font-smoothing: antialiased;
 }
 
+.raml-console-show-more-less {
+  cursor: default;
+  color: blue;
+  font-size: small;
+}
+
+.raml-console-root-description {
+  font-size: medium;
+}
+
+.raml-console-root-description p {
+  margin-bottom: 3px;
+}
+
 .raml-console-title {
   font-size: 24px;
   text-align: center;
@@ -1782,7 +1845,7 @@ ol.raml-console-resources-container-no-title {
 }
 
 ol.raml-console-resources-container {
-  margin-top: 0px;
+  margin-top: 0;
 }
 
 .raml-console-resource-level-description {
@@ -1800,13 +1863,15 @@ ol.raml-console-resources-container {
 
 .raml-console-resource-response-jump {
   margin-top: 50px;
-  position: absolute;
+  position: inherit;
   margin-left: 10px;
+  margin-bottom: 5px;
+  float: left;
 }
 
 .raml-console-resource-menu {
   list-style: none;
-  padding-left: 0px;
+  padding-left: 0;
   margin-top: -5px;
 }
 
@@ -2211,7 +2276,7 @@ a.raml-console-resource-path-active {
 .raml-console-resource-heading-flag {
   position: relative;
   top: -1px;
-  padding: 0px 3px;
+  padding: 0 3px;
   border-radius: 3px;
   background: #e3e4e6;
 }
@@ -2290,6 +2355,15 @@ a.raml-console-resource-path-active {
   outline: none;
 }
 
+.raml-console-schema-body {
+  font-size: 12px;
+  padding-top: 8px;
+}
+
+.raml-console-schema-body .raml-console-flag {
+  font-size: 12px !important;
+}
+
 .raml-console-resource-body-heading > span {
   margin-left: 5px;
   cursor: pointer;
@@ -2300,6 +2374,7 @@ a.raml-console-resource-path-active {
   color: #333;
 }
 
+root
 .raml-console-request-body-heading > span {
   margin-left: 5px;
   cursor: pointer;
@@ -2324,6 +2399,10 @@ a.raml-console-resource-path-active {
   color: #333;
 }
 
+.raml-console-resource-panel.raml-console-type-panel {
+  min-height: 0;
+}
+
 @media only screen and (min-width: 960px) {
   .raml-console-resource-panel {
     border-width: 1px;
@@ -2344,10 +2423,10 @@ a.raml-console-resource-path-active {
 }
 
 .raml-console-resource-panel-primary {
+  width: 60%;
   -ms-flex: 1 auto;
   flex: 1 auto;
   -webkit-flex: 1 auto;
-  overflow: hidden;
   font-size: 16px;
 }
 
@@ -2462,6 +2541,16 @@ a.raml-console-resource-path-active {
   margin-left: 0;
 }
 
+.raml-console-examples-container .raml-console-flag {
+  cursor: pointer;
+  margin: 0 2px 2px 0;
+}
+
+.raml-console-examples-container .raml-console-flag.raml-console-is-active {
+  background: #bbbbbb;
+  color: #333;
+}
+
 .raml-console-resource-panel-subheader {
   padding: 14px 32px 18px 100px;
   border-width: 1px 0;
@@ -2526,13 +2615,7 @@ a.raml-console-resource-path-active {
 }
 
 .raml-console-resource-param {
-  margin-bottom: 24px;
-}
-
-@media only screen and (min-width: 960px) {
-  .raml-console-resource-param {
-    margin-bottom: 36px;
-  }
+  margin-bottom: 16px;
 }
 
 .raml-console-resource-param p {
@@ -2572,6 +2655,7 @@ a.raml-console-resource-path-active {
 
 .raml-console-resource-param-example {
   font-family: Lato, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  word-break: break-all;
 }
 
 .raml-console-resource-param-example b {
@@ -2626,6 +2710,7 @@ a.raml-console-resource-path-active {
   background: rgba(255, 255, 255, 0.75);
   font-family: Source Code Pro;
   font-size: 14px;
+  overflow: auto;
 }
 
 .raml-console-resource-pre code pre {
@@ -2648,6 +2733,26 @@ a.raml-console-resource-path-active {
   text-transform: capitalize;
   font-size: 12px;
   font-weight: bold;
+}
+
+.raml-console-type-info-popover {
+  padding: 10px;
+  position: absolute;
+  top: 20px;
+  left: 0;
+  background-color: #FFF;
+  width: 350px;
+  border: 1px solid black;
+  z-index: 99;
+  margin-bottom: 5px;
+}
+
+.raml-console-type-info-popover .raml-console-resource-param {
+  margin-bottom: 5px;
+}
+
+.raml-console-type-info-popover .raml-console-subtitle {
+  font-size: 12px;
 }
 
 .raml-console-sidebar {
@@ -3372,6 +3477,7 @@ a.raml-console-resource-path-active {
   color: #bbb;
   font-weight: 900;
   transition: 0.3s ease color, 0.3s ease border-color;
+  z-index: 999;
 }
 
 .raml-console-sidebar-input-tooltip:before {
@@ -3703,6 +3809,13 @@ a.raml-console-resource-path-active {
   padding-left: 0;
   font-size: 14px;
   margin-top: -10px !important;
+}
+
+.raml-console-sidebar-input-file {
+  margin-top: 12px;
+  font-size: 12px;
+  width: 100%;
+  padding: 2px;
 }
 
 /* ==========================================================================
@@ -4084,6 +4197,10 @@ span.raml-console-side-bar-required-field {
   resize: none;
   font-size: 14px;
   border: 1px solid #c6cada;
+}
+
+.raml-console-initializer-input-container-error > div {
+  border: 1px solid #ff0000 !important;
 }
 
 .raml-console-initializer-subheader {
@@ -4626,11 +4743,14 @@ Orginal Style from ethanschoonover.com/solarized (c) Jeremy Hull <sourdrums@gmai
 
 .raml-console-hljs {
   display: block;
-  overflow-x: auto;
   padding: 0.5em;
   background: #fff;
   color: #657b83;
   -webkit-text-size-adjust: none;
+}
+
+.raml-console-hljs pre {
+  overflow: inherit;
 }
 
 .raml-console-hljs-string {
