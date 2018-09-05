@@ -19,7 +19,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Environment Variables](#environment-variables)
 * [Local development server](#local-development-server)
 * [Creating a new module](#creating-a-new-module)
-    * [Step 1: Describe the APIs to be exposed by the new module](#step-1-describe-the-apis-to-be-exposed-by-the-new-module)
+    * [Step 1: Create new project directory layout](#step-1-create-new-project-directory-layout)
     * [Step 2: Include the jars in your project pom.xml](#step-2-include-the-jars-in-your-project-pomxml)
     * [Step 3: Add the plugins to your pom.xml](#step-3-add-the-plugins-to-your-pomxml)
     * [Step 4: Build your project](#step-4-build-your-project)
@@ -127,7 +127,7 @@ When that is understood, then move on to the section
 [Creating a new module](#creating-a-new-module) to get your project started.
 
 Note that actually building this RAML Module Builder framework is not required.
-(Some of the images below are out-of-date.) The already published artifacts will
+(Some of the images below are out-of-date.) The already published RMB artifacts will
 be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your project from the repository.
 
 ## The basics
@@ -289,154 +289,18 @@ http://localhost:9131/apidocs/index.html?raml=raml/users.raml
 
 ## Creating a new module
 
-### Step 1: Describe the APIs to be exposed by the new module
+### Step 1: Create new project directory layout
 
-Create the new project using the normal layout of files and basic POM file.
+Create the new project using the [normal layout](https://dev.folio.org/guides/commence-a-module/) of files, and basic POM file.
 
 Add the `/ramls` directory, the area for the RAML, schemas, and examples files.
 For a maven subproject the directory may be at the parent project only.
-(See [notes](#step-6-design-the-raml-files) below.)
-These define the API endpoints.
-Get started by using the following familiar example:
 
-`ebook.raml`
+To get a quick start, copy the "ramls" directory and POM file from
+[mod-notify](https://github.com/folio-org/mod-notify).
+(At [Step 6](#step-6-design-the-raml-files) below, these will be replaced to suit your project's needs.)
 
-```raml
-#%RAML 0.8
-
-title: E-book API
-baseUri: http://api.example.com/{version}
-version: v1
-
-schemas:
-  - book: !include ebook.json
-
-/ebooks:
-  /{bookTitle}:
-    get:
-      queryParameters:
-        author:
-          displayName: Author
-          type: string
-          description: An author's full name
-          example: Mary Roach
-          required: false
-        publicationYear:
-          displayName: Pub Year
-          type: number
-          description: The year released for the first time in the US
-          example: 1984
-          required: false
-        rating:
-          displayName: Rating
-          type: number
-          description: Average rating (1-5) submitted by users
-          example: 3.14
-          required: false
-        isbn:
-          displayName: ISBN
-          type: string
-          minLength: 10
-          example: 03217360797
-      responses:
-        200:
-          body:
-            application/json:
-              schema: book
-              example: |
-                {
-                  "bookdata": {
-                    "id": "SbBGk",
-                    "title": "Stiff: The Curious Lives of Human Cadavers",
-                    "description": null,
-                    "datetime": 1341533193,
-                    "genre": "science",
-                    "author": "Mary Roach",
-                    "link": "http://e-bookmobile.com/books/Stiff"
-                  },
-                  "success": true,
-                  "status": 200
-                }
-    put:
-      queryParameters:
-        access_token:
-          displayName: Access Token
-          type: string
-          description: "Token giving you permission to make call"
-          required: true
-```
-
-Create JSON schemas indicating the objects exposed by the module:
-
-`ebook.json`
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "description": "Record of an e-book",
-  "type": "object",
-  "properties": {
-    "bookdata": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "Unique ID (UUID) of this record",
-          "type": "string"
-        },
-        "title": {
-          "description": "Title of the e-book",
-          "type": "string"
-        },
-        "description": {
-          "description": "Description of the content and the usage limitations of the e-book",
-          "type": "null"
-        },
-        "datetime": {
-          "description": "The last time this record has been changed",
-          "type": "integer"
-        },
-        "genre": {
-          "description": "Genre of the e-book",
-          "type": "string"
-        },
-        "author": {
-          "description": "Author of the e-book. Several authors are separated by comma.",
-          "type": "string"
-        },
-        "link": {
-          "description": "URL to access the e-book.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "title",
-        "description",
-        "datetime",
-        "genre",
-        "author",
-        "link"
-      ]
-    },
-    "success": {
-      "description": "False if there was some error during the request, true otherwise. An empty result can also have success=true.",
-      "type": "boolean"
-    },
-    "status": {
-      "description": "HTTP status code returned from the knowledge base.",
-      "type": "integer"
-    }
-  },
-  "required": [
-    "bookdata",
-    "success",
-    "status"
-  ]
-}
-```
-
-Use the `description` field alongside the `type` field to explain the content and
-usage and to add documentation.
+Adjust the POM file to match your project, e.g. artifactID, version, etc.
 
 ### Step 2: Include the jars in your project pom.xml
 
@@ -452,7 +316,7 @@ usage and to add documentation.
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>16.0.3</version>
+      <version>20.0.0</version>
     </dependency>
   </dependencies>
 ```
@@ -712,8 +576,8 @@ This should:
 
 Implement the interfaces associated with the RAML files you created. An
 interface is generated for every root endpoint in the RAML files.
-So, for the ebook RAML an
-`org.folio.rest.jaxrs.resource.EbooksResource` interface will be generated.
+For example an
+`org.folio.rest.jaxrs.resource.Ebooks` interface will be generated.
 Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
@@ -730,17 +594,20 @@ for example implementations.
 
 It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
 Investigate the other FOLIO modules for guidance.
-The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
+The [mod-notify](https://github.com/folio-org/mod-notify) is an exemplar.
 
-(Note: This version of the README is for RMB v20+ version (see notes [Upgrading to v20](#upgrading-to-v20) above).
-If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.)
+Remove the temporary copy of the "ramls" directory from Step 1, and replace with your own.
 
-Add the shared suite of [RAML utility](https://dev.folio.org/source-code/#server-side) files,
+Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files,
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 NOTE: At this stage ensure that using head of its "raml1.0" branch.
+
+Create JSON schemas indicating the objects exposed by the module.
+Use the `description` field alongside the `type` field to explain the content and
+usage and to add documentation.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
 `target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
@@ -1665,7 +1532,7 @@ If instead your [new module](#creating-a-new-module) is running on the default p
 then its API documentation is at:
 
 ```
-http://localhost:8081/apidocs/index.html?raml=raml/ebook.raml
+http://localhost:8081/apidocs/index.html?raml=raml/my-project.raml
 ```
 
 The RMB also automatically provides other documentation, such as the "Admin API":
