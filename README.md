@@ -6,6 +6,65 @@ Copyright (C) 2016-2018 The Open Library Foundation
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
 
+<!-- ../okapi/doc/md2toc -l 2 -h 3 README.md -->
+* [Introduction](#introduction)
+* [Upgrading](#upgrading)
+* [Overview](#overview)
+* [The basics](#the-basics)
+    * [Implement the interfaces](#implement-the-interfaces)
+    * [Set up your pom.xml](#set-up-your-pomxml)
+    * [Build and run](#build-and-run)
+* [Get started with a sample working module](#get-started-with-a-sample-working-module)
+* [Command-line options](#command-line-options)
+* [Environment Variables](#environment-variables)
+* [Local development server](#local-development-server)
+* [Creating a new module](#creating-a-new-module)
+    * [Step 1: Describe the APIs to be exposed by the new module](#step-1-describe-the-apis-to-be-exposed-by-the-new-module)
+    * [Step 2: Include the jars in your project pom.xml](#step-2-include-the-jars-in-your-project-pomxml)
+    * [Step 3: Add the plugins to your pom.xml](#step-3-add-the-plugins-to-your-pomxml)
+    * [Step 4: Build your project](#step-4-build-your-project)
+    * [Step 5: Implement the generated interfaces](#step-5-implement-the-generated-interfaces)
+    * [Step 6: Design the RAML files](#step-6-design-the-raml-files)
+* [Adding an init() implementation](#adding-an-init-implementation)
+* [Adding code to run periodically](#adding-code-to-run-periodically)
+* [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
+* [Adding a shutdown hook](#adding-a-shutdown-hook)
+* [Implementing file uploads](#implementing-file-uploads)
+    * [Option 1](#option-1)
+    * [Option 2](#option-2)
+* [PostgreSQL integration](#postgresql-integration)
+    * [Credentials](#credentials)
+    * [Securing DB Configuration file](#securing-db-configuration-file)
+    * [Foreign keys constraint](#foreign-keys-constraint)
+* [Tenant API](#tenant-api)
+* [Query Syntax](#query-syntax)
+* [Metadata](#metadata)
+* [Facet Support](#facet-support)
+* [Json Schema fields](#json-schema-fields)
+* [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
+* [Drools integration](#drools-integration)
+* [Messages](#messages)
+* [Documentation of the APIs](#documentation-of-the-apis)
+* [Logging](#logging)
+* [Monitoring](#monitoring)
+* [Overriding Out of The Box RMB APIs](#overriding-out-of-the-box-rmb-apis)
+* [Client Generator](#client-generator)
+* [Querying multiple modules via HTTP](#querying-multiple-modules-via-http)
+    * [An example](#an-example)
+* [A Little More on Validation](#a-little-more-on-validation)
+    * [Object validations](#object-validations)
+    * [function example](#function-example)
+* [Advanced Features](#advanced-features)
+* [Additional Tools](#additional-tools)
+* [Some REST examples](#some-rest-examples)
+    * [Example 1: Add a fine to a patron (post)](#example-1-add-a-fine-to-a-patron-post)
+    * [Example 2: Get fines for patron with id](#example-2-get-fines-for-patron-with-id)
+    * [Example 3: Get a specific patron](#example-3-get-a-specific-patron)
+    * [Example 4: Get all patrons](#example-4-get-all-patrons)
+    * [Example 5: Delete a patron (delete)](#example-5-delete-a-patron-delete)
+    * [Example 6: Add a patron (post)](#example-6-add-a-patron-post)
+* [Additional information](#additional-information)
+
 ## Introduction
 
 This documentation includes information about the Raml-Module-Builder (RMB) framework
@@ -80,7 +139,7 @@ When that is understood, then move on to the section
 
 Note that actually building this RAML Module Builder framework is not required.
 (Some of the images below are out-of-date.) The already published artifacts will
-be [incorporated](#step-2) into your project from the repository.
+be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your project from the repository.
 
 ## The basics
 
@@ -390,7 +449,7 @@ Create JSON schemas indicating the objects exposed by the module:
 Use the `description` field alongside the `type` field to explain the content and
 usage and to add documentation.
 
-### <a name="step-2"></a>Step 2: Include the jars in your project pom.xml
+### Step 2: Include the jars in your project pom.xml
 
 ```xml
   <repositories>
