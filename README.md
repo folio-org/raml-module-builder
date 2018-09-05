@@ -188,37 +188,34 @@ and other [modules](https://dev.folio.org/source-code/#server-side) (not all do 
 
 ## Get started with a sample working module
 
-The [mod-configuration](https://github.com/folio-org/mod-configuration)
+The [mod-notify](https://github.com/folio-org/mod-notify)
 is a full example which uses the RMB. Clone it, and then investigate:
 
 ```
-$ git clone --recursive https://github.com/folio-org/mod-configuration.git
-$ cd mod-configuration
+$ git clone --recursive https://github.com/folio-org/mod-notify.git
+$ cd mod-notify
 $ mvn clean install
 ```
-
-- This module implements basic configuration APIs. It contains two sub modules, the configuration server and a configuration client (which can be used to interact with the server in a more OO manner, instead of using URLs).
 
 - Its RAMLs and JSON schemas can be found in the `ramls` directory.
 These are also displayed as local [API documentation](#documentation-of-the-apis).
 
-- Open the pom.xml in the configuration server module - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files within the configuration server project. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
+- Open the pom.xml file - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files into the `target/generated-sources/raml-jaxrs` directory. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
 
-- Open the `mod-configuration-server/src/main/java/org/folio/rest/impl/ConfigAPI.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the ConfigAPI.java contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for the configuration module by the RMB at build time.
+- Investigate the `src/main/java/org/folio/rest/impl/NotificationsResourceImpl.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the class contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for this module by the RMB at build time.
 
 - **IMPORTANT NOTE:** Every interface implementation - by any module -
   must reside in package `org.folio.rest.impl`. This is the package that is
   scanned at runtime by the runtime framework, to find the needed runtime
   implementations of the generated interfaces.
 
-Now run the configuration module in standalone mode:
+Now run the module in standalone mode:
 
 ```
-$ java -jar mod-configuration-server/target/mod-configuration-server-fat.jar embed_postgres=true
+$ java -jar target/mod-notify-fat.jar embed_postgres=true
 ```
 
 Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
-(for example to view or set the [Logging](#logging) levels).
 
 At this stage there is not much that can be queried, so stop that quick demonstration now.
 After explaining general command-line options, etc.
@@ -680,7 +677,7 @@ instantiated by the RMB for each chunk of data, and the function of that object 
 
 By default an embedded PostgreSQL is included in the runtime, but is not run by
 default. To change that add `embed_postgres=true` to the command line
-(`java -jar mod-configuration-server-fat.jar embed_postgres=true`).
+(`java -jar mod-notify-fat.jar embed_postgres=true`).
 Connection parameters to a non-embedded PostgreSQL can be placed in `resources/postgres-conf.json` or passed via the command line.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
