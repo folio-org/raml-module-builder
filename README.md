@@ -6,99 +6,58 @@ Copyright (C) 2016-2018 The Open Library Foundation
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
 
-## Upgrading to v20
-
-RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there are multiple changes that must be implemented by modules that upgrade to this version.
-
-```
-1. Update the "raml-util" git submodule to use its "raml1.0" branch.
-2. MUST change 0.8 to 1.0 in all RAML files (first line)
-3. MUST remove the '-' signs from the RAML
-   For example:
-        CHANGE:  - configs: !include... TO: configs: !include...
-4. MUST change the "schemas:" section to "types:"
-5. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
-6. MUST ensure that documentation field is this format:
-   documentation:
-     - title: Foo
-       content: Bar
-7. In resource types change 'schema:' to 'type:'
-   This also means that the '- schema:' in the raml is replaced with 'type:'
-   For example:
-          body:
-            application/json:
-              type: <<schema>>
-8. Remove suffixes from key names in the RAML file.
-   Any suffix causes a problem (even `.json`) when it is used to populate
-   placeholders in the RAML file.
-   Declare only types/schemas in RAML that are used in RAML (no need to declare types
-   that are only used in JSON schema references).
-   For example:
-        CHANGE:
-            notify.json: !include notify.json
-        TO:
-            notify: !include notify.json
-        WHEN:
-            "notify" is referenced anywhere in the raml
-9. JSON schema references may use relative pathname (RMB will dereference them).
-   No need to declare them in the RAML file.
-
-10. The resource type examples must not be strict (will result in invalid json content otherwise)
-        CHANGE:
-            example: <<exampleItem>>
-        TO:
-            example:
-                strict: false
-                value: <<exampleItem>>
-11. Generated interfaces do not have the 'Resource' suffix
-    For example:
-        ConfigurationsResource -> Configurations
-12. Names of generated pojos (also referenced by the generated interfaces) may change
-    For example:
-        kv_configuration: !include ../_schemas/kv_configuration.schema
-        will produce a pojo called: KvConfiguration
-
-    Referencing the kv_configuration in a schema (example below will produce a pojo called Config)
-    which means the same pojo will be created twice with different names.
-    Therefore, it is preferable to synchronize names.
-            "configs": {
-              "id": "configurationData",
-              "type": "array",
-              "items": {
-                "type": "object",
-                "$ref": "kv_configuration"
-            }
-    This may affect which pojo is referenced by the interface - best to use the same name.
-13. Generated methods do not throw exceptions anymore.
-    This will require removing the 'throws Exception' from the implementing methods.
-14. Names of generated methods has changed
-15. The response codes have changed:
-        withJsonOK -> respond200WithApplicationJson
-        withNoContent -> respond204
-        withPlainBadRequest -> respond400WithTextPlain
-        withPlainNotFound -> respond404WithTextPlain
-        withPlainInternalServerError -> respond500WithTextPlain
-        withPlainUnauthorized -> respond401WithTextPlain
-        withJsonUnprocessableEntity -> respond422WithApplicationJson
-        withAnyOK -> respond200WithAnyAny
-        withPlainOK -> respond200WithTextPlain
-        withJsonCreated -> respond201WithApplicationJson
-
-    Note: For 201 / created codes, the location header has changed and is no longer a string
-    but an object and should be passed in as:
-      PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
-16. Multipart formdata is currently not supported
-17. Remove the declaration of trait "secured" auth.raml and its use from RAML files.
-    It has been removed from the shared raml-util.
-```
+<!-- ../okapi/doc/md2toc -l 2 -h 3 README.md -->
+* [Introduction](#introduction)
+* [Upgrading](#upgrading)
+* [Overview](#overview)
+* [The basics](#the-basics)
+    * [Implement the interfaces](#implement-the-interfaces)
+    * [Set up your pom.xml](#set-up-your-pomxml)
+    * [Build and run](#build-and-run)
+* [Get started with a sample working module](#get-started-with-a-sample-working-module)
+* [Command-line options](#command-line-options)
+* [Environment Variables](#environment-variables)
+* [Local development server](#local-development-server)
+* [Creating a new module](#creating-a-new-module)
+    * [Step 1: Create new project directory layout](#step-1-create-new-project-directory-layout)
+    * [Step 2: Include the jars in your project pom.xml](#step-2-include-the-jars-in-your-project-pomxml)
+    * [Step 3: Add the plugins to your pom.xml](#step-3-add-the-plugins-to-your-pomxml)
+    * [Step 4: Build your project](#step-4-build-your-project)
+    * [Step 5: Implement the generated interfaces](#step-5-implement-the-generated-interfaces)
+    * [Step 6: Design the RAML files](#step-6-design-the-raml-files)
+* [Adding an init() implementation](#adding-an-init-implementation)
+* [Adding code to run periodically](#adding-code-to-run-periodically)
+* [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
+* [Adding a shutdown hook](#adding-a-shutdown-hook)
+* [Implementing file uploads](#implementing-file-uploads)
+* [PostgreSQL integration](#postgresql-integration)
+    * [Credentials](#credentials)
+    * [Securing DB Configuration file](#securing-db-configuration-file)
+    * [Foreign keys constraint](#foreign-keys-constraint)
+* [Tenant API](#tenant-api)
+* [Query Syntax](#query-syntax)
+* [Metadata](#metadata)
+* [Facet Support](#facet-support)
+* [JSON Schema fields](#json-schema-fields)
+* [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
+* [Drools integration](#drools-integration)
+* [Messages](#messages)
+* [Documentation of the APIs](#documentation-of-the-apis)
+* [Logging](#logging)
+* [Monitoring](#monitoring)
+* [Overriding Out of The Box RMB APIs](#overriding-out-of-the-box-rmb-apis)
+* [Client Generator](#client-generator)
+* [Querying multiple modules via HTTP](#querying-multiple-modules-via-http)
+* [A Little More on Validation](#a-little-more-on-validation)
+* [Advanced Features](#advanced-features)
+* [Additional Tools](#additional-tools)
+* [Some REST examples](#some-rest-examples)
+* [Additional information](#additional-information)
 
 ## Introduction
 
 This documentation includes information about the Raml-Module-Builder (RMB) framework
 and examples of how to use it.
-
-(Note: This version of the README is for RMB v20+ version.
-If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.)
 
 The goal of the project is to abstract away as much boilerplate functionality as
 possible and allow a developer to focus on implementing business functions. In
@@ -149,6 +108,13 @@ The framework consists of a number of tools:
 - `rules` -- Basic Drools functionality allowing module developers to create
   validation rules via `*.drl` files for objects (JSON schemas).
 
+## Upgrading
+
+See separate [upgrading notes](doc/upgrading.md).
+
+Note: This version of the README is for RMB v20+ version.
+If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.
+
 ## Overview
 
 Follow the [Introduction](#introduction) section above to generally understand
@@ -161,8 +127,8 @@ When that is understood, then move on to the section
 [Creating a new module](#creating-a-new-module) to get your project started.
 
 Note that actually building this RAML Module Builder framework is not required.
-(Some of the images below are out-of-date.) The already published artifacts will
-be [incorporated](#step-2) into your project from the repository.
+(Some of the images below are out-of-date.) The already published RMB artifacts will
+be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your project from the repository.
 
 ## The basics
 
@@ -222,37 +188,34 @@ and other [modules](https://dev.folio.org/source-code/#server-side) (not all do 
 
 ## Get started with a sample working module
 
-The [mod-configuration](https://github.com/folio-org/mod-configuration)
+The [mod-notify](https://github.com/folio-org/mod-notify)
 is a full example which uses the RMB. Clone it, and then investigate:
 
 ```
-$ git clone --recursive https://github.com/folio-org/mod-configuration.git
-$ cd mod-configuration
+$ git clone --recursive https://github.com/folio-org/mod-notify.git
+$ cd mod-notify
 $ mvn clean install
 ```
-
-- This module implements basic configuration APIs. It contains two sub modules, the configuration server and a configuration client (which can be used to interact with the server in a more OO manner, instead of using URLs).
 
 - Its RAMLs and JSON schemas can be found in the `ramls` directory.
 These are also displayed as local [API documentation](#documentation-of-the-apis).
 
-- Open the pom.xml in the configuration server module - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files within the configuration server project. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
+- Open the pom.xml file - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files into the `target/generated-sources/raml-jaxrs` directory. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
 
-- Open the `mod-configuration-server/src/main/java/org/folio/rest/impl/ConfigAPI.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the ConfigAPI.java contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for the configuration module by the RMB at build time.
+- Investigate the `src/main/java/org/folio/rest/impl/NotificationsResourceImpl.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the class contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for this module by the RMB at build time.
 
 - **IMPORTANT NOTE:** Every interface implementation - by any module -
   must reside in package `org.folio.rest.impl`. This is the package that is
   scanned at runtime by the runtime framework, to find the needed runtime
   implementations of the generated interfaces.
 
-Now run the configuration module in standalone mode:
+Now run the module in standalone mode:
 
 ```
-$ java -jar mod-configuration-server/target/mod-configuration-server-fat.jar embed_postgres=true
+$ java -jar target/mod-notify-fat.jar embed_postgres=true
 ```
 
 Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
-(for example to view or set the [Logging](#logging) levels).
 
 At this stage there is not much that can be queried, so stop that quick demonstration now.
 After explaining general command-line options, etc.
@@ -323,156 +286,20 @@ http://localhost:9131/apidocs/index.html?raml=raml/users.raml
 
 ## Creating a new module
 
-### Step 1: Describe the APIs to be exposed by the new module
+### Step 1: Create new project directory layout
 
-Create the new project using the normal layout of files and basic POM file.
+Create the new project using the [normal layout](https://dev.folio.org/guides/commence-a-module/) of files, and basic POM file.
 
 Add the `/ramls` directory, the area for the RAML, schemas, and examples files.
 For a maven subproject the directory may be at the parent project only.
-(See [notes](#step-6-design-the-raml-files) below.)
-These define the API endpoints.
-Get started by using the following familiar example:
 
-`ebook.raml`
+To get a quick start, copy the "ramls" directory and POM file from
+[mod-notify](https://github.com/folio-org/mod-notify).
+(At [Step 6](#step-6-design-the-raml-files) below, these will be replaced to suit your project's needs.)
 
-```raml
-#%RAML 0.8
+Adjust the POM file to match your project, e.g. artifactID, version, etc.
 
-title: E-book API
-baseUri: http://api.example.com/{version}
-version: v1
-
-schemas:
-  - book: !include ebook.json
-
-/ebooks:
-  /{bookTitle}:
-    get:
-      queryParameters:
-        author:
-          displayName: Author
-          type: string
-          description: An author's full name
-          example: Mary Roach
-          required: false
-        publicationYear:
-          displayName: Pub Year
-          type: number
-          description: The year released for the first time in the US
-          example: 1984
-          required: false
-        rating:
-          displayName: Rating
-          type: number
-          description: Average rating (1-5) submitted by users
-          example: 3.14
-          required: false
-        isbn:
-          displayName: ISBN
-          type: string
-          minLength: 10
-          example: 03217360797
-      responses:
-        200:
-          body:
-            application/json:
-              schema: book
-              example: |
-                {
-                  "bookdata": {
-                    "id": "SbBGk",
-                    "title": "Stiff: The Curious Lives of Human Cadavers",
-                    "description": null,
-                    "datetime": 1341533193,
-                    "genre": "science",
-                    "author": "Mary Roach",
-                    "link": "http://e-bookmobile.com/books/Stiff"
-                  },
-                  "success": true,
-                  "status": 200
-                }
-    put:
-      queryParameters:
-        access_token:
-          displayName: Access Token
-          type: string
-          description: "Token giving you permission to make call"
-          required: true
-```
-
-Create JSON schemas indicating the objects exposed by the module:
-
-`ebook.json`
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "description": "Record of an e-book",
-  "type": "object",
-  "properties": {
-    "bookdata": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "Unique ID (UUID) of this record",
-          "type": "string"
-        },
-        "title": {
-          "description": "Title of the e-book",
-          "type": "string"
-        },
-        "description": {
-          "description": "Description of the content and the usage limitations of the e-book",
-          "type": "null"
-        },
-        "datetime": {
-          "description": "The last time this record has been changed",
-          "type": "integer"
-        },
-        "genre": {
-          "description": "Genre of the e-book",
-          "type": "string"
-        },
-        "author": {
-          "description": "Author of the e-book. Several authors are separated by comma.",
-          "type": "string"
-        },
-        "link": {
-          "description": "URL to access the e-book.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "title",
-        "description",
-        "datetime",
-        "genre",
-        "author",
-        "link"
-      ]
-    },
-    "success": {
-      "description": "False if there was some error during the request, true otherwise. An empty result can also have success=true.",
-      "type": "boolean"
-    },
-    "status": {
-      "description": "HTTP status code returned from the knowledge base.",
-      "type": "integer"
-    }
-  },
-  "required": [
-    "bookdata",
-    "success",
-    "status"
-  ]
-}
-```
-
-Use the `description` field alongside the `type` field to explain the content and
-usage and to add documentation.
-
-### <a name="step-2"></a>Step 2: Include the jars in your project pom.xml
+### Step 2: Include the jars in your project pom.xml
 
 ```xml
   <repositories>
@@ -486,8 +313,10 @@ usage and to add documentation.
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>16.0.3</version>
+      <version>20.0.0</version>
     </dependency>
+    ...
+    ...
   </dependencies>
 ```
 
@@ -504,8 +333,8 @@ Four plugins need to be declared in the POM file:
   correctly, parameters are of the correct type and contain the correct content
   as indicated by the RAML file.
 
-- The `maven-shade-plugin` which will generate a fat-jar runnable jar. While the
-  shade plugin is not mandatory, it does makes things easier. The important thing to
+- The `maven-shade-plugin` which will generate a fat-jar runnable jar.
+  The important thing to
   notice is the main class that will be run when running your module. Notice the
   `Main-class` and `Main-Verticle` in the shade plugin configuration.
 
@@ -513,209 +342,12 @@ Four plugins need to be declared in the POM file:
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
 
-Add `ramlfiles_path` property indicating the location of the RAML directory,
-only this directory skipping subdirectories is scanned for .raml files:
+Add `ramlfiles_path` property indicating the location of the RAML directory.
 
 ```xml
   <properties>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
   </properties>
-```
-
-Example: https://github.com/folio-org/mod-circulation-storage/
-
-Alternatively the .raml files can be placed into the https://github.com/folio-org/raml
-repository and included as a git submodule in the raml-util directory,
-an example is https://github.com/folio-org/mod-codex-mock/ with
-
-`<ramlfiles_path>${basedir}/ramls/raml-util/ramls/codex</ramlfiles_path>`
-
-Add the plugins:
-
-```xml
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
-          <encoding>UTF-8</encoding>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.0.0</version>
-        <executions>
-          <execution>
-            <id>add_generated_sources_folder</id>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <phase>initialize</phase>
-            <configuration>
-              <sources>
-                <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.5.0</version>
-        <executions>
-          <execution>
-            <id>generate_interfaces</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-              <!-- <executable>java</executable> -->
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>raml_files</key>
-                  <value>${ramlfiles_path}</value>
-                </systemProperty>
-              </systemProperties>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.9</version>
-        <configuration>
-          <verbose>true</verbose>
-          <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
-          <includes>
-            <include>**/impl/*.java</include>
-            <include>**/*.aj</include>
-          </includes>
-          <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
-          <XaddSerialVersionUID>true</XaddSerialVersionUID>
-          <showWeaveInfo>true</showWeaveInfo>
-          <forceAjcCompile>true</forceAjcCompile>
-          <aspectLibraries>
-            <aspectLibrary>
-              <groupId>org.folio</groupId>
-              <artifactId>domain-models-api-aspects</artifactId>
-            </aspectLibrary>
-          </aspectLibraries>
-        </configuration>
-        <executions>
-          <execution>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-        </executions>
-        <dependencies>
-          <dependency>
-            <groupId>org.aspectj</groupId>
-            <artifactId>aspectjrt</artifactId>
-            <version>1.8.9</version>
-          </dependency>
-          <dependency>
-            <groupId>org.aspectj</groupId>
-            <artifactId>aspectjtools</artifactId>
-            <version>1.8.9</version>
-          </dependency>
-        </dependencies>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>3.0.1</version>
-        <executions>
-          <execution>
-            <id>copy-resources</id>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${basedir}/target/classes/apidocs/raml</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${ramlfiles_path}</directory>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <!-- Replace the baseUri and the protocols in the RAMLs that have been copied to
-        apidocs directory so that they can be used via the local html api console. -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-antrun-plugin</artifactId>
-        <version>1.8</version>
-        <executions>
-          <execution>
-            <phase>prepare-package</phase>
-            <configuration>
-              <target>
-                <replace token="baseUri: http://api.e-bookmobile.com/{version}"
-                  value="baseUri: http://localhost:{http.port}"
-                  dir="${basedir}/target/classes/apidocs/raml">
-                  <include name="**/*.raml" />
-                </replace>
-                <replace token="protocols: [ HTTPS ]" value="protocols: [ HTTP ]"
-                  dir="${basedir}/target/classes/apidocs/raml">
-                  <include name="**/*.raml" />
-                </replace>
-              </target>
-            </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.4</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <transformers>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <manifestEntries>
-                    <Main-Class>org.folio.rest.RestLauncher</Main-Class>
-                    <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
-                  </manifestEntries>
-                </transformer>
-              </transformers>
-              <artifactSet />
-              <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
 ```
 
 Compare the POM with other FOLIO RMB-based modules.
@@ -746,35 +378,38 @@ This should:
 
 Implement the interfaces associated with the RAML files you created. An
 interface is generated for every root endpoint in the RAML files.
-So, for the ebook RAML an
-`org.folio.rest.jaxrs.resource.EbooksResource` interface will be generated.
+For example an
+`org.folio.rest.jaxrs.resource.Ebooks` interface will be generated.
 Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
 The implementations must go into the `org.folio.rest.impl` package because RMB's
-[RestVerticle](https://github.com/folio-org/raml-module-builder/blob/b95cd0e/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java#L372)
+[RestVerticle](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java)
 scans this package for a class that implements the required interface.  The class can
 have any name.
 RMB then uses reflection to invoke the constructor and the method.
 
-See [mod-user's org.folio.rest.impl package](https://github.com/folio-org/mod-users/tree/master/src/main/java/org/folio/rest/impl)
+See [mod-notify's org.folio.rest.impl package](https://github.com/folio-org/mod-notify/tree/master/src/main/java/org/folio/rest/impl)
 for example implementations.
 
 ### Step 6: Design the RAML files
 
 It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
 Investigate the other FOLIO modules for guidance.
-The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
+The [mod-notify](https://github.com/folio-org/mod-notify) is an exemplar.
 
-(Note: This version of the README is for RMB v20+ version (see notes [Upgrading to v20](#upgrading-to-v20) above).
-If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.)
+Remove the temporary copy of the "ramls" directory from Step 1, and replace with your own.
 
-Add the shared suite of [RAML utility](https://dev.folio.org/source-code/#server-side) files,
+Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files,
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
 NOTE: At this stage ensure that using head of its "raml1.0" branch.
+
+Create JSON schemas indicating the objects exposed by the module.
+Use the `description` field alongside the `type` field to explain the content and
+usage and to add documentation.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
 `target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
@@ -958,11 +593,11 @@ Note that when implementing the generated interfaces it is possible to add a con
 
 ## Implementing file uploads
 
-The RMB (RAML-Module-Builder) supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
+The RMB supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
 
-### Option 1
+#### File uploads Option 1
 
-#### A multipart RAML declaration may look something like this:
+A multipart RAML declaration may look something like this:
 
 ```raml
 /uploadmultipart:
@@ -1010,7 +645,7 @@ for (int i = 0; i < parts; i++) {
 
 where each section in the body (separated by the boundary) is a "part".
 
-#### An octet/stream can look something like this:
+An octet/stream can look something like this:
 
 ```raml
  /uploadOctet:
@@ -1026,7 +661,7 @@ The interfaces generated from the above will contain a parameter of type `java.i
 representing the uploaded file.
 
 
-### Option 2
+#### File uploads Option 2
 
 The RMB allows for content to be streamed to a specific implemented interface.
 For example, to upload a large file without having to save it all in memory:
@@ -1042,7 +677,7 @@ instantiated by the RMB for each chunk of data, and the function of that object 
 
 By default an embedded PostgreSQL is included in the runtime, but is not run by
 default. To change that add `embed_postgres=true` to the command line
-(`java -jar mod-configuration-server-fat.jar embed_postgres=true`).
+(`java -jar mod-notify-fat.jar embed_postgres=true`).
 Connection parameters to a non-embedded PostgreSQL can be placed in `resources/postgres-conf.json` or passed via the command line.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
@@ -1510,7 +1145,7 @@ Note that higher numbers will potentially affect performance.
 
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
-## Json Schema fields
+## JSON Schema fields
 
 It is possible to indicate that a field in the json is a readonly field when declaring the schema. `"readonly": true`. From example:
 ```
@@ -1699,7 +1334,7 @@ If instead your [new module](#creating-a-new-module) is running on the default p
 then its API documentation is at:
 
 ```
-http://localhost:8081/apidocs/index.html?raml=raml/ebook.raml
+http://localhost:8081/apidocs/index.html?raml=raml/my-project.raml
 ```
 
 The RMB also automatically provides other documentation, such as the "Admin API":
@@ -1956,7 +1591,7 @@ For example:
 See the `JsonPathParser` class for more info.
 
 
-### An example
+#### An example HTTP request
 
     //create a client
     HttpClientInterface client = HttpClientFactory.getHttpClient(okapiURL, tenant);
@@ -2001,11 +1636,11 @@ See the `JsonPathParser` class for more info.
 Query parameters and header validation
 ![](images/validation.png)
 
-### Object validations
+#### Object validations
 
 ![](images/object_validation.png)
 
-### function example
+#### function example
 ```java
   @Validate
   @Override
@@ -2127,7 +1762,7 @@ Have these in the headers - currently not validated hence not mandatory:
 - Accept: application/json,text/plain
 - Content-Type: application/json;
 
-### Example 1: Add a fine to a patron (post)
+#### Example 1: Add a fine to a patron (post)
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
@@ -2147,31 +1782,31 @@ http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 }
 ```
 
-### Example 2: Get fines for patron with id
+#### Example 2: Get fines for patron with id
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 ```
 
-### Example 3: Get a specific patron
+#### Example 3: Get a specific patron
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba
 ```
 
-### Example 4: Get all patrons
+#### Example 4: Get all patrons
 
 ```
 http://localhost:8080/patrons
 ```
 
-### Example 5: Delete a patron (delete)
+#### Example 5: Delete a patron (delete)
 
 ```
 http://localhost:8080/patrons/56dbe791a129584a506fb41a
 ```
 
-### Example 6: Add a patron (post)
+#### Example 6: Add a patron (post)
 
 ```
 http://localhost:8080/patrons
