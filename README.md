@@ -30,8 +30,6 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
 * [Adding a shutdown hook](#adding-a-shutdown-hook)
 * [Implementing file uploads](#implementing-file-uploads)
-    * [Option 1](#option-1)
-    * [Option 2](#option-2)
 * [PostgreSQL integration](#postgresql-integration)
     * [Credentials](#credentials)
     * [Securing DB Configuration file](#securing-db-configuration-file)
@@ -40,7 +38,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Query Syntax](#query-syntax)
 * [Metadata](#metadata)
 * [Facet Support](#facet-support)
-* [Json Schema fields](#json-schema-fields)
+* [JSON Schema fields](#json-schema-fields)
 * [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
 * [Drools integration](#drools-integration)
 * [Messages](#messages)
@@ -50,19 +48,10 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Overriding Out of The Box RMB APIs](#overriding-out-of-the-box-rmb-apis)
 * [Client Generator](#client-generator)
 * [Querying multiple modules via HTTP](#querying-multiple-modules-via-http)
-    * [An example](#an-example)
 * [A Little More on Validation](#a-little-more-on-validation)
-    * [Object validations](#object-validations)
-    * [function example](#function-example)
 * [Advanced Features](#advanced-features)
 * [Additional Tools](#additional-tools)
 * [Some REST examples](#some-rest-examples)
-    * [Example 1: Add a fine to a patron (post)](#example-1-add-a-fine-to-a-patron-post)
-    * [Example 2: Get fines for patron with id](#example-2-get-fines-for-patron-with-id)
-    * [Example 3: Get a specific patron](#example-3-get-a-specific-patron)
-    * [Example 4: Get all patrons](#example-4-get-all-patrons)
-    * [Example 5: Delete a patron (delete)](#example-5-delete-a-patron-delete)
-    * [Example 6: Add a patron (post)](#example-6-add-a-patron-post)
 * [Additional information](#additional-information)
 
 ## Introduction
@@ -935,11 +924,11 @@ Note that when implementing the generated interfaces it is possible to add a con
 
 ## Implementing file uploads
 
-The RMB (RAML-Module-Builder) supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
+The RMB supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
 
-### Option 1
+#### File uploads Option 1
 
-#### A multipart RAML declaration may look something like this:
+A multipart RAML declaration may look something like this:
 
 ```raml
 /uploadmultipart:
@@ -987,7 +976,7 @@ for (int i = 0; i < parts; i++) {
 
 where each section in the body (separated by the boundary) is a "part".
 
-#### An octet/stream can look something like this:
+An octet/stream can look something like this:
 
 ```raml
  /uploadOctet:
@@ -1003,7 +992,7 @@ The interfaces generated from the above will contain a parameter of type `java.i
 representing the uploaded file.
 
 
-### Option 2
+#### File uploads Option 2
 
 The RMB allows for content to be streamed to a specific implemented interface.
 For example, to upload a large file without having to save it all in memory:
@@ -1487,7 +1476,7 @@ Note that higher numbers will potentially affect performance.
 
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
-## Json Schema fields
+## JSON Schema fields
 
 It is possible to indicate that a field in the json is a readonly field when declaring the schema. `"readonly": true`. From example:
 ```
@@ -1933,7 +1922,7 @@ For example:
 See the `JsonPathParser` class for more info.
 
 
-### An example
+#### An example HTTP request
 
     //create a client
     HttpClientInterface client = HttpClientFactory.getHttpClient(okapiURL, tenant);
@@ -1978,11 +1967,11 @@ See the `JsonPathParser` class for more info.
 Query parameters and header validation
 ![](images/validation.png)
 
-### Object validations
+#### Object validations
 
 ![](images/object_validation.png)
 
-### function example
+#### function example
 ```java
   @Validate
   @Override
@@ -2104,7 +2093,7 @@ Have these in the headers - currently not validated hence not mandatory:
 - Accept: application/json,text/plain
 - Content-Type: application/json;
 
-### Example 1: Add a fine to a patron (post)
+#### Example 1: Add a fine to a patron (post)
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
@@ -2124,31 +2113,31 @@ http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 }
 ```
 
-### Example 2: Get fines for patron with id
+#### Example 2: Get fines for patron with id
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 ```
 
-### Example 3: Get a specific patron
+#### Example 3: Get a specific patron
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba
 ```
 
-### Example 4: Get all patrons
+#### Example 4: Get all patrons
 
 ```
 http://localhost:8080/patrons
 ```
 
-### Example 5: Delete a patron (delete)
+#### Example 5: Delete a patron (delete)
 
 ```
 http://localhost:8080/patrons/56dbe791a129584a506fb41a
 ```
 
-### Example 6: Add a patron (post)
+#### Example 6: Add a patron (post)
 
 ```
 http://localhost:8080/patrons
