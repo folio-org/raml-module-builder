@@ -8,7 +8,7 @@ import junitparams.Parameters;
 import org.junit.runner.RunWith;
 
 @RunWith(JUnitParamsRunner.class)
-public class NaiveSQLParseTest {  
+public class NaiveSQLParseTest {
   @Test
   @Parameters({
     "limit 'limit' ^limit 1",
@@ -26,9 +26,9 @@ public class NaiveSQLParseTest {
   })
   public void test1(String testCase) {
     int expectedPos = testCase.indexOf('^');
-    
+
     String q = testCase.substring(0, expectedPos) + testCase.substring(expectedPos + 1);
-    
+
     assertThat(NaiveSQLParse.getLastStartPos(q, "limit"), is(expectedPos));
     assertThat(NaiveSQLParse.getLastStartPos(q, "LIMIT"), is(expectedPos));
   }
@@ -43,9 +43,9 @@ public class NaiveSQLParseTest {
   })
   public void test2(String testCase) {
     int expectedPos = testCase.indexOf('^');
-    
+
     String q = testCase.substring(0, expectedPos) + testCase.substring(expectedPos + 1);
     assertThat(NaiveSQLParse.getLastStartPos(q, "order by"), is(expectedPos));
   }
-  
+
 }

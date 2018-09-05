@@ -45,7 +45,7 @@ public class Schema {
   public FullText getFullText() {
     return fullText;
   }
-  
+
   public void setFullText(FullText fullText) {
     this.fullText = fullText;
   }
