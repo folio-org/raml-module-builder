@@ -384,12 +384,12 @@ Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
 The implementations must go into the `org.folio.rest.impl` package because RMB's
-[RestVerticle](https://github.com/folio-org/raml-module-builder/blob/b95cd0e/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java#L372)
+[RestVerticle](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java)
 scans this package for a class that implements the required interface.  The class can
 have any name.
 RMB then uses reflection to invoke the constructor and the method.
 
-See [mod-user's org.folio.rest.impl package](https://github.com/folio-org/mod-users/tree/master/src/main/java/org/folio/rest/impl)
+See [mod-notify's org.folio.rest.impl package](https://github.com/folio-org/mod-notify/tree/master/src/main/java/org/folio/rest/impl)
 for example implementations.
 
 ### Step 6: Design the RAML files
