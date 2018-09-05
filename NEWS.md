@@ -1,4 +1,5 @@
 ## 20.0.0 2018-08-31
+
 * RMB-221 Single quote SQL Injection in PostgresClient.saveBatch(table, list, handler)
 * RMB-231 Errors in mod-inventory-storage when upgrading RMB from 19.1.5 to 19.3.1
 * RMB-1 Specifying a RAML that only uses GET fails with RMB
@@ -21,35 +22,44 @@
 * RMB-234 Do NOT create tsvector indexes with lowercase/unaccent
 
 ## 19.3.1 2018-08-01
-*Fix regression caused by RMB-176
+
+* Fix regression caused by RMB-176
 
 ## 19.3.0 2018-08-01
-*RMB-176 Support index for multiple properties in declarative schema
+
+* RMB-176 Support index for multiple properties in declarative schema
 
 ## 19.2.0 2018-07-16
+
 * RMB-184 new "fulltext" index type in schema.json
 * RMB-183 add ability to set the result set distinct
 
 ## 19.1.5 2018-07-05
+
 * RMB-179 net.sf.jsqlparser does not support "IS TRUE" and "a@>b"
 * RMB-178 parseQuery throws StackOverflowError for deeply nested SQL query
 * RMB-181 Rewrite getLastStartPos for reducing stack size
 
 ## 19.1.4 2018-07-02
+
 * RMB-154 Investigate postgresql connection pool
 
 ## 19.1.3 2018-06-10
+
 * RMB-167 consistently use runOnContext for DB operations
 * RMB-172 add /admin api to drop , create indexes per module
 
 ## 19.1.2 2018-06-03
+
 * RMB-168 PostgresClient makes a wrong callback
 
 ## 19.1.1 2018-05-23
+
 * RMB-163 Fail to find API implementation due to subtle class loading order difference
 * RMB-166 Reduce stack size for SQL queries
 
 ## 19.1.0 2018-04-24
+
 * RMB-136: Default paging in storage modules prevents operations on entire contents
 * RMB-138: SchemaDereferencer: Support name to name.schema resolution
 * RMB-143: Version update: vertx 3.5.1, jackson 2.9.4
@@ -68,6 +78,7 @@
 * FOLIO-1187: Add lint-raml-cop.sh
 
 ## 19.0.0 2018-03-01
+
 * RMB-140: Move to v19, 18.0.1 requires entry in pom
 
         <plugin>
@@ -91,18 +102,21 @@
         </plugin>
 
 ## 18.0.1 2018-02-28
+
 * RMB-130: Use target/generated-sources for generated code
 * RMB-135: Parse version from Module ID in `module_{from,to}`
 * RMB-137: Move JsonPathParser.main() to JsonPathParserTest; use JUnit
 * RMB-139: Add transaction support for get() and delete()
 
 ## 18.0.0 2018-02-19
+
 * RMB-133: start, rollback and end transactions should use a handler of type `handler<asyncresult<object>>`
 * RMB-132: Allow update() method to be called within a transaction.
 * RMB-131: PostgresClient: asynchronous functions must not throw exceptions
 * RMB-128: Upgrade to postgres v10
 
 ## 17.0.0 2017-01-17
+
 * RMB-119: CQL's default relation "=" now uses "adj" relation for strings (was "all")
 * CQLPG-30, CQLPG-31: Fix number handling in CQL queries
 * RMB-124: Lift time limit of PostgresClientMultiVertxIT
@@ -119,6 +133,7 @@
 * RMB-98: Foreign key trigger created in public schema and not in tenant's schema
 
 ## 16.0.3 2017-12-19
+
 * RMB-103: Schema dereferencing requires a ramls/ directory with the raml and schema files.
 * RMB-106: Set Locale.US, use Logger, split into separate tests.
 * importSQL tenant sensitive
@@ -128,13 +143,16 @@
 * CQLPG-29 "sortBy field" sorts by null (cql2pgjson:1.3.3)
 
 ## 16.0.2 2017-12-05
+
 * RMB-94: "readonly" fields should be ignored
 * MODINVSTOR-38: Fix number in string by updating cql2pgjson to 1.3.2
 
 ## 16.0.1 2017-12-01
+
 * UICHKOUT-39: Update cql2pgjson to v1.3.1 fixing number handling
 
 ## 16.0.0 2017-11-29
+
 * RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
 * RMB-82 additional / optimize counting of results via postgresClient
 * RMB-84 fix facet mechanism to use new counting RMB-82
@@ -145,6 +163,7 @@
 * RMB-77 fix documentation for declaration of json schema
 
 ## 15.0.2 2017-11-04
+
 * RMB-64
 * RMB-63
 * RMB-66
@@ -192,6 +211,7 @@
 * FOLIO-685 explore auto-generation of fakes (mocks) for module testing
 
 ## 12.1.4
+
 * RMB-32 fix JSON encoding of String in UpdateSection
 * RMB-40 submodule util with ResourceUtil.asString(...), IOUtil.toUTF8String(InputStream)
 * RMB-36 fix PostgresClient.runSQLFile(...) when last sql statement does not end with ;
@@ -241,3 +261,4 @@
 ## 10.0.7 2017-05-02
 
 * Non-snapshot version.
+
