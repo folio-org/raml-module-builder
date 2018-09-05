@@ -1,3 +1,9 @@
+# Changes for RMB
+
+## In progress
+
+* RMB-213 Commence doc directory, move upgrading notes, tidy for RMBv20+
+
 ## 20.0.0 2018-08-31
 
 * RMB-221 Single quote SQL Injection in PostgresClient.saveBatch(table, list, handler)
