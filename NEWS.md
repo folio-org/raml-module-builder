@@ -1,8 +1,9 @@
-# Changes for RMB
-
-## In progress
+## 21.0.0 2018-09-06
 
 * RMB-213 Commence doc directory, move upgrading notes, tidy for RMBv20+
+* RMB-237 Do we need to bundle twitter.raml, github.raml, .. in fat jar?
+* RMB-238 Extend PostgresClient.getById with POJO (change of API)
+* RMB-239 Fix apidocs of RMB does not support RAML 1.0
 
 ## 20.0.0 2018-08-31
 
