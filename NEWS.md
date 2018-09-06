@@ -1,5 +1,9 @@
+## 19.4.2 2018-09-06
+ * Fix RMB-234, create fulltext indexes without lower() etc
+ * Use CQL2PGJSON 2.2.1, supports searches like title=*
+
 ## 19.4.1 2018-08-29
- * RMB-231: Fix noather regression caused by RMB-176: Views were broken
+ * RMB-231: Fix another regression caused by RMB-176: Views were broken
 
 ## 19.4.0 2018-08-24
  * Use CQL2PGJSON 2.2.0 with fulltext support
