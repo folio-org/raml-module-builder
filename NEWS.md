@@ -1,3 +1,6 @@
+## 21.0.1 2018-09-07
+* RMB-245 Fix Invalid path for client generator
+ 
 ## 21.0.0 2018-09-06
 
 * RMB-213 Commence doc directory, move upgrading notes, tidy for RMBv20+
