@@ -145,7 +145,7 @@ public class ClientGenerator {
 
       /* class variable to root url path to this interface */
       JFieldVar globalPathVar = jc.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, String.class, "GLOBAL_PATH");
-      globalPathVar.init(JExpr.lit("/" + (String)globalPath));
+      globalPathVar.init(JExpr.lit((String)globalPath));
 
       /* class variable tenant id */
       tenantId = jc.field(JMod.PRIVATE, String.class, "tenantId");
