@@ -51,11 +51,13 @@ public class ClientGenerator {
 
   public static final String  PATH_ANNOTATION        = "javax.ws.rs.Path";
   public static final String  CLIENT_CLASS_SUFFIX    = "Client";
+  @SuppressWarnings("squid:S1075")  // suppress "URIs should not be hardcoded"
   public static final String  PATH_TO_GENERATE_TO    = "/target/generated-sources/raml-jaxrs/";
   public static final String  OKAPI_HEADER_TENANT    = "x-okapi-tenant";
   public static final String  APPEND                 = "append";
   public static final String  TENANT_ID              = "tenantId";
   public static final String  TOKEN                  = "token";
+  private static final String KEEP_ALIVE             = "keepAlive";
   private static final String OKAPI_URL              = "okapiUrl";
 
   private static final Logger log = LoggerFactory.getLogger(ClientGenerator.class);
@@ -144,7 +146,7 @@ public class ClientGenerator {
     JVar portVar = constructor.param(int.class, "port");
     JVar tenantIdVar = constructor.param(String.class, TENANT_ID);
     JVar tokenVar = constructor.param(String.class, TOKEN);
-    JVar keepAlive = constructor.param(boolean.class, "keepAlive");
+    JVar keepAlive = constructor.param(boolean.class, KEEP_ALIVE);
     JBlock conBody = constructor.body();
     conBody.invoke("this").arg(hostVar).arg(portVar).arg(tenantIdVar).arg(tokenVar).arg(keepAlive)
       .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
@@ -163,7 +165,7 @@ public class ClientGenerator {
     JVar port = constructor.param(int.class, "port");
     JVar tenantIdVar = constructor.param(String.class, TENANT_ID);
     JVar tokenVar = constructor.param(String.class, TOKEN);
-    JVar keepAlive = constructor.param(boolean.class, "keepAlive");
+    JVar keepAlive = constructor.param(boolean.class, KEEP_ALIVE);
     JVar connTimeout = constructor.param(int.class, "connTO");
     JVar idleTimeout = constructor.param(int.class, "idleTO");
 
@@ -188,7 +190,7 @@ public class ClientGenerator {
     JVar okapiUrlVar = constructor.param(String.class, OKAPI_URL);
     JVar tenantIdVar = constructor.param(String.class, TENANT_ID);
     JVar tokenVar = constructor.param(String.class, TOKEN);
-    JVar keepAlive = constructor.param(boolean.class, "keepAlive");
+    JVar keepAlive = constructor.param(boolean.class, KEEP_ALIVE);
     JBlock conBody = constructor.body();
     conBody.invoke("this").arg(okapiUrlVar).arg(tenantIdVar).arg(tokenVar).arg(keepAlive)
       .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
@@ -199,7 +201,7 @@ public class ClientGenerator {
     JVar okapiUrlVar = constructor.param(String.class, OKAPI_URL);
     JVar tenantIdVar = constructor.param(String.class, TENANT_ID);
     JVar token = constructor.param(String.class, TOKEN);
-    JVar keepAlive = constructor.param(boolean.class, "keepAlive");
+    JVar keepAlive = constructor.param(boolean.class, KEEP_ALIVE);
     JVar connTimeout = constructor.param(int.class, "connTO");
     JVar idleTimeout = constructor.param(int.class, "idleTO");
 
@@ -459,7 +461,6 @@ public class ClientGenerator {
            * should be indicated by a multipart objector input stream in the body */
           JExpression jexpr = jcodeModel.ref(io.vertx.core.buffer.Buffer.class).staticInvoke("buffer");
           JVar buffer = methodBody.decl(jcodeModel.ref(io.vertx.core.buffer.Buffer.class), "buffer", jexpr);
-          // methodBody.directStatement( "io.vertx.core.buffer.Buffer buffer = io.vertx.core.buffer.Buffer.buffer();" );
 
           if ("java.io.Reader".equals(valueType)){
             JVar reader = method.param(Reader.class, "reader");
