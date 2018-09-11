@@ -2,7 +2,10 @@ package org.folio.rest.tools.plugins;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
+import org.folio.rest.annotations.ElementsNotNull;
+import org.folio.rest.annotations.ElementsPattern;
 import org.jsonschema2pojo.GenerationConfig;
 import org.jsonschema2pojo.Jackson2Annotator;
 
@@ -42,6 +45,15 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
   private static Table<String, Object, JsonObject> annotationLookUp = HashBasedTable.create();
 
   private static Map<String, JsonObject> fields2annotate = new HashMap<>();
+  
+  private static final String REGEXP  = "regexp";
+  private static final String TYPE    = "type";
+  private static final String ITEMS   = "items";
+  private static final String NOT     = "not";
+  private static final String NULL    = "null";
+  private static final String ARRAY   = "array";
+  private static final String STRING  = "string";
+  private static final String PATTERN = "pattern";
 
   public CustomTypeAnnotator(GenerationConfig generationConfig) {
     //called once for each json schema defined
@@ -56,7 +68,7 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
         annotationLookUp.put(fieldName , fieldValue, annotation);
         log.info("Loading custom field " + fieldName + " with value " + fieldValue + " with annotation " + annotation.encode());
       }
-    }
+    }    
   }
 
   @Override
@@ -85,6 +97,18 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
   @Override
   public void propertyField(JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
+    
+    // Optionally annotates arrays with ElementsNotNull and ElementsPattern 
+    if(isArray(propertyNode)) {
+      if(isItemsNotNull(propertyNode)) {
+        field.annotate(ElementsNotNull.class);
+      }
+      Optional<String> pattern = getPattern(propertyNode);
+      if(pattern.isPresent()) {
+        field.annotate(ElementsPattern.class).param(REGEXP, pattern.get());
+      }
+    }
+    
     JsonObject annotation = fields2annotate.get(propertyName);
     if(annotation != null){
       String annotationType = annotation.getString("type");
@@ -124,7 +148,7 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
             }
             else if(valueType.toLowerCase().endsWith("double")){
               ann.param(memberKey, (Double)memberValue);
-            }
+            } 
           });
         }
       }
@@ -158,4 +182,32 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
       return null;
     }
   }
+  
+  private boolean isItemsNotNull(JsonNode propertyNode) {
+    if (propertyNode.has(ITEMS)) {
+      JsonNode itemNode = propertyNode.get(ITEMS);
+      if (itemNode.has(NOT)) {
+        JsonNode notNode = itemNode.get(NOT);
+        if(notNode.has(TYPE) && NULL.equals(notNode.get(TYPE).asText())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private boolean isArray(final JsonNode propertyNode) {
+    return propertyNode.has(TYPE) && ARRAY.equals(propertyNode.get(TYPE).asText());
+  }
+
+  private Optional<String> getPattern(final JsonNode propertyNode) {
+    if (propertyNode.has(ITEMS)) {
+      JsonNode itemNode = propertyNode.get(ITEMS);
+      if (itemNode.has(TYPE) && STRING.equals(itemNode.get(TYPE).asText()) && itemNode.has(PATTERN)) {
+        return Optional.of(itemNode.get(PATTERN).asText());
+      }
+    }
+    return Optional.empty();
+  }
+  
 }
