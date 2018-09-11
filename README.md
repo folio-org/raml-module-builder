@@ -536,7 +536,7 @@ public class InitConfigService implements PostDeployVerticle {
     /** hard code the secret key for now - in production env - change this to read from a secure place */
     String secretKey = "b2%2BS%2BX4F/NFys/0jMaEG1A";
     int port = context.config().getInteger("http.port");
-    AdminClient ac = new AdminClient("localhost", port, null);
+    AdminClient ac = new AdminClient("http://localhost:" + port, null);
     ac.postSetAESKey(secretKey, reply -> {
       if(reply.statusCode() == 204){
         handler.handle(io.vertx.core.Future.succeededFuture(true));
@@ -814,7 +814,7 @@ public class InitConfigService implements PostDeployVerticle {
     //** hard code the secret key  - in production env - read from a secure place *//
     String secretKey = "b2%2BS%2BX4F/NFys/0jMaEG1A";
     int port = context.config().getInteger("http.port");
-    AdminClient ac = new AdminClient("localhost", port, null);
+    AdminClient ac = new AdminClient("http://localhost:" + port, null);
     ac.postSetAESKey(secretKey, reply -> {
       if(reply.statusCode() == 204){
         handler.handle(io.vertx.core.Future.succeededFuture(true));
@@ -1033,7 +1033,7 @@ To post a tenant via the client:
 
 ```java
 TenantClient tClient = null;
-tClient = new TenantClient("localhost", port, "mytenantid");
+tClient = new TenantClient("http://localhost:" + port, "mytenantid", "sometoken");
 tClient.post( response -> {
   response.bodyHandler( body -> {
     System.out.println(body.toString());
@@ -1467,7 +1467,7 @@ To generate a client API from your RAML add the following plugin to your pom.xml
 For the monitoring APIs exposed by the runtime framework, changing the log level via the client would look like this:
 
 ```java
-    AdminClient aClient = new AdminClient("localhost", 8083, "myuniversityId");
+    AdminClient aClient = new AdminClient("http://localhost:" + 8083, "myuniversityId", "sometoken");
     aClient.putLoglevel(Level.FINE, "org.folio",  apiResponse -> {
       System.out.println(apiResponse.statusCode());
     });
@@ -1476,7 +1476,7 @@ For the monitoring APIs exposed by the runtime framework, changing the log level
 Requesting a stack trace would look like this:
 
 ```java
-    AdminClient aClient = new AdminClient("localhost", 8083, "myuniversityId");
+    AdminClient aClient = new AdminClient("http://localhost:" + 8083, "myuniversityId", "sometoken");
     aClient.getJstack( trace -> {
       trace.bodyHandler( content -> {
         System.out.println(content);

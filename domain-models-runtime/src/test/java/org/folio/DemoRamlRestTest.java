@@ -261,7 +261,7 @@ public class DemoRamlRestTest {
     //use generated client
     //checkClientCode(context);
 
-/*    RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
+/*    RmbtestsClient testClient = new RmbtestsClient("http://localhost:" + port, "abc", "abc", false);
     String[] facets = new String[]{"author:10", "name:5"};
     testClient.getRmbtestsBooks("aaa", new BigDecimal(1999), new BigDecimal(1999), null, facets, handler -> {
       if(handler.statusCode() != 200){
@@ -283,7 +283,7 @@ public class DemoRamlRestTest {
     try {
       Async async = context.async(3);
 
-      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
+      AdminClient aClient = new AdminClient("http://localhost:" + port, "abc", "abc", false);
       /*
       AdminUploadmultipartPostMultipartFormData data =
           new AdminUploadmultipartPostMultipartFormDataImpl();
@@ -309,7 +309,7 @@ public class DemoRamlRestTest {
         });
       });
 
-      TenantClient tc = new TenantClient("localhost", 8888, "harvard", "harvard");
+      TenantClient tc = new TenantClient("http://localhost:" + 8888, "harvard", "harvard");
       tc.post(null, response -> {
         response.bodyHandler( body -> {
           System.out.println(body.toString());
