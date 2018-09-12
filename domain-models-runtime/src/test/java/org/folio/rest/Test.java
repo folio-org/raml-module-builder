@@ -23,7 +23,7 @@ public class Test {
     bp2.setFileName("abcd.raml");
     mmp.addBodyPart(bp);
     mmp.addBodyPart(bp2);*/
-    AdminClient aClient = new AdminClient("localhost", 8888, null, null, false);
+    AdminClient aClient = new AdminClient("http://localhost:8888", null, null, false);
     /*
     AdminUploadmultipartPostMultipartFormData data =
         new AdminUploadmultipartPostMultipartFormDataImpl();
@@ -48,7 +48,7 @@ public class Test {
       });
     });
 
-    TenantClient tc = new TenantClient("localhost", 8888, "harvard", "harvard");
+    TenantClient tc = new TenantClient("http://localhost:" + 8888, "harvard", "harvard");
     tc.post(null, response -> {
       response.bodyHandler( body -> {
         System.out.println(body.toString());

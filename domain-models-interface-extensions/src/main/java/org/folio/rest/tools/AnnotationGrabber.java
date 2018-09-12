@@ -5,7 +5,9 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -151,18 +153,19 @@ public class AnnotationGrabber {
 
         JsonArray methodsInAPath;
         // iterate over all functions in the class
-        Method[] methods = Class.forName(val.toString()).getMethods();
-        for (int i = 0; i < methods.length; i++) {
+        Method[] inputMethods = Class.forName(val.toString()).getMethods();
+        // sort generated methods to allow comparing generated file with previous versions
+        Arrays.sort(inputMethods, Comparator.comparing(Method::toGenericString));
+        for (Method inputMethod : inputMethods) {
           JsonObject methodObj = new JsonObject();
 
-          JsonObject params = getParameterNames(methods[i]);
+          JsonObject params = getParameterNames(inputMethod);
 
           // get annotations on the method and add all info per method to its
           // own methodObj
-          Annotation[] methodAn = methods[i].getAnnotations();
-          //System.out.println(methods[i].getName());
+          Annotation[] methodAn = inputMethod.getAnnotations();
           // put the name of the function
-          methodObj.put(FUNCTION_NAME, methods[i].getName());
+          methodObj.put(FUNCTION_NAME, inputMethod.getName());
           methodObj.put(METHOD_PARAMS, params);
           for (int j = 0; j < methodAn.length; j++) {
 
