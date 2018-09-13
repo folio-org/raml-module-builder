@@ -43,7 +43,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
   private static final String      UPGRADE_TO_VERSION       = "module_to";
 
   private static final String     CONTENT_LANGUAGE          = "x-okapi-language";
-  
+
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
   private final Messages            messages          = Messages.getInstance();
 
@@ -199,7 +199,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
      * http://host:port/tenant
      * Validation by rmb means the entity is either properly populated on is null
      * depending on whether this is an upgrade or a create tenant
-     * 
+     *
      * Modules that are not DB bound but are still RMB modules should override this API and do
      * any tenant bootstrapping they need
      */
@@ -207,7 +207,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     context.runOnContext(v -> {
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
       String ftLanguage = getLanguage4FT(headers.get(CONTENT_LANGUAGE));
-      
+
       log.info("sending... postTenant for " + tenantId);
       try {
         boolean isUpdateMode[] = new boolean[]{false};
@@ -286,7 +286,7 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
                 tableInputStr = IOUtils.toString(tableInput, "UTF8");
                 Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
                 if(ftLanguage != null) {
-                  //FT default language was passed in for the tenant, override the default language in the 
+                  //FT default language was passed in for the tenant, override the default language in the
                   //schema.json
                   FullText ft = new FullText();
                   ft.setDefaultDictionary(ftLanguage);
@@ -354,7 +354,10 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     if(language == null){
       return null;
     }
-    if(language.startsWith("en")){
+    if (language.startsWith("simple")) {
+      return "simple";
+    }
+    if (language.startsWith("en")) {
       return "english";
     }
     else if(language.startsWith("da")){
@@ -396,9 +399,9 @@ public class TenantAPI implements org.folio.rest.jaxrs.resource.TenantResource {
     else if(language.startsWith("sv") || language.startsWith("swe")){
       return "swedish";
     }
-    return "english";
+    return "simple";
   }
-  
+
   /**
    * @param jar
    * @return
