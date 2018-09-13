@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -317,6 +318,14 @@ public class PostgresClient {
    */
   AsyncSQLClient getClient() {
     return client;
+  }
+
+  /**
+   * Set this instance's AsyncSQLClient that can connect to Postgres.
+   * @param client  the new client
+   */
+  void setClient(AsyncSQLClient client) {
+    this.client = client;
   }
 
   /**
@@ -2004,51 +2013,107 @@ public class PostgresClient {
   }
 
   /**
-   * update table
+   * Execute an INSERT, UPDATE or DELETE statement.
    * @param sql - the sql to run
-   * @param replyHandler
+   * @param replyHandler - the result handler with UpdateResult converted toString().
+   * @deprecated use execute(String, Handler<AsyncResult<UpdateResult>>) instead.
    */
-  public void mutate(String sql, Handler<AsyncResult<String>> replyHandler)  {
+  @Deprecated
+  public void mutate(String sql, Handler<AsyncResult<String>> replyHandler) {
+    execute(sql, res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      replyHandler.handle(Future.succeededFuture(res.result().toString()));
+    });
+  }
+
+  /**
+   * Execute an INSERT, UPDATE or DELETE statement.
+   * @param sql - the sql to run
+   * @param replyHandler - the result handler with UpdateResult
+   */
+  public void execute(String sql, Handler<AsyncResult<UpdateResult>> replyHandler)  {
     long s = System.nanoTime();
     client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        try {
-          connection.update(sql, query -> {
-            connection.close();
-            if (query.failed()) {
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(query.result().toString()));
-            }
-            log.debug("mutate timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      } else {
+      if (res.failed()) {
         replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      SQLConnection connection = res.result();
+      try {
+        connection.update(sql, query -> {
+          connection.close();
+          if (query.failed()) {
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            replyHandler.handle(Future.succeededFuture(query.result()));
+          }
+          log.debug("execute timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
+        });
+      } catch (Exception e) {
+        if (connection != null) {
+          connection.close();
+        }
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
+      }
+    });
+  }
+
+  /**
+   * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
+   * @param sql  The SQL statement to run.
+   * @param params The parameters for the placeholders in sql.
+   * @param replyHandler
+   */
+  public void execute(String sql, JsonArray params, Handler<AsyncResult<UpdateResult>> replyHandler)  {
+    long s = System.nanoTime();
+    client.getConnection(res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      SQLConnection connection = res.result();
+      try {
+        connection.updateWithParams(sql, params, query -> {
+          connection.close();
+          if (query.failed()) {
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            replyHandler.handle(Future.succeededFuture(query.result()));
+          }
+          log.debug("execute timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
+        });
+      } catch (Exception e) {
+        if (connection != null) {
+          connection.close();
+        }
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
       }
     });
   }
 
   /**
    * send a query to update within a transaction
-   * @param conn - connection - see {@link #startTx(Handler)}
-   * @param sql - the sql to run
-   * @param replyHandler
-   * Example:
+   *
+   * <p>Example:
+   * <pre>
    *  postgresClient.startTx(beginTx -> {
    *        try {
    *          postgresClient.mutate(beginTx, sql, reply -> {...
+   * </pre>
+   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sql - the sql to run
+   * @param replyHandler
+   * @deprecated use execute(AsyncResult<SQLConnection>, String, Handler<AsyncResult<UpdateResult>>) instead
    */
+  @Deprecated
   public void mutate(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<String>> replyHandler){
-    SQLConnection sqlConnection = conn.result();
     try {
+      SQLConnection sqlConnection = conn.result();
       sqlConnection.update(sql, query -> {
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
@@ -2060,6 +2125,140 @@ public class PostgresClient {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
+  }
+
+  /**
+   * Send an INSERT, UPDATE or DELETE statement within a transaction.
+   *
+   * <p>Example:
+   * <pre>
+   *  postgresClient.startTx(beginTx -> {
+   *        try {
+   *          postgresClient.execute(beginTx, sql, reply -> {...
+   * </pre>
+   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sql - the sql to run
+   * @param replyHandler - reply handler with UpdateResult
+   */
+  public void execute(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<UpdateResult>> replyHandler){
+    try {
+      SQLConnection sqlConnection = conn.result();
+      sqlConnection.update(sql, query -> {
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(query.result()));
+        }
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Send an INSERT, UPDATE or DELETE parameterized/prepared statement within a transaction.
+   *
+   * <p>Example:
+   * <pre>
+   *  postgresClient.startTx(beginTx -> {
+   *        try {
+   *          postgresClient.execute(beginTx, sql, params, reply -> {...
+   * </pre>
+   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sql - the sql to run
+   * @param replyHandler - reply handler with UpdateResult
+   */
+  public void execute(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
+      Handler<AsyncResult<UpdateResult>> replyHandler){
+    try {
+      SQLConnection sqlConnection = conn.result();
+      sqlConnection.updateWithParams(sql, params, query -> {
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(query.result()));
+        }
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
+   * run it with a list of sets of parameters.
+   *
+   * <p>Example:
+   * <pre>
+   *  postgresClient.startTx(beginTx -> {
+   *        try {
+   *          postgresClient.execute(beginTx, sql, params, reply -> {...
+   * </pre>
+   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sql - the sql to run
+   * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
+   * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
+   */
+  public void execute(AsyncResult<SQLConnection> conn, String sql, List<JsonArray> params,
+      Handler<AsyncResult<List<UpdateResult>>> replyHandler) {
+    try {
+      SQLConnection sqlConnection = conn.result();
+      List<UpdateResult> results = new ArrayList<>(params.size());
+      Iterator<JsonArray> iterator = params.iterator();
+      Runnable task = new Runnable() {
+        @Override
+        public void run() {
+          if (! iterator.hasNext()) {
+            replyHandler.handle(Future.succeededFuture(results));
+            return;
+          }
+          sqlConnection.updateWithParams(sql, iterator.next(), query -> {
+            if (query.failed()) {
+              replyHandler.handle(Future.failedFuture(query.cause()));
+              return;
+            }
+            results.add(query.result());
+            this.run();
+          });
+        }
+      };
+      task.run();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
+   * run it with a list of sets of parameters. Wrap all in a transaction.
+   *
+   * @param sql - the sql to run
+   * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
+   * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
+   */
+  public void execute(String sql, List<JsonArray> params, Handler<AsyncResult<List<UpdateResult>>> replyHandler) {
+    startTx(transaction -> {
+      if (transaction.failed()) {
+        replyHandler.handle(Future.failedFuture(transaction.cause()));
+        return;
+      }
+      execute(transaction, sql, params, result -> {
+        if (result.failed()) {
+          rollbackTx(transaction, rollback -> replyHandler.handle(result));
+          return;
+        }
+        endTx(transaction, end -> {
+          if (end.failed()) {
+            replyHandler.handle(Future.failedFuture(end.cause()));
+            return;
+          }
+          replyHandler.handle(result);
+        });
+      });
+    });
   }
 
   /**
