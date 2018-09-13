@@ -154,6 +154,44 @@ public class PostgresClient {
     init(vertx, tenantId);
   }
 
+  /**
+   * Log the duration since startNanoTime as a debug message.
+   * @param description  text for the log entry
+   * @param sql  additional text for the log entry
+   * @param startNanoTime  start time as returned by System.nanoTime()
+   */
+  private void logTimer(String description, String sql, long startNanoTime) {
+    if (! log.isDebugEnabled()) {
+      return;
+    }
+    logTimer(description, sql, startNanoTime, System.nanoTime());
+  }
+
+  /**
+   * Log the duration between startNanoTime and endNanoTime as a debug message.
+   * @param description  text for the log entry
+   * @param sql  additional text for the log entry
+   * @param startNanoTime  start time in nanoseconds
+   * @param endNanoTime  end time in nanoseconds
+   */
+  private void logTimer(String description, String sql, long startNanoTime, long endNanoTime) {
+    log.debug(description + " timer: " + sql + " took " + ((endNanoTime - startNanoTime) / 1000000) + " s");
+  }
+
+  /**
+   * Log the duration since startNanoTime at the StatsTracker and as a debug message.
+   * @param descriptionKey  key for StatsTracker and text for the log entry
+   * @param sql  additional text for the log entry
+   * @param startNanoTime  start time as returned by System.nanoTime()
+   */
+  private void statsTracker(String descriptionKey, String sql, long startNanoTime) {
+    long endNanoTime = System.nanoTime();
+    StatsTracker.addStatElement(STATS_KEY + "." + descriptionKey, (endNanoTime - startNanoTime));
+    if (log.isDebugEnabled()) {
+      logTimer(descriptionKey, sql, startNanoTime, endNanoTime);
+    }
+  }
+
   public void setIdField(String id){
     idField = id;
     Map<String, String> replaceMapping = new HashMap<>();
@@ -641,8 +679,7 @@ public class PostgresClient {
                   }
                   replyHandler.handle(Future.succeededFuture(response));
                 }
-                long end = System.nanoTime();
-                StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
+                statsTracker("save", table, start);
               });
           } catch (Exception e) {
             if(connection != null){
@@ -680,8 +717,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
-          long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
+          statsTracker("save", table, start);
         });
     } catch (Exception e) {
       if(connection != null){
@@ -727,20 +763,19 @@ public class PostgresClient {
       sql.append(" RETURNING ").append(idField);
 
       connection.queryWithParams(sql.toString(), entities, queryRes -> {
-        long end = System.nanoTime();
         if (queryRes.failed()) {
           log.error("saveBatch size=" + entities.size()
             + " " +
               queryRes.cause().getMessage(),
               queryRes.cause());
-          StatsTracker.addStatElement(STATS_KEY + ".saveBatchFailed", (end-start));
+          statsTracker("saveBatchFailed", table, start);
           replyHandler.handle(Future.failedFuture(queryRes.cause()));
           return;
         }
         if (log.isInfoEnabled()) {
           log.info("success: saveBatch size=" + entities.size());
         }
-        StatsTracker.addStatElement(STATS_KEY + ".saveBatch", (end-start));
+        statsTracker("saveBatch", table, start);
         replyHandler.handle(Future.succeededFuture(queryRes.result()));
       });
     });
@@ -919,11 +954,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
-          long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
-          if(log.isDebugEnabled()){
-            log.debug("timer: get " +q+ " (ns) " + (end-start));
-          }
+          statsTracker("update", table, start);
         });
       } catch (Exception e) {
         if(!transactionMode){
@@ -995,11 +1026,7 @@ public class PostgresClient {
               } else {
                 replyHandler.handle(Future.succeededFuture(query.result()));
               }
-              long end = System.nanoTime();
-              StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
-              if(log.isDebugEnabled()){
-                log.debug("timer: get " +q+ " (ns) " + (end-start));
-              }
+              statsTracker("update", table, start);
             });
           } catch (Exception e) {
             if(connection != null){
@@ -1126,11 +1153,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
-          long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+".delete", (end-start));
-          if(log.isDebugEnabled()){
-            log.debug("timer: get " +q+ " (ns) " + (end-start));
-          }
+          statsTracker("delete", table, start);
         });
       } catch (Exception e) {
         if(!transactionMode){
@@ -1218,11 +1241,7 @@ public class PostgresClient {
             } else {
               replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
             }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY + ".get", (end - start));
-            if (log.isDebugEnabled()) {
-              log.debug("timer: get " + q[0] + " (ns) " + (end - start));
-            }
+            statsTracker("get", table, start);
           } catch (Exception e) {
             log.error(e.getMessage(), e);
             replyHandler.handle(Future.failedFuture(e));
@@ -1262,8 +1281,7 @@ public class PostgresClient {
     fm.setSchema(convertToPsqlStandard(tenantId));
     fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(
       parsedQuery.getCountFuncQuery()));
-    long end = System.nanoTime();
-    log.debug( "timer: buildFacetQuery (ns) " + (end - start));
+    logTimer("buildFacetQuery", "", start);
 
     return fm.generateFacetQuery();
   }
@@ -1764,11 +1782,7 @@ public class PostgresClient {
               T result = resultSetMapper.apply(query.result());
               replyHandler.handle(Future.succeededFuture(result));
             }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".join", (end-start));
-            if(log.isDebugEnabled()){
-              log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
-            }
+            statsTracker("join", "", start);
           });
         } catch (Exception e) {
           if(connection != null){
@@ -1972,11 +1986,7 @@ public class PostgresClient {
     r.setResults(list);
     r.setResultInfo(rn);
 
-    long end = System.nanoTime();
-    StatsTracker.addStatElement(STATS_KEY+".processResult", (end-start));
-    if(log.isDebugEnabled()){
-      log.debug("timer: process results (ns) " + (end-start));
-    }
+    statsTracker("processResult", clazz.getSimpleName(), start);
     return r;
   }
 
@@ -2050,7 +2060,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
-          log.debug("execute timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
+          logTimer("execute", sql, s);
         });
       } catch (Exception e) {
         if (connection != null) {
@@ -2084,7 +2094,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
-          log.debug("execute timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
+          log.debug("executeWithParams", sql, s);
         });
       } catch (Exception e) {
         if (connection != null) {
@@ -2334,9 +2344,7 @@ public class PostgresClient {
             } else {
               replyHandler.handle(Future.succeededFuture(query.result().getUpdated()));
             }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".persistentlyCacheResult", (end-start));
-            log.debug("CREATE TABLE AS timer: " + q + " took " + (end-start)/1000000);
+            statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start);
           });
         } catch (Exception e) {
           if(connection != null){
@@ -2366,9 +2374,7 @@ public class PostgresClient {
             } else {
               replyHandler.handle(Future.succeededFuture(query.result().getUpdated()));
             }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".removePersistentCacheResult", (end-start));
-            log.debug("DROP TABLE timer: " + cacheName + " took " + (end-start)/1000000);
+            statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
           });
         } catch (Exception e) {
           if(connection != null){
@@ -2654,14 +2660,13 @@ public class PostgresClient {
         }
       }
     }, done -> {
-      log.debug("execute timer for: " + Arrays.hashCode(sql) + " took " + (System.nanoTime()-s)/1000000);
+      logTimer("execute", "" + Arrays.hashCode(sql), s);
       replyHandler.handle(Future.succeededFuture(results));
     });
   }
 
   /**
    * Start an embedded PostgreSQL using the configuration of {@link #getConnectionConfig()}.
-   * It also sets embedded mode to true, see {@link #setIsEmbedded(boolean)}, but
    * doesn't change the configuration.
    *
    * @throws IOException  when starting embedded PostgreSQL fails
