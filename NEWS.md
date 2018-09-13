@@ -1,3 +1,8 @@
+## 19.4.3 2018-09-13
+ * RMB-249: Default to the 'simple' directory for fulltext indexes to get around
+   the stopword problems. Use cql2pgjson 2.2.2 that searches with the 'simple'
+   as well.
+
 ## 19.4.2 2018-09-06
  * Fix RMB-234, create fulltext indexes without lower() etc
  * Use CQL2PGJSON 2.2.1, supports searches like title=*
