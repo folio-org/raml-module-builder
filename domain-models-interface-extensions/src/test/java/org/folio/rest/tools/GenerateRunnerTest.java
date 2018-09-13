@@ -17,7 +17,7 @@ import org.junit.Test;
 import io.vertx.core.logging.LoggerFactory;
 
 public class GenerateRunnerTest {
-
+  
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
@@ -57,6 +57,11 @@ public class GenerateRunnerTest {
     return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
         + jaxrsDir + "/model/Test.java");
   }
+  
+  private String elementAnnotationTestJava() throws IOException {
+    return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
+        + jaxrsDir + "/model/ElementAnnotationTest.java");
+  }
 
   private String msgsSchema() throws IOException {
     return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
@@ -89,6 +94,12 @@ public class GenerateRunnerTest {
         containsString("withModule(String")));
     assertThat(msgsSchema(), containsString("\"value\""));
   }
+  
+  private void assertElementAnnotations() throws IOException {
+    assertThat(elementAnnotationTestJava(), allOf(
+        containsString("@ElementsPattern(regexp = \".\")"),
+        containsString("@ElementsNotNull")));
+  }
 
   @Test
   public void canRunMain() throws Exception {
@@ -97,6 +108,7 @@ public class GenerateRunnerTest {
     FileUtils.copyDirectory(new File(resourcesDir), new File(baseDir + "/ramls/"));
     GenerateRunner.main(null);
     assertJobMsgs();
+    assertElementAnnotations();
   }
 
   @Test(expected=IOException.class)
@@ -113,4 +125,5 @@ public class GenerateRunnerTest {
     GenerateRunner.main(null);
     assertTest();
   }
+  
 }

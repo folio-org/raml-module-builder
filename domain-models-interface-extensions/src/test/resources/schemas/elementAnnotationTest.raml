@@ -1,0 +1,16 @@
+#%RAML 1.0
+
+title: ElementAnnotationTest API
+baseUri: http://localhost:8081/v1
+version: v1
+
+types:
+  elementAnnotationTest: !include elementAnnotationTest.schema
+
+/elementAnnotationTest:
+  displayName: Element Annotation Test
+  description: Element Annotation Test services
+  post:
+    body:
+      application/json:
+        schema: elementAnnotationTest
