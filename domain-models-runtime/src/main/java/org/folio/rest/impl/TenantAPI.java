@@ -354,7 +354,10 @@ public class TenantAPI implements Tenant {
     if(language == null){
       return null;
     }
-    if(language.startsWith("en")){
+    if (language.startsWith("simple")) {
+      return "simple";
+    }
+    if (language.startsWith("en")) {
       return "english";
     }
     else if(language.startsWith("da")){
@@ -396,7 +399,7 @@ public class TenantAPI implements Tenant {
     else if(language.startsWith("sv") || language.startsWith("swe")){
       return "swedish";
     }
-    return "english";
+    return "simple";
   }
 
   /**

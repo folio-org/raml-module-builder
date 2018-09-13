@@ -6,7 +6,7 @@ package org.folio.rest.persist.ddlgen;
  */
 public class FullText {
 
-  static final String DEFAULT_DICTIONARY = "english";
+  static final String DEFAULT_DICTIONARY = "simple";
 
   private String defaultDictionary;
 
