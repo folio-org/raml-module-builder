@@ -8,11 +8,11 @@
     "listOfElements": {
       "type": "array",
       "items": {
-      	"type": "string",
-      	"pattern": ".",
-      	"not": {
-      		"type": "null"
-      	}
+        "type": "string",
+        "pattern": ".",
+        "not": {
+          "type": "null"
+        }
       }
     }
   }
