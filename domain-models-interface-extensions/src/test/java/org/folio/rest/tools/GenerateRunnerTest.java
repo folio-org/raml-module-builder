@@ -17,7 +17,7 @@ import org.junit.Test;
 import io.vertx.core.logging.LoggerFactory;
 
 public class GenerateRunnerTest {
-  
+
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
@@ -57,7 +57,7 @@ public class GenerateRunnerTest {
     return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
         + jaxrsDir + "/model/Test.java");
   }
-  
+
   private String elementAnnotationTestJava() throws IOException {
     return IoUtil.toStringUtf8(System.getProperty("project.basedir", userDir)
         + jaxrsDir + "/model/ElementAnnotationTest.java");
@@ -94,7 +94,7 @@ public class GenerateRunnerTest {
         containsString("withModule(String")));
     assertThat(msgsSchema(), containsString("\"value\""));
   }
-  
+
   private void assertElementAnnotations() throws IOException {
     assertThat(elementAnnotationTestJava(), allOf(
         containsString("@ElementsPattern(regexp = \".\")"),
@@ -125,5 +125,5 @@ public class GenerateRunnerTest {
     GenerateRunner.main(null);
     assertTest();
   }
-  
+
 }
