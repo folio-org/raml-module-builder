@@ -1,3 +1,7 @@
+## 19.4.4 2018-09-16
+ * RMB-250: Fix fulltext search regarding trailing space and * by updating
+   to cql2pgjson 2.2.3.
+
 ## 19.4.3 2018-09-13
  * RMB-249: Default to the 'simple' directory for fulltext indexes to get around
    the stopword problems. Use cql2pgjson 2.2.2 that searches with the 'simple'
