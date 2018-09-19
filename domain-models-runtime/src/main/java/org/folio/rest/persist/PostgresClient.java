@@ -893,7 +893,7 @@ public class PostgresClient {
         returning.append(returningId);
       }
       try {
-        String q = "UPDATE " + schemaName + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
+        String q = UPDATE + schemaName + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
             + " " + returning;
         log.debug("query = " + q);
         String pojo = pojo2json(entity);
