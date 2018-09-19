@@ -8,6 +8,7 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.junit.Test;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import org.z3950.zing.cql.cql2pgjson.FieldException;
+import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
 public class CQLWrapperTest {
   @Test
@@ -37,6 +38,18 @@ public class CQLWrapperTest {
     }
     catch (CQLQueryValidationException e) {
       assertThat(e.getMessage(), allOf(containsString("ParseException"), containsString("unexpected relation")));
+    }
+  }
+
+  @Test
+  public void emptyCqlQueryValidationException() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper().setField(new CQL2PgJSON("field")).setQuery("");
+    try {
+      wrapper.toString();
+      fail("exception expected");
+    }
+    catch (CQLQueryValidationException e) {
+      assertThat(e.getCause(), is(instanceOf(QueryValidationException.class)));
     }
   }
 
