@@ -1,3 +1,7 @@
+## 21.1.0 unreleased
+* RMB-230 Initialize moduleName in the PostgresClient constructor
+* RMB-254 Add getTenantId() and getSchemaName() to PostgresClient
+
 ## 21.0.1 2018-09-07
 * RMB-245 Fix Invalid path for client generator
 

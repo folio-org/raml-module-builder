@@ -119,7 +119,7 @@ public class PostgresClient {
   private static String          configPath               = null;
   private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
-  private static String moduleName                        = null;
+  private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
   private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
       +"CALLED ON NULL INPUT|RETURNS NULL ON NULL INPUT|STRICT|"
@@ -133,11 +133,12 @@ public class PostgresClient {
 
   private static int embeddedPort            = -1;
 
-  private Vertx vertx                       = null;
+  private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
   private final Messages messages           = Messages.getInstance();
   private AsyncSQLClient client;
-  private String tenantId;
+  private final String tenantId;
+  private final String schemaName;
   private String idField                     = "_id";
   private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count ";
   private String returningIdTemplate         = " RETURNING ${id} ";
@@ -150,7 +151,10 @@ public class PostgresClient {
   }
 
   protected PostgresClient(Vertx vertx, String tenantId) throws Exception {
-    init(vertx, tenantId);
+    this.tenantId = tenantId;
+    this.vertx = vertx;
+    this.schemaName = convertToPsqlStandard(tenantId);
+    init();
   }
 
   public void setIdField(String id){
@@ -250,7 +254,7 @@ public class PostgresClient {
       }
       if (postgresClient.client == null) {
         // in connectionPool, but closeClient() has been invoked
-        postgresClient.init(vertx, tenantId);
+        postgresClient.init();
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -351,22 +355,15 @@ public class PostgresClient {
     CompositeFuture.join(list);
   }
 
-  private void init(Vertx vertx, String tenantId) throws Exception {
+  private void init() throws Exception {
 
     /** check if in pom.xml this prop is declared in order to work with encrypted
      * passwords for postgres embedded - this is a dev mode only feature */
     String secretKey = System.getProperty("postgres_secretkey_4_embeddedmode");
 
-    if(moduleName == null){
-      moduleName = PomReader.INSTANCE.getModuleName();
-    }
-
     if(secretKey != null){
       AES.setSecretKey(secretKey);
     }
-
-    this.tenantId = tenantId;
-    this.vertx = vertx;
 
     postgreSQLClientConfig = Envs.allDBConfs();
     if(postgreSQLClientConfig.size() == 0){
@@ -395,7 +392,7 @@ public class PostgresClient {
     }
     else{
       log.info("Using schema: " + tenantId);
-      postgreSQLClientConfig.put(_USERNAME, convertToPsqlStandard(tenantId));
+      postgreSQLClientConfig.put(_USERNAME, schemaName);
       postgreSQLClientConfig.put(_PASSWORD, createPassword(tenantId));
     }
 
@@ -617,7 +614,7 @@ public class PostgresClient {
               type = "?::text)";
             }
             /* do not change to updateWithParams as this will not return the generated id in the reply */
-            connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
+            connection.queryWithParams(INSERT_CLAUSE + schemaName + "." + table +
               " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
               ") VALUES ("+clientId+type + upsertClause + returning,
               queryArg, query -> {
@@ -663,7 +660,7 @@ public class PostgresClient {
       // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
       connection = sqlConnection.result();
       String pojo = pojo2json(entity);
-      connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
+      connection.queryWithParams(INSERT_CLAUSE + schemaName + "." + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
         new JsonArray().add(pojo), query -> {
           if (query.failed()) {
@@ -710,7 +707,7 @@ public class PostgresClient {
       SQLConnection connection = res.result();
       StringBuilder sql = new StringBuilder()
           .append(INSERT_CLAUSE)
-          .append(convertToPsqlStandard(tenantId)).append(".").append(table)
+          .append(schemaName).append(".").append(table)
           .append(" (").append(DEFAULT_JSONB_FIELD_NAME).append(") VALUES (?)");
       for (int i=1; i<entities.size(); i++) {
         sql.append(",(?)");
@@ -896,7 +893,7 @@ public class PostgresClient {
         returning.append(returningId);
       }
       try {
-        String q = "UPDATE " + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
+        String q = "UPDATE " + schemaName + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
             + " " + returning;
         log.debug("query = " + q);
         String pojo = pojo2json(entity);
@@ -975,7 +972,7 @@ public class PostgresClient {
             returning.append(returningId);
           }
           try {
-            String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
+            String q = UPDATE + schemaName + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
                 + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning;
             log.debug("query = " + q);
             connection.update(q, query -> {
@@ -1105,7 +1102,7 @@ public class PostgresClient {
     long start = System.nanoTime();
     vertx.runOnContext(v -> {
       try {
-        String q = "DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+        String q = "DELETE FROM " + schemaName + "." + table + " " + where;
         log.debug("query = " + q);
         connection.update(q, query -> {
           if(!transactionMode){
@@ -1173,7 +1170,7 @@ public class PostgresClient {
           addIdField = "";
         }
 
-        String from2where = FROM + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+        String from2where = FROM + schemaName + "." + table + " " + where;
 
         String[] q = new String[]{SELECT + fieldName + addIdField + from2where};
 
@@ -1186,7 +1183,7 @@ public class PostgresClient {
         if (returnCount) {
           //optimize the entire query building process needed!!
           Map<String, String> replaceMapping = new HashMap<>();
-          replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
+          replaceMapping.put("tenantId", schemaName);
           replaceMapping.put("query",
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
               parsedQuery.getCountFuncQuery()));
@@ -1241,7 +1238,7 @@ public class PostgresClient {
    */
   private String buildFacetQuery(String tableName, ParsedQuery parsedQuery, List<FacetField> facets, boolean countRequested, String query) throws Exception {
     long start = System.nanoTime();
-    FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + "." + tableName);
+    FacetManager fm = new FacetManager(schemaName + "." + tableName);
     if(parsedQuery.getWhereClause() != null){
       fm.setWhere(" where " + parsedQuery.getWhereClause());
     }
@@ -1250,7 +1247,7 @@ public class PostgresClient {
     fm.setLimitClause(parsedQuery.getLimitClause());
     fm.setOffsetClause(parsedQuery.getOffsetClause());
     fm.setMainQuery(parsedQuery.getQueryWithoutLimOff());
-    fm.setSchema(convertToPsqlStandard(tenantId));
+    fm.setSchema(schemaName);
     fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(
       parsedQuery.getCountFuncQuery()));
     long end = System.nanoTime();
@@ -1487,7 +1484,7 @@ public class PostgresClient {
         return;
       }
       String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
-          + FROM + convertToPsqlStandard(tenantId) + "." + table
+          + FROM + schemaName + "." + table
           + WHERE + idField + "= ?";
       res.result().querySingleWithParams(sql, new JsonArray().add(id), query -> {
         if (query.failed()) {
@@ -1567,7 +1564,7 @@ public class PostgresClient {
 
       StringBuilder sql = new StringBuilder()
           .append(SELECT).append(idField).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
-          .append(FROM).append(convertToPsqlStandard(tenantId)).append(".").append(table)
+          .append(FROM).append(schemaName).append(".").append(table)
           .append(WHERE).append(idField).append(" IN (?");
       for (int i=1; i<ids.size(); i++) {
         sql.append(",?");
@@ -1727,16 +1724,16 @@ public class PostgresClient {
             selectFields.append(to.getSelectFields());
           }
 
-          tables.append(convertToPsqlStandard(tenantId) + "." + from.getTableName() + " " + from.getAlias() + " ");
+          tables.append(schemaName + "." + from.getTableName() + " " + from.getAlias() + " ");
 
-          joinon.append(joinType + " " + convertToPsqlStandard(tenantId) + "." + to.getTableName() + " " + to.getAlias() + " ");
+          joinon.append(joinType + " " + schemaName + "." + to.getTableName() + " " + to.getAlias() + " ");
 
           String [] q = new String[]{ SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() +
               new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
 
           //TODO optimize query building
           Map<String, String> replaceMapping = new HashMap<>();
-          replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
+          replaceMapping.put("tenantId", schemaName);
           replaceMapping.put("query",
             org.apache.commons.lang.StringEscapeUtils.escapeSql(
               parseQuery(q[0]).getCountFuncQuery()));
@@ -2077,7 +2074,7 @@ public class PostgresClient {
       where = filter.toString();
     }
     String q =
-        "SELECT * FROM " + convertToPsqlStandard(tenantId) + "." + tableName + " " + where;
+        "SELECT * FROM " + schemaName + "." + tableName + " " + where;
     persistentlyCacheResult(cacheName, q, replyHandler);
   }
 
@@ -2096,7 +2093,7 @@ public class PostgresClient {
       where = filter.toString();
     }
     String q =
-        "SELECT * FROM " + convertToPsqlStandard(tenantId) + "." + tableName + " " + where;
+        "SELECT * FROM " + schemaName + "." + tableName + " " + where;
     persistentlyCacheResult(cacheName, q, replyHandler);
   }
 
@@ -2125,7 +2122,7 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         try {
           String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
-              + convertToPsqlStandard(tenantId) + "." + cacheName +" AS " + sql2cache;
+              + schemaName + "." + cacheName +" AS " + sql2cache;
           System.out.println(q);
           connection.update(q,
             query -> {
@@ -2159,7 +2156,7 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         try {
           connection.update("DROP TABLE "
-              + convertToPsqlStandard(tenantId) + "." + cacheName,
+              + schemaName + "." + cacheName,
             query -> {
             connection.close();
             if (query.failed()) {
@@ -2592,11 +2589,27 @@ public class PostgresClient {
   }
 
   public static String convertToPsqlStandard(String tenantId){
-    return tenantId.toLowerCase() + "_" + moduleName;
+    return tenantId.toLowerCase() + "_" + MODULE_NAME;
   }
 
   public static String getModuleName(){
-    return moduleName;
+    return MODULE_NAME;
+  }
+
+  /**
+   * @return the tenantId of this PostgresClient
+   */
+  public String getTenantId() {
+    return tenantId;
+  }
+
+  /**
+   * @return the PostgreSQL schema name for the tenantId and the module name of this PostgresClient.
+   *   A PostgreSQL schema name is of the form tenant_module and is used to address tables:
+   *   "SELECT * FROM tenant_module.table"
+   */
+  public String getSchemaName() {
+    return schemaName;
   }
 
   /**
