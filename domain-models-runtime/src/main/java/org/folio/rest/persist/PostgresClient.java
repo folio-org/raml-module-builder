@@ -1201,6 +1201,7 @@ public class PostgresClient {
           q[0] = buildFacetQuery(table, parseQuery(q[0]), facets, returnCount, q[0]);
         }
 
+        // TODO: move to its own function with optional count query
         log.info("Attempting count query: " + q[1]);
         connection.querySingle(q[1], countQuery -> {
           try {
@@ -1209,18 +1210,15 @@ public class PostgresClient {
               replyHandler.handle(Future.failedFuture(countQuery.cause()));
             } else {
 
-              JsonArray result = countQuery.result();
+              int total = countQuery.result().getInteger(0);
 
-              int count = result.getInteger(0);
-
-              log.info("Count: " + count);
+              log.info("Total: " + total);
 
               long countQueryTime = (System.nanoTime() - start);
               StatsTracker.addStatElement(STATS_KEY + ".get", countQueryTime);
               log.info("timer: get " + q[1] + " (ns) " + countQueryTime);
 
 
-              // TODO: move to its own function
               log.info("Attempting query: " + q[0]);
               connection.query(q[0], query -> {
                 if (!transactionMode) {
@@ -1231,7 +1229,7 @@ public class PostgresClient {
                     log.error(query.cause().getMessage(), query.cause());
                     replyHandler.handle(Future.failedFuture(query.cause()));
                   } else {
-                    replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, count, setId)));
+                    replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, total, setId)));
                   }
                   long queryTime = (System.nanoTime() - start);
                   StatsTracker.addStatElement(STATS_KEY + ".get", queryTime);
@@ -1247,6 +1245,7 @@ public class PostgresClient {
             replyHandler.handle(Future.failedFuture(e));
           }
         });
+
       } catch (Exception e) {
         if (!transactionMode) {
           connection.close();
@@ -1654,6 +1653,15 @@ public class PostgresClient {
     getById(table, ids, json -> mapper.readValue(json, clazz), replyHandler);
   }
 
+  private class TotaledResults {
+    ResultSet set;
+    int total;
+    public TotaledResults(ResultSet set, int total) {
+      this.set = set;
+      this.total = total;
+    }
+  }
+
   /**
    * run simple join queries between two tables
    *
@@ -1710,22 +1718,20 @@ public class PostgresClient {
       Class<T> returnedClass, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    // TODO: move processResult into join
-    // TODO: create inner class to reduce arguments
-    Function<ResultSet, Results<T>> resultSetMapper =
-        resultSet -> processResult(resultSet, returnedClass, 0, setId);
+    Function<TotaledResults, Results<T>> resultSetMapper =
+        totaledResults -> processResult(totaledResults.set, returnedClass, totaledResults.total, setId);
     join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
   }
 
   public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
       Handler<AsyncResult<ResultSet>> replyHandler) {
 
-    Function<ResultSet, ResultSet> resultSetMapper = resultSet -> resultSet;
+    Function<TotaledResults, ResultSet> resultSetMapper = totaledResults -> totaledResults.set;
     join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
   }
 
   public <T> void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
-      Function<ResultSet, T> resultSetMapper,
+      Function<TotaledResults, T> resultSetMapper,
       Handler<AsyncResult<T>> replyHandler) {
 
     long start = System.nanoTime();
@@ -1761,8 +1767,12 @@ public class PostgresClient {
 
           joinon.append(joinType + " " + convertToPsqlStandard(tenantId) + "." + to.getTableName() + " " + to.getAlias() + " ");
 
-          String [] q = new String[]{ SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() +
-              new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
+          Criterion jcr = new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ");
+
+          String [] q = new String[]{
+            SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter,
+            SELECT + "COUNT(*)" + FROM + tables.toString() + joinon.toString() + jcr + filter
+          };
 
           // //TODO optimize query building
           // Map<String, String> replaceMapping = new HashMap<>();
@@ -1774,23 +1784,46 @@ public class PostgresClient {
           // q[0] = SELECT +
           //   sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(SELECT , " ");
 
-          log.debug("query = " + q[0]);
-          connection.query(q[0],
-            query -> {
-            connection.close();
-            if (query.failed()) {
-              log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              T result = resultSetMapper.apply(query.result());
-              replyHandler.handle(Future.succeededFuture(result));
-            }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".join", (end-start));
-            if(log.isDebugEnabled()){
-              log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
+
+          // TODO: move to its own function with argument to specify perform count query
+          log.info("Attempting count query: " + q[1]);
+          connection.querySingle(q[1], countQuery -> {
+            try {
+              if (countQuery.failed()) {
+                log.error(countQuery.cause().getMessage(), countQuery.cause());
+                replyHandler.handle(Future.failedFuture(countQuery.cause()));
+              } else {
+
+                int total = countQuery.result().getInteger(0);
+
+                log.info("Count: " + total);
+
+                long countQueryTime = (System.nanoTime() - start);
+                StatsTracker.addStatElement(STATS_KEY + ".get", countQueryTime);
+                log.info("timer: get " + q[1] + " (ns) " + countQueryTime);
+
+
+                log.info("Attempting query: " + q[0]);
+                connection.query(q[0], query -> {
+                  connection.close();
+                  if (query.failed()) {
+                    log.error(query.cause().getMessage(), query.cause());
+                    replyHandler.handle(Future.failedFuture(query.cause()));
+                  } else {
+                    T result = resultSetMapper.apply(new TotaledResults(query.result(), total));
+                    replyHandler.handle(Future.succeededFuture(result));
+                  }
+                  long queryTime = (System.nanoTime() - start);
+                  StatsTracker.addStatElement(STATS_KEY + ".join", queryTime);
+                  log.info("timer: get " + q[0] + " (ns) " + queryTime);
+                });
+              }
+            } catch (Exception e) {
+              log.error(e.getMessage(), e);
+              replyHandler.handle(Future.failedFuture(e));
             }
           });
+
         } catch (Exception e) {
           if(connection != null){
             connection.close();
@@ -1880,7 +1913,7 @@ public class PostgresClient {
    * @param setId
    * @return
    */
-  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, int count, boolean setId) {
+  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, int total, boolean setId) {
     long start = System.nanoTime();
     String countField = "count";
     List<T> list = new ArrayList<>();
@@ -1941,7 +1974,7 @@ public class PostgresClient {
               o = mapper.readValue(jo.toString(), clazz);
             } catch (UnrecognizedPropertyException e1) {
               // this is a facet query , and this is the count entry {"count": 11}
-              count = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
+              total = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
               continue;
             }
           }
@@ -1987,7 +2020,7 @@ public class PostgresClient {
     rInfo.forEach( (k , v ) -> {
       rn.getFacets().add(v);
     });
-    rn.setTotalRecords(count);
+    rn.setTotalRecords(total);
 
     Results<T> r = new Results();
     r.setResults(list);
