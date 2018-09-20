@@ -229,7 +229,7 @@ we will get your local development server running and populated with test data.
 Or use `org.folio.rest.*` for all classes within a specific package,
 or `org.folio.rest.RestVerticle` for a specific class.)
 
-- `embed_postgres=true` (Optional -- defaults to false)
+- `embed_postgres=true` (Optional -- enforces starting an embedded postgreSQL, defaults to false)
 
 - `db_connection=[path]` (Optional -- path to an external JSON config file with
   connection parameters to a PostgreSQL DB)
@@ -675,10 +675,16 @@ instantiated by the RMB for each chunk of data, and the function of that object 
 
 ## PostgreSQL integration
 
-By default an embedded PostgreSQL is included in the runtime, but is not run by
-default. To change that add `embed_postgres=true` to the command line
-(`java -jar mod-notify-fat.jar embed_postgres=true`).
-Connection parameters to a non-embedded PostgreSQL can be placed in `resources/postgres-conf.json` or passed via the command line.
+The PostgreSQL connection parameters locations are searched in this order:
+
+- [DB_* environment variables](#environment-variables)
+- Configuration file, defaults to `resources/postgres-conf.json` but can be set via [command-line options](#command-line-options)
+- Embedded PostgreSQL using [default credentials](#credentials)
+
+By default an embedded PostgreSQL is included in the runtime, but it is only run if neither DB_* environment variables
+nor a postgres configuration file are present. To start an embedded PostgreSQL using connection parameters from the
+environment variables or the configuration file add `embed_postgres=true` to the command line
+(`java -jar mod-notify-fat.jar embed_postgres=true`). Use PostgresClient.setEmbeddedPort(int) to overwrite the port.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
 operations in an ORM type fashion.
