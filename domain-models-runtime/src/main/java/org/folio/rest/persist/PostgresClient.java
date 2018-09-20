@@ -390,6 +390,10 @@ public class PostgresClient {
    * @return configuration for PostgreSQL
    * @throws Exception  on password decryption or encryption failure
    */
+  @SuppressWarnings("squid:S2068")  /* Suppress "Credentials should not be hard-coded" -
+    The docker container does not expose the embedded postges port.
+    Moving the hard-coded credentials into some default config file
+    doesn't remove them from the build. */
   static JsonObject getPostgreSQLClientConfig(String tenantId, JsonObject environmentVariables) throws Exception {
     JsonObject config = environmentVariables;
     if (config.size() > 0) {
