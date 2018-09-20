@@ -1218,27 +1218,27 @@ public class PostgresClient {
               StatsTracker.addStatElement(STATS_KEY + ".get", countQueryTime);
               log.info("timer: get " + q[1] + " (ns) " + countQueryTime);
 
-
-              log.info("Attempting query: " + q[0]);
-              connection.query(q[0], query -> {
-                if (!transactionMode) {
-                  connection.close();
-                }
-                try {
-                  if (query.failed()) {
-                    log.error(query.cause().getMessage(), query.cause());
-                    replyHandler.handle(Future.failedFuture(query.cause()));
-                  } else {
-                    replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, total, setId)));
-                  }
-                  long queryTime = (System.nanoTime() - start);
-                  StatsTracker.addStatElement(STATS_KEY + ".get", queryTime);
-                  log.info("timer: get " + q[0] + " (ns) " + queryTime);
-                } catch (Exception e) {
-                  log.error(e.getMessage(), e);
-                  replyHandler.handle(Future.failedFuture(e));
-                }
-              });
+              processQuery(connection, q[0], transactionMode, total, start, "get", totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
+              // log.info("Attempting query: " + q[0]);
+              // connection.query(q[0], query -> {
+              //   if (!transactionMode) {
+              //     connection.close();
+              //   }
+              //   try {
+              //     if (query.failed()) {
+              //       log.error(query.cause().getMessage(), query.cause());
+              //       replyHandler.handle(Future.failedFuture(query.cause()));
+              //     } else {
+              //       replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, total, setId)));
+              //     }
+              //     long queryTime = (System.nanoTime() - start);
+              //     StatsTracker.addStatElement(STATS_KEY + ".get", queryTime);
+              //     log.info("timer: get " + q[0] + " (ns) " + queryTime);
+              //   } catch (Exception e) {
+              //     log.error(e.getMessage(), e);
+              //     replyHandler.handle(Future.failedFuture(e));
+              //   }
+              // });
             }
           } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -1250,6 +1250,31 @@ public class PostgresClient {
         if (!transactionMode) {
           connection.close();
         }
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
+      }
+    });
+  }
+
+
+
+  private <T> void processQuery(SQLConnection connection, String q, boolean transactionMode, int total, long start, String statMethod, Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
+    log.info("Attempting query: " + q);
+    connection.query(q, query -> {
+      if (!transactionMode) {
+        connection.close();
+      }
+      try {
+        if (query.failed()) {
+          log.error(query.cause().getMessage(), query.cause());
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
+        }
+        long queryTime = (System.nanoTime() - start);
+        StatsTracker.addStatElement(STATS_KEY + "." + statMethod, queryTime);
+        log.info("timer: get " + q + " (ns) " + queryTime);
+      } catch (Exception e) {
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
@@ -1774,6 +1799,8 @@ public class PostgresClient {
             SELECT + "COUNT(*)" + FROM + tables.toString() + joinon.toString() + jcr + filter
           };
 
+          log.info("\n\n\n" + q[1] + "\n\n\n");
+
           // //TODO optimize query building
           // Map<String, String> replaceMapping = new HashMap<>();
           // replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
@@ -1796,27 +1823,28 @@ public class PostgresClient {
 
                 int total = countQuery.result().getInteger(0);
 
-                log.info("Count: " + total);
+                log.info("Total: " + total);
 
                 long countQueryTime = (System.nanoTime() - start);
                 StatsTracker.addStatElement(STATS_KEY + ".get", countQueryTime);
                 log.info("timer: get " + q[1] + " (ns) " + countQueryTime);
 
 
-                log.info("Attempting query: " + q[0]);
-                connection.query(q[0], query -> {
-                  connection.close();
-                  if (query.failed()) {
-                    log.error(query.cause().getMessage(), query.cause());
-                    replyHandler.handle(Future.failedFuture(query.cause()));
-                  } else {
-                    T result = resultSetMapper.apply(new TotaledResults(query.result(), total));
-                    replyHandler.handle(Future.succeededFuture(result));
-                  }
-                  long queryTime = (System.nanoTime() - start);
-                  StatsTracker.addStatElement(STATS_KEY + ".join", queryTime);
-                  log.info("timer: get " + q[0] + " (ns) " + queryTime);
-                });
+                processQuery(connection, q[0], false, total, start, "join", resultSetMapper, replyHandler);
+                // log.info("Attempting query: " + q[0]);
+                // connection.query(q[0], query -> {
+                //   connection.close();
+                //   if (query.failed()) {
+                //     log.error(query.cause().getMessage(), query.cause());
+                //     replyHandler.handle(Future.failedFuture(query.cause()));
+                //   } else {
+                //     T result = resultSetMapper.apply(new TotaledResults(query.result(), total));
+                //     replyHandler.handle(Future.succeededFuture(result));
+                //   }
+                //   long queryTime = (System.nanoTime() - start);
+                //   StatsTracker.addStatElement(STATS_KEY + ".join", queryTime);
+                //   log.info("timer: get " + q[0] + " (ns) " + queryTime);
+                // });
               }
             } catch (Exception e) {
               log.error(e.getMessage(), e);
