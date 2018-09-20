@@ -1,3 +1,6 @@
+## 21.1.0 unreleased
+* RMB-197 Do not start embedded postgres if PG env variables are set
+
 ## 21.0.1 2018-09-07
 * RMB-245 Fix Invalid path for client generator
 
