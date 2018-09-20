@@ -139,7 +139,7 @@ public class PostgresClient {
   private AsyncSQLClient client;
   private String tenantId;
   private String idField                     = "_id";
-  private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count ";
+  // private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count ";
   private String returningIdTemplate         = " RETURNING ${id} ";
   private String returningId                 = " RETURNING _id ";
 
@@ -1175,44 +1175,72 @@ public class PostgresClient {
 
         String from2where = FROM + convertToPsqlStandard(tenantId) + "." + table + " " + where;
 
-        String[] q = new String[]{SELECT + fieldName + addIdField + from2where};
+        String[] q = new String[]{
+          SELECT + fieldName + addIdField + from2where,
+          SELECT + "COUNT(*)" + from2where.split("LIMIT")[0],
+        };
 
         ParsedQuery parsedQuery = null;
 
-        if (returnCount || (facets != null && !facets.isEmpty())) {
-          parsedQuery = parseQuery(q[0]);
-        }
+        // if (returnCount || (facets != null && !facets.isEmpty())) {
+        //   parsedQuery = parseQuery(q[0]);
+        // }
 
-        if (returnCount) {
-          //optimize the entire query building process needed!!
-          Map<String, String> replaceMapping = new HashMap<>();
-          replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
-          replaceMapping.put("query",
-            org.apache.commons.lang.StringEscapeUtils.escapeSql(
-              parsedQuery.getCountFuncQuery()));
-          StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = SELECT + fieldName + addIdField + "," + sub.replace(countClauseTemplate) + from2where;
-        }
+        // if (returnCount) {
+        //   //optimize the entire query building process needed!!
+        //   Map<String, String> replaceMapping = new HashMap<>();
+        //   replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
+        //   replaceMapping.put("query",
+        //     org.apache.commons.lang.StringEscapeUtils.escapeSql(
+        //       parsedQuery.getCountFuncQuery()));
+        //   StrSubstitutor sub = new StrSubstitutor(replaceMapping);
+        //   q[0] = SELECT + fieldName + addIdField + "," + sub.replace(countClauseTemplate) + from2where;
+        // }
 
         if (facets != null && !facets.isEmpty()) {
-          q[0] = buildFacetQuery(table, parsedQuery, facets, returnCount, q[0]);
+          q[0] = buildFacetQuery(table, parseQuery(q[0]), facets, returnCount, q[0]);
         }
-        log.debug("Attempting query: " + q[0]);
-        connection.query(q[0], query -> {
-          if (!transactionMode) {
-            connection.close();
-          }
+
+        log.info("Attempting count query: " + q[1]);
+        connection.querySingle(q[1], countQuery -> {
           try {
-            if (query.failed()) {
-              log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
+            if (countQuery.failed()) {
+              log.error(countQuery.cause().getMessage(), countQuery.cause());
+              replyHandler.handle(Future.failedFuture(countQuery.cause()));
             } else {
-              replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
-            }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY + ".get", (end - start));
-            if (log.isDebugEnabled()) {
-              log.debug("timer: get " + q[0] + " (ns) " + (end - start));
+
+              JsonArray result = countQuery.result();
+
+              int count = result.getInteger(0);
+
+              log.info("Count: " + count);
+
+              long countQueryTime = (System.nanoTime() - start);
+              StatsTracker.addStatElement(STATS_KEY + ".get", countQueryTime);
+              log.info("timer: get " + q[1] + " (ns) " + countQueryTime);
+
+
+              // TODO: move to its own function
+              log.info("Attempting query: " + q[0]);
+              connection.query(q[0], query -> {
+                if (!transactionMode) {
+                  connection.close();
+                }
+                try {
+                  if (query.failed()) {
+                    log.error(query.cause().getMessage(), query.cause());
+                    replyHandler.handle(Future.failedFuture(query.cause()));
+                  } else {
+                    replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, count, setId)));
+                  }
+                  long queryTime = (System.nanoTime() - start);
+                  StatsTracker.addStatElement(STATS_KEY + ".get", queryTime);
+                  log.info("timer: get " + q[0] + " (ns) " + queryTime);
+                } catch (Exception e) {
+                  log.error(e.getMessage(), e);
+                  replyHandler.handle(Future.failedFuture(e));
+                }
+              });
             }
           } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -1682,8 +1710,10 @@ public class PostgresClient {
       Class<T> returnedClass, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
 
+    // TODO: move processResult into join
+    // TODO: create inner class to reduce arguments
     Function<ResultSet, Results<T>> resultSetMapper =
-        resultSet -> processResult(resultSet, returnedClass, true, setId);
+        resultSet -> processResult(resultSet, returnedClass, 0, setId);
     join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
   }
 
@@ -1734,15 +1764,15 @@ public class PostgresClient {
           String [] q = new String[]{ SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() +
               new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
 
-          //TODO optimize query building
-          Map<String, String> replaceMapping = new HashMap<>();
-          replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
-          replaceMapping.put("query",
-            org.apache.commons.lang.StringEscapeUtils.escapeSql(
-              parseQuery(q[0]).getCountFuncQuery()));
-          StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = SELECT +
-            sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(SELECT , " ");
+          // //TODO optimize query building
+          // Map<String, String> replaceMapping = new HashMap<>();
+          // replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
+          // replaceMapping.put("query",
+          //   org.apache.commons.lang.StringEscapeUtils.escapeSql(
+          //     parseQuery(q[0]).getCountFuncQuery()));
+          // StrSubstitutor sub = new StrSubstitutor(replaceMapping);
+          // q[0] = SELECT +
+          //   sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(SELECT , " ");
 
           log.debug("query = " + q[0]);
           connection.query(q[0],
@@ -1850,7 +1880,7 @@ public class PostgresClient {
    * @param setId
    * @return
    */
-  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, boolean count, boolean setId) {
+  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, int count, boolean setId) {
     long start = System.nanoTime();
     String countField = "count";
     List<T> list = new ArrayList<>();
@@ -1858,16 +1888,16 @@ public class PostgresClient {
     List<String> columnNames = rs.getColumnNames();
     int columnNamesCount = columnNames.size();
     Map<String, org.folio.rest.jaxrs.model.Facet> rInfo = new HashMap<>();
-    int rowCount = rs.getNumRows(); //this is incorrect in facet queries which add a row per facet value
-    if (rowCount > 0 && count) {
-      //if facet query, this wont set the count as it doesnt have a count column at this location,
-      Object firstColFirstVal = rs.getRows().get(0).getValue(countField);
-      if(null != firstColFirstVal && "Integer".equals(firstColFirstVal.getClass().getSimpleName())){
-        //regular query with count requested since count is of type integer. with a facet query.
-        //the count would be in a json - see description of function above
-        rowCount = rs.getRows().get(0).getInteger(countField);
-      }
-    }
+    // int rowCount = rs.getNumRows(); //this is incorrect in facet queries which add a row per facet value
+    // if (rowCount > 0 && count) {
+    //   //if facet query, this wont set the count as it doesnt have a count column at this location,
+    //   Object firstColFirstVal = rs.getRows().get(0).getValue(countField);
+    //   if(null != firstColFirstVal && "Integer".equals(firstColFirstVal.getClass().getSimpleName())){
+    //     //regular query with count requested since count is of type integer. with a facet query.
+    //     //the count would be in a json - see description of function above
+    //     rowCount = rs.getRows().get(0).getInteger(countField);
+    //   }
+    // }
     /* an exception to having the jsonb column and the fields within the json
      * get mapped to the corresponding clazz is a case where the
      * clazz has a jsonb field (member), for example an audit class which contains a field called
@@ -1911,7 +1941,7 @@ public class PostgresClient {
               o = mapper.readValue(jo.toString(), clazz);
             } catch (UnrecognizedPropertyException e1) {
               // this is a facet query , and this is the count entry {"count": 11}
-              rowCount = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
+              count = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
               continue;
             }
           }
@@ -1957,7 +1987,7 @@ public class PostgresClient {
     rInfo.forEach( (k , v ) -> {
       rn.getFacets().add(v);
     });
-    rn.setTotalRecords(rowCount);
+    rn.setTotalRecords(count);
 
     Results<T> r = new Results();
     r.setResults(list);
