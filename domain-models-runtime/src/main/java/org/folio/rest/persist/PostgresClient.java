@@ -925,6 +925,7 @@ public class PostgresClient {
       }
     });
   }
+
   /**
    * update a section / field / object in the pojo -
    * <br>
@@ -1162,6 +1163,7 @@ public class PostgresClient {
 
     vertx.runOnContext(v -> {
       try {
+        // TODO: build query smarter
         String addIdField = "";
         if (returnIdField) {
           addIdField = "," + idField;
@@ -1175,12 +1177,13 @@ public class PostgresClient {
 
         String from2where = FROM + convertToPsqlStandard(tenantId) + "." + table + " " + where;
 
+        // TODO: build count query better
         String[] q = new String[]{
           SELECT + fieldName + addIdField + from2where,
-          SELECT + "COUNT(*)" + from2where.split("LIMIT")[0],
+          SELECT + "COUNT(*)" + from2where.split("LIMIT")[0].split("ORDER BY")[0],
         };
 
-        ParsedQuery parsedQuery = null;
+        // ParsedQuery parsedQuery = null;
 
         // if (returnCount || (facets != null && !facets.isEmpty())) {
         //   parsedQuery = parseQuery(q[0]);
@@ -1199,52 +1202,56 @@ public class PostgresClient {
 
         if (facets != null && !facets.isEmpty()) {
           q[0] = buildFacetQuery(table, parseQuery(q[0]), facets, returnCount, q[0]);
+          log.info("\n\nFACET QUERY: " + q[0] + "\n\n\nREBUILD COUNT QUERY!!!!\n\n\n");
         }
 
-        // TODO: move to its own function with optional count query
-        log.info("Attempting count query: " + q[1]);
-        connection.querySingle(q[1], countQuery -> {
-          try {
-            if (countQuery.failed()) {
-              log.error(countQuery.cause().getMessage(), countQuery.cause());
-              replyHandler.handle(Future.failedFuture(countQuery.cause()));
-            } else {
+        if(returnCount) {
+          log.info("Attempting count query: " + q[1]);
+          connection.querySingle(q[1], countQuery -> {
+            try {
+              if (countQuery.failed()) {
+                log.error(countQuery.cause().getMessage(), countQuery.cause());
+                replyHandler.handle(Future.failedFuture(countQuery.cause()));
+              } else {
 
-              int total = countQuery.result().getInteger(0);
+                int total = countQuery.result().getInteger(0);
 
-              log.info("Total: " + total);
+                log.info("Total: " + total);
 
-              long countQueryTime = (System.nanoTime() - start);
-              StatsTracker.addStatElement(STATS_KEY + ".get", countQueryTime);
-              log.info("timer: get " + q[1] + " (ns) " + countQueryTime);
+                long countQueryTime = (System.nanoTime() - start);
+                StatsTracker.addStatElement(STATS_KEY + ".get", countQueryTime);
+                log.info("timer: get " + q[1] + " (ns) " + countQueryTime);
 
-              processQuery(connection, q[0], transactionMode, total, start, "get", totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
-              // log.info("Attempting query: " + q[0]);
-              // connection.query(q[0], query -> {
-              //   if (!transactionMode) {
-              //     connection.close();
-              //   }
-              //   try {
-              //     if (query.failed()) {
-              //       log.error(query.cause().getMessage(), query.cause());
-              //       replyHandler.handle(Future.failedFuture(query.cause()));
-              //     } else {
-              //       replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, total, setId)));
-              //     }
-              //     long queryTime = (System.nanoTime() - start);
-              //     StatsTracker.addStatElement(STATS_KEY + ".get", queryTime);
-              //     log.info("timer: get " + q[0] + " (ns) " + queryTime);
-              //   } catch (Exception e) {
-              //     log.error(e.getMessage(), e);
-              //     replyHandler.handle(Future.failedFuture(e));
-              //   }
-              // });
+                processQuery(connection, q[0], transactionMode, total, start, "get", totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
+                // log.info("Attempting query: " + q[0]);
+                // connection.query(q[0], query -> {
+                //   if (!transactionMode) {
+                //     connection.close();
+                //   }
+                //   try {
+                //     if (query.failed()) {
+                //       log.error(query.cause().getMessage(), query.cause());
+                //       replyHandler.handle(Future.failedFuture(query.cause()));
+                //     } else {
+                //       replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, total, setId)));
+                //     }
+                //     long queryTime = (System.nanoTime() - start);
+                //     StatsTracker.addStatElement(STATS_KEY + ".get", queryTime);
+                //     log.info("timer: get " + q[0] + " (ns) " + queryTime);
+                //   } catch (Exception e) {
+                //     log.error(e.getMessage(), e);
+                //     replyHandler.handle(Future.failedFuture(e));
+                //   }
+                // });
+              }
+            } catch (Exception e) {
+              log.error(e.getMessage(), e);
+              replyHandler.handle(Future.failedFuture(e));
             }
-          } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            replyHandler.handle(Future.failedFuture(e));
-          }
-        });
+          });
+        } else {
+          processQuery(connection, q[0], transactionMode, null, start, "get", totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
+        }
 
       } catch (Exception e) {
         if (!transactionMode) {
@@ -1256,9 +1263,7 @@ public class PostgresClient {
     });
   }
 
-
-
-  private <T> void processQuery(SQLConnection connection, String q, boolean transactionMode, int total, long start, String statMethod, Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
+  private <T> void processQuery(SQLConnection connection, String q, boolean transactionMode, Integer total, long start, String statMethod, Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
     log.info("Attempting query: " + q);
     connection.query(q, query -> {
       if (!transactionMode) {
@@ -1310,7 +1315,6 @@ public class PostgresClient {
 
     return fm.generateFacetQuery();
   }
-
 
   /**
    * pass in an entity that is fully / partially populated and the query will return all records matching the
@@ -1794,12 +1798,11 @@ public class PostgresClient {
 
           Criterion jcr = new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ");
 
+          // TODO: build count query better
           String [] q = new String[]{
             SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter,
             SELECT + "COUNT(*)" + FROM + tables.toString() + joinon.toString() + jcr + filter
           };
-
-          log.info("\n\n\n" + q[1] + "\n\n\n");
 
           // //TODO optimize query building
           // Map<String, String> replaceMapping = new HashMap<>();
@@ -1941,7 +1944,7 @@ public class PostgresClient {
    * @param setId
    * @return
    */
-  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, int total, boolean setId) {
+  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, Integer total, boolean setId) {
     long start = System.nanoTime();
     String countField = "count";
     List<T> list = new ArrayList<>();
@@ -1949,6 +1952,9 @@ public class PostgresClient {
     List<String> columnNames = rs.getColumnNames();
     int columnNamesCount = columnNames.size();
     Map<String, org.folio.rest.jaxrs.model.Facet> rInfo = new HashMap<>();
+    if(total == null) {
+      total = rs.getNumRows();
+    }
     // int rowCount = rs.getNumRows(); //this is incorrect in facet queries which add a row per facet value
     // if (rowCount > 0 && count) {
     //   //if facet query, this wont set the count as it doesnt have a count column at this location,
