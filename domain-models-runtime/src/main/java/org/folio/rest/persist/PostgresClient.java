@@ -913,7 +913,7 @@ public class PostgresClient {
         returning.append(returningId);
       }
       try {
-        String q = "UPDATE " + convertToPsqlStandard(tenantId) + DOT + table + SET + jsonbField + " = ?::jsonb "  + whereClause
+        String q = UPDATE + convertToPsqlStandard(tenantId) + DOT + table + SET + jsonbField + " = ?::jsonb "  + whereClause
             + SPACE + returning;
         log.debug("query = " + q);
         String pojo = pojo2json(entity);
@@ -1176,8 +1176,6 @@ public class PostgresClient {
       String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
       List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    long start = System.nanoTime();
-
     vertx.runOnContext(v -> {
       try {
         String addIdField = "";
@@ -1202,16 +1200,16 @@ public class PostgresClient {
         }
 
         if (facets != null && !facets.isEmpty()) {
-          FacetManager facetManager = buildFacetManager(table, parseQuery(q[0]), facets, returnCount, q[0]);
+          FacetManager facetManager = buildFacetManager(table, parseQuery(q[0]), facets, q[0]);
           q[0] = facetManager.generateFacetQuery();
           q[1] = facetManager.getCountQuery();
         }
 
         if(returnCount) {
-          processQueryWithCount(connection, q, transactionMode, start, GET_STAT_METHOD, 
+          processQueryWithCount(connection, q, transactionMode, GET_STAT_METHOD,
             totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
         } else {
-          processQuery(connection, q[0], transactionMode, null, start, GET_STAT_METHOD, 
+          processQuery(connection, q[0], transactionMode, null, GET_STAT_METHOD,
             totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
         }
 
@@ -1234,9 +1232,10 @@ public class PostgresClient {
     }
   }
 
-  private <T> void processQueryWithCount(SQLConnection connection, String[] q, boolean transactionMode, long start, String statMethod,
+  private <T> void processQueryWithCount(SQLConnection connection, String[] q, boolean transactionMode, String statMethod,
       Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
-    log.info("Attempting count query: " + q[1]);
+    long start = System.nanoTime();
+    log.debug("Attempting count query: " + q[1]);
     connection.querySingle(q[1], countQuery -> {
       try {
         if (countQuery.failed()) {
@@ -1251,7 +1250,7 @@ public class PostgresClient {
           log.debug("timer: get " + q[1] + " (ns) " + countQueryTime);
 
           // TODO: if total is 0 dont run query, requires building result with subset of arguments
-          processQuery(connection, q[0], transactionMode, total, start, statMethod, resultSetMapper, replyHandler);
+          processQuery(connection, q[0], transactionMode, total, statMethod, resultSetMapper, replyHandler);
         }
       } catch (Exception e) {
         log.error(e.getMessage(), e);
@@ -1260,9 +1259,10 @@ public class PostgresClient {
     });
   }
 
-  private <T> void processQuery(SQLConnection connection, String q, boolean transactionMode, Integer total, long start, String statMethod,
+  private <T> void processQuery(SQLConnection connection, String q, boolean transactionMode, Integer total, String statMethod,
       Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
-    log.info("Attempting query: " + q);
+    long start = System.nanoTime();
+    log.debug("Attempting query: " + q);
     connection.query(q, query -> {
       if (!transactionMode) {
         connection.close();
@@ -1294,7 +1294,7 @@ public class PostgresClient {
    * @return
    * @throws Exception
    */
-  private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets, boolean countRequested, String query) throws Exception {
+  private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets, String query) {
     long start = System.nanoTime();
     FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + DOT + tableName);
     if(parsedQuery.getWhereClause() != null){
@@ -1752,8 +1752,6 @@ public class PostgresClient {
       Function<TotaledResults, T> resultSetMapper,
       Handler<AsyncResult<T>> replyHandler) {
 
-    long start = System.nanoTime();
-
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
@@ -1792,7 +1790,7 @@ public class PostgresClient {
           q[0] = SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter;
           q[1] = parseQuery(q[0]).getCountQuery();
 
-          processQueryWithCount(connection, q, false, start, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
+          processQueryWithCount(connection, q, false, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
         } catch (Exception e) {
           if(connection != null){
             connection.close();
