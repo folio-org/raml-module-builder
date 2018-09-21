@@ -1200,7 +1200,7 @@ public class PostgresClient {
         }
 
         if (facets != null && !facets.isEmpty()) {
-          FacetManager facetManager = buildFacetManager(table, parseQuery(q[0]), facets, q[0]);
+          FacetManager facetManager = buildFacetManager(table, parseQuery(q[0]), facets);
           q[0] = facetManager.generateFacetQuery();
           q[1] = facetManager.getCountQuery();
         }
@@ -1294,7 +1294,7 @@ public class PostgresClient {
    * @return
    * @throws Exception
    */
-  private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets, String query) {
+  private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets) {
     long start = System.nanoTime();
     FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + DOT + tableName);
     if(parsedQuery.getWhereClause() != null){
