@@ -1199,6 +1199,7 @@ public class PostgresClient {
           ParsedQuery parsedQuery = parseQuery(q[0]);
           if (faceted) {
             FacetManager facetManager = buildFacetManager(table, parsedQuery, facets);
+            // this method call invokes freemarker templating
             q[0] = facetManager.generateFacetQuery();
             if (returnCount) {
               q[1] = facetManager.getCountQuery();
@@ -1293,9 +1294,7 @@ public class PostgresClient {
    * @param tableName
    * @param where
    * @param facets
-   * @param query
    * @return
-   * @throws Exception
    */
   private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets) {
     FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + DOT + tableName);
