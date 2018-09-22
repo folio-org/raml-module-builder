@@ -98,20 +98,23 @@ public class PostgresClient {
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
-  private static final String   SELECT = "SELECT ";
-  private static final String   FROM   = " FROM ";
-  private static final String   UPDATE = "UPDATE ";
-  private static final String   SET    = " SET ";
-  private static final String   WHERE  = " WHERE ";
-  private static final String   AND    = " AND ";
-  private static final String   INSERT_CLAUSE = "INSERT INTO ";
+  private static final String    SELECT = "SELECT ";
+  private static final String    FROM   = " FROM ";
+  private static final String    UPDATE = "UPDATE ";
+  private static final String    SET    = " SET ";
+  private static final String    WHERE  = " WHERE ";
+  private static final String    AND    = " AND ";
+  private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final String   _PASSWORD = "password"; //NOSONAR
-  private static final String   _USERNAME = "username";
-  private static final String   HOST      = "host";
-  private static final String   PORT      = "port";
-  private static final String   DATABASE  = "database";
-  private static final String   DEFAULT_IP = "127.0.0.1"; //NOSONAR
+  private static final String    COUNT = "COUNT(*)";
+  private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
+
+  private static final String    _PASSWORD = "password"; //NOSONAR
+  private static final String    _USERNAME = "username";
+  private static final String    HOST      = "host";
+  private static final String    PORT      = "port";
+  private static final String    DATABASE  = "database";
+  private static final String    DEFAULT_IP = "127.0.0.1"; //NOSONAR
 
   private static final String    STATS_KEY = PostgresClient.class.getName();
 
@@ -127,9 +130,6 @@ public class PostgresClient {
   private static final String    DOT = ".";
   private static final String    COMMA = ",";
   private static final String    SEMI_COLON = ";";
-
-  private static final String    COUNT = "COUNT(*)";
-  private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
 
   private static PostgresProcess postgresProcess          = null;
   private static boolean         embeddedMode             = false;
@@ -1189,23 +1189,26 @@ public class PostgresClient {
           addIdField = "";
         }
 
-        String from2where = FROM + convertToPsqlStandard(tenantId) + DOT + table + SPACE + where;
-
         String[] q = new String[2];
 
-        q[0] = SELECT + fieldName + addIdField + from2where;
+        q[0] = SELECT + fieldName + addIdField + FROM + convertToPsqlStandard(tenantId) + DOT + table + SPACE + where;
 
-        if(returnCount) {
-          q[1] = parseQuery(q[0]).getCountQuery();
+        boolean faceted = facets != null && !facets.isEmpty();
+
+        if (returnCount || faceted) {
+          ParsedQuery parsedQuery = parseQuery(q[0]);
+          if (faceted) {
+            FacetManager facetManager = buildFacetManager(table, parsedQuery, facets);
+            q[0] = facetManager.generateFacetQuery();
+            if (returnCount) {
+              q[1] = facetManager.getCountQuery();
+            }
+          } else {
+            q[1] = parsedQuery.getCountQuery();
+          }
         }
 
-        if (facets != null && !facets.isEmpty()) {
-          FacetManager facetManager = buildFacetManager(table, parseQuery(q[0]), facets);
-          q[0] = facetManager.generateFacetQuery();
-          q[1] = facetManager.getCountQuery();
-        }
-
-        if(returnCount) {
+        if (returnCount) {
           processQueryWithCount(connection, q, transactionMode, GET_STAT_METHOD,
             totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
         } else {
@@ -1295,9 +1298,8 @@ public class PostgresClient {
    * @throws Exception
    */
   private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets) {
-    long start = System.nanoTime();
     FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + DOT + tableName);
-    if(parsedQuery.getWhereClause() != null){
+    if (parsedQuery.getWhereClause() != null) {
       fm.setWhere(" where " + parsedQuery.getWhereClause());
     }
     fm.setSupportFacets(facets);
@@ -1308,9 +1310,6 @@ public class PostgresClient {
     fm.setSchema(convertToPsqlStandard(tenantId));
     fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(
       parsedQuery.getCountQuery()));
-    long end = System.nanoTime();
-    log.debug( "timer: buildFacetManager (ns) " + (end - start));
-
     return fm;
   }
 
@@ -1761,19 +1760,19 @@ public class PostgresClient {
           StringBuffer selectFields = new StringBuffer();
 
           String filter = "";
-          if(cr != null){
+          if (cr != null) {
             filter = cr;
           }
 
           String selectFromTable = from.getSelectFields();
           String selectToTable = to.getSelectFields();
           boolean addComma = false;
-          if(selectFromTable != null && selectFromTable.length() > 0){
+          if (selectFromTable != null && selectFromTable.length() > 0) {
             selectFields.append(from.getSelectFields());
             addComma = true;
           }
-          if(selectToTable != null && selectToTable.length() > 0){
-            if(addComma){
+          if (selectToTable != null && selectToTable.length() > 0) {
+            if (addComma) {
               selectFields.append(COMMA);
             }
             selectFields.append(to.getSelectFields());
@@ -1792,7 +1791,7 @@ public class PostgresClient {
 
           processQueryWithCount(connection, q, false, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
         } catch (Exception e) {
-          if(connection != null){
+          if (connection != null) {
             connection.close();
           }
           log.error(e.getMessage(), e);
@@ -1889,7 +1888,7 @@ public class PostgresClient {
     int columnNamesCount = columnNames.size();
     Map<String, org.folio.rest.jaxrs.model.Facet> rInfo = new HashMap<>();
     if(total == null) {
-      // NOTE: this may not an accurate total
+      // NOTE: this may not be an accurate total, may be better for it to be 0 or null
       total = rs.getNumRows();
     }
     /* an exception to having the jsonb column and the fields within the json
