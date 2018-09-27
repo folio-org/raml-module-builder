@@ -2,6 +2,7 @@ package org.folio.rest.tools.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.FileSystem;
@@ -19,11 +20,12 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 
 /**
- * @author shale
- *
+ * Helper for resource files.
  */
-public class ResourceUtils {
-
+public final class ResourceUtils {
+  private ResourceUtils() {
+    throw new UnsupportedOperationException("Cannot instantiate utility class");
+  }
 
   /**
    * Check if the resource is in a jar or on disk. This can be used to check if you
@@ -131,14 +133,23 @@ public class ResourceUtils {
   }
 
   /**
-   * convert a file in /resources to a String with UTF8 encoding
-   * @param resourcePath
-   * @return
-   * @throws IOException
+   * Read a resource file as a String with UTF8 encoding.
+   * @param resourcePath  the path of the resource file to read
+   * @return content of the resource file
+   * @throws IllegalArgumentException  if the resource file is not found
+   * @throws UncheckedIOException  if an I/O error occurs
    */
-  public static String resource2String(String resourcePath) throws IOException {
-    URL url = Resources.getResource(resourcePath);
-    return Resources.toString(url, Charsets.UTF_8);
+  public static String resource2String(String resourcePath) {
+    try {
+      URL url = Resources.getResource(resourcePath);
+      return Resources.toString(url, Charsets.UTF_8);
+    } catch (IOException e) {
+      // This should not happen:
+      // https://docs.oracle.com/javase/8/docs/technotes/guides/lang/resources.html#security
+      // This function can be used where only unchecked exceptions are
+      // allowed, for example when initializing a final static class variable.
+      throw new UncheckedIOException(e);
+    }
   }
 
   public static String resource2AbsolutePath(String resourcePath) throws Exception {
