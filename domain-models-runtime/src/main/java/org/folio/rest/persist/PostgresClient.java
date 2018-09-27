@@ -203,6 +203,7 @@ public class PostgresClient {
   /**
    * Set the port that overwrites to port of the embedded PostgreSQL.
    * This port overwrites any default port and any port set in the
+   * DB_PORT environment variable or the
    * PostgreSQL configuration file. It is only used when <code>isEmbedded() == true</code>
    * when invoking the constructor.
    * <p>
@@ -210,12 +211,22 @@ public class PostgresClient {
    * <p>
    * Use -1 to not overwrite the port.
    *
+   * <p>-1 is the default.
+   *
    * @param port  the port for embedded PostgreSQL, or -1 to not overwrite the port
    */
   public static void setEmbeddedPort(int port){
     embeddedPort = port;
   }
 
+  /**
+   * @return the port number to use for embedded PostgreSQL, or -1 for not overwriting the
+   *         port number of the configuration.
+   * @see #setEmbeddedPort(int)
+   */
+  public static int getEmbeddedPort() {
+    return embeddedPort;
+  }
   /**
    * True if embedded specific defaults for the
    * PostgreSQL configuration should be used if there is no
@@ -302,7 +313,7 @@ public class PostgresClient {
    * that should have been set via the admin api to decode it and use that to connect
    * note that in embedded mode (such as unit tests) the postgres embedded is started before the
    * verticle is deployed*/
-  private String decodePassword(String password) throws Exception {
+  private static String decodePassword(String password) throws Exception {
     String key = AES.getSecretKey();
     if(key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
@@ -318,7 +329,7 @@ public class PostgresClient {
    * password as the actual password for the tenant user in the DB.
    * In order to then know the password - you need to take the tenant id
    * and encrypt it with the secret key and then you have the tenant's password */
-  private String createPassword(String password) throws Exception {
+  private static String createPassword(String password) throws Exception {
     String key = AES.getSecretKey();
     if(key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
@@ -385,46 +396,57 @@ public class PostgresClient {
     this.tenantId = tenantId;
     this.vertx = vertx;
 
-    postgreSQLClientConfig = Envs.allDBConfs();
-    if(postgreSQLClientConfig.size() == 0){
+    postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, Envs.allDBConfs());
+
+    logPostgresConfig();
+    client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
+  }
+
+  /**
+   * Get PostgreSQL configuration, invokes setIsEmbedded(true) if needed.
+   * @return configuration for PostgreSQL
+   * @throws Exception  on password decryption or encryption failure
+   */
+  @SuppressWarnings("squid:S2068")  /* Suppress "Credentials should not be hard-coded" -
+    The docker container does not expose the embedded postges port.
+    Moving the hard-coded credentials into some default config file
+    doesn't remove them from the build. */
+  static JsonObject getPostgreSQLClientConfig(String tenantId, JsonObject environmentVariables) throws Exception {
+    JsonObject config = environmentVariables;
+    if (config.size() > 0) {
+      log.info("DB config read from environment variables");
+    } else {
       //no env variables passed in, read for module's config file
-      log.info("No DB environment variables passed in, attempting to read from config file");
-      postgreSQLClientConfig = LoadConfs.loadConfig(getConfigFilePath());
+      config = LoadConfs.loadConfig(getConfigFilePath());
+      // LoadConfs.loadConfig writes its own log message
     }
-    if(postgreSQLClientConfig == null){
-      if (embeddedMode) {
-        //embedded mode, if no config passed use defaults
-        postgreSQLClientConfig = new JsonObject();
-        postgreSQLClientConfig.put(_USERNAME, _USERNAME);
-        postgreSQLClientConfig.put(_PASSWORD, _PASSWORD);
-        postgreSQLClientConfig.put(HOST, DEFAULT_IP);
-        postgreSQLClientConfig.put(PORT, 6000);
-        postgreSQLClientConfig.put(DATABASE, "postgres");
-      }
-      else{
-        //not in embedded mode but there is no conf file found
-        throw new Exception("No postgres-conf.json file found and not in embedded mode, can not connect to any database");
-      }
-    }
-    else if(tenantId.equals(DEFAULT_SCHEMA)){
-      postgreSQLClientConfig.put(_USERNAME, postgreSQLClientConfig.getString(_USERNAME));
-      postgreSQLClientConfig.put(_PASSWORD, decodePassword( postgreSQLClientConfig.getString(_PASSWORD) ));
+    if (config == null) {
+      log.info("No DB configuration found, starting embedded postgres with default config");
+      setIsEmbedded(true);
+      config = new JsonObject();
+      config.put(_USERNAME, _USERNAME);
+      config.put(_PASSWORD, _PASSWORD);
+      config.put(HOST, DEFAULT_IP);
+      config.put(PORT, 6000);
+      config.put(DATABASE, "postgres");
+    } else if (tenantId.equals(DEFAULT_SCHEMA)) {
+      config.put(_USERNAME, config.getString(_USERNAME));
+      config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
     }
     else{
       log.info("Using schema: " + tenantId);
-      postgreSQLClientConfig.put(_USERNAME, convertToPsqlStandard(tenantId));
-      postgreSQLClientConfig.put(_PASSWORD, createPassword(tenantId));
+      config.put(_USERNAME, convertToPsqlStandard(tenantId));
+      config.put(_PASSWORD, createPassword(tenantId));
     }
 
     if(embeddedPort != -1 && embeddedMode){
       //over ride the declared default port - coming from the config file and use the
       //passed in port as well. useful when multiple modules start up an embedded postgres
       //in a single server.
-      postgreSQLClientConfig.put(PORT, embeddedPort);
+      config.put(PORT, embeddedPort);
     }
 
-    logPostgresConfig();
-    client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
+    return config;
   }
 
   /**
@@ -2491,7 +2513,7 @@ public class PostgresClient {
    */
   public void startEmbeddedPostgres() throws IOException {
     // starting Postgres
-    embeddedMode = true;
+    setIsEmbedded(true);
     if (postgresProcess == null || !postgresProcess.isProcessRunning()) {
       // turns off the default functionality of unzipping on every run.
       IRuntimeConfig runtimeConfig = new RuntimeConfigBuilder()
