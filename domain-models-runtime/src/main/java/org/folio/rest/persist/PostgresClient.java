@@ -98,21 +98,38 @@ public class PostgresClient {
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
-  private static final String   SELECT = "SELECT ";
-  private static final String   FROM = " FROM ";
-  private static final String   UPDATE = "UPDATE ";
-  private static final String   SET = " SET ";
-  private static final String   WHERE = " WHERE ";
-  private static final String INSERT_CLAUSE = "INSERT INTO ";
+  private static final String    SELECT = "SELECT ";
+  private static final String    FROM   = " FROM ";
+  private static final String    UPDATE = "UPDATE ";
+  private static final String    SET    = " SET ";
+  private static final String    WHERE  = " WHERE ";
+  private static final String    AND    = " AND ";
+  private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final String   _PASSWORD = "password"; //NOSONAR
-  private static final String   _USERNAME = "username";
-  private static final String   HOST     = "host";
-  private static final String   PORT     = "port";
-  private static final String   DATABASE = "database";
-  private static final String   DEFAULT_IP = "127.0.0.1"; //NOSONAR
+  private static final String    COUNT = "COUNT(*)";
+  private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
 
-  private static final String    STATS_KEY                = PostgresClient.class.getName();
+  private static final String    _PASSWORD = "password"; //NOSONAR
+  private static final String    _USERNAME = "username";
+  private static final String    HOST      = "host";
+  private static final String    PORT      = "port";
+  private static final String    DATABASE  = "database";
+  private static final String    DEFAULT_IP = "127.0.0.1"; //NOSONAR
+
+  private static final String    STATS_KEY = PostgresClient.class.getName();
+
+  private static final String    GET_STAT_METHOD = ".get";
+  private static final String    COUNT_STAT_METHOD = ".count";
+  private static final String    SAVE_STAT_METHOD = ".save";
+  private static final String    UPDATE_STAT_METHOD = ".update";
+  private static final String    DELETE_STAT_METHOD = ".delete";
+  private static final String    JOIN_STAT_METHOD = ".join";
+  private static final String    PROCESS_RESULTS_STAT_METHOD = ".processResult";
+
+  private static final String    SPACE = " ";
+  private static final String    DOT = ".";
+  private static final String    COMMA = ",";
+  private static final String    SEMI_COLON = ";";
 
   private static PostgresProcess postgresProcess          = null;
   private static boolean         embeddedMode             = false;
@@ -139,7 +156,7 @@ public class PostgresClient {
   private AsyncSQLClient client;
   private String tenantId;
   private String idField                     = "_id";
-  private String countClauseTemplate         = " ${tenantId}.count_estimate_smart('${query}') AS count ";
+
   private String returningIdTemplate         = " RETURNING ${id} ";
   private String returningId                 = " RETURNING _id ";
 
@@ -594,7 +611,7 @@ public class PostgresClient {
           StringBuilder clientId = new StringBuilder("");
           if(id != null){
             clientId.append("'").append(id).append("',");
-            clientIdField.append(idField).append(",");
+            clientIdField.append(idField).append(COMMA);
           }
           String returning = "";
           if(returnId){
@@ -605,7 +622,7 @@ public class PostgresClient {
             String upsertClause = "";
             if(upsert){
               upsertClause = " ON CONFLICT ("+idField+") DO UPDATE SET " +
-                DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + " ";
+                DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + SPACE;
             }
             JsonArray queryArg = new JsonArray();
             String type = "?::JSON)";
@@ -617,7 +634,7 @@ public class PostgresClient {
               type = "?::text)";
             }
             /* do not change to updateWithParams as this will not return the generated id in the reply */
-            connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
+            connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + DOT + table +
               " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
               ") VALUES ("+clientId+type + upsertClause + returning,
               queryArg, query -> {
@@ -633,7 +650,7 @@ public class PostgresClient {
                   replyHandler.handle(Future.succeededFuture(response));
                 }
                 long end = System.nanoTime();
-                StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
+                StatsTracker.addStatElement(STATS_KEY+SAVE_STAT_METHOD, (end-start));
               });
           } catch (Exception e) {
             if(connection != null){
@@ -663,7 +680,7 @@ public class PostgresClient {
       // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
       connection = sqlConnection.result();
       String pojo = pojo2json(entity);
-      connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + "." + table +
+      connection.queryWithParams(INSERT_CLAUSE + convertToPsqlStandard(tenantId) + DOT + table +
         " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
         new JsonArray().add(pojo), query -> {
           if (query.failed()) {
@@ -672,7 +689,7 @@ public class PostgresClient {
             replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
           long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+".save", (end-start));
+          StatsTracker.addStatElement(STATS_KEY+SAVE_STAT_METHOD, (end-start));
         });
     } catch (Exception e) {
       if(connection != null){
@@ -710,7 +727,7 @@ public class PostgresClient {
       SQLConnection connection = res.result();
       StringBuilder sql = new StringBuilder()
           .append(INSERT_CLAUSE)
-          .append(convertToPsqlStandard(tenantId)).append(".").append(table)
+          .append(convertToPsqlStandard(tenantId)).append(DOT).append(table)
           .append(" (").append(DEFAULT_JSONB_FIELD_NAME).append(") VALUES (?)");
       for (int i=1; i<entities.size(); i++) {
         sql.append(",(?)");
@@ -721,7 +738,7 @@ public class PostgresClient {
         long end = System.nanoTime();
         if (queryRes.failed()) {
           log.error("saveBatch size=" + entities.size()
-            + " " +
+            + SPACE +
               queryRes.cause().getMessage(),
               queryRes.cause());
           StatsTracker.addStatElement(STATS_KEY + ".saveBatchFailed", (end-start));
@@ -896,8 +913,8 @@ public class PostgresClient {
         returning.append(returningId);
       }
       try {
-        String q = "UPDATE " + convertToPsqlStandard(tenantId) + "." + table + SET + jsonbField + " = ?::jsonb "  + whereClause
-            + " " + returning;
+        String q = UPDATE + convertToPsqlStandard(tenantId) + DOT + table + SET + jsonbField + " = ?::jsonb "  + whereClause
+            + SPACE + returning;
         log.debug("query = " + q);
         String pojo = pojo2json(entity);
         connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
@@ -911,7 +928,7 @@ public class PostgresClient {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
           long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
+          StatsTracker.addStatElement(STATS_KEY+UPDATE_STAT_METHOD, (end-start));
           if(log.isDebugEnabled()){
             log.debug("timer: get " +q+ " (ns) " + (end-start));
           }
@@ -925,6 +942,7 @@ public class PostgresClient {
       }
     });
   }
+
   /**
    * update a section / field / object in the pojo -
    * <br>
@@ -975,8 +993,8 @@ public class PostgresClient {
             returning.append(returningId);
           }
           try {
-            String q = UPDATE + convertToPsqlStandard(tenantId) + "." + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
-                + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + " " + returning;
+            String q = UPDATE + convertToPsqlStandard(tenantId) + DOT + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + COMMA
+                + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + SPACE + returning;
             log.debug("query = " + q);
             connection.update(q, query -> {
               connection.close();
@@ -987,7 +1005,7 @@ public class PostgresClient {
                 replyHandler.handle(Future.succeededFuture(query.result()));
               }
               long end = System.nanoTime();
-              StatsTracker.addStatElement(STATS_KEY+".update", (end-start));
+              StatsTracker.addStatElement(STATS_KEY+UPDATE_STAT_METHOD, (end-start));
               if(log.isDebugEnabled()){
                 log.debug("timer: get " +q+ " (ns) " + (end-start));
               }
@@ -1105,7 +1123,7 @@ public class PostgresClient {
     long start = System.nanoTime();
     vertx.runOnContext(v -> {
       try {
-        String q = "DELETE FROM " + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+        String q = "DELETE FROM " + convertToPsqlStandard(tenantId) + DOT + table + SPACE + where;
         log.debug("query = " + q);
         connection.update(q, query -> {
           if(!transactionMode){
@@ -1118,7 +1136,7 @@ public class PostgresClient {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
           long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+".delete", (end-start));
+          StatsTracker.addStatElement(STATS_KEY+DELETE_STAT_METHOD, (end-start));
           if(log.isDebugEnabled()){
             log.debug("timer: get " +q+ " (ns) " + (end-start));
           }
@@ -1158,71 +1176,112 @@ public class PostgresClient {
       String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
       List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    long start = System.nanoTime();
-
     vertx.runOnContext(v -> {
       try {
         String addIdField = "";
         if (returnIdField) {
-          addIdField = "," + idField;
+          addIdField = COMMA + idField;
         }
 
         if (!"null".equals(fieldName) && fieldName.contains("*")) {
-          //if we are requesting all fields (*) , then dont add the id field to the select
-          //this will return two id columns which will create ambiguity in facet queries
+          // if we are requesting all fields (*) , then dont add the id field to the select
+          // this will return two id columns which will create ambiguity in facet queries
           addIdField = "";
         }
 
-        String from2where = FROM + convertToPsqlStandard(tenantId) + "." + table + " " + where;
+        String[] q = new String[2];
 
-        String[] q = new String[]{SELECT + fieldName + addIdField + from2where};
+        q[0] = SELECT + fieldName + addIdField + FROM + convertToPsqlStandard(tenantId) + DOT + table + SPACE + where;
 
-        ParsedQuery parsedQuery = null;
+        boolean faceted = facets != null && !facets.isEmpty();
 
-        if (returnCount || (facets != null && !facets.isEmpty())) {
-          parsedQuery = parseQuery(q[0]);
+        if (returnCount || faceted) {
+          ParsedQuery parsedQuery = parseQuery(q[0]);
+          if (faceted) {
+            FacetManager facetManager = buildFacetManager(table, parsedQuery, facets);
+            // this method call invokes freemarker templating
+            q[0] = facetManager.generateFacetQuery();
+            if (returnCount) {
+              q[1] = facetManager.getCountQuery();
+            }
+          } else {
+            q[1] = parsedQuery.getCountQuery();
+          }
         }
 
         if (returnCount) {
-          //optimize the entire query building process needed!!
-          Map<String, String> replaceMapping = new HashMap<>();
-          replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
-          replaceMapping.put("query",
-            org.apache.commons.lang.StringEscapeUtils.escapeSql(
-              parsedQuery.getCountFuncQuery()));
-          StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = SELECT + fieldName + addIdField + "," + sub.replace(countClauseTemplate) + from2where;
+          processQueryWithCount(connection, q, transactionMode, GET_STAT_METHOD,
+            totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
+        } else {
+          processQuery(connection, q[0], transactionMode, null, GET_STAT_METHOD,
+            totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
         }
 
-        if (facets != null && !facets.isEmpty()) {
-          q[0] = buildFacetQuery(table, parsedQuery, facets, returnCount, q[0]);
-        }
-        log.debug("Attempting query: " + q[0]);
-        connection.query(q[0], query -> {
-          if (!transactionMode) {
-            connection.close();
-          }
-          try {
-            if (query.failed()) {
-              log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(processResult(query.result(), clazz, returnCount, setId)));
-            }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY + ".get", (end - start));
-            if (log.isDebugEnabled()) {
-              log.debug("timer: get " + q[0] + " (ns) " + (end - start));
-            }
-          } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            replyHandler.handle(Future.failedFuture(e));
-          }
-        });
       } catch (Exception e) {
         if (!transactionMode) {
           connection.close();
         }
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
+      }
+    });
+  }
+
+  private class TotaledResults {
+    ResultSet set;
+    int total;
+    public TotaledResults(ResultSet set, int total) {
+      this.set = set;
+      this.total = total;
+    }
+  }
+
+  private <T> void processQueryWithCount(SQLConnection connection, String[] q, boolean transactionMode, String statMethod,
+      Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
+    long start = System.nanoTime();
+    log.debug("Attempting count query: " + q[1]);
+    connection.querySingle(q[1], countQuery -> {
+      try {
+        if (countQuery.failed()) {
+          log.error(countQuery.cause().getMessage(), countQuery.cause());
+          replyHandler.handle(Future.failedFuture(countQuery.cause()));
+        } else {
+
+          int total = countQuery.result().getInteger(0);
+
+          long countQueryTime = (System.nanoTime() - start);
+          StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
+          log.debug("timer: get " + q[1] + " (ns) " + countQueryTime);
+
+          // TODO: if total is 0 dont run query, requires building result with subset of arguments
+          processQuery(connection, q[0], transactionMode, total, statMethod, resultSetMapper, replyHandler);
+        }
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
+      }
+    });
+  }
+
+  private <T> void processQuery(SQLConnection connection, String q, boolean transactionMode, Integer total, String statMethod,
+      Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
+    long start = System.nanoTime();
+    log.debug("Attempting query: " + q);
+    connection.query(q, query -> {
+      if (!transactionMode) {
+        connection.close();
+      }
+      try {
+        if (query.failed()) {
+          log.error(query.cause().getMessage(), query.cause());
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
+        }
+        long queryTime = (System.nanoTime() - start);
+        StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
+        log.debug("timer: get " + q + " (ns) " + queryTime);
+      } catch (Exception e) {
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
@@ -1235,14 +1294,11 @@ public class PostgresClient {
    * @param tableName
    * @param where
    * @param facets
-   * @param query
    * @return
-   * @throws Exception
    */
-  private String buildFacetQuery(String tableName, ParsedQuery parsedQuery, List<FacetField> facets, boolean countRequested, String query) throws Exception {
-    long start = System.nanoTime();
-    FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + "." + tableName);
-    if(parsedQuery.getWhereClause() != null){
+  private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets) {
+    FacetManager fm = new FacetManager(convertToPsqlStandard(tenantId) + DOT + tableName);
+    if (parsedQuery.getWhereClause() != null) {
       fm.setWhere(" where " + parsedQuery.getWhereClause());
     }
     fm.setSupportFacets(facets);
@@ -1252,13 +1308,9 @@ public class PostgresClient {
     fm.setMainQuery(parsedQuery.getQueryWithoutLimOff());
     fm.setSchema(convertToPsqlStandard(tenantId));
     fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(
-      parsedQuery.getCountFuncQuery()));
-    long end = System.nanoTime();
-    log.debug( "timer: buildFacetQuery (ns) " + (end - start));
-
-    return fm.generateFacetQuery();
+      parsedQuery.getCountQuery()));
+    return fm;
   }
-
 
   /**
    * pass in an entity that is fully / partially populated and the query will return all records matching the
@@ -1310,10 +1362,10 @@ public class PostgresClient {
     }
     StringBuilder sb = new StringBuilder();
     if(offset != -1){
-      sb.append(" ").append(new Offset(offset).toString()).append(" ");
+      sb.append(SPACE).append(new Offset(offset).toString()).append(SPACE);
     }
     if(limit != -1){
-      sb.append(" ").append(new Limit(limit).toString()).append(" ");
+      sb.append(SPACE).append(new Limit(limit).toString()).append(SPACE);
     }
     String pojo = null;
     try {
@@ -1440,7 +1492,7 @@ public class PostgresClient {
       sb.append(filter.toString());
       fromClauseFromCriteria.append(filter.from2String());
       if (fromClauseFromCriteria.length() > 0) {
-        fromClauseFromCriteria.insert(0, ",");
+        fromClauseFromCriteria.insert(0, COMMA);
       }
     }
     if(conn == null){
@@ -1487,7 +1539,7 @@ public class PostgresClient {
         return;
       }
       String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
-          + FROM + convertToPsqlStandard(tenantId) + "." + table
+          + FROM + convertToPsqlStandard(tenantId) + DOT + table
           + WHERE + idField + "= ?";
       res.result().querySingleWithParams(sql, new JsonArray().add(id), query -> {
         if (query.failed()) {
@@ -1567,7 +1619,7 @@ public class PostgresClient {
 
       StringBuilder sql = new StringBuilder()
           .append(SELECT).append(idField).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
-          .append(FROM).append(convertToPsqlStandard(tenantId)).append(".").append(table)
+          .append(FROM).append(convertToPsqlStandard(tenantId)).append(DOT).append(table)
           .append(WHERE).append(idField).append(" IN (?");
       for (int i=1; i<ids.size(); i++) {
         sql.append(",?");
@@ -1682,23 +1734,21 @@ public class PostgresClient {
       Class<T> returnedClass, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    Function<ResultSet, Results<T>> resultSetMapper =
-        resultSet -> processResult(resultSet, returnedClass, true, setId);
+    Function<TotaledResults, Results<T>> resultSetMapper =
+        totaledResults -> processResult(totaledResults.set, returnedClass, totaledResults.total, setId);
     join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
   }
 
   public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
       Handler<AsyncResult<ResultSet>> replyHandler) {
 
-    Function<ResultSet, ResultSet> resultSetMapper = resultSet -> resultSet;
+    Function<TotaledResults, ResultSet> resultSetMapper = totaledResults -> totaledResults.set;
     join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
   }
 
   public <T> void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
-      Function<ResultSet, T> resultSetMapper,
+      Function<TotaledResults, T> resultSetMapper,
       Handler<AsyncResult<T>> replyHandler) {
-
-    long start = System.nanoTime();
 
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -1709,60 +1759,38 @@ public class PostgresClient {
           StringBuffer selectFields = new StringBuffer();
 
           String filter = "";
-          if(cr != null){
+          if (cr != null) {
             filter = cr;
           }
 
           String selectFromTable = from.getSelectFields();
           String selectToTable = to.getSelectFields();
           boolean addComma = false;
-          if(selectFromTable != null && selectFromTable.length() > 0){
+          if (selectFromTable != null && selectFromTable.length() > 0) {
             selectFields.append(from.getSelectFields());
             addComma = true;
           }
-          if(selectToTable != null && selectToTable.length() > 0){
-            if(addComma){
-              selectFields.append(",");
+          if (selectToTable != null && selectToTable.length() > 0) {
+            if (addComma) {
+              selectFields.append(COMMA);
             }
             selectFields.append(to.getSelectFields());
           }
 
-          tables.append(convertToPsqlStandard(tenantId) + "." + from.getTableName() + " " + from.getAlias() + " ");
+          tables.append(convertToPsqlStandard(tenantId) + DOT + from.getTableName() + SPACE + from.getAlias() + SPACE);
 
-          joinon.append(joinType + " " + convertToPsqlStandard(tenantId) + "." + to.getTableName() + " " + to.getAlias() + " ");
+          joinon.append(joinType + SPACE + convertToPsqlStandard(tenantId) + DOT + to.getTableName() + SPACE + to.getAlias() + SPACE);
 
-          String [] q = new String[]{ SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() +
-              new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), " AND ") + filter};
+          Criterion jcr = new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), AND);
 
-          //TODO optimize query building
-          Map<String, String> replaceMapping = new HashMap<>();
-          replaceMapping.put("tenantId", convertToPsqlStandard(tenantId));
-          replaceMapping.put("query",
-            org.apache.commons.lang.StringEscapeUtils.escapeSql(
-              parseQuery(q[0]).getCountFuncQuery()));
-          StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-          q[0] = SELECT +
-            sub.replace(countClauseTemplate) + "," + q[0].replaceFirst(SELECT , " ");
+          String[] q = new String[2];
 
-          log.debug("query = " + q[0]);
-          connection.query(q[0],
-            query -> {
-            connection.close();
-            if (query.failed()) {
-              log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              T result = resultSetMapper.apply(query.result());
-              replyHandler.handle(Future.succeededFuture(result));
-            }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".join", (end-start));
-            if(log.isDebugEnabled()){
-              log.debug("timer: get " +q[0]+ " (ns) " + (end-start));
-            }
-          });
+          q[0] = SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter;
+          q[1] = parseQuery(q[0]).getCountQuery();
+
+          processQueryWithCount(connection, q, false, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
         } catch (Exception e) {
-          if(connection != null){
+          if (connection != null) {
             connection.close();
           }
           log.error(e.getMessage(), e);
@@ -1850,7 +1878,7 @@ public class PostgresClient {
    * @param setId
    * @return
    */
-  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, boolean count, boolean setId) {
+  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, Integer total, boolean setId) {
     long start = System.nanoTime();
     String countField = "count";
     List<T> list = new ArrayList<>();
@@ -1858,15 +1886,9 @@ public class PostgresClient {
     List<String> columnNames = rs.getColumnNames();
     int columnNamesCount = columnNames.size();
     Map<String, org.folio.rest.jaxrs.model.Facet> rInfo = new HashMap<>();
-    int rowCount = rs.getNumRows(); //this is incorrect in facet queries which add a row per facet value
-    if (rowCount > 0 && count) {
-      //if facet query, this wont set the count as it doesnt have a count column at this location,
-      Object firstColFirstVal = rs.getRows().get(0).getValue(countField);
-      if(null != firstColFirstVal && "Integer".equals(firstColFirstVal.getClass().getSimpleName())){
-        //regular query with count requested since count is of type integer. with a facet query.
-        //the count would be in a json - see description of function above
-        rowCount = rs.getRows().get(0).getInteger(countField);
-      }
+    if(total == null) {
+      // NOTE: this may not be an accurate total, may be better for it to be 0 or null
+      total = rs.getNumRows();
     }
     /* an exception to having the jsonb column and the fields within the json
      * get mapped to the corresponding clazz is a case where the
@@ -1911,7 +1933,7 @@ public class PostgresClient {
               o = mapper.readValue(jo.toString(), clazz);
             } catch (UnrecognizedPropertyException e1) {
               // this is a facet query , and this is the count entry {"count": 11}
-              rowCount = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
+              total = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
               continue;
             }
           }
@@ -1957,16 +1979,16 @@ public class PostgresClient {
     rInfo.forEach( (k , v ) -> {
       rn.getFacets().add(v);
     });
-    rn.setTotalRecords(rowCount);
+    rn.setTotalRecords(total);
 
     Results<T> r = new Results();
     r.setResults(list);
     r.setResultInfo(rn);
 
-    long end = System.nanoTime();
-    StatsTracker.addStatElement(STATS_KEY+".processResult", (end-start));
+    long processResultsTime = System.nanoTime() - start;
+    StatsTracker.addStatElement(STATS_KEY+PROCESS_RESULTS_STAT_METHOD, processResultsTime);
     if(log.isDebugEnabled()){
-      log.debug("timer: process results (ns) " + (end-start));
+      log.debug("timer: process results (ns) " + processResultsTime);
     }
     return r;
   }
@@ -2077,7 +2099,7 @@ public class PostgresClient {
       where = filter.toString();
     }
     String q =
-        "SELECT * FROM " + convertToPsqlStandard(tenantId) + "." + tableName + " " + where;
+        "SELECT * FROM " + convertToPsqlStandard(tenantId) + DOT + tableName + SPACE + where;
     persistentlyCacheResult(cacheName, q, replyHandler);
   }
 
@@ -2096,7 +2118,7 @@ public class PostgresClient {
       where = filter.toString();
     }
     String q =
-        "SELECT * FROM " + convertToPsqlStandard(tenantId) + "." + tableName + " " + where;
+        "SELECT * FROM " + convertToPsqlStandard(tenantId) + DOT + tableName + SPACE + where;
     persistentlyCacheResult(cacheName, q, replyHandler);
   }
 
@@ -2125,7 +2147,7 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         try {
           String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
-              + convertToPsqlStandard(tenantId) + "." + cacheName +" AS " + sql2cache;
+              + convertToPsqlStandard(tenantId) + DOT + cacheName +" AS " + sql2cache;
           System.out.println(q);
           connection.update(q,
             query -> {
@@ -2159,7 +2181,7 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         try {
           connection.update("DROP TABLE "
-              + convertToPsqlStandard(tenantId) + "." + cacheName,
+              + convertToPsqlStandard(tenantId) + DOT + cacheName,
             query -> {
             connection.close();
             if (query.failed()) {
@@ -2264,13 +2286,13 @@ public class PostgresClient {
           inFunction = true;
         }
         else if (inFunction && allLines[i].trim().toUpperCase().matches(".*\\s*LANGUAGE .*")){
-          singleStatement.append(" " + allLines[i]);
-          if(!allLines[i].trim().endsWith(";")){
+          singleStatement.append(SPACE + allLines[i]);
+          if(!allLines[i].trim().endsWith(SEMI_COLON)){
             int j=0;
             if(i+1<allLines.length){
               for (j = i+1; j < allLines.length; j++) {
                 if(allLines[j].trim().toUpperCase().trim().matches(CLOSE_FUNCTION_POSTGRES)){
-                  singleStatement.append(" " + allLines[j]);
+                  singleStatement.append(SPACE + allLines[j]);
                 }
                 else{
                   break;
@@ -2283,8 +2305,8 @@ public class PostgresClient {
           execStatements.add( singleStatement.toString() );
           singleStatement = new StringBuilder();
         }
-        else if(allLines[i].trim().endsWith(";") && !inFunction && !inCopy){
-          execStatements.add( singleStatement.append(" " + allLines[i]).toString() );
+        else if(allLines[i].trim().endsWith(SEMI_COLON) && !inFunction && !inCopy){
+          execStatements.add( singleStatement.append(SPACE + allLines[i]).toString() );
           singleStatement = new StringBuilder();
         }
         else {
@@ -2292,7 +2314,7 @@ public class PostgresClient {
             singleStatement.append("\n");
           }
           else{
-            singleStatement.append(" ");
+            singleStatement.append(SPACE);
           }
           singleStatement.append(allLines[i]);
         }
@@ -2429,7 +2451,7 @@ public class PostgresClient {
           }
         } catch (Exception e) {
           error = true;
-          log.error("Commit failed " + Arrays.hashCode(sql) + " " + e.getMessage(), e);
+          log.error("Commit failed " + Arrays.hashCode(sql) + SPACE + e.getMessage(), e);
         }
       }
       catch(Exception e){
@@ -2691,7 +2713,7 @@ public class PostgresClient {
         StringBuilder sb = new StringBuilder("order by[ ]+");
         int size = orderBy.size();
         for (int i = 0; i < size; i++) {
-          sb.append(orderBy.get(i).toString().replaceAll(" ", "[ ]+"));
+          sb.append(orderBy.get(i).toString().replaceAll(SPACE, "[ ]+"));
           if(i<size-1){
             sb.append(",?[ ]+");
           }
@@ -2712,7 +2734,9 @@ public class PostgresClient {
    }
 
    ParsedQuery pq = new ParsedQuery();
-   pq.setCountFuncQuery(query);
+
+   pq.setCountQuery(query.replaceFirst(COLUMN_CONTROL_REGEX, COUNT));
+
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){
      //TEMPORARY HACK see above

@@ -56,7 +56,7 @@ public class PostgresClientTest {
         not(either(containsString(notTrue)).or(
           containsString(isTrue))));
 
-      assertThat(pQ.getCountFuncQuery(),
+      assertThat(pQ.getCountQuery(),
         not(either(containsString(notTrue)).or(
           containsString(isTrue))));
 
