@@ -1,3 +1,7 @@
+## 21.0.2 2018-09-28
+* RMB-250 Fix fulltext search: stop words, trailing space and *
+* RMB-249 Default to the 'simple' directory for fulltext searches
+
 ## 21.0.1 2018-09-07
 * RMB-245 Fix Invalid path for client generator
  
