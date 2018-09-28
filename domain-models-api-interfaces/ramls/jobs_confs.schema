@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Configurations for Jobs",
   "type": "object",
   "properties": {
     "job_confs": {
