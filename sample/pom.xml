@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-sample</artifactId>
-  <version>21.0.2</version>
+  <version>21.0.3-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -51,7 +51,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>21.0.2</version>
+      <version>21.0.3-SNAPSHOT</version>
     </dependency>
 
     <dependency>
