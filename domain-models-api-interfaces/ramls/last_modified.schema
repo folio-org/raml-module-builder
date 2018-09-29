@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "title": "Date and time of the last modification",
+  "title": "Last modified",
+  "description": "Date and time of the last modification",
   "type": "object",
   "properties": {
     "last_modified": {

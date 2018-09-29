@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "Configuration for Jobs",
+  "description": "Includes type and category of job, and whether it is enabled.",
   "type": "object",
   "properties": {
     "_id": {
