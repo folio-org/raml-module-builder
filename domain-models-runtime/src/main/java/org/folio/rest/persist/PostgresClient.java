@@ -107,6 +107,7 @@ public class PostgresClient {
   private static final String    AND    = " AND ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
+  private static final String    COUNT_FIELD = "count";
   private static final String    COUNT = "COUNT(*)";
   private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
 
@@ -1934,7 +1935,6 @@ public class PostgresClient {
    */
   private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, Integer total, boolean setId) {
     long start = System.nanoTime();
-    String countField = "count";
     List<T> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
     List<String> columnNames = rs.getColumnNames();
@@ -1987,7 +1987,7 @@ public class PostgresClient {
               o = mapper.readValue(jo.toString(), clazz);
             } catch (UnrecognizedPropertyException e1) {
               // this is a facet query , and this is the count entry {"count": 11}
-              total = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
+              total = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
               continue;
             }
           }
