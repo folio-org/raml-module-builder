@@ -7,15 +7,11 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 
 import org.folio.rest.persist.facets.ParsedQuery;
-import org.folio.rest.tools.utils.NaiveSQLParse;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.runner.RunWith;
 
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
+import io.vertx.core.json.JsonObject;
 
 import net.sf.jsqlparser.JSQLParserException;
 
@@ -56,7 +52,7 @@ public class PostgresClientTest {
         not(either(containsString(notTrue)).or(
           containsString(isTrue))));
 
-      assertThat(pQ.getCountFuncQuery(),
+      assertThat(pQ.getCountQuery(),
         not(either(containsString(notTrue)).or(
           containsString(isTrue))));
 
@@ -66,5 +62,76 @@ public class PostgresClientTest {
    }
  }
 
+  private String oldConfigFilePath;
+  private boolean oldIsEmbedded;
+  private int oldEmbeddedPort;
+  /** empty = no environment variables */
+  private JsonObject empty = new JsonObject();
 
+  @Before
+  public void initConfig() {
+    oldConfigFilePath = PostgresClient.getConfigFilePath();
+    PostgresClient.setConfigFilePath(null);
+    oldIsEmbedded = PostgresClient.isEmbedded();
+    PostgresClient.setIsEmbedded(false);
+    oldEmbeddedPort = PostgresClient.getEmbeddedPort();
+    PostgresClient.setEmbeddedPort(-1);
+  }
+
+  @After
+  public void restoreConfig() {
+    PostgresClient.setConfigFilePath(oldConfigFilePath);
+    PostgresClient.setIsEmbedded(oldIsEmbedded);
+    PostgresClient.setEmbeddedPort(oldEmbeddedPort);
+  }
+
+  @Test
+  public void configDefault() throws Exception {
+    PostgresClient.setConfigFilePath("nonexisting");
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", empty);
+    assertThat(PostgresClient.isEmbedded(), is(true));
+    assertThat(config.getString("host"), is("127.0.0.1"));
+    assertThat(config.getInteger("port"), is(6000));
+    assertThat(config.getString("username"), is("username"));
+  }
+
+  @Test
+  public void configDefaultWithPortAndTenant() throws Exception {
+    PostgresClient.setConfigFilePath("nonexisting");
+    PostgresClient.setEmbeddedPort(5555);
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", empty);
+    assertThat(PostgresClient.isEmbedded(), is(true));
+    assertThat(config.getString("host"), is("127.0.0.1"));
+    assertThat(config.getInteger("port"), is(5555));
+    assertThat(config.getString("username"), is("username"));
+  }
+
+  @Test
+  public void configEnvironmentPlusFile() throws Exception {
+    JsonObject env = new JsonObject()
+        .put("host", "example.com")
+        .put("port", 9876);
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", env);
+    assertThat(config.getString("host"), is("example.com"));
+    assertThat(config.getInteger("port"), is(9876));
+    assertThat(config.getString("username"), is("footenant_" + PostgresClient.getModuleName()));
+  }
+
+  @Test
+  public void configFile() throws Exception {
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("public", empty);
+    // values from src/test/resources/postgres-conf.json
+    assertThat(config.getString("host"), is("localhost"));
+    assertThat(config.getInteger("port"), is(5433));
+    assertThat(config.getString("username"), is("postgres"));
+  }
+
+  @Test
+  public void configFileTenant() throws Exception {
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", empty);
+    // values from src/test/resources/postgres-conf.json
+    assertThat(config.getString("host"), is("localhost"));
+    assertThat(config.getInteger("port"), is(5433));
+    assertThat(config.getString("username"), is("footenant_" + PostgresClient.getModuleName()));
+  }
 }

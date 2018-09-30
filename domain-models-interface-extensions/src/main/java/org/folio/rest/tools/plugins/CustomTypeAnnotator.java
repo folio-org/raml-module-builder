@@ -45,7 +45,7 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
   private static Table<String, Object, JsonObject> annotationLookUp = HashBasedTable.create();
 
   private static Map<String, JsonObject> fields2annotate = new HashMap<>();
-  
+
   private static final String REGEXP  = "regexp";
   private static final String TYPE    = "type";
   private static final String ITEMS   = "items";
@@ -68,7 +68,7 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
         annotationLookUp.put(fieldName , fieldValue, annotation);
         log.info("Loading custom field " + fieldName + " with value " + fieldValue + " with annotation " + annotation.encode());
       }
-    }    
+    }
   }
 
   @Override
@@ -97,8 +97,8 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
   @Override
   public void propertyField(JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
-    
-    // Optionally annotates arrays with ElementsNotNull and ElementsPattern 
+
+    // Optionally annotates arrays with ElementsNotNull and ElementsPattern
     if(isArray(propertyNode)) {
       if(isItemsNotNull(propertyNode)) {
         field.annotate(ElementsNotNull.class);
@@ -108,7 +108,7 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
         field.annotate(ElementsPattern.class).param(REGEXP, pattern.get());
       }
     }
-    
+
     JsonObject annotation = fields2annotate.get(propertyName);
     if(annotation != null){
       String annotationType = annotation.getString("type");
@@ -148,7 +148,7 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
             }
             else if(valueType.toLowerCase().endsWith("double")){
               ann.param(memberKey, (Double)memberValue);
-            } 
+            }
           });
         }
       }
@@ -182,7 +182,7 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
       return null;
     }
   }
-  
+
   private boolean isItemsNotNull(JsonNode propertyNode) {
     if (propertyNode.has(ITEMS)) {
       JsonNode itemNode = propertyNode.get(ITEMS);
@@ -209,5 +209,5 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
     }
     return Optional.empty();
   }
-  
+
 }
