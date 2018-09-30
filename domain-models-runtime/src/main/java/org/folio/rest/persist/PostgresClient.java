@@ -2641,7 +2641,7 @@ public class PostgresClient {
   /**
    * @return the tenantId of this PostgresClient
    */
-  public String getTenantId() {
+  String getTenantId() {
     return tenantId;
   }
 
@@ -2650,7 +2650,7 @@ public class PostgresClient {
    *   A PostgreSQL schema name is of the form tenant_module and is used to address tables:
    *   "SELECT * FROM tenant_module.table"
    */
-  public String getSchemaName() {
+  String getSchemaName() {
     return schemaName;
   }
 
