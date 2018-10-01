@@ -1413,8 +1413,7 @@ public class PostgresClient {
     fm.setOffsetClause(parsedQuery.getOffsetClause());
     fm.setMainQuery(parsedQuery.getQueryWithoutLimOff());
     fm.setSchema(schemaName);
-    fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(
-      parsedQuery.getCountQuery()));
+    fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(parsedQuery.getCountQuery()));
     return fm;
   }
 
@@ -2009,6 +2008,27 @@ public class PostgresClient {
     return results;
   }
 
+  private class ResultsHelper<T> {
+    final List<T> list;
+    final Map<String, org.folio.rest.jaxrs.model.Facet> facets;
+    final ResultSet resultSet;
+    final Class<T> clazz;
+    final boolean setId;
+    int total;
+    public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz, boolean setId) {
+      this.list = new ArrayList<>();
+      this.facets = new HashMap<String, org.folio.rest.jaxrs.model.Facet>();
+      this.resultSet = resultSet;
+      this.clazz= clazz;
+      this.setId = setId;
+      this.total = total;
+    }
+  }
+
+  /**
+   *
+   * @param resultsHelper
+   */
   private <T> void deserializeResults(ResultsHelper<T> resultsHelper) {
 
     Class<T> clazz = resultsHelper.clazz;
@@ -2129,7 +2149,6 @@ public class PostgresClient {
    * @param columnMethods
    * @param o
    * @param row
-   * @param clazz
    */
   private <T> void populateExternalColumns(Map<String, Method> columnMethods, Object o, JsonObject row) {
     for (Map.Entry<String, Method> entry : columnMethods.entrySet()) {
@@ -2140,23 +2159,6 @@ public class PostgresClient {
       } catch (Exception e) {
         log.warn("Unable to populate field " + columnName + " for object of type " + o.getClass().getName());
       }
-    }
-  }
-
-  private class ResultsHelper<T> {
-    final List<T> list;
-    final Map<String, org.folio.rest.jaxrs.model.Facet> facets;
-    final ResultSet resultSet;
-    final Class<T> clazz;
-    final boolean setId;
-    int total;
-    public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz, boolean setId) {
-      this.list = new ArrayList<>();
-      this.facets = new HashMap<String, org.folio.rest.jaxrs.model.Facet>();
-      this.resultSet = resultSet;
-      this.clazz= clazz;
-      this.setId = setId;
-      this.total = total;
     }
   }
 
