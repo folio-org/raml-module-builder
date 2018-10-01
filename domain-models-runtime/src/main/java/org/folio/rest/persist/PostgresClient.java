@@ -1990,7 +1990,7 @@ public class PostgresClient {
       total = rs.getNumRows();
     }
 
-    ResultsHelper<T> resultsHelper = new ResultsHelper<T>(rs, total, clazz, setId);
+    ResultsHelper<T> resultsHelper = new ResultsHelper<>(rs, total, clazz, setId);
 
     deserializeResults(resultsHelper);
 
