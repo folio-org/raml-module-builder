@@ -1,3 +1,6 @@
+## 21.0.3 2018-10-01
+* RMB-259 Windows compile failure - schema files
+
 ## 21.0.2 2018-09-28
 * RMB-250 Fix fulltext search: stop words, trailing space and *
 * RMB-249 Default to the 'simple' directory for fulltext searches
