@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -106,6 +107,7 @@ public class PostgresClient {
   private static final String    AND    = " AND ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
+  private static final String    COUNT_FIELD = "count";
   private static final String    COUNT = "COUNT(*)";
   private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
 
@@ -118,13 +120,13 @@ public class PostgresClient {
 
   private static final String    STATS_KEY = PostgresClient.class.getName();
 
-  private static final String    GET_STAT_METHOD = ".get";
-  private static final String    COUNT_STAT_METHOD = ".count";
-  private static final String    SAVE_STAT_METHOD = ".save";
-  private static final String    UPDATE_STAT_METHOD = ".update";
-  private static final String    DELETE_STAT_METHOD = ".delete";
-  private static final String    JOIN_STAT_METHOD = ".join";
-  private static final String    PROCESS_RESULTS_STAT_METHOD = ".processResult";
+  private static final String    GET_STAT_METHOD = "get";
+  private static final String    COUNT_STAT_METHOD = "count";
+  private static final String    SAVE_STAT_METHOD = "save";
+  private static final String    UPDATE_STAT_METHOD = "update";
+  private static final String    DELETE_STAT_METHOD = "delete";
+  private static final String    JOIN_STAT_METHOD = "join";
+  private static final String    PROCESS_RESULTS_STAT_METHOD = "processResult";
 
   private static final String    SPACE = " ";
   private static final String    DOT = ".";
@@ -172,6 +174,44 @@ public class PostgresClient {
     this.vertx = vertx;
     this.schemaName = convertToPsqlStandard(tenantId);
     init();
+  }
+
+  /**
+   * Log the duration since startNanoTime as a debug message.
+   * @param description  text for the log entry
+   * @param sql  additional text for the log entry
+   * @param startNanoTime  start time as returned by System.nanoTime()
+   */
+  private void logTimer(String description, String sql, long startNanoTime) {
+    if (! log.isDebugEnabled()) {
+      return;
+    }
+    logTimer(description, sql, startNanoTime, System.nanoTime());
+  }
+
+  /**
+   * Log the duration between startNanoTime and endNanoTime as a debug message.
+   * @param description  text for the log entry
+   * @param sql  additional text for the log entry
+   * @param startNanoTime  start time in nanoseconds
+   * @param endNanoTime  end time in nanoseconds
+   */
+  private void logTimer(String description, String sql, long startNanoTime, long endNanoTime) {
+    log.debug(description + " timer: " + sql + " took " + ((endNanoTime - startNanoTime) / 1000000) + " s");
+  }
+
+  /**
+   * Log the duration since startNanoTime at the StatsTracker and as a debug message.
+   * @param descriptionKey  key for StatsTracker and text for the log entry
+   * @param sql  additional text for the log entry
+   * @param startNanoTime  start time as returned by System.nanoTime()
+   */
+  private void statsTracker(String descriptionKey, String sql, long startNanoTime) {
+    long endNanoTime = System.nanoTime();
+    StatsTracker.addStatElement(STATS_KEY + "." + descriptionKey, (endNanoTime - startNanoTime));
+    if (log.isDebugEnabled()) {
+      logTimer(descriptionKey, sql, startNanoTime, endNanoTime);
+    }
   }
 
   public void setIdField(String id){
@@ -349,6 +389,14 @@ public class PostgresClient {
    */
   AsyncSQLClient getClient() {
     return client;
+  }
+
+  /**
+   * Set this instance's AsyncSQLClient that can connect to Postgres.
+   * @param client  the new client
+   */
+  void setClient(AsyncSQLClient client) {
+    this.client = client;
   }
 
   /**
@@ -670,8 +718,7 @@ public class PostgresClient {
                   }
                   replyHandler.handle(Future.succeededFuture(response));
                 }
-                long end = System.nanoTime();
-                StatsTracker.addStatElement(STATS_KEY+SAVE_STAT_METHOD, (end-start));
+                statsTracker(SAVE_STAT_METHOD, table, start);
               });
           } catch (Exception e) {
             if(connection != null){
@@ -709,8 +756,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
-          long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+SAVE_STAT_METHOD, (end-start));
+          statsTracker(SAVE_STAT_METHOD, table, start);
         });
     } catch (Exception e) {
       if(connection != null){
@@ -756,20 +802,19 @@ public class PostgresClient {
       sql.append(" RETURNING ").append(idField);
 
       connection.queryWithParams(sql.toString(), entities, queryRes -> {
-        long end = System.nanoTime();
         if (queryRes.failed()) {
           log.error("saveBatch size=" + entities.size()
             + SPACE +
               queryRes.cause().getMessage(),
               queryRes.cause());
-          StatsTracker.addStatElement(STATS_KEY + ".saveBatchFailed", (end-start));
+          statsTracker("saveBatchFailed", table, start);
           replyHandler.handle(Future.failedFuture(queryRes.cause()));
           return;
         }
         if (log.isInfoEnabled()) {
           log.info("success: saveBatch size=" + entities.size());
         }
-        StatsTracker.addStatElement(STATS_KEY + ".saveBatch", (end-start));
+        statsTracker("saveBatch", table, start);
         replyHandler.handle(Future.succeededFuture(queryRes.result()));
       });
     });
@@ -948,11 +993,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
-          long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+UPDATE_STAT_METHOD, (end-start));
-          if(log.isDebugEnabled()){
-            log.debug("timer: get " +q+ " (ns) " + (end-start));
-          }
+          statsTracker(UPDATE_STAT_METHOD, table, start);
         });
       } catch (Exception e) {
         if(!transactionMode){
@@ -1025,11 +1066,7 @@ public class PostgresClient {
               } else {
                 replyHandler.handle(Future.succeededFuture(query.result()));
               }
-              long end = System.nanoTime();
-              StatsTracker.addStatElement(STATS_KEY+UPDATE_STAT_METHOD, (end-start));
-              if(log.isDebugEnabled()){
-                log.debug("timer: get " +q+ " (ns) " + (end-start));
-              }
+              statsTracker(UPDATE_STAT_METHOD, table, start);
             });
           } catch (Exception e) {
             if(connection != null){
@@ -1156,11 +1193,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
-          long end = System.nanoTime();
-          StatsTracker.addStatElement(STATS_KEY+DELETE_STAT_METHOD, (end-start));
-          if(log.isDebugEnabled()){
-            log.debug("timer: get " +q+ " (ns) " + (end-start));
-          }
+          statsTracker(DELETE_STAT_METHOD, table, start);
         });
       } catch (Exception e) {
         if(!transactionMode){
@@ -1901,7 +1934,6 @@ public class PostgresClient {
    */
   private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, Integer total, boolean setId) {
     long start = System.nanoTime();
-    String countField = "count";
     List<T> list = new ArrayList<>();
     List<JsonObject> tempList = rs.getRows();
     List<String> columnNames = rs.getColumnNames();
@@ -1954,7 +1986,7 @@ public class PostgresClient {
               o = mapper.readValue(jo.toString(), clazz);
             } catch (UnrecognizedPropertyException e1) {
               // this is a facet query , and this is the count entry {"count": 11}
-              total = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
+              total = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
               continue;
             }
           }
@@ -2006,11 +2038,7 @@ public class PostgresClient {
     r.setResults(list);
     r.setResultInfo(rn);
 
-    long processResultsTime = System.nanoTime() - start;
-    StatsTracker.addStatElement(STATS_KEY+PROCESS_RESULTS_STAT_METHOD, processResultsTime);
-    if(log.isDebugEnabled()){
-      log.debug("timer: process results (ns) " + processResultsTime);
-    }
+    statsTracker(PROCESS_RESULTS_STAT_METHOD, clazz.getSimpleName(), start);
     return r;
   }
 
@@ -2047,51 +2075,107 @@ public class PostgresClient {
   }
 
   /**
-   * update table
+   * Execute an INSERT, UPDATE or DELETE statement.
    * @param sql - the sql to run
-   * @param replyHandler
+   * @param replyHandler - the result handler with UpdateResult converted toString().
+   * @deprecated use execute(String, Handler<AsyncResult<UpdateResult>>) instead.
    */
-  public void mutate(String sql, Handler<AsyncResult<String>> replyHandler)  {
+  @Deprecated
+  public void mutate(String sql, Handler<AsyncResult<String>> replyHandler) {
+    execute(sql, res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      replyHandler.handle(Future.succeededFuture(res.result().toString()));
+    });
+  }
+
+  /**
+   * Execute an INSERT, UPDATE or DELETE statement.
+   * @param sql - the sql to run
+   * @param replyHandler - the result handler with UpdateResult
+   */
+  public void execute(String sql, Handler<AsyncResult<UpdateResult>> replyHandler)  {
     long s = System.nanoTime();
     client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        try {
-          connection.update(sql, query -> {
-            connection.close();
-            if (query.failed()) {
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(query.result().toString()));
-            }
-            log.debug("mutate timer: " + sql + " took " + (System.nanoTime()-s)/1000000);
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      } else {
+      if (res.failed()) {
         replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      SQLConnection connection = res.result();
+      try {
+        connection.update(sql, query -> {
+          connection.close();
+          if (query.failed()) {
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            replyHandler.handle(Future.succeededFuture(query.result()));
+          }
+          logTimer("execute", sql, s);
+        });
+      } catch (Exception e) {
+        if (connection != null) {
+          connection.close();
+        }
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
+      }
+    });
+  }
+
+  /**
+   * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
+   * @param sql  The SQL statement to run.
+   * @param params The parameters for the placeholders in sql.
+   * @param replyHandler
+   */
+  public void execute(String sql, JsonArray params, Handler<AsyncResult<UpdateResult>> replyHandler)  {
+    long s = System.nanoTime();
+    client.getConnection(res -> {
+      if (res.failed()) {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      SQLConnection connection = res.result();
+      try {
+        connection.updateWithParams(sql, params, query -> {
+          connection.close();
+          if (query.failed()) {
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            replyHandler.handle(Future.succeededFuture(query.result()));
+          }
+          log.debug("executeWithParams", sql, s);
+        });
+      } catch (Exception e) {
+        if (connection != null) {
+          connection.close();
+        }
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
       }
     });
   }
 
   /**
    * send a query to update within a transaction
-   * @param conn - connection - see {@link #startTx(Handler)}
-   * @param sql - the sql to run
-   * @param replyHandler
-   * Example:
+   *
+   * <p>Example:
+   * <pre>
    *  postgresClient.startTx(beginTx -> {
    *        try {
    *          postgresClient.mutate(beginTx, sql, reply -> {...
+   * </pre>
+   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sql - the sql to run
+   * @param replyHandler
+   * @deprecated use execute(AsyncResult<SQLConnection>, String, Handler<AsyncResult<UpdateResult>>) instead
    */
+  @Deprecated
   public void mutate(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<String>> replyHandler){
-    SQLConnection sqlConnection = conn.result();
     try {
+      SQLConnection sqlConnection = conn.result();
       sqlConnection.update(sql, query -> {
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
@@ -2103,6 +2187,140 @@ public class PostgresClient {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
+  }
+
+  /**
+   * Send an INSERT, UPDATE or DELETE statement within a transaction.
+   *
+   * <p>Example:
+   * <pre>
+   *  postgresClient.startTx(beginTx -> {
+   *        try {
+   *          postgresClient.execute(beginTx, sql, reply -> {...
+   * </pre>
+   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sql - the sql to run
+   * @param replyHandler - reply handler with UpdateResult
+   */
+  public void execute(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<UpdateResult>> replyHandler){
+    try {
+      SQLConnection sqlConnection = conn.result();
+      sqlConnection.update(sql, query -> {
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(query.result()));
+        }
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Send an INSERT, UPDATE or DELETE parameterized/prepared statement within a transaction.
+   *
+   * <p>Example:
+   * <pre>
+   *  postgresClient.startTx(beginTx -> {
+   *        try {
+   *          postgresClient.execute(beginTx, sql, params, reply -> {...
+   * </pre>
+   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sql - the sql to run
+   * @param replyHandler - reply handler with UpdateResult
+   */
+  public void execute(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
+      Handler<AsyncResult<UpdateResult>> replyHandler){
+    try {
+      SQLConnection sqlConnection = conn.result();
+      sqlConnection.updateWithParams(sql, params, query -> {
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(query.result()));
+        }
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
+   * run it with a list of sets of parameters.
+   *
+   * <p>Example:
+   * <pre>
+   *  postgresClient.startTx(beginTx -> {
+   *        try {
+   *          postgresClient.execute(beginTx, sql, params, reply -> {...
+   * </pre>
+   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sql - the sql to run
+   * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
+   * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
+   */
+  public void execute(AsyncResult<SQLConnection> conn, String sql, List<JsonArray> params,
+      Handler<AsyncResult<List<UpdateResult>>> replyHandler) {
+    try {
+      SQLConnection sqlConnection = conn.result();
+      List<UpdateResult> results = new ArrayList<>(params.size());
+      Iterator<JsonArray> iterator = params.iterator();
+      Runnable task = new Runnable() {
+        @Override
+        public void run() {
+          if (! iterator.hasNext()) {
+            replyHandler.handle(Future.succeededFuture(results));
+            return;
+          }
+          sqlConnection.updateWithParams(sql, iterator.next(), query -> {
+            if (query.failed()) {
+              replyHandler.handle(Future.failedFuture(query.cause()));
+              return;
+            }
+            results.add(query.result());
+            this.run();
+          });
+        }
+      };
+      task.run();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
+   * run it with a list of sets of parameters. Wrap all in a transaction.
+   *
+   * @param sql - the sql to run
+   * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
+   * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
+   */
+  public void execute(String sql, List<JsonArray> params, Handler<AsyncResult<List<UpdateResult>>> replyHandler) {
+    startTx(transaction -> {
+      if (transaction.failed()) {
+        replyHandler.handle(Future.failedFuture(transaction.cause()));
+        return;
+      }
+      execute(transaction, sql, params, result -> {
+        if (result.failed()) {
+          rollbackTx(transaction, rollback -> replyHandler.handle(result));
+          return;
+        }
+        endTx(transaction, end -> {
+          if (end.failed()) {
+            replyHandler.handle(Future.failedFuture(end.cause()));
+            return;
+          }
+          replyHandler.handle(result);
+        });
+      });
+    });
   }
 
   /**
@@ -2176,9 +2394,7 @@ public class PostgresClient {
             } else {
               replyHandler.handle(Future.succeededFuture(query.result().getUpdated()));
             }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".persistentlyCacheResult", (end-start));
-            log.debug("CREATE TABLE AS timer: " + q + " took " + (end-start)/1000000);
+            statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start);
           });
         } catch (Exception e) {
           if(connection != null){
@@ -2206,9 +2422,7 @@ public class PostgresClient {
             } else {
               replyHandler.handle(Future.succeededFuture(query.result().getUpdated()));
             }
-            long end = System.nanoTime();
-            StatsTracker.addStatElement(STATS_KEY+".removePersistentCacheResult", (end-start));
-            log.debug("DROP TABLE timer: " + cacheName + " took " + (end-start)/1000000);
+            statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
           });
         } catch (Exception e) {
           if(connection != null){
@@ -2494,14 +2708,13 @@ public class PostgresClient {
         }
       }
     }, done -> {
-      log.debug("execute timer for: " + Arrays.hashCode(sql) + " took " + (System.nanoTime()-s)/1000000);
+      logTimer("execute", "" + Arrays.hashCode(sql), s);
       replyHandler.handle(Future.succeededFuture(results));
     });
   }
 
   /**
    * Start an embedded PostgreSQL using the configuration of {@link #getConnectionConfig()}.
-   * It also sets embedded mode to true, see {@link #setIsEmbedded(boolean)}, but
    * doesn't change the configuration.
    *
    * @throws IOException  when starting embedded PostgreSQL fails
