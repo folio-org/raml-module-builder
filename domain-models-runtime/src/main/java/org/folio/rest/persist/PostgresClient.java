@@ -2031,13 +2031,15 @@ public class PostgresClient {
    */
   private <T> void deserializeResults(ResultsHelper<T> resultsHelper) {
 
-    Class<T> clazz = resultsHelper.clazz;
+    boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
-    List<String> columnNames = resultsHelper.resultSet.getColumnNames();
+    Map<String, Method> externalColumnMethods = getExternalColumnMethods(
+      resultsHelper.resultSet.getColumnNames(),
+      resultsHelper.clazz,
+      isAuditFlavored
+    );
 
-    boolean isAuditFlavored = isAuditFlavored(clazz);
-
-    Map<String, Method> columnMethods = getColumnMethods(columnNames, clazz, isAuditFlavored);
+    String idPropName = columnNametoCamelCaseWithSet(idField);
 
     for(JsonObject row : resultsHelper.resultSet.getRows()) {
       try {
@@ -2061,7 +2063,7 @@ public class PostgresClient {
             continue;
           } catch (Exception e) {
             try {
-              o = mapper.readValue(jo.toString(), clazz);
+              o = mapper.readValue(jo.toString(), resultsHelper.clazz);
             } catch (UnrecognizedPropertyException upe) {
               // this is a facet query , and this is the count entry {"count": 11}
               resultsHelper.total = new JsonObject(row.getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
@@ -2072,11 +2074,11 @@ public class PostgresClient {
           o = resultsHelper.clazz.newInstance();
         }
 
-        populateExternalColumns(columnMethods, o, row);
+        populateExternalColumns(externalColumnMethods, o, row);
 
         if (resultsHelper.setId) {
           o.getClass().getMethod(
-            columnNametoCamelCaseWithset(idField),
+            idPropName,
             new Class[] { String.class }
           ).invoke(o, new String[] { id.toString() });
         }
@@ -2123,19 +2125,19 @@ public class PostgresClient {
    * @param isAuditFlavored
    * @return
    */
-  private <T> Map<String, Method> getColumnMethods(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
-    Map<String, Method> columnMethods = new HashMap<String, Method>();
+  private <T> Map<String, Method> getExternalColumnMethods(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
+    Map<String, Method> externalColumnMethods = new HashMap<String, Method>();
     for (String columnName : columnNames) {
       if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(idField)) {
-        String methodName = columnNametoCamelCaseWithset(columnName);
+        String methodName = columnNametoCamelCaseWithSet(columnName);
         for (Method method : clazz.getMethods()) {
           if (method.getName().equals(methodName)) {
-            columnMethods.put(columnName, method);
+            externalColumnMethods.put(columnName, method);
           }
         }
       }
     }
-    return columnMethods;
+    return externalColumnMethods;
   }
 
   /**
@@ -2146,12 +2148,12 @@ public class PostgresClient {
    * as well - also support the audit mode descrbed above.
    * NOTE: that the query must request any field it wants to get populated into the jsonb obj
    *
-   * @param columnMethods
+   * @param externalColumnMethods
    * @param o
    * @param row
    */
-  private <T> void populateExternalColumns(Map<String, Method> columnMethods, Object o, JsonObject row) {
-    for (Map.Entry<String, Method> entry : columnMethods.entrySet()) {
+  private <T> void populateExternalColumns(Map<String, Method> externalColumnMethods, Object o, JsonObject row) {
+    for (Map.Entry<String, Method> entry : externalColumnMethods.entrySet()) {
       String columnName = entry.getKey();
       Method method = entry.getValue();
       try {
@@ -2989,7 +2991,7 @@ public class PostgresClient {
    * @param str
    * @return
    */
-  private String columnNametoCamelCaseWithset(String str){
+  private String columnNametoCamelCaseWithSet(String str){
     StringBuilder sb = new StringBuilder(str);
     sb.replace(0, 1, String.valueOf(Character.toUpperCase(sb.charAt(0))));
     for (int i = 0; i < sb.length(); i++) {
