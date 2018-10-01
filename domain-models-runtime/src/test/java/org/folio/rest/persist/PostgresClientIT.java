@@ -2,6 +2,7 @@ package org.folio.rest.persist;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -22,8 +23,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
+import io.vertx.ext.asyncsql.AsyncSQLClient;
+import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
+import io.vertx.ext.sql.SQLClient;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -230,6 +238,10 @@ public class PostgresClientIT {
     async.await();
 
     LogUtil.setLevelForRootLoggers(localOldLevel);
+  }
+
+  private PostgresClient postgresClient() {
+    return PostgresClient.getInstance(vertx, TENANT);
   }
 
   private PostgresClient createTable(TestContext context,
@@ -587,10 +599,17 @@ public class PostgresClientIT {
     return new JsonArray().add(randomUuid());
   }
 
+  private PostgresClient postgresClientNonexistingTenant() {
+    try {
+      return new PostgresClient(Vertx.vertx(), "nonexistingTenant");
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Test
-  public void getByIdsConnectionFailure(TestContext context) throws Exception {
-    PostgresClient postgresClient = new PostgresClient(Vertx.vertx(), "nonexistingTenant");
-    postgresClient.getByIdAsString(FOO, randomUuidArray(), context.asyncAssertFailure());
+  public void getByIdsConnectionFailure(TestContext context) {
+    postgresClientNonexistingTenant().getByIdAsString(FOO, randomUuidArray(), context.asyncAssertFailure());
   }
 
   @Test
@@ -635,5 +654,320 @@ public class PostgresClientIT {
       context.assertTrue(res.result().isEmpty());
       async.complete();
     });
+  }
+
+  /**
+   * @return a PostgresClient where getConnection(handler) invokes the handler with
+   * a null result value and success status.
+   */
+  private PostgresClient postgresClientNullConnection() {
+    AsyncSQLClient client = new AsyncSQLClient() {
+      @Override
+      public SQLClient getConnection(Handler<AsyncResult<SQLConnection>> handler) {
+        handler.handle(Future.succeededFuture(null));
+        return this;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+    try {
+      PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
+      postgresClient.setClient(client);
+      return postgresClient;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * @return a PostgresClient where invoking SQLConnection::update(...) or SQLConnection::updateWithParams
+   * throws an RuntimeException.
+   */
+  private PostgresClient postgresClientConnectionThrowsException() {
+    SQLConnection sqlConnection = new PostgreSQLConnectionImpl(null, null, null) {
+      @Override
+      public SQLConnection update(String sql, Handler<AsyncResult<UpdateResult>> resultHandler) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public SQLConnection updateWithParams(String sql, JsonArray params,
+          Handler<AsyncResult<UpdateResult>> resultHandler) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+    AsyncSQLClient client = new AsyncSQLClient() {
+      @Override
+      public SQLClient getConnection(Handler<AsyncResult<SQLConnection>> handler) {
+        handler.handle(Future.succeededFuture(sqlConnection));
+        return this;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+    try {
+      PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
+      postgresClient.setClient(client);
+      return postgresClient;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * @return a PostgresClient that fails when closing the connection.
+   */
+  private PostgresClient postgresClientEndTxFailure() {
+    class PostgresClientEndTxFailure extends PostgresClient {
+      public PostgresClientEndTxFailure(Vertx vertx, String tenant) throws Exception {
+        super(vertx, tenant);
+      }
+      @Override
+      public void endTx(AsyncResult<SQLConnection> conn, Handler<AsyncResult<Void>> done) {
+        done.handle(Future.failedFuture(new RuntimeException()));
+      }
+    };
+    try {
+      return new PostgresClientEndTxFailure(vertx, TENANT);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Test
+  public void execute(TestContext context) {
+    Async async = context.async();
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+    .execute("DELETE FROM foo WHERE _id='" + ids.getString(1) + "'", res -> {
+      assertSuccess(context, res);
+      context.assertEquals(1, res.result().getUpdated());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void executeConnectionFailure(TestContext context) {
+    postgresClientNonexistingTenant().execute("SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeSyntaxError(TestContext context) {
+    postgresClient().execute("'", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeNullConnection(TestContext context) throws Exception {
+    postgresClientNullConnection().execute("SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeConnectionThrowsException(TestContext context) throws Exception {
+    postgresClientConnectionThrowsException().execute("SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeParam(TestContext context) {
+    Async async = context.async();
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+    .execute("DELETE FROM foo WHERE _id=?", new JsonArray().add(ids.getString(0)), res -> {
+      assertSuccess(context, res);
+      context.assertEquals(1, res.result().getUpdated());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void executeParamConnectionFailure(TestContext context) {
+    postgresClientNonexistingTenant().execute("SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeParamSyntaxError(TestContext context) {
+    postgresClient().execute("'", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeParamNullConnection(TestContext context) throws Exception {
+    postgresClientNullConnection().execute("SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeParamConnectionException(TestContext context) throws Exception {
+    postgresClientConnectionThrowsException().execute("SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeTrans(TestContext context) {
+    Async async1 = context.async();
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    postgresClient.startTx(trans -> {
+      assertSuccess(context, trans);
+      postgresClient.execute(trans, "DELETE FROM foo WHERE _id='" + ids.getString(1) + "'", res -> {
+        assertSuccess(context, res);
+        postgresClient.rollbackTx(trans, rollback -> {
+          assertSuccess(context, rollback);
+          async1.complete();
+        });
+      });
+    });
+    async1.await();
+
+    Async async2 = context.async();
+    postgresClient.startTx(trans -> {
+      assertSuccess(context, trans);
+      postgresClient.execute(trans, "DELETE FROM foo WHERE _id='" + ids.getString(0) + "'", res -> {
+        assertSuccess(context, res);
+        postgresClient.endTx(trans, end -> {
+          assertSuccess(context, end);
+          async2.complete();
+        });
+      });
+    });
+    async2.await();
+
+    Async async3 = context.async();
+    postgresClient.getById(FOO, ids, res -> {
+      assertSuccess(context, res);
+      context.assertEquals(1, res.result().size());
+      async3.complete();
+    });
+    async3.await();
+
+    postgresClient.closeClient(context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void executeTransSyntaxError(TestContext context) {
+    PostgresClient postgresClient = postgresClient();
+    postgresClient.startTx(trans -> postgresClient.execute(trans, "'", context.asyncAssertFailure()));
+  }
+
+  @Test
+  public void executeTransNullConnection(TestContext context) throws Exception {
+    postgresClient().execute(null, "SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeTransParam(TestContext context) {
+    Async async1 = context.async();
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    postgresClient.startTx(trans -> {
+      assertSuccess(context, trans);
+      postgresClient.execute(trans, "DELETE FROM foo WHERE _id=?", new JsonArray().add(ids.getString(1)), res -> {
+        assertSuccess(context, res);
+        postgresClient.rollbackTx(trans, rollback -> {
+          assertSuccess(context, rollback);
+          async1.complete();
+        });
+      });
+    });
+    async1.await();
+
+    Async async2 = context.async();
+    postgresClient.startTx(trans -> {
+      assertSuccess(context, trans);
+      postgresClient.execute(trans, "DELETE FROM foo WHERE _id=?", new JsonArray().add(ids.getString(0)), res -> {
+        assertSuccess(context, res);
+        postgresClient.endTx(trans, end -> {
+          assertSuccess(context, end);
+          async2.complete();
+        });
+      });
+    });
+    async2.await();
+
+    Async async3 = context.async();
+    postgresClient.getById(FOO, ids, res -> {
+      assertSuccess(context, res);
+      context.assertEquals(1, res.result().size());
+      async3.complete();
+    });
+    async3.await();
+
+    postgresClient.closeClient(context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void executeTransParamSyntaxError(TestContext context) {
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.startTx(trans -> postgresClient.execute(trans, "'", new JsonArray(), context.asyncAssertFailure()));
+  }
+
+  @Test
+  public void executeTransParamNullConnection(TestContext context) throws Exception {
+    createFoo(context).execute(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeList(TestContext context) {
+    Async async = context.async();
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    List<JsonArray> list = new ArrayList<>(2);
+    list.add(new JsonArray().add(ids.getString(0)));
+    list.add(new JsonArray().add(ids.getString(1)));
+    postgresClient.execute("DELETE FROM foo WHERE _id=?", list, res -> {
+      assertSuccess(context, res);
+      List<UpdateResult> result = res.result();
+      context.assertEquals(2, result.size());
+      context.assertEquals(1, result.get(0).getUpdated());
+      context.assertEquals(1, result.get(1).getUpdated());
+      async.complete();
+    });
+  }
+
+  /** @return List containg one empty JsonArray() */
+  private List<JsonArray> list1JsonArray() {
+    return Collections.singletonList(new JsonArray());
+  }
+
+  @Test
+  public void executeListNullConnection(TestContext context) {
+    postgresClientNullConnection().execute("SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeListSyntaxError(TestContext context) {
+    postgresClient().execute("'", list1JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeListEndTxFailure(TestContext context) {
+    postgresClientEndTxFailure().execute("SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void executeListTransNull(TestContext context) throws Exception {
+    postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 }
