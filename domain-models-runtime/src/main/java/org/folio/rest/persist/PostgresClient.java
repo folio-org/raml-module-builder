@@ -1995,9 +1995,7 @@ public class PostgresClient {
     deserializeResults(resultsHelper);
 
     ResultInfo resultInfo = new ResultInfo();
-    resultsHelper.facets.forEach((k , v) -> {
-      resultInfo.getFacets().add(v);
-    });
+    resultsHelper.facets.forEach((k , v) -> resultInfo.getFacets().add(v));
     resultInfo.setTotalRecords(resultsHelper.total);
 
     Results<T> results = new Results();
@@ -2017,7 +2015,7 @@ public class PostgresClient {
     int total;
     public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz, boolean setId) {
       this.list = new ArrayList<>();
-      this.facets = new HashMap<String, org.folio.rest.jaxrs.model.Facet>();
+      this.facets = new HashMap<>();
       this.resultSet = resultSet;
       this.clazz= clazz;
       this.setId = setId;
@@ -2049,6 +2047,7 @@ public class PostgresClient {
         Object o = null;
 
         if (!isAuditFlavored && jo != null) {
+          boolean finished = false;
           try {
             // is this a facet entry - if so process it, otherwise will throw an exception
             // and continue trying to map to the pojos
@@ -2060,15 +2059,18 @@ public class PostgresClient {
             } else {
               facet.getFacetValues().add(of.getFacetValues().get(0));
             }
-            continue;
+            finished = true;
           } catch (Exception e) {
             try {
               o = mapper.readValue(jo.toString(), resultsHelper.clazz);
             } catch (UnrecognizedPropertyException upe) {
               // this is a facet query , and this is the count entry {"count": 11}
               resultsHelper.total = new JsonObject(row.getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
-              continue;
+              finished = true;
             }
+          }
+          if (finished) {
+            continue;
           }
         } else {
           o = resultsHelper.clazz.newInstance();
@@ -2079,8 +2081,10 @@ public class PostgresClient {
         if (resultsHelper.setId) {
           o.getClass().getMethod(
             idPropName,
-            new Class[] { String.class }
-          ).invoke(o, new String[] { id.toString() });
+            String.class
+            // new Class[] { String.class }
+          ).invoke(o, id.toString());
+          // new String[] { id.toString() }
         }
 
         resultsHelper.list.add((T) o);
@@ -2126,7 +2130,7 @@ public class PostgresClient {
    * @return
    */
   private <T> Map<String, Method> getExternalColumnMethods(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
-    Map<String, Method> externalColumnMethods = new HashMap<String, Method>();
+    Map<String, Method> externalColumnMethods = new HashMap<>();
     for (String columnName : columnNames) {
       if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(idField)) {
         String methodName = columnNametoCamelCaseWithSet(columnName);
@@ -2152,12 +2156,13 @@ public class PostgresClient {
    * @param o
    * @param row
    */
-  private <T> void populateExternalColumns(Map<String, Method> externalColumnMethods, Object o, JsonObject row) {
+  private void populateExternalColumns(Map<String, Method> externalColumnMethods, Object o, JsonObject row) {
     for (Map.Entry<String, Method> entry : externalColumnMethods.entrySet()) {
       String columnName = entry.getKey();
       Method method = entry.getValue();
       try {
-        method.invoke(o, new Object[] { row.getValue(columnName) });
+        method.invoke(o, row.getValue(columnName));
+        // new Object[] { row.getValue(columnName) }
       } catch (Exception e) {
         log.warn("Unable to populate field " + columnName + " for object of type " + o.getClass().getName());
       }
@@ -2986,21 +2991,21 @@ public class PostgresClient {
   }
 
   /**
-   * assumes column cames are all lower case with multi word column names
+   * assumes column names are all lower case with multi word column names
    * separated by an '_'
    * @param str
    * @return
    */
-  private String columnNametoCamelCaseWithSet(String str){
+  private String columnNametoCamelCaseWithSet(String str) {
     StringBuilder sb = new StringBuilder(str);
     sb.replace(0, 1, String.valueOf(Character.toUpperCase(sb.charAt(0))));
     for (int i = 0; i < sb.length(); i++) {
         if (sb.charAt(i) == '_') {
             sb.deleteCharAt(i);
-            sb.replace(i, i+1, String.valueOf(Character.toUpperCase(sb.charAt(i))));
+            sb.replace(i, i + 1, String.valueOf(Character.toUpperCase(sb.charAt(i))));
         }
     }
-    return "set"+sb.toString();
+    return "set" + sb.toString();
   }
 
   /**
