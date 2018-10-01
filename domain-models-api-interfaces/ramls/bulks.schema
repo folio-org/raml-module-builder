@@ -1,5 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Bulks",
+  "description": "Bulks of jobs",
   "type": "object",
   "properties": {
     "bulks": {

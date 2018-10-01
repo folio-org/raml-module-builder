@@ -1,5 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Job schema",
+  "description": "Includes the configuration and status of the job.",
   "type": "object",
   "properties": {
     "_id": {

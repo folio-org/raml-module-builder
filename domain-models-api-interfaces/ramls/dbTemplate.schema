@@ -1,5 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Database template",
+  "description": "Includes information about adding and deleting fields, indexes and foreign keys",
   "type": "object",
   "properties": {
     "addFields": {

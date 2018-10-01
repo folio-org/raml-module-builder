@@ -1,5 +1,7 @@
 {
   "$schema":"http://json-schema.org/draft-04/schema#",
+  "title": "Book schema",
+  "description": "Book information including title, description, genre, author, and link",
   "type":"object",
   "properties":{
     "data":{

@@ -151,6 +151,11 @@ public class PostgresClientIT {
   public void getInstance(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx);
     PostgresClient c2 = PostgresClient.getInstance(vertx);
+    context.assertEquals("public", c1.getTenantId());
+    context.assertEquals("public", c2.getTenantId());
+    context.assertEquals("raml_module_builder", PostgresClient.getModuleName());
+    context.assertEquals("public_raml_module_builder", c1.getSchemaName());
+    context.assertEquals("public_raml_module_builder", c2.getSchemaName());
     c1.closeClient(context.asyncAssertSuccess());
     c2.closeClient(context.asyncAssertSuccess());
     context.assertEquals(c1, c2, "same instance");
@@ -160,6 +165,11 @@ public class PostgresClientIT {
   public void getInstanceTenant(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
     PostgresClient c2 = PostgresClient.getInstance(vertx, TENANT);
+    context.assertEquals(TENANT, c1.getTenantId());
+    context.assertEquals(TENANT, c2.getTenantId());
+    context.assertEquals("raml_module_builder", PostgresClient.getModuleName());
+    context.assertEquals(TENANT + "_raml_module_builder", c1.getSchemaName());
+    context.assertEquals(TENANT + "_raml_module_builder", c2.getSchemaName());
     c1.closeClient(context.asyncAssertSuccess());
     c2.closeClient(context.asyncAssertSuccess());
     context.assertEquals(c1, c2, "same instance");
