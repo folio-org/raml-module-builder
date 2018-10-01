@@ -127,12 +127,14 @@ public class PostgresClient {
   private static final String    UPDATE_STAT_METHOD = ".update";
   private static final String    DELETE_STAT_METHOD = ".delete";
   private static final String    JOIN_STAT_METHOD = ".join";
-  private static final String    PROCESS_RESULTS_STAT_METHOD = ".processResult";
+  private static final String    PROCESS_RESULTS_STAT_METHOD = ".processResults";
 
   private static final String    SPACE = " ";
   private static final String    DOT = ".";
   private static final String    COMMA = ",";
   private static final String    SEMI_COLON = ";";
+
+  private static final String    COUNT_FIELD = "count";
 
   private static PostgresProcess postgresProcess          = null;
   private static boolean         embeddedMode             = false;
@@ -1217,14 +1219,14 @@ public class PostgresClient {
 
         QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
 
-        queryHelper.query = SELECT + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
+        queryHelper.selectQuery = SELECT + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
 
         if (returnCount) {
           processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
-            totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
+            totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
         } else {
           processQuery(connection, queryHelper, null, GET_STAT_METHOD,
-            totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
+            totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
         }
 
       } catch (Exception e) {
@@ -1241,7 +1243,7 @@ public class PostgresClient {
     final boolean transactionMode;
     String table;
     List<FacetField> facets;
-    String query;
+    String selectQuery;
     String countQuery;
     int offset;
     public QueryHelper(boolean transactionMode, String table, List<FacetField> facets) {
@@ -1291,7 +1293,7 @@ public class PostgresClient {
             }
             try {
               // NOTE: this occurs frequently!
-              log.debug("Skipping query due to no results expected!");
+              log.info("Skipping query due to no results expected! " + queryHelper.selectQuery);
               ResultSet emptyResultSet = new ResultSet(Collections.singletonList(idField), Collections.emptyList(), null);
               replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
             } catch (Exception e) {
@@ -1310,14 +1312,14 @@ public class PostgresClient {
   private void prepareCountQuery(QueryHelper queryHelper) throws IOException, TemplateException {
     String offsetClause = null;
 
-    ParsedQuery parsedQuery = parseQuery(queryHelper.query);
+    ParsedQuery parsedQuery = parseQuery(queryHelper.selectQuery);
 
     queryHelper.countQuery = parsedQuery.getCountQuery();
 
     if (queryHelper.facets != null && !queryHelper.facets.isEmpty() && queryHelper.table != null) {
       FacetManager facetManager = buildFacetManager(queryHelper.table, parsedQuery, queryHelper.facets);
       // this method call invokes freemarker templating
-      queryHelper.query = facetManager.generateFacetQuery();
+      queryHelper.selectQuery = facetManager.generateFacetQuery();
       queryHelper.countQuery = facetManager.getCountQuery();
 
       offsetClause = facetManager.getOffsetClause();
@@ -1338,8 +1340,8 @@ public class PostgresClient {
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) {
     long start = System.nanoTime();
-    log.debug("Attempting query: " + queryHelper.query);
-    connection.query(queryHelper.query, query -> {
+    log.debug("Attempting query: " + queryHelper.selectQuery);
+    connection.query(queryHelper.selectQuery, query -> {
       if (!queryHelper.transactionMode) {
         connection.close();
       }
@@ -1352,7 +1354,7 @@ public class PostgresClient {
         }
         long queryTime = (System.nanoTime() - start);
         StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
-        log.debug("timer: get " + queryHelper.query + " (ns) " + queryTime);
+        log.debug("timer: get " + queryHelper.selectQuery + " (ns) " + queryTime);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
@@ -1807,7 +1809,7 @@ public class PostgresClient {
       Handler<AsyncResult<Results<T>>> replyHandler) {
 
     Function<TotaledResults, Results<T>> resultSetMapper =
-        totaledResults -> processResult(totaledResults.set, returnedClass, totaledResults.total, setId);
+        totaledResults -> processResults(totaledResults.set, totaledResults.total, returnedClass, setId);
     join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
   }
 
@@ -1856,8 +1858,8 @@ public class PostgresClient {
           Criterion jcr = new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), AND);
 
           QueryHelper queryHelper = new QueryHelper(false, null, null);
-          queryHelper.query = SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter;
-          queryHelper.countQuery = parseQuery(queryHelper.query).getCountQuery();
+          queryHelper.selectQuery = SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter;
+          queryHelper.countQuery = parseQuery(queryHelper.selectQuery).getCountQuery();
 
           processQueryWithCount(connection, queryHelper, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
         } catch (Exception e) {
@@ -1944,124 +1946,190 @@ public class PostgresClient {
    * 3. audit queries - queries that query an audit table, meaning the clazz parameter passed in has a jsonb member.
    *
    * @param rs
-   * @param clazz
    * @param total
+   * @param clazz
    * @param setId
    * @return
    */
-  private <T> Results<T> processResult(ResultSet rs, Class<T> clazz, Integer total, boolean setId) {
+  private <T> Results<T> processResults(ResultSet rs, Integer total, Class<T> clazz, boolean setId) {
     long start = System.nanoTime();
-    String countField = "count";
-    List<T> list = new ArrayList<>();
-    List<JsonObject> tempList = rs.getRows();
-    List<String> columnNames = rs.getColumnNames();
-    int columnNamesCount = columnNames.size();
-    Map<String, org.folio.rest.jaxrs.model.Facet> rInfo = new HashMap<>();
-    if(total == null) {
+
+    if (total == null) {
       // NOTE: this may not be an accurate total, may be better for it to be 0 or null
       total = rs.getNumRows();
     }
-    /* an exception to having the jsonb column and the fields within the json
-     * get mapped to the corresponding clazz is a case where the
-     * clazz has a jsonb field (member), for example an audit class which contains a field called
-     * jsonb - meaning it encapsulates the real object for example for auditing purposes
-     * (contains the jsonb object as well as some other fields). In such a
-     * case, do not map the clazz to the content of the jsonb - but rather set the jsonb named field of the clazz
-     * with the jsonb column value */
-    boolean isAuditFlavored = false;
-    try{
-      clazz.getField(DEFAULT_JSONB_FIELD_NAME);
-      isAuditFlavored = true;
-    }catch(NoSuchFieldException nse){
-      if(log.isDebugEnabled()){
-        log.debug("non audit table, no "+ DEFAULT_JSONB_FIELD_NAME + " found in json");
-      }
+
+    ResultsHelper<T> resultsHelper = new ResultsHelper<T>(rs, total, clazz, setId);
+
+    deserializeResults(resultsHelper);
+
+    ResultInfo resultInfo = new ResultInfo();
+    resultsHelper.facets.forEach((k , v) -> {
+      resultInfo.getFacets().add(v);
+    });
+    resultInfo.setTotalRecords(resultsHelper.total);
+
+    Results<T> results = new Results();
+    results.setResults(resultsHelper.list);
+    results.setResultInfo(resultInfo);
+
+    long processResultsTime = System.nanoTime() - start;
+    StatsTracker.addStatElement(STATS_KEY+PROCESS_RESULTS_STAT_METHOD, processResultsTime);
+    if (log.isDebugEnabled()) {
+      log.debug("timer: process results (ns) " + processResultsTime);
     }
+    return results;
+  }
 
-    int facetEntriesInResultSet = 0;
+  private <T> void deserializeResults(ResultsHelper<T> resultsHelper) {
 
-    for (int i = 0; i < tempList.size(); i++) {
+    Class<T> clazz = resultsHelper.clazz;
+
+    List<String> columnNames = resultsHelper.resultSet.getColumnNames();
+
+    boolean isAuditFlavored = isAuditFlavored(clazz);
+
+    Map<String, Method> columnMethods = getColumnMethods(columnNames, clazz, isAuditFlavored);
+
+    for(JsonObject row : resultsHelper.resultSet.getRows()) {
       try {
-        Object jo = tempList.get(i).getValue(DEFAULT_JSONB_FIELD_NAME);
-        Object id = tempList.get(i).getValue(idField);
+        Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
+        Object id = row.getValue(idField);
+
         Object o = null;
-        if(!isAuditFlavored && jo != null){
+
+        if (!isAuditFlavored && jo != null) {
           try {
-            //is this a facet entry - if so process it, otherwise will throw an exception
-            //and continue trying to map to the pojos
+            // is this a facet entry - if so process it, otherwise will throw an exception
+            // and continue trying to map to the pojos
             o =  mapper.readValue(jo.toString(), org.folio.rest.jaxrs.model.Facet.class);
-            org.folio.rest.jaxrs.model.Facet facet = rInfo.get(((org.folio.rest.jaxrs.model.Facet)o).getType());
-            if(facet == null){
-              rInfo.put(((org.folio.rest.jaxrs.model.Facet)o).getType(), (org.folio.rest.jaxrs.model.Facet)o);
+            org.folio.rest.jaxrs.model.Facet of = (org.folio.rest.jaxrs.model.Facet) o;
+            org.folio.rest.jaxrs.model.Facet facet = resultsHelper.facets.get(of.getType());
+            if (facet == null) {
+              resultsHelper.facets.put(of.getType(), of);
+            } else {
+              facet.getFacetValues().add(of.getFacetValues().get(0));
             }
-            else{
-              facet.getFacetValues().add(((org.folio.rest.jaxrs.model.Facet)o).getFacetValues().get(0));
-            }
-            facetEntriesInResultSet = facetEntriesInResultSet+1;
             continue;
           } catch (Exception e) {
             try {
               o = mapper.readValue(jo.toString(), clazz);
-            } catch (UnrecognizedPropertyException e1) {
+            } catch (UnrecognizedPropertyException upe) {
               // this is a facet query , and this is the count entry {"count": 11}
-              total = new JsonObject(tempList.get(i).getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(countField);
+              resultsHelper.total = new JsonObject(row.getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
               continue;
             }
           }
+        } else {
+          o = resultsHelper.clazz.newInstance();
         }
-        else{
-          o = clazz.newInstance();
+
+        populateExternalColumns(columnMethods, o, row);
+
+        if (resultsHelper.setId) {
+          o.getClass().getMethod(
+            columnNametoCamelCaseWithset(idField),
+            new Class[] { String.class }
+          ).invoke(o, new String[] { id.toString() });
         }
-        /* attempt to populate jsonb object with values from external columns - for example:
-         * if there is an update_date column in the record - try to populate a field updateDate in the
-         * jsonb object - this allows to use the DB for things like triggers to populate the update_date
-         * automatically, but still push them into the jsonb object - the json schema must declare this field
-         * as well - also support the audit mode descrbed above.
-         * NOTE that the query must request any field it wants to get populated into the jsonb obj*/
-        for (int j = 0; j < columnNamesCount; j++) {
-          if((isAuditFlavored || !columnNames.get(j).equals(DEFAULT_JSONB_FIELD_NAME))
-              && !columnNames.get(j).equals(idField)){
-            try {
-              Method m[] = o.getClass().getMethods();
-              for (int k = 0; k < m.length; k++) {
-                if(m[k].getName().equals(columnNametoCamelCaseWithset(columnNames.get(j)))){
-                  o.getClass().getMethod(columnNametoCamelCaseWithset(columnNames.get(j)),
-                    m[k].getParameterTypes()).invoke(o, new Object[] { tempList.get(i).getValue(columnNames.get(j)) });
-                }
-              }
-            } catch (Exception e) {
-              log.warn("Unable to populate field " + columnNametoCamelCaseWithset(columnNames.get(j))
-                + " for object of type " + clazz.getName());
-            }
-          }
-        }
-        if(setId){
-          o.getClass().getMethod(columnNametoCamelCaseWithset(idField),
-            new Class[] { String.class }).invoke(o, new String[] { id.toString() });
-        }
-        list.add((T) o);
+
+        resultsHelper.list.add((T) o);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
-        list.add(null);
+        resultsHelper.list.add(null);
       }
     }
+  }
 
-    ResultInfo rn = new ResultInfo();
-    rInfo.forEach( (k , v ) -> {
-      rn.getFacets().add(v);
-    });
-    rn.setTotalRecords(total);
-
-    Results<T> r = new Results();
-    r.setResults(list);
-    r.setResultInfo(rn);
-
-    long processResultsTime = System.nanoTime() - start;
-    StatsTracker.addStatElement(STATS_KEY+PROCESS_RESULTS_STAT_METHOD, processResultsTime);
-    if(log.isDebugEnabled()){
-      log.debug("timer: process results (ns) " + processResultsTime);
+  /**
+   * an exception to having the jsonb column and the fields within the json
+   * get mapped to the corresponding clazz is a case where the
+   * clazz has a jsonb field (member), for example an audit class which contains a field called
+   * jsonb - meaning it encapsulates the real object for example for auditing purposes
+   * (contains the jsonb object as well as some other fields). In such a
+   * case, do not map the clazz to the content of the jsonb - but rather set the jsonb named field of the clazz
+   * with the jsonb column value
+   *
+   * @param clazz
+   * @return
+   */
+  private <T> boolean isAuditFlavored(Class<T> clazz) {
+    boolean isAuditFlavored = false;
+    try {
+      clazz.getField(DEFAULT_JSONB_FIELD_NAME);
+      isAuditFlavored = true;
+    } catch (NoSuchFieldException nse) {
+      if (log.isDebugEnabled()) {
+        log.debug("non audit table, no " + DEFAULT_JSONB_FIELD_NAME + " found in json");
+      }
     }
-    return r;
+    return isAuditFlavored;
+  }
+
+  /**
+   * get the class methods in order to populate jsonb object from external columns
+   * abiding to audit mode
+   *
+   * @param columnNames
+   * @param clazz
+   * @param isAuditFlavored
+   * @return
+   */
+  private <T> Map<String, Method> getColumnMethods(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
+    Map<String, Method> columnMethods = new HashMap<String, Method>();
+    for (String columnName : columnNames) {
+      if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(idField)) {
+        String methodName = columnNametoCamelCaseWithset(columnName);
+        for (Method method : clazz.getMethods()) {
+          if (method.getName().equals(methodName)) {
+            columnMethods.put(columnName, method);
+          }
+        }
+      }
+    }
+    return columnMethods;
+  }
+
+  /**
+   * populate jsonb object with values from external columns - for example:
+   * if there is an update_date column in the record - try to populate a field updateDate in the
+   * jsonb object - this allows to use the DB for things like triggers to populate the update_date
+   * automatically, but still push them into the jsonb object - the json schema must declare this field
+   * as well - also support the audit mode descrbed above.
+   * NOTE: that the query must request any field it wants to get populated into the jsonb obj
+   *
+   * @param columnMethods
+   * @param o
+   * @param row
+   * @param clazz
+   */
+  private <T> void populateExternalColumns(Map<String, Method> columnMethods, Object o, JsonObject row) {
+    for (Map.Entry<String, Method> entry : columnMethods.entrySet()) {
+      String columnName = entry.getKey();
+      Method method = entry.getValue();
+      try {
+        method.invoke(o, new Object[] { row.getValue(columnName) });
+      } catch (Exception e) {
+        log.warn("Unable to populate field " + columnName + " for object of type " + o.getClass().getName());
+      }
+    }
+  }
+
+  private class ResultsHelper<T> {
+    final List<T> list;
+    final Map<String, org.folio.rest.jaxrs.model.Facet> facets;
+    final ResultSet resultSet;
+    final Class<T> clazz;
+    final boolean setId;
+    int total;
+    public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz, boolean setId) {
+      this.list = new ArrayList<>();
+      this.facets = new HashMap<String, org.folio.rest.jaxrs.model.Facet>();
+      this.resultSet = resultSet;
+      this.clazz= clazz;
+      this.setId = setId;
+      this.total = total;
+    }
   }
 
   /**
