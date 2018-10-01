@@ -2717,8 +2717,7 @@ public class PostgresClient {
    */
   private void copyIn(String copyInStatement, Connection connection) throws Exception {
     long totalInsertedRecords = 0;
-    CopyManager copyManager =
-        new CopyManager((BaseConnection) connection);
+    CopyManager copyManager = new CopyManager((BaseConnection) connection);
     if(copyInStatement.contains("STDIN")){
       //run as is
       int sep = copyInStatement.indexOf("\n");
@@ -2900,7 +2899,6 @@ public class PostgresClient {
         log.info("embedded postgress is not running...");
       }
     }
-
   }
 
   /**
@@ -2912,45 +2910,43 @@ public class PostgresClient {
    */
   public void importFile(String path, String tableName) {
 
-   long recordsImported[] = new long[]{-1};
-   vertx.<String>executeBlocking(dothis -> {
+    long recordsImported[] = new long[]{-1};
+    vertx.<String>executeBlocking(dothis -> {
+      try {
+        String host = postgreSQLClientConfig.getString(HOST);
+        int port = postgreSQLClientConfig.getInteger(PORT);
+        String user = postgreSQLClientConfig.getString(_USERNAME);
+        String pass = postgreSQLClientConfig.getString(_PASSWORD);
+        String db = postgreSQLClientConfig.getString(DATABASE);
 
-    try {
-      String host = postgreSQLClientConfig.getString(HOST);
-      int port = postgreSQLClientConfig.getInteger(PORT);
-      String user = postgreSQLClientConfig.getString(_USERNAME);
-      String pass = postgreSQLClientConfig.getString(_PASSWORD);
-      String db = postgreSQLClientConfig.getString(DATABASE);
+        log.info("Connecting to " + db);
 
-      log.info("Connecting to " + db);
+        Connection con = DriverManager.getConnection(
+          "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
 
-      Connection con = DriverManager.getConnection(
-        "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
+        log.info("Copying text data rows from stdin");
 
-      log.info("Copying text data rows from stdin");
+        CopyManager copyManager = new CopyManager((BaseConnection) con);
 
-      CopyManager copyManager = new CopyManager((BaseConnection) con);
+        FileReader fileReader = new FileReader(path);
+        recordsImported[0] = copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
 
-      FileReader fileReader = new FileReader(path);
-      recordsImported[0] = copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
+      } catch (Exception e) {
+        log.error(messages.getMessage("en", MessageConsts.ImportFailed), e);
+        dothis.fail(e);
+      }
+      dothis.complete("Done.");
 
-    } catch (Exception e) {
-      log.error(messages.getMessage("en", MessageConsts.ImportFailed), e);
-      dothis.fail(e);
-    }
-    dothis.complete("Done.");
+    }, whendone -> {
 
-  }, whendone -> {
+      if(whendone.succeeded()){
+        log.info("Done importing file: " + path + ". Number of records imported: " + recordsImported[0]);
+      }
+      else{
+        log.info("Failed importing file: " + path);
+      }
 
-    if(whendone.succeeded()){
-
-      log.info("Done importing file: " + path + ". Number of records imported: " + recordsImported[0]);
-    }
-    else{
-      log.info("Failed importing file: " + path);
-    }
-
-  });
+    });
 
   }
 
@@ -3140,4 +3136,5 @@ public class PostgresClient {
     }
     return sb.toString();
   }
+
 }
