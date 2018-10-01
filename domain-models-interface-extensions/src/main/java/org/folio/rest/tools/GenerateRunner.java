@@ -112,14 +112,16 @@ public class GenerateRunner {
       }
     }
     File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
-    String input = x0.getPath();
+    String input = x0.getAbsolutePath();
     log.info("copying ramls from source directory at: " + input);
     log.info("copying ramls to target directory at: " + output);
     RamlDirCopier.copy(x0.toPath(), output.toPath());
 
     for (String d : ramlFiles) {
-      d = d.replace(input, output.getAbsolutePath());
-      generateRunner.generate(d);
+      File tmp  = new File(d);
+      String a = tmp.getAbsolutePath();
+      a = a.replace(input, output.getAbsolutePath());
+      generateRunner.generate(a);
     }
   }
 
