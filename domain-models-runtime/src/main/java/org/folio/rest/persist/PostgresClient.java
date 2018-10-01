@@ -56,6 +56,7 @@ import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
 import de.flapdoodle.embed.process.store.NonCachedPostgresArtifactStoreBuilder;
+import freemarker.template.TemplateException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -108,6 +109,8 @@ public class PostgresClient {
 
   private static final String    COUNT = "COUNT(*)";
   private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
+
+  private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
 
   private static final String    _PASSWORD = "password"; //NOSONAR
   private static final String    _USERNAME = "username";
@@ -1193,9 +1196,11 @@ public class PostgresClient {
     });
   }
 
-  private <T> void doGet(SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
-      String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
-      List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
+  private <T> void doGet(
+    SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
+    String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
+    List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler
+  ) {
 
     vertx.runOnContext(v -> {
       try {
@@ -1210,31 +1215,15 @@ public class PostgresClient {
           addIdField = "";
         }
 
-        String[] q = new String[2];
+        QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
 
-        q[0] = SELECT + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
-
-        boolean faceted = facets != null && !facets.isEmpty();
-
-        if (returnCount || faceted) {
-          ParsedQuery parsedQuery = parseQuery(q[0]);
-          if (faceted) {
-            FacetManager facetManager = buildFacetManager(table, parsedQuery, facets);
-            // this method call invokes freemarker templating
-            q[0] = facetManager.generateFacetQuery();
-            if (returnCount) {
-              q[1] = facetManager.getCountQuery();
-            }
-          } else {
-            q[1] = parsedQuery.getCountQuery();
-          }
-        }
+        queryHelper.query = SELECT + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
 
         if (returnCount) {
-          processQueryWithCount(connection, q, transactionMode, GET_STAT_METHOD,
+          processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
             totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
         } else {
-          processQuery(connection, q[0], transactionMode, null, GET_STAT_METHOD,
+          processQuery(connection, queryHelper, null, GET_STAT_METHOD,
             totaledResults -> processResult(totaledResults.set, clazz, totaledResults.total, setId), replyHandler);
         }
 
@@ -1248,20 +1237,40 @@ public class PostgresClient {
     });
   }
 
+  private class QueryHelper {
+    final boolean transactionMode;
+    String table;
+    List<FacetField> facets;
+    String query;
+    String countQuery;
+    int offset;
+    public QueryHelper(boolean transactionMode, String table, List<FacetField> facets) {
+      this.transactionMode = transactionMode;
+      this.table = table;
+      this.facets = facets;
+      this.offset = 0;
+    }
+  }
+
   private class TotaledResults {
-    ResultSet set;
-    int total;
+    final ResultSet set;
+    final int total;
     public TotaledResults(ResultSet set, int total) {
       this.set = set;
       this.total = total;
     }
   }
 
-  private <T> void processQueryWithCount(SQLConnection connection, String[] q, boolean transactionMode, String statMethod,
-      Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
+  private <T> void processQueryWithCount(
+    SQLConnection connection, QueryHelper queryHelper, String statMethod,
+    Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
+  ) throws IOException, TemplateException {
     long start = System.nanoTime();
-    log.debug("Attempting count query: " + q[1]);
-    connection.querySingle(q[1], countQuery -> {
+
+    prepareCountQuery(queryHelper);
+
+    log.debug("Attempting count query: " + queryHelper.countQuery);
+    connection.querySingle(queryHelper.countQuery, countQuery -> {
       try {
         if (countQuery.failed()) {
           log.error(countQuery.cause().getMessage(), countQuery.cause());
@@ -1272,10 +1281,24 @@ public class PostgresClient {
 
           long countQueryTime = (System.nanoTime() - start);
           StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
-          log.debug("timer: get " + q[1] + " (ns) " + countQueryTime);
+          log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
 
-          // TODO: if total is 0 dont run query, requires building result with subset of arguments
-          processQuery(connection, q[0], transactionMode, total, statMethod, resultSetMapper, replyHandler);
+          if(total > 0 && total > queryHelper.offset) {
+            processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
+          } else {
+            if (!queryHelper.transactionMode) {
+              connection.close();
+            }
+            try {
+              // NOTE: this occurs frequently!
+              log.debug("Skipping query due to no results expected!");
+              ResultSet emptyResultSet = new ResultSet(Collections.singletonList(idField), Collections.emptyList(), null);
+              replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
+            } catch (Exception e) {
+              log.error(e.getMessage(), e);
+              replyHandler.handle(Future.failedFuture(e));
+            }
+          }
         }
       } catch (Exception e) {
         log.error(e.getMessage(), e);
@@ -1284,12 +1307,40 @@ public class PostgresClient {
     });
   }
 
-  private <T> void processQuery(SQLConnection connection, String q, boolean transactionMode, Integer total, String statMethod,
-      Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
+  private void prepareCountQuery(QueryHelper queryHelper) throws IOException, TemplateException {
+    String offsetClause = null;
+
+    ParsedQuery parsedQuery = parseQuery(queryHelper.query);
+
+    queryHelper.countQuery = parsedQuery.getCountQuery();
+
+    if (queryHelper.facets != null && !queryHelper.facets.isEmpty() && queryHelper.table != null) {
+      FacetManager facetManager = buildFacetManager(queryHelper.table, parsedQuery, queryHelper.facets);
+      // this method call invokes freemarker templating
+      queryHelper.query = facetManager.generateFacetQuery();
+      queryHelper.countQuery = facetManager.getCountQuery();
+
+      offsetClause = facetManager.getOffsetClause();
+    } else {
+      offsetClause = parsedQuery.getOffsetClause();
+    }
+
+    if (offsetClause != null) {
+      Matcher matcher = OFFSET_MATCH_PATTERN.matcher(offsetClause);
+      if (matcher.find()) {
+          queryHelper.offset = Integer.parseInt(matcher.group(1));
+      }
+    }
+  }
+
+  private <T> void processQuery(
+    SQLConnection connection, QueryHelper queryHelper, Integer total, String statMethod,
+    Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
+  ) {
     long start = System.nanoTime();
-    log.debug("Attempting query: " + q);
-    connection.query(q, query -> {
-      if (!transactionMode) {
+    log.debug("Attempting query: " + queryHelper.query);
+    connection.query(queryHelper.query, query -> {
+      if (!queryHelper.transactionMode) {
         connection.close();
       }
       try {
@@ -1301,7 +1352,7 @@ public class PostgresClient {
         }
         long queryTime = (System.nanoTime() - start);
         StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
-        log.debug("timer: get " + q + " (ns) " + queryTime);
+        log.debug("timer: get " + queryHelper.query + " (ns) " + queryTime);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
@@ -1804,12 +1855,11 @@ public class PostgresClient {
 
           Criterion jcr = new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), AND);
 
-          String[] q = new String[2];
+          QueryHelper queryHelper = new QueryHelper(false, null, null);
+          queryHelper.query = SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter;
+          queryHelper.countQuery = parseQuery(queryHelper.query).getCountQuery();
 
-          q[0] = SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter;
-          q[1] = parseQuery(q[0]).getCountQuery();
-
-          processQueryWithCount(connection, q, false, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
+          processQueryWithCount(connection, queryHelper, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
         } catch (Exception e) {
           if (connection != null) {
             connection.close();
@@ -1895,7 +1945,7 @@ public class PostgresClient {
    *
    * @param rs
    * @param clazz
-   * @param count
+   * @param total
    * @param setId
    * @return
    */
