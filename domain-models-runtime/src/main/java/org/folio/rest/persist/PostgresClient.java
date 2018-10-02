@@ -2079,12 +2079,7 @@ public class PostgresClient {
         populateExternalColumns(externalColumnMethods, o, row);
 
         if (resultsHelper.setId) {
-          o.getClass().getMethod(
-            idPropName,
-            String.class
-            // new Class[] { String.class }
-          ).invoke(o, id.toString());
-          // new String[] { id.toString() }
+          o.getClass().getMethod(idPropName, String.class).invoke(o, id.toString());
         }
 
         resultsHelper.list.add((T) o);
@@ -2162,7 +2157,6 @@ public class PostgresClient {
       Method method = entry.getValue();
       try {
         method.invoke(o, row.getValue(columnName));
-        // new Object[] { row.getValue(columnName) }
       } catch (Exception e) {
         log.warn("Unable to populate field " + columnName + " for object of type " + o.getClass().getName());
       }
