@@ -12,6 +12,7 @@ import java.sql.Statement;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -63,6 +64,7 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -178,6 +180,22 @@ public class PostgresClient {
     this.vertx = vertx;
     this.schemaName = convertToPsqlStandard(tenantId);
     init();
+  }
+
+  /**
+   * test constructor for unit testing
+   *
+   * @param tenantId
+   */
+  private PostgresClient() {
+    this.tenantId = "test";
+    this.vertx = null;
+    this.schemaName = convertToPsqlStandard(tenantId);
+    log.warn("Instantiating test Postgres client! Only use with tests!");
+  }
+
+  static PostgresClient testClient() {
+    return new PostgresClient();
   }
 
   /**
@@ -1230,7 +1248,7 @@ public class PostgresClient {
     });
   }
 
-  private class QueryHelper {
+  static class QueryHelper {
     final boolean transactionMode;
     String table;
     List<FacetField> facets;
@@ -1245,7 +1263,7 @@ public class PostgresClient {
     }
   }
 
-  private class TotaledResults {
+  static class TotaledResults {
     final ResultSet set;
     final int total;
     public TotaledResults(ResultSet set, int total) {
@@ -1994,7 +2012,7 @@ public class PostgresClient {
     join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
   }
 
-  private class ResultsHelper<T> {
+  static class ResultsHelper<T> {
     final List<T> list;
     final Map<String, org.folio.rest.jaxrs.model.Facet> facets;
     final ResultSet resultSet;
@@ -2139,7 +2157,7 @@ public class PostgresClient {
   <T> boolean isAuditFlavored(Class<T> clazz) {
     boolean isAuditFlavored = false;
     try {
-      clazz.getField(DEFAULT_JSONB_FIELD_NAME);
+      clazz.getDeclaredField(DEFAULT_JSONB_FIELD_NAME);
       isAuditFlavored = true;
     } catch (NoSuchFieldException nse) {
       if (log.isDebugEnabled()) {
@@ -2190,11 +2208,34 @@ public class PostgresClient {
       String columnName = entry.getKey();
       Method method = entry.getValue();
       try {
-        method.invoke(o, row.getValue(columnName));
+        Object value = row.getValue(columnName);
+        if (value instanceof JsonArray) {
+           method.invoke(o, Json.decodeValue(((JsonArray) value).encode(), method.getParameterTypes()[0]));
+        } else {
+          method.invoke(o, value);
+        }
       } catch (Exception e) {
         log.warn("Unable to populate field " + columnName + " for object of type " + o.getClass().getName());
       }
     }
+  }
+
+  /**
+   * assumes column names are all lower case with multi word column names
+   * separated by an '_'
+   * @param str
+   * @return
+   */
+  String databaseFieldToPojoSetter(String str) {
+    StringBuilder sb = new StringBuilder(str);
+    sb.replace(0, 1, String.valueOf(Character.toUpperCase(sb.charAt(0))));
+    for (int i = 0; i < sb.length(); i++) {
+        if (sb.charAt(i) == '_') {
+            sb.deleteCharAt(i);
+            sb.replace(i, i + 1, String.valueOf(Character.toUpperCase(sb.charAt(i))));
+        }
+    }
+    return "set" + sb.toString();
   }
 
   /**
@@ -3016,24 +3057,6 @@ public class PostgresClient {
    */
   String getSchemaName() {
     return schemaName;
-  }
-
-  /**
-   * assumes column names are all lower case with multi word column names
-   * separated by an '_'
-   * @param str
-   * @return
-   */
-  private String databaseFieldToPojoSetter(String str) {
-    StringBuilder sb = new StringBuilder(str);
-    sb.replace(0, 1, String.valueOf(Character.toUpperCase(sb.charAt(0))));
-    for (int i = 0; i < sb.length(); i++) {
-        if (sb.charAt(i) == '_') {
-            sb.deleteCharAt(i);
-            sb.replace(i, i + 1, String.valueOf(Character.toUpperCase(sb.charAt(i))));
-        }
-    }
-    return "set" + sb.toString();
   }
 
   /**

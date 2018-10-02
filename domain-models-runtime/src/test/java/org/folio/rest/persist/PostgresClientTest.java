@@ -1,5 +1,13 @@
 package org.folio.rest.persist;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.is;
@@ -7,11 +15,15 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 
 import org.folio.rest.persist.facets.ParsedQuery;
+import org.folio.rest.persist.interfaces.Results;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.sql.ResultSet;
 
 import net.sf.jsqlparser.JSQLParserException;
 
@@ -134,4 +146,179 @@ public class PostgresClientTest {
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("mySchemaName"));
   }
+
+  @Test
+  public void testProcessResults() {
+    PostgresClient testClient = PostgresClient.testClient();
+
+    int total = 5;
+    ResultSet rs = getMockResultSet(total);
+
+    Results<TestPojo> results = testClient.processResults(rs, total, TestPojo.class, false);
+
+    assertThat(results.getResults().size(), is(total));
+  }
+
+  @Test
+  public void testDeserializeResults() {
+    PostgresClient testClient = PostgresClient.testClient();
+
+    int total = 5;
+    ResultSet rs = getMockResultSet(total);
+    PostgresClient.ResultsHelper<TestPojo> resultsHelper = new PostgresClient.ResultsHelper<>(rs, total, TestPojo.class, false);
+
+    testClient.deserializeResults(resultsHelper);
+
+    assertThat(resultsHelper.list.size(), is(total));
+  }
+
+  @Test
+  public void testIsAuditFlavored() {
+    PostgresClient testClient = PostgresClient.testClient();
+    assertThat(testClient.isAuditFlavored(TestJsonbPojo.class), is(true));
+    assertThat(testClient.isAuditFlavored(TestPojo.class), is(false));
+  }
+
+  @Test
+  public void testGetExternalColumnSetters() throws NoSuchMethodException {
+    PostgresClient testClient = PostgresClient.testClient();
+    List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
+      "id", "foo", "bar", "biz", "baz"
+    }));
+    Map<String, Method> externalColumnSettters = testClient.getExternalColumnSetters(columnNames, TestPojo.class, false);
+    assertThat(externalColumnSettters.size(), is(5));
+    assertThat(externalColumnSettters.get("id"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("id"), String.class)));
+    assertThat(externalColumnSettters.get("foo"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("foo"), String.class)));
+    assertThat(externalColumnSettters.get("bar"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("bar"), String.class)));
+    assertThat(externalColumnSettters.get("biz"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("biz"), Double.class)));
+    assertThat(externalColumnSettters.get("baz"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("baz"), List.class)));
+  }
+
+  @Test
+  public void testPopulateExternalColumns() {
+    PostgresClient testClient = PostgresClient.testClient();
+    List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
+      "id", "foo", "bar", "biz", "baz"
+    }));
+    Map<String, Method> externalColumnSettters = testClient.getExternalColumnSetters(columnNames, TestPojo.class, false);
+    TestPojo o = new TestPojo();
+    String id = "80c72dad-f88c-4d48-a516-9a0ab16a029b";
+    String foo = "Hello";
+    String bar = "World";
+    Double biz = 1.0;
+    List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
+      "This", "is", "a", "test"
+    }));
+    JsonObject row = new JsonObject()
+        .put("id", id)
+        .put("foo", foo)
+        .put("bar", bar)
+        .put("biz", biz)
+        .put("baz", baz);
+    testClient.populateExternalColumns(externalColumnSettters, o, row);
+    assertThat(o.getId(), is(id));
+    assertThat(o.getFoo(), is(foo));
+    assertThat(o.getBar(), is(bar));
+    assertThat(o.getBiz(), is(biz));
+    assertThat(o.getBaz().size(), is(baz.size()));
+    assertThat(o.getBaz().get(0), is(baz.get(0)));
+    assertThat(o.getBaz().get(1), is(baz.get(1)));
+    assertThat(o.getBaz().get(2), is(baz.get(2)));
+    assertThat(o.getBaz().get(3), is(baz.get(3)));
+  }
+
+  @Test
+  public void testDatabaseFieldToPojoSetter() {
+    String setterMethodName = PostgresClient.testClient().databaseFieldToPojoSetter("test_field");
+    assertThat(setterMethodName, is("setTestField"));
+  }
+
+  private ResultSet getMockResultSet(int total) {
+    List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
+      "id", "foo", "bar", "biz", "baz"
+    }));
+
+    List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
+      "This", "is", "a", "test"
+    }));
+
+    List<JsonArray> list = new ArrayList<JsonArray>();
+
+    for(int i = 0; i < total; i++) {
+      list.add(new JsonArray()
+        .add(UUID.randomUUID().toString())
+        .add("foo " + i)
+        .add("bar " + i)
+        .add((double) i)
+        .add(baz)
+      );
+    }
+
+    return new ResultSet(columnNames, list, null);
+  }
+
+  static class TestJsonbPojo {
+    private JsonObject jsonb;
+    public TestJsonbPojo(JsonObject jsonb) {
+      this.jsonb = jsonb;
+    }
+    public JsonObject getJsonb() {
+      return jsonb;
+    }
+    public void setJsonb(JsonObject jsonb) {
+      this.jsonb = jsonb;
+    }
+  }
+
+  static class TestPojo {
+    private String id;
+    private String foo;
+    private String bar;
+    private Double biz;
+    private List<String> baz;
+    public TestPojo() {
+
+    }
+    public TestPojo(String id, String foo, String bar, Double biz) {
+      this.id = id;
+      this.foo = foo;
+      this.bar = bar;
+      this.biz = biz;
+    }
+    public TestPojo(String id, String foo, String bar, Double biz, List<String> baz) {
+      this(id, foo, bar, biz);
+      this.baz = baz;
+    }
+    public String getId() {
+      return id;
+    }
+    public void setId(String id) {
+      this.id = id;
+    }
+    public String getFoo() {
+      return foo;
+    }
+    public void setFoo(String foo) {
+      this.foo = foo;
+    }
+    public String getBar() {
+      return bar;
+    }
+    public void setBar(String bar) {
+      this.bar = bar;
+    }
+    public Double getBiz() {
+      return biz;
+    }
+    public void setBiz(Double biz) {
+      this.biz = biz;
+    }
+    public List<String> getBaz() {
+      return baz;
+    }
+    public void setBaz(List<String> baz) {
+      this.baz = baz;
+    }
+  }
+
 }
