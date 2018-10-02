@@ -2037,7 +2037,7 @@ public class PostgresClient {
       isAuditFlavored
     );
 
-    String idPropName = columnNametoCamelCaseWithSet(idField);
+    String idPropName = databaseFieldToPojoSetter(idField);
 
     for(JsonObject row : resultsHelper.resultSet.getRows()) {
       try {
@@ -2128,7 +2128,7 @@ public class PostgresClient {
     Map<String, Method> externalColumnMethods = new HashMap<>();
     for (String columnName : columnNames) {
       if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(idField)) {
-        String methodName = columnNametoCamelCaseWithSet(columnName);
+        String methodName = databaseFieldToPojoSetter(columnName);
         for (Method method : clazz.getMethods()) {
           if (method.getName().equals(methodName)) {
             externalColumnMethods.put(columnName, method);
@@ -2990,7 +2990,7 @@ public class PostgresClient {
    * @param str
    * @return
    */
-  private String columnNametoCamelCaseWithSet(String str) {
+  private String databaseFieldToPojoSetter(String str) {
     StringBuilder sb = new StringBuilder(str);
     sb.replace(0, 1, String.valueOf(Character.toUpperCase(sb.charAt(0))));
     for (int i = 0; i < sb.length(); i++) {
