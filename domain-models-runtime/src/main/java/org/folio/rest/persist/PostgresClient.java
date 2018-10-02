@@ -1324,7 +1324,6 @@ public class PostgresClient {
               connection.close();
             }
             try {
-              // NOTE: this occurs frequently!
               log.info("Skipping query due to no results expected! " + queryHelper.selectQuery);
               ResultSet emptyResultSet = new ResultSet(Collections.singletonList(idField), Collections.emptyList(), null);
               replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
@@ -2031,7 +2030,7 @@ public class PostgresClient {
 
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
-    Map<String, Method> externalColumnMethods = getExternalColumnMethods(
+    Map<String, Method> externalColumnSettters = getExternalColumnSetters(
       resultsHelper.resultSet.getColumnNames(),
       resultsHelper.clazz,
       isAuditFlavored
@@ -2076,7 +2075,7 @@ public class PostgresClient {
           o = resultsHelper.clazz.newInstance();
         }
 
-        populateExternalColumns(externalColumnMethods, o, row);
+        populateExternalColumns(externalColumnSettters, o, row);
 
         if (resultsHelper.setId) {
           o.getClass().getMethod(idPropName, String.class).invoke(o, id.toString());
@@ -2124,19 +2123,19 @@ public class PostgresClient {
    * @param isAuditFlavored
    * @return
    */
-  private <T> Map<String, Method> getExternalColumnMethods(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
-    Map<String, Method> externalColumnMethods = new HashMap<>();
+  private <T> Map<String, Method> getExternalColumnSetters(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
+    Map<String, Method> externalColumnSettters = new HashMap<>();
     for (String columnName : columnNames) {
       if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(idField)) {
         String methodName = databaseFieldToPojoSetter(columnName);
         for (Method method : clazz.getMethods()) {
           if (method.getName().equals(methodName)) {
-            externalColumnMethods.put(columnName, method);
+            externalColumnSettters.put(columnName, method);
           }
         }
       }
     }
-    return externalColumnMethods;
+    return externalColumnSettters;
   }
 
   /**
@@ -2147,12 +2146,12 @@ public class PostgresClient {
    * as well - also support the audit mode descrbed above.
    * NOTE: that the query must request any field it wants to get populated into the jsonb obj
    *
-   * @param externalColumnMethods
+   * @param externalColumnSettters
    * @param o
    * @param row
    */
-  private void populateExternalColumns(Map<String, Method> externalColumnMethods, Object o, JsonObject row) {
-    for (Map.Entry<String, Method> entry : externalColumnMethods.entrySet()) {
+  private void populateExternalColumns(Map<String, Method> externalColumnSettters, Object o, JsonObject row) {
+    for (Map.Entry<String, Method> entry : externalColumnSettters.entrySet()) {
       String columnName = entry.getKey();
       Method method = entry.getValue();
       try {
