@@ -1230,7 +1230,45 @@ public class PostgresClient {
     });
   }
 
-  private <T> void doGet(
+  private class QueryHelper {
+    final boolean transactionMode;
+    String table;
+    List<FacetField> facets;
+    String selectQuery;
+    String countQuery;
+    int offset;
+    public QueryHelper(boolean transactionMode, String table, List<FacetField> facets) {
+      this.transactionMode = transactionMode;
+      this.table = table;
+      this.facets = facets;
+      this.offset = 0;
+    }
+  }
+
+  private class TotaledResults {
+    final ResultSet set;
+    final int total;
+    public TotaledResults(ResultSet set, int total) {
+      this.set = set;
+      this.total = total;
+    }
+  }
+
+  /**
+   *
+   * @param connection
+   * @param transactionMode
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnCount
+   * @param returnIdField
+   * @param setId
+   * @param facets
+   * @param replyHandler
+   */
+  <T> void doGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
     String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler
@@ -1271,31 +1309,15 @@ public class PostgresClient {
     });
   }
 
-  private class QueryHelper {
-    final boolean transactionMode;
-    String table;
-    List<FacetField> facets;
-    String selectQuery;
-    String countQuery;
-    int offset;
-    public QueryHelper(boolean transactionMode, String table, List<FacetField> facets) {
-      this.transactionMode = transactionMode;
-      this.table = table;
-      this.facets = facets;
-      this.offset = 0;
-    }
-  }
-
-  private class TotaledResults {
-    final ResultSet set;
-    final int total;
-    public TotaledResults(ResultSet set, int total) {
-      this.set = set;
-      this.total = total;
-    }
-  }
-
-  private <T> void processQueryWithCount(
+  /**
+   *
+   * @param connection
+   * @param queryHelper
+   * @param statMethod
+   * @param resultSetMapper
+   * @param replyHandler
+   */
+  <T> void processQueryWithCount(
     SQLConnection connection, QueryHelper queryHelper, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) throws IOException, TemplateException {
@@ -1340,7 +1362,11 @@ public class PostgresClient {
     });
   }
 
-  private void prepareCountQuery(QueryHelper queryHelper) throws IOException, TemplateException {
+  /**
+   *
+   * @param queryHelper
+   */
+  void prepareCountQuery(QueryHelper queryHelper) throws IOException, TemplateException {
     String offsetClause = null;
 
     ParsedQuery parsedQuery = parseQuery(queryHelper.selectQuery);
@@ -1366,7 +1392,16 @@ public class PostgresClient {
     }
   }
 
-  private <T> void processQuery(
+  /**
+   *
+   * @param connection
+   * @param queryHelper
+   * @param total
+   * @param statMethod
+   * @param resultSetMapper
+   * @param replyHandler
+   */
+  <T> void processQuery(
     SQLConnection connection, QueryHelper queryHelper, Integer total, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) {
@@ -1959,6 +1994,23 @@ public class PostgresClient {
     join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
   }
 
+  private class ResultsHelper<T> {
+    final List<T> list;
+    final Map<String, org.folio.rest.jaxrs.model.Facet> facets;
+    final ResultSet resultSet;
+    final Class<T> clazz;
+    final boolean setId;
+    int total;
+    public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz, boolean setId) {
+      this.list = new ArrayList<>();
+      this.facets = new HashMap<>();
+      this.resultSet = resultSet;
+      this.clazz= clazz;
+      this.setId = setId;
+      this.total = total;
+    }
+  }
+
   /**
    * converts a result set into pojos - handles 3 types of queries:
    * 1. a regular query will return N rows, where each row contains Y columns. one of those columns is the jsonb
@@ -1981,7 +2033,7 @@ public class PostgresClient {
    * @param setId
    * @return
    */
-  private <T> Results<T> processResults(ResultSet rs, Integer total, Class<T> clazz, boolean setId) {
+  <T> Results<T> processResults(ResultSet rs, Integer total, Class<T> clazz, boolean setId) {
     long start = System.nanoTime();
 
     if (total == null) {
@@ -2005,28 +2057,11 @@ public class PostgresClient {
     return results;
   }
 
-  private class ResultsHelper<T> {
-    final List<T> list;
-    final Map<String, org.folio.rest.jaxrs.model.Facet> facets;
-    final ResultSet resultSet;
-    final Class<T> clazz;
-    final boolean setId;
-    int total;
-    public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz, boolean setId) {
-      this.list = new ArrayList<>();
-      this.facets = new HashMap<>();
-      this.resultSet = resultSet;
-      this.clazz= clazz;
-      this.setId = setId;
-      this.total = total;
-    }
-  }
-
   /**
    *
    * @param resultsHelper
    */
-  private <T> void deserializeResults(ResultsHelper<T> resultsHelper) {
+  <T> void deserializeResults(ResultsHelper<T> resultsHelper) {
 
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
@@ -2101,7 +2136,7 @@ public class PostgresClient {
    * @param clazz
    * @return
    */
-  private <T> boolean isAuditFlavored(Class<T> clazz) {
+  <T> boolean isAuditFlavored(Class<T> clazz) {
     boolean isAuditFlavored = false;
     try {
       clazz.getField(DEFAULT_JSONB_FIELD_NAME);
@@ -2123,7 +2158,7 @@ public class PostgresClient {
    * @param isAuditFlavored
    * @return
    */
-  private <T> Map<String, Method> getExternalColumnSetters(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
+  <T> Map<String, Method> getExternalColumnSetters(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
     Map<String, Method> externalColumnSettters = new HashMap<>();
     for (String columnName : columnNames) {
       if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(idField)) {
@@ -2150,7 +2185,7 @@ public class PostgresClient {
    * @param o
    * @param row
    */
-  private void populateExternalColumns(Map<String, Method> externalColumnSettters, Object o, JsonObject row) {
+  void populateExternalColumns(Map<String, Method> externalColumnSettters, Object o, JsonObject row) {
     for (Map.Entry<String, Method> entry : externalColumnSettters.entrySet()) {
       String columnName = entry.getKey();
       Method method = entry.getValue();
