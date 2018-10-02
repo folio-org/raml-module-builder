@@ -1317,7 +1317,7 @@ public class PostgresClient {
           StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
           log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
 
-          if(total > 0 && total > queryHelper.offset) {
+          if(total > queryHelper.offset) {
             processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
           } else {
             if (!queryHelper.transactionMode) {
