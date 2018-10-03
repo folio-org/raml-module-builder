@@ -54,6 +54,12 @@ public class PostgresClientIT {
   private Level oldLevel;
 
   @Before
+  public void doesNotCompleteOnWindows() {
+    final String os = System.getProperty("os.name").toLowerCase();
+    org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
+  }
+
+  @Before
   public void oldLevel() {
     oldLevel = LogManager.getRootLogger().getLevel();
   }
