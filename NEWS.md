@@ -1,3 +1,6 @@
+## 21.0.4 2018-10-04
+* RMB-266 Fix path parameters reversed when calling handler
+
 ## 21.0.3 2018-10-01
 * RMB-259 Windows compile failure - schema files
 
