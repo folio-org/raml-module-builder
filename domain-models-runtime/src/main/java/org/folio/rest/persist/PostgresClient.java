@@ -1285,7 +1285,7 @@ public class PostgresClient {
    * @param facets
    * @param replyHandler
    */
-  <T> void doGet(
+  private <T> void doGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
     String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler
@@ -2066,7 +2066,7 @@ public class PostgresClient {
     resultsHelper.facets.forEach((k , v) -> resultInfo.getFacets().add(v));
     resultInfo.setTotalRecords(resultsHelper.total);
 
-    Results<T> results = new Results();
+    Results<T> results = new Results<>();
     results.setResults(resultsHelper.list);
     results.setResultInfo(resultInfo);
 
@@ -3154,7 +3154,7 @@ public class PostgresClient {
 
    ParsedQuery pq = new ParsedQuery();
 
-   pq.setCountQuery(query.replaceFirst(COLUMN_CONTROL_REGEX, COUNT));
+   pq.setCountQuery(query.replaceFirst(COLUMN_CONTROL_REGEX, COUNT).trim());
 
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){

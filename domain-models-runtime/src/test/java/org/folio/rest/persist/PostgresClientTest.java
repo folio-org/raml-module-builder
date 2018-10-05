@@ -1,5 +1,12 @@
 package org.folio.rest.persist;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.either;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.junit.Assert.assertThat;
+
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -8,22 +15,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.either;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertThat;
-
+import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.ParsedQuery;
+import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.folio.rest.persist.interfaces.Results;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
 import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.SQLOperations;
+
+import freemarker.template.TemplateException;
 
 import net.sf.jsqlparser.JSQLParserException;
 
@@ -34,7 +46,7 @@ public class PostgresClientTest {
   private static final String isTrue = "AND \\\\(\\\\(\\\\(TRUE\\\\)\\\\)\\\\)";
 
   String []queries = new String[]{
-//"SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>\\'aaa\\'  ORDER BY items2_mt_view.jsonb' ORDER BY items_mt_view.jsonb->>'aaa limit' OFFSET 31 limit 10",
+  //"SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>\\'aaa\\'  ORDER BY items2_mt_view.jsonb' ORDER BY items_mt_view.jsonb->>'aaa limit' OFFSET 31 limit 10",
   "SELECT * FROM table WHERE items_mt_view.jsonb->>'title' LIKE '%12345%' ORDER BY items_mt_view.jsonb->>'title' DESC OFFSET 30 limit 10",
   "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb@>'{\"barcode\":4}' order by jsonb->'a'  asc",
   "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb @> '{\"barcode\":4}' limit 100 offset 0",
@@ -151,25 +163,25 @@ public class PostgresClientTest {
   public void testProcessResults() {
     PostgresClient testClient = PostgresClient.testClient();
 
-    int total = 5;
-    ResultSet rs = getMockResultSet(total);
+    int total = 15;
+    ResultSet rs = getMockTestPojoResultSet(total);
 
-    Results<TestPojo> results = testClient.processResults(rs, total, TestPojo.class, false);
+    List<TestPojo> results = testClient.processResults(rs, total, TestPojo.class, false).getResults();
 
-    assertThat(results.getResults().size(), is(total));
+    assertTestPojoResults(results, total);
   }
 
   @Test
   public void testDeserializeResults() {
     PostgresClient testClient = PostgresClient.testClient();
 
-    int total = 5;
-    ResultSet rs = getMockResultSet(total);
+    int total = 25;
+    ResultSet rs = getMockTestPojoResultSet(total);
     PostgresClient.ResultsHelper<TestPojo> resultsHelper = new PostgresClient.ResultsHelper<>(rs, total, TestPojo.class, false);
 
     testClient.deserializeResults(resultsHelper);
 
-    assertThat(resultsHelper.list.size(), is(total));
+    assertTestPojoResults(resultsHelper.list, total);
   }
 
   @Test
@@ -229,11 +241,167 @@ public class PostgresClientTest {
 
   @Test
   public void testDatabaseFieldToPojoSetter() {
-    String setterMethodName = PostgresClient.testClient().databaseFieldToPojoSetter("test_field");
+    PostgresClient testClient = PostgresClient.testClient();
+    String setterMethodName = testClient.databaseFieldToPojoSetter("test_field");
     assertThat(setterMethodName, is("setTestField"));
   }
 
-  private ResultSet getMockResultSet(int total) {
+  @Test
+  public void testProcessQueryWithCount() throws IOException, TemplateException {
+    PostgresClient testClient = PostgresClient.testClient();
+    QueryHelper queryHelper = new QueryHelper(false, "test_pojo", new ArrayList<FacetField>());
+    queryHelper.selectQuery = "SELECT * FROM test_pojo";
+
+    int total = 10;
+
+    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
+      @Override
+      public SQLOperations querySingle(String sql, Handler<AsyncResult<JsonArray>> handler) {
+        handler.handle(Future.succeededFuture(new JsonArray().add(total)));
+        return null;
+      }
+      @Override
+      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
+        ResultSet rs = getMockTestPojoResultSet(total);
+        handler.handle(Future.succeededFuture(rs));
+        return this;
+      }
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+
+    testClient.processQueryWithCount(connection, queryHelper, "get",
+      totaledResults -> {
+        assertThat(totaledResults.total, is(total));
+        return testClient.processResults(totaledResults.set, totaledResults.total, TestPojo.class, false);
+      },
+      reply -> {
+        List<TestPojo> results = reply.result().getResults();
+
+        assertTestPojoResults(results, total);
+      }
+    );
+
+  }
+
+  @Test
+  public void testPrepareCountQueryWithoutFacets() throws IOException, TemplateException {
+    PostgresClient testClient = PostgresClient.testClient();
+    QueryHelper queryHelper = new QueryHelper(false, "test_pojo", new ArrayList<FacetField>());
+    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_pojo LIMIT 10 OFFSET 1";
+    testClient.prepareCountQuery(queryHelper);
+
+    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_pojo"));
+  }
+
+  @Test
+  public void testPrepareCountQueryWithFacets() throws IOException, TemplateException {
+    PostgresClient testClient = PostgresClient.testClient();
+    List<FacetField> facets = new ArrayList<FacetField>() {{
+      add(new FacetField("jsonb->>'biz'"));
+    }};
+    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
+    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 10 OFFSET 1";
+    testClient.prepareCountQuery(queryHelper);
+
+    assertThat(queryHelper.selectQuery, is(
+      "with facets as (\n" +
+      "    SELECT id, foo, bar FROM test_jsonb_pojo  \n" +
+      "     LIMIT 10000 \n" +
+      " )\n" +
+      " ,\n" +
+      " count_on as (\n" +
+      "    SELECT\n" +
+      "      test_raml_module_builder.count_estimate_smart2(count(*) , 10000, 'SELECT COUNT(*) FROM test_jsonb_pojo') AS count\n" +
+      "    FROM facets\n" +
+      " )\n" +
+      " ,\n" +
+      " grouped_by as (\n" +
+      "    SELECT\n" +
+      "        jsonb->>'biz' as biz,\n" +
+      "      count(*) as count\n" +
+      "    FROM facets\n" +
+      "    GROUP BY GROUPING SETS (\n" +
+      "        biz    )\n" +
+      " )\n" +
+      " ,\n" +
+      "   lst1 as(\n" +
+      "     SELECT\n" +
+      "        jsonb_build_object(\n" +
+      "            'type' , 'biz',\n" +
+      "            'facetValues',\n" +
+      "            json_build_array(\n" +
+      "                jsonb_build_object(\n" +
+      "                'value', biz,\n" +
+      "                'count', count)\n" +
+      "            )\n" +
+      "        ) AS jsonb,\n" +
+      "        count as count\n" +
+      "    FROM grouped_by\n" +
+      "     where biz is not null\n" +
+      "     group by biz, count\n" +
+      "     order by count desc\n" +
+      "     )\n" +
+      ",\n" +
+      "ret_records as (\n" +
+      "       select _id as _id, jsonb  FROM facets\n" +
+      "       )\n" +
+      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as _id, jsonb FROM lst1 limit 5)\n" +
+      "  \n" +
+      "  UNION\n" +
+      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as _id,  jsonb_build_object('count' , count) FROM count_on)\n" +
+      "  UNION ALL\n" +
+      "  (select _id as _id, jsonb from ret_records  LIMIT 10  OFFSET 1);\n")
+    );
+    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_jsonb_pojo"));
+  }
+
+  @Test
+  public void testProcessQuery() {
+    PostgresClient testClient = PostgresClient.testClient();
+    List<FacetField> facets = new ArrayList<FacetField>() {{
+      add(new FacetField("jsonb->>'biz'"));
+    }};
+    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
+    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 30 OFFSET 1";
+
+    int total = 30;
+
+    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
+      @Override
+      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
+        ResultSet rs = getMockTestJsonbPojoResultSet(total);
+        handler.handle(Future.succeededFuture(rs));
+        return this;
+      }
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+
+    testClient.processQuery(connection, queryHelper, total, "get",
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      reply -> {
+        List<TestJsonbPojo> results = reply.result().getResults();
+
+        assertTestJsonbPojoResults(results, total);
+      }
+    );
+
+  }
+
+  private ResultSet getMockTestPojoResultSet(int total) {
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
     }));
@@ -257,16 +425,59 @@ public class PostgresClientTest {
     return new ResultSet(columnNames, list, null);
   }
 
-  static class TestJsonbPojo {
-    private JsonObject jsonb;
-    public TestJsonbPojo(JsonObject jsonb) {
-      this.jsonb = jsonb;
+  private void assertTestPojoResults(List<TestPojo> results, int total) {
+    assertThat(results.size(), is(total));
+
+    for(int i = 0; i < total; i++) {
+      assertThat(results.get(i).getFoo(), is("foo " + i));
+      assertThat(results.get(i).getBar(), is("bar " + i));
+      assertThat(results.get(i).getBiz(), is((double)i));
+      assertThat(results.get(i).getBaz().size(), is(4));
+      assertThat(results.get(i).getBaz().get(0), is("This"));
+      assertThat(results.get(i).getBaz().get(1), is("is"));
+      assertThat(results.get(i).getBaz().get(2), is("a"));
+      assertThat(results.get(i).getBaz().get(3), is("test"));
     }
-    public JsonObject getJsonb() {
-      return jsonb;
+  }
+
+  private ResultSet getMockTestJsonbPojoResultSet(int total) {
+    List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
+      "jsonb"
+    }));
+
+    List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
+      "This", "is", "a", "test"
+    }));
+
+    List<JsonArray> list = new ArrayList<JsonArray>();
+
+    for(int i = 0; i < total; i++) {
+      list.add(new JsonArray()
+        .add(new JsonObject()
+          .put("id", UUID.randomUUID().toString())
+          .put("foo", "foo " + i)
+          .put("bar", "bar " + i)
+          .put("biz", (double) i)
+          .put("baz", baz)
+        )
+      );
     }
-    public void setJsonb(JsonObject jsonb) {
-      this.jsonb = jsonb;
+
+    return new ResultSet(columnNames, list, null);
+  }
+
+  private void assertTestJsonbPojoResults(List<TestJsonbPojo> results, int total) {
+    assertThat(results.size(), is(total));
+
+    for(int i = 0; i < total; i++) {
+      assertThat(results.get(i).getJsonb().getString("foo"), is("foo " + i));
+      assertThat(results.get(i).getJsonb().getString("bar"), is("bar " + i));
+      assertThat(results.get(i).getJsonb().getDouble("biz"), is((double)i));
+      assertThat(results.get(i).getJsonb().getJsonArray("baz").size(), is(4));
+      assertThat(results.get(i).getJsonb().getJsonArray("baz").getString(0), is("This"));
+      assertThat(results.get(i).getJsonb().getJsonArray("baz").getString(1), is("is"));
+      assertThat(results.get(i).getJsonb().getJsonArray("baz").getString(2), is("a"));
+      assertThat(results.get(i).getJsonb().getJsonArray("baz").getString(3), is("test"));
     }
   }
 
@@ -318,6 +529,22 @@ public class PostgresClientTest {
     }
     public void setBaz(List<String> baz) {
       this.baz = baz;
+    }
+  }
+
+  static class TestJsonbPojo {
+    private JsonObject jsonb;
+    public TestJsonbPojo() {
+
+    }
+    public TestJsonbPojo(JsonObject jsonb) {
+      this.jsonb = jsonb;
+    }
+    public JsonObject getJsonb() {
+      return jsonb;
+    }
+    public void setJsonb(JsonObject jsonb) {
+      this.jsonb = jsonb;
     }
   }
 
