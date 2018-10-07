@@ -1326,6 +1326,15 @@ public class PostgresClient {
     });
   }
 
+  private class TotaledResults {
+    ResultSet set;
+    Integer total;
+    public TotaledResults(ResultSet set, Integer total) {
+      this.set = set;
+      this.total = total;
+    }
+  }
+
   /**
    *
    * @param connection
