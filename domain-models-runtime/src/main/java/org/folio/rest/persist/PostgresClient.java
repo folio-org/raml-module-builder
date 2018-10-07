@@ -1264,8 +1264,8 @@ public class PostgresClient {
 
   static class TotaledResults {
     final ResultSet set;
-    final int total;
-    public TotaledResults(ResultSet set, int total) {
+    final Integer total;
+    public TotaledResults(ResultSet set, Integer total) {
       this.set = set;
       this.total = total;
     }
