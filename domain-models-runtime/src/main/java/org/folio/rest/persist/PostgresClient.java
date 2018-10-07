@@ -1262,14 +1262,6 @@ public class PostgresClient {
     }
   }
 
-  static class TotaledResults {
-    final ResultSet set;
-    final Integer total;
-    public TotaledResults(ResultSet set, Integer total) {
-      this.set = set;
-      this.total = total;
-    }
-  }
 
   /**
    *
@@ -1324,6 +1316,15 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(e));
       }
     });
+  }
+  
+  private class TotaledResults {
+    ResultSet set;
+    Integer total;
+    public TotaledResults(ResultSet set, Integer total) {
+      this.set = set;
+      this.total = total;
+    }
   }
 
   /**

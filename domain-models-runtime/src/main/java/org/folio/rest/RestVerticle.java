@@ -1224,7 +1224,7 @@ public class RestVerticle extends AbstractVerticle {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
-    int []pathParamsIndex = new int[] { pathParams.length };
+    int []pathParamsIndex = new int[] { 0 };
 
     paramList.forEachRemaining(entry -> {
       if (validRequest[0]) {
@@ -1341,8 +1341,7 @@ public class RestVerticle extends AbstractVerticle {
         } else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
           // these are placeholder values in the path - for example
           // /patrons/{patronid} - this would be the patronid value
-          paramArray[order] = pathParams[pathParamsIndex[0] - 1];
-          pathParamsIndex[0] = pathParamsIndex[0] - 1;
+          paramArray[order] = pathParams[pathParamsIndex[0]++];
         } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
           String param = queryParams.get(valueName);
           // support enum, numbers or strings as query parameters
