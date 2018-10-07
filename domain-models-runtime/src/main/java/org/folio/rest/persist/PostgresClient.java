@@ -1264,8 +1264,8 @@ public class PostgresClient {
 
   static class TotaledResults {
     final ResultSet set;
-    final int total;
-    public TotaledResults(ResultSet set, int total) {
+    final Integer total;
+    public TotaledResults(ResultSet set, Integer total) {
       this.set = set;
       this.total = total;
     }
@@ -1285,7 +1285,7 @@ public class PostgresClient {
    * @param facets
    * @param replyHandler
    */
-  <T> void doGet(
+  private <T> void doGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
     String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler
