@@ -976,4 +976,5 @@ public class PostgresClientIT {
   public void executeListTransNull(TestContext context) throws Exception {
     postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
+
 }
