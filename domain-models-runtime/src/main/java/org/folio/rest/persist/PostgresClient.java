@@ -1249,8 +1249,8 @@ public class PostgresClient {
 
   static class QueryHelper {
     final boolean transactionMode;
-    String table;
-    List<FacetField> facets;
+    final String table;
+    final List<FacetField> facets;
     String selectQuery;
     String countQuery;
     int offset;
@@ -1264,8 +1264,8 @@ public class PostgresClient {
 
   static class TotaledResults {
     final ResultSet set;
-    final int total;
-    public TotaledResults(ResultSet set, int total) {
+    final Integer total;
+    public TotaledResults(ResultSet set, Integer total) {
       this.set = set;
       this.total = total;
     }
