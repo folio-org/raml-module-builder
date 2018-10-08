@@ -92,7 +92,7 @@ public class GenerateRunnerTest {
         containsString("String getModule("),
         containsString("setModule(String"),
         containsString("withModule(String")));
-    assertThat(msgsSchema(), containsString("\"value\""));
+    assertThat(msgsSchema(), containsString("\"messages\""));
   }
 
   private void assertElementAnnotations() throws IOException {
