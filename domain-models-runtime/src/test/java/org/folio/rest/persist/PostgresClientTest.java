@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,8 +17,6 @@ import java.util.UUID;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.ParsedQuery;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
-import org.folio.rest.persist.interfaces.Results;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,7 +24,6 @@ import org.junit.Test;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
@@ -310,7 +306,7 @@ public class PostgresClientTest {
     queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 10 OFFSET 1";
     testClient.prepareCountQuery(queryHelper);
 
-    assertThat(queryHelper.selectQuery, is(
+    assertThat(queryHelper.selectQuery.replace("\r\n", "\n"), is(
       "with facets as (\n" +
       "    SELECT id, foo, bar FROM test_jsonb_pojo  \n" +
       "     LIMIT 10000 \n" +
