@@ -1,3 +1,35 @@
+## 22.0.0 2018-10-13
+ * RMB-272 Update cql2pg-json to version 3.0.0:
+   * CQLPG-63 Drop field name to full field path resolution. This is a breaking change,
+     using the unambiguous suffix "email" no longer resolves to "personal.email".
+   * CQLPG-61 Equals empty is not same as equals star. Matching "*" means all records,
+     matching "" means all records where that field is defined. This is a breaking change.
+   * CQLPG-58 Performance: Convert id searches using '=' or '==' into primary key _id searches.
+     This is a breaking change because it restricts the operators allowed for id and assumes
+     that id is a UUID.
+ * RMB-271 Also accept windows \r\n line endings in unit test.
+ * RMB-256 Unit tests for PostgresClient.doGet.
+ * RMB-257 Unit tests for PostgresClient.processResult.
+ * RMB-289 private class TotaledResults: total needs to be Integer to afford null.
+ * RMB-268 Remove finished MD creation code.
+ * RMB-261 Skip all tests in PostgresClientIT on Windows.
+ * RMB-262 Disable warning "Overriding managed version 3.5.1 for
+   vertx-mysql-postgresql-client.
+ * RMB-243 Add PostgresClient.execute(...) with SQL placeholders/parameters.
+ * RMB-258 Drop IOException of ResourceUtils.resource2String.
+ * RMB-230, RMB-254 PostgresClient: init moduleName, add getTenantId() and getSchemaName().
+
+## 21.0.4 2018-10-04
+ * RMB-266 Fix path parameters reversed when calling handler
+
+## 21.0.3 2018-10-01
+ * RMB-259 Windows compile failure - schema files.
+
+## 21.0.2 2018-09-28
+ * RMB-251 Add tests for missign query returns 500 Internal Error.
+ * RMB-250 Fix fulltext search: stop words, trailing space and *.
+ * RMB-249 Default to the 'simple' directory for fulltext searches.
+
 ## 21.0.1 2018-09-07
 * RMB-245 Fix Invalid path for client generator
 
