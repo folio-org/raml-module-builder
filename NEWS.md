@@ -1,3 +1,6 @@
+## 22.0.1 2018-10-14
+ * RMB-273 CQL2PG v3.0.1: Fix validating of array field names.
+
 ## 22.0.0 2018-10-13
  * RMB-272 Update cql2pg-json to version 3.0.0:
    * CQLPG-63 Drop field name to full field path resolution. This is a breaking change,
