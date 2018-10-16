@@ -1425,7 +1425,9 @@ public class PostgresClient {
 
             String idPropName = databaseFieldToPojoSetter(idField);
 
-            sqlRowStream.handler(r -> {
+            sqlRowStream.resultSetClosedHandler(v -> {
+              sqlRowStream.moreResults();
+            }).handler(r -> {
               JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
               try {
                 streamHandler.handle((T) deserializeRow(resultsHelper, externalColumnSettters, isAuditFlavored, idPropName, row));
