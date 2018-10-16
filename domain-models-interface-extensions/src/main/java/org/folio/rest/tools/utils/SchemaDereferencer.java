@@ -12,6 +12,8 @@ import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class SchemaDereferencer {
 
@@ -56,7 +58,12 @@ public class SchemaDereferencer {
     String file = jsonObject.getString("$ref");
     if (file != null && !hasUriScheme(file)) {
       Path nPath = path.resolveSibling(file);
-      jsonObject.put("$ref", "file:" + nPath.toAbsolutePath().normalize());
+      try {
+      URI u = new URI("file", nPath.toAbsolutePath().normalize().toString(), null);
+      jsonObject.put("$ref", u.toString());
+      } catch (URISyntaxException ex) {
+        throw new IOException(ex.getLocalizedMessage());
+      }
     }
   }
 }
