@@ -528,6 +528,9 @@ public class PostgresClient {
   /**
    * Log postgreSQLClientConfig.
    */
+  @SuppressWarnings("squid:S2068")  // Suppress "Credentials should not be hard-coded"
+                                    // "'password' detected in this expression".
+                                    // False positive: Password is configurable, here we remove it from the log.
   private void logPostgresConfig() {
     if (! log.isInfoEnabled()) {
       return;
