@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -58,6 +59,7 @@ import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
 import de.flapdoodle.embed.process.store.NonCachedPostgresArtifactStoreBuilder;
 import freemarker.template.TemplateException;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -68,9 +70,11 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.streams.ReadStream;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.SQLRowStream;
 import io.vertx.ext.sql.UpdateResult;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -1293,20 +1297,7 @@ public class PostgresClient {
 
     vertx.runOnContext(v -> {
       try {
-        String addIdField = "";
-        if (returnIdField) {
-          addIdField = COMMA + idField;
-        }
-
-        if (!"null".equals(fieldName) && fieldName.contains("*")) {
-          // if we are requesting all fields (*) , then dont add the id field to the select
-          // this will return two id columns which will create ambiguity in facet queries
-          addIdField = "";
-        }
-
-        QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
-
-        queryHelper.selectQuery = SELECT + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
+        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets);
 
         if (returnCount) {
           processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
@@ -1324,6 +1315,131 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(e));
       }
     });
+  }
+
+  public <T> void streamGet(
+    String table, Class<T> clazz, String fieldName, String where,
+    boolean returnIdField, boolean setId, List<FacetField> facets,
+    Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+  ) {
+    client.getConnection(res -> {
+      if (res.succeeded()) {
+        SQLConnection connection = res.result();
+        doStreamGet(connection, false, table, clazz, fieldName, where, returnIdField, setId, facets, streamHandler, replyHandler);
+      }
+      else{
+        replyHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+  }
+
+  /**
+   *
+   * @param connection
+   * @param transactionMode
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnIdField
+   * @param setId
+   * @param facets
+   * @param streamHandler
+   * @param replyHandler
+   */
+  private <T> void doStreamGet(
+    SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
+    String fieldName, String where, boolean returnIdField, boolean setId, List<FacetField> facets,
+    Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+  ) {
+
+    vertx.runOnContext(v1 -> {
+      try {
+        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets);
+
+        connection.queryStream(queryHelper.selectQuery, stream -> {
+          if (stream.succeeded()) {
+
+            SQLRowStream sqlRowStream = stream.result();
+
+            ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz, setId);
+
+            boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
+
+            Map<String, Method> externalColumnSettters = getExternalColumnSetters(
+              resultsHelper.columnNames,
+              resultsHelper.clazz,
+              isAuditFlavored
+            );
+
+            String idPropName = databaseFieldToPojoSetter(idField);
+
+            sqlRowStream.handler(r -> {
+              JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
+              try {
+                streamHandler.handle((T) deserializeRow(resultsHelper, externalColumnSettters, isAuditFlavored, idPropName, row));
+              } catch (Exception e) {
+                sqlRowStream.close();
+                if (!transactionMode) {
+                  connection.close();
+                }
+                log.error(e.getMessage(), e);
+                replyHandler.handle(Future.failedFuture(e));
+              }
+            }).endHandler(v2 -> {
+              if (!transactionMode) {
+                connection.close();
+              }
+              replyHandler.handle(Future.succeededFuture("Success"));
+            });
+
+          } else {
+            if (!transactionMode) {
+              connection.close();
+            }
+            log.error(stream.cause().getMessage(), stream.cause());
+            replyHandler.handle(Future.failedFuture(stream.cause()));
+          }
+        });
+
+      } catch (Exception e) {
+        if (!transactionMode) {
+          connection.close();
+        }
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
+      }
+    });
+  }
+
+  private JsonObject convertRowStreamArrayToObject(SQLRowStream sqlRowStream, JsonArray rowAsArray) {
+    Map<String, Object> rowMap = new HashMap<>();
+    for(String colName : sqlRowStream.columns()) {
+      rowMap.put(colName, rowAsArray.getValue(sqlRowStream.column(colName)));
+    }
+    return new JsonObject(rowMap);
+  }
+
+  QueryHelper buildSelectQueryHelper(
+    boolean transactionMode, String table, String fieldName,
+    String where, boolean returnIdField, List<FacetField> facets
+  ) {
+    String addIdField = "";
+    if (returnIdField) {
+      addIdField = COMMA + idField;
+    }
+
+    if (!"null".equals(fieldName) && fieldName.contains("*")) {
+      // if we are requesting all fields (*) , then dont add the id field to the select
+      // this will return two id columns which will create ambiguity in facet queries
+      addIdField = "";
+    }
+
+    QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
+
+    queryHelper.selectQuery = SELECT + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
+
+    return queryHelper;
   }
 
   /**
@@ -2015,6 +2131,7 @@ public class PostgresClient {
     final List<T> list;
     final Map<String, org.folio.rest.jaxrs.model.Facet> facets;
     final ResultSet resultSet;
+    final List<String> columnNames;
     final Class<T> clazz;
     final boolean setId;
     int total;
@@ -2022,9 +2139,18 @@ public class PostgresClient {
       this.list = new ArrayList<>();
       this.facets = new HashMap<>();
       this.resultSet = resultSet;
+      this.columnNames = resultSet.getColumnNames();
       this.clazz= clazz;
       this.setId = setId;
       this.total = total;
+    }
+    public ResultsHelper(SQLRowStream sqlRowStream, Class<T> clazz, boolean setId) {
+      this.list = new ArrayList<>();
+      this.facets = new HashMap<>();
+      this.resultSet = null;
+      this.columnNames = sqlRowStream.columns();
+      this.clazz= clazz;
+      this.setId = setId;
     }
   }
 
@@ -2083,7 +2209,7 @@ public class PostgresClient {
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
     Map<String, Method> externalColumnSettters = getExternalColumnSetters(
-      resultsHelper.resultSet.getColumnNames(),
+      resultsHelper.columnNames,
       resultsHelper.clazz,
       isAuditFlavored
     );
@@ -2092,53 +2218,69 @@ public class PostgresClient {
 
     for(JsonObject row : resultsHelper.resultSet.getRows()) {
       try {
-        Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
-        Object id = row.getValue(idField);
-
-        Object o = null;
-
-        if (!isAuditFlavored && jo != null) {
-          boolean finished = false;
-          try {
-            // is this a facet entry - if so process it, otherwise will throw an exception
-            // and continue trying to map to the pojos
-            o =  mapper.readValue(jo.toString(), org.folio.rest.jaxrs.model.Facet.class);
-            org.folio.rest.jaxrs.model.Facet of = (org.folio.rest.jaxrs.model.Facet) o;
-            org.folio.rest.jaxrs.model.Facet facet = resultsHelper.facets.get(of.getType());
-            if (facet == null) {
-              resultsHelper.facets.put(of.getType(), of);
-            } else {
-              facet.getFacetValues().add(of.getFacetValues().get(0));
-            }
-            finished = true;
-          } catch (Exception e) {
-            try {
-              o = mapper.readValue(jo.toString(), resultsHelper.clazz);
-            } catch (UnrecognizedPropertyException upe) {
-              // this is a facet query , and this is the count entry {"count": 11}
-              resultsHelper.total = new JsonObject(row.getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
-              finished = true;
-            }
-          }
-          if (finished) {
-            continue;
-          }
-        } else {
-          o = resultsHelper.clazz.newInstance();
-        }
-
-        populateExternalColumns(externalColumnSettters, o, row);
-
-        if (resultsHelper.setId) {
-          o.getClass().getMethod(idPropName, String.class).invoke(o, id.toString());
-        }
-
-        resultsHelper.list.add((T) o);
+        resultsHelper.list.add((T) deserializeRow(resultsHelper, externalColumnSettters, isAuditFlavored, idPropName, row));
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         resultsHelper.list.add(null);
       }
     }
+  }
+
+  /**
+   *
+   * @param resultsHelper
+   * @param externalColumnSettters
+   * @param isAuditFlavored
+   * @param idPropName
+   * @param row
+   */
+  <T> Object deserializeRow(
+    ResultsHelper<T> resultsHelper, Map<String, Method> externalColumnSettters,
+    boolean isAuditFlavored, String idPropName, JsonObject row
+  ) throws IOException, InstantiationException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+
+    Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
+    Object id = row.getValue(idField);
+
+    Object o = null;
+
+    if (!isAuditFlavored && jo != null) {
+      boolean finished = false;
+      try {
+        // is this a facet entry - if so process it, otherwise will throw an exception
+        // and continue trying to map to the pojos
+        o =  mapper.readValue(jo.toString(), org.folio.rest.jaxrs.model.Facet.class);
+        org.folio.rest.jaxrs.model.Facet of = (org.folio.rest.jaxrs.model.Facet) o;
+        org.folio.rest.jaxrs.model.Facet facet = resultsHelper.facets.get(of.getType());
+        if (facet == null) {
+          resultsHelper.facets.put(of.getType(), of);
+        } else {
+          facet.getFacetValues().add(of.getFacetValues().get(0));
+        }
+        finished = true;
+      } catch (Exception e) {
+        try {
+          o = mapper.readValue(jo.toString(), resultsHelper.clazz);
+        } catch (UnrecognizedPropertyException upe) {
+          // this is a facet query , and this is the count entry {"count": 11}
+          resultsHelper.total = new JsonObject(row.getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
+          finished = true;
+        }
+      }
+      if (finished) {
+        return o;
+      }
+    } else {
+      o = resultsHelper.clazz.newInstance();
+    }
+
+    populateExternalColumns(externalColumnSettters, o, row);
+
+    if (resultsHelper.setId) {
+      o.getClass().getMethod(idPropName, String.class).invoke(o, id.toString());
+    }
+
+    return o;
   }
 
   /**
