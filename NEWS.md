@@ -1,3 +1,7 @@
+## 22.1.0 2018-10-16
+ * RMB-265 Allow recursion in JSON schema references (loops).
+ * RMB-274 Implement PostgresClient::save(sqlConnection, table, id, entity, replyHandler).
+
 ## 22.0.1 2018-10-14
  * RMB-273 CQL2PG v3.0.1: Fix validating of array field names.
 

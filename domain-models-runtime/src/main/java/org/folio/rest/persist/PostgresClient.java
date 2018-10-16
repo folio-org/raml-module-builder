@@ -221,7 +221,7 @@ public class PostgresClient {
    * @param endNanoTime  end time in nanoseconds
    */
   private void logTimer(String description, String sql, long startNanoTime, long endNanoTime) {
-    log.debug(description + " timer: " + sql + " took " + ((endNanoTime - startNanoTime) / 1000000) + " s");
+    log.debug(description + " timer: " + sql + " took " + ((endNanoTime - startNanoTime) / 1000000) + " ms");
   }
 
   /**
@@ -238,6 +238,14 @@ public class PostgresClient {
     }
   }
 
+  /**
+   * Set the name of the primary key field. Default is "_id".
+   *
+   * <p>Danger: getInstance(Vertx vertx) and getInstance(Vertx vertx, String tenantId) may
+   * cache PostgresClient instances. This includes the name set for the id field.
+   *
+   * @param id  the new name
+   */
   public void setIdField(String id){
     idField = id;
     Map<String, String> replaceMapping = new HashMap<>();
@@ -571,7 +579,9 @@ public class PostgresClient {
    * within the transaction.
    *
    * <p>To close the open connection invoke the END or ROLLBACK
-   * function.
+   * function. Note that after a failing operation (for example some UPDATE)
+   * both the connection and the transaction remain open to let the caller
+   * decide what to do.
    *
    * @see #endTx(Object, Handler)
    * @see #rollbackTx(Future, Handler)
@@ -763,6 +773,14 @@ public class PostgresClient {
     save(table, id, entity, returnId, upsert, true, replyHandler);
   }
 
+  /**
+   * Save entity in table. Use the transaction of sqlConnection. Return the created id via the replyHandler;
+   * this is only the same as the id in the entity if some database trigger syncs them.
+   * @param sqlConnection  connection with transaction
+   * @param table  where to insert the entity record
+   * @param entity  the record to insert
+   * @param replyHandler  where to report success status and the created id
+   */
   public void save(AsyncResult<SQLConnection> sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
     long start = System.nanoTime();
 
@@ -783,9 +801,43 @@ public class PostgresClient {
           statsTracker(SAVE_STAT_METHOD, table, start);
         });
     } catch (Exception e) {
-      if(connection != null){
-        connection.close();
-      }
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Save entity in table. Use the transaction of sqlConnection. Return the id of the id field (primary key)
+   * via the replyHandler. If id (primary key) and the id of entity (jsonb field) are different you may need
+   * a trigger in the database to sync them.
+   * @param sqlConnection  connection with transaction
+   * @param table  where to insert the entity record
+   * @param id  the value for the id field (primary key); may be different from the id in entity (= in the jsonb field)
+   * @param entity  the record to insert
+   * @param replyHandler  where to report success status and the final id of the id field
+   */
+  public void save(AsyncResult<SQLConnection> sqlConnection, String table, String id, Object entity,
+      Handler<AsyncResult<String>> replyHandler) {
+
+    long start = System.nanoTime();
+
+    log.debug("save (with connection and id) called on " + table);
+    SQLConnection connection = null;
+    try {
+      // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
+      connection = sqlConnection.result();
+      String pojo = pojo2json(entity);
+      connection.queryWithParams(INSERT_CLAUSE + schemaName + DOT + table +
+        " (" + idField + ", " + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?, ?::JSON) RETURNING " + idField,
+        new JsonArray().add(id).add(pojo), query -> {
+          if (query.failed()) {
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
+          }
+          statsTracker(SAVE_STAT_METHOD, table, start);
+        });
+    } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
@@ -1492,7 +1544,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(e));
       }
     });
-  }
+}
 
   /**
    *
