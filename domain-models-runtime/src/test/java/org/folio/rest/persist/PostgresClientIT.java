@@ -1,5 +1,9 @@
 package org.folio.rest.persist;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import static org.junit.Assert.assertThat;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -9,6 +13,7 @@ import java.util.UUID;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
+import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.tools.utils.LogUtil;
@@ -44,6 +49,8 @@ public class PostgresClientIT {
   /** table name */
   static private final String FOO = "foo";
   /** table name */
+  static private final String BAR = "bar";
+  /** table name */
   static private final String INVALID_JSON = "invalid_json";
   static private final String INVALID_JSON_UUID = "49999999-4999-4999-8999-899999999999";
   static private Vertx vertx;
@@ -53,7 +60,7 @@ public class PostgresClientIT {
   private PrintStream oldStdErr = null;
   private Level oldLevel;
 
-  @Before
+  //@Before
   public void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
@@ -273,6 +280,14 @@ public class PostgresClientIT {
         "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL");
   }
 
+  /** bar's primary key is "id" without underscore */
+  private PostgresClient createBarIdHasNoUnderscore(TestContext context) {
+    PostgresClient postgresClient = createTable(context, "bartenant", "bar",
+        "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL");
+    postgresClient.setIdField("id");
+    return postgresClient;
+  }
+
   private PostgresClient createInvalidJson(TestContext context) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     PostgresClient postgresClient = createTable(context, TENANT, INVALID_JSON,
@@ -462,6 +477,107 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveTrans(TestContext context) {
+    Async async = context.async();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.startTx(trans -> {
+      assertSuccess(context, trans);
+      postgresClient.save(trans, FOO, xPojo, res -> {
+        assertSuccess(context, res);
+        String id = res.result();
+        Criterion filter = new Criterion(new Criteria().addField("_id").setJSONB(false)
+            .setOperation("=").setValue("'" + id  + "'"));
+        postgresClient.get(trans, FOO, StringPojo.class, filter, false, false, reply -> {
+          assertSuccess(context, reply);
+          context.assertEquals(1, reply.result().getResults().size());
+          context.assertEquals("x", reply.result().getResults().get(0).key);
+          postgresClient.rollbackTx(trans, rollback -> {
+            assertSuccess(context, rollback);
+            postgresClient.get(FOO, StringPojo.class, filter, false, false, reply2 -> {
+              context.assertEquals(0, reply2.result().getResults().size());
+              async.complete();
+            });
+          });
+        });
+      });
+    });
+  }
+
+  @Test
+  public void saveTransId(TestContext context) {
+    Async async = context.async();
+    String id = randomUuid();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.startTx(trans -> {
+      assertSuccess(context, trans);
+      postgresClient.save(trans, FOO, id, xPojo, res -> {
+        assertSuccess(context, res);
+        context.assertEquals(id, res.result());
+        Criterion filter = new Criterion(new Criteria().addField("_id").setJSONB(false)
+            .setOperation("=").setValue("'" + id  + "'"));
+        postgresClient.get(trans, FOO, StringPojo.class, filter, false, false, reply -> {
+          assertSuccess(context, reply);
+          context.assertEquals(1, reply.result().getResults().size());
+          context.assertEquals("x", reply.result().getResults().get(0).key);
+          postgresClient.rollbackTx(trans, rollback -> {
+            assertSuccess(context, rollback);
+            postgresClient.get(FOO, StringPojo.class, filter, false, false, reply2 -> {
+              context.assertEquals(0, reply2.result().getResults().size());
+              async.complete();
+            });
+          });
+        });
+      });
+    });
+  }
+
+  @Test
+  public void saveTransSyntaxError(TestContext context) {
+    Async async = context.async();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.startTx(trans -> {
+      assertSuccess(context, trans);
+      postgresClient.save(trans, "'", xPojo, res -> {
+        context.assertTrue(res.failed());
+        postgresClient.endTx(trans, done -> {
+          async.complete();
+        });
+      });
+    });
+  }
+
+  @Test
+  public void saveTransIdSyntaxError(TestContext context) {
+    Async async = context.async();
+    String id = randomUuid();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.startTx(trans -> {
+      assertSuccess(context, trans);
+      postgresClient.save(trans, "'", id, xPojo, res -> {
+        context.assertTrue(res.failed());
+        postgresClient.endTx(trans, done -> {
+          async.complete();
+        });
+      });
+    });
+  }
+
+  @Test
+  public void saveTransNull(TestContext context) {
+    PostgresClient postgresClient = createFoo(context);
+    AsyncResult<SQLConnection> trans = null;
+    postgresClient.save(trans, FOO, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveTransIdNull(TestContext context) {
+    String id = randomUuid();
+    PostgresClient postgresClient = createFoo(context);
+    AsyncResult<SQLConnection> trans = null;
+    postgresClient.save(trans, FOO, id, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
   public void saveBatchEmpty(TestContext context) {
     Async async = context.async();
     List<Object> list = Collections.emptyList();
@@ -477,6 +593,42 @@ public class PostgresClientIT {
   public void saveBatchSingleQuote(TestContext context) {
     List<Object> list = Collections.singletonList(singleQuotePojo);
     createFoo(context).saveBatch(FOO, list, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void getByIdUsingSqlPrimaryKey(TestContext context) {
+    Async async = context.async();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.save(FOO, xPojo, context.asyncAssertSuccess(id -> {
+      String sql = "WHERE _id='" + id + "'";
+      postgresClient.get(FOO, StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
+        try {
+          assertThat(results.getResults(), hasSize(1));
+          assertThat(results.getResults().get(0).key, is("x"));
+          async.complete();
+        } catch (Exception e) {
+          context.fail(e);
+        }
+      }));
+    }));
+  }
+
+  @Test
+  public void getByIdUsingSqlPrimaryKeyWithoutUnderscore(TestContext context) {
+    Async async = context.async();
+    PostgresClient postgresClient = createBarIdHasNoUnderscore(context);
+    postgresClient.save("bar", xPojo, context.asyncAssertSuccess(id -> {
+      String sql = "WHERE id='" + id + "'";
+      postgresClient.get("bar", StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
+        try {
+          assertThat(results.getResults(), hasSize(1));
+          assertThat(results.getResults().get(0).key, is("x"));
+          async.complete();
+        } catch (Exception e) {
+          context.fail(e);
+        }
+      }));
+    }));
   }
 
   @Test
