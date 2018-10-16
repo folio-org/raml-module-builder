@@ -60,7 +60,7 @@ public class PostgresClientIT {
   private PrintStream oldStdErr = null;
   private Level oldLevel;
 
-  //@Before
+  @Before
   public void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
