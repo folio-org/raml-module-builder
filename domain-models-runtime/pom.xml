@@ -420,6 +420,21 @@
               </target>
             </configuration>
           </execution>
+          <!-- Replace the baseUri and the protocols in the RAMLs that have been copied to
+          apidocs directory so that they can be used via the local html api console. -->
+          <execution>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <replaceregexp match="baseUri:.+$" replace="baseUri: http://localhost:{http.port}" byline="true">
+                  <fileset dir="${basedir}/target/classes/apidocs/raml" includes="**/*.raml"/>
+                </replaceregexp>
+              </target>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 
