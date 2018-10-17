@@ -420,7 +420,7 @@
               </target>
             </configuration>
           </execution>
-          <!-- Replace the baseUri and the protocols in the RAMLs that have been copied to
+          <!-- Replace the baseUri in the RAMLs that have been copied to
           apidocs directory so that they can be used via the local html api console. -->
           <execution>
             <phase>prepare-package</phase>
