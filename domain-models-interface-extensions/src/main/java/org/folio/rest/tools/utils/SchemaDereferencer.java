@@ -59,8 +59,8 @@ public class SchemaDereferencer {
     if (file != null && !hasUriScheme(file)) {
       Path nPath = path.resolveSibling(file);
       try {
-      URI u = new URI("file", nPath.toAbsolutePath().normalize().toString(), null);
-      jsonObject.put("$ref", u.toString());
+        URI u = new URI("file", nPath.toAbsolutePath().normalize().toString(), null);
+        jsonObject.put("$ref", u.toString());
       } catch (URISyntaxException ex) {
         throw new IOException(ex.getLocalizedMessage());
       }
