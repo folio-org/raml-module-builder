@@ -145,7 +145,9 @@ public class PostgresClient {
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
   private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
+
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
+
   private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
   private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
@@ -1369,6 +1371,13 @@ public class PostgresClient {
   }
 
   public <T> void streamGet(
+    String table, Class<T> clazz, String fieldName, String where, boolean returnIdField,
+    boolean setId, Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+  ) {
+    streamGet(table, clazz, fieldName, where, returnIdField, setId, null,  streamHandler, replyHandler);
+  }
+
+  public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where,
     boolean returnIdField, boolean setId, List<FacetField> facets,
     Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
@@ -1441,7 +1450,7 @@ public class PostgresClient {
               if (!transactionMode) {
                 connection.close();
               }
-              replyHandler.handle(Future.succeededFuture("Success"));
+              replyHandler.handle(Future.succeededFuture());
             });
 
           } else {
