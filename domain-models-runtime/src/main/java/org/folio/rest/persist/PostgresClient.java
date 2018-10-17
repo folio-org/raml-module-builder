@@ -1527,30 +1527,26 @@ public class PostgresClient {
         if (countQuery.failed()) {
           log.error(countQuery.cause().getMessage(), countQuery.cause());
           replyHandler.handle(Future.failedFuture(countQuery.cause()));
-        } else {
-
-          int total = countQuery.result().getInteger(0);
-
-          long countQueryTime = (System.nanoTime() - start);
-          StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
-          log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
-
-          if(total > queryHelper.offset) {
-            processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
-          } else {
-            if (!queryHelper.transactionMode) {
-              connection.close();
-            }
-            try {
-              log.info("Skipping query due to no results expected! " + queryHelper.selectQuery);
-              ResultSet emptyResultSet = new ResultSet(Collections.singletonList(idField), Collections.emptyList(), null);
-              replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
-            } catch (Exception e) {
-              log.error(e.getMessage(), e);
-              replyHandler.handle(Future.failedFuture(e));
-            }
-          }
+          return;
         }
+
+        int total = countQuery.result().getInteger(0);
+
+        long countQueryTime = (System.nanoTime() - start);
+        StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
+        log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
+
+        if (total <= queryHelper.offset) {
+          if (!queryHelper.transactionMode) {
+            connection.close();
+          }
+          log.info("Skipping query due to no results expected! " + queryHelper.selectQuery);
+          ResultSet emptyResultSet = new ResultSet(Collections.singletonList(idField), Collections.emptyList(), null);
+          replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
+          return;
+        }
+
+        processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
