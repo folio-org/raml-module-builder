@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>22.1.1-SNAPSHOT</version>
+    <version>23.0.1-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -430,7 +430,7 @@
             <configuration>
               <target>
                 <replaceregexp match="baseUri:.+$" replace="baseUri: http://localhost:{http.port}" byline="true">
-                  <fileset dir="${basedir}/target/classes/apidocs/raml" includes="**/*.raml"/>
+                  <fileset dir="${basedir}/target/classes/apidocs/raml" includes="**/*.raml" />
                 </replaceregexp>
               </target>
             </configuration>
