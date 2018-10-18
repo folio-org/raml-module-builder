@@ -1,3 +1,11 @@
+## 23.0.0 2018-10-18
+ * RMB-284 id="foo\*" search results in QueryValidationException: CQL: Invalid UUID foo\*.
+ * RMB-18 The "local apidocs" for "admin" and "jobs" has extra "/v1/" in path.
+ * RMB-275 Windows backslash: Illegal character in opaque part at index 7: file:C:\Users\...
+ * RMB-279 Fix false positive password vulnerability warning (sonarqube/sonarlint).
+ * RMB-280 Provide a POM snippet to configure local apidocs.
+ * RMB-255 Add streaming support to RMB.
+
 ## 22.1.0 2018-10-16
  * RMB-265 Allow recursion in JSON schema references (loops).
  * RMB-274 Implement PostgresClient::save(sqlConnection, table, id, entity, replyHandler).
