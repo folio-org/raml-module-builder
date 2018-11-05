@@ -282,7 +282,7 @@ public class RestVerticle extends AbstractVerticle {
         //if client includes an Accept-Encoding header which includes
         //the supported compressions - deflate or gzip.
         HttpServerOptions serverOptions = new HttpServerOptions();
-        serverOptions.setCompressionSupported(false);
+        serverOptions.setCompressionSupported(true);
 
         HttpServer server = vertx.createHttpServer(serverOptions);
         server.requestHandler(router::accept)
