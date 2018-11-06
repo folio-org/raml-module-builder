@@ -883,7 +883,7 @@ The file contains an array of tables and views to create for a tenant on registr
 
 An example can be found here:
 
- - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example
+ - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example.json
 
 Entries in the json file to be aware of:
 
