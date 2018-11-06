@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "_id": {
-      "description": "id",
+      "description": "primary identifier",
       "type": "string"
     },
     "bulk_id": {
