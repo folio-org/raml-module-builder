@@ -8,9 +8,11 @@
       "type": "object",
       "properties": {
         "key": {
+          "description": "key",
           "type": "string"
         },
         "value": {
+          "description": "value",
           "type": "string"
         }
       }

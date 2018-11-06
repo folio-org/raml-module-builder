@@ -5,38 +5,49 @@
   "type": "object",
   "properties": {
     "_id": {
+      "description": "identifier",
       "type": "string"
     },
     "module": {
+      "description": "module",
       "type": "string"
     },
     "name": {
+      "description": "name",
       "type": "string"
     },
     "creator": {
+      "description": "creator",
       "type": "string",
       "readonly": true
     },
     "job_conf_id": {
+      "description": "job configuration id",
       "type": "string"
     },
     "status": {
+      "description": "status",
       "type": "string"
     },
     "bulk_size": {
+      "description": "bulk size",
       "type": "integer"
     },
     "fail_percentage": {
+      "description": "fail percentage",
       "type": "number"
     },
     "last_modified": {
+      "description": "last modified",
       "type": "object",
       "$ref" : "last_modified.schema"
     },
     "inst_id": {
+      "description": "instance id",
       "type": "string"
     },
     "parameters": {
+      "description": "key value pairs",
       "type": "object",
       "$ref" : "raml-util/schemas/parameters.schema",
       "readonly": true

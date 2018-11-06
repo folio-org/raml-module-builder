@@ -5,46 +5,60 @@
   "type": "object",
   "properties": {
     "_id": {
+      "description" : "_id",
       "type": "string"
     },
     "module": {
+      "description" : "module",
       "type": "string"
     },
     "name": {
+      "description" : "name",
       "type": "string"
     },
     "description": {
+      "description" : "hey",
       "type": "string"
     },
     "type": {
+      "description" : "type",
       "type": "string"
     },
     "category": {
+      "description" : "category",
       "type": "string"
     },
     "enabled": {
+      "description" : "enabled",
       "type": "boolean"
     },
     "creator": {
+      "description" : "creator",
       "type": "string"
     },
     "inst_id": {
+      "description" : "inst_id",
       "type": "string"
     },
     "lib_id": {
+      "description" : "lib_id",
       "type": "string"
     },
     "bulk_size": {
+      "description" : "bulk size",
       "type": "integer"
     },
     "fail_percentage": {
+      "description" : "fail percentage",
       "type": "number"
     },
     "last_modified": {
+      "description" : "last modified",
       "type": "object",
       "$ref": "last_modified.schema"
     },
     "parameters": {
+      "description" : "key/value pairs",
       "type": "object",
       "$ref" : "raml-util/schemas/parameters.schema"
     }

@@ -8,15 +8,19 @@
       "type":"object",
       "properties":{
         "_id":{
+          "description" : "identifier",
           "type":"string"
         },
         "title":{
+          "description" : "book title",
           "type":"string"
         },
         "description":{
+          "description" : "book description",
           "type": "string"
         },
         "datetime":{
+          "description" : "date and time",
           "type":"object",
           "properties":{
             "$date":{
@@ -25,12 +29,15 @@
           }
         },
         "genre":{
+          "description" : "genre",
           "type":"string"
         },
         "author":{
+          "description" : "author",
           "type":"string"
         },
         "link":{
+          "description" : "link",
           "type":"string"
         }
       },
@@ -46,20 +53,25 @@
       "type":"string"
     },
     "success":{
+      "description" : "whether successful",
       "type":"boolean",
       "readonly" : false
     },
     "image":{
+      "description" : "image",
       "type":"string"
     },
     "status":{
+      "description" : "status",
       "type":"integer"
     },
     "metadata": {
+      "description" : "metadata",
       "$ref": "raml-util/schemas/metadata.schema",
       "readonly" : true
     },
     "resultInfo": {
+      "description" : "resultInfo",
       "$ref": "raml-util/schemas/resultInfo.schema",
       "readonly" : true
     }
