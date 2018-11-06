@@ -5,10 +5,11 @@
   "type":"object",
   "properties":{
     "data":{
+      "description" : "book data",
       "type":"object",
       "properties":{
         "_id":{
-          "description" : "identifier",
+          "description" : "data identifier",
           "type":"string"
         },
         "title":{
@@ -24,6 +25,7 @@
           "type":"object",
           "properties":{
             "$date":{
+              "description" : "date",
               "type":"string"
             }
           }
@@ -50,6 +52,7 @@
       ]
     },
     "_id":{
+      "description" : "identifier",
       "type":"string"
     },
     "success":{

@@ -5,6 +5,7 @@
   "type": "object",
   "properties": {
     "param": {
+      "description": "param array",
       "type": "object",
       "properties": {
         "key": {
