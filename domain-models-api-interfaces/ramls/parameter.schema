@@ -5,12 +5,15 @@
   "type": "object",
   "properties": {
     "param": {
+      "description": "param array",
       "type": "object",
       "properties": {
         "key": {
+          "description": "key",
           "type": "string"
         },
         "value": {
+          "description": "value",
           "type": "string"
         }
       }

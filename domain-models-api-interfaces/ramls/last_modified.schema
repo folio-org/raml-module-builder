@@ -5,9 +5,11 @@
   "type": "object",
   "properties": {
     "last_modified": {
+      "description": "last modified object",
       "type": "object",
       "properties": {
         "$date": {
+          "description": "last modified date",
           "type": "string"
         }
       }

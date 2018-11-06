@@ -5,6 +5,7 @@
   "type": "object",
   "properties": {
     "jobs": {
+      "description": "jobs array",
       "id": "jobs",
       "type": "array",
       "items": {
@@ -13,6 +14,7 @@
       }
     },
     "total_records": {
+      "description": "total records",
       "type": "integer"
     }
   },

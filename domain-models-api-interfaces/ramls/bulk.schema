@@ -5,29 +5,37 @@
   "type": "object",
   "properties": {
     "_id": {
+      "description": "primary identifier",
       "type": "string"
     },
     "bulk_id": {
+      "description": "bulk id",
       "type": "integer"
     },
     "error_count": {
+      "description": "error count",
       "type": "integer"
     },
     "success_count": {
+      "description": "success count",
       "type": "integer"
     },
     "error_ids": {
+      "description": "error ids",
       "type": "string"
     },
     "last_modified": {
+      "description": "last modified",
       "type": "object",
       "$ref" : "last_modified.schema",
       "readonly": true
     },
     "inst_id": {
+      "description": "instance id",
       "type": "string"
     },
     "job_id": {
+      "description": "job id",
       "type": "string"
     }
   },

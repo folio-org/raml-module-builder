@@ -5,6 +5,7 @@
   "type": "object",
   "properties": {
     "bulks": {
+      "description" : "bulks array",
       "id": "bulks",
       "type": "array",
       "items": {
@@ -14,6 +15,7 @@
       }
     },
     "total_records": {
+      "description" : "total records",
       "type": "integer"
     }
   },
