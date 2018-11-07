@@ -1525,6 +1525,9 @@ public class PostgresClient {
     connection.querySingle(queryHelper.countQuery, countQuery -> {
       try {
         if (countQuery.failed()) {
+          if (!queryHelper.transactionMode) {
+            connection.close();
+          }
           log.error(countQuery.cause().getMessage(), countQuery.cause());
           replyHandler.handle(Future.failedFuture(countQuery.cause()));
           return;
@@ -1540,7 +1543,7 @@ public class PostgresClient {
           if (!queryHelper.transactionMode) {
             connection.close();
           }
-          log.info("Skipping query due to no results expected! " + queryHelper.selectQuery);
+          log.debug("Skipping query due to no results expected!");
           ResultSet emptyResultSet = new ResultSet(Collections.singletonList(idField), Collections.emptyList(), null);
           replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
           return;
@@ -1548,6 +1551,9 @@ public class PostgresClient {
 
         processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
       } catch (Exception e) {
+        if (!queryHelper.transactionMode) {
+          connection.close();
+        }
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
