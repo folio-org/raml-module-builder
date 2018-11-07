@@ -883,6 +883,7 @@ public class PostgresClient {
       sql.append(" RETURNING ").append(idField);
 
       connection.queryWithParams(sql.toString(), entities, queryRes -> {
+        connection.close();
         if (queryRes.failed()) {
           log.error("saveBatch size=" + entities.size()
             + SPACE +
@@ -1875,10 +1876,12 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(res.cause()));
         return;
       }
+      SQLConnection connection = res.result();
       String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
           + FROM + schemaName + DOT + table
           + WHERE + idField + "= ?";
-      res.result().querySingleWithParams(sql, new JsonArray().add(id), query -> {
+      connection.querySingleWithParams(sql, new JsonArray().add(id), query -> {
+        connection.close();
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
           return;
@@ -1954,6 +1957,7 @@ public class PostgresClient {
         return;
       }
 
+      SQLConnection connection = res.result();
       StringBuilder sql = new StringBuilder()
           .append(SELECT).append(idField).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
           .append(FROM).append(schemaName).append(DOT).append(table)
@@ -1962,7 +1966,8 @@ public class PostgresClient {
         sql.append(",?");
       }
       sql.append(")");
-      res.result().queryWithParams(sql.toString(), ids, query -> {
+      connection.queryWithParams(sql.toString(), ids, query -> {
+        connection.close();
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
           return;
