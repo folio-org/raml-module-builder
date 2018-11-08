@@ -1,9 +1,19 @@
+## 23.1.0 2018-11-08
+ * RMB-297 Several connection.close() missing - totalCount calculation hangs after 5-12 errors.
+ * RMB-282 Use description fields in RAML JSON schemas.
+ * RMB-290 Document why environment variables with dots/periods are deprecated.
+ * RMB-291 Exclude android, fix jzlib compression bug.
+ * RMB-292 Enable compression of HTTP traffic in RestVerticle.
+ * RMB-294 Broken maven-surefire-plugin.
+ * RMB-295 Fix broken link to schema.json.example.json.
+
 ## 23.0.0 2018-10-18
  * RMB-284 id="foo\*" search results in QueryValidationException: CQL: Invalid UUID foo\*.
  * RMB-18 The "local apidocs" for "admin" and "jobs" has extra "/v1/" in path.
  * RMB-275 Windows backslash: Illegal character in opaque part at index 7: file:C:\Users\...
  * RMB-279 Fix false positive password vulnerability warning (sonarqube/sonarlint).
  * RMB-280 Provide a POM snippet to configure local apidocs.
+ * RMB-281 Update vert.x libraries to fix security vulnerabilities (CVE-2018-12537)
  * RMB-255 Add streaming support to RMB.
 
 ## 22.1.0 2018-10-16
