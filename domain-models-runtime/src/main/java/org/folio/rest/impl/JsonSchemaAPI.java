@@ -104,7 +104,7 @@ public class JsonSchemaAPI implements JsonSchema {
       String entryName = entry.getName();
       if (entryName.startsWith("ramls") && !entryName.startsWith("ramls/raml-util")) {
         String schemaName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if(schemaName.endsWith(".json") || schemaName.endsWith(".schema")) {
+        if(schemaName.endsWith(".json")) {
           try {
             InputStream is = jar.getInputStream(entry);
             ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
@@ -130,7 +130,7 @@ public class JsonSchemaAPI implements JsonSchema {
       String entryName = entry.getName();
       if (entryName.startsWith("ramls") && !entryName.startsWith("ramls/raml-util")) {
         String schemaName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if((schemaName.endsWith(".json") || schemaName.endsWith(".schema")) && schemaName.equals(name)) {
+        if(schemaName.endsWith(".json") && schemaName.equals(name)) {
           try {
             InputStream is = jar.getInputStream(entry);
             schema = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
