@@ -104,9 +104,10 @@ public class RamlAPI implements Raml {
     while(entries.hasMoreElements()) {
       JarEntry entry = entries.nextElement();
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls") && !entryName.startsWith("ramls/raml-util")) {
-        String ramlName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if(ramlName.endsWith(".raml")) {
+      if (entryName.startsWith("ramls/") && entryName.endsWith(".raml") && !entryName.startsWith("apidocs/")) {
+        String ramlPath = entryName.substring(6);
+        if(!ramlPath.contains("/")) {
+          String ramlName = ramlPath.substring(ramlPath.lastIndexOf("/") + 1);
           try {
             // TODO: validate raml file
             ramls.add(ramlName);
@@ -121,6 +122,7 @@ public class RamlAPI implements Raml {
   }
 
   private String getRamlByName(String name) throws IOException {
+    log.info("\n\n\n\n{}", name);
     String raml = null;
     File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     JarFile jar = new JarFile(jarFile);
@@ -128,9 +130,12 @@ public class RamlAPI implements Raml {
     while(entries.hasMoreElements()) {
       JarEntry entry = entries.nextElement();
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls") && !entryName.startsWith("ramls/raml-util")) {
+      log.info("  {}", entryName);
+      if (entryName.startsWith("ramls/")) {
         String ramlName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if(ramlName.endsWith(".raml") && ramlName.equals(name)) {
+        log.info("    {}", ramlName);
+        if(ramlName.equals(name)) {
+          log.info("** match ** ");
           try {
             // TODO: validate raml file
             InputStream is = jar.getInputStream(entry);
@@ -144,6 +149,7 @@ public class RamlAPI implements Raml {
       }
     }
     jar.close();
+    log.info("\n\n\n\n");
     return raml;
   }
 

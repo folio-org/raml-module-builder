@@ -18,6 +18,8 @@ import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.JsonSchema;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 
+import org.apache.commons.io.IOUtils;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -102,9 +104,10 @@ public class JsonSchemaAPI implements JsonSchema {
     while(entries.hasMoreElements()) {
       JarEntry entry = entries.nextElement();
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls") && !entryName.startsWith("ramls/raml-util")) {
-        String schemaName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if(schemaName.endsWith(".json")) {
+      if (entryName.startsWith("ramls/") && entryName.endsWith(".json") && !entryName.startsWith("apidocs/")) {
+        String schemaPath = entryName.substring(6);
+        if(!schemaPath.contains("/")) {
+          String schemaName = schemaPath.substring(schemaPath.lastIndexOf("/") + 1);
           try {
             InputStream is = jar.getInputStream(entry);
             ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
@@ -121,6 +124,7 @@ public class JsonSchemaAPI implements JsonSchema {
   }
 
   private JsonNode getSchemaByName(String name) throws IOException {
+    log.info("\n\n\n\n{}", name);
     JsonNode schema = null;
     File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     JarFile jar = new JarFile(jarFile);
@@ -128,9 +132,12 @@ public class JsonSchemaAPI implements JsonSchema {
     while(entries.hasMoreElements()) {
       JarEntry entry = entries.nextElement();
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls") && !entryName.startsWith("ramls/raml-util")) {
+      log.info("  {}", entryName);
+      if (entryName.startsWith("ramls/")) {
         String schemaName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if(schemaName.endsWith(".json") && schemaName.equals(name)) {
+        log.info("    {}", schemaName);
+        if(schemaName.equals(name)) {
+          log.info("** match ** ");
           try {
             InputStream is = jar.getInputStream(entry);
             schema = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
@@ -143,6 +150,7 @@ public class JsonSchemaAPI implements JsonSchema {
       }
     }
     jar.close();
+    log.info("\n\n\n\n");
     return schema;
   }
 
