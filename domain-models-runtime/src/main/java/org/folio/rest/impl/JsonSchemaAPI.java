@@ -134,13 +134,13 @@ public class JsonSchemaAPI implements JsonSchema {
       String entryName = entry.getName();
       if (entryName.startsWith("ramls/")) {
         String schemaName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if(schemaName.equals(name)) {
+        if (schemaName.equals(name)) {
           try {
             InputStream is = jar.getInputStream(entry);
             schemaNode = replaceReferences(ObjectMapperTool.getMapper().readValue(is, JsonNode.class), okapiUrl);
             is.close();
             break;
-          } catch(Exception e) {
+          } catch(IOException e) {
             log.info("{} is not a valid json file", entryName);
           }
         }
@@ -150,13 +150,13 @@ public class JsonSchemaAPI implements JsonSchema {
     return schemaNode;
   }
 
-  private JsonNode replaceReferences(JsonNode schemaNode, String okapiUrl) throws Exception {
+  private JsonNode replaceReferences(JsonNode schemaNode, String okapiUrl) throws IOException {
     String schema = schemaNode.toString();
     Matcher matcher = REF_MATCH_PATTERN.matcher(schema);
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {
       String ref =  matcher.group(1).substring(matcher.group(1).lastIndexOf("/") + 1);
-      if(!ref.startsWith("#")) {
+      if (!ref.startsWith("#")) {
         matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchema/" + ref + "\""));
       }
     }

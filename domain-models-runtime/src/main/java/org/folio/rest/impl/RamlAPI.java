@@ -139,13 +139,13 @@ public class RamlAPI implements Raml {
       String entryName = entry.getName();
       if (entryName.startsWith("ramls/")) {
         String ramlName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if(ramlName.equals(name)) {
+        if (ramlName.equals(name)) {
           try {
             InputStream is = jar.getInputStream(entry);
             ramlNode = replaceReferences(IOUtils.toString(is, "UTF-8"), okapiUrl);
             is.close();
             break;
-          } catch(Exception e) {
+          } catch(IOException e) {
             log.info("{} is not a valid raml file", entryName);
           }
         }
@@ -155,12 +155,12 @@ public class RamlAPI implements Raml {
     return ramlNode;
   }
 
-  private JsonNode replaceReferences(String raml, String okapiUrl) throws Exception {
+  private JsonNode replaceReferences(String raml, String okapiUrl) throws IOException {
     Matcher matcher = INCLUDE_MATCH_PATTERN.matcher(raml);
     StringBuffer sb = new StringBuffer(raml.length());
     while (matcher.find()) {
       String ref =  matcher.group(0).substring(matcher.group(0).lastIndexOf("/") + 1);
-      if(ref.endsWith(".raml")) {
+      if (ref.endsWith(".raml")) {
         matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/raml/" + ref));
       } else {
         matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/jsonSchema/" + ref));
