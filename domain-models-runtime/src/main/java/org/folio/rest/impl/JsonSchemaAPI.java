@@ -155,8 +155,9 @@ public class JsonSchemaAPI implements JsonSchema {
     Matcher matcher = REF_MATCH_PATTERN.matcher(schema);
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {
-      String ref =  matcher.group(1).substring(matcher.group(1).lastIndexOf("/") + 1);
-      if (!ref.startsWith("#")) {
+      String matchRef = matcher.group(1);
+      String ref = matchRef.substring(matchRef.lastIndexOf("/") + 1);
+      if (!matchRef.startsWith("#")) {
         matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchema/" + ref + "\""));
       }
     }
