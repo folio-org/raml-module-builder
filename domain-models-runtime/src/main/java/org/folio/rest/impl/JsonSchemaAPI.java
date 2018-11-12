@@ -105,7 +105,7 @@ public class JsonSchemaAPI implements JsonSchema {
     while(entries.hasMoreElements()) {
       JarEntry entry = entries.nextElement();
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls/") && entryName.endsWith(".json") && !entryName.startsWith("apidocs/")) {
+      if (entryName.startsWith("ramls/") && entryName.endsWith(".json")) {
         String schemaPath = entryName.substring(6);
         if(!schemaPath.contains("/")) {
           String schemaName = schemaPath.substring(schemaPath.lastIndexOf("/") + 1);
