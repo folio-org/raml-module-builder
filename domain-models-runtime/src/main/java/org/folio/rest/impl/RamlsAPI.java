@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.StringBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +34,11 @@ public class RamlsAPI implements Ramls {
 
   private static final Pattern INCLUDE_MATCH_PATTERN = Pattern.compile("(?<=!include ).*");
 
+  private static final String OKAPI_URL_HEADER = "x-okapi-url";
+  private static final String RAMLS_PATH = "ramls/";
+  private static final String RAML_EXT = ".raml";
+  private static final String FORWARD_SLASH = "/";
+
   @Validate
   @Override
   public void getRamls(
@@ -52,7 +58,7 @@ public class RamlsAPI implements Ramls {
             )
           );
         } else {
-          String okapiUrl = okapiHeaders.get("x-okapi-url");
+          String okapiUrl = okapiHeaders.get(OKAPI_URL_HEADER);
           String raml = getRamlByPath(path, okapiUrl);
           if (raml != null) {
             asyncResultHandler.handle(
@@ -85,10 +91,10 @@ public class RamlsAPI implements Ramls {
     List<JarEntry> entries = Collections.list(jar.entries());
     for (JarEntry entry : entries) {
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls/") && entryName.endsWith(".raml")) {
+      if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(RAML_EXT)) {
         String ramlPath = entryName.substring(6);
-        if (!ramlPath.contains("/")) {
-          String ramlName = ramlPath.substring(ramlPath.lastIndexOf("/") + 1);
+        if (!ramlPath.contains(FORWARD_SLASH)) {
+          String ramlName = ramlPath.substring(ramlPath.lastIndexOf(FORWARD_SLASH) + 1);
           try {
             InputStream is = jar.getInputStream(entry);
             is.close();
@@ -110,10 +116,10 @@ public class RamlsAPI implements Ramls {
     List<JarEntry> entries = Collections.list(jar.entries());
     for (JarEntry entry : entries) {
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls/") && entryName.endsWith(path)) {
+      if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(path)) {
         try {
           InputStream is = jar.getInputStream(entry);
-          raml = replaceReferences(IOUtils.toString(is, "UTF-8"), okapiUrl);
+          raml = replaceReferences(IOUtils.toString(is, StandardCharsets.UTF_8.name()), okapiUrl);
           is.close();
           break;
         } catch(IOException e) {
@@ -130,12 +136,12 @@ public class RamlsAPI implements Ramls {
     StringBuffer sb = new StringBuffer(raml.length());
     while (matcher.find()) {
       log.info(matcher.group(0));
-      // String ref =  matcher.group(0).substring(matcher.group(0).lastIndexOf("/") + 1);
-      // if (ref.endsWith(".raml")) {
-      //   matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/raml/" + ref));
-      // } else {
-      //   matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/jsonSchema/" + ref));
-      // }
+      String ref =  matcher.group(0).substring(matcher.group(0).indexOf(RAMLS_PATH) + 1);
+      if (ref.endsWith(RAML_EXT)) {
+        matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/ramls?=" + ref));
+      } else {
+        matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/jsonSchemas?=" + ref));
+      }
     }
     matcher.appendTail(sb);
     return sb.toString();

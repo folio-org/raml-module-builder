@@ -34,6 +34,12 @@ public class JsonSchemasAPI implements JsonSchemas {
 
   private static final Pattern REF_MATCH_PATTERN = Pattern.compile("\\\"\\$ref\\\"\\s*:\\s*\\\"(.*?)\\\"");
 
+  private static final String OKAPI_URL_HEADER = "x-okapi-url";
+  private static final String RAMLS_PATH = "ramls/";
+  private static final String JSON_EXT = ".json";
+  private static final String FORWARD_SLASH = "/";
+  private static final String HASH_TAG = "#";
+
   @Validate
   @Override
   public void getJsonSchemas(
@@ -53,7 +59,7 @@ public class JsonSchemasAPI implements JsonSchemas {
             )
           );
         } else {
-          String okapiUrl = okapiHeaders.get("x-okapi-url");
+          String okapiUrl = okapiHeaders.get(OKAPI_URL_HEADER);
           String schema = getSchemaByName(path, okapiUrl);
           if (schema != null) {
             asyncResultHandler.handle(
@@ -88,10 +94,10 @@ public class JsonSchemasAPI implements JsonSchemas {
     List<JarEntry> entries = Collections.list(jar.entries());
     for (JarEntry entry : entries) {
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls/") && entryName.endsWith(".json")) {
+      if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(JSON_EXT)) {
         String schemaPath = entryName.substring(6);
-        if(!schemaPath.contains("/")) {
-          String schemaName = schemaPath.substring(schemaPath.lastIndexOf("/") + 1);
+        if(!schemaPath.contains(FORWARD_SLASH)) {
+          String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + 1);
           try {
             InputStream is = jar.getInputStream(entry);
             ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
@@ -114,7 +120,7 @@ public class JsonSchemasAPI implements JsonSchemas {
     List<JarEntry> entries = Collections.list(jar.entries());
     for (JarEntry entry : entries) {
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls/") && entryName.endsWith(path)) {
+      if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(path)) {
         try {
           InputStream is = jar.getInputStream(entry);
           JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
@@ -135,11 +141,11 @@ public class JsonSchemasAPI implements JsonSchemas {
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {
       log.info(matcher.group(1));
-      // String matchRef = matcher.group(1);
-      // String ref = matchRef.substring(matchRef.lastIndexOf("/") + 1);
-      // if (!matchRef.startsWith("#")) {
-      //   matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchema/" + ref + "\""));
-      // }
+      String matchRef = matcher.group(1);
+      String ref = matchRef.substring(matchRef.indexOf(RAMLS_PATH) + 1);
+      if (!matchRef.startsWith(HASH_TAG)) {
+        matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchema?=" + ref + "\""));
+      }
     }
     matcher.appendTail(sb);
     return sb.toString();
