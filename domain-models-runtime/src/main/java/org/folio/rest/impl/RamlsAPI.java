@@ -116,7 +116,7 @@ public class RamlsAPI implements Ramls {
     List<JarEntry> entries = Collections.list(jar.entries());
     for (JarEntry entry : entries) {
       String entryName = entry.getName();
-      if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(path)) {
+      if (entryName.equals(RAMLS_PATH + path)) {
         try {
           InputStream is = jar.getInputStream(entry);
           raml = replaceReferences(IOUtils.toString(is, StandardCharsets.UTF_8.name()), okapiUrl);

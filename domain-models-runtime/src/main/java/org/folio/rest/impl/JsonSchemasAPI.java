@@ -120,7 +120,7 @@ public class JsonSchemasAPI implements JsonSchemas {
     List<JarEntry> entries = Collections.list(jar.entries());
     for (JarEntry entry : entries) {
       String entryName = entry.getName();
-      if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(path)) {
+      if (entryName.equals(RAMLS_PATH + path)) {
         try {
           InputStream is = jar.getInputStream(entry);
           JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
