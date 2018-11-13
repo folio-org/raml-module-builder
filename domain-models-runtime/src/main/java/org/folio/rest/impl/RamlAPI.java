@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.StringBuffer;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
@@ -15,10 +15,10 @@ import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response;
 
+import org.apache.commons.io.IOUtils;
+
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.Raml;
-
-import org.apache.commons.io.IOUtils;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -27,17 +27,11 @@ import io.vertx.core.Handler;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
 public class RamlAPI implements Raml {
 
   private static final Logger log = LoggerFactory.getLogger(RamlAPI.class);
 
   private static final Pattern INCLUDE_MATCH_PATTERN = Pattern.compile("(?<=!include ).*");
-
-  private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
 
   @Validate
   @Override
@@ -73,15 +67,13 @@ public class RamlAPI implements Raml {
     Handler<AsyncResult<Response>> asyncResultHandler,
     Context vertxContext
   ) {
-    String okapiUrl = okapiHeaders.get("x-okapi-url");
     vertxContext.runOnContext(v -> {
       try {
-        JsonNode ramlNode = getRamlByName(name, okapiUrl);
-        if(ramlNode != null) {
+        String okapiUrl = okapiHeaders.get("x-okapi-url");
+        String raml = getRamlByName(name, okapiUrl);
+        if (raml != null) {
           asyncResultHandler.handle(
-            Future.succeededFuture(
-              GetRamlByNameResponse.respond200WithApplicationJson(ramlNode)
-            )
+            Future.succeededFuture(GetRamlByNameResponse.respond200WithApplicationRamlYaml(raml))
           );
         } else {
           String notFoundMessage = "RAML " + name + " not found";
@@ -106,17 +98,15 @@ public class RamlAPI implements Raml {
     List<String> ramls = new ArrayList<>();
     File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     JarFile jar = new JarFile(jarFile);
-    Enumeration<JarEntry> entries = jar.entries();
-    while(entries.hasMoreElements()) {
-      JarEntry entry = entries.nextElement();
+    List<JarEntry> entries = Collections.list(jar.entries());
+    for (JarEntry entry : entries) {
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls/") && entryName.endsWith(".raml") && !entryName.startsWith("apidocs/")) {
+      if (entryName.startsWith("ramls/") && entryName.endsWith(".raml")) {
         String ramlPath = entryName.substring(6);
-        if(!ramlPath.contains("/")) {
+        if (!ramlPath.contains("/")) {
           String ramlName = ramlPath.substring(ramlPath.lastIndexOf("/") + 1);
           try {
             InputStream is = jar.getInputStream(entry);
-            YAML_MAPPER.readValue(is, JsonNode.class);
             is.close();
             ramls.add(ramlName);
           } catch(Exception e) {
@@ -129,20 +119,19 @@ public class RamlAPI implements Raml {
     return ramls;
   }
 
-  private JsonNode getRamlByName(String name, String okapiUrl) throws IOException {
-    JsonNode ramlNode = null;
+  private String getRamlByName(String name, String okapiUrl) throws IOException {
+    String raml = null;
     File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     JarFile jar = new JarFile(jarFile);
-    Enumeration<JarEntry> entries = jar.entries();
-    while(entries.hasMoreElements()) {
-      JarEntry entry = entries.nextElement();
+    List<JarEntry> entries = Collections.list(jar.entries());
+    for (JarEntry entry : entries) {
       String entryName = entry.getName();
       if (entryName.startsWith("ramls/")) {
         String ramlName = entryName.substring(entryName.lastIndexOf("/") + 1);
         if (ramlName.equals(name)) {
           try {
             InputStream is = jar.getInputStream(entry);
-            ramlNode = replaceReferences(IOUtils.toString(is, "UTF-8"), okapiUrl);
+            raml = replaceReferences(IOUtils.toString(is, "UTF-8"), okapiUrl);
             is.close();
             break;
           } catch(IOException e) {
@@ -152,10 +141,10 @@ public class RamlAPI implements Raml {
       }
     }
     jar.close();
-    return ramlNode;
+    return raml;
   }
 
-  private JsonNode replaceReferences(String raml, String okapiUrl) throws IOException {
+  private String replaceReferences(String raml, String okapiUrl) throws IOException {
     Matcher matcher = INCLUDE_MATCH_PATTERN.matcher(raml);
     StringBuffer sb = new StringBuffer(raml.length());
     while (matcher.find()) {
@@ -167,7 +156,7 @@ public class RamlAPI implements Raml {
       }
     }
     matcher.appendTail(sb);
-    return YAML_MAPPER.readValue(sb.toString(), JsonNode.class);
+    return sb.toString();
   }
 
 }

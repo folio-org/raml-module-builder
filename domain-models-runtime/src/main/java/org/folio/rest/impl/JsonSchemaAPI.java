@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.StringBuffer;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
@@ -71,11 +71,11 @@ public class JsonSchemaAPI implements JsonSchema {
     String okapiUrl = okapiHeaders.get("x-okapi-url");
     vertxContext.runOnContext(v -> {
       try {
-        JsonNode schemaNode = getSchemaByName(name, okapiUrl);
-        if(schemaNode != null) {
+        String schema = getSchemaByName(name, okapiUrl);
+        if(schema != null) {
           asyncResultHandler.handle(
             Future.succeededFuture(
-              GetJsonSchemaByNameResponse.respond200WithApplicationJson(schemaNode)
+              GetJsonSchemaByNameResponse.respond200WithApplicationJson(schema)
             )
           );
         } else {
@@ -101,9 +101,8 @@ public class JsonSchemaAPI implements JsonSchema {
     List<String> schemas = new ArrayList<>();
     File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     JarFile jar = new JarFile(jarFile);
-    Enumeration<JarEntry> entries = jar.entries();
-    while(entries.hasMoreElements()) {
-      JarEntry entry = entries.nextElement();
+    List<JarEntry> entries = Collections.list(jar.entries());
+    for (JarEntry entry : entries) {
       String entryName = entry.getName();
       if (entryName.startsWith("ramls/") && entryName.endsWith(".json")) {
         String schemaPath = entryName.substring(6);
@@ -124,20 +123,20 @@ public class JsonSchemaAPI implements JsonSchema {
     return schemas;
   }
 
-  private JsonNode getSchemaByName(String name, String okapiUrl) throws IOException {
-    JsonNode schemaNode = null;
+  private String getSchemaByName(String name, String okapiUrl) throws IOException {
+    String schema = null;
     File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     JarFile jar = new JarFile(jarFile);
-    Enumeration<JarEntry> entries = jar.entries();
-    while(entries.hasMoreElements()) {
-      JarEntry entry = entries.nextElement();
+    List<JarEntry> entries = Collections.list(jar.entries());
+    for (JarEntry entry : entries) {
       String entryName = entry.getName();
       if (entryName.startsWith("ramls/")) {
         String schemaName = entryName.substring(entryName.lastIndexOf("/") + 1);
         if (schemaName.equals(name)) {
           try {
             InputStream is = jar.getInputStream(entry);
-            schemaNode = replaceReferences(ObjectMapperTool.getMapper().readValue(is, JsonNode.class), okapiUrl);
+            JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
+            schema = replaceReferences(schemaNode.toString(), okapiUrl);
             is.close();
             break;
           } catch(IOException e) {
@@ -147,11 +146,10 @@ public class JsonSchemaAPI implements JsonSchema {
       }
     }
     jar.close();
-    return schemaNode;
+    return schema;
   }
 
-  private JsonNode replaceReferences(JsonNode schemaNode, String okapiUrl) throws IOException {
-    String schema = schemaNode.toString();
+  private String replaceReferences(String schema, String okapiUrl) throws IOException {
     Matcher matcher = REF_MATCH_PATTERN.matcher(schema);
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {
@@ -162,7 +160,7 @@ public class JsonSchemaAPI implements JsonSchema {
       }
     }
     matcher.appendTail(sb);
-    return ObjectMapperTool.getMapper().readValue(sb.toString(), JsonNode.class);
+    return sb.toString();
   }
 
 }
