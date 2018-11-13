@@ -75,7 +75,7 @@ public class JsonSchemaAPI implements JsonSchema {
         if(schema != null) {
           asyncResultHandler.handle(
             Future.succeededFuture(
-              GetJsonSchemaByNameResponse.respond200WithApplicationJson(schema)
+              GetJsonSchemaByNameResponse.respond200WithApplicationSchemaJson(schema)
             )
           );
         } else {
