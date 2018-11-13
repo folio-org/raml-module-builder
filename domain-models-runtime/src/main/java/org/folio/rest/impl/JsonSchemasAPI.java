@@ -144,7 +144,7 @@ public class JsonSchemasAPI implements JsonSchemas {
       String matchRef = matcher.group(1);
       String path = matchRef.substring(matchRef.indexOf(RAMLS_PATH) + RAMLS_PATH.length());
       if (!matchRef.startsWith(HASH_TAG)) {
-        matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchema?path=" + path + "\""));
+        matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchemas?path=" + path + "\""));
       }
     }
     matcher.appendTail(sb);
