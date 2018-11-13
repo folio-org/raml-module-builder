@@ -56,8 +56,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 
-import de.flapdoodle.embed.process.config.IRuntimeConfig;
-import de.flapdoodle.embed.process.store.NonCachedPostgresArtifactStoreBuilder;
 import freemarker.template.TemplateException;
 
 import io.vertx.core.AsyncResult;
@@ -75,20 +73,15 @@ import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.SQLRowStream;
 import io.vertx.ext.sql.UpdateResult;
+import java.util.Optional;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import org.folio.rest.tools.utils.NaiveSQLParse;
-import ru.yandex.qatools.embed.postgresql.Command;
-import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
+import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
-import ru.yandex.qatools.embed.postgresql.PostgresStarter;
-import ru.yandex.qatools.embed.postgresql.config.AbstractPostgresConfig;
-import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
-import ru.yandex.qatools.embed.postgresql.config.PostgresDownloadConfigBuilder;
-import ru.yandex.qatools.embed.postgresql.config.RuntimeConfigBuilder;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
 
 /**
@@ -3129,16 +3122,6 @@ public class PostgresClient {
     // starting Postgres
     setIsEmbedded(true);
     if (postgresProcess == null || !postgresProcess.isProcessRunning()) {
-      // turns off the default functionality of unzipping on every run.
-      IRuntimeConfig runtimeConfig = new RuntimeConfigBuilder()
-        .defaults(Command.Postgres)
-        .artifactStore(
-          new NonCachedPostgresArtifactStoreBuilder().defaults(Command.Postgres).
-          download(new PostgresDownloadConfigBuilder().defaultsForCommand(Command.Postgres)
-          // .progressListener(new LoggingProgressListener(logger, Level.ALL))
-            .build())).build();
-      PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getInstance(runtimeConfig);
-
       int port = postgreSQLClientConfig.getInteger(PORT);
       String username = postgreSQLClientConfig.getString(_USERNAME);
       String password = postgreSQLClientConfig.getString(_PASSWORD);
@@ -3146,26 +3129,19 @@ public class PostgresClient {
 
       String locale = "en_US.UTF-8";
       String OS = System.getProperty("os.name").toLowerCase();
-      if(OS.indexOf("win") >= 0){
+      if (OS.indexOf("win") >= 0) {
         locale = "american_usa";
       }
-
-      final PostgresConfig config = new PostgresConfig(Version.Main.V10,
-        new AbstractPostgresConfig.Net(DEFAULT_IP, port),
-        new AbstractPostgresConfig.Storage(database),
-        new AbstractPostgresConfig.Timeout(20000),
-        new AbstractPostgresConfig.Credentials(username, password));
-
-      config.getAdditionalInitDbParams().addAll(Arrays.asList(
-        "-E", "UTF-8",
-        "--locale", locale
-      ));
-
-      postgresProcess = runtime.prepare(config).start();
-
-      log.info("embedded postgress started....");
+      EmbeddedPostgres e = new EmbeddedPostgres(Version.Main.V10);
+      e.start("localhost", port, database, username, password,
+        Arrays.asList("-E", "UTF-8", "--locale", locale));
+      Optional<PostgresProcess> p = e.getProcess();
+      if (p.isPresent()) {
+        postgresProcess = p.get();
+      }
+      log.info("embedded postgres started....");
     } else {
-      log.info("embedded postgress is already running...");
+      log.info("embedded postgres is already running...");
     }
   }
 
