@@ -94,7 +94,7 @@ public class RamlsAPI implements Ramls {
       if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(RAML_EXT)) {
         String ramlPath = entryName.substring(6);
         if (!ramlPath.contains(FORWARD_SLASH)) {
-          String ramlName = ramlPath.substring(ramlPath.lastIndexOf(FORWARD_SLASH) + 1);
+          String ramlName = ramlPath.substring(ramlPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
           try {
             InputStream is = jar.getInputStream(entry);
             is.close();
@@ -136,11 +136,11 @@ public class RamlsAPI implements Ramls {
     StringBuffer sb = new StringBuffer(raml.length());
     while (matcher.find()) {
       log.info(matcher.group(0));
-      String ref =  matcher.group(0).substring(matcher.group(0).indexOf(RAMLS_PATH) + 1);
-      if (ref.endsWith(RAML_EXT)) {
-        matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/ramls?=" + ref));
+      String path =  matcher.group(0).substring(matcher.group(0).indexOf(RAMLS_PATH) + RAMLS_PATH.length());
+      if (path.endsWith(RAML_EXT)) {
+        matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/ramls?path=" + path));
       } else {
-        matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/jsonSchemas?=" + ref));
+        matcher.appendReplacement(sb, Matcher.quoteReplacement(okapiUrl + "/_/jsonSchemas?path=" + path));
       }
     }
     matcher.appendTail(sb);
