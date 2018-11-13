@@ -99,9 +99,6 @@ public class JsonSchemasAPI implements JsonSchemas {
         if(!schemaPath.contains(FORWARD_SLASH)) {
           String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
           try {
-            InputStream is = jar.getInputStream(entry);
-            ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
-            is.close();
             schemas.add(schemaName);
           } catch(Exception e) {
             log.info("{} is not a valid json file", entryName);

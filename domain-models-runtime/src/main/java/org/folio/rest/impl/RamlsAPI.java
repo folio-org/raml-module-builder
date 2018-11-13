@@ -96,8 +96,6 @@ public class RamlsAPI implements Ramls {
         if (!ramlPath.contains(FORWARD_SLASH)) {
           String ramlName = ramlPath.substring(ramlPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
           try {
-            InputStream is = jar.getInputStream(entry);
-            is.close();
             ramls.add(ramlName);
           } catch(Exception e) {
             log.info("{} is not a valid raml file", entryName);
