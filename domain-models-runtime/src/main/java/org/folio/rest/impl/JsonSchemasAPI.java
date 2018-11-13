@@ -140,10 +140,11 @@ public class JsonSchemasAPI implements JsonSchemas {
     Matcher matcher = REF_MATCH_PATTERN.matcher(schema);
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {
-      log.info(matcher.group(1));
-      String matchRef = matcher.group(1);
-      String path = matchRef.substring(matchRef.indexOf(RAMLS_PATH) + RAMLS_PATH.length());
-      if (!matchRef.startsWith(HASH_TAG)) {
+      String path = matcher.group(1);
+      if (!path.startsWith(HASH_TAG)) {
+        if (path.contains(RAMLS_PATH)) {
+          path = path.substring(path.lastIndexOf(RAMLS_PATH) + RAMLS_PATH.length());
+        }
         matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchemas?path=" + path + "\""));
       }
     }
