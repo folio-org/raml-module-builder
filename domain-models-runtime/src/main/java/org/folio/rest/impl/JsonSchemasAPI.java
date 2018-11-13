@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.resource.JsonSchema;
+import org.folio.rest.jaxrs.resource.JsonSchemas;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 
 import io.vertx.core.AsyncResult;
@@ -28,69 +28,53 @@ import io.vertx.core.logging.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-public class JsonSchemaAPI implements JsonSchema {
+public class JsonSchemasAPI implements JsonSchemas {
 
-  private static final Logger log = LoggerFactory.getLogger(JsonSchemaAPI.class);
+  private static final Logger log = LoggerFactory.getLogger(JsonSchemasAPI.class);
 
   private static final Pattern REF_MATCH_PATTERN = Pattern.compile("\\\"\\$ref\\\"\\s*:\\s*\\\"(.*?)\\\"");
 
   @Validate
   @Override
-  public void getJsonSchema(
+  public void getJsonSchemas(
+    String path,
     Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler,
     Context vertxContext
   ) {
     vertxContext.runOnContext(v -> {
+      log.info(path);
       try {
-        List<String> schemas = getSchemas();
-        asyncResultHandler.handle(
-          Future.succeededFuture(
-            GetJsonSchemaResponse.respond200WithApplicationJson(schemas)
-          )
-        );
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        asyncResultHandler.handle(
-          Future.succeededFuture(
-            GetJsonSchemaResponse.respond500WithTextPlain(e.getMessage())
-          )
-        );
-      }
-    });
-  }
-
-  @Validate
-  @Override
-  public void getJsonSchemaByName(
-    String name,
-    Map<String, String> okapiHeaders,
-    Handler<AsyncResult<Response>> asyncResultHandler,
-    Context vertxContext
-  ) {
-    String okapiUrl = okapiHeaders.get("x-okapi-url");
-    vertxContext.runOnContext(v -> {
-      try {
-        String schema = getSchemaByName(name, okapiUrl);
-        if(schema != null) {
+        if (path == null) {
+          List<String> schemas = getSchemas();
           asyncResultHandler.handle(
             Future.succeededFuture(
-              GetJsonSchemaByNameResponse.respond200WithApplicationSchemaJson(schema)
+              GetJsonSchemasResponse.respond200WithApplicationJson(schemas)
             )
           );
         } else {
-          String notFoundMessage = "Schema " + name + " not found";
-          asyncResultHandler.handle(
-            Future.succeededFuture(
-              GetJsonSchemaByNameResponse.respond404WithTextPlain(notFoundMessage)
-            )
-          );
+          String okapiUrl = okapiHeaders.get("x-okapi-url");
+          String schema = getSchemaByName(path, okapiUrl);
+          if (schema != null) {
+            asyncResultHandler.handle(
+              Future.succeededFuture(
+                GetJsonSchemasResponse.respond200WithApplicationSchemaJson(schema)
+              )
+            );
+          } else {
+            String notFoundMessage = "Schema " + path + " not found";
+            asyncResultHandler.handle(
+              Future.succeededFuture(
+                GetJsonSchemasResponse.respond404WithTextPlain(notFoundMessage)
+              )
+            );
+          }
         }
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         asyncResultHandler.handle(
           Future.succeededFuture(
-            GetJsonSchemaByNameResponse.respond500WithTextPlain(e.getMessage())
+            GetJsonSchemasResponse.respond500WithTextPlain(e.getMessage())
           )
         );
       }
@@ -123,25 +107,22 @@ public class JsonSchemaAPI implements JsonSchema {
     return schemas;
   }
 
-  private String getSchemaByName(String name, String okapiUrl) throws IOException {
+  private String getSchemaByName(String path, String okapiUrl) throws IOException {
     String schema = null;
     File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
     JarFile jar = new JarFile(jarFile);
     List<JarEntry> entries = Collections.list(jar.entries());
     for (JarEntry entry : entries) {
       String entryName = entry.getName();
-      if (entryName.startsWith("ramls/")) {
-        String schemaName = entryName.substring(entryName.lastIndexOf("/") + 1);
-        if (schemaName.equals(name)) {
-          try {
-            InputStream is = jar.getInputStream(entry);
-            JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
-            schema = replaceReferences(schemaNode.toString(), okapiUrl);
-            is.close();
-            break;
-          } catch(IOException e) {
-            log.info("{} is not a valid json file", entryName);
-          }
+      if (entryName.startsWith("ramls/") && entryName.endsWith(path)) {
+        try {
+          InputStream is = jar.getInputStream(entry);
+          JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
+          schema = replaceReferences(schemaNode.toString(), okapiUrl);
+          is.close();
+          break;
+        } catch(IOException e) {
+          log.info("{} is not a valid json file", entryName);
         }
       }
     }
@@ -153,11 +134,12 @@ public class JsonSchemaAPI implements JsonSchema {
     Matcher matcher = REF_MATCH_PATTERN.matcher(schema);
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {
-      String matchRef = matcher.group(1);
-      String ref = matchRef.substring(matchRef.lastIndexOf("/") + 1);
-      if (!matchRef.startsWith("#")) {
-        matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchema/" + ref + "\""));
-      }
+      log.info(matcher.group(1));
+      // String matchRef = matcher.group(1);
+      // String ref = matchRef.substring(matchRef.lastIndexOf("/") + 1);
+      // if (!matchRef.startsWith("#")) {
+      //   matcher.appendReplacement(sb, Matcher.quoteReplacement("\"$ref\":\"" + okapiUrl + "/_/jsonSchema/" + ref + "\""));
+      // }
     }
     matcher.appendTail(sb);
     return sb.toString();
