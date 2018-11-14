@@ -58,17 +58,17 @@ public class JarUtils {
       }
       return;
     }
+    JarEntry entry = new JarEntry(entryName);
+    entry.setTime(file.lastModified());
+    jos.putNextEntry(entry);
     try (FileInputStream fis = new FileInputStream(file)) {
-      JarEntry entry = new JarEntry(entryName);
-      entry.setTime(file.lastModified());
-      jos.putNextEntry(entry);
       byte[] bytes = new byte[1024];
       int length;
       while ((length = fis.read(bytes)) >= 0) {
         jos.write(bytes, 0, length);
       }
-      jos.closeEntry();
     }
+    jos.closeEntry();
   }
 
 }
