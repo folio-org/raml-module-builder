@@ -110,6 +110,7 @@ public class RamlsAPI implements Ramls {
           if (!ramlPath.contains(FORWARD_SLASH)) {
             String ramlName = ramlPath.substring(ramlPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
             try {
+              // validate RAML
               ramls.add(ramlName);
             } catch(Exception e) {
               log.info("{} is not a valid raml file", entryName);
@@ -128,6 +129,7 @@ public class RamlsAPI implements Ramls {
         String entryName = entry.getName();
         if (entryName.equals(RAMLS_PATH + path)) {
           try {
+            // validate RAML
             InputStream is = jar.getInputStream(entry);
             raml = replaceReferences(IOUtils.toString(is, StandardCharsets.UTF_8.name()), okapiUrl);
             is.close();

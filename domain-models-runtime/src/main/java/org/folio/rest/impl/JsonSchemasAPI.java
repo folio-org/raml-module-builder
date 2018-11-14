@@ -114,6 +114,7 @@ public class JsonSchemasAPI implements JsonSchemas {
           if(!schemaPath.contains(FORWARD_SLASH)) {
             String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
             try {
+              // validate JSON Schema
               schemas.add(schemaName);
             } catch(Exception e) {
               log.info("{} is not a valid json file", entryName);
@@ -132,6 +133,7 @@ public class JsonSchemasAPI implements JsonSchemas {
         String entryName = entry.getName();
         if (entryName.equals(RAMLS_PATH + path)) {
           try {
+            // validate JSON Schema
             InputStream is = jar.getInputStream(entry);
             JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
             schema = replaceReferences(schemaNode.toString(), okapiUrl);
