@@ -67,7 +67,6 @@ public class JarUtils {
       while ((length = fis.read(bytes)) >= 0) {
         jos.write(bytes, 0, length);
       }
-      fis.close();
       jos.closeEntry();
     }
   }
