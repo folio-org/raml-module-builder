@@ -1,23 +1,26 @@
 package org.folio.rest.impl;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.StringBuffer;
 import java.net.URL;
 import java.security.CodeSource;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.JsonSchemas;
 import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.folio.rest.tools.utils.ZipUtils;
+import org.folio.rest.tools.utils.JarUtils;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -52,7 +55,7 @@ public class JsonSchemasAPI implements JsonSchemas {
     CodeSource src = getClass().getProtectionDomain().getCodeSource();
     srcLocation = src.getLocation();
     if (!srcLocation.toString().endsWith(".jar")) {
-      srcLocation = ZipUtils.zipClasspath(srcLocation);
+      srcLocation = JarUtils.archiveClasspath(srcLocation);
     }
   }
 
@@ -104,51 +107,45 @@ public class JsonSchemasAPI implements JsonSchemas {
 
   private List<String> getSchemas() throws IOException {
     List<String> schemas = new ArrayList<>();
-    ZipInputStream zip = new ZipInputStream(srcLocation.openStream());
-    while (true) {
-      ZipEntry zipEntry = zip.getNextEntry();
-      if (zipEntry == null) {
-        break;
-      }
-      String entryName = zipEntry.getName();
-      if (entryName.startsWith(RAMLS_PATH) &&  (entryName.endsWith(JSON_EXT) || entryName.endsWith(SCHEMA_EXT))) {
+    JarFile jar = new JarFile(new File(srcLocation.getPath()));
+    List<JarEntry> entries = Collections.list(jar.entries());
+    for (JarEntry entry : entries) {
+      String entryName = entry.getName();
+      if (entryName.startsWith(RAMLS_PATH) && (entryName.endsWith(JSON_EXT) || entryName.endsWith(SCHEMA_EXT))) {
         String schemaPath = entryName.substring(6);
-          if(!schemaPath.contains(FORWARD_SLASH)) {
-            String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
-            try {
-              // validate JSON
-              schemas.add(schemaName);
-            } catch(Exception e) {
-              log.info("{} is not a valid json file", entryName);
-            }
+        if(!schemaPath.contains(FORWARD_SLASH)) {
+          String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
+          try {
+            schemas.add(schemaName);
+          } catch(Exception e) {
+            log.info("{} is not a valid json file", entryName);
           }
+        }
       }
     }
-    zip.close();
+    jar.close();
     return schemas;
   }
 
   private String getSchemaByPath(String path, String okapiUrl) throws IOException {
     String schema = null;
-    ZipInputStream zip = new ZipInputStream(srcLocation.openStream());
-    while (true) {
-      ZipEntry zipEntry = zip.getNextEntry();
-      if (zipEntry == null) {
-        break;
-      }
-      String entryName = zipEntry.getName();
+    JarFile jar = new JarFile(new File(srcLocation.getPath()));
+    List<JarEntry> entries = Collections.list(jar.entries());
+    for (JarEntry entry : entries) {
+      String entryName = entry.getName();
       if (entryName.equals(RAMLS_PATH + path)) {
         try {
-          // validate JSON
-          JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(zip, JsonNode.class);
+          InputStream is = jar.getInputStream(entry);
+          JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
           schema = replaceReferences(schemaNode.toString(), okapiUrl);
+          is.close();
           break;
         } catch(IOException e) {
           log.info("{} is not a valid json file", entryName);
         }
       }
     }
-    zip.close();
+    jar.close();
     return schema;
   }
 

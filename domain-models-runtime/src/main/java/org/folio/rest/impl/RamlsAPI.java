@@ -1,17 +1,20 @@
 package org.folio.rest.impl;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.StringBuffer;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.CodeSource;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import javax.ws.rs.core.Response;
 
@@ -19,7 +22,7 @@ import org.apache.commons.io.IOUtils;
 
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.Ramls;
-import org.folio.rest.tools.utils.ZipUtils;
+import org.folio.rest.tools.utils.JarUtils;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -50,7 +53,7 @@ public class RamlsAPI implements Ramls {
     CodeSource src = getClass().getProtectionDomain().getCodeSource();
     srcLocation = src.getLocation();
     if (!srcLocation.toString().endsWith(".jar")) {
-      srcLocation = ZipUtils.zipClasspath(srcLocation);
+      srcLocation = JarUtils.archiveClasspath(srcLocation);
     }
   }
 
@@ -100,19 +103,15 @@ public class RamlsAPI implements Ramls {
 
   private List<String> getRamls() throws IOException {
     List<String> ramls = new ArrayList<>();
-    ZipInputStream zip = new ZipInputStream(srcLocation.openStream());
-    while (true) {
-      ZipEntry zipEntry = zip.getNextEntry();
-      if (zipEntry == null) {
-        break;
-      }
-      String entryName = zipEntry.getName();
+    JarFile jar = new JarFile(new File(srcLocation.getPath()));
+    List<JarEntry> entries = Collections.list(jar.entries());
+    for (JarEntry entry : entries) {
+      String entryName = entry.getName();
       if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(RAML_EXT)) {
         String ramlPath = entryName.substring(6);
         if (!ramlPath.contains(FORWARD_SLASH)) {
           String ramlName = ramlPath.substring(ramlPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
           try {
-            // validate RAML
             ramls.add(ramlName);
           } catch(Exception e) {
             log.info("{} is not a valid raml file", entryName);
@@ -120,30 +119,28 @@ public class RamlsAPI implements Ramls {
         }
       }
     }
-    zip.close();
+    jar.close();
     return ramls;
   }
 
   private String getRamlByPath(String path, String okapiUrl) throws IOException {
     String raml = null;
-    ZipInputStream zip = new ZipInputStream(srcLocation.openStream());
-    while (true) {
-      ZipEntry zipEntry = zip.getNextEntry();
-      if (zipEntry == null) {
-        break;
-      }
-      String entryName = zipEntry.getName();
+    JarFile jar = new JarFile(new File(srcLocation.getPath()));
+    List<JarEntry> entries = Collections.list(jar.entries());
+    for (JarEntry entry : entries) {
+      String entryName = entry.getName();
       if (entryName.equals(RAMLS_PATH + path)) {
         try {
-          // validate RAML
-          raml = replaceReferences(IOUtils.toString(zip, StandardCharsets.UTF_8.name()), okapiUrl);
+          InputStream is = jar.getInputStream(entry);
+          raml = replaceReferences(IOUtils.toString(is, StandardCharsets.UTF_8.name()), okapiUrl);
+          is.close();
           break;
         } catch(IOException e) {
           log.info("{} is not a valid raml file", entryName);
         }
       }
     }
-    zip.close();
+    jar.close();
     return raml;
   }
 

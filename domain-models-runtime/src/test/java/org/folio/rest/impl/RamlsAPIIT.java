@@ -12,7 +12,6 @@ import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -20,8 +19,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class RamlsAPIIT {
-
-  private static final Logger log = LoggerFactory.getLogger(RamlsAPIIT.class);
 
   private static Vertx vertx;
 
