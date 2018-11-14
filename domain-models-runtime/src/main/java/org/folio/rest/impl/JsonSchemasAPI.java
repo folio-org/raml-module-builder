@@ -3,13 +3,12 @@ package org.folio.rest.impl;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.StringBuffer;
 import java.net.URL;
 import java.security.CodeSource;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
@@ -106,50 +105,48 @@ public class JsonSchemasAPI implements JsonSchemas {
   }
 
   private List<String> getSchemas() throws IOException {
-    List<String> schemas = new ArrayList<>();
-    JarFile jar = new JarFile(new File(srcLocation.getPath()));
-    List<JarEntry> entries = Collections.list(jar.entries());
-    for (JarEntry entry : entries) {
-      String entryName = entry.getName();
-      if (entryName.startsWith(RAMLS_PATH) && (entryName.endsWith(JSON_EXT) || entryName.endsWith(SCHEMA_EXT))) {
-        String schemaPath = entryName.substring(6);
-        if(!schemaPath.contains(FORWARD_SLASH)) {
-          String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
-          try {
-            schemas.add(schemaName);
-          } catch(Exception e) {
-            log.info("{} is not a valid json file", entryName);
+    List<String> schemas = new CopyOnWriteArrayList<>();
+    try (JarFile jar = new JarFile(new File(srcLocation.getPath()))) {
+      Collections.list(jar.entries()).parallelStream().forEach(entry -> {
+        String entryName = entry.getName();
+        if (entryName.startsWith(RAMLS_PATH) && (entryName.endsWith(JSON_EXT) || entryName.endsWith(SCHEMA_EXT))) {
+          String schemaPath = entryName.substring(6);
+          if(!schemaPath.contains(FORWARD_SLASH)) {
+            String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
+            try {
+              schemas.add(schemaName);
+            } catch(Exception e) {
+              log.info("{} is not a valid json file", entryName);
+            }
           }
         }
-      }
+      });
     }
-    jar.close();
     return schemas;
   }
 
   private String getSchemaByPath(String path, String okapiUrl) throws IOException {
     String schema = null;
-    JarFile jar = new JarFile(new File(srcLocation.getPath()));
-    List<JarEntry> entries = Collections.list(jar.entries());
-    for (JarEntry entry : entries) {
-      String entryName = entry.getName();
-      if (entryName.equals(RAMLS_PATH + path)) {
-        try {
-          InputStream is = jar.getInputStream(entry);
-          JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
-          schema = replaceReferences(schemaNode.toString(), okapiUrl);
-          is.close();
-          break;
-        } catch(IOException e) {
-          log.info("{} is not a valid json file", entryName);
+    try (JarFile jar = new JarFile(new File(srcLocation.getPath()))) {
+      for (JarEntry entry : Collections.list(jar.entries())) {
+        String entryName = entry.getName();
+        if (entryName.equals(RAMLS_PATH + path)) {
+          try {
+            InputStream is = jar.getInputStream(entry);
+            JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
+            schema = replaceReferences(schemaNode.toString(), okapiUrl);
+            is.close();
+            break;
+          } catch(IOException e) {
+            log.info("{} is not a valid json file", entryName);
+          }
         }
       }
     }
-    jar.close();
     return schema;
   }
 
-  private String replaceReferences(String schema, String okapiUrl) throws IOException {
+  private String replaceReferences(String schema, String okapiUrl) {
     Matcher matcher = REF_MATCH_PATTERN.matcher(schema);
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {

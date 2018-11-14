@@ -16,6 +16,10 @@ public class JarUtils {
   private static final String CLASSES_PATH = "classes/";
   private static final String CLASSPATH_JAR_FILE_NAME = "classpath.jar";
 
+  private JarUtils() {
+
+  }
+
   public static URL archiveClasspath(URL url) throws IOException {
     File file;
     try {

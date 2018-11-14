@@ -3,14 +3,13 @@ package org.folio.rest.impl;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.StringBuffer;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.CodeSource;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
@@ -102,49 +101,47 @@ public class RamlsAPI implements Ramls {
   }
 
   private List<String> getRamls() throws IOException {
-    List<String> ramls = new ArrayList<>();
-    JarFile jar = new JarFile(new File(srcLocation.getPath()));
-    List<JarEntry> entries = Collections.list(jar.entries());
-    for (JarEntry entry : entries) {
-      String entryName = entry.getName();
-      if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(RAML_EXT)) {
-        String ramlPath = entryName.substring(6);
-        if (!ramlPath.contains(FORWARD_SLASH)) {
-          String ramlName = ramlPath.substring(ramlPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
-          try {
-            ramls.add(ramlName);
-          } catch(Exception e) {
-            log.info("{} is not a valid raml file", entryName);
+    List<String> ramls = new CopyOnWriteArrayList<>();
+    try (JarFile jar = new JarFile(new File(srcLocation.getPath()))) {
+      Collections.list(jar.entries()).parallelStream().forEach(entry -> {
+        String entryName = entry.getName();
+        if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(RAML_EXT)) {
+          String ramlPath = entryName.substring(6);
+          if (!ramlPath.contains(FORWARD_SLASH)) {
+            String ramlName = ramlPath.substring(ramlPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
+            try {
+              ramls.add(ramlName);
+            } catch(Exception e) {
+              log.info("{} is not a valid raml file", entryName);
+            }
           }
         }
-      }
+      });
     }
-    jar.close();
     return ramls;
   }
 
   private String getRamlByPath(String path, String okapiUrl) throws IOException {
     String raml = null;
-    JarFile jar = new JarFile(new File(srcLocation.getPath()));
-    List<JarEntry> entries = Collections.list(jar.entries());
-    for (JarEntry entry : entries) {
-      String entryName = entry.getName();
-      if (entryName.equals(RAMLS_PATH + path)) {
-        try {
-          InputStream is = jar.getInputStream(entry);
-          raml = replaceReferences(IOUtils.toString(is, StandardCharsets.UTF_8.name()), okapiUrl);
-          is.close();
-          break;
-        } catch(IOException e) {
-          log.info("{} is not a valid raml file", entryName);
+    try (JarFile jar = new JarFile(new File(srcLocation.getPath()))) {
+      for (JarEntry entry : Collections.list(jar.entries())) {
+        String entryName = entry.getName();
+        if (entryName.equals(RAMLS_PATH + path)) {
+          try {
+            InputStream is = jar.getInputStream(entry);
+            raml = replaceReferences(IOUtils.toString(is, StandardCharsets.UTF_8.name()), okapiUrl);
+            is.close();
+            break;
+          } catch(IOException e) {
+            log.info("{} is not a valid raml file", entryName);
+          }
         }
       }
     }
-    jar.close();
     return raml;
   }
 
-  private String replaceReferences(String raml, String okapiUrl) throws IOException {
+  private String replaceReferences(String raml, String okapiUrl) {
     Matcher matcher = INCLUDE_MATCH_PATTERN.matcher(raml);
     StringBuffer sb = new StringBuffer(raml.length());
     while (matcher.find()) {
