@@ -1,23 +1,23 @@
 package org.folio.rest.impl;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.StringBuffer;
+import java.net.URL;
+import java.security.CodeSource;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.jar.JarFile;
-import java.util.jar.JarEntry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.JsonSchemas;
 import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.rest.tools.utils.ZipUtils;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -37,8 +37,24 @@ public class JsonSchemasAPI implements JsonSchemas {
   private static final String OKAPI_URL_HEADER = "x-okapi-url";
   private static final String RAMLS_PATH = "ramls/";
   private static final String JSON_EXT = ".json";
+  private static final String SCHEMA_EXT = ".schema";
   private static final String FORWARD_SLASH = "/";
   private static final String HASH_TAG = "#";
+
+  private URL srcLocation;
+
+  public JsonSchemasAPI() throws IOException {
+    super();
+    init();
+  }
+
+  private void init() throws IOException {
+    CodeSource src = getClass().getProtectionDomain().getCodeSource();
+    srcLocation = src.getLocation();
+    if (!srcLocation.toString().endsWith(".jar")) {
+      srcLocation = ZipUtils.zipClasspath(srcLocation);
+    }
+  }
 
   @Validate
   @Override
@@ -49,7 +65,6 @@ public class JsonSchemasAPI implements JsonSchemas {
     Context vertxContext
   ) {
     vertxContext.runOnContext(v -> {
-      log.info(path);
       try {
         if (path == null) {
           List<String> schemas = getSchemas();
@@ -60,7 +75,7 @@ public class JsonSchemasAPI implements JsonSchemas {
           );
         } else {
           String okapiUrl = okapiHeaders.get(OKAPI_URL_HEADER);
-          String schema = getSchemaByName(path, okapiUrl);
+          String schema = getSchemaByPath(path, okapiUrl);
           if (schema != null) {
             asyncResultHandler.handle(
               Future.succeededFuture(
@@ -89,47 +104,51 @@ public class JsonSchemasAPI implements JsonSchemas {
 
   private List<String> getSchemas() throws IOException {
     List<String> schemas = new ArrayList<>();
-    File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
-    JarFile jar = new JarFile(jarFile);
-    List<JarEntry> entries = Collections.list(jar.entries());
-    for (JarEntry entry : entries) {
-      String entryName = entry.getName();
-      if (entryName.startsWith(RAMLS_PATH) && entryName.endsWith(JSON_EXT)) {
+    ZipInputStream zip = new ZipInputStream(srcLocation.openStream());
+    while (true) {
+      ZipEntry zipEntry = zip.getNextEntry();
+      if (zipEntry == null) {
+        break;
+      }
+      String entryName = zipEntry.getName();
+      if (entryName.startsWith(RAMLS_PATH) &&  (entryName.endsWith(JSON_EXT) || entryName.endsWith(SCHEMA_EXT))) {
         String schemaPath = entryName.substring(6);
-        if(!schemaPath.contains(FORWARD_SLASH)) {
-          String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
-          try {
-            schemas.add(schemaName);
-          } catch(Exception e) {
-            log.info("{} is not a valid json file", entryName);
+          if(!schemaPath.contains(FORWARD_SLASH)) {
+            String schemaName = schemaPath.substring(schemaPath.lastIndexOf(FORWARD_SLASH) + FORWARD_SLASH.length());
+            try {
+              // validate JSON
+              schemas.add(schemaName);
+            } catch(Exception e) {
+              log.info("{} is not a valid json file", entryName);
+            }
           }
-        }
       }
     }
-    jar.close();
+    zip.close();
     return schemas;
   }
 
-  private String getSchemaByName(String path, String okapiUrl) throws IOException {
+  private String getSchemaByPath(String path, String okapiUrl) throws IOException {
     String schema = null;
-    File jarFile = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
-    JarFile jar = new JarFile(jarFile);
-    List<JarEntry> entries = Collections.list(jar.entries());
-    for (JarEntry entry : entries) {
-      String entryName = entry.getName();
+    ZipInputStream zip = new ZipInputStream(srcLocation.openStream());
+    while (true) {
+      ZipEntry zipEntry = zip.getNextEntry();
+      if (zipEntry == null) {
+        break;
+      }
+      String entryName = zipEntry.getName();
       if (entryName.equals(RAMLS_PATH + path)) {
         try {
-          InputStream is = jar.getInputStream(entry);
-          JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(is, JsonNode.class);
+          // validate JSON
+          JsonNode schemaNode = ObjectMapperTool.getMapper().readValue(zip, JsonNode.class);
           schema = replaceReferences(schemaNode.toString(), okapiUrl);
-          is.close();
           break;
         } catch(IOException e) {
           log.info("{} is not a valid json file", entryName);
         }
       }
     }
-    jar.close();
+    zip.close();
     return schema;
   }
 
