@@ -1,9 +1,12 @@
 package org.folio.rest.tools;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,6 +26,10 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class GenerateRunner {
 
+  public static final String SOURCES_DEFAULT = "ramls";
+  public static final String RAML_LIST = "raml.list";
+  public static final String JSON_SCHEMA_LIST = "json-schema.list";
+
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
@@ -30,7 +37,6 @@ public class GenerateRunner {
   static final Logger log = LoggerFactory.getLogger(GenerateRunner.class);
 
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
-  private static final String SOURCES_DEFAULT = "ramls";
   private static final String RESOURCE_DEFAULT = "target/classes";
 
   private String outputDirectory = null;
@@ -99,30 +105,33 @@ public class GenerateRunner {
 
     String [] ramlFiles = System.getProperty("raml_files", SOURCES_DEFAULT).split(",");
     String pre = ramlFiles[0];
-    File x0 = new File(pre);
-    File x1 = x0;
+    File input = new File(pre);
+    File temp = input;
     while (true) {
-      x1 = x1.getParentFile();
-      if (x1 == null) {
+      temp = temp.getParentFile();
+      if (temp == null) {
         break;
       } else {
-        if (x1.getName().equals(SOURCES_DEFAULT)) {
-          x0 = x1;
+        if (temp.getName().equals(SOURCES_DEFAULT)) {
+          input = temp;
         }
       }
     }
     File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
-    String input = x0.getAbsolutePath();
+
     log.info("copying ramls from source directory at: " + input);
     log.info("copying ramls to target directory at: " + output);
-    RamlDirCopier.copy(x0.toPath(), output.toPath());
+    RamlDirCopier.copy(input.toPath(), output.toPath());
 
     for (String d : ramlFiles) {
       File tmp  = new File(d);
       String a = tmp.getAbsolutePath();
-      a = a.replace(input, output.getAbsolutePath());
+      a = a.replace(input.getAbsolutePath(), output.getAbsolutePath());
       generateRunner.generate(a);
     }
+
+    createLookupList(output, RAML_LIST, ".raml");
+    createLookupList(output, JSON_SCHEMA_LIST, ".json", ".schema");
   }
 
   /**
@@ -173,6 +182,24 @@ public class GenerateRunner {
       }
     }
     log.info("processed: " + numMatches + " raml files");
+  }
+
+  public static void createLookupList(File directory, String name, String...exts) throws IOException {
+    File listFile = new File(directory.getAbsolutePath() + File.separator + name);
+    FileOutputStream fos = new FileOutputStream(listFile);
+    try(BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos))) {
+      for (File file: directory.listFiles()) {
+        for(String ext : exts) {
+          if(file.getName().endsWith(ext)) {
+            log.info("lookup entry: " + file.getName());
+            bw.write(file.getName());
+            bw.newLine();
+            break;
+          }
+        }
+      }
+    }
+    log.info("lookup list file created: " + listFile.getAbsolutePath());
   }
 
 }
