@@ -3,6 +3,7 @@ package org.folio.rest.tools;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -10,6 +11,8 @@ import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.io.filefilter.SuffixFileFilter;
+import org.apache.commons.io.IOCase;
 import org.folio.rest.tools.plugins.CustomTypeAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
 import org.jsonschema2pojo.AnnotationStyle;
@@ -184,19 +187,14 @@ public class GenerateRunner {
     log.info("processed: " + numMatches + " raml files");
   }
 
-  public static void createLookupList(File directory, String name, String...exts) throws IOException {
+  public static void createLookupList(File directory, String name, String...suffixes) throws IOException {
     File listFile = new File(directory.getAbsolutePath() + File.separator + name);
     FileOutputStream fos = new FileOutputStream(listFile);
     try(BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos))) {
-      for (File file: directory.listFiles()) {
-        for(String ext : exts) {
-          if(file.getName().endsWith(ext)) {
-            log.info("lookup entry: " + file.getName());
-            bw.write(file.getName());
-            bw.newLine();
-            break;
-          }
-        }
+      for (File file: directory.listFiles((FileFilter) new SuffixFileFilter(suffixes, IOCase.INSENSITIVE))) {
+        log.info("lookup entry: " + file.getName());
+        bw.write(file.getName());
+        bw.newLine();
       }
     }
     log.info("lookup list file created: " + listFile.getAbsolutePath());

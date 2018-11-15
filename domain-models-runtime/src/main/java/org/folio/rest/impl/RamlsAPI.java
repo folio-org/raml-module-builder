@@ -88,19 +88,19 @@ public class RamlsAPI implements Ramls {
   }
 
   private static List<String> getRamlsList() {
-    URL ramlsListUrl = RamlsAPI.class.getClassLoader().getResource(RAMLS_PATH + GenerateRunner.RAML_LIST);
+    URL ramlListUrl = RamlsAPI.class.getClassLoader().getResource(RAMLS_PATH + GenerateRunner.RAML_LIST);
     try {
-      if (ramlsListUrl.toURI().getScheme().equals(JAR)) {
+      if (ramlListUrl.toURI().getScheme().equals(JAR)) {
         return IOUtils.readLines(RamlsAPI.class.getClassLoader().getResourceAsStream(RAMLS_PATH + GenerateRunner.RAML_LIST), StandardCharsets.UTF_8);
       } else {
-        return Files.readAllLines(Paths.get(ramlsListUrl.toURI()), StandardCharsets.UTF_8);
+        return Files.readAllLines(Paths.get(ramlListUrl.toURI()), StandardCharsets.UTF_8);
       }
     } catch (URISyntaxException | IOException e) {
       return new ArrayList<>();
     }
   }
 
-  private List<String> getRamls() throws IOException {
+  private List<String> getRamls() {
     return RAMLS;
   }
 

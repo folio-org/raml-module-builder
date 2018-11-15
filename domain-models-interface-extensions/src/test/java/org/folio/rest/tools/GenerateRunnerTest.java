@@ -2,13 +2,25 @@ package org.folio.rest.tools;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOCase;
+import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.folio.util.IoUtil;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -40,6 +52,7 @@ public class GenerateRunnerTest {
     jaxrsBak.renameTo(jaxrs);  // ignore any error
   }
 
+  @After
   @Before
   public void cleanDir() throws IOException {
     ClientGenerator.makeCleanDir(baseDir);
@@ -124,6 +137,40 @@ public class GenerateRunnerTest {
     System.setProperty("maven.multiModuleProjectDirectory", baseDir + "/foobar");
     GenerateRunner.main(null);
     assertTest();
+  }
+
+  @Test
+  public void testCreateRamlsLookupList() throws Exception {
+    File src = new File(userDir + "/ramls/");
+    assertTrue(src.exists() && src.isDirectory());
+    File dest = new File(userDir + "/target/ramls/");
+    FileUtils.copyDirectory(src, dest);
+    GenerateRunner.createLookupList(dest, GenerateRunner.RAML_LIST, ".raml");
+    URL ramlListUrl = getClass().getClassLoader().getResource("ramls/" + GenerateRunner.RAML_LIST);
+    assertNotNull(ramlListUrl);
+    List<String> ramls = Files.readAllLines(Paths.get(ramlListUrl.toURI()), StandardCharsets.UTF_8);
+    File[] files = src.listFiles((FileFilter) new SuffixFileFilter(new String[] { ".raml" }, IOCase.INSENSITIVE));
+    assertEquals(files.length, ramls.size());
+    for (File file: files) {
+      assertTrue(ramls.contains(file.getName()));
+    }
+  }
+
+  @Test
+  public void testCreateJsonSchemasLookupList() throws Exception {
+    File src = new File(userDir + "/ramls/");
+    assertTrue(src.exists() && src.isDirectory());
+    File dest = new File(userDir + "/target/ramls/");
+    FileUtils.copyDirectory(src, dest);
+    GenerateRunner.createLookupList(dest, GenerateRunner.JSON_SCHEMA_LIST, ".json", ".schema");
+    URL jsonSchemaListUrl = getClass().getClassLoader().getResource("ramls/" + GenerateRunner.JSON_SCHEMA_LIST);
+    assertNotNull(jsonSchemaListUrl);
+    List<String> jsonSchemas = Files.readAllLines(Paths.get(jsonSchemaListUrl.toURI()), StandardCharsets.UTF_8);
+    File[] files = src.listFiles((FileFilter) new SuffixFileFilter(new String[] { ".json", ".schema" }, IOCase.INSENSITIVE));
+    assertEquals(files.length, jsonSchemas.size());
+    for (File file: files) {
+      assertTrue(jsonSchemas.contains(file.getName()));
+    }
   }
 
 }

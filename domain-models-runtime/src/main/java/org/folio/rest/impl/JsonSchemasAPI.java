@@ -89,29 +89,29 @@ public class JsonSchemasAPI implements JsonSchemas {
   }
 
   private static List<String> getJsonSchemasList() {
-    URL jsonSchemasListUrl = RamlsAPI.class.getClassLoader().getResource(RAMLS_PATH + GenerateRunner.JSON_SCHEMA_LIST);
+    URL jsonSchemaListUrl = JsonSchemasAPI.class.getClassLoader().getResource(RAMLS_PATH + GenerateRunner.JSON_SCHEMA_LIST);
     try {
-      if (jsonSchemasListUrl.toURI().getScheme().equals(JAR)) {
-        return IOUtils.readLines(RamlsAPI.class.getClassLoader().getResourceAsStream(RAMLS_PATH + GenerateRunner.JSON_SCHEMA_LIST), StandardCharsets.UTF_8);
+      if (jsonSchemaListUrl.toURI().getScheme().equals(JAR)) {
+        return IOUtils.readLines(JsonSchemasAPI.class.getClassLoader().getResourceAsStream(RAMLS_PATH + GenerateRunner.JSON_SCHEMA_LIST), StandardCharsets.UTF_8);
       } else {
-        return Files.readAllLines(Paths.get(jsonSchemasListUrl.toURI()), StandardCharsets.UTF_8);
+        return Files.readAllLines(Paths.get(jsonSchemaListUrl.toURI()), StandardCharsets.UTF_8);
       }
     } catch (URISyntaxException | IOException e) {
       return new ArrayList<>();
     }
   }
 
-  private List<String> getSchemas() throws IOException {
+  private List<String> getSchemas() {
     return JSON_SCHEMAS;
   }
 
   private String getJsonSchemaByPath(String path, String okapiUrl) throws URISyntaxException, IOException {
-    URL jsonSchemaUrl = JsonSchemasAPI.class.getClassLoader().getResource(RAMLS_PATH + path);
+    URL jsonSchemaUrl = getClass().getClassLoader().getResource(RAMLS_PATH + path);
     if (jsonSchemaUrl == null) {
       return null;
     }
     if (jsonSchemaUrl.toURI().getScheme().equals(JAR)) {
-      InputStream is = JsonSchemasAPI.class.getClassLoader().getResourceAsStream(RAMLS_PATH + path);
+      InputStream is = getClass().getClassLoader().getResourceAsStream(RAMLS_PATH + path);
       return replaceReferences(IOUtils.toString(is, StandardCharsets.UTF_8.name()), okapiUrl);
     } else {
       return replaceReferences(IOUtils.toString(new FileInputStream(jsonSchemaUrl.getFile()), StandardCharsets.UTF_8.name()), okapiUrl);
