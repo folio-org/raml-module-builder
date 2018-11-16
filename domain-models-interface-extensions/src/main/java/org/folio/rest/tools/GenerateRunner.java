@@ -4,10 +4,11 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -177,8 +178,8 @@ public class GenerateRunner {
 
   public static void createLookupList(File directory, String name, String...suffixes) throws IOException {
     File listFile = new File(directory.getAbsolutePath() + File.separator + name);
-    FileOutputStream fos = new FileOutputStream(listFile);
-    try(BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos))) {
+    Path path = Paths.get(directory.getAbsolutePath(), name);
+    try (BufferedWriter bw = Files.newBufferedWriter(path)) {
       for (File file: directory.listFiles((FileFilter) new SuffixFileFilter(suffixes, IOCase.INSENSITIVE))) {
         log.info("lookup entry: " + file.getName());
         bw.write(file.getName());
