@@ -1,0 +1,16 @@
+#%RAML 1.0
+
+title: Tests API
+baseUri: http://localhost:8081/v1
+version: v1
+
+types:
+  test: !include test.schema
+
+/test:
+    displayName: Tests
+    description: Test services
+    post:
+      body:
+        application/json:
+          schema: test
