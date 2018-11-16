@@ -2,28 +2,26 @@ package org.folio.rest.tools;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.io.FileFilter;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOCase;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.folio.util.IoUtil;
+
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -150,9 +148,8 @@ public class GenerateRunnerTest {
     GenerateRunner.createLookupList(dest, GenerateRunner.RAML_LIST, ".raml");
     URL ramlListUrl = getClass().getClassLoader().getResource("ramls/" + GenerateRunner.RAML_LIST);
     assertNotNull(ramlListUrl);
-    String ramlList = IOUtils.toString(new FileInputStream(ramlListUrl.getFile()), StandardCharsets.UTF_8.name());
-    String expectedRamlList = "test.raml" + System.lineSeparator();
-    assertEquals(expectedRamlList, ramlList);
+    List<String> actualRamls = Files.readAllLines(Paths.get(ramlListUrl.toURI()), StandardCharsets.UTF_8);
+    Assert.assertThat(actualRamls, containsInAnyOrder("test.raml"));
   }
 
   @Test
@@ -164,9 +161,8 @@ public class GenerateRunnerTest {
     GenerateRunner.createLookupList(dest, GenerateRunner.JSON_SCHEMA_LIST, ".json", ".schema");
     URL jsonSchemaListUrl = getClass().getClassLoader().getResource("ramls/" + GenerateRunner.JSON_SCHEMA_LIST);
     assertNotNull(jsonSchemaListUrl);
-    String jsonSchemaList = IOUtils.toString(new FileInputStream(jsonSchemaListUrl.getFile()), StandardCharsets.UTF_8.name());
-    String expectedjsonSchemaList = "test.schema" + System.lineSeparator() + "object.json" + System.lineSeparator();
-    assertEquals(expectedjsonSchemaList, jsonSchemaList);
+    List<String> actualJsonSchemas = Files.readAllLines(Paths.get(jsonSchemaListUrl.toURI()), StandardCharsets.UTF_8);
+    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test.schema", "object.json"));
   }
 
 }
