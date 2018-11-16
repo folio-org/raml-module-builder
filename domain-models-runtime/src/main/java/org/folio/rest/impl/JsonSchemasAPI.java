@@ -118,7 +118,7 @@ public class JsonSchemasAPI implements JsonSchemas {
     }
   }
 
-  private String replaceReferences(String schema, String okapiUrl) {
+  String replaceReferences(String schema, String okapiUrl) {
     Matcher matcher = REF_MATCH_PATTERN.matcher(schema);
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {

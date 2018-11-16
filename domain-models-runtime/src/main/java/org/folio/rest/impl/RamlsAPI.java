@@ -117,7 +117,7 @@ public class RamlsAPI implements Ramls {
     }
   }
 
-  private String replaceReferences(String raml, String okapiUrl) {
+  String replaceReferences(String raml, String okapiUrl) {
     Matcher matcher = INCLUDE_MATCH_PATTERN.matcher(raml);
     StringBuffer sb = new StringBuffer(raml.length());
     while (matcher.find()) {
