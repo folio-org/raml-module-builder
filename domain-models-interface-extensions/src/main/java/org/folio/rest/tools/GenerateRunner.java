@@ -107,19 +107,7 @@ public class GenerateRunner {
     CustomTypeAnnotator.setCustomFields(System.getProperties().getProperty("jsonschema.customfield"));
 
     String [] ramlFiles = System.getProperty("raml_files", SOURCES_DEFAULT).split(",");
-    String pre = ramlFiles[0];
-    File input = new File(pre);
-    File temp = input;
-    while (true) {
-      temp = temp.getParentFile();
-      if (temp == null) {
-        break;
-      } else {
-        if (temp.getName().equals(SOURCES_DEFAULT)) {
-          input = temp;
-        }
-      }
-    }
+    File input = rebase(ramlFiles[0]);
     File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
 
     log.info("copying ramls from source directory at: " + input);
@@ -198,6 +186,22 @@ public class GenerateRunner {
       }
     }
     log.info("lookup list file created: " + listFile.getAbsolutePath());
+  }
+
+  private static File rebase(String path) {
+    File input = new File(path);
+    File temp = input;
+    while (true) {
+      temp = temp.getParentFile();
+      if (temp == null) {
+        break;
+      } else {
+        if (temp.getName().equals(SOURCES_DEFAULT)) {
+          input = temp;
+        }
+      }
+    }
+    return input;
   }
 
 }
