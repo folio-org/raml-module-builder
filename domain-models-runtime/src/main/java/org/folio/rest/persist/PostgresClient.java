@@ -3112,6 +3112,13 @@ public class PostgresClient {
     });
   }
 
+  static void startPostgresProcess(EmbeddedPostgres e) {
+    Optional<PostgresProcess> p = e.getProcess();
+    if (p.isPresent()) {
+      postgresProcess = p.get();
+    }
+  }
+
   /**
    * Start an embedded PostgreSQL using the configuration of {@link #getConnectionConfig()}.
    * doesn't change the configuration.
@@ -3135,10 +3142,7 @@ public class PostgresClient {
       EmbeddedPostgres e = new EmbeddedPostgres(Version.Main.V10);
       e.start("localhost", port, database, username, password,
         Arrays.asList("-E", "UTF-8", "--locale", locale));
-      Optional<PostgresProcess> p = e.getProcess();
-      if (p.isPresent()) {
-        postgresProcess = p.get();
-      }
+      startPostgresProcess(e);
       log.info("embedded postgres started....");
     } else {
       log.info("embedded postgres is already running...");
