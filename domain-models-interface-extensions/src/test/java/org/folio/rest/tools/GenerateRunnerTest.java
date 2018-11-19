@@ -151,7 +151,7 @@ public class GenerateRunnerTest {
     Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test.schema", "object.json"));
   }
 
-  public List<String> testCreateLookupList(String filename, String...exts) throws IOException, URISyntaxException {
+  private List<String> testCreateLookupList(String filename, String...exts) throws IOException, URISyntaxException {
     File src = new File(userDir + "/ramls/");
     assertTrue(src.exists() && src.isDirectory());
     File dest = new File(userDir + "/target/ramls/");
