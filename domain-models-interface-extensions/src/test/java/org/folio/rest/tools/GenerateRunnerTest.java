@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -140,28 +141,25 @@ public class GenerateRunnerTest {
 
   @Test
   public void testCreateRamlsLookupList() throws Exception {
-    File src = new File(userDir + "/ramls/");
-    assertTrue(src.exists() && src.isDirectory());
-    File dest = new File(userDir + "/target/ramls/");
-    FileUtils.copyDirectory(src, dest);
-    GenerateRunner.createLookupList(dest, GenerateRunner.RAML_LIST, ".raml");
-    URL ramlListUrl = getClass().getClassLoader().getResource("ramls/" + GenerateRunner.RAML_LIST);
-    assertNotNull(ramlListUrl);
-    List<String> actualRamls = Files.readAllLines(Paths.get(ramlListUrl.toURI()), StandardCharsets.UTF_8);
+    List<String> actualRamls = testCreateLookupList(GenerateRunner.RAML_LIST, ".raml");
     Assert.assertThat(actualRamls, containsInAnyOrder("test.raml"));
   }
 
   @Test
   public void testCreateJsonSchemasLookupList() throws Exception {
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, ".json", ".schema");
+    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test.schema", "object.json"));
+  }
+
+  public List<String> testCreateLookupList(String filename, String...exts) throws IOException, URISyntaxException {
     File src = new File(userDir + "/ramls/");
     assertTrue(src.exists() && src.isDirectory());
     File dest = new File(userDir + "/target/ramls/");
     FileUtils.copyDirectory(src, dest);
-    GenerateRunner.createLookupList(dest, GenerateRunner.JSON_SCHEMA_LIST, ".json", ".schema");
-    URL jsonSchemaListUrl = getClass().getClassLoader().getResource("ramls/" + GenerateRunner.JSON_SCHEMA_LIST);
+    GenerateRunner.createLookupList(dest, filename, exts);
+    URL jsonSchemaListUrl = getClass().getClassLoader().getResource("ramls/" + filename);
     assertNotNull(jsonSchemaListUrl);
-    List<String> actualJsonSchemas = Files.readAllLines(Paths.get(jsonSchemaListUrl.toURI()), StandardCharsets.UTF_8);
-    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test.schema", "object.json"));
+    return Files.readAllLines(Paths.get(jsonSchemaListUrl.toURI()), StandardCharsets.UTF_8);
   }
 
 }
