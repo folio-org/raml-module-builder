@@ -14,11 +14,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.folio.util.IoUtil;
-
+import org.folio.util.ResourceUtil;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -157,9 +158,7 @@ public class GenerateRunnerTest {
     File dest = new File(userDir + "/target/ramls/");
     FileUtils.copyDirectory(src, dest);
     GenerateRunner.createLookupList(dest, filename, exts);
-    URL jsonSchemaListUrl = getClass().getClassLoader().getResource("ramls/" + filename);
-    assertNotNull(jsonSchemaListUrl);
-    return Files.readAllLines(Paths.get(jsonSchemaListUrl.toURI()), StandardCharsets.UTF_8);
+    return Arrays.asList(ResourceUtil.asString("ramls/" + filename).split("\\r?\\n"));
   }
 
 }
