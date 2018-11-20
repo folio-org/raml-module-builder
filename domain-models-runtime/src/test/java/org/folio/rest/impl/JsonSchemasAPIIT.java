@@ -2,19 +2,17 @@ package org.folio.rest.impl;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.FileInputStream;
+import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.apache.commons.io.IOUtils;
+import org.folio.rest.tools.GenerateRunner;
 import org.folio.rest.tools.utils.VertxUtils;
-
+import org.folio.util.ResourceUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -114,8 +112,7 @@ public class JsonSchemasAPIIT {
   public void testReplaceReferences(TestContext context) throws IOException {
     JsonSchemasAPI jsonSchemasAPI = new JsonSchemasAPI();
     ObjectMapper mapper = new ObjectMapper();
-    URL jsonSchemaUrl = getClass().getClassLoader().getResource("ramls/test.schema");
-    String jsonSchema = IOUtils.toString(new FileInputStream(jsonSchemaUrl.getFile()), StandardCharsets.UTF_8.name());
+    String jsonSchema = ResourceUtil.asString(System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + File.separator + "test.schema");
     jsonSchema = jsonSchemasAPI.replaceReferences(jsonSchema, "http://localhost:9130");
     JsonNode testNode = mapper.readValue(jsonSchema, JsonNode.class);
     String objectsRef = testNode.get("properties").get("objects").get("items").get("$ref").asText();

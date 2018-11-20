@@ -357,22 +357,6 @@
               </resources>
             </configuration>
           </execution>
-          <execution>
-            <id>copy-test-ramls</id>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${basedir}/target/test-classes/ramls</outputDirectory>
-              <resources>
-                <resource>
-                   <directory>src/test/resources/ramls</directory>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
         </executions>
       </plugin>
 

@@ -3,15 +3,14 @@ package org.folio.rest.impl;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.FileInputStream;
+import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.io.IOUtils;
+import org.folio.rest.tools.GenerateRunner;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.folio.util.ResourceUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -110,8 +109,7 @@ public class RamlsAPIIT {
   @Test
   public void testReplaceReferences(TestContext context) throws IOException {
     RamlsAPI ramlsAPI = new RamlsAPI();
-    URL ramlUrl = getClass().getClassLoader().getResource("ramls/test.raml");
-    String raml = IOUtils.toString(new FileInputStream(ramlUrl.getFile()), StandardCharsets.UTF_8.name());
+    String raml = ResourceUtil.asString(System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + File.separator + "test.raml");
     raml = ramlsAPI.replaceReferences(raml, "http://localhost:9130");
     assertTrue(raml.contains("test: !include http://localhost:9130/_/jsonSchemas?path=test.schema"));
     assertFalse(raml.contains("test: !include test.schema"));

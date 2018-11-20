@@ -1,15 +1,10 @@
 package org.folio.rest.impl;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -17,11 +12,10 @@ import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response;
 
-import org.apache.commons.io.IOUtils;
-
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.Ramls;
 import org.folio.rest.tools.GenerateRunner;
+import org.folio.util.ResourceUtil;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -39,7 +33,6 @@ public class RamlsAPI implements Ramls {
   private static final String OKAPI_URL_HEADER = "x-okapi-url";
   private static final String RAMLS_PATH = System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + File.separator;
   private static final String RAML_EXT = ".raml";
-  private static final String JAR = "jar";
 
   private static final List<String> RAMLS = getRamlsList();
 
@@ -88,14 +81,10 @@ public class RamlsAPI implements Ramls {
   }
 
   private static List<String> getRamlsList() {
-    URL ramlListUrl = RamlsAPI.class.getClassLoader().getResource(RAMLS_PATH + GenerateRunner.RAML_LIST);
     try {
-      if (ramlListUrl.toURI().getScheme().equals(JAR)) {
-        return IOUtils.readLines(RamlsAPI.class.getClassLoader().getResourceAsStream(RAMLS_PATH + GenerateRunner.RAML_LIST), StandardCharsets.UTF_8);
-      } else {
-        return Files.readAllLines(Paths.get(ramlListUrl.toURI()), StandardCharsets.UTF_8);
-      }
-    } catch (URISyntaxException | IOException e) {
+      return Arrays.asList(ResourceUtil.asString(RAMLS_PATH + GenerateRunner.RAML_LIST).split("\\r?\\n"));
+    } catch (IOException e) {
+      log.warn("Unable to get RAMLs list!", e);
       return new ArrayList<>();
     }
   }
@@ -104,16 +93,11 @@ public class RamlsAPI implements Ramls {
     return RAMLS;
   }
 
-  private String getRamlByPath(String path, String okapiUrl) throws URISyntaxException, IOException {
-    URL ramlUrl = getClass().getClassLoader().getResource(RAMLS_PATH + path);
-    if (ramlUrl == null) {
+  private String getRamlByPath(String path, String okapiUrl) {
+    try {
+      return replaceReferences(ResourceUtil.asString(RAMLS_PATH + path), okapiUrl);
+    } catch (IOException e) {
       return null;
-    }
-    if (ramlUrl.toURI().getScheme().equals(JAR)) {
-      InputStream is = getClass().getClassLoader().getResourceAsStream(RAMLS_PATH + path);
-      return replaceReferences(IOUtils.toString(is, StandardCharsets.UTF_8.name()), okapiUrl);
-    } else {
-      return replaceReferences(IOUtils.toString(new FileInputStream(ramlUrl.getFile()), StandardCharsets.UTF_8.name()), okapiUrl);
     }
   }
 
