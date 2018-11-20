@@ -4,13 +4,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.UncheckedIOException;
 
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.jupiter.api.Test;
-
-import io.vertx.core.Vertx;
 
 class ResourceUtilTest {
   @Test
@@ -19,37 +16,35 @@ class ResourceUtilTest {
   }
 
   @Test
-  void nullFilename() throws IOException {
+  void nullFilename() {
     assertThrows(NullPointerException.class, () -> ResourceUtil.asString(null));
   }
 
   @Test
   void fileDoesNotExist() {
-    assertThrows(FileNotFoundException.class, () -> ResourceUtil.asString("/foobar"));
+    assertThrows(UncheckedIOException.class, () -> ResourceUtil.asString("/foobar"));
   }
 
   @Test
-  void readEmptyFile() throws IOException {
-    assertThat(ResourceUtil.asString("ResourceUtilEmpty.bin"),  is(""));
-    assertThat(ResourceUtil.asString("/ResourceUtilEmpty.bin"), is(""));
+  void readFromDir() {
+    assertThat(ResourceUtil.asString("dir/resourceUtil.txt" , getClass()), is("some text"));
+    assertThat(ResourceUtil.asString("/dir/resourceUtil.txt", getClass()), is("some text"));
   }
 
   @Test
-  void readFileFromOtherClass() {
-    assertThrows(FileNotFoundException.class,
-        () -> ResourceUtil.asString("ResourceUtilEmpty.bin",  Vertx.class));
-    assertThrows(FileNotFoundException.class,
-        () -> ResourceUtil.asString("/ResourceUtilEmpty.bin", Vertx.class));
+  void readEmptyFile() {
+    assertThat(ResourceUtil.asString("ResourceUtilEmpty.bin",  (Class<?>) null), is(""));
+    assertThat(ResourceUtil.asString("/ResourceUtilEmpty.bin", (Class<?>) null), is(""));
   }
 
   @Test
-  void readExampleFile() throws IOException {
+  void readExampleFile() {
     assertThat(ResourceUtil.asString("ResourceUtilExample.bin"),  is("first line\numlauts: äöü\n"));
     assertThat(ResourceUtil.asString("/ResourceUtilExample.bin"), is("first line\numlauts: äöü\n"));
   }
 
   @Test
-  void read3000() throws IOException {
+  void read3000() {
     char [] expected = new char [3000];
     for (int i=0; i<expected.length; i++) {
       expected[i] = 'a';
