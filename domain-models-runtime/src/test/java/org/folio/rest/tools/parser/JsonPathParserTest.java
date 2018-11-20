@@ -24,7 +24,7 @@ import io.vertx.core.json.JsonObject;
 
 public class JsonPathParserTest {
   @Test
-  void userdata() throws IOException {
+  void userdata() {
     JsonObject j22 = new JsonObject(ResourceUtil.asString("userdata.json"));
     JsonPathParser jp2 = new JsonPathParser(j22, true);
     assertThat(jp2.getValueAt("personal.preferredContact.desc.type", false, false), is("string"));
@@ -58,17 +58,13 @@ public class JsonPathParserTest {
     getAbsolutePaths(param[0].trim(), param[1].trim());
   }
 
-  void getAbsolutePaths(String path, String expected) throws IOException {
+  void getAbsolutePaths(String path, String expected) {
     List<StringBuilder> list = pathTestParser().getAbsolutePaths(path);
     assertThat(list.toString(), is(expected));
   }
 
   private JsonPathParser pathTestParser() {
-    try {
-      return new JsonPathParser(new JsonObject(ResourceUtil.asString("pathTest.json")));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return new JsonPathParser(new JsonObject(ResourceUtil.asString("pathTest.json")));
   }
 
   @ParameterizedTest
