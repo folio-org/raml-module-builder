@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.crypto.SecretKey;
 
@@ -47,6 +49,7 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.NaiveSQLParse;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
@@ -59,7 +62,6 @@ import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import de.flapdoodle.embed.process.config.IRuntimeConfig;
 import de.flapdoodle.embed.process.store.NonCachedPostgresArtifactStoreBuilder;
 import freemarker.template.TemplateException;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -80,7 +82,6 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
-import org.folio.rest.tools.utils.NaiveSQLParse;
 import ru.yandex.qatools.embed.postgresql.Command;
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -112,7 +113,7 @@ public class PostgresClient {
   private static final String    AND    = " AND ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final String    COUNT = "COUNT(*)";
+  private static final String    COUNT = "COUNT(%s)";
   private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
 
   private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
@@ -855,6 +856,10 @@ public class PostgresClient {
    * @param replyHandler  result, containing the id field for each inserted element of entities
    */
   public void saveBatch(String table, JsonArray entities, Handler<AsyncResult<ResultSet>> replyHandler) {
+    saveBatch(table, entities, DEFAULT_JSONB_FIELD_NAME, replyHandler);
+  }
+
+  public void saveBatch(String table, JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
     long start = System.nanoTime();
     if (entities == null || entities.isEmpty()) {
       // return empty result
@@ -876,7 +881,7 @@ public class PostgresClient {
       StringBuilder sql = new StringBuilder()
           .append(INSERT_CLAUSE)
           .append(schemaName).append(DOT).append(table)
-          .append(" (").append(DEFAULT_JSONB_FIELD_NAME).append(") VALUES (?)");
+          .append(" (").append(column).append(") VALUES (?)");
       for (int i=1; i<entities.size(); i++) {
         sql.append(",(?)");
       }
@@ -1296,11 +1301,17 @@ public class PostgresClient {
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
       boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
       Handler<AsyncResult<Results<T>>> replyHandler) {
+    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, null, replyHandler);
+  }
+
+  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
+      boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
 
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        doGet(connection, false, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, replyHandler);
+        doGet(connection, false, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
       }
       else{
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -1349,12 +1360,12 @@ public class PostgresClient {
   private <T> void doGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
     String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
-    List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler
+    List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
   ) {
 
     vertx.runOnContext(v -> {
       try {
-        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets);
+        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets, distinctOn);
 
         if (returnCount) {
           processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
@@ -1376,20 +1387,28 @@ public class PostgresClient {
 
   public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where, boolean returnIdField,
-    boolean setId, Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+    boolean setId, String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
   ) {
-    streamGet(table, clazz, fieldName, where, returnIdField, setId, null,  streamHandler, replyHandler);
+    streamGet(table, clazz, fieldName, where, returnIdField, setId, null, distinctOn, streamHandler, replyHandler);
+  }
+
+  public <T> void streamGet(
+      String table, Class<T> clazz, String fieldName, String where,
+      boolean returnIdField, boolean setId, List<FacetField> facets,
+      Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+    ) {
+    streamGet(table, clazz, fieldName, where, returnIdField, setId, facets, null, streamHandler, replyHandler);
   }
 
   public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where,
-    boolean returnIdField, boolean setId, List<FacetField> facets,
+    boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
   ) {
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        doStreamGet(connection, false, table, clazz, fieldName, where, returnIdField, setId, facets, streamHandler, replyHandler);
+        doStreamGet(connection, false, table, clazz, fieldName, where, returnIdField, setId, facets, distinctOn, streamHandler, replyHandler);
       }
       else{
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -1413,13 +1432,13 @@ public class PostgresClient {
    */
   private <T> void doStreamGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
-    String fieldName, String where, boolean returnIdField, boolean setId, List<FacetField> facets,
+    String fieldName, String where, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
   ) {
 
     vertx.runOnContext(v1 -> {
       try {
-        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets);
+        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets, distinctOn);
 
         connection.queryStream(queryHelper.selectQuery, stream -> {
           if (stream.succeeded()) {
@@ -1486,7 +1505,7 @@ public class PostgresClient {
 
   QueryHelper buildSelectQueryHelper(
     boolean transactionMode, String table, String fieldName,
-    String where, boolean returnIdField, List<FacetField> facets
+    String where, boolean returnIdField, List<FacetField> facets, String distinctOn
   ) {
     String addIdField = "";
     if (returnIdField) {
@@ -1501,7 +1520,16 @@ public class PostgresClient {
 
     QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
 
-    queryHelper.selectQuery = SELECT + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
+    String distinctOnClause = "";
+    if (distinctOn != null && !distinctOn.isEmpty()) {
+      String[] fields = distinctOn.split(",");
+      String distinctOnFields = Stream.of(fields)
+          .map(str -> String.format("lower(f_unaccent(%s))", str))
+          .collect(Collectors.joining(","));
+      distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOnFields);
+    }
+
+    queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
 
     return queryHelper;
   }
@@ -1840,7 +1868,7 @@ public class PostgresClient {
     else{
       SQLConnection sqlConnection = conn.result();
       doGet(sqlConnection, true, table, clazz, DEFAULT_JSONB_FIELD_NAME,
-        fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, replyHandler);
+        fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, null, replyHandler);
     }
   }
 
@@ -3288,6 +3316,7 @@ public class PostgresClient {
     String isTrue = " IS TRUE";
     String isTrueReplacement = " AND \\(\\(\\(TRUE\\)\\)\\)";
 
+    String countOn = "*";
     List<OrderByElement> orderBy = null;
     net.sf.jsqlparser.statement.select.Limit limit = null;
     Expression where = null;
@@ -3302,6 +3331,11 @@ public class PostgresClient {
         query = query.replaceAll(notTrue, notTrueReplacement).replaceAll(isTrue, isTrueReplacement);
         net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
         Select selectStatement = (Select) statement;
+
+        Matcher distinctOnMatcher = Pattern.compile("(?i)((DISTINCT) (?i)ON \\((.*)\\) ).*(?i)FROM").matcher(query);
+        if(distinctOnMatcher.find() && distinctOnMatcher.groupCount() >= 3) {
+          countOn = String.format("%s (%s)", distinctOnMatcher.group(2), distinctOnMatcher.group(3));
+        }
         orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
         limit = ((PlainSelect) selectStatement.getSelectBody()).getLimit();
         offset = ((PlainSelect) selectStatement.getSelectBody()).getOffset();
@@ -3366,7 +3400,7 @@ public class PostgresClient {
 
    ParsedQuery pq = new ParsedQuery();
 
-   pq.setCountQuery(query.replaceFirst(COLUMN_CONTROL_REGEX, COUNT).trim());
+   pq.setCountQuery(query.replaceFirst(COLUMN_CONTROL_REGEX, String.format(COUNT, countOn)).trim());
 
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){
