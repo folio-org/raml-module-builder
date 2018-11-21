@@ -35,6 +35,8 @@ See the file ["LICENSE"](LICENSE) for more information.
     * [Securing DB Configuration file](#securing-db-configuration-file)
     * [Foreign keys constraint](#foreign-keys-constraint)
 * [Tenant API](#tenant-api)
+* [RAMLs API](#ramls-api)
+* [JSON Schemas API](#json-schemas-api)
 * [Query Syntax](#query-syntax)
 * [Metadata](#metadata)
 * [Facet Support](#facet-support)
@@ -1088,7 +1090,7 @@ Criteria idCrit = new Criteria("ramls/schemas/userdata.json");
 
 ## RAMLs API
 
-The RAMLs API is a multiple interface which affords a RMB module to expose their RAML files in a machine readable way. To enable the interface the module must add the following to the provides array of its ModuleDescriptor:
+The RAMLs API is a multiple interface which affords RMB modules to expose their RAML files in a machine readable way. To enable the interface the module must add the following to the provides array of its module descriptor:
 
 ```JSON
 {
@@ -1112,7 +1114,7 @@ https://github.com/folio-org/raml/blob/eda76de6db681076212e20c7f988c3913764b9b0/
 
 ## JSON Schemas API
 
-The JSON Schemas API is a multiple interface which affords a RMB module to expose their JSON Schema files in a machine readable way. To enable the interface the module must add the following to the provides array of its ModuleDescriptor:
+The JSON Schemas API is a multiple interface which affords RMB modules to expose their JSON Schema files in a machine readable way. To enable the interface the module must add the following to the provides array of its module descriptor:
 
 ```JSON
 {
