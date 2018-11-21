@@ -270,10 +270,9 @@ public class TenantAPI implements Tenant {
               }
 
               TenantOperation op = TenantOperation.CREATE;
-
               String previousVersion = null;
               String newVersion = null;
-              if(isUpdateMode[0]){
+              if (isUpdateMode[0]) {
                 op = TenantOperation.UPDATE;
                 previousVersion = entity.getModuleFrom();
                 newVersion = entity.getModuleTo();
@@ -308,14 +307,17 @@ public class TenantAPI implements Tenant {
                         failuresExist = true;
                       }
                       res.append(new JsonArray(reply.result()).encodePrettily());
-                      OutStream os = new OutStream();
-                      if(failuresExist){
+                      if (failuresExist){
                         handlers.handle(io.vertx.core.Future.succeededFuture(
                           PostTenantResponse.respond400WithTextPlain(res.toString())));
-                      }
-                      else{
+                      } else {
+                        OutStream os = new OutStream();
                         os.setData(res);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(os)));
+                        if (isUpdateMode[0]) {
+                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond200WithApplicationJson(os)));
+                        } else {
+                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(os)));
+                        }
                       }
                     } else {
                       log.error(reply.cause().getMessage(), reply.cause());
