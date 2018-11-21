@@ -1086,6 +1086,54 @@ The `Criteria` object which generates `where` clauses can also receive a JSON Sc
 Criteria idCrit = new Criteria("ramls/schemas/userdata.json");
 ```
 
+## RAMLs API
+
+The RAMLs API is a multiple interface which affords a RMB module to expose their RAML files in a machine readable way. To enable the interface the module must add the following to the provides array of its ModuleDescriptor:
+
+```JSON
+{
+  "id": "_ramls",
+  "version": "1.0",
+  "interfaceType" : "multiple",
+  "handlers" : [
+    {
+      "methods" : [ "GET" ],
+      "pathPattern" : "/_/ramls"
+    }
+  ]
+}
+```
+
+The interface has a signle GET endpoint with an optional query parameter path. Without the path query parameter the response will be an application/json array of the available RAMLs. This will be the immediate RAMLs the module provides. If the query parameter path is provided it will return the RAML at the path if exists. The RAML will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
+
+The RAML defining the API:
+
+https://github.com/folio-org/raml/blob/eda76de6db681076212e20c7f988c3913764b9b0/ramls/ramls.raml
+
+## JSON Schemas API
+
+The JSON Schemas API is a multiple interface which affords a RMB module to expose their JSON Schema files in a machine readable way. To enable the interface the module must add the following to the provides array of its ModuleDescriptor:
+
+```JSON
+{
+  "id": "_jsonSchemas",
+  "version": "1.0",
+  "interfaceType" : "multiple",
+  "handlers" : [
+    {
+      "methods" : [ "GET" ],
+      "pathPattern" : "/_/jsonSchemas"
+    }
+  ]
+}
+```
+
+The interface has a signle GET endpoint with an optional query parameter path. Without the path query parameter the response will be an application/json array of the available JSON Schemas. This will be the immediate JSON Schemas the module provides. If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
+
+The RAML defining the API:
+
+https://github.com/folio-org/raml/blob/eda76de6db681076212e20c7f988c3913764b9b0/ramls/jsonSchemas.raml
+
 ## Query Syntax
 
 The RMB can receive parameters of different types. Modules can declare a query parameter and receive it as a string parameter in the generated API functions.
