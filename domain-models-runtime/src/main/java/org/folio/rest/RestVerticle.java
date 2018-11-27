@@ -121,6 +121,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_STREAMIN = "application/octet-stream";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
+  private static final String       SUPPORTED_CONTENT_TYPE_JSON_API_DEF = "application/vnd.api+json";
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
   private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
@@ -229,6 +230,7 @@ public class RestVerticle extends AbstractVerticle {
     // see uploadHandler further down
     router.put().handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
+    router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_API_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_FORM).handler(handler);
