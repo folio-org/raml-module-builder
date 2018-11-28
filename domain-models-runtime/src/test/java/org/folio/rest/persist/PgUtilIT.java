@@ -35,8 +35,8 @@ public class PgUtilIT {
 
   /** If we start and stop our own embedded postgres */
   static private boolean ownEmbeddedPostgres = false;
-  private Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
-
+  static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
+  static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
@@ -66,7 +66,6 @@ public class PgUtilIT {
   }
 
   private static void createUserTable(TestContext context, Vertx vertx) {
-    String schema = PostgresClient.convertToPsqlStandard("testtenant");
     execute(context, vertx, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
     execute(context, vertx, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, vertx, "CREATE ROLE " + schema + " PASSWORD 'testtenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
@@ -74,6 +73,8 @@ public class PgUtilIT {
     execute(context, vertx, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, vertx, "CREATE TABLE " + schema + ".user " +
         "(_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL);");
+    execute(context, vertx, "CREATE TABLE " + schema + ".duplicateid " +
+        "(_id UUID DEFAULT             gen_random_uuid(), jsonb JSONB NOT NULL);");
     execute(context, vertx, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
@@ -208,7 +209,7 @@ public class PgUtilIT {
   public void deleteByNonexistingId(TestContext testContext) {
     PgUtil.deleteById("user", randomUuid(), okapiHeaders, Vertx.vertx().getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 204, ""));
+        asyncAssertSuccess(testContext, 404, "Not found"));
   }
 
   @Test
@@ -221,6 +222,18 @@ public class PgUtilIT {
           PgUtil.getById("user", User.class, uuid, okapiHeaders, Vertx.vertx().getOrCreateContext(),
               Users.GetUsersByUserIdResponse.class, asyncAssertSuccess(testContext, 404, ""))
         ));
+  }
+
+  @Test
+  public void deleteByIdDuplicateUuid(TestContext testContext) {
+    String uuid = randomUuid();
+    execute(testContext, Vertx.vertx(), "INSERT INTO " + schema + ".duplicateid VALUES "
+        + "('" + uuid + "', '{}'),"
+        + "('" + uuid + "', '{}')" );
+    PgUtil.deleteById("duplicateid", uuid,
+        okapiHeaders, Vertx.vertx().getOrCreateContext(),
+        Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 500, "Deleted 2 records in duplicateid for id: " + uuid));
   }
 
   @Test
@@ -376,16 +389,21 @@ public class PgUtilIT {
   }
 
   @Test
-  public void putAsInsert(TestContext testContext) {
+  public void putNonexistingId(TestContext testContext) {
     String uuid = randomUuid();
     PgUtil.put("user", new User().withUsername("Rosamunde"), uuid,
         okapiHeaders, Vertx.vertx().getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 204, put -> assertGetById(testContext, uuid, "Rosamunde")));
+        asyncAssertSuccess(testContext, 404, put -> {
+          // make sure that a record with this uuid really hasn't been inserted
+          PgUtil.getById("user", User.class, uuid, okapiHeaders, Vertx.vertx().getOrCreateContext(),
+              Users.GetUsersByUserIdResponse.class,
+              asyncAssertSuccess(testContext, 404, "Not found"));
+        }));
   }
 
   @Test
-  public void putAsUpdate(TestContext testContext) {
+  public void put(TestContext testContext) {
     String uuid = randomUuid();
     post(testContext, "Pippilotta", uuid, 201);
     PgUtil.put("user", new User().withUsername("Momo").withId(randomUuid()), uuid,
@@ -400,6 +418,18 @@ public class PgUtilIT {
         okapiHeaders, Vertx.vertx().getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 400, "SomeInvalidUuid"));
+  }
+
+  @Test
+  public void putDuplicateUuid(TestContext testContext) {
+    String uuid = randomUuid();
+    execute(testContext, Vertx.vertx(), "INSERT INTO " + schema + ".duplicateid VALUES "
+        + "('" + uuid + "', '{}'),"
+        + "('" + uuid + "', '{}')" );
+    PgUtil.put("duplicateid", new User(), uuid,
+        okapiHeaders, Vertx.vertx().getOrCreateContext(),
+        Users.PutUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 500, "Updated 2 records in duplicateid for id: " + uuid));
   }
 
   @Test

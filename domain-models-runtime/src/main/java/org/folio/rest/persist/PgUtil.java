@@ -29,6 +29,7 @@ public final class PgUtil {
   private static final String RESPOND_400_WITH_TEXT_PLAIN       = "respond400WithTextPlain";
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
+  private static final String NOT_FOUND = "Not found";
 
   private PgUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
@@ -192,17 +193,29 @@ public final class PgUtil {
 
     try {
       Method respond204 = clazz.getMethod(RESPOND_204);
+      Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
       PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
       postgresClient.delete(table, id, reply -> {
-        if (reply.succeeded()) {
-          asyncResultHandler.handle(response(respond204, respond500));
+        if (reply.failed()) {
+          String message = PgExceptionUtil.badRequestMessage(reply.cause());
+          if (message == null) {
+            message = reply.cause().getMessage();
+          }
+          asyncResultHandler.handle(response(message, respond500, respond500));
           return;
         }
-        String message = PgExceptionUtil.badRequestMessage(reply.cause());
-        if (message == null) {
-          message = reply.cause().getMessage();
+        int deleted = reply.result().getUpdated();
+        if (deleted == 0) {
+          asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
+          return;
         }
-        asyncResultHandler.handle(response(message, respond500, respond500));
+        if (deleted != 1) {
+          String message = "Deleted " + deleted + " records in " + table + " for id: " + id;
+          logger.fatal(message);
+          asyncResultHandler.handle(response(message, respond500, respond500));
+          return;
+        }
+        asyncResultHandler.handle(response(respond204, respond500));
       });
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
@@ -247,7 +260,7 @@ public final class PgUtil {
           return;
         }
         if (reply.result() == null) {
-          asyncResultHandler.handle(response("Not found", respond404, respond500));
+          asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
           return;
         }
         asyncResultHandler.handle(response(reply.result(), respond200, respond500));
@@ -390,11 +403,23 @@ public final class PgUtil {
     try {
       Method respond204 = clazz.getMethod(RESPOND_204);
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+      Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
       setId(entity, id);
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
-      postgresClient.upsert(table, id, entity, reply -> {
+      postgresClient.update(table, entity, id, reply -> {
         if (reply.failed()) {
           asyncResultHandler.handle(response(reply.cause(), respond400, respond500));
+          return;
+        }
+        int updated = reply.result().getUpdated();
+        if (updated == 0) {
+          asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
+          return;
+        }
+        if (updated != 1) {
+          String message = "Updated " + updated + " records in " + table + " for id: " + id;
+          logger.fatal(message);
+          asyncResultHandler.handle(response(message, respond500, respond500));
           return;
         }
         asyncResultHandler.handle(response(respond204, respond500));
