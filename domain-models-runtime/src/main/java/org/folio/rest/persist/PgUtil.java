@@ -80,6 +80,25 @@ public final class PgUtil {
   }
 
   /**
+   * Create a Response for the Exception e using failResponseMethod.
+   */
+  private static Future<Response> response(Exception e, Method failResponseMethod) {
+    String message = message(e);
+    logger.error(message, e);
+    try {
+      if (failResponseMethod == null) {
+        return Future.failedFuture(e);
+      }
+      Response response = (Response) failResponseMethod.invoke(null, message);
+      return Future.succeededFuture(response);
+    } catch (Exception innerException) {
+      message = message(innerException);
+      logger.error(message, innerException);
+      return Future.failedFuture(innerException);
+    }
+  }
+
+  /**
    * Create a Response using valueMethod(T).
    * On exception create a Response using failResponseMethod(String exceptionMessage).
    * If that also throws an exception create a failed future.
@@ -98,19 +117,23 @@ public final class PgUtil {
       Response response = (Response) valueMethod.invoke(null, value);
       return Future.succeededFuture(response);
     } catch (Exception e) {
-      String message = message(e);
-      logger.error(message, e);
-      try {
-        if (failResponseMethod == null) {
-          return Future.failedFuture(e);
-        }
-        Response response = (Response) failResponseMethod.invoke(null, message);
-        return Future.succeededFuture(response);
-      } catch (Exception innerException) {
-        message = message(innerException);
-        logger.error(message, innerException);
-        return Future.failedFuture(innerException);
-      }
+      return response(e, failResponseMethod);
+    }
+  }
+
+  /**
+   * Return a Response using valueMethod and a PgExceptionUtil message of throwable. If that is null
+   * use failResponseMethod of throwable.getMessage().
+   * @param throwable  where to get the text from
+   * @param valueMethod  how to report the PgException
+   * @param failResponseMethod  how to report other Exceptions/Throwables
+   */
+  static Future<Response> response(Throwable throwable, Method valueMethod, Method failResponseMethod) {
+    String message = PgExceptionUtil.badRequestMessage(throwable);
+    if (message != null) {
+      return response(message,                valueMethod,        failResponseMethod);
+    } else {
+      return response(throwable.getMessage(), failResponseMethod, failResponseMethod);
     }
   }
 
@@ -136,18 +159,7 @@ public final class PgUtil {
       Response response = (Response) responseMethod.invoke(null);
       return Future.succeededFuture(response);
     } catch (Exception e) {
-      String message = message(e);
-      logger.error(message, e);
-      try {
-        if (failResponseMethod == null) {
-          return Future.failedFuture(e);
-        }
-        Response response = (Response) failResponseMethod.invoke(null, message);
-        return Future.succeededFuture(response);
-      } catch (Exception innerException) {
-        logger.error(innerException.getMessage(), innerException);
-        return Future.failedFuture(innerException);
-      }
+      return response(e, failResponseMethod);
     }
   }
 
@@ -333,17 +345,12 @@ public final class PgUtil {
       String id = initId(entity);
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.save(table, id, entity, reply -> {
-        if (reply.succeeded()) {
-          asyncResultHandler.handle(response(entity, reply.result(), headersFor201Method, withLocation,
-              respond201, respond500));
+        if (reply.failed()) {
+          asyncResultHandler.handle(response(reply.cause(), respond400, respond500));
           return;
         }
-        String message = PgExceptionUtil.badRequestMessage(reply.cause());
-        if (message != null) {
-          asyncResultHandler.handle(response(message,                    respond400, respond500));
-        } else {
-          asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
-        }
+        asyncResultHandler.handle(response(entity, reply.result(), headersFor201Method, withLocation,
+            respond201, respond500));
       });
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
@@ -386,16 +393,11 @@ public final class PgUtil {
       setId(entity, id);
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.upsert(table, id, entity, reply -> {
-        if (reply.succeeded()) {
-          asyncResultHandler.handle(response(respond204, respond500));
+        if (reply.failed()) {
+          asyncResultHandler.handle(response(reply.cause(), respond400, respond500));
           return;
         }
-        String message = PgExceptionUtil.badRequestMessage(reply.cause());
-        if (message != null) {
-          asyncResultHandler.handle(response(message,                    respond400, respond500));
-        } else {
-          asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
-        }
+        asyncResultHandler.handle(response(respond204, respond500));
       });
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
