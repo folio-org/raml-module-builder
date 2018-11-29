@@ -1348,7 +1348,7 @@ public class RestVerticle extends AbstractVerticle {
           String param = queryParams.get(valueName);
           // support enum, numbers or strings as query parameters
           try {
-            if (valueType.contains("String")) {
+            if (valueType.equals("java.lang.String")) {
               // regular string param in query string - just push value
               if (param == null && defaultVal != null) {
                 // no value passed - check if there is a default value
@@ -1356,7 +1356,7 @@ public class RestVerticle extends AbstractVerticle {
               } else {
                 paramArray[order] = param;
               }
-            } else if (valueType.contains("int") || valueType.contains("Integer")) {
+            } else if (valueType.equals("int") || valueType.equals("java.lang.Integer")) {
               // cant pass null to an int type
               if (param == null) {
                 if (defaultVal != null) {
@@ -1371,7 +1371,7 @@ public class RestVerticle extends AbstractVerticle {
               else {
                 paramArray[order] = Integer.valueOf(param);
               }
-            } else if (valueType.contains("boolean") || valueType.contains("Boolean")) {
+            } else if (valueType.equals("boolean") || valueType.equals("java.lang.Boolean")) {
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = Boolean.valueOf((String)defaultVal);
@@ -1387,7 +1387,7 @@ public class RestVerticle extends AbstractVerticle {
               else {
                 paramArray[order] = vals;
               }
-            } else if (valueType.contains("BigDecimal") || valueType.contains("Number")) {
+            } else if (valueType.equals("java.math.BigDecimal") || valueType.equals("java.lang.Number")) {
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = new BigDecimal((String) defaultVal);
