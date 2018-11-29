@@ -1,7 +1,9 @@
 package org.folio.rest.impl;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,10 +32,12 @@ public class JsonSchemasAPI implements JsonSchemas {
   private static final Pattern REF_MATCH_PATTERN = Pattern.compile("\\\"\\$ref\\\"\\s*:\\s*\\\"(.*?)\\\"");
 
   private static final String OKAPI_URL_HEADER = "x-okapi-url";
-  private static final String RAMLS_PATH = System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + File.separator;
+  /** resource path (jar, classes), not a file system path */
+  private static final String RAMLS_PATH =
+    (System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + '/').replace('\\', '/');
   private static final String HASH_TAG = "#";
 
-  private static final List<String> JSON_SCHEMAS = getJsonSchemasList();
+  private static final List<String> JSON_SCHEMAS = getJsonSchemasList(RAMLS_PATH + GenerateRunner.JSON_SCHEMA_LIST);
 
   @Validate
   @Override
@@ -81,10 +85,10 @@ public class JsonSchemasAPI implements JsonSchemas {
     });
   }
 
-  private static List<String> getJsonSchemasList() {
+  private static List<String> getJsonSchemasList(final String path) {
     try {
-      return Arrays.asList(ResourceUtil.asString(RAMLS_PATH + GenerateRunner.JSON_SCHEMA_LIST).split("\\r?\\n"));
-    } catch (IOException e) {
+      return Arrays.asList(ResourceUtil.asString(path).split("\\r?\\n"));
+    } catch (UncheckedIOException e) {
       log.warn("Unable to get JSON Schemas list!", e);
       return new ArrayList<>();
     }
@@ -97,17 +101,22 @@ public class JsonSchemasAPI implements JsonSchemas {
   private String getJsonSchemaByPath(String path, String okapiUrl) {
     try {
       return replaceReferences(ResourceUtil.asString(RAMLS_PATH + path), okapiUrl);
-    } catch (IOException e) {
+    } catch (IOException | UncheckedIOException e) {
+      log.warn(e.getMessage());
       return null;
     }
   }
 
-  String replaceReferences(String schema, String okapiUrl) {
+  static String replaceReferences(String schema, String okapiUrl) throws UnsupportedEncodingException {
     Matcher matcher = REF_MATCH_PATTERN.matcher(schema);
     StringBuffer sb = new StringBuffer(schema.length());
     while (matcher.find()) {
       String path = matcher.group(1);
       if (!path.startsWith(HASH_TAG)) {
+        // The URI contains unix or windows path delimiter depending on which operating
+        // system the jar was built.
+        // Convert windows path: "file:C:%5CUsers%5Citsme%5Cmod-users%5Ctarget%5Cclasses%5Cuserdata.json"
+        path = URLDecoder.decode(path, "UTF-8").replace('\\', '/');
         if (path.contains(RAMLS_PATH)) {
           path = path.substring(path.lastIndexOf(RAMLS_PATH) + RAMLS_PATH.length());
         }

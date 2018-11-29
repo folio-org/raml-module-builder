@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,10 +29,12 @@ public class RamlsAPI implements Ramls {
   private static final Pattern INCLUDE_MATCH_PATTERN = Pattern.compile("(?<=!include ).*");
 
   private static final String OKAPI_URL_HEADER = "x-okapi-url";
-  private static final String RAMLS_PATH = System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + File.separator;
+  /** resource path (jar, classes), not a file system path */
+  private static final String RAMLS_PATH =
+    (System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + '/').replace('\\', '/');
   private static final String RAML_EXT = ".raml";
 
-  private static final List<String> RAMLS = getRamlsList();
+  private static final List<String> RAMLS = getRamlsList(RAMLS_PATH + GenerateRunner.RAML_LIST);
 
   @Validate
   @Override
@@ -79,11 +80,11 @@ public class RamlsAPI implements Ramls {
     });
   }
 
-  private static List<String> getRamlsList() {
+  private static List<String> getRamlsList(final String path) {
     try {
-      return Arrays.asList(ResourceUtil.asString(RAMLS_PATH + GenerateRunner.RAML_LIST).split("\\r?\\n"));
-    } catch (IOException e) {
-      log.warn("Unable to get RAMLs list!", e);
+      return Arrays.asList(ResourceUtil.asString(path).split("\\r?\\n"));
+    } catch (UncheckedIOException e) {
+      log.warn("Unable to get RAMLs list from " + path, e);
       return new ArrayList<>();
     }
   }
@@ -95,7 +96,7 @@ public class RamlsAPI implements Ramls {
   private String getRamlByPath(String path, String okapiUrl) {
     try {
       return replaceReferences(ResourceUtil.asString(RAMLS_PATH + path), okapiUrl);
-    } catch (IOException e) {
+    } catch (UncheckedIOException e) {
       return null;
     }
   }
