@@ -1406,9 +1406,11 @@ public class RestVerticle extends AbstractVerticle {
                 Class<?> enumClazz1 = Class.forName(valueType);
                 if (enumClazz1.isEnum()) {
                   Object defaultEnum = null;
+                  // TODO: it could be better if we could the name values for the constants
+                  // then the equalsIgnoreCase hack would not be needed below.
                   Object[] vals = enumClazz1.getEnumConstants();
                   for (int i = 0; i < vals.length; i++) {
-                    if (vals[i].toString().equals(defaultVal)) {
+                    if (defaultVal != null && vals[i].toString().equalsIgnoreCase(defaultVal.toString())) {
                       defaultEnum = vals[i];
                     }
                     // set default value (if there was one in the raml)
@@ -1418,7 +1420,7 @@ public class RestVerticle extends AbstractVerticle {
                       break;
                     }
                     // make sure enum value is valid by converting the string to an enum
-                    else if (vals[i].toString().equals(param)) {
+                    else if (vals[i].toString().equalsIgnoreCase(param)) {
                       paramArray[order] = vals[i];
                       break;
                     }
