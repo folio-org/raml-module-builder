@@ -1,3 +1,12 @@
+## 23.2.0 2018-11-29
+
+ * RMB-296 Tenant init for loading reference data
+ * RMB-299 simplify embedded postgres start
+ * RMB-300 Optional leading slash for ResourceUtil::asString
+ * RMB-303 Remove org.junit.Assert dependency from UtilityClassTester
+ * RMB-306 Add support for application/vnd.api+json content type for POST requests
+ * RMB-307 Type check for query parameters broken
+
 ## 23.1.0 2018-11-08
  * RMB-297 Several connection.close() missing - totalCount calculation hangs after 5-12 errors.
  * RMB-282 Use description fields in RAML JSON schemas.
