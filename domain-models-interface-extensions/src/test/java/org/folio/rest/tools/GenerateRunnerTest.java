@@ -2,14 +2,22 @@ package org.folio.rest.tools;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.folio.util.IoUtil;
+import org.folio.util.ResourceUtil;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,6 +48,7 @@ public class GenerateRunnerTest {
     jaxrsBak.renameTo(jaxrs);  // ignore any error
   }
 
+  @After
   @Before
   public void cleanDir() throws IOException {
     ClientGenerator.makeCleanDir(baseDir);
@@ -124,6 +133,27 @@ public class GenerateRunnerTest {
     System.setProperty("maven.multiModuleProjectDirectory", baseDir + "/foobar");
     GenerateRunner.main(null);
     assertTest();
+  }
+
+  @Test
+  public void testCreateRamlsLookupList() throws Exception {
+    List<String> actualRamls = testCreateLookupList(GenerateRunner.RAML_LIST, ".raml");
+    Assert.assertThat(actualRamls, containsInAnyOrder("test.raml"));
+  }
+
+  @Test
+  public void testCreateJsonSchemasLookupList() throws Exception {
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, ".json", ".schema");
+    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test.schema", "object.json"));
+  }
+
+  private List<String> testCreateLookupList(String filename, String...exts) throws IOException {
+    File src = new File(userDir + "/ramls/");
+    assertTrue(src.exists() && src.isDirectory());
+    File dest = new File(userDir + "/target/ramls/");
+    FileUtils.copyDirectory(src, dest);
+    GenerateRunner.createLookupList(dest, filename, exts);
+    return Arrays.asList(ResourceUtil.asString("ramls/" + filename).split("\\r?\\n"));
   }
 
 }

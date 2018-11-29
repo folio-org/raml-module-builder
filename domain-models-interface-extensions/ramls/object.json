@@ -7,15 +7,6 @@
     },
     "name": {
       "type": "string"
-    },
-    "objects": {
-      "description": "List of objects",
-      "type": "array",
-      "id": "objects",
-      "items": {
-        "type": "object",
-        "$ref": "object.json"
-      }
     }
   },
   "required": [

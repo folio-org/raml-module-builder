@@ -1,4 +1,4 @@
-# RMB ugrading notes
+# RMB upgrading notes
 
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
