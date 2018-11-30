@@ -1,3 +1,7 @@
+## 23.2.1 2018-11-30
+
+ * RMB-308 Fix enum values not matched
+
 ## 23.2.0 2018-11-29
 
  * RMB-296 Tenant init for loading reference data
