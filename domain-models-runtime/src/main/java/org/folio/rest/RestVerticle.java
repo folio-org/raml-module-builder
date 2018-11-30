@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -1403,31 +1404,7 @@ public class RestVerticle extends AbstractVerticle {
               }
             } else { // enum object type
               try {
-                Class<?> enumClazz1 = Class.forName(valueType);
-                if (enumClazz1.isEnum()) {
-                  Object defaultEnum = null;
-                  Object[] vals = enumClazz1.getEnumConstants();
-                  for (int i = 0; i < vals.length; i++) {
-                    if (vals[i].toString().equals(defaultVal)) {
-                      defaultEnum = vals[i];
-                    }
-                    // set default value (if there was one in the raml)
-                    // in case no value was passed in the request
-                    if (param == null && defaultEnum != null) {
-                      paramArray[order] = defaultEnum;
-                      break;
-                    }
-                    // make sure enum value is valid by converting the string to an enum
-                    else if (vals[i].toString().equals(param)) {
-                      paramArray[order] = vals[i];
-                      break;
-                    }
-                    if (i == vals.length - 1) {
-                      // if enum passed is not valid, replace with default value
-                      paramArray[order] = defaultEnum;
-                    }
-                  }
-                }
+                paramArray[order] = parseEnum(valueType, param, defaultVal);
               } catch (Exception ee) {
                 log.error(ee.getMessage(), ee);
                 endRequestWithError(rc, 400, true, ee.getMessage(), validRequest);
@@ -1444,6 +1421,45 @@ public class RestVerticle extends AbstractVerticle {
         }
       }
     });
+  }
+
+  /**
+   * @return the enum value of type valueType where value.name equals param (fall-back: equals defaultValue).
+   *         Return null if the type neither has param nor defaultValue.
+   * @throws ClassNotFoundException if valueType does not exist
+   */
+  @SuppressWarnings({
+    "squid:S1523",  // Suppress warning "Make sure that this dynamic injection or execution of code is safe."
+                    // This is safe because we accept an enum class only, and do not invoke any method.
+    "squid:S3011"}) // Suppress "Make sure that this accessibility update is safe here."
+                    // This is safe because we only read the field and it is a field of an enum.
+  static Object parseEnum(String valueType, String param, Object defaultValue)
+      throws ReflectiveOperationException {
+
+    Class<?> enumClass = Class.forName(valueType);
+    if (! enumClass.isEnum()) {
+      return null;
+    }
+    String defaultString = null;
+    if (defaultValue != null) {
+      defaultString = defaultValue.toString();
+    }
+    Object defaultEnum = null;
+    for (Object anEnum : enumClass.getEnumConstants()) {
+      Field nameField = anEnum.getClass().getDeclaredField("name");
+      nameField.setAccessible(true);  // access to private field
+      String enumName = nameField.get(anEnum).toString();
+      if (enumName.equals(param)) {
+        return anEnum;
+      }
+      if (enumName.equals(defaultString)) {
+        defaultEnum = anEnum;
+        if (param == null) {
+          return defaultEnum;
+        }
+      }
+    }
+    return defaultEnum;
   }
 
   /**
