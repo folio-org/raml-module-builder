@@ -80,6 +80,8 @@ import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import org.folio.rest.tools.utils.NaiveSQLParse;
+import org.folio.rest.tools.utils.NetworkUtils;
+
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
@@ -495,31 +497,32 @@ public class PostgresClient {
       // LoadConfs.loadConfig writes its own log message
     }
     if (config == null) {
-      log.info("No DB configuration found, starting embedded postgres with default config");
-      setIsEmbedded(true);
+      if (NetworkUtils.isLocalPortFree(EMBEDDED_POSTGRES_PORT)) {
+        log.info("No DB configuration found, starting embedded postgres with default config");
+        setIsEmbedded(true);
+      } else {
+        log.info("No DB configuration found, using default config, port is already in use");
+      }
       config = new JsonObject();
       config.put(_USERNAME, _USERNAME);
       config.put(_PASSWORD, _PASSWORD);
       config.put(HOST, DEFAULT_IP);
       config.put(PORT, EMBEDDED_POSTGRES_PORT);
       config.put(DATABASE, "postgres");
-    } else if (tenantId.equals(DEFAULT_SCHEMA)) {
-      config.put(_USERNAME, config.getString(_USERNAME));
-      config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
     }
-    else{
+    if (tenantId.equals(DEFAULT_SCHEMA)) {
+      config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
+    } else {
       log.info("Using schema: " + tenantId);
       config.put(_USERNAME, schemaName);
       config.put(_PASSWORD, createPassword(tenantId));
     }
-
     if(embeddedPort != -1 && embeddedMode){
       //over ride the declared default port - coming from the config file and use the
       //passed in port as well. useful when multiple modules start up an embedded postgres
       //in a single server.
       config.put(PORT, embeddedPort);
     }
-
     return config;
   }
 
@@ -2546,7 +2549,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
-          log.debug("executeWithParams", sql, s);
+          logTimer("executeWithParams", sql, s);
         });
       } catch (Exception e) {
         if (connection != null) {

@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.ParsedQuery;
+import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.junit.After;
 import org.junit.Before;
@@ -107,9 +108,10 @@ public class PostgresClientTest {
 
   @Test
   public void configDefault() throws Exception {
+    assertThat("Port 6000 must be free for embedded postgres", NetworkUtils.isLocalPortFree(6000), is(true));
     PostgresClient.setConfigFilePath("nonexisting");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", null, empty);
-    assertThat(PostgresClient.isEmbedded(), is(true));
+    assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(6000));
     assertThat(config.getString("username"), is("username"));
@@ -117,13 +119,14 @@ public class PostgresClientTest {
 
   @Test
   public void configDefaultWithPortAndTenant() throws Exception {
+    int port = NetworkUtils.nextFreePort();
     PostgresClient.setConfigFilePath("nonexisting");
-    PostgresClient.setEmbeddedPort(5555);
-    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", null, empty);
-    assertThat(PostgresClient.isEmbedded(), is(true));
+    PostgresClient.setEmbeddedPort(port);
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "barschema", empty);
+    assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
     assertThat(config.getString("host"), is("127.0.0.1"));
-    assertThat(config.getInteger("port"), is(5555));
-    assertThat(config.getString("username"), is("username"));
+    assertThat(config.getInteger("port"), is(port));
+    assertThat(config.getString("username"), is("barschema"));
   }
 
   @Test
@@ -139,8 +142,9 @@ public class PostgresClientTest {
 
   @Test
   public void configFile() throws Exception {
+    // values from src/test/resources/my-postgres-conf.json
+    PostgresClient.setConfigFilePath("/my-postgres-conf.json");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("public", null, empty);
-    // values from src/test/resources/postgres-conf.json
     assertThat(config.getString("host"), is("localhost"));
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("postgres"));
@@ -148,8 +152,9 @@ public class PostgresClientTest {
 
   @Test
   public void configFileTenant() throws Exception {
+    // values from src/test/resources/my-postgres-conf.json
+    PostgresClient.setConfigFilePath("/my-postgres-conf.json");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "mySchemaName", empty);
-    // values from src/test/resources/postgres-conf.json
     assertThat(config.getString("host"), is("localhost"));
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("mySchemaName"));
