@@ -10,14 +10,14 @@ import java.util.concurrent.TimeUnit;
  * Wait until the PostgresStarter has started Postgres so that Postgres is ready.
  * This is done by sending a GET request to the port of PostgresStarter.
  *
- * Example invocation:
+ * <p>Example invocation:
  *
- * java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresWaiter 5434
+ * <p>java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresWaiter 5434
  */
 public class PostgresWaiter {
   static int secondsToSleep = 1;
 
-  static int runnerPort(String [] args, Map<String,String> env) throws NumberFormatException {
+  static int runnerPort(String [] args, Map<String,String> env) {
     if (args.length == 1) {
       return Integer.parseInt(args[0]);
     }
@@ -36,7 +36,7 @@ public class PostgresWaiter {
     int port = runnerPort(args, System.getenv());
     String urlString = "http://localhost:" + port;
     URL url = new URL(urlString);
-    for (int i=10; i>=0; i--) {
+    for (int i = 10; i >= 0; i--) {
       HttpURLConnection conn = null;
       try {
         conn = (HttpURLConnection) url.openConnection();
@@ -47,8 +47,7 @@ public class PostgresWaiter {
               "HTTP response code=" + conn.getResponseCode() + " " + conn.getResponseMessage());
         }
         break;  // waiting ended without exception, so end program
-      }
-      catch (IOException e) {
+      } catch (IOException e) {
         // we might get "java.net.ConnectException: Connection refused: connect" when
         // the listener is not ready. So we try several times with sleeping 1 second
         // in between.
@@ -56,8 +55,7 @@ public class PostgresWaiter {
           // last time throw exception to give user some feedback
           throw new IOException(e.getMessage() + ": " + urlString, e);
         }
-      }
-      finally {
+      } finally {
         if (conn != null) {
           conn.disconnect();
         }

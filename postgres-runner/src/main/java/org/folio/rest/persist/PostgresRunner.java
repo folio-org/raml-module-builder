@@ -33,7 +33,7 @@ import ru.yandex.qatools.embed.postgresql.distribution.Version;
  *
  * If no arguments are provided use these environment variables: DB_RUNNER_PORT, DB_PORT, DB_USERNAME, DB_PASSWORD
  *
- * As last resort use the default configuration: 6001, 6000, postgres, postgres.
+ * As last resort use the default configuration: 6001, 6000, username, password.
  *
  * Example usage:
  *
@@ -55,6 +55,8 @@ import ru.yandex.qatools.embed.postgresql.distribution.Version;
  */
 public class PostgresRunner extends AbstractVerticle {
   private static final Logger log = LoggerFactory.getLogger(PostgresRunner.class);
+  private static final String _USERNAME = "username";
+  private static final String _PASSWORD = "password";
   private static Vertx vertxForDeploy;
   HttpServer runnerServer;
   List<RoutingContext> getRequests = new ArrayList<>();
@@ -90,7 +92,7 @@ public class PostgresRunner extends AbstractVerticle {
     String password = getenv(env, "DB_PASSWORD");
     if (runnerPort == null && postgresPort == null && username == null && password == null) {
       // default configuration
-      return config(6001, 6000, "username", "password");
+      return config(6001, 6000, _USERNAME, _PASSWORD);
     }
 
     if (runnerPort == null || postgresPort == null || username == null || password == null) {
@@ -118,8 +120,8 @@ public class PostgresRunner extends AbstractVerticle {
     return new JsonObject()
         .put("runnerPort", runnerPort)
         .put("postgresPort", postgresPort)
-        .put("username", username)
-        .put("password", password);
+        .put(_USERNAME, username)
+        .put(_PASSWORD, password);
   }
 
   private static JsonObject config(String runnerPort, String postgresPort, String username, String password) {
@@ -175,8 +177,8 @@ public class PostgresRunner extends AbstractVerticle {
       if (! postgresRuns) {
         vertx.executeBlocking(future -> {
           postgresProcess = startPostgres(postgresPort,
-              config().getString("username"),
-              config().getString("password"));
+              config().getString(_USERNAME),
+              config().getString(_PASSWORD));
           future.complete();
         }, result -> whenPostgresRuns(startFuture));
       } else {
@@ -294,13 +296,12 @@ public class PostgresRunner extends AbstractVerticle {
         locale = "american_usa";
       }
       config.getAdditionalInitDbParams().addAll(Arrays.asList(
-        "-E", "UTF-8",
-        "--locale", locale
+          "-E", "UTF-8",
+          "--locale", locale
       ));
 
       return startPostgres(config);
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       throw new IllegalStateException(e);
     }
   }
