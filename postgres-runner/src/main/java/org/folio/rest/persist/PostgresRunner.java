@@ -29,34 +29,38 @@ import ru.yandex.qatools.embed.postgresql.distribution.Version;
 /**
  * Starts embedded Postgres if the desired PostgresPort if free, and provide a port that allows to stop it.
  *
- * Arguments: PostgresRunnerPort PostgresPort UserName UserPassword
+ * <p>Arguments: PostgresRunnerPort PostgresPort UserName UserPassword
  *
- * If no arguments are provided use these environment variables: DB_RUNNER_PORT, DB_PORT, DB_USERNAME, DB_PASSWORD
+ * <p>If no arguments are provided use these environment variables: DB_RUNNER_PORT, DB_PORT, DB_USERNAME, DB_PASSWORD
  *
- * As last resort use the default configuration: 6001, 6000, username, password.
+ * <p>As last resort use the default configuration: 6001, 6000, username, password.
  *
- * Example usage:
+ * <p>Example usage:
  *
- * Start Postgres at port 5433, in addition open port 5434 for PostgresWaiter and PostgresStopper:
+ * <p>Start Postgres at port 5433, in addition open port 5434 for PostgresWaiter and PostgresStopper:
  *
- * java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresRunner 5434 5433 postgres postgres &
+ * <p>java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresRunner 5434 5433 postgres postgres &
  *
- * This runs in the background.
+ * <p>This runs in the background.
  *
- * Wait until Postgres is available:
+ * <p>Wait until Postgres is available:
  *
- * java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresWaiter 5434
+ * <p>java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresWaiter 5434
  *
- * Now use Postgres at port 5433.
+ * <p>Now use Postgres at port 5433.
  *
- * Afterwards stop Postgres and PostgresRunner:
+ * <p>Afterwards stop Postgres and PostgresRunner:
  *
- * java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresStopper 5434
+ * <p>java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresStopper 5434
  */
 public class PostgresRunner extends AbstractVerticle {
   private static final Logger log = LoggerFactory.getLogger(PostgresRunner.class);
-  private static final String _USERNAME = "username";
-  private static final String _PASSWORD = "password";
+  private static final String USERNAME = "username";
+  @SuppressWarnings("squid:S2068")  // suppress "Credentials should not be hard-coded"
+  // This is safe because PostgresRunner is used for unit tests only, a
+  // non-default password can be set, but setting it in the pom.xml of users
+  // of PostgresRunner is not an improvement.
+  private static final String PASSWORD = "password";
   private static Vertx vertxForDeploy;
   HttpServer runnerServer;
   List<RoutingContext> getRequests = new ArrayList<>();
@@ -92,7 +96,7 @@ public class PostgresRunner extends AbstractVerticle {
     String password = getenv(env, "DB_PASSWORD");
     if (runnerPort == null && postgresPort == null && username == null && password == null) {
       // default configuration
-      return config(6001, 6000, _USERNAME, _PASSWORD);
+      return config(6001, 6000, USERNAME, PASSWORD);
     }
 
     if (runnerPort == null || postgresPort == null || username == null || password == null) {
@@ -120,8 +124,8 @@ public class PostgresRunner extends AbstractVerticle {
     return new JsonObject()
         .put("runnerPort", runnerPort)
         .put("postgresPort", postgresPort)
-        .put(_USERNAME, username)
-        .put(_PASSWORD, password);
+        .put(USERNAME, username)
+        .put(PASSWORD, password);
   }
 
   private static JsonObject config(String runnerPort, String postgresPort, String username, String password) {
@@ -177,8 +181,8 @@ public class PostgresRunner extends AbstractVerticle {
       if (! postgresRuns) {
         vertx.executeBlocking(future -> {
           postgresProcess = startPostgres(postgresPort,
-              config().getString(_USERNAME),
-              config().getString(_PASSWORD));
+              config().getString(USERNAME),
+              config().getString(PASSWORD));
           future.complete();
         }, result -> whenPostgresRuns(startFuture));
       } else {
