@@ -271,22 +271,8 @@ See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/d
 ## Local development server
 
 To get going quickly with running a local instance of Okapi, adding a tenant and some test data,
-and deploying some modules, run
-[folio/stable-backend, a prebuilt Vagrant box](https://github.com/folio-org/folio-ansible/blob/master/doc/index.md#prebuilt-vagrant-boxes)
-
-Ensure that the sample users are loaded, and that a query is successful:
-
-```
-curl -D - -w '\n' \
-  -H "X-Okapi-Tenant: diku" \
-  http://localhost:9131/users?active=true
-```
-
-Use the local [API documentation](#documentation-of-the-apis) to view the RAMLs and conduct some more requests
-(and remember to specify the "X-Okapi-Tenant: diku" header):
-```
-http://localhost:9131/apidocs/index.html?raml=raml/users.raml
-```
+and deploying some modules, see 
+[Running a local FOLIO system](https://dev.folio.org/guides/run-local-folio/).
 
 ## Creating a new module
 
@@ -1394,6 +1380,7 @@ then its API documentation is at:
 ```
 http://localhost:8081/apidocs/index.html?raml=raml/my-project.raml
 ```
+and remember to specify the "X-Okapi-Tenant: diku" header.
 
 The RMB also automatically provides other documentation, such as the "Admin API":
 
