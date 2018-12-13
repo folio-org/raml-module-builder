@@ -25,6 +25,7 @@ import org.raml.v2.api.model.v10.datamodel.TypeDeclaration;
 import org.raml.v2.api.model.v10.system.types.MarkdownString;
 
 import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Table;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
@@ -39,7 +40,10 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import java.util.Deque;
 import java.util.Iterator;
+import java.util.LinkedList;
+import org.raml.jaxrs.generator.ramltypes.GResource;
 import org.raml.v2.api.model.v10.datamodel.NumberTypeDeclaration;
 import org.raml.v2.api.model.v10.datamodel.StringTypeDeclaration;
 
@@ -140,7 +144,19 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
 
     List<ParameterSpec> modifiedParams = new ArrayList<>(spec.parameters);
     Iterator<GParameter> methodParams = method.queryParameters().iterator();
-    Iterator<GParameter> uriParams = method.resource().uriParameters().iterator();
+
+    // must traverse all parent resources to get uri parameters
+    Deque<GParameter> uriParams = new LinkedList<>();
+    GResource gRes = method.resource();
+    while (gRes != null) {
+      List<GParameter> u = gRes.uriParameters();
+      int k = u.size();
+      while (--k >= 0) {
+        uriParams.addFirst(u.get(k));
+      }
+      gRes = gRes.parentResource();
+    }
+    Iterator<GParameter> uriParamsIt = uriParams.iterator();
 
     for (int j = 0; j < modifiedParams.size(); j++) {
       ParameterSpec orgParam = modifiedParams.get(j);
@@ -150,8 +166,8 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
           modifiedParams.set(j, annotateNew(methodParams.next(), orgParam));
         }
         if (a.type.toString().equals("javax.ws.rs.PathParam")
-          && uriParams.hasNext()) {
-          modifiedParams.set(j, annotateNew(uriParams.next(), orgParam));
+          && uriParamsIt.hasNext()) {
+          modifiedParams.set(j, annotateNew(uriParamsIt.next(), orgParam));
         }
       }
     }
