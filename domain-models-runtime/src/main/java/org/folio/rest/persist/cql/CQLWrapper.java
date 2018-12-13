@@ -27,6 +27,46 @@ public class CQLWrapper {
     this.query = query;
   }
 
+  /**
+   * CQLWrapper constructor setting query, limit and offset.
+   *
+   * <p>Intended usage:
+   *
+   * <pre>
+   * import org.folio.util.ResourceUtils;
+   *
+   * public class ... {
+   *   private static CQL2PgJSON cql2PgJson;
+   *   static {
+   *     try {
+   *       cql2PgJson = new CQL2PgJSON("users.jsonb", ResourceUtils.resource2String("ramls/user.json"));
+   *     } catch (Exception e) {
+   *       throw new RuntimeException(e);
+   *     }
+       }
+   *
+   *   private static CQLWrapper cqlWrapper(String cql, int offset, int limit) {
+   *     return new CQLWrapper(cql2PgJson, cql, offset, limit);
+   *   }
+   * </pre>
+   *
+   * @param field  JSONB field
+   * @param query  CQL query
+   * @param limit  maximum number of records to return; use a negative number for no limit
+   * @param offset  skip this number of records; use a negative number for no offset
+   */
+  public CQLWrapper(CQL2PgJSON field, String query, int limit, int offset) {
+    super();
+    this.field = field;
+    this.query = query;
+    if (limit >= 0) {
+      this.limit = new Limit(limit);
+    }
+    if (offset >= 0) {
+      this.offset = new Offset(offset);
+    }
+  }
+
   public CQL2PgJSON getField() {
     return field;
   }
@@ -89,7 +129,7 @@ public class CQLWrapper {
   }
 
   /**
-   * Append text to sb. Do nothing if sb is null or empty.
+   * Append text to sb. Do nothing if text is null or empty.
    * Before appending append a space if sb is not empty.
    * @param sb where to append
    * @param text what to append
