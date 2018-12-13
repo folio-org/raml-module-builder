@@ -25,6 +25,7 @@ import org.raml.v2.api.model.v10.datamodel.TypeDeclaration;
 import org.raml.v2.api.model.v10.system.types.MarkdownString;
 
 import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Table;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
@@ -39,7 +40,10 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import java.util.Deque;
 import java.util.Iterator;
+import java.util.LinkedList;
+import org.raml.jaxrs.generator.ramltypes.GResource;
 import org.raml.v2.api.model.v10.datamodel.NumberTypeDeclaration;
 import org.raml.v2.api.model.v10.datamodel.StringTypeDeclaration;
 
@@ -140,7 +144,6 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
 
     List<ParameterSpec> modifiedParams = new ArrayList<>(spec.parameters);
     Iterator<GParameter> methodParams = method.queryParameters().iterator();
-    Iterator<GParameter> uriParams = method.resource().uriParameters().iterator();
 
     for (int j = 0; j < modifiedParams.size(); j++) {
       ParameterSpec orgParam = modifiedParams.get(j);
@@ -149,9 +152,16 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
         if (a.type.toString().equals("javax.ws.rs.QueryParam")) {
           modifiedParams.set(j, annotateNew(methodParams.next(), orgParam));
         }
-        if (a.type.toString().equals("javax.ws.rs.PathParam")
-          && uriParams.hasNext()) {
-          modifiedParams.set(j, annotateNew(uriParams.next(), orgParam));
+        if (a.type.toString().equals("javax.ws.rs.PathParam")) {
+          GResource curRes = method.resource();
+          while (curRes != null) {
+            for (GParameter u : curRes.uriParameters()) {
+              if (u.name().equals(orgParam.name)) {
+                modifiedParams.set(j, annotateNew(u, orgParam));
+              }
+            }
+            curRes = curRes.parentResource();
+          }
         }
       }
     }
