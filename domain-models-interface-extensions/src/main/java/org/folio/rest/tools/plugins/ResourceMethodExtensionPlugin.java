@@ -39,6 +39,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import java.util.Iterator;
 import org.raml.v2.api.model.v10.datamodel.NumberTypeDeclaration;
 import org.raml.v2.api.model.v10.datamodel.StringTypeDeclaration;
 
@@ -101,61 +102,58 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     }
   }
 
+  private ParameterSpec annotateNew(GParameter get, ParameterSpec orgParam) {
+    TypeDeclaration typeDeclaration = (TypeDeclaration) get.implementation();
+
+    ParameterSpec.Builder newParam = cloneSingleParamNoAnnotations(orgParam);
+    List<AnnotationSpec> newAnnotations = getAnnotationsAsModifiableList(orgParam);
+
+    if (typeDeclaration instanceof StringTypeDeclaration) {
+      StringTypeDeclaration n = (StringTypeDeclaration) typeDeclaration;
+      if (n.pattern() != null) {
+        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Pattern.class);
+        annoBuilder.addMember("regexp", "$S", n.pattern());
+        newAnnotations.add(annoBuilder.build());
+      }
+    }
+    if (typeDeclaration instanceof NumberTypeDeclaration) {
+      NumberTypeDeclaration n = (NumberTypeDeclaration) typeDeclaration;
+      if (n.minimum() != null) {
+        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Min.class);
+        annoBuilder.addMember(ANNOTATION_VALUE, "$L", (Long) n.minimum().longValue());
+        newAnnotations.add(annoBuilder.build());
+      }
+      if (n.maximum() != null) {
+        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Max.class);
+        annoBuilder.addMember(ANNOTATION_VALUE, "$L", (Long) n.maximum().longValue());
+        newAnnotations.add(annoBuilder.build());
+      }
+    }
+    newParam.addAnnotations(newAnnotations);
+    return newParam.build();
+  }
+
   private Builder addAnnotations(GMethod method, MethodSpec.Builder methodSpec) {
     MethodSpec.Builder ret = cloneMethodWithoutParams(methodSpec);
 
     MethodSpec spec = methodSpec.build();
 
     List<ParameterSpec> modifiedParams = new ArrayList<>(spec.parameters);
+    Iterator<GParameter> methodParams = method.queryParameters().iterator();
+    Iterator<GParameter> uriParams = method.resource().uriParameters().iterator();
 
-    List<GParameter> methodParams = method.queryParameters();
-    int j = 0;
-    for (int i = 0; i < methodParams.size(); i++) {
-      ParameterSpec orgParam = null;
-      while (true) {
-        orgParam = modifiedParams.get(j);
-        boolean gotIt = false;
-        List<AnnotationSpec> an = orgParam.annotations;
-        for (AnnotationSpec a : an) {
-          if (a.type.toString().equals("javax.ws.rs.QueryParam")) {
-            gotIt = true;
-          }
+    for (int j = 0; j < modifiedParams.size(); j++) {
+      ParameterSpec orgParam = modifiedParams.get(j);
+      List<AnnotationSpec> an = orgParam.annotations;
+      for (AnnotationSpec a : an) {
+        if (a.type.toString().equals("javax.ws.rs.QueryParam")) {
+          modifiedParams.set(j, annotateNew(methodParams.next(), orgParam));
         }
-        if (gotIt) {
-          break;
-        }
-        j++;
-      }
-      GParameter get = methodParams.get(i);
-      TypeDeclaration typeDeclaration = (TypeDeclaration) get.implementation();
-
-      ParameterSpec.Builder newParam = cloneSingleParamNoAnnotations(orgParam);
-      List<AnnotationSpec> newAnnotations = getAnnotationsAsModifiableList(orgParam);
-
-      if (typeDeclaration instanceof StringTypeDeclaration) {
-        StringTypeDeclaration n = (StringTypeDeclaration) typeDeclaration;
-        if (n.pattern() != null) {
-          AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Pattern.class);
-          annoBuilder.addMember("regexp", "$S", n.pattern());
-          newAnnotations.add(annoBuilder.build());
+        if (a.type.toString().equals("javax.ws.rs.PathParam")
+          && uriParams.hasNext()) {
+          modifiedParams.set(j, annotateNew(uriParams.next(), orgParam));
         }
       }
-      if (typeDeclaration instanceof NumberTypeDeclaration) {
-        NumberTypeDeclaration n = (NumberTypeDeclaration) typeDeclaration;
-        if (n.minimum() != null) {
-          AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Min.class);
-          annoBuilder.addMember(ANNOTATION_VALUE, "$L", (Long) n.minimum().longValue());
-          newAnnotations.add(annoBuilder.build());
-        }
-        if (n.maximum() != null) {
-          AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Max.class);
-          annoBuilder.addMember(ANNOTATION_VALUE, "$L", (Long) n.maximum().longValue());
-          newAnnotations.add(annoBuilder.build());
-        }
-      }
-      newParam.addAnnotations(newAnnotations);
-      modifiedParams.set(j, newParam.build());
-      j++;
     }
     ret.addParameters(modifiedParams);
     return ret;
@@ -186,7 +184,10 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
 
   private void generateJavaDocs(GMethod method, MethodSpec.Builder methodSpec) {
 
-    methodSpec.addJavadoc(method.getDescription() + "\n");
+    final String description = method.getDescription();
+    if (description != null) {
+      methodSpec.addJavadoc(description + "\n");
+    }
     List<GParameter> methodParams = method.queryParameters();
 
     for (int i = 0; i < methodParams.size(); i++) {
