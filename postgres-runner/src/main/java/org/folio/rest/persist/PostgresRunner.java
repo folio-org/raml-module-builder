@@ -5,6 +5,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
@@ -27,34 +29,44 @@ import ru.yandex.qatools.embed.postgresql.distribution.Version;
 /**
  * Starts embedded Postgres if the desired PostgresPort if free, and provide a port that allows to stop it.
  *
- * Arguments: PostgresRunnerPort PostgresPort UserName UserPassword
+ * <p>Arguments: PostgresRunnerPort PostgresPort UserName UserPassword
  *
- * Example usage:
+ * <p>If no arguments are provided use these environment variables: DB_RUNNER_PORT, DB_PORT, DB_USERNAME, DB_PASSWORD
  *
- * Start Postgres at port 5433, in addition open port 5434 for PostgresWaiter and PostgresStopper:
+ * <p>As last resort use the default configuration: 6001, 6000, username, password.
  *
- * java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresRunner 5434 5433 postgres postgres &
+ * <p>Example usage:
  *
- * This runs in the background.
+ * <p>Start Postgres at port 5433, in addition open port 5434 for PostgresWaiter and PostgresStopper:
  *
- * Wait until Postgres is available:
+ * <p>java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresRunner 5434 5433 postgres postgres &
  *
- * java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresWaiter 5434
+ * <p>This runs in the background.
  *
- * Now use Postgres at port 5433.
+ * <p>Wait until Postgres is available:
  *
- * Afterwards stop Postgres and PostgresRunner:
+ * <p>java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresWaiter 5434
  *
- * java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresStopper 5434
+ * <p>Now use Postgres at port 5433.
+ *
+ * <p>Afterwards stop Postgres and PostgresRunner:
+ *
+ * <p>java -cp target/postgres-runner-fat.jar org.folio.rest.persist.PostgresStopper 5434
  */
 public class PostgresRunner extends AbstractVerticle {
   private static final Logger log = LoggerFactory.getLogger(PostgresRunner.class);
+  private static final String USERNAME = "username";
+  @SuppressWarnings("squid:S2068")  // suppress "Credentials should not be hard-coded"
+  // This is safe because PostgresRunner is used for unit tests only, a
+  // non-default password can be set, but setting it in the pom.xml of users
+  // of PostgresRunner is not an improvement.
+  private static final String PASSWORD = "password";
   private static Vertx vertxForDeploy;
   HttpServer runnerServer;
   List<RoutingContext> getRequests = new ArrayList<>();
   List<RoutingContext> postRequests = new ArrayList<>();
+  PostgresProcess postgresProcess;
   private boolean postgresRuns = false;
-  private PostgresProcess postgresProcess;
 
   /**
    * Set the Vertx that all following calls to the static main methods use for deploying this Verticle.
@@ -65,12 +77,59 @@ public class PostgresRunner extends AbstractVerticle {
   }
 
   public static void main(String [] args) {
-    if (args.length != 4) {
-      throw new IllegalArgumentException("required arguments:\n"
-          + "PostgresRunnerPort PostgresPort UserName UserPassword\n");
+    main(new PostgresRunner(), config(args, System.getenv()), null);
+  }
+
+  static JsonObject config(String [] args, Map<String,String> env) {
+    if (args.length == 4) {
+      return config(args[0], args[1], args[2], args[3]);
     }
 
-    main(Integer.parseUnsignedInt(args[0]), Integer.parseUnsignedInt(args[1]), args[2], args[3]);
+    if (args.length != 0) {
+      throw new IllegalArgumentException("Found " + args.length + " arguments, expected 0 or 4:\n"
+          + "[PostgresRunnerPort PostgresPort UserName UserPassword]\n");
+    }
+
+    String runnerPort = getenv(env, "DB_RUNNER_PORT");
+    String postgresPort = getenv(env, "DB_PORT");
+    String username = getenv(env, "DB_USERNAME");
+    String password = getenv(env, "DB_PASSWORD");
+    if (runnerPort == null && postgresPort == null && username == null && password == null) {
+      // default configuration
+      return config(6001, 6000, USERNAME, PASSWORD);
+    }
+
+    if (runnerPort == null || postgresPort == null || username == null || password == null) {
+      throw new IllegalArgumentException("All 4 environment variables must be defined: "
+          + "DB_RUNNER_PORT, DB_PORT, DB_USERNAME, DB_PASSWORD");
+    }
+
+    return config(runnerPort, postgresPort, username, password);
+  }
+
+  /**
+   * Return env(name). If not found also try deprecated lower case dot separated name.
+   * getenv("DB_PORT") checks "DB_PORT" and "db.port".
+   * @return the found value, or null if both names do not exist.
+   */
+  static String getenv(Map<String,String> env, String name) {
+    String value = env.get(name);
+    if (value != null) {
+      return value;
+    }
+    return env.get(name.toLowerCase(Locale.ROOT).replace('_', '.'));
+  }
+
+  private static JsonObject config(int runnerPort, int postgresPort, String username, String password) {
+    return new JsonObject()
+        .put("runnerPort", runnerPort)
+        .put("postgresPort", postgresPort)
+        .put(USERNAME, username)
+        .put(PASSWORD, password);
+  }
+
+  private static JsonObject config(String runnerPort, String postgresPort, String username, String password) {
+    return config(Integer.parseInt(runnerPort), Integer.parseInt(postgresPort), username, password);
   }
 
   public static void main(int runnerPort, int postgresPort, String username, String password) {
@@ -83,17 +142,19 @@ public class PostgresRunner extends AbstractVerticle {
 
   public static void main(PostgresRunner postgresRunner, int runnerPort, int postgresPort, String username, String password,
       Handler<AsyncResult<String>> asyncHandler) {
-    JsonObject config = new JsonObject()
-        .put("runnerPort", runnerPort)
-        .put("postgresPort", postgresPort)
-        .put("username", username)
-        .put("password", password);
+    main(postgresRunner, config(runnerPort, postgresPort, username, password), asyncHandler);
+  }
+
+  static void main(PostgresRunner postgresRunner, JsonObject config, Handler<AsyncResult<String>> asyncHandler) {
     DeploymentOptions options = new DeploymentOptions().setConfig(config).setWorker(true);
     if (vertxForDeploy == null) {
       vertxForDeploy = Vertx.vertx();
       vertxForDeploy.exceptionHandler(ex -> log.error("Unhandled exception caught by vertx", ex));
     }
     vertxForDeploy.deployVerticle(postgresRunner, options, result -> {
+      if (result.failed()) {
+        log.error(result.cause().getMessage(), result.cause());
+      }
       if (asyncHandler != null) {
         asyncHandler.handle(result);
       }
@@ -120,8 +181,8 @@ public class PostgresRunner extends AbstractVerticle {
       if (! postgresRuns) {
         vertx.executeBlocking(future -> {
           postgresProcess = startPostgres(postgresPort,
-              config().getString("username"),
-              config().getString("password"));
+              config().getString(USERNAME),
+              config().getString(PASSWORD));
           future.complete();
         }, result -> whenPostgresRuns(startFuture));
       } else {
@@ -239,13 +300,12 @@ public class PostgresRunner extends AbstractVerticle {
         locale = "american_usa";
       }
       config.getAdditionalInitDbParams().addAll(Arrays.asList(
-        "-E", "UTF-8",
-        "--locale", locale
+          "-E", "UTF-8",
+          "--locale", locale
       ));
 
       return startPostgres(config);
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       throw new IllegalStateException(e);
     }
   }

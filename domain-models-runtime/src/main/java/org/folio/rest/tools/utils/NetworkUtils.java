@@ -32,7 +32,12 @@ public class NetworkUtils {
     }
   }
 
-  private static boolean isLocalPortFree(int port) {
+  /**
+   * Check a local TCP port.
+   * @param port  the TCP port number, must be from 1 ... 65535
+   * @return true if the port is free (unused), false if the port is already in use
+   */
+  public static boolean isLocalPortFree(int port) {
       try {
           new ServerSocket(port).close();
           return true;

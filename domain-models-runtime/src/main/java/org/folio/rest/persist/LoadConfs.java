@@ -39,13 +39,13 @@ public final class LoadConfs {
           loadResource = false;
           log.info("File has been loaded: " + configFile);
         } else {
-          log.error("File does not exist: " + configFile);
+          log.info("File does not exist: " + configFile);
         }
       }
       if (loadResource) {
           InputStream is = LoadConfs.class.getResourceAsStream(configFile);
           if (is == null) {
-            log.error("Resource does not exist: " + configFile);
+            log.info("Resource does not exist: " + configFile);
             return null;
           }
           log.info("Resource has been loaded: " + configFile);
