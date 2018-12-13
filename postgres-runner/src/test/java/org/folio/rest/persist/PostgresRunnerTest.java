@@ -244,7 +244,7 @@ public class PostgresRunnerTest {
     });
   }
 
-  @Test
+  @Test(timeout=30000)
   public void waiterWithoutRunner() throws Exception {
     String port = ""  + getPorts().port1;
     int oldSecondsToSleep = PostgresWaiter.secondsToSleep;
