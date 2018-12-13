@@ -146,14 +146,12 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
       ParameterSpec orgParam = modifiedParams.get(j);
       List<AnnotationSpec> an = orgParam.annotations;
       for (AnnotationSpec a : an) {
-        log.info("a.type.toString=" + a.type.toString());
         if (a.type.toString().equals("javax.ws.rs.QueryParam")) {
           modifiedParams.set(j, annotateNew(methodParams.next(), orgParam));
         }
-        if (a.type.toString().equals("javax.ws.rs.PathParam")) {
-          if (uriParams.hasNext()) {
-            modifiedParams.set(j, annotateNew(uriParams.next(), orgParam));
-          }
+        if (a.type.toString().equals("javax.ws.rs.PathParam")
+          && uriParams.hasNext()) {
+          modifiedParams.set(j, annotateNew(uriParams.next(), orgParam));
         }
       }
     }
