@@ -4,6 +4,22 @@ types:
   User: !include user.schema
 
 /users/{id}:
+  post:
+    description: Post user in XML format
+    body:
+      text/xml:
+        example: "<x>y</x>"
+    responses:
+      201:
+        description: OK
+        body:
+          text/xml:
+            example: "<x>y</x>"
+      400:
+        description: User Error
+        body:
+          text/plain:
+            example: user error
   get:
     queryParameters:
       lang:

@@ -13,6 +13,7 @@ import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.jaxrs.resource.UsersId;
 
 public class UsersAPI implements UsersId {
+
   private static Logger log = LoggerFactory.getLogger(UsersAPI.class);
 
   @Override
@@ -41,5 +42,12 @@ public class UsersAPI implements UsersId {
     } else {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond404()));
     }
+  }
+
+  @Override
+  public void postUsersById(String id, Object entity, Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+      PostUsersByIdResponse.respond400WithTextPlain("is of type" + entity.toString())));
   }
 }
