@@ -149,13 +149,11 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
         log.info("a.type.toString=" + a.type.toString());
         if (a.type.toString().equals("javax.ws.rs.QueryParam")) {
           modifiedParams.set(j, annotateNew(methodParams.next(), orgParam));
-          break;
         }
         if (a.type.toString().equals("javax.ws.rs.PathParam")) {
           if (uriParams.hasNext()) {
             modifiedParams.set(j, annotateNew(uriParams.next(), orgParam));
           }
-          break;
         }
       }
     }
