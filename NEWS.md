@@ -1,3 +1,14 @@
+## 23.3.0 2018-12-14
+
+ * RMB-162 Simplify PostgresClient.getInstance
+ * RMB-185 Nicer constructor for the CQLWrapper
+ * RMB-288 StorageHelper post put deleteById getById
+ * RMB-293 executeTransParamSyntaxError: IllegalStateException: Test
+          already completed
+ * RMB-308 enum values not matched
+ * RMB-311 Validation of URI parameters
+ * Update to cql2pgjson 3.0.3
+
 ## 23.2.0 2018-11-29
 
  * RMB-296 Tenant init for loading reference data
