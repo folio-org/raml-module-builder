@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -34,8 +35,10 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLClient;
 import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.SQLRowStream;
 import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -254,16 +257,13 @@ public class PostgresClientIT {
   private void execute(TestContext context, String sql) {
     Async async = context.async();
     PostgresClient c = PostgresClient.getInstance(vertx);
-    c.runSQLFile(sql, false, reply -> {
+    c.getClient().update(sql, reply -> {
       c.closeClient(close -> {
-        if (reply.failed() || close.failed() || ! reply.result().isEmpty()) {
+        if (reply.failed() || close.failed()) {
           setRootLevel(Level.DEBUG);
         }
         assertSuccess(context, reply);
         assertSuccess(context, close);
-        for (String result : reply.result()) {
-          context.fail(result);
-        }
         async.complete();
       });
     });
@@ -275,18 +275,12 @@ public class PostgresClientIT {
     Level oldLevel = getRootLevel();
     setRootLevel(Level.FATAL);
     PostgresClient c = PostgresClient.getInstance(vertx);
-    c.runSQLFile(sql, false, reply -> {
+    c.getClient().update(sql, reply -> {
       c.closeClient(close -> {
-        if (reply.failed() || close.failed()) {
-          setRootLevel(Level.DEBUG);
-        } else {
-          setRootLevel(oldLevel);
-        }
-        assertSuccess(context, reply);
+        setRootLevel(oldLevel);
         assertSuccess(context, close);
         async.complete();
       });
-
     });
     async.awaitSuccess(5000);
   }
@@ -559,7 +553,9 @@ public class PostgresClientIT {
   public void saveTransSyntaxError(TestContext context) {
     postgresClient = createFoo(context);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.save(trans, "'", xPojo, context.asyncAssertFailure());
+      postgresClient.save(trans, "'", xPojo, context.asyncAssertFailure(save -> {
+        postgresClient.rollbackTx(trans, context.asyncAssertSuccess());
+      }));
     }));
   }
 
@@ -568,7 +564,9 @@ public class PostgresClientIT {
     String id = randomUuid();
     postgresClient = createFoo(context);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.save(trans, "'", id, xPojo, context.asyncAssertFailure());
+      postgresClient.save(trans, "'", id, xPojo, context.asyncAssertFailure(save -> {
+        postgresClient.rollbackTx(trans, context.asyncAssertSuccess());
+      }));
     }));
   }
 
@@ -1135,16 +1133,24 @@ public class PostgresClientIT {
   public void executeTransParamSyntaxError(TestContext context) {
     postgresClient = postgresClient();
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.execute(trans, "'", new JsonArray(), context.asyncAssertFailure());
+      postgresClient.execute(trans, "'", new JsonArray(), context.asyncAssertFailure(execute -> {
+        postgresClient.rollbackTx(trans, context.asyncAssertSuccess());
+      }));
     }));
   }
 
   @Test
   public void executeTransParamNullConnection(TestContext context) throws Exception {
+    Async async = context.async();
     postgresClient = postgresClient();
     postgresClient.startTx(asyncAssertTx(context, trans -> {
       setRootLevel(Level.FATAL);
-      postgresClient.execute(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+      postgresClient.execute(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure(execute -> {
+        postgresClient.rollbackTx(trans, rollback -> async.complete());
+      }));
+      // TODO: When updated to vertx 3.6.1 with this fix
+      // https://github.com/vert-x3/vertx-mysql-postgresql-client/pull/132
+      // change "rollback -> async.complete()" to "context.asyncAssertSuccess()"
     }));
   }
 
@@ -1191,4 +1197,237 @@ public class PostgresClientIT {
     postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
+  private PostgresClient createNumbers(TestContext context, int ...numbers) {
+    String schema = PostgresClient.convertToPsqlStandard(TENANT);
+    execute(context, "DROP TABLE IF EXISTS numbers CASCADE;");
+    execute(context, "CREATE TABLE numbers (i INT);");
+    executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + schema + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
+    execute(context, "GRANT ALL PRIVILEGES ON TABLE numbers TO " + schema + ";");
+    StringBuilder s = new StringBuilder();
+    for (int n : numbers) {
+      if (s.length() > 0) {
+        s.append(',');
+      }
+      s.append('(').append(n).append(')');
+    }
+    execute(context, "INSERT INTO numbers VALUES " + s + ";");
+    postgresClient = postgresClient(TENANT);
+    return postgresClient;
+  }
+
+  private String intsAsString(ResultSet resultSet) {
+    return resultSet.getResults().stream()
+        .map(jsonArray -> jsonArray.getInteger(0).toString())
+        .collect(Collectors.joining(", "));
+  }
+
+  private void intsAsString(SQLRowStream sqlRowStream, Handler<AsyncResult<String>> replyHandler) {
+    StringBuilder s = new StringBuilder();
+    sqlRowStream.handler(row -> {
+      if (s.length() > 0) {
+        s.append(", ");
+      }
+      s.append(row.getInteger(0));
+    }).exceptionHandler(e -> {
+      replyHandler.handle(Future.failedFuture(e));
+    }).close(close -> {
+      replyHandler.handle(Future.succeededFuture(s.toString()));
+    });
+  }
+
+  @Test
+  public void select(TestContext context) {
+    createNumbers(context, 1, 2, 3)
+    .select("SELECT i FROM numbers WHERE i IN (1, 3, 5) ORDER BY i", context.asyncAssertSuccess(select -> {
+      context.assertEquals("1, 3", intsAsString(select));
+    }));
+  }
+
+  @Test
+  public void selectTrans(TestContext context) {
+    postgresClient = createNumbers(context, 4, 5, 6);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.select(trans, "SELECT i FROM numbers WHERE i IN (4, 6, 8) ORDER BY i",
+          context.asyncAssertSuccess(select -> {
+            postgresClient.endTx(trans, context.asyncAssertSuccess());
+            context.assertEquals("4, 6", intsAsString(select));
+          }));
+    }));
+  }
+
+  @Test
+  public void selectParam(TestContext context) {
+    createNumbers(context, 7, 8, 9)
+    .select("SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
+        new JsonArray().add(7).add(9).add(11), context.asyncAssertSuccess(select -> {
+          context.assertEquals("7, 9",  intsAsString(select));
+        }));
+  }
+
+  @Test
+  public void selectParamTrans(TestContext context) {
+    postgresClient = createNumbers(context, 11, 12, 13);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.select(trans, "SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
+          new JsonArray().add(11).add(13).add(15), context.asyncAssertSuccess(select -> {
+            postgresClient.endTx(trans, context.asyncAssertSuccess());
+            context.assertEquals("11, 13",  intsAsString(select));
+          }));
+    }));
+  }
+
+  @Test
+  public void selectStream(TestContext context) {
+    createNumbers(context, 15, 16, 17)
+    .selectStream("SELECT i FROM numbers WHERE i IN (15, 17, 19) ORDER BY i", context.asyncAssertSuccess(select -> {
+      intsAsString(select, context.asyncAssertSuccess(string -> {
+        context.assertEquals("15, 17", string);
+      }));
+    }));
+  }
+
+  @Test
+  public void selectStreamTrans(TestContext context) {
+    postgresClient = createNumbers(context, 21, 22, 23);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.selectStream(trans, "SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i",
+          context.asyncAssertSuccess(select -> {
+            intsAsString(select, context.asyncAssertSuccess(string -> {
+              postgresClient.endTx(trans, context.asyncAssertSuccess());
+              context.assertEquals("21, 23", string);
+            }));
+          }));
+    }));
+  }
+
+  @Test
+  public void selectStreamParam(TestContext context) {
+    createNumbers(context, 25, 26, 27)
+    .selectStream("SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
+        new JsonArray().add(25).add(27).add(29),
+        context.asyncAssertSuccess(select -> {
+          intsAsString(select, context.asyncAssertSuccess(string -> {
+            context.assertEquals("25, 27", string);
+      }));
+    }));
+  }
+
+  @Test
+  public void selectStreamParamTrans(TestContext context) {
+    postgresClient = createNumbers(context, 31, 32, 33);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.selectStream(trans, "SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
+          new JsonArray().add(31).add(33).add(35),
+          context.asyncAssertSuccess(select -> {
+            intsAsString(select, context.asyncAssertSuccess(string -> {
+              postgresClient.endTx(trans, context.asyncAssertSuccess());
+              context.assertEquals("31, 33", string);
+            }));
+          }));
+    }));
+  }
+
+  @Test
+  public void selectSingle(TestContext context) {
+    postgresClient = createNumbers(context, 41, 42, 43);
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (41, 43, 45) ORDER BY i",
+        context.asyncAssertSuccess(select -> {
+          context.assertEquals(41, select.getInteger(0));
+        }));
+  }
+
+  @Test
+  public void selectSingleTrans(TestContext context) {
+    postgresClient = createNumbers(context, 45, 46, 47);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.selectSingle(trans, "SELECT i FROM numbers WHERE i IN (45, 47, 49) ORDER BY i",
+          context.asyncAssertSuccess(select -> {
+              postgresClient.endTx(trans, context.asyncAssertSuccess());
+              context.assertEquals(45, select.getInteger(0));
+            }));
+    }));
+  }
+
+  @Test
+  public void selectSingleParam(TestContext context) {
+    postgresClient = createNumbers(context, 51, 52, 53);
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
+        new JsonArray().add(51).add(53).add(55),
+        context.asyncAssertSuccess(select -> {
+          context.assertEquals(51, select.getInteger(0));
+        }));
+  }
+
+  @Test
+  public void selectSingleParamTrans(TestContext context) {
+    postgresClient = createNumbers(context, 55, 56, 57);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.selectSingle(trans, "SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
+          new JsonArray().add(51).add(53).add(55),
+          context.asyncAssertSuccess(select -> {
+              postgresClient.endTx(trans, context.asyncAssertSuccess());
+              context.assertEquals(55, select.getInteger(0));
+            }));
+    }));
+  }
+
+  @Test
+  public void selectTxException(TestContext context) {
+    postgresClient().select(null, "SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectParamTxException(TestContext context) {
+    postgresClient().select(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectSingleTxException(TestContext context) {
+    postgresClient().selectSingle(null, "SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectSingleParamTxException(TestContext context) {
+    postgresClient().selectSingle(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectStreamTxException(TestContext context) {
+    postgresClient().selectStream(null, "SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectStreamParamTxException(TestContext context) {
+    postgresClient().selectStream(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectTxFailed(TestContext context) {
+    postgresClient().select(Future.failedFuture("failed"), "SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectParamTxFailed(TestContext context) {
+    postgresClient().select(Future.failedFuture("failed"), "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectSingleTxFailed(TestContext context) {
+    postgresClient().selectSingle(Future.failedFuture("failed"), "SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectSingleParamTxFailed(TestContext context) {
+    postgresClient().selectSingle(Future.failedFuture("failed"), "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectStreamTxFailed(TestContext context) {
+    postgresClient().selectStream(Future.failedFuture("failed"), "SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectStreamParamTxFailed(TestContext context) {
+    postgresClient().selectStream(Future.failedFuture("failed"), "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
 }
