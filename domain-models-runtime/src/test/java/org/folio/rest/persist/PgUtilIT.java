@@ -46,6 +46,15 @@ public class PgUtilIT {
     createUserTable(context);
   }
 
+  @AfterClass
+  public static void tearDownClass(TestContext context) {
+    if (ownEmbeddedPostgres) {
+      PostgresClient.stopEmbeddedPostgres();
+    }
+
+    vertx.close(context.asyncAssertSuccess());
+  }
+
   public static void startEmbeddedPostgres(Vertx vertx) throws IOException {
     if (PostgresClient.isEmbedded()) {
       // starting and stopping embedded postgres is done by someone else
@@ -96,14 +105,6 @@ public class PgUtilIT {
       async.complete();
     });
     async.await();
-  }
-
-  @AfterClass
-  public static void tearDownClass(TestContext context) {
-    if (ownEmbeddedPostgres) {
-      PostgresClient.stopEmbeddedPostgres();
-      vertx.close();
-    }
   }
 
   private String randomUuid() {
