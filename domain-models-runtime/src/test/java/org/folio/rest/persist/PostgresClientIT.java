@@ -54,7 +54,7 @@ public class PostgresClientIT {
   /** table name */
   static private final String INVALID_JSON = "invalid_json";
   static private final String INVALID_JSON_UUID = "49999999-4999-4999-8999-899999999999";
-  static private Vertx vertx;
+  static private Vertx vertx = null;
 
   /** Log4j2 logging level */
   private Level oldRootLevel;
@@ -90,7 +90,10 @@ public class PostgresClientIT {
   @AfterClass
   public static void tearDownClass(TestContext context) {
     PostgresClient.stopEmbeddedPostgres();
-    vertx.close(context.asyncAssertSuccess());
+    if (vertx != null) {
+      vertx.close(context.asyncAssertSuccess());
+      vertx = null;
+    }
   }
 
   private Level getRootLevel() {
