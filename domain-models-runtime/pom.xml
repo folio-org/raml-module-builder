@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>23.1.1-SNAPSHOT</version>
+    <version>23.4.0-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -93,7 +93,7 @@
     <dependency>
       <groupId>org.z3950.zing</groupId>
       <artifactId>cql2pgjson</artifactId>
-      <version>3.0.2</version>
+      <version>3.0.3</version>
     </dependency>
     <dependency>
       <groupId>javax.validation</groupId>
@@ -236,6 +236,45 @@
               </systemProperties>
             </configuration>
           </execution>
+          <execution>
+            <id>start-postgres</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>java</executable>
+              <async>true</async>
+              <classpathScope>test</classpathScope>
+              <arguments>
+                <argument>-classpath</argument>
+                <classpath />
+                <argument>org.folio.rest.persist.PostgresRunner</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>wait-for-postgres</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <classpathScope>test</classpathScope>
+              <mainClass>org.folio.rest.persist.PostgresWaiter</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>stop-postgres</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <classpathScope>test</classpathScope>
+              <mainClass>org.folio.rest.persist.PostgresStopper</mainClass>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 
@@ -364,62 +403,6 @@
         <artifactId>maven-antrun-plugin</artifactId>
         <version>1.8</version>
         <executions>
-          <execution>
-            <id>start-postgres</id>
-            <phase>pre-integration-test</phase>
-            <goals>
-              <goal>run</goal>
-            </goals>
-            <configuration>
-              <target>
-                <!-- Postgres configured like in Jenkins CI build environment https://issues.folio.org/browse/METADATA-10 -->
-                <exec executable="${java.home}/bin/java" dir="${project.build.directory}" spawn="true">
-                  <arg value="-cp" />
-                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar" />
-                  <arg value="org.folio.rest.persist.PostgresRunner" />
-                  <arg value="5434" />      <!-- PostgresRunner port -->
-                  <arg value="5433" />      <!-- Postgres port -->
-                  <arg value="postgres" />  <!-- username -->
-                  <arg value="postgres" />  <!-- password -->
-                </exec>
-              </target>
-            </configuration>
-          </execution>
-          <execution>
-            <id>wait-for-postgres</id>
-            <phase>pre-integration-test</phase>
-            <goals>
-              <goal>run</goal>
-            </goals>
-            <configuration>
-              <target>
-                <exec executable="${java.home}/bin/java" dir="${project.build.directory}">
-                  <arg value="-cp" />
-                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar" />
-                  <arg value="org.folio.rest.persist.PostgresWaiter" />
-                  <arg value="5434" />      <!-- PostgresRunner port -->
-                  <!-- this waits until Postgres (started by spawned PostgresRunner) is ready -->
-                </exec>
-              </target>
-            </configuration>
-          </execution>
-          <execution>
-            <id>stop-postgres</id>
-            <phase>post-integration-test</phase>
-            <goals>
-              <goal>run</goal>
-            </goals>
-            <configuration>
-              <target>
-                <exec executable="${java.home}/bin/java" dir="${project.build.directory}">
-                  <arg value="-cp" />
-                  <arg value="${basedir}/../postgres-runner/target/postgres-runner-fat.jar" />
-                  <arg value="org.folio.rest.persist.PostgresStopper" />
-                  <arg value="5434" />      <!-- PostgresRunner port -->
-                </exec>
-              </target>
-            </configuration>
-          </execution>
           <!-- Replace the baseUri in the RAMLs that have been copied to
           apidocs directory so that they can be used via the local html api console. -->
           <execution>

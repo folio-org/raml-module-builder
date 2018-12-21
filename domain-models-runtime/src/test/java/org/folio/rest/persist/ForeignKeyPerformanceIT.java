@@ -38,6 +38,7 @@ public class ForeignKeyPerformanceIT {
   @AfterClass
   static public void teardownClass(TestContext context) {
     dropTables(context);
+    vertx.close(context.asyncAssertSuccess());
   }
 
   static private void runSQL(TestContext context, String inputSql) {

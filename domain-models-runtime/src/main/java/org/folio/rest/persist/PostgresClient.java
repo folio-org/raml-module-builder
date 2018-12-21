@@ -81,6 +81,9 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
+import org.folio.rest.tools.utils.NaiveSQLParse;
+import org.folio.rest.tools.utils.NetworkUtils;
+
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
@@ -496,31 +499,32 @@ public class PostgresClient {
       // LoadConfs.loadConfig writes its own log message
     }
     if (config == null) {
-      log.info("No DB configuration found, starting embedded postgres with default config");
-      setIsEmbedded(true);
+      if (NetworkUtils.isLocalPortFree(EMBEDDED_POSTGRES_PORT)) {
+        log.info("No DB configuration found, starting embedded postgres with default config");
+        setIsEmbedded(true);
+      } else {
+        log.info("No DB configuration found, using default config, port is already in use");
+      }
       config = new JsonObject();
       config.put(_USERNAME, _USERNAME);
       config.put(_PASSWORD, _PASSWORD);
       config.put(HOST, DEFAULT_IP);
       config.put(PORT, EMBEDDED_POSTGRES_PORT);
       config.put(DATABASE, "postgres");
-    } else if (tenantId.equals(DEFAULT_SCHEMA)) {
-      config.put(_USERNAME, config.getString(_USERNAME));
-      config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
     }
-    else{
+    if (tenantId.equals(DEFAULT_SCHEMA)) {
+      config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
+    } else {
       log.info("Using schema: " + tenantId);
       config.put(_USERNAME, schemaName);
       config.put(_PASSWORD, createPassword(tenantId));
     }
-
     if(embeddedPort != -1 && embeddedMode){
       //over ride the declared default port - coming from the config file and use the
       //passed in port as well. useful when multiple modules start up an embedded postgres
       //in a single server.
       config.put(PORT, embeddedPort);
     }
-
     return config;
   }
 
@@ -657,6 +661,36 @@ public class PostgresClient {
         done.handle(Future.succeededFuture());
       }
     });
+  }
+
+  /**
+   * The returned handler first closes the SQLConnection and then passes on the AsyncResult to handler.
+   *
+   * <p>The returned Handler ignores (but logs) any failure when opening the connection (conn) or
+   * closing the connection and always passes on the AsyncResult<T>. This is in contrast to
+   * io.vertx.ext.sql.HandlerUtil.closeAndHandleResult where the connection
+   * closing failure suppresses any result or failure of the AsyncResult<T> input.
+   *
+   * @param conn  the SQLConnection to close
+   * @param handler  where to pass on the input AsyncResult
+   * @return the Handler
+   */
+  static <T> Handler<AsyncResult<T>> closeAndHandleResult(
+      AsyncResult<SQLConnection> conn, Handler<AsyncResult<T>> handler) {
+
+    return ar -> {
+      if (conn.failed()) {
+        log.error("Opening SQLConnection failed: " + conn.cause().getMessage(), conn.cause());
+        handler.handle(ar);
+        return;
+      }
+      conn.result().close(close -> {
+        if (close.failed()) {
+          log.error("Closing SQLConnection failed: " + close.cause().getMessage(), close.cause());
+        }
+        handler.handle(ar);
+      });
+    };
   }
 
   /**
@@ -1061,7 +1095,7 @@ public class PostgresClient {
       try {
         String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = ?::jsonb "  + whereClause
             + SPACE + returning;
-        log.debug("query = " + q);
+        log.debug("doUpdate query = " + q);
         String pojo = pojo2json(entity);
         connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
           if(!transactionMode){
@@ -1137,7 +1171,7 @@ public class PostgresClient {
           try {
             String q = UPDATE + schemaName + DOT + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
                 + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + SPACE + returning;
-            log.debug("query = " + q);
+            log.debug("update query = " + q);
             connection.update(q, query -> {
               connection.close();
               if (query.failed()) {
@@ -1262,7 +1296,7 @@ public class PostgresClient {
     vertx.runOnContext(v -> {
       try {
         String q = "DELETE FROM " + schemaName + DOT + table + " " + where;
-        log.debug("query = " + q);
+        log.debug("doDelete query = " + q);
         connection.update(q, query -> {
           if(!transactionMode){
             connection.close();
@@ -2481,42 +2515,231 @@ public class PostgresClient {
   }
 
   /**
-   * run a select query against postgres - to update see mutate
-   * @param sql - the sql to run
-   * @param replyHandler
+   * Run a select query.
+   *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql - the sql query to run
+   * @param replyHandler  the query result or the failure
    */
   public void select(String sql, Handler<AsyncResult<ResultSet>> replyHandler) {
+    client.getConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)));
+  }
 
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        try {
-          connection.query(sql, query -> {
-            connection.close();
-            if (query.failed()) {
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(query.result()));
-            }
-          });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      } else {
-        replyHandler.handle(Future.failedFuture(res.cause()));
+  /**
+   * Run a select query.
+   *
+   * <p>This never closes the connection conn.
+   *
+   * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
+   *
+   * @param conn  The connection on which to execute the query on.
+   * @param sql  The sql query to run.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void select(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<ResultSet>> replyHandler) {
+    try {
+      if (conn.failed()) {
+        replyHandler.handle(Future.failedFuture(conn.cause()));
+        return;
       }
-    });
+      conn.result().query(sql, replyHandler);
+    } catch (Exception e) {
+      log.error("select sql: " + e.getMessage() + " - " + sql, e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Run a parameterized/prepared select query.
+   *
+   * <p>To update see {@link #execute(String, JsonArray, Handler)}.
+   *
+   * @param conn  The connection on which to execute the query on.
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void select(String sql, JsonArray params, Handler<AsyncResult<ResultSet>> replyHandler) {
+    client.getConnection(conn -> select(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a parameterized/prepared select query.
+   *
+   * <p>This never closes the connection conn.
+   *
+   * <p>To update see {@link #execute(AsyncResult, String, JsonArray, Handler)}.
+   *
+   * @param conn  The connection on which to execute the query on.
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void select(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
+      Handler<AsyncResult<ResultSet>> replyHandler) {
+    try {
+      if (conn.failed()) {
+        replyHandler.handle(Future.failedFuture(conn.cause()));
+        return;
+      }
+      conn.result().queryWithParams(sql, params, replyHandler);
+    } catch (Exception e) {
+      log.error("select sql: " + e.getMessage() + " - " + sql, e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Run a select query and return the first record, or null if there is no result.
+   *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql  The sql query to run.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void selectSingle(String sql, Handler<AsyncResult<JsonArray>> replyHandler) {
+    client.getConnection(conn -> selectSingle(conn, sql, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a select query and return the first record, or null if there is no result.
+   *
+   * <p>This never closes the connection conn.
+   *
+   * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
+   *
+   * @param conn  The connection on which to execute the query on.
+   * @param sql  The sql query to run.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void selectSingle(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<JsonArray>> replyHandler) {
+    try {
+      if (conn.failed()) {
+        replyHandler.handle(Future.failedFuture(conn.cause()));
+        return;
+      }
+      conn.result().querySingle(sql, replyHandler);
+    } catch (Exception e) {
+      log.error("select single sql: " + e.getMessage() + " - " + sql, e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Run a parameterized/prepared select query and return the first record, or null if there is no result.
+   *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void selectSingle(String sql, JsonArray params, Handler<AsyncResult<JsonArray>> replyHandler) {
+    client.getConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a parameterized/prepared select query and return the first record, or null if there is no result.
+   *
+   * <p>This never closes the connection conn.
+   *
+   * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
+   *
+   * @param conn  The connection on which to execute the query on.
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void selectSingle(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
+      Handler<AsyncResult<JsonArray>> replyHandler) {
+    try {
+      if (conn.failed()) {
+        replyHandler.handle(Future.failedFuture(conn.cause()));
+        return;
+      }
+      conn.result().querySingleWithParams(sql, params, replyHandler);
+    } catch (Exception e) {
+      log.error("select single sql: " + e.getMessage() + " - " + sql, e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Run a parameterized/prepared select query returning with an SQLRowStream.
+   *
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void selectStream(String sql, Handler<AsyncResult<SQLRowStream>> replyHandler) {
+    client.getConnection(conn -> selectStream(conn, sql, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a parameterized/prepared select query returning with an SQLRowStream.
+   *
+   * <p>This never closes the connection conn.
+   *
+   * @param conn  The connection on which to execute the query on.
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void selectStream(AsyncResult<SQLConnection> conn, String sql,
+      Handler<AsyncResult<SQLRowStream>> replyHandler) {
+    try {
+      if (conn.failed()) {
+        replyHandler.handle(Future.failedFuture(conn.cause()));
+        return;
+      }
+      conn.result().queryStream(sql, replyHandler);
+    } catch (Exception e) {
+      log.error("select stream sql: " + e.getMessage() + " - " + sql, e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Run a parameterized/prepared select query returning with an SQLRowStream.
+   *
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void selectStream(String sql, JsonArray params, Handler<AsyncResult<SQLRowStream>> replyHandler) {
+    client.getConnection(conn -> selectStream(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a parameterized/prepared select query returning with an SQLRowStream.
+   *
+   * <p>This never closes the connection conn.
+   *
+   * @param conn  The connection on which to execute the query on.
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
+  public void selectStream(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
+      Handler<AsyncResult<SQLRowStream>> replyHandler) {
+    try {
+      if (conn.failed()) {
+        replyHandler.handle(Future.failedFuture(conn.cause()));
+        return;
+      }
+      conn.result().queryStreamWithParams(sql, params, replyHandler);
+    } catch (Exception e) {
+      log.error("select stream sql: " + e.getMessage() + " - " + sql, e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   /**
    * Execute an INSERT, UPDATE or DELETE statement.
    * @param sql - the sql to run
    * @param replyHandler - the result handler with UpdateResult converted toString().
-   * @deprecated use execute(String, Handler<AsyncResult<UpdateResult>>) instead.
+   * @deprecated use {@link #execute(String, Handler)} instead.
    */
   @Deprecated
   public void mutate(String sql, Handler<AsyncResult<String>> replyHandler) {
@@ -2584,7 +2807,7 @@ public class PostgresClient {
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
           }
-          log.debug("executeWithParams", sql, s);
+          logTimer("executeWithParams", sql, s);
         });
       } catch (Exception e) {
         if (connection != null) {
@@ -2823,7 +3046,7 @@ public class PostgresClient {
         try {
           String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
               + schemaName + DOT + cacheName +" AS " + sql2cache;
-          System.out.println(q);
+          log.info(q);
           connection.update(q,
             query -> {
             connection.close();
@@ -2900,8 +3123,6 @@ public class PostgresClient {
         Statement statement = connection.createStatement()) {
       statement.executeUpdate("DROP DATABASE IF EXISTS " + database); //NOSONAR
       statement.executeUpdate("CREATE DATABASE " + database); //NOSONAR
-    } catch (SQLException e) {
-      throw e;
     }
   }
 

@@ -1,18 +1,13 @@
 package org.folio.rest.impl;
 
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertThat;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.folio.rest.tools.GenerateRunner;
 import org.folio.rest.tools.utils.VertxUtils;
-import org.folio.util.ResourceUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -108,15 +103,20 @@ public class JsonSchemasAPIIT {
     async.awaitSuccess();
   }
 
+  private void testReplaceReferences(String jsonSchema) throws IOException {
+    assertThat(JsonSchemasAPI.replaceReferences(jsonSchema, "http://localhost:9130"),
+        containsString("\"http://localhost:9130/_/jsonSchemas?path=object.json\""));
+  }
+
   @Test
-  public void testReplaceReferences(TestContext context) throws IOException {
-    JsonSchemasAPI jsonSchemasAPI = new JsonSchemasAPI();
-    ObjectMapper mapper = new ObjectMapper();
-    String jsonSchema = ResourceUtil.asString(System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + File.separator + "test.schema");
-    jsonSchema = jsonSchemasAPI.replaceReferences(jsonSchema, "http://localhost:9130");
-    JsonNode testNode = mapper.readValue(jsonSchema, JsonNode.class);
-    String objectsRef = testNode.get("properties").get("objects").get("items").get("$ref").asText();
-    assertEquals("http://localhost:9130/_/jsonSchemas?path=object.json", objectsRef);
+  public void testReplaceReferencesUnix() throws IOException {
+    testReplaceReferences(
+        "{ \"$ref\" : \"file:C:%5CUsers%5Citsme%5Cmod-users%5Ctarget%5Cclasses%5Cramls%5Cobject.json\" }");
+  }
+
+  @Test
+  public void testReplaceReferencesWindows() throws IOException {
+    testReplaceReferences("{ \"$ref\" : \"file:/home/itsme/mod-users/target/classes/ramls/object.json\" }");
   }
 
 }

@@ -47,6 +47,27 @@ public class SchemaDereferencer {
     return false;
   }
 
+  /**
+   * Replace each $ref value containing a relative path by
+   * a file URI with an absolute path.
+   *
+   * <p>Examples for <code>"$ref": "dir/a.json"</code>:
+   *
+   * <ul>
+   * <li>If the base path is <code>"/home/peter"</code> the ref
+   * becomes <code>"$ref": "file:/home/peter/dir/a.json"</code>.
+   * <li>If the base path is <code>"C:\Users\peter"</code> the ref
+   * becomes <code>"$ref": "file:C:%5CUsers%5Cpeter%5Cdir%5Ca.json"</code>.
+   * </ul>
+   *
+   * <p>The absolute path is needed for generating the code from raml files
+   * because raml-java-parser fails on relative JSON refs. See
+   * <a href="https://issues.folio.org/browse/RMB-265">RMB-265</a> and the
+   * <a href="https://github.com/raml-org/raml-java-parser/issues/362">bug report</a>.
+   *
+   * @param path  base path
+   * @param jsonObject  where to search and replace recursively
+   */
   private void fixupRef(Path path, JsonObject jsonObject)
       throws IOException {
     for (Entry<String,Object> entry : jsonObject) {
