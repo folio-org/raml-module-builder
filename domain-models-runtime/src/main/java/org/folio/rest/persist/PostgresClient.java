@@ -81,9 +81,6 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
-import ru.yandex.qatools.embed.postgresql.Command;
-import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
-import org.folio.rest.tools.utils.NaiveSQLParse;
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
@@ -113,7 +110,7 @@ public class PostgresClient {
   private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
 
   private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
-
+  private static final Pattern   DISTINCT_MATCH_PATTERN = Pattern.compile("(?i)((DISTINCT) (?i)ON \\((.*)\\) ).*(?i)FROM");
   private static final String    _PASSWORD = "password"; //NOSONAR
   private static final String    _USERNAME = "username";
   private static final String    HOST      = "host";
@@ -1525,8 +1522,18 @@ public class PostgresClient {
       distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOnFields);
     }
 
-    queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
-
+    queryHelper.selectQuery = new StringBuilder()
+      .append(SELECT)
+      .append(distinctOnClause)
+      .append(fieldName)
+      .append(addIdField)
+      .append(FROM)
+      .append(schemaName)
+      .append(DOT)
+      .append(table)
+      .append(SPACE)
+      .append(where)
+      .toString();
     return queryHelper;
   }
 
@@ -3316,7 +3323,7 @@ public class PostgresClient {
         net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
         Select selectStatement = (Select) statement;
 
-        Matcher distinctOnMatcher = Pattern.compile("(?i)((DISTINCT) (?i)ON \\((.*)\\) ).*(?i)FROM").matcher(query);
+        Matcher distinctOnMatcher = DISTINCT_MATCH_PATTERN.matcher(query);
         if(distinctOnMatcher.find() && distinctOnMatcher.groupCount() >= 3) {
           countOn = String.format("%s (%s)", distinctOnMatcher.group(2), distinctOnMatcher.group(3));
         }
