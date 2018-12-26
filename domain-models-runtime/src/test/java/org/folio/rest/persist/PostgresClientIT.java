@@ -1433,4 +1433,18 @@ public class PostgresClientIT {
   public void selectStreamParamTxFailed(TestContext context) {
     postgresClient().selectStream(Future.failedFuture("failed"), "SELECT 1", new JsonArray(), context.asyncAssertFailure());
   }
+
+  @Test
+  public void selectDistinctOn(TestContext context) {
+    Async async = context.async();
+    postgresClient = createNumbers(context, 5, 4, 5, 6, 5);
+    postgresClient.startTx(asyncAssertTx(context, trans ->
+      postgresClient.select(trans, "SELECT DISTINCT ON i FROM numbers ORDER BY i",
+        context.asyncAssertSuccess(select -> {
+          postgresClient.endTx(trans, context.asyncAssertSuccess());
+          context.assertEquals("4, 5, 6", intsAsString(select));
+          async.complete();
+        }))
+    ));
+  }
 }
