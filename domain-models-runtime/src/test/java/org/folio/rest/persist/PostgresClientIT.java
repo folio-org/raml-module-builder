@@ -353,6 +353,19 @@ public class PostgresClientIT {
     async.awaitSuccess(5000);
   }
 
+  private void fillTableByNumbers(TestContext context, PostgresClient client, String tenant, int ...ints) {
+    String schema = PostgresClient.convertToPsqlStandard(tenant);
+    for (int i: ints) {
+      Async async = context.async();
+      execute(context, "INSERT INTO " + schema + ".a (i) VALUES (" + i + ") ON CONFLICT DO NOTHING;");
+      client.select("SELECT i FROM " + schema + ".a" + " WHERE i =" + i, context.asyncAssertSuccess(get -> {
+        context.assertEquals(i, get.getResults().get(0).getInteger(0));
+        async.complete();
+      }));
+      async.awaitSuccess(5000);
+    }
+  }
+
   private void selectAFail(TestContext context, PostgresClient client, String tenant) {
     Async async = context.async();
     String schema = PostgresClient.convertToPsqlStandard(tenant);
@@ -1437,14 +1450,17 @@ public class PostgresClientIT {
   @Test
   public void selectDistinctOn(TestContext context) {
     Async async = context.async();
-    postgresClient = createNumbers(context, 5, 4, 5, 6, 5);
-    postgresClient.startTx(asyncAssertTx(context, trans ->
-      postgresClient.select(trans, "SELECT DISTINCT ON i FROM numbers ORDER BY i",
-        context.asyncAssertSuccess(select -> {
-          postgresClient.endTx(trans, context.asyncAssertSuccess());
-          context.assertEquals("4, 5, 6", intsAsString(select));
-          async.complete();
-        }))
-    ));
+    postgresClient = createA(context, TENANT);
+    fillTableByNumbers(context, postgresClient, TENANT, 5, 4, 6, 5);
+
+    postgresClient.select("SELECT DISTINCT ON (i) i FROM a ORDER BY i", select -> {
+      String result = select.result().getRows().stream()
+        .map(x -> x.getInteger("i").toString())
+        .reduce((n1, n2) -> n1 + ", " + n2)
+        .get();
+      context.assertEquals("4, 5, 6", result);
+      async.complete();
+    });
+    async.awaitSuccess();
   }
 }
