@@ -81,14 +81,9 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
-import ru.yandex.qatools.embed.postgresql.Command;
-import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
-import org.folio.rest.tools.utils.NaiveSQLParse;
 import org.folio.rest.tools.utils.NetworkUtils;
 
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
-import ru.yandex.qatools.embed.postgresql.Command;
-import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
 
