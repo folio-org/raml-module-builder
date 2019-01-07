@@ -1,3 +1,7 @@
+## 23.2.2 2019-01-07
+
+ * Fix security vulnerabilities in jackson-databind >= 2.9.0, < 2.9.8
+
 ## 23.2.1 2018-11-30
 
  * RMB-308 Fix enum values not matched
