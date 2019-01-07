@@ -1,3 +1,6 @@
+## 23.3.1 2018-01-07
+ * RMB-315 Fix security vulnerabilities in jackson-databind >= 2.9.0, < 2.9.8
+
 ## 23.3.0 2018-12-14
 
  * RMB-162 Simplify PostgresClient.getInstance
