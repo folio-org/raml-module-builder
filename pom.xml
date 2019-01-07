@@ -76,6 +76,16 @@
         <scope>import</scope>
       </dependency>
       <dependency>
+        <!-- Security update:
+             https://issues.folio.org/browse/FOLIO-1682
+             https://issues.folio.org/browse/RMB-315
+             TODO: Remove this jackson-databind dependency when vertx-stack-depchain
+             contains jackson-databind >= 2.9.8 -->
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.9.8</version>
+      </dependency>
+      <dependency>
         <groupId>javax.el</groupId>
         <artifactId>javax.el-api</artifactId>
         <version>2.2.4</version>
