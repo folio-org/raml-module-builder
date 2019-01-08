@@ -67,7 +67,7 @@ public class PostgresClientIT {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
 
- // @BeforeClass
+  @BeforeClass
   public static void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
@@ -1465,14 +1465,16 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void closeAllClientsTest (TestContext testContext) throws Exception {
-    String embed = System.getProperty("embed_postgres", "").toLowerCase().trim();
-    if ("true".equals(embed)) {
-      PostgresClient.stopEmbeddedPostgres();
-      PostgresClient.setIsEmbedded(true);
-      PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-    }
-    PostgresClient.getInstance(vertx).execute("SELECT 1", testContext.asyncAssertSuccess());
+  public void getDistinctOn(TestContext context) {
+    Async async = context.async();
+    postgresClient = createA(context, TENANT);
+    fillTableWithNumbers(context, postgresClient, TENANT, 5, 4, 5, 6, 5);
+    postgresClient.get("a", Object.class, "i", "", true, false,
+      false, null, "i", handler -> {
+        // verify that 3 distinct rows returned
+        context.assertTrue(handler.result().getResults().size() == 3);
+        async.complete();
+      });
+    async.awaitSuccess();
   }
-
 }

@@ -1556,18 +1556,7 @@ public class PostgresClient {
       distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOnFields);
     }
 
-    queryHelper.selectQuery = new StringBuilder()
-      .append(SELECT)
-      .append(distinctOnClause)
-      .append(fieldName)
-      .append(addIdField)
-      .append(FROM)
-      .append(schemaName)
-      .append(DOT)
-      .append(table)
-      .append(SPACE)
-      .append(where)
-      .toString();
+    queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
 
     return queryHelper;
   }
