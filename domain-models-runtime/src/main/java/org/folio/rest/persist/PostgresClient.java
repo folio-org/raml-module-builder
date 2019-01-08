@@ -1549,11 +1549,7 @@ public class PostgresClient {
 
     String distinctOnClause = "";
     if (distinctOn != null && !distinctOn.isEmpty()) {
-      String[] fields = distinctOn.split(",");
-      String distinctOnFields = Stream.of(fields)
-          .map(str -> String.format("%s", str))
-          .collect(Collectors.joining(","));
-      distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOnFields);
+      distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOn);
     }
 
     queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
