@@ -356,13 +356,7 @@ public class PostgresClientIT {
   private void fillTableWithNumbers(TestContext context, PostgresClient client, String tenant, int ...ints) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
     for (int i: ints) {
-      Async async = context.async();
       execute(context, "INSERT INTO " + schema + ".a (i) VALUES (" + i + ") ON CONFLICT DO NOTHING;");
-      client.select("SELECT i FROM " + schema + ".a" + " WHERE i =" + i, context.asyncAssertSuccess(get -> {
-        context.assertEquals(i, get.getResults().get(0).getInteger(0));
-        async.complete();
-      }));
-      async.awaitSuccess(5000);
     }
   }
 
