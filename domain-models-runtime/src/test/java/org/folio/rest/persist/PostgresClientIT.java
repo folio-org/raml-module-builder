@@ -1466,7 +1466,7 @@ public class PostgresClientIT {
     postgresClient.get("a", Object.class, "i", "", true, false,
       false, null, "i", handler -> {
         // verify that 3 distinct rows returned
-        context.assertTrue(handler.result().getResults().size() == 3);
+        context.assertEquals( 3, handler.result().getResults().size());
         async.complete();
       });
     async.awaitSuccess();

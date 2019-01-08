@@ -1551,7 +1551,7 @@ public class PostgresClient {
     if (distinctOn != null && !distinctOn.isEmpty()) {
       String[] fields = distinctOn.split(",");
       String distinctOnFields = Stream.of(fields)
-          .map(str -> String.format("lower(%s)", str))
+          .map(str -> String.format("%s", str))
           .collect(Collectors.joining(","));
       distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOnFields);
     }
