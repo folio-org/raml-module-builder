@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Level;
@@ -1467,6 +1468,20 @@ public class PostgresClientIT {
       false, null, "i", handler -> {
         // verify that 3 distinct rows returned
         context.assertEquals( 3, handler.result().getResults().size());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetDistinctOn(TestContext context) {
+    Async async = context.async();
+    AtomicInteger objectCount = new AtomicInteger();
+    postgresClient = createA(context, TENANT);
+    fillTableWithNumbers(context, postgresClient, TENANT, 5, 4, 5, 6, 5, 5);
+    postgresClient.streamGet("a", Object.class, "i", "", false, false,
+      null, "i", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+        context.assertEquals(3, objectCount.get());
         async.complete();
       });
     async.awaitSuccess();
