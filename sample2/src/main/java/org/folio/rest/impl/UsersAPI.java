@@ -45,9 +45,19 @@ public class UsersAPI implements UsersId {
   }
 
   @Override
-  public void postUsersById(String id, Object entity, Map<String, String> okapiHeaders,
+  public void postUsersById(String id, String entity, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    log.info("content=" + entity);
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-      PostUsersByIdResponse.respond400WithTextPlain("is of type" + entity.toString())));
+      PostUsersByIdResponse.respond201WithApplicationXml(entity)));
   }
+
+  // @Override
+  public void postUsersById(String id, User entity, Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    log.info("content=" + entity);
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+      PostUsersByIdResponse.respond201WithApplicationXml("<user/>")));
+  }
+
 }

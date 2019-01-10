@@ -7,13 +7,14 @@ types:
   post:
     description: Post user in XML format
     body:
-      text/xml:
-        example: "<x>y</x>"
+      application/xml:
+        type: string
     responses:
       201:
         description: OK
         body:
-          text/xml:
+          application/xml:
+            type: string
             example: "<x>y</x>"
       400:
         description: User Error
