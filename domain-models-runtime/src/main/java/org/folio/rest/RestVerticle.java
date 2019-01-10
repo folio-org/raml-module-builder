@@ -1259,6 +1259,9 @@ public class RestVerticle extends AbstractVerticle {
                 if("java.io.Reader".equals(valueType)){
                   paramArray[order] = new StringReader(bodyContent);
                 }
+                else if ("java.lang.String".equals(valueType)) {
+                  paramArray[order] = bodyContent;
+                }
                 else if(bodyContent.length() > 0) {
                   try {
                     paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
