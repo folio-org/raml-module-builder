@@ -1464,7 +1464,28 @@ public class PostgresClientIT {
 
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
-      null, "jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+      "jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+        context.assertEquals(2, objectCount.get());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetDistinctOnWithFacets(TestContext context) throws IOException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    List<FacetField> facets = new ArrayList<FacetField>() {{
+      add(new FacetField("jsonb-->'edition'"));
+    }};
+
+    postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
+      facets,"jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
         context.assertEquals(2, objectCount.get());
         async.complete();
       });
