@@ -361,13 +361,6 @@ public class PostgresClientIT {
     async.awaitSuccess(5000);
   }
 
-  private void fillTableWithNumbers(TestContext context, PostgresClient client, String tenant, int ...ints) {
-    String schema = PostgresClient.convertToPsqlStandard(tenant);
-    for (int i: ints) {
-      execute(context, "INSERT INTO " + schema + ".a (i) VALUES (" + i + ") ON CONFLICT DO NOTHING;");
-    }
-  }
-
   private void selectAFail(TestContext context, PostgresClient client, String tenant) {
     Async async = context.async();
     String schema = PostgresClient.convertToPsqlStandard(tenant);
@@ -1473,6 +1466,20 @@ public class PostgresClientIT {
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
       null, "jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
         context.assertEquals(2, objectCount.get());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void getDistinctOn(TestContext context) throws IOException {
+    Async async = context.async();
+    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    //without facets
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
+      false, null, "jsonb->>'order_format'", handler -> {
+        context.assertEquals(4, handler.result().getResults().size());
         async.complete();
       });
     async.awaitSuccess();
