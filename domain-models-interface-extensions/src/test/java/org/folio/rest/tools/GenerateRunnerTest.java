@@ -8,8 +8,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
@@ -137,23 +138,38 @@ public class GenerateRunnerTest {
 
   @Test
   public void testCreateRamlsLookupList() throws Exception {
-    List<String> actualRamls = testCreateLookupList(GenerateRunner.RAML_LIST, ".raml");
+    List<String> actualRamls = testCreateLookupList(GenerateRunner.RAML_LIST, Collections.singletonList(".raml"));
     Assert.assertThat(actualRamls, containsInAnyOrder("test.raml"));
   }
 
   @Test
   public void testCreateJsonSchemasLookupList() throws Exception {
-    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, ".json", ".schema");
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"));
     Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test.schema", "object.json"));
   }
 
-  private List<String> testCreateLookupList(String filename, String...exts) throws IOException {
+  @Test
+  public void testCreateJsonSchemasLookupListFromSubfolder() throws Exception {
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"), "test", true);
+    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test/test.schema"));
+  }
+
+  private List<String> testCreateLookupList(String filename, List<String> exts) throws IOException {
+    return testCreateLookupList(filename, exts, "", false);
+  }
+
+  private List<String> testCreateLookupList(String filename, List<String> exts, String subfolder, boolean recursively) throws IOException {
     File src = new File(userDir + "/ramls/");
     assertTrue(src.exists() && src.isDirectory());
     File dest = new File(userDir + "/target/ramls/");
     FileUtils.copyDirectory(src, dest);
-    GenerateRunner.createLookupList(dest, filename, exts);
-    return Arrays.asList(ResourceUtil.asString("ramls/" + filename).split("\\r?\\n"));
+    if(recursively){
+      GenerateRunner.createLookupList(dest, filename, exts, subfolder, recursively);
+    }
+    else{
+      GenerateRunner.createLookupList(dest, filename, exts);
+    }
+    return Arrays.asList(FileUtils.readFileToString(new File(dest, filename), StandardCharsets.UTF_8).split("\\r?\\n"));
   }
 
 }
