@@ -20,6 +20,17 @@ public class Offset {
 
   }
 
+  /**
+   * Return the offset as int, return -1 if no limit is set.
+   * @return the int
+   */
+  public int get() {
+    if (snippet.isEmpty()) {
+      return -1;
+    }
+    return Integer.parseInt(snippet.substring(7));
+  }
+
   @Override
   public String toString() {
     return snippet;

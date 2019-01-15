@@ -81,16 +81,20 @@ public class CQLWrapper {
     this.query = query;
     return this;
   }
+  public Limit getLimit() {
+    return limit;
+  }
   public CQLWrapper setLimit(Limit limit) {
     this.limit = limit;
     return this;
   }
-
+  public Offset getOffset() {
+    return offset;
+  }
   public CQLWrapper setOffset(Offset offset) {
     this.offset = offset;
     return this;
   }
-
   public CQLWrapper addWrapper(CQLWrapper wrapper){
     addWrapper(wrapper, "and");
     return this;
