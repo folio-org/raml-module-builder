@@ -77,21 +77,30 @@ public class CQLWrapperTest {
 
   @Test
   public void constructor4NoLimitNoOffset() throws FieldException {
-    assertThat(new CQLWrapper(cql2pgJson, "cql.allRecords=1", -1, -1).toString(),
+    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1", -1, -1);
+    assertThat(cqlWrapper.toString(),
         allOf(not(containsString("LIMIT")), not(containsString("OFFSET"))));
+    assertThat(cqlWrapper.getLimit().get(), is(-1));
+    assertThat(cqlWrapper.getOffset().get(), is(-1));
   }
 
   @Test
   public void constructor4Limit0Offset0() throws FieldException {
-    assertThat(new CQLWrapper(cql2pgJson, "cql.allRecords=1", 0, 0).toString(),
+    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1", 0, 0);
+    assertThat(cqlWrapper.toString(),
         allOf(containsString("LIMIT 0"), containsString("OFFSET 0")));
+    assertThat(cqlWrapper.getLimit().get(), is(0));
+    assertThat(cqlWrapper.getOffset().get(), is(0));
   }
 
   @Test
   public void setLimitSetOffset() throws FieldException {
-    assertThat(new CQLWrapper(cql2pgJson, "cql.allRecords=1")
-        .setLimit(new Limit(9)).setOffset(new Offset(11)).toString(),
+    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1")
+        .setLimit(new Limit(9)).setOffset(new Offset(11));
+    assertThat(cqlWrapper.toString(),
         allOf(containsString("LIMIT 9"), containsString("OFFSET 11")));
+    assertThat(cqlWrapper.getLimit().get(), is(9));
+    assertThat(cqlWrapper.getOffset().get(), is(11));
   }
 
   @Test
