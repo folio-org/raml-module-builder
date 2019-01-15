@@ -1,37 +1,33 @@
 package org.folio.rest;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.mail.MessagingException;
-import javax.mail.internet.InternetHeaders;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.ValidatorFactory;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.google.common.base.Joiner;
+import com.google.common.io.ByteStreams;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerFileUpload;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.dropwizard.MetricsService;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Stream;
@@ -65,35 +61,36 @@ import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
 import org.slf4j.MDC;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import com.google.common.base.Joiner;
-import com.google.common.io.ByteStreams;
-
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerFileUpload;
-import io.vertx.core.http.HttpServerOptions;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.dropwizard.MetricsService;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.StaticHandler;
+import javax.mail.MessagingException;
+import javax.mail.internet.InternetHeaders;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMultipart;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.ValidatorFactory;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RestVerticle extends AbstractVerticle {
 
@@ -109,6 +106,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        OKAPI_REQUESTID_HEADER          = "X-Okapi-Request-Id";
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+  public static final String SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
@@ -1542,6 +1540,11 @@ public class RestVerticle extends AbstractVerticle {
     //the created date and by fields are stored in the db in separate columns on insert trigger so that even if
     //we overwrite them here, the correct value will be set in the db level via a trigger on update
     String json;
+    Metadata md = new Metadata();
+    md.setUpdatedDate(new Date());
+    md.setCreatedDate(new Date());
+    md.setCreatedByUserId(SYSTEM_USER_ID);
+    md.setUpdatedByUserId(SYSTEM_USER_ID);
     try {
       String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
       if(userId == null){
@@ -1553,23 +1556,20 @@ public class RestVerticle extends AbstractVerticle {
         userId = j.getString("user_id");
       }
       if(userId != null){
-        Metadata md = new Metadata();
-        md.setUpdatedDate(new Date());
-        md.setCreatedDate(new Date());
         md.setCreatedByUserId(userId);
         md.setUpdatedByUserId(userId);
-        try{
+      }
+      try{
           /* if a metadata section is passed in by client, we cannot assume it is correct.
            * entity.getClass().getMethod("getMetaData",
           new Class[] { }).invoke(entity);*/
-          entity.getClass().getMethod("setMetadata",
-            new Class[] { Metadata.class }).invoke(entity,  md);
-        }
-        catch(Exception e){
-          //do nothing - if this is thrown then the setMetaData() failed, assume pojo
-          // (aka) json schema - didnt include a reference to it.
-          log.debug(e.getMessage(), e);
-        }
+        entity.getClass().getMethod("setMetadata",
+          new Class[] { Metadata.class }).invoke(entity,  md);
+      }
+      catch(Exception e){
+        //do nothing - if this is thrown then the setMetaData() failed, assume pojo
+        // (aka) json schema - didnt include a reference to it.
+        log.debug(e.getMessage(), e);
       }
     } catch (Exception e) {
       log.warn("Problem parsing " + OKAPI_HEADER_TOKEN + " header, for path " + path + " - " + e.getMessage());
