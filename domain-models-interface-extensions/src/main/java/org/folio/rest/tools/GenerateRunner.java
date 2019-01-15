@@ -112,7 +112,7 @@ public class GenerateRunner {
     CustomTypeAnnotator.setCustomFields(System.getProperties().getProperty("jsonschema.customfield"));
 
     String [] ramlFiles = System.getProperty("raml_files", SOURCES_DEFAULT).split(",");
-    String schemaPath = System.getProperty("schema_relative_path");
+    String schemaPaths = System.getProperty("schema_paths");
 
     File input = rebase(ramlFiles[0]);
     File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
@@ -129,8 +129,8 @@ public class GenerateRunner {
     }
 
     createLookupList(output, RAML_LIST, Collections.singletonList(".raml"));
-    if (schemaPath != null) {
-      createLookupList(output, JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"), schemaPath, true);
+    if (schemaPaths != null) {
+      createLookupList(output, JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"), Arrays.asList(schemaPaths.split(",")), true);
     } else {
       createLookupList(output, JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"));
     }
@@ -194,7 +194,7 @@ public class GenerateRunner {
    * @param suffixes  list of file suffixes to be included in list
    */
   public static void createLookupList(File directory, String name, List<String> suffixes) throws IOException {
-    createLookupList(directory, name, suffixes, "", false);
+    createLookupList(directory, name, suffixes, Collections.singletonList(""), false);
   }
 
   /**
@@ -203,30 +203,23 @@ public class GenerateRunner {
    * @param directory    base directory
    * @param name         name of new file with list
    * @param suffixes     list of file suffixes to be included in list
-   * @param relativePath path relative to base directory that will be searched for schemas
+   * @param relativePathList list of subdirectories relative to base directory that will be searched for schemas
    * @param recursively  whether files should be searched recursively or not
    */
-  public static void createLookupList(File directory, String name, List<String> suffixes, String relativePath, boolean recursively) throws IOException {
+  public static void createLookupList(File directory, String name, List<String> suffixes, List<String> relativePathList, boolean recursively) throws IOException {
     File listFile = new File(directory.getAbsolutePath() + File.separator + name);
     Path listPath = Paths.get(directory.getAbsolutePath(), name);
 
-    String relativePathExpression;
-    if (recursively) {
-      relativePathExpression = relativePath + "/**";
-    } else {
-      relativePathExpression = relativePath;
-    }
-
-    String fileExpression = "*{" + String.join(",", suffixes) + "}";
-    PathMatcher pathMatcher = FileSystems.getDefault()
-      .getPathMatcher("glob:" + relativePathExpression + fileExpression);
+    List<PathMatcher> pathMatchers = relativePathList.stream()
+      .map(path -> getPathMatcher(suffixes, recursively, path))
+      .collect(Collectors.toList());
 
     Path basePath = Paths.get(directory.getAbsolutePath());
 
     List<Path> paths;
     try(Stream<Path> pathStream = Files.walk(basePath)){
       paths = pathStream.map(basePath::relativize)
-          .filter(pathMatcher::matches)
+          .filter(path -> pathMatchers.stream().anyMatch(pathMatcher -> pathMatcher.matches(path)))
           .collect(Collectors.toList());
     }
 
@@ -239,6 +232,19 @@ public class GenerateRunner {
       }
     }
     log.info("lookup list file created: " + listFile.getAbsolutePath());
+  }
+
+  private static PathMatcher getPathMatcher(List<String> suffixes, boolean recursively, String relativePath) {
+    String relativePathExpression;
+    if (recursively) {
+      relativePathExpression = relativePath + "/**";
+    } else {
+      relativePathExpression = relativePath;
+    }
+
+    String fileExpression = "*{" + String.join(",", suffixes) + "}";
+    return FileSystems.getDefault()
+      .getPathMatcher("glob:" + relativePathExpression + fileExpression);
   }
 
   private static File rebase(String path) {

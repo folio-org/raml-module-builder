@@ -15,7 +15,6 @@ import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.folio.util.IoUtil;
-import org.folio.util.ResourceUtil;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -150,21 +149,21 @@ public class GenerateRunnerTest {
 
   @Test
   public void testCreateJsonSchemasLookupListFromSubfolder() throws Exception {
-    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"), "test", true);
-    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test/test.schema"));
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"), Arrays.asList("test/test1", "test/test2"), true);
+    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test/test1/test1.schema", "test/test2/test2.schema"));
   }
 
   private List<String> testCreateLookupList(String filename, List<String> exts) throws IOException {
-    return testCreateLookupList(filename, exts, "", false);
+    return testCreateLookupList(filename, exts, Collections.singletonList(""), false);
   }
 
-  private List<String> testCreateLookupList(String filename, List<String> exts, String subfolder, boolean recursively) throws IOException {
+  private List<String> testCreateLookupList(String filename, List<String> exts, List<String> subfolders, boolean recursively) throws IOException {
     File src = new File(userDir + "/ramls/");
     assertTrue(src.exists() && src.isDirectory());
     File dest = new File(userDir + "/target/ramls/");
     FileUtils.copyDirectory(src, dest);
     if(recursively){
-      GenerateRunner.createLookupList(dest, filename, exts, subfolder, recursively);
+      GenerateRunner.createLookupList(dest, filename, exts, subfolders, recursively);
     }
     else{
       GenerateRunner.createLookupList(dest, filename, exts);
