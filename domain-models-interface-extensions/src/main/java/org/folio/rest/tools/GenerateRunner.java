@@ -203,14 +203,15 @@ public class GenerateRunner {
    * @param directory    base directory
    * @param name         name of new file with list
    * @param suffixes     list of file suffixes to be included in list
-   * @param relativePathList list of subdirectories relative to base directory that will be searched for schemas
-   * @param recursively  whether files should be searched recursively or not
+   * @param subdirectories list of subdirectories that will be searched for schemas
+   * @param recursively  whether directories should be searched recursively or not
    */
-  public static void createLookupList(File directory, String name, List<String> suffixes, List<String> relativePathList, boolean recursively) throws IOException {
+  public static void createLookupList(File directory, String name, List<String> suffixes, List<String> subdirectories,
+                                      boolean recursively) throws IOException {
     File listFile = new File(directory.getAbsolutePath() + File.separator + name);
     Path listPath = Paths.get(directory.getAbsolutePath(), name);
 
-    List<PathMatcher> pathMatchers = relativePathList.stream()
+    List<PathMatcher> pathMatchers = subdirectories.stream()
       .map(path -> getPathMatcher(suffixes, recursively, path))
       .collect(Collectors.toList());
 
@@ -219,7 +220,8 @@ public class GenerateRunner {
     List<Path> paths;
     try(Stream<Path> pathStream = Files.walk(basePath)){
       paths = pathStream.map(basePath::relativize)
-          .filter(path -> pathMatchers.stream().anyMatch(pathMatcher -> pathMatcher.matches(path)))
+          .filter(path -> pathMatchers.stream()
+                            .anyMatch(pathMatcher -> pathMatcher.matches(path)))
           .collect(Collectors.toList());
     }
 
