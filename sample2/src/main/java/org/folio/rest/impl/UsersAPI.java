@@ -13,6 +13,7 @@ import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.jaxrs.resource.UsersId;
 
 public class UsersAPI implements UsersId {
+
   private static Logger log = LoggerFactory.getLogger(UsersAPI.class);
 
   @Override
@@ -33,13 +34,21 @@ public class UsersAPI implements UsersId {
     user.setAddress(address);
 
     if (!"en".equals(lang)) {
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond400()));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond400WithTextPlain("bad language")));
       return;
     }
     if ("1".equals(id)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond200WithApplicationJson(user)));
     } else {
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond404()));
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetUsersByIdResponse.respond404WithTextPlain("not found")));
     }
+  }
+
+  @Override
+  public void postUsersById(String id, String entity, Map<String, String> okapiHeaders,
+          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    log.info("content=" + entity);
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostUsersByIdResponse.respond201WithApplicationXml(entity)));
   }
 }
