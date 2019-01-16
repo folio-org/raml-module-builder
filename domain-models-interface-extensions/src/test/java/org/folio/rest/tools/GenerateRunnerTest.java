@@ -1,8 +1,10 @@
 package org.folio.rest.tools;
 
+import static org.hamcrest.core.Is.is;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -148,9 +150,42 @@ public class GenerateRunnerTest {
   }
 
   @Test
-  public void testCreateJsonSchemasLookupListFromSubfolder() throws Exception {
-    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"), Arrays.asList("test/test1", "test/test2/**"));
-    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test/test1/test1.schema", "test/test2/test2.schema"));
+  public void testCreateJsonSchemasLookupListFromSubfolderNotRecursively() throws Exception {
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"),
+      Collections.singletonList("test/test2"));
+    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test/test2/test.schema"));
+  }
+
+  @Test
+  public void testCreateJsonSchemasLookupListFromSubfolderRecursively() throws Exception {
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"),
+      Collections.singletonList("test/test2/**"));
+    Assert.assertThat(actualJsonSchemas, containsInAnyOrder("test/test2/test.schema", "test/test2/sub/test.schema"));
+  }
+
+  @Test
+  public void testCreateJsonSchemasLookupListFromMultipleSubfolders() throws Exception {
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"),
+      Arrays.asList("test/test1", "test/test2/**"));
+    Assert.assertThat(actualJsonSchemas,
+      containsInAnyOrder("test/test2/test.schema", "test/test2/sub/test.schema",
+        "test/test1/test1.schema", "test/test1/test2.schema"));
+  }
+
+  @Test
+  public void testCreateJsonSchemasLookupListFromCommonSubfolderRecursively() throws Exception {
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"),
+      Collections.singletonList("test/**"));
+    Assert.assertThat(actualJsonSchemas,
+      containsInAnyOrder("test/test2/test.schema", "test/test2/sub/test.schema",
+        "test/test1/test1.schema", "test/test1/test2.schema"));
+  }
+
+  @Test
+  public void testCreateJsonSchemasLookupListFromSubfolderNonRecursively() throws Exception {
+    List<String> actualJsonSchemas = testCreateLookupList(GenerateRunner.JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"),
+      Collections.singletonList("test"));
+    Assert.assertThat(actualJsonSchemas, is(empty()));
   }
 
   private List<String> testCreateLookupList(String filename, List<String> exts) throws IOException {
@@ -163,7 +198,12 @@ public class GenerateRunnerTest {
     File dest = new File(userDir + "/target/ramls/");
     FileUtils.copyDirectory(src, dest);
     GenerateRunner.createLookupList(dest, filename, exts, subfolders);
-    return Arrays.asList(FileUtils.readFileToString(new File(dest, filename), StandardCharsets.UTF_8).split("\\r?\\n"));
+    String schemas = FileUtils.readFileToString(new File(dest, filename), StandardCharsets.UTF_8);
+    if(schemas.isEmpty()) {
+      return Collections.emptyList();
+    }
+    else{
+      return Arrays.asList(schemas.split("\\r?\\n"));
+    }
   }
-
 }
