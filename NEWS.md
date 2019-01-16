@@ -1,3 +1,13 @@
+## 23.4.0 2019-01-16
+
+ * RMB-304 PostgresClient.get(txConn, sql, params, replyHandler) for SELECT in a transaction
+ * RMB-305 Add support for DISTINCT ON
+ * RMB-310 XML handling different when going to RAML 1.0 / RMB 20+
+ * RMB-312 Integration tests fails: too many open files
+ * RMB-313 NullPointerException PostgresClientIT.tearDownClass on Windows
+ * RMB-315 Fix security vulnerabilities in jackson-databind >= 2.9.0, < 2.9.8
+ * RMB-322 Add offset and limit getter in CQLWrapper
+
 ## 23.3.0 2018-12-14
 
  * RMB-162 Simplify PostgresClient.getInstance
