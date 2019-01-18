@@ -836,7 +836,7 @@ public class RestVerticle extends AbstractVerticle {
       if(status == 422){
         rc.response().putHeader("Content-type", SUPPORTED_CONTENT_TYPE_JSON_DEF);
       } else {
-        rc.response().putHeader("Content-type", "text/plain");
+        rc.response().putHeader("Content-type", SUPPORTED_CONTENT_TYPE_TEXT_DEF);
       }
       if(message != null){
         rc.response().write(message);
