@@ -271,7 +271,7 @@ See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/d
 ## Local development server
 
 To get going quickly with running a local instance of Okapi, adding a tenant and some test data,
-and deploying some modules, see 
+and deploying some modules, see
 [Running a local FOLIO system](https://dev.folio.org/guides/run-local-folio/).
 
 ## Creating a new module
@@ -1116,7 +1116,20 @@ The JSON Schemas API is a multiple interface which affords RMB modules to expose
 }
 ```
 
-The interface has a single GET endpoint with an optional query parameter path. Without the path query parameter the response will be an application/json array of the available JSON Schemas. This will be the immediate JSON Schemas the module provides. If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
+The interface has a single GET endpoint with an optional query parameter path.
+Without the path query parameter the response will be an application/json array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
+Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
+`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
+specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify 
+directory in the form of glob expression (e.g. "raml-util/**") 
+ For example:
+```
+<systemProperty>
+  <key>schema_paths</key>
+  <value>schemas/**,raml-util/**</value>
+</systemProperty>
+```
+If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
 
 The RAML defining the API:
 

@@ -3,17 +3,21 @@ package org.folio.rest.tools;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import org.apache.commons.io.filefilter.SuffixFileFilter;
-import org.apache.commons.io.IOCase;
 import org.folio.rest.tools.plugins.CustomTypeAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
 import org.jsonschema2pojo.AnnotationStyle;
@@ -33,6 +37,7 @@ public class GenerateRunner {
   public static final String SOURCES_DEFAULT = "ramls";
   public static final String RAML_LIST = "raml.list";
   public static final String JSON_SCHEMA_LIST = "json-schema.list";
+  public static final String DEFAULT_SCHEMA_DIRECTORY = "";
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
@@ -108,6 +113,8 @@ public class GenerateRunner {
     CustomTypeAnnotator.setCustomFields(System.getProperties().getProperty("jsonschema.customfield"));
 
     String [] ramlFiles = System.getProperty("raml_files", SOURCES_DEFAULT).split(",");
+    String [] schemaPaths = System.getProperty("schema_paths", DEFAULT_SCHEMA_DIRECTORY).split(",");
+
     File input = rebase(ramlFiles[0]);
     File output = new File(root + File.separator + RESOURCE_DEFAULT + File.separator + SOURCES_DEFAULT);
 
@@ -122,8 +129,8 @@ public class GenerateRunner {
       generateRunner.generate(a);
     }
 
-    createLookupList(output, RAML_LIST, ".raml");
-    createLookupList(output, JSON_SCHEMA_LIST, ".json", ".schema");
+    createLookupList(output, RAML_LIST, Collections.singletonList(".raml"));
+    createLookupList(output, JSON_SCHEMA_LIST, Arrays.asList(".json", ".schema"), Arrays.asList(schemaPaths));
   }
 
   /**
@@ -176,17 +183,64 @@ public class GenerateRunner {
     log.info("processed: " + numMatches + " raml files");
   }
 
-  public static void createLookupList(File directory, String name, String...suffixes) throws IOException {
+  /**
+   * Creates list of files in directory and writes it to file
+   *
+   * @param directory directory with files
+   * @param name      name of new file with list
+   * @param suffixes  list of file suffixes to be included in list
+   */
+  public static void createLookupList(File directory, String name, List<String> suffixes) throws IOException {
+    createLookupList(directory, name, suffixes, Collections.singletonList(""));
+  }
+
+  /**
+   * Creates list of files in directory and writes it to file.
+   *
+   * @param directory    base directory
+   * @param name         name of new file with list
+   * @param suffixes     list of file suffixes to be included in list
+   * @param subdirectoryExpressions list of glob expressions that describe subdirectories that will be searched for schemas
+   *                                (e.g. "schemas/**" will search directory schemas recursively, and "schemas" will only
+   *                                search files that are stored immediately in "schemas" directory)
+   */
+  public static void createLookupList(File directory, String name, List<String> suffixes,
+                                      List<String> subdirectoryExpressions) throws IOException {
     File listFile = new File(directory.getAbsolutePath() + File.separator + name);
-    Path path = Paths.get(directory.getAbsolutePath(), name);
-    try (BufferedWriter bw = Files.newBufferedWriter(path)) {
-      for (File file: directory.listFiles((FileFilter) new SuffixFileFilter(suffixes, IOCase.INSENSITIVE))) {
-        log.info("lookup entry: " + file.getName());
-        bw.write(file.getName());
+    Path listPath = Paths.get(directory.getAbsolutePath(), name);
+
+    List<PathMatcher> pathMatchers = subdirectoryExpressions.stream()
+      .map(expression -> getPathMatcher(suffixes, expression))
+      .collect(Collectors.toList());
+
+    Path basePath = Paths.get(directory.getAbsolutePath());
+
+    List<Path> paths;
+    try(Stream<Path> pathStream = Files.walk(basePath)){
+      paths = pathStream.map(basePath::relativize)
+          .filter(path -> pathMatchers.stream()
+                            .anyMatch(pathMatcher -> pathMatcher.matches(path)))
+          .collect(Collectors.toList());
+    }
+
+    try (BufferedWriter bw = Files.newBufferedWriter(listPath)) {
+      for (Path path : paths) {
+        String pathString = path.toString().replace(File.separator, "/");
+        log.info("lookup entry: " + pathString);
+        bw.write(pathString);
         bw.newLine();
       }
     }
     log.info("lookup list file created: " + listFile.getAbsolutePath());
+  }
+
+  private static PathMatcher getPathMatcher(List<String> suffixes, String relativePath) {
+    String fileExpression = "*{" + String.join(",", suffixes) + "}";
+    if(!relativePath.isEmpty() && !relativePath.endsWith("/") && !relativePath.endsWith("**")){
+      relativePath = relativePath + "/";
+    }
+    return FileSystems.getDefault()
+      .getPathMatcher("glob:" + relativePath + fileExpression);
   }
 
   private static File rebase(String path) {
