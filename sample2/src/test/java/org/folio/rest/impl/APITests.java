@@ -105,7 +105,7 @@ public class APITests {
       .when()
         .get("/users/1?lang=ddd")
       .then()
-        .contentType("")
+        .contentType("text/plain")
         .statusCode(400);
   } 
 }
