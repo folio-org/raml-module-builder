@@ -922,25 +922,22 @@ public class RestVerticle extends AbstractVerticle {
     }*/
     newArray[params.length - (size-pos)] = headers;
 
-    context.runOnContext(v -> {
+    try {
+      method.invoke(o, newArray);
+      // response.setChunked(true);
+      // response.setStatusCode(((Response)result).getStatus());
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      String message;
       try {
-        method.invoke(o, newArray);
-        // response.setChunked(true);
-        // response.setStatusCode(((Response)result).getStatus());
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        String message;
-        try {
-          // catch exception for now in case of null point and show generic
-          // message
-          message = e.getCause().getMessage();
-        } catch (Throwable ee) {
-          message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
-        }
-        endRequestWithError(rc, 400, true, message, new boolean[] { true });
+        // catch exception for now in case of null point and show generic
+        // message
+        message = e.getCause().getMessage();
+      } catch (Throwable ee) {
+        message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
       }
-
-    });
+      endRequestWithError(rc, 400, true, message, new boolean[]{true});
+    }
   }
 
   public JsonObject loadConfig(String configFile) {
