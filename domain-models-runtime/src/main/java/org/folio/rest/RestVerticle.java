@@ -867,7 +867,7 @@ public class RestVerticle extends AbstractVerticle {
     mm.forEach(consumer);
   }
 
-  public void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
+  private void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
       Map<String,String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
 
     String generateRCforFunc = PomReader.INSTANCE.getProps().getProperty("generate_routing_context");
