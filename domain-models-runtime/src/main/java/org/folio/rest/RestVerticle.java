@@ -881,8 +881,6 @@ public class RestVerticle extends AbstractVerticle {
       }
     }
 
-    Context context = vertx.getOrCreateContext();
-
     //if streaming is requested the status will be 0 (streaming started)
     //or 1 streaming data complete
     //otherwise it will be -1 and flags wont be set

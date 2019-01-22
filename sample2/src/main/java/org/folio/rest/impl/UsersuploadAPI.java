@@ -4,8 +4,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -15,8 +13,6 @@ import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.resource.Usersupload;
 
 public class UsersuploadAPI implements Usersupload {
-
-  private static Logger log = LoggerFactory.getLogger(UsersuploadAPI.class);
 
   private static Map<String, Integer> streams = new HashMap<>();
 
