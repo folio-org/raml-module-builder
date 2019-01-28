@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.resource.Usersupload;
 
 public class UsersuploadAPI implements Usersupload {
 
+  // message length for a stream
   private static Map<String, Integer> streams = new HashMap<>();
 
   @Stream
