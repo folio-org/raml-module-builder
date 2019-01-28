@@ -114,10 +114,10 @@ public class APITests {
   } 
 
   @Test
-  public void testUpload1(TestContext context) {
+  public void testChunkedUpload(TestContext context) {
     Async async = context.async();
-    final int sz = 100000;
-    final int cnt = 100;
+    final int chunkSize = 100000;
+    final int chunkCount = 100;
     HttpClient httpClient = vertx.createHttpClient();
     HttpClientRequest req = httpClient.postAbs("http://localhost:" + Integer.toString(portCodex) + "/usersupload", x -> {
       context.assertEquals(201, x.statusCode());
@@ -125,7 +125,7 @@ public class APITests {
       x.handler(b::appendBuffer);
       x.endHandler(y -> {
         int gotTotal = Integer.parseInt(b.toString());
-        context.assertEquals(sz * cnt, gotTotal);
+        context.assertEquals(chunkSize * chunkCount, gotTotal);
         async.complete();
       });
     });
@@ -133,11 +133,11 @@ public class APITests {
     req.putHeader("Content-Type", "application/octet-stream");
     req.putHeader("X-Okapi-Tenant", "testlib");
     req.putHeader("Accept", "text/plain");
-    Buffer b = Buffer.buffer(sz);
-    for (int i = 0; i < sz; i++) {
+    Buffer b = Buffer.buffer(chunkSize);
+    for (int i = 0; i < chunkSize; i++) {
       b.appendString("_");
     }
-    for (int i = 0; i < cnt; i++) {
+    for (int i = 0; i < chunkCount; i++) {
       req.write(b);
     }
     req.end();
