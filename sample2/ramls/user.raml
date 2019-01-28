@@ -41,3 +41,20 @@ types:
         description: Not Found
         body:
           text/plain:
+/usersupload:
+  post:
+    description: Upload users
+    body:
+      application/octet-stream:
+    responses:
+      201:
+        description: OK
+        body:
+          text/plain:
+            type: string
+            example: "123"
+      400:
+        description: User Error
+        body:
+          text/plain:
+            example: user error
