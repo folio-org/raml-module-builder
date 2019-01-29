@@ -1,3 +1,10 @@
+## 23.5.0 2019-01-29
+
+ * RMB-324 Fix No Content-Type for most errors returned by RMB
+ * RMB-325 Make /_/jsonSchemas to return schemas from subfolders
+ * RMB-326 Fix Upload: complete state set before end-of-stream
+ * Document headers streamed_id and complete
+
 ## 23.4.0 2019-01-16
 
  * RMB-304 PostgresClient.get(txConn, sql, params, replyHandler) for SELECT in a transaction

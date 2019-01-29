@@ -659,8 +659,13 @@ For example, to upload a large file without having to save it all in memory:
  - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
  - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
 
-The RMB will then call the function every time a chunk of data is received. This means that a new Object is
-instantiated by the RMB for each chunk of data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
+The RMB will then call the function every time a chunk of data is received.
+This means that a new Object is instantiated by the RMB for each chunk of
+data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
+
+For each invocation RMB adds header `streamed_id` which will be unique
+for the current stream. For the last invocation, header `complete` is supplied
+to indicate "end-of-stream".
 
 
 ## PostgreSQL integration
