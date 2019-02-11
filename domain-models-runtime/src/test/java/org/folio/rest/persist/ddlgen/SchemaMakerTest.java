@@ -146,4 +146,27 @@ public class SchemaMakerTest {
         "select * from end;"));
   }
 
+  /**
+   * If specified, gin index should contain f_unaccent and lower functions.
+   * As reported in https://issues.folio.org/browse/MODINVSTOR-266 and
+   * https://issues.folio.org/browse/RMB-330
+   *
+   * @throws IOException
+   * @throws TemplateException
+   */
+  @Test
+  public void ginIndex() throws IOException, TemplateException {
+
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
+      null, null);
+
+    String json = ResourceUtil.asString("templates/db_scripts/gin_index.json");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+
+    System.out.println(tidy(schemaMaker.generateDDL()));
+    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+        "GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
+
+  }
+
 }

@@ -1,0 +1,15 @@
+{
+  "tables": [
+    {
+      "tableName": "item",
+      "ginIndex": [
+        {
+          "fieldName": "title",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ]
+    }
+  ]
+}
