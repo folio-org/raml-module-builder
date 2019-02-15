@@ -143,6 +143,11 @@ public class DemoRamlRestTest {
   }
 
   @Test
+  public void getOk(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1900&author=me&rating=1.2", 200);
+  }
+
+  @Test
   public void history(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
   }
@@ -153,11 +158,7 @@ public class DemoRamlRestTest {
     d.setAuthor("a");
     d.setGenre("g");
     d.setDescription("asdfss");
-//    d.setLink("link");
-//    d.setTitle("title");
     b.setData(d);
-/*    b.setStatus(0);
-    b.setSuccess(true);*/
     ObjectMapper om = new ObjectMapper();
     String book = "";
     try {
