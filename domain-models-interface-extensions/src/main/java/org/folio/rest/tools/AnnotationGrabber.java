@@ -51,8 +51,6 @@ public class AnnotationGrabber {
   public static final String  NON_ANNOTATED_PARAM    = "NON_ANNOTATED";
   public static final String  CONTENT_TYPE           = "Content-Type";
 
-  private static final String IMPL_PACKAGE           = "org.folio.rest.impl";
-
   private static final Logger log = LoggerFactory.getLogger(AnnotationGrabber.class);
 
   private static boolean generateClient = false;
