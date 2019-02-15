@@ -390,12 +390,12 @@ The [mod-notify](https://github.com/folio-org/mod-notify) is an exemplar.
 
 Remove the temporary copy of the "ramls" directory from Step 1, and replace with your own.
 
-Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files,
+Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
-NOTE: At this stage ensure that using head of its "raml1.0" branch.
+The "raml1.0" branch is the current and default branch.
 
 Create JSON schemas indicating the objects exposed by the module.
 Use the `description` field alongside the `type` field to explain the content and
@@ -422,9 +422,6 @@ RAML-aware text editors are very helpful, such as
 
 Remember that the POM configuration enables viewing your RAML and interacting
 with your application via the local [API documentation](#documentation-of-the-apis).
-
-NOTE: The FOLIO project is currently using `RAML 0.8` version until the
-`RAML 1.0` tools have [settled](https://issues.folio.org/browse/FOLIO-523).
 
 ## Adding an init() implementation
 
