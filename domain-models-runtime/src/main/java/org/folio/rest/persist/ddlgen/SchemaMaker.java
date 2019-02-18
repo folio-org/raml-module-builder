@@ -147,7 +147,7 @@ public class SchemaMaker {
             //meaning, there needs to be an index created without lowercasing / unaccenting
             //otherwise no index will be used
             ForeignKeys f = fKeys.get(j);
-            f.setFieldPath(convertDotPath2PostgresNotation("NEW",f.getFieldName(), true , null, false, false));
+            f.setFieldPath(convertDotPath2PostgresNotation("NEW",f.getFieldName(), true , null, false));
             f.setFieldName(normalizeFieldName(f.getFieldName()));
           }
         }
@@ -160,7 +160,7 @@ public class SchemaMaker {
               ti.setCaseSensitive(true);
               ti.setRemoveAccents(false);
             }
-            String path = convertDotPath2PostgresNotation(null,ti.getFieldName(), ti.isStringType() , ti, false, false);
+            String path = convertDotPath2PostgresNotation(null,ti.getFieldName(), ti.isStringType() , ti, false);
             ti.setFieldPath(path);
             indexMap.put(t.getTableName()+"_"+normalizeFieldName(ti.getFieldName()), ti);
             ti.setFieldName(normalizeFieldName(ti.getFieldName()));
@@ -175,7 +175,7 @@ public class SchemaMaker {
               ti.setCaseSensitive(true);
               ti.setRemoveAccents(false);
             }
-            ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , ti.isStringType(), ti, true, false));
+            ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , ti.isStringType(), ti, true));
             ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
         }
@@ -184,7 +184,7 @@ public class SchemaMaker {
         if(gInd != null){
           for (int j = 0; j < gInd.size(); j++) {
             Index ti = gInd.get(j);
-            ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , true , ti, true, false));
+            ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , true , ti, true));
             ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
         }
@@ -197,7 +197,7 @@ public class SchemaMaker {
               u.setCaseSensitive(true);
               u.setRemoveAccents(false);
             }
-            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), u.isStringType(), u, false, false);
+            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), u.isStringType(), u, false);
             u.setFieldPath(path);
             String normalized = normalizeFieldName(u.getFieldName());
             //remove . from path since this is incorrect syntax in postgres
@@ -238,7 +238,7 @@ public class SchemaMaker {
           vt.setPrefix(vt.getTableName());
           Index index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
           vt.setJoinOnField(convertDotPath2PostgresNotation(vt.getPrefix(),
-            vt.getJoinOnField(), true, index, false, false));
+            vt.getJoinOnField(), true, index, false));
           if(index != null){
           //when creating the join on condition, we want to create it the same way as we created the index
           //so that the index will get used, for example:
@@ -251,7 +251,7 @@ public class SchemaMaker {
           vt.setPrefix(vt.getTableName());
           index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
           vt.setJoinOnField( convertDotPath2PostgresNotation(vt.getPrefix(),
-            vt.getJoinOnField() , true, index, false, false));
+            vt.getJoinOnField() , true, index, false));
           if(index != null){
             vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
             vt.setIndexUsesRemoveAccents( index.isRemoveAccents() );
@@ -322,7 +322,37 @@ public class SchemaMaker {
     return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
   }
 
-  public static String convertDotPath2PostgresNotation(String prefix,
+  /**
+   * A bridge method to {@link #convertDotPath2PostgresNotation(String, String, boolean, Index, boolean, boolean)}
+   * which has an extra parameter <code>isFtIndex<code> to indicate whether given index is full text index.
+   * Default value for parameter <code>isFtIndex</code> is <code>false</code>.
+   *
+   * @param prefix
+   * @param path
+   * @param stringType
+   * @param index
+   * @param isFullText
+   * @return
+   */
+  private static String convertDotPath2PostgresNotation(String prefix,
+      String path, boolean stringType, Index index, boolean isFullText){
+    return convertDotPath2PostgresNotation(prefix, path, stringType, index, isFullText, false);
+  }
+
+  /**
+   * Convert JSON dot path to PostgreSQL notation. By default string type index will be
+   * wrapped with lower/f_unaccent functions except full text index <code>(isFtIndex = true)</code>.
+   * Full text index uses to_tsvector to normalize token, so no need of lower/f_unaccent.
+   *
+   * @param prefix
+   * @param path
+   * @param stringType
+   * @param index
+   * @param isFullText
+   * @param isFtIndex - is it a full text index?
+   * @return
+   */
+  private static String convertDotPath2PostgresNotation(String prefix,
     String path, boolean stringType, Index index, boolean isFullText, boolean isFtIndex){
     //when an index is on multiple columns, this will be defined something like "username,type"
     //so split on command and build a path for each and then combine
