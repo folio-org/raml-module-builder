@@ -409,6 +409,10 @@ common ramls directory.
 The documentation of HTTP response codes
 is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java)
 
+Use the collection/collection-item pattern provided by the
+[collection resource type](https://github.com/folio-org/raml/tree/raml1.0/rtypes) explained
+in the [RAML 200 tutorial](https://raml.org/developers/raml-200-tutorial#resource-types).
+
 The RMB does do some validation of RAML files at compile-time.
 There are some useful tools to assist with command-line validation,
 and some can be integrated with text editors, e.g.
