@@ -1,3 +1,8 @@
+## 23.6.0 2019-02-18
+
+ * RMB-332 Move BooksDemoAPI impl to test
+ * Update cql2pgjson from 3.0.3 to 3.1.0 CQLPG-76 CQLPG-86
+
 ## 23.5.0 2019-01-29
 
  * RMB-324 Fix No Content-Type for most errors returned by RMB
