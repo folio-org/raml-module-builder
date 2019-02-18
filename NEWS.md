@@ -1,3 +1,7 @@
+## 23.6.1 2019-02-18
+
+ * RMB-330 Gin index lost lower and f_unaccent functions
+
 ## 23.6.0 2019-02-18
 
  * RMB-332 Move BooksDemoAPI impl to test
