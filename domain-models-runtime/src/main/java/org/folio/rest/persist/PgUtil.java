@@ -2,13 +2,16 @@ package org.folio.rest.persist;
 
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
+import java.io.IOException;
 
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.persist.cql.*;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -17,6 +20,16 @@ import io.vertx.core.Handler;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import org.z3950.zing.cql.CQLDefaultNodeVisitor;
+import org.z3950.zing.cql.CQLNode;
+import org.z3950.zing.cql.CQLParseException;
+import org.z3950.zing.cql.CQLParser;
+import org.z3950.zing.cql.CQLSortNode;
+import org.z3950.zing.cql.Modifier;
+import org.z3950.zing.cql.ModifierSet;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
+import org.z3950.zing.cql.cql2pgjson.FieldException;
+import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 /**
  * Helper methods for using PostgresClient.
  */
@@ -429,7 +442,57 @@ public final class PgUtil {
       asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
     }
   }
+/** Number of records to use from the title sort index in optimizedSql method */
+private static int OPTIMIZED_SQL_SIZE = 10000;
 
+/** Number of records to use from the title sort index in optimizedSql method */
+public static int getOptimizedSqlSize() {
+  return OPTIMIZED_SQL_SIZE;
+}
+public static void setOptimizedSqlSize(int val) {
+   OPTIMIZED_SQL_SIZE  = val;
+}
+static CQLSortNode getSortNode(String cql) {
+  try {
+    CQLParser parser = new CQLParser();
+    CQLNode node = parser.parse(cql);
+    return getSortNode(node);
+  } catch (IOException|CQLParseException|NullPointerException e) {
+    return null;
+  }
+}
+
+private static CQLSortNode getSortNode(CQLNode node) {
+  CqlSortNodeVisitor visitor = new CqlSortNodeVisitor();
+  node.traverse(visitor);
+  return visitor.sortNode;
+}
+
+private static class CqlSortNodeVisitor extends CQLDefaultNodeVisitor {
+  CQLSortNode sortNode = null;
+
+  @Override
+  public void onSortNode(CQLSortNode cqlSortNode) {
+    sortNode = cqlSortNode;
+  }
+}
+
+private static String getAscDesc(ModifierSet modifierSet) {
+  String ascDesc = "";
+  for (Modifier modifier : modifierSet.getModifiers()) {
+    switch (modifier.getType()) {
+    case "sort.ascending":
+      ascDesc = "ASC";
+      break;
+    case "sort.descending":
+      ascDesc = "DESC";
+      break;
+    default:
+      // ignore
+    }
+  }
+  return ascDesc;
+}
   /**
    * Return a PostgresClient.
    * @param vertxContext  Where to get a Vertx from.
@@ -439,4 +502,99 @@ public final class PgUtil {
   public static PostgresClient postgresClient(Context vertxContext, Map<String, String> okapiHeaders) {
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
   }
+  /**
+   * Execute an optimized query with performance hints for the PostgreSQL optimizer.
+   *
+   * @param preparedCql the query to optimize
+   * @return true if an optimized query gets executed, false otherwise
+   * @throws QueryValidationException on invalid CQL
+   */
+  public static String optimizedSql(PreparedCQL preparedCql, String tenantId, PostgresClient postgresClient,
+      int offset, int limit, String column ) throws QueryValidationException {
+
+    String cql = preparedCql.getCqlWrapper().getQuery();
+    CQLSortNode cqlSortNode = getSortNode(cql);
+    if (cqlSortNode == null) {
+      throw new Exception("sort node is missing");
+    }
+    List<ModifierSet> sortIndexes = cqlSortNode.getSortIndexes();
+    if (sortIndexes.size() != 1) {
+      throw new Exception("sort index is missing");
+    }
+    ModifierSet modifierSet = sortIndexes.get(0);
+    if (! modifierSet.getBase().equals(column)) {
+      throw new Exception("column name does not match");
+    }
+    String ascDesc = getAscDesc(modifierSet);
+    cql = cqlSortNode.getSubtree().toCQL();
+    String lessGreater = ascDesc.equals("DESC") ? ">" : "<";
+    preparedCql.getCqlWrapper().setQuery(cql);
+    String tableName = PostgresClient.convertToPsqlStandard(tenantId)
+        + "." + preparedCql.getTableName();
+    String where = preparedCql.getCqlWrapper().getField().toSql(cql).getWhere();
+    // If there are many matches use a full table scan in title sort order
+    // using the title index, but stop this scan after OPTIMIZED_SQL_SIZE index entries.
+    // Otherwise use full text matching because there are only a few matches.
+    //
+    // "headrecords" are the matching records found within the first OPTIMIZED_SQL_SIZE records
+    // by stopping at the title from "OFFSET OPTIMIZED_SQL_SIZE LIMIT 1".
+    // If "headrecords" are enough to return the requested "LIMIT" number of records we are done.
+    // Otherwise use the full text index to create "allrecords" with all matching
+    // records and do sorting and LIMIT afterwards.
+    String sql =
+        " WITH "
+      + " headrecords AS ("
+      + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
+      + "   WHERE (" + where + ")"
+      + "     AND lower(f_unaccent(jsonb->>'" + column + "'))" + lessGreater
+      + "             ( SELECT lower(f_unaccent(jsonb->>'" + column + "'))"
+      + "               FROM " + tableName
+      + "               ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
+      + "               OFFSET " + OPTIMIZED_SQL_SIZE + " LIMIT 1"
+      + "             )"
+      + "   ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
+      + "   LIMIT " + limit + " OFFSET " + offset
+      + " ), "
+      + " allrecords AS ("
+      + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
+      + "   WHERE (" + where + ")"
+      + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
+      + " )"
+      + " SELECT jsonb, title,  0                                 AS count"
+      + "   FROM headrecords"
+      + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
+      + " UNION"
+      + " (SELECT jsonb, title, (SELECT COUNT(*) FROM allrecords) AS count"
+      + "   FROM allrecords"
+      + "   ORDER BY title " + ascDesc
+      + "   LIMIT " + limit + " OFFSET " + offset
+      + " )"
+      + " ORDER BY title " + ascDesc;
+
+      logger.info("optimized SQL generated from CQL: " + sql);
+
+    return sql;
+
+
+  }
+  static class PreparedCQL {
+    private final String tableName;
+    private final CQLWrapper cqlWrapper;
+
+    public PreparedCQL(String tableName, CQLWrapper cqlWrapper) {
+      this.tableName = tableName;
+      this.cqlWrapper = cqlWrapper;
+    }
+
+    public String getTableName() {
+      return tableName;
+    }
+
+    public CQLWrapper getCqlWrapper() {
+      return cqlWrapper;
+    }
+
+  }
+
+}
 }
