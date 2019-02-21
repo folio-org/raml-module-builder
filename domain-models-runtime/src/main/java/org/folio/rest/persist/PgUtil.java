@@ -11,7 +11,7 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.rest.persist.cql.*;
+import org.folio.rest.persist.cql.CQLWrapper;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -44,6 +44,8 @@ public final class PgUtil {
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
 
+  /** Number of records to use from the title sort index in optimizedSql method */
+  private static int optimizedSqlSize = 10000;
   private PgUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
@@ -442,15 +444,14 @@ public final class PgUtil {
       asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
     }
   }
-/** Number of records to use from the title sort index in optimizedSql method */
-private static int OPTIMIZED_SQL_SIZE = 10000;
+
 
 /** Number of records to use from the title sort index in optimizedSql method */
 public static int getOptimizedSqlSize() {
-  return OPTIMIZED_SQL_SIZE;
+  return optimizedSqlSize;
 }
 public static void setOptimizedSqlSize(int val) {
-   OPTIMIZED_SQL_SIZE  = val;
+  optimizedSqlSize  = val;
 }
 static CQLSortNode getSortNode(String cql) {
   try {
@@ -527,7 +528,13 @@ private static String getAscDesc(ModifierSet modifierSet) {
     }
     String ascDesc = getAscDesc(modifierSet);
     cql = cqlSortNode.getSubtree().toCQL();
-    String lessGreater = ascDesc.equals("DESC") ? ">" : "<";
+    String lessGreater = "";
+    if(ascDesc.equals("DESC") )
+    {
+      lessGreater = ">" ;
+    } else {
+      lessGreater = "<";
+    }
     preparedCql.getCqlWrapper().setQuery(cql);
     String tableName = PostgresClient.convertToPsqlStandard(tenantId)
         + "." + preparedCql.getTableName();
@@ -550,7 +557,7 @@ private static String getAscDesc(ModifierSet modifierSet) {
       + "             ( SELECT lower(f_unaccent(jsonb->>'" + column + "'))"
       + "               FROM " + tableName
       + "               ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
-      + "               OFFSET " + OPTIMIZED_SQL_SIZE + " LIMIT 1"
+      + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
       + "             )"
       + "   ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
       + "   LIMIT " + limit + " OFFSET " + offset
