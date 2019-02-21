@@ -510,7 +510,7 @@ private static String getAscDesc(ModifierSet modifierSet) {
    * @throws QueryValidationException on invalid CQL
    */
   public static String optimizedSql(PreparedCQL preparedCql, String tenantId, PostgresClient postgresClient,
-      int offset, int limit, String column ) throws QueryValidationException {
+      int offset, int limit, String column ) throws Exception {
 
     String cql = preparedCql.getCqlWrapper().getQuery();
     CQLSortNode cqlSortNode = getSortNode(cql);
@@ -597,4 +597,4 @@ private static String getAscDesc(ModifierSet modifierSet) {
   }
 
 }
-}
+
