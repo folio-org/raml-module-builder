@@ -19,6 +19,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
+import org.junit.Assert.assertThat;
+
+import org.hamcrest.CoreMatchers.containsString;
+import org.hamcrest.CoreMatchers.hasItem;
+import org.hamcrest.CoreMatchers.is;
+import org.hamcrest.CoreMatchers.nullValue;
+import org.hamcrest.core.IsNull.notNullValue;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -27,6 +34,8 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
@@ -555,7 +564,147 @@ public class PgUtilIT {
     testContext.assertTrue(future.failed());
     testContext.assertEquals("some runtime exception", future.cause().getCause().getMessage());
   }
+  @Test
+  public void canGetWithOptimizedSql(TestContext testContext) {
+    int n = PgUtil.getOptimizedSqlSize() / 2;
+    PostgresClient pg = PostgresClient.getInstance(vertx, "test_tenant");
 
+    // "b foo" records are before the getOptimizedSqlSize() limit
+    // "d foo" records are after the getOptimizedSqlSize() limit
+    insert(testContext, pg, "a", n);
+    insert(testContext, pg, "b foo", 5);
+    insert(testContext, pg, "c", n);
+    insert(testContext, pg, "d foo", 5);
+    insert(testContext, pg, "e", n);
+
+    // limit=9
+    JsonObject json = searchForInstances("title=foo sortBy title", 0, 9);
+    JsonArray allInstances = json.getJsonArray("instances");
+    assertThat(allInstances.size(), is(9));
+    assertThat(json.getInteger("totalRecords"), is(10));
+    for (int i=0; i<5; i++) {
+      JsonObject instance = allInstances.getJsonObject(i);
+      assertThat(instance.getString("title"), is("b foo " + (i + 1)));
+    }
+    for (int i=0; i<3; i++) {
+      JsonObject instance = allInstances.getJsonObject(5 + i);
+      assertThat(instance.getString("title"), is("d foo " + (i + 1)));
+    }
+
+    // limit=5
+    json = searchForInstances("title=foo sortBy title", 0, 5);
+    allInstances = json.getJsonArray("instances");
+    assertThat(allInstances.size(), is(5));
+    assertThat(json.getInteger("totalRecords"), is(999999999));
+    for (int i=0; i<5; i++) {
+      JsonObject instance = allInstances.getJsonObject(i);
+      assertThat(instance.getString("title"), is("b foo " + (i + 1)));
+    }
+
+    // offset=6, limit=3
+    json = searchForInstances("title=foo sortBy title", 6, 3);
+    allInstances = json.getJsonArray("instances");
+    assertThat(allInstances.size(), is(3));
+    assertThat(json.getInteger("totalRecords"), is(10));
+    for (int i=0; i<3; i++) {
+      JsonObject instance = allInstances.getJsonObject(i);
+      assertThat(instance.getString("title"), is("d foo " + (1 + i + 1)));
+    }
+
+    // offset=1, limit=8
+    json = searchForInstances("title=foo sortBy title", 1, 8);
+    allInstances = json.getJsonArray("instances");
+    assertThat(allInstances.size(), is(8));
+    assertThat(json.getInteger("totalRecords"), is(10));
+    for (int i=0; i<4; i++) {
+      JsonObject instance = allInstances.getJsonObject(i);
+      assertThat(instance.getString("title"), is("b foo " + (1 + i + 1)));
+    }
+    for (int i=0; i<4; i++) {
+      JsonObject instance = allInstances.getJsonObject(4 + i);
+      assertThat(instance.getString("title"), is("d foo " + (i + 1)));
+    }
+
+    // "b foo", offset=1, limit=20
+    json = searchForInstances("title=b sortBy title/sort.ascending", 1, 20);
+    allInstances = json.getJsonArray("instances");
+    assertThat(allInstances.size(), is(4));
+    assertThat(json.getInteger("totalRecords"), is(5));
+    for (int i=0; i<4; i++) {
+      JsonObject instance = allInstances.getJsonObject(i);
+      assertThat(instance.getString("title"), is("b foo " + (1 + i + 1)));
+    }
+
+    // sort.descending, offset=1, limit=3
+    json = searchForInstances("title=foo sortBy title/sort.descending", 1, 3);
+    allInstances = json.getJsonArray("instances");
+    assertThat(allInstances.size(), is(3));
+    assertThat(json.getInteger("totalRecords"), is(999999999));
+    for (int i=0; i<3; i++) {
+      JsonObject instance = allInstances.getJsonObject(i);
+      assertThat(instance.getString("title"), is("d foo " + (4 - i)));
+    }
+
+    // sort.descending, offset=6, limit=3
+    json = searchForInstances("title=foo sortBy title/sort.descending", 6, 3);
+    allInstances = json.getJsonArray("instances");
+    assertThat(allInstances.size(), is(3));
+    assertThat(json.getInteger("totalRecords"), is(10));
+    for (int i=0; i<3; i++) {
+      JsonObject instance = allInstances.getJsonObject(i);
+      assertThat(instance.getString("title"), is("b foo " + (4 - i)));
+    }
+}
+  /**
+   * Insert n records into instance table where the title field is build using
+   * prefix and the number from 1 .. n.
+   */
+  private void insert(TestContext testContext, PostgresClient pg, String prefix, int n) {
+    Async async = testContext.async();
+    String table = PostgresClient.convertToPsqlStandard("test_tenant") + ".instance";
+    String sql = "INSERT INTO " + table + " SELECT uuid, json_build_object" +
+        "  ('title', '" + prefix + " ' || n, 'id', uuid)" +
+        "  FROM (SELECT generate_series(1, " + n + ") AS n, gen_random_uuid() AS uuid) AS uuids";
+    pg.execute(sql, testContext.asyncAssertSuccess(updated -> {
+        testContext.assertEquals(n, updated.getUpdated());
+        async.complete();
+      }));
+    async.await(10000 /* ms */);
+  }
+/**
+   * Run a get request using the provided cql query and the provided offset and limit values
+   * (a negative value means no offset or no limit).
+   * <p>
+   * Example 1: searchForInstances("title = t*", -1, -1);
+   * <p>
+   * Example 2: searchForInstances("title = t*", 30, 10);
+   * <p>
+   * The examples runs an API request with "?query=title+%3D+t*" and "?query=title+%3D+t*&offset=30&limit=10"
+   *
+   * @return the response as an JsonObject
+   */
+  private JsonObject searchForInstances(String cql, int offset, int limit) {
+    try {
+      CompletableFuture<Response> searchCompleted = new CompletableFuture<Response>();
+
+      String url = "/instance-storage/instances" + "?query="
+          + URLEncoder.encode(cql, StandardCharsets.UTF_8.name());
+      if (offset >= 0) {
+        url += "&offset=" + offset;
+      }
+      if (limit >= 0) {
+        url += "&limit=" + limit;
+      }
+
+      client.get(url, "test_tenant", ResponseHandler.json(searchCompleted));
+      Response searchResponse = searchCompleted.get(5, TimeUnit.SECONDS);
+
+      assertThat(searchResponse.getStatusCode(), is(200));
+      return searchResponse.getJson();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
   static class ResponseImpl extends ResponseDelegate {
     public static class AnotherInnerClass {  // for code coverage of the for loop in PgUtil.post
       public String foo;
