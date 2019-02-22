@@ -93,7 +93,7 @@ public class TenantLoading {
       return;
     }
     final String[] comp = endPoint.split("\\s+");
-    final String filePath = lead + "/" + comp[0];
+    final String filePath = lead + File.separator + comp[0];
     String uriPath = comp[0];
     if (comp.length >= 2) {
       uriPath = comp[1];
@@ -109,7 +109,7 @@ public class TenantLoading {
     try {
       List<InputStream> streams = getStreamsfromClassPathDir(filePath);
       for (InputStream stream : streams) {
-        jsonList.add(IOUtils.toString(stream, "UTF-8"));
+        jsonList.add(IOUtils.toString(stream, StandardCharsets.UTF_8));
       }
     } catch (URISyntaxException ex) {
       res.handle(Future.failedFuture("URISyntaxException for path " + filePath + " ex=" + ex.getLocalizedMessage()));
@@ -140,9 +140,9 @@ public class TenantLoading {
               f.handle(Future.failedFuture("POST " + endPointUrl + " returned status " + resPost.statusCode()));
             }
           });
-          reqPost.exceptionHandler(x -> {
-            f.handle(Future.failedFuture("POST " + endPointUrl + " failed"));
-          });
+          reqPost.exceptionHandler(x
+            -> f.handle(Future.failedFuture("POST " + endPointUrl + " failed"))
+          );
           endWithXHeaders(reqPost, headers, json);
         } else if (resPut.statusCode() == 200) {
           f.handle(Future.succeededFuture());
@@ -150,9 +150,9 @@ public class TenantLoading {
           f.handle(Future.failedFuture("PUT " + endPointUrl + "/" + id + " returned status " + resPut.statusCode()));
         }
       });
-      reqPut.exceptionHandler(x -> {
-        f.handle(Future.failedFuture("PUT " + endPointUrl + "/" + id + " failed"));
-      });
+      reqPut.exceptionHandler(x
+        -> f.handle(Future.failedFuture("PUT " + endPointUrl + "/" + id + " failed"))
+      );
       endWithXHeaders(reqPut, headers, json);
     }
     CompositeFuture.all(futures).setHandler(x -> {
