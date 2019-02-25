@@ -32,6 +32,10 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 public class TenantLoading {
 
   private static final Logger log = LoggerFactory.getLogger(TenantLoading.class);
+  private static final String RETURNED_STATUS = " returned status ";
+  private static final String FAILED_STR = " failed ";
+  private static final String POST_STR = "POST ";
+  private static final String PUT_STR = "POST ";
 
   private class LoadingEntry {
 
@@ -107,11 +111,18 @@ public class TenantLoading {
 
   private static void loadURL(Map<String, String> headers, URL url,
     HttpClient httpClient, boolean useBasename, String endPointUrl,
-    Future<Void> f) throws IOException {
+    Future<Void> f) {
 
     log.info("loadURL url=" + url.toString());
-    InputStream stream = url.openStream();
-    String content = IOUtils.toString(stream, StandardCharsets.UTF_8);
+    String content;
+    try {
+      InputStream stream = url.openStream();
+      content = IOUtils.toString(stream, StandardCharsets.UTF_8);
+      stream.close();
+    } catch (IOException ex) {
+      f.handle(Future.failedFuture("IOException for path " + url.toString() + " ex=" + ex.getLocalizedMessage()));
+      return;
+    }
     String id;
     if (useBasename) {
       int base = url.getPath().lastIndexOf(File.separator);
@@ -141,33 +152,35 @@ public class TenantLoading {
     }
     HttpClientRequest reqPut = httpClient.putAbs(putUri.toString(), resPut -> {
       if (resPut.statusCode() == 404 || resPut.statusCode() == 400) {
-        HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost -> {
-          resPost.endHandler(x -> {
+        HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost
+          -> resPost.endHandler(x -> {
             if (resPost.statusCode() == 201) {
               f.handle(Future.succeededFuture());
             } else {
-              f.handle(Future.failedFuture("POST " + endPointUrl + " returned status " + resPost.statusCode()));
+              f.handle(Future.failedFuture(POST_STR + endPointUrl
+                + RETURNED_STATUS + resPost.statusCode()));
             }
-          });
-        });
+          })
+        );
         reqPost.exceptionHandler(x
           -> {
-          log.warn("POST " + endPointUrl + " failed");
-          f.handle(Future.failedFuture("POST " + endPointUrl + " failed"));
+          log.warn(POST_STR + endPointUrl + FAILED_STR);
+          f.handle(Future.failedFuture(POST_STR + endPointUrl + FAILED_STR));
         }
         );
         endWithXHeaders(reqPost, headers, content);
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 204) {
         f.handle(Future.succeededFuture());
       } else {
-        log.warn("PUT " + putUri.toString() + " returned status " + resPut.statusCode());
-        f.handle(Future.failedFuture("PUT " + putUri.toString() + " returned status " + resPut.statusCode()));
+        log.warn(PUT_STR + putUri.toString() + RETURNED_STATUS + resPut.statusCode());
+        f.handle(Future.failedFuture(PUT_STR + putUri.toString()
+          + RETURNED_STATUS + resPut.statusCode()));
       }
     });
     reqPut.exceptionHandler(x
       -> {
-      log.warn("PUT " + putUri.toString() + " failed");
-      f.handle(Future.failedFuture("PUT " + putUri.toString() + " failed"));
+      log.warn(PUT_STR + putUri.toString() + FAILED_STR);
+      f.handle(Future.failedFuture(PUT_STR + putUri.toString() + FAILED_STR));
     });
     endWithXHeaders(reqPut, headers, content);
   }
@@ -191,12 +204,6 @@ public class TenantLoading {
         log.info("loadData getURLsFromClassPathDir returns empty list");
       }
       for (URL url : urls) {
-        InputStream stream = url.openStream();
-        if (stream == null) {
-          log.warn("Null stream filename " + url.toString());
-          res.handle(Future.failedFuture("Null stream filename " + url.toString()));
-          return;
-        }
         Future<Void> f = Future.future();
         futures.add(f);
         loadURL(headers, url, httpClient, useBasename, endPointUrl, f);
@@ -210,11 +217,8 @@ public class TenantLoading {
       });
     } catch (URISyntaxException ex) {
       res.handle(Future.failedFuture("URISyntaxException for path " + filePath + " ex=" + ex.getLocalizedMessage()));
-      return;
-
     } catch (IOException ex) {
       res.handle(Future.failedFuture("IOException for path " + filePath + " ex=" + ex.getLocalizedMessage()));
-      return;
     }
   }
 

@@ -53,7 +53,6 @@ public class TenantLoadingTest {
         int idx = path.lastIndexOf('/');
         if (idx != -1) {
           ids.add(path.substring(idx + 1));
-          System.out.println("adding " + path.substring(idx + 1));
         }
         ctx.response().setStatusCode(putStatus);
       } else if (ctx.request().method() == HttpMethod.POST) {
@@ -264,8 +263,6 @@ public class TenantLoadingTest {
       async.complete();
     });
   }
-
-
 
   @Test
   public void testBadUriPath(TestContext context) {
