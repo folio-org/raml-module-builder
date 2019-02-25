@@ -11,7 +11,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
@@ -34,14 +33,33 @@ public class TenantLoading {
 
   private static final Logger log = LoggerFactory.getLogger(TenantLoading.class);
 
-  private TenantLoading() {
-    throw new UnsupportedOperationException("Cannot instantiate");
+  private class LoadingEntry {
+
+    String key;
+    String lead;
+    String filePath;
+    String uriPath;
+    boolean useBasename;
+
+    LoadingEntry(String key, String lead, String filePath, String uriPath) {
+      this.key = key;
+      this.lead = lead;
+      this.filePath = filePath;
+      this.uriPath = uriPath;
+      this.useBasename = false;
+    }
   }
 
-  private static List<InputStream> getStreamsfromClassPathDir(String directoryName)
+  List<LoadingEntry> loadingEntries;
+
+  public TenantLoading() {
+    loadingEntries = new LinkedList<>();
+  }
+
+  protected static List<URL> getURLsFromClassPathDir(String directoryName)
     throws URISyntaxException, IOException {
 
-    List<InputStream> streams = new LinkedList<>();
+    List<URL> filenames = new LinkedList<>();
     URL url = Thread.currentThread().getContextClassLoader().getResource(directoryName);
     if (url != null) {
       if (url.getProtocol().equals("file")) {
@@ -50,7 +68,8 @@ public class TenantLoading {
           File[] files = file.listFiles();
           if (files != null) {
             for (File filename : files) {
-              streams.add(new FileInputStream(filename));
+              URL resource = filename.toURI().toURL();
+              filenames.add(resource);
             }
           }
         }
@@ -64,13 +83,14 @@ public class TenantLoading {
             JarEntry entry = entries.nextElement();
             String name = entry.getName();
             if (name.startsWith(dirname) && !dirname.equals(name)) {
-              streams.add(Thread.currentThread().getContextClassLoader().getResourceAsStream(name));
+              URL resource = Thread.currentThread().getContextClassLoader().getResource(name);
+              filenames.add(resource);
             }
           }
         }
       }
     }
-    return streams;
+    return filenames;
   }
 
   private static void endWithXHeaders(HttpClientRequest req, Map<String, String> headers, String json) {
@@ -85,19 +105,77 @@ public class TenantLoading {
     req.end(json);
   }
 
-  private static void loadData(Map<String, String> headers, String lead, String endPoint,
+  private static void loadURL(Map<String, String> headers, URL url,
+    HttpClient httpClient, boolean useBasename, String endPointUrl,
+    Future<Void> f) throws IOException {
+
+    log.info("loadURL url=" + url.toString());
+    InputStream stream = url.openStream();
+    String content = IOUtils.toString(stream, StandardCharsets.UTF_8);
+    String id;
+    if (useBasename) {
+      int base = url.getPath().lastIndexOf(File.separator);
+      int suf = url.getPath().lastIndexOf('.');
+      if (base == -1) {
+        f.handle(Future.failedFuture("No basename for " + url.toString()));
+        return;
+      }
+      if (suf > base) {
+        id = url.getPath().substring(base, suf);
+      } else {
+        id = url.getPath().substring(base);
+      }
+    } else {
+      JsonObject jsonObject = new JsonObject(content);
+      id = jsonObject.getString("id");
+      if (id == null) {
+        f.handle(Future.failedFuture("Missing id for " + content));
+        return;
+      }
+    }
+    StringBuilder putUri = new StringBuilder();
+    if (endPointUrl.contains("%d")) {
+      putUri.append(endPointUrl.replaceAll("%d", id));
+    } else {
+      putUri.append(endPointUrl + "/" + id);
+    }
+    HttpClientRequest reqPut = httpClient.putAbs(putUri.toString(), resPut -> {
+      if (resPut.statusCode() == 404 || resPut.statusCode() == 400) {
+        HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost -> {
+          resPost.endHandler(x -> {
+            if (resPost.statusCode() == 201) {
+              f.handle(Future.succeededFuture());
+            } else {
+              f.handle(Future.failedFuture("POST " + endPointUrl + " returned status " + resPost.statusCode()));
+            }
+          });
+        });
+        reqPost.exceptionHandler(x
+          -> {
+          log.warn("POST " + endPointUrl + " failed");
+          f.handle(Future.failedFuture("POST " + endPointUrl + " failed"));
+        }
+        );
+        endWithXHeaders(reqPost, headers, content);
+      } else if (resPut.statusCode() == 200 || resPut.statusCode() == 204) {
+        f.handle(Future.succeededFuture());
+      } else {
+        log.warn("PUT " + putUri.toString() + " returned status " + resPut.statusCode());
+        f.handle(Future.failedFuture("PUT " + putUri.toString() + " returned status " + resPut.statusCode()));
+      }
+    });
+    reqPut.exceptionHandler(x
+      -> {
+      log.warn("PUT " + putUri.toString() + " failed");
+      f.handle(Future.failedFuture("PUT " + putUri.toString() + " failed"));
+    });
+    endWithXHeaders(reqPut, headers, content);
+  }
+
+  private static void loadData(Map<String, String> headers,
+    String filePath, String uriPath, boolean useBasename,
     HttpClient httpClient, Handler<AsyncResult<Integer>> res) {
 
-    if (endPoint.isEmpty()) {
-      res.handle(Future.succeededFuture(0));
-      return;
-    }
-    final String[] comp = endPoint.split("\\s+");
-    final String filePath = lead + File.separator + comp[0];
-    String uriPath = comp[0];
-    if (comp.length >= 2) {
-      uriPath = comp[1];
-    }
     log.info("loadData uriPath=" + uriPath + " filePath=" + filePath);
     String okapiUrl = headers.get("X-Okapi-Url-to");
     if (okapiUrl == null) {
@@ -105,12 +183,31 @@ public class TenantLoading {
       res.handle(Future.failedFuture("No X-Okapi-Url-to header"));
       return;
     }
-    List<String> jsonList = new LinkedList<>();
+    final String endPointUrl = okapiUrl + "/" + uriPath;
+    List<Future> futures = new LinkedList<>();
     try {
-      List<InputStream> streams = getStreamsfromClassPathDir(filePath);
-      for (InputStream stream : streams) {
-        jsonList.add(IOUtils.toString(stream, StandardCharsets.UTF_8));
+      List<URL> urls = getURLsFromClassPathDir(filePath);
+      if (urls.isEmpty()) {
+        log.info("loadData getURLsFromClassPathDir returns empty list");
       }
+      for (URL url : urls) {
+        InputStream stream = url.openStream();
+        if (stream == null) {
+          log.warn("Null stream filename " + url.toString());
+          res.handle(Future.failedFuture("Null stream filename " + url.toString()));
+          return;
+        }
+        Future<Void> f = Future.future();
+        futures.add(f);
+        loadURL(headers, url, httpClient, useBasename, endPointUrl, f);
+      }
+      CompositeFuture.all(futures).setHandler(x -> {
+        if (x.failed()) {
+          res.handle(Future.failedFuture(x.cause().getLocalizedMessage()));
+        } else {
+          res.handle(Future.succeededFuture(urls.size()));
+        }
+      });
     } catch (URISyntaxException ex) {
       res.handle(Future.failedFuture("URISyntaxException for path " + filePath + " ex=" + ex.getLocalizedMessage()));
       return;
@@ -119,88 +216,49 @@ public class TenantLoading {
       res.handle(Future.failedFuture("IOException for path " + filePath + " ex=" + ex.getLocalizedMessage()));
       return;
     }
-    Integer sz = jsonList.size();
-    final String endPointUrl = okapiUrl + "/" + uriPath;
-    List<Future> futures = new LinkedList<>();
-    for (String json : jsonList) {
-      Future f = Future.future();
-      futures.add(f);
-      JsonObject jsonObject = new JsonObject(json);
-      String id = jsonObject.getString("id");
-      if (id == null) {
-        res.handle(Future.failedFuture("Missing id for " + json));
-        return;
-      }
-      HttpClientRequest reqPut = httpClient.putAbs(endPointUrl + "/" + id, resPut -> {
-        if (resPut.statusCode() == 404) {
-          HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost -> {
-            if (resPost.statusCode() == 201) {
-              f.handle(Future.succeededFuture());
-            } else {
-              f.handle(Future.failedFuture("POST " + endPointUrl + " returned status " + resPost.statusCode()));
-            }
-          });
-          reqPost.exceptionHandler(x
-            -> f.handle(Future.failedFuture("POST " + endPointUrl + " failed"))
-          );
-          endWithXHeaders(reqPost, headers, json);
-        } else if (resPut.statusCode() == 200) {
-          f.handle(Future.succeededFuture());
-        } else {
-          f.handle(Future.failedFuture("PUT " + endPointUrl + "/" + id + " returned status " + resPut.statusCode()));
-        }
-      });
-      reqPut.exceptionHandler(x
-        -> f.handle(Future.failedFuture("PUT " + endPointUrl + "/" + id + " failed"))
-      );
-      endWithXHeaders(reqPut, headers, json);
-    }
-    CompositeFuture.all(futures).setHandler(x -> {
-      if (x.failed()) {
-        res.handle(Future.failedFuture(x.cause().getLocalizedMessage()));
-      } else {
-        res.handle(Future.succeededFuture(sz));
-      }
-    });
   }
 
-  private static void load(Map<String, String> headers, String lead, Iterator<String> it,
+  public void performR(TenantAttributes ta, Map<String, String> headers, Iterator<LoadingEntry> it,
     HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res) {
-
     if (!it.hasNext()) {
       res.handle(Future.succeededFuture(number));
     } else {
-      String endPoint = it.next();
-      loadData(headers, lead, endPoint, httpClient, x -> {
-        if (x.failed()) {
-          res.handle(Future.failedFuture(x.cause()));
-        } else {
-          load(headers, lead, it, httpClient, number + x.result(), res);
+      LoadingEntry le = it.next();
+      for (Parameter parameter : ta.getParameters()) {
+        if (le.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
+          loadData(headers, le.lead + File.separator + le.filePath, le.uriPath,
+            le.useBasename, httpClient, x -> {
+              if (x.failed()) {
+                res.handle(Future.failedFuture(x.cause()));
+              } else {
+                performR(ta, headers, it, httpClient, number + x.result(), res);
+              }
+            });
+          return;
         }
-      });
+      }
+      performR(ta, headers, it, httpClient, number, res);
     }
   }
 
-  private static void load(Map<String, String> headers, String lead, List<String> paths,
+  public void perform(TenantAttributes ta, Map<String, String> headers,
     Vertx vertx, Handler<AsyncResult<Integer>> handler) {
-
+    Iterator<LoadingEntry> it = loadingEntries.iterator();
     HttpClient httpClient = vertx.createHttpClient();
-    load(headers, lead, paths.iterator(), httpClient, 0, res -> {
-      httpClient.close();
+    performR(ta, headers, it, httpClient, 0, res -> {
       handler.handle(res);
+      httpClient.close();
     });
   }
 
-  public static void load(TenantAttributes ta, Map<String, String> headers,
-    String key, String lead, List<String> paths, Vertx vertx,
-    Handler<AsyncResult<Integer>> handler) {
+  public void addJsonIdContent(String key, String lead, String filePath,
+    String uriPath) {
+    loadingEntries.add(new LoadingEntry(key, lead, filePath, uriPath));
+  }
 
-    for (Parameter parameter : ta.getParameters()) {
-      if (key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
-        load(headers, lead, paths, vertx, handler);
-        return;
-      }
-    }
-    handler.handle(Future.succeededFuture(0));
+  public void addJsonIdBasename(String key, String lead, String filePath, String uriPath) {
+    LoadingEntry le = new LoadingEntry(key, lead, filePath, uriPath);
+    le.useBasename = true;
+    loadingEntries.add(le);
   }
 }
