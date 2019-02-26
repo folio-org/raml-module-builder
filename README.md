@@ -867,11 +867,101 @@ The Postgres Client support in the RMB is schema specific, meaning that it expec
 
 The RAML defining the API:
 
-https://github.com/folio-org/raml/blob/3e5a4a58e141fb9d4a6968723df50e0f0b8d8de1/ramls/tenant.raml
+   https://github.com/folio-org/raml/blob/raml1.0/ramls/tenant.raml
+
+By default RMB includes an implementation of the Tenant API which assumes Postgres being present. Implementation in
+ [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) . You might want to extend/override this because:
+
+1. You want to not call it at all (your module is not using Postgres).
+2. You want to provide further Tenant control - such as loading reference and/or sample data.
+
+#### Extending the Tenant Init
+
+In order to implement your tenant API, extend `TenantAPI` class:
+
+```java
+package org.folio.rest.impl;
+import javax.ws.rs.core.Response;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+
+public class MyTenantAPI extends TenantAPI {
+ @Override
+  public void postTenant(TenantAttributes ta, Map<String, String> headers,
+    Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+
+    ..
+    }
+  @Override
+  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+    ..
+  }
+  ..
+}
+
+```
+
+If you wish to call the Post Tenant API (with Postgres) , just call the corresponding super-class, eg:
+```java
+@Override
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+  super.postTenant(ta, headers, hndlr, cntxt);
+}
+```
+(not much point in that though - it would be the same as not defining it as all).
+
+If you wish to load data for your module, that should be done after the DB has been successfully initialized,
+eg you'll do something like:
+```
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  super.postTenant(ta, headers, res -> {
+    if (res.failed()) {
+      hndlr.handle(res);
+      return;
+    }
+    // load data here
+    hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+      .respond201WithApplicationJson("")));
+  }, cntxt);
+}
+```
+
+There's no right way to load data, but consider that data load will be both happening for first time tenant
+usage of the module and during an upgrade process. Your data loading should be idempotent. If files are stored
+as resources and as JSON files, you can use the TenantLoading utility.
+
+```java
+import org.folio.rest.tools.utils.TenantLoading;
+
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  super.postTenant(ta, headers, res -> {
+    if (res.failed()) {
+      hndlr.handle(res);
+      return;
+    }
+    TenantLoading tl = new TenantLoading();
+    // two sets of reference data files
+    // resources ref-data/data1 and ref-data/data2 .. loaded to
+    // okapi-url/instances and okapi-url/items respectively
+    tl.addJsonIdContent("loadReference", "ref-data", "data1", "instances");
+    tl.addJsonIdContent("loadReference", "ref-data", "data2", "items");
+    tl.perform(ta, headers, vertx, res1 -> {
+      if (res1.failed()) {
+        hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+          .respond500WithTextPlain(res1.cause().getLocalizedMessage())));
+        return;
+      }
+      hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+        .respond201WithApplicationJson("")));
+    });
+  }, cntxt);
+}
+```
 
 #### The Post Tenant API
 
-RMB will look for a file at `/resources/templates/db_scripts/` called **schema.json**
+The Postgres based Tenant API implementation will look for a file at `/resources/templates/db_scripts/`
+called **schema.json**
 
 The file contains an array of tables and views to create for a tenant on registration (tenant api post)
 
