@@ -943,8 +943,10 @@ public void postTenant(TenantAttributes ta, Map<String, String> headers,
     // two sets of reference data files
     // resources ref-data/data1 and ref-data/data2 .. loaded to
     // okapi-url/instances and okapi-url/items respectively
-    tl.addJsonIdContent("loadReference", "ref-data", "data1", "instances");
-    tl.addJsonIdContent("loadReference", "ref-data", "data2", "items");
+    tl.withKey("loadReference").withLead("ref-data")
+      .withIdContent().
+      .add("data1", "instances")
+      .add("data2", "items");
     tl.perform(ta, headers, vertx, res1 -> {
       if (res1.failed()) {
         hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
@@ -957,6 +959,30 @@ public void postTenant(TenantAttributes ta, Map<String, String> headers,
   }, cntxt);
 }
 ```
+
+If data is already in resources, fine.. If not, for example, if in root of project in
+project, copy it with maven-resource-plugin. For example, to copy `reference-data` to
+`ref-data` in resources:
+
+```xml
+<execution>
+  <id>copy-reference-data</id>
+  <phase>process-resources</phase>
+  <goals>
+    <goal>copy-resources</goal>
+  </goals>
+  <configuration>
+    <outputDirectory>${basedir}/target/classes/ref-data</outputDirectory>
+    <resources>
+      <resource>
+        <directory>${basedir}/reference-data</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+  </configuration>
+</execution>
+```
+
 
 #### The Post Tenant API
 
