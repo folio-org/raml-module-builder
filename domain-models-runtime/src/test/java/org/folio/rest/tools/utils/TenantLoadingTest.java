@@ -104,8 +104,10 @@ public class TenantLoadingTest {
       .withParameters(parameters);
     Map<String, String> headers = new HashMap<String, String>();
     headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
-    TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    TenantLoading tl = new TenantLoading()
+      .withKey("loadRef")
+      .withLead("tenant-load-ref")
+      .add("data");
     tl.perform(tenantAttributes, headers, vertx, res -> {
       context.assertTrue(res.succeeded());
       context.assertEquals(2, res.result());
@@ -398,6 +400,44 @@ public class TenantLoadingTest {
       context.assertTrue(res.succeeded());
       context.assertEquals(1, res.result());
       context.assertTrue(ids.contains("1"));
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testOKIdRaw(TestContext context) {
+    Async async = context.async();
+    List<Parameter> parameters = new LinkedList<>();
+    parameters.add(new Parameter().withKey("loadRef").withValue("true"));
+    TenantAttributes tenantAttributes = new TenantAttributes()
+      .withModuleTo("mod-1.0.0")
+      .withParameters(parameters);
+    Map<String, String> headers = new HashMap<String, String>();
+    headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
+    TenantLoading tl = new TenantLoading().withKey("loadRef").withLead("tenant-load-ref");
+    tl.withIdRaw().add("data-w-id", "data/1");
+    tl.perform(tenantAttributes, headers, vertx, res -> {
+      context.assertTrue(res.succeeded());
+      context.assertEquals(1, res.result());
+      context.assertTrue(ids.contains("1"));
+      async.complete();
+    });
+  }
+
+  @Test
+  public void test404IdRaw(TestContext context) {
+    Async async = context.async();
+    List<Parameter> parameters = new LinkedList<>();
+    parameters.add(new Parameter().withKey("loadRef").withValue("true"));
+    TenantAttributes tenantAttributes = new TenantAttributes()
+      .withModuleTo("mod-1.0.0")
+      .withParameters(parameters);
+    Map<String, String> headers = new HashMap<String, String>();
+    headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
+    TenantLoading tl = new TenantLoading().withKey("loadRef").withLead("tenant-load-ref");
+    tl.withIdRaw().add("data-w-id", "data");
+    tl.perform(tenantAttributes, headers, vertx, res -> {
+      context.assertTrue(res.failed());
       async.complete();
     });
   }
