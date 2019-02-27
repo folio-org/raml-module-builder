@@ -1,7 +1,11 @@
+## 23.8.0 2019-02-27
+
+ * RMB-337 Extend TenangLoading API
+
 ## 23.7.0 2019-02-25
 
- * RMB-330 Gin index lost lower and f_unaccent functions RMB-330
- * RMB-329 TenantLoading API RMB-329
+ * RMB-330 Gin index lost lower and f_unaccent functions
+ * RMB-329 TenantLoading API
 
 ## 23.6.0 2019-02-18
 
