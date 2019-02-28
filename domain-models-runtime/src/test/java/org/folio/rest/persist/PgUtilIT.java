@@ -1,17 +1,10 @@
 package org.folio.rest.persist;
 
-import org.folio.rest.tools.utils.ResponseHandler;
-import org.folio.rest.tools.utils.HttpClient;
-
-import java.net.URLEncoder;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import javax.ws.rs.core.Response;
 
@@ -26,13 +19,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
+import org.junit.Assert.assertThat;
 
-import static org.junit.Assert.assertThat;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.core.IsNull.notNullValue;
+import org.hamcrest.CoreMatchers.containsString;
+import org.hamcrest.CoreMatchers.hasItem;
+import org.hamcrest.CoreMatchers.is;
+import org.hamcrest.CoreMatchers.nullValue;
+import org.hamcrest.core.IsNull.notNullValue;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -50,7 +43,6 @@ public class PgUtilIT {
   public Timeout timeoutRule = Timeout.seconds(10);
 
   /** If we start and stop our own embedded postgres */
-  static HttpClient client;
   static private boolean ownEmbeddedPostgres = false;
   static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
   static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
@@ -59,10 +51,8 @@ public class PgUtilIT {
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
-
     startEmbeddedPostgres(vertx);
     createUserTable(context);
-    client = new HttpClient(vertx);
   }
 
   @AfterClass
@@ -695,7 +685,7 @@ public class PgUtilIT {
    */
   private JsonObject searchForInstances(String cql, int offset, int limit) {
     try {
-      CompletableFuture<org.folio.rest.tools.utils.Response> searchCompleted = new CompletableFuture<org.folio.rest.tools.utils.Response>();
+      CompletableFuture<Response> searchCompleted = new CompletableFuture<Response>();
 
       String url = "/instance-storage/instances" + "?query="
           + URLEncoder.encode(cql, StandardCharsets.UTF_8.name());
@@ -707,7 +697,7 @@ public class PgUtilIT {
       }
 
       client.get(url, "test_tenant", ResponseHandler.json(searchCompleted));
-      org.folio.rest.tools.utils.Response searchResponse = searchCompleted.get(5, TimeUnit.SECONDS);
+      Response searchResponse = searchCompleted.get(5, TimeUnit.SECONDS);
 
       assertThat(searchResponse.getStatusCode(), is(200));
       return searchResponse.getJson();
