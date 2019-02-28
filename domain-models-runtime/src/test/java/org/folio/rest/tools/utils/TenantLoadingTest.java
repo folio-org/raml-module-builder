@@ -170,6 +170,22 @@ public class TenantLoadingTest {
   }
 
   @Test
+  public void testOKNullTenantAttributes(TestContext context) {
+    Async async = context.async();
+    Map<String, String> headers = new HashMap<String, String>();
+    headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
+    TenantLoading tl = new TenantLoading()
+      .withKey("loadRef")
+      .withLead("tenant-load-ref")
+      .add("data");
+    tl.perform(null, headers, vertx, res -> {
+      context.assertTrue(res.succeeded());
+      context.assertEquals(0, res.result());
+      async.complete();
+    });
+  }
+
+  @Test
   public void testNoOkapiUrlTo(TestContext context) {
     Async async = context.async();
     List<Parameter> parameters = new LinkedList<>();
@@ -183,7 +199,7 @@ public class TenantLoadingTest {
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
     tl.perform(tenantAttributes, headers, vertx, res -> {
       context.assertTrue(res.failed());
-      context.assertEquals("No X-Okapi-Url-to header", res.cause().getLocalizedMessage());
+      context.assertEquals("No X-Okapi-Url header", res.cause().getLocalizedMessage());
       async.complete();
     });
   }

@@ -225,18 +225,12 @@ public class TenantLoading {
     endWithXHeaders(reqPut, headers, content);
   }
 
-  private static void loadData(Map<String, String> headers,
+  private static void loadData(String okapiUrl, Map<String, String> headers,
     LoadingEntry loadingEntry, HttpClient httpClient,
     Handler<AsyncResult<Integer>> res) {
 
     final String filePath = loadingEntry.lead + File.separator + loadingEntry.filePath;
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
-    String okapiUrl = headers.get("X-Okapi-Url-to");
-    if (okapiUrl == null) {
-      log.warn("loadData No X-Okapi-Url-to header");
-      res.handle(Future.failedFuture("No X-Okapi-Url-to header"));
-      return;
-    }
     final String endPointUrl = okapiUrl + "/" + loadingEntry.uriPath;
     List<Future> futures = new LinkedList<>();
     try {
@@ -263,33 +257,47 @@ public class TenantLoading {
     }
   }
 
-  public void performR(TenantAttributes ta, Map<String, String> headers, Iterator<LoadingEntry> it,
+  public void performR(String okapiUrl, TenantAttributes ta,
+    Map<String, String> headers, Iterator<LoadingEntry> it,
     HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res) {
     if (!it.hasNext()) {
       res.handle(Future.succeededFuture(number));
     } else {
       LoadingEntry le = it.next();
-      for (Parameter parameter : ta.getParameters()) {
-        if (le.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
-          loadData(headers, le, httpClient, x -> {
-            if (x.failed()) {
-              res.handle(Future.failedFuture(x.cause()));
-            } else {
-              performR(ta, headers, it, httpClient, number + x.result(), res);
-            }
-          });
-          return;
+      if (ta != null) {
+        for (Parameter parameter : ta.getParameters()) {
+          if (le.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
+            loadData(okapiUrl, headers, le, httpClient, x -> {
+              if (x.failed()) {
+                res.handle(Future.failedFuture(x.cause()));
+              } else {
+                performR(okapiUrl, ta, headers, it, httpClient, number + x.result(), res);
+              }
+            });
+            return;
+          }
         }
       }
-      performR(ta, headers, it, httpClient, number, res);
+      performR(okapiUrl, ta, headers, it, httpClient, number, res);
     }
   }
 
   public void perform(TenantAttributes ta, Map<String, String> headers,
     Vertx vertx, Handler<AsyncResult<Integer>> handler) {
+
+    String okapiUrl = headers.get("X-Okapi-Url-to");
+    if (okapiUrl == null) {
+      log.warn("TenantLoading.perform No X-Okapi-Url-to header");
+      okapiUrl = headers.get("X-Okapi-Url");
+    }
+    if (okapiUrl == null) {
+      log.warn("TenantLoading.perform No X-Okapi-Url header");
+      handler.handle(Future.failedFuture("No X-Okapi-Url header"));
+      return;
+    }
     Iterator<LoadingEntry> it = loadingEntries.iterator();
     HttpClient httpClient = vertx.createHttpClient();
-    performR(ta, headers, it, httpClient, 0, res -> {
+    performR(okapiUrl, ta, headers, it, httpClient, 0, res -> {
       handler.handle(res);
       httpClient.close();
     });
