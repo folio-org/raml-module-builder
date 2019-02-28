@@ -567,7 +567,7 @@ public class PgUtilIT {
   @Test
   public void canGetWithOptimizedSql(TestContext testContext) {
     int n = PgUtil.getOptimizedSqlSize() / 2;
-    PostgresClient pg = PostgresClient.getInstance(vertx, "test_tenant");
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
 
     // "b foo" records are before the getOptimizedSqlSize() limit
     // "d foo" records are after the getOptimizedSqlSize() limit
