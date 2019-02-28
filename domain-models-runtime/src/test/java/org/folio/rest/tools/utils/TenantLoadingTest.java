@@ -2,7 +2,6 @@ package org.folio.rest.tools.utils;
 
 import java.util.List;
 import org.junit.Test;
-
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -20,8 +19,10 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.After;
@@ -52,7 +53,13 @@ public class TenantLoadingTest {
         String path = ctx.request().path();
         int idx = path.lastIndexOf('/');
         if (idx != -1) {
-          ids.add(path.substring(idx + 1));
+          try {
+            String id = URLDecoder.decode(path.substring(idx + 1), "UTF-8");
+            ids.add(id);
+          } catch (UnsupportedEncodingException ex) {
+            ctx.response().setStatusCode(400);
+            return;
+          }
         }
         ctx.response().setStatusCode(putStatus);
       } else if (ctx.request().method() == HttpMethod.POST) {
@@ -113,6 +120,29 @@ public class TenantLoadingTest {
       context.assertEquals(2, res.result());
       context.assertTrue(ids.contains("1"));
       context.assertTrue(ids.contains("2"));
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testOKContentIdName(TestContext context) {
+    Async async = context.async();
+    List<Parameter> parameters = new LinkedList<>();
+    parameters.add(new Parameter().withKey("loadRef").withValue("true"));
+    TenantAttributes tenantAttributes = new TenantAttributes()
+      .withModuleTo("mod-1.0.0")
+      .withParameters(parameters);
+    Map<String, String> headers = new HashMap<String, String>();
+    headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
+    TenantLoading tl = new TenantLoading()
+      .withKey("loadRef")
+      .withLead("tenant-load-ref")
+      .withContent("name")
+      .add("data-w-id", "data");
+    tl.perform(tenantAttributes, headers, vertx, res -> {
+      context.assertTrue(res.succeeded());
+      context.assertEquals(1, res.result());
+      context.assertTrue(ids.contains("number 1"));
       async.complete();
     });
   }

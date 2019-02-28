@@ -13,9 +13,11 @@ import io.vertx.core.logging.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Enumeration;
@@ -35,7 +37,7 @@ public class TenantLoading {
   private static final String RETURNED_STATUS = " returned status ";
   private static final String FAILED_STR = " failed ";
   private static final String POST_STR = "POST ";
-  private static final String PUT_STR = "POST ";
+  private static final String PUT_STR = "PUT ";
 
   private enum Strategy {
     CONTENT, // Id in JSON content PUT/POST
@@ -49,18 +51,22 @@ public class TenantLoading {
     String lead;
     String filePath;
     String uriPath;
+    String idProperty;
     private Strategy strategy;
 
-    LoadingEntry(String key, String lead, String filePath, String uriPath, Strategy strategy) {
+    LoadingEntry(String key, String lead, String filePath, String uriPath, Strategy strategy,
+      String idProperty) {
       this.key = key;
       this.lead = lead;
       this.filePath = filePath;
       this.uriPath = uriPath;
       this.strategy = strategy;
+      this.idProperty = idProperty;
     }
 
     LoadingEntry() {
       this.strategy = Strategy.CONTENT;
+      this.idProperty = "id";
     }
   }
 
@@ -153,9 +159,19 @@ public class TenantLoading {
         break;
       case CONTENT:
         JsonObject jsonObject = new JsonObject(content);
-        id = jsonObject.getString("id");
+        id = jsonObject.getString(loadingEntry.idProperty);
         if (id == null) {
-          f.handle(Future.failedFuture("Missing id for url=" + url.toString()));
+          log.warn("Missing property "
+            + loadingEntry.idProperty + " for url=" + url.toString());
+
+          f.handle(Future.failedFuture("Missing property "
+            + loadingEntry.idProperty + " for url=" + url.toString()));
+          return;
+        }
+        try {
+          id = URLEncoder.encode(id, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException ex) {
+          f.handle(Future.failedFuture("Encoding of " + id + " failed"));
           return;
         }
         break;
@@ -175,22 +191,21 @@ public class TenantLoading {
     HttpClientRequest reqPut = httpClient.putAbs(putUri.toString(), resPut -> {
       if (loadingEntry.strategy != Strategy.RAW
         && (resPut.statusCode() == 404 || resPut.statusCode() == 400)) {
-        HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost
-          -> resPost.endHandler(x -> {
-            if (resPost.statusCode() == 201) {
-              f.handle(Future.succeededFuture());
-            } else {
-              f.handle(Future.failedFuture(POST_STR + endPointUrl
-                + RETURNED_STATUS + resPost.statusCode()));
-            }
-          })
-        );
-        reqPost.exceptionHandler(x
-          -> {
-          log.warn(POST_STR + endPointUrl + FAILED_STR);
-          f.handle(Future.failedFuture(POST_STR + endPointUrl + FAILED_STR));
-        }
-        );
+        HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost -> {
+          if (resPost.statusCode() == 201) {
+            f.handle(Future.succeededFuture());
+          } else {
+            f.handle(Future.failedFuture(POST_STR + endPointUrl
+              + RETURNED_STATUS + resPost.statusCode()));
+          }
+        });
+        reqPost.exceptionHandler(ex -> {
+          if (!f.isComplete()) {
+            f.handle(Future.failedFuture(PUT_STR + putUri.toString()
+              + " exception " + ex.getMessage()));
+          }
+          log.warn(POST_STR + endPointUrl + " exception " + ex.getMessage());
+        });
         endWithXHeaders(reqPost, headers, content);
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 204) {
         f.handle(Future.succeededFuture());
@@ -200,10 +215,12 @@ public class TenantLoading {
           + RETURNED_STATUS + resPut.statusCode()));
       }
     });
-    reqPut.exceptionHandler(x
-      -> {
-      log.warn(PUT_STR + putUri.toString() + FAILED_STR);
-      f.handle(Future.failedFuture(PUT_STR + putUri.toString() + FAILED_STR));
+    reqPut.exceptionHandler(ex -> {
+      if (!f.isComplete()) {
+        f.handle(Future.failedFuture(PUT_STR + putUri.toString() +
+          " exception " + ex.getMessage()));
+      }
+      log.warn(PUT_STR + putUri.toString() + " exception " + ex.getMessage());
     });
     endWithXHeaders(reqPut, headers, content);
   }
@@ -255,12 +272,12 @@ public class TenantLoading {
       for (Parameter parameter : ta.getParameters()) {
         if (le.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
           loadData(headers, le, httpClient, x -> {
-              if (x.failed()) {
-                res.handle(Future.failedFuture(x.cause()));
-              } else {
-                performR(ta, headers, it, httpClient, number + x.result(), res);
-              }
-            });
+            if (x.failed()) {
+              res.handle(Future.failedFuture(x.cause()));
+            } else {
+              performR(ta, headers, it, httpClient, number + x.result(), res);
+            }
+          });
           return;
         }
       }
@@ -289,6 +306,13 @@ public class TenantLoading {
   }
 
   public TenantLoading withIdContent() {
+    nextEntry.idProperty = "id";
+    nextEntry.strategy = Strategy.CONTENT;
+    return this;
+  }
+
+  public TenantLoading withContent(String idProperty) {
+    nextEntry.idProperty = idProperty;
     nextEntry.strategy = Strategy.CONTENT;
     return this;
   }
@@ -304,7 +328,8 @@ public class TenantLoading {
   }
 
   public TenantLoading add(String filePath, String uriPath) {
-    loadingEntries.add(new LoadingEntry(nextEntry.key, nextEntry.lead, filePath, uriPath, nextEntry.strategy));
+    loadingEntries.add(new LoadingEntry(nextEntry.key, nextEntry.lead,
+      filePath, uriPath, nextEntry.strategy, nextEntry.idProperty));
     return this;
   }
 
