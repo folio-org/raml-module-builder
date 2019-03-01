@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.rest.persist.PgUtil.PreparedCQL;
+import org.folio.rest.persist.cql.CQLWrapper;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -593,12 +594,24 @@ public class PgUtilIT {
     // limit=9
     //prepare optimized sql
     String optimizedSQL = "";
+    PreparedCQL pCQL = null;
+    CQLWrapper wrapper = null;
     try {
-    	optimizedSQL = PgUtil.optimizedSql(new PreparedCQL("user", PgUtil.createCQLWrapper("title=foo sortBy title", 0, 9, Arrays.asList(schema + ".user "))), "testtenant", pg, 0, 9, columnName);
-    } catch(FieldException fe) {
-    	testContext.fail(fe.getCause());
+    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 0, 9, Arrays.asList(schema + ".user "));
     } catch(Exception e) {
-   	 	testContext.fail(e.getCause());
+    	testContext.fail(e.getMessage());
+    }
+    try {
+    	pCQL = new PreparedCQL("user", wrapper );
+    } catch(Exception e) {
+    	testContext.fail(e.getMessage());
+    }
+    try {
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 0, 9, columnName);
+    } catch(FieldException fe) {
+    	testContext.fail(fe.getMessage());
+    } catch(Exception e) {
+    	testContext.fail(e.getMessage());
     }
     log.info("optimized sql is " + optimizedSQL);
     //execut sql
@@ -612,11 +625,11 @@ public class PgUtilIT {
      
       for (int i=0; i<5; i++) {
         JsonObject instance = json.getJsonObject(i);
-        assertThat(instance.getString("title"), is("b foo " + (i + 1)));
+        assertThat(instance.getString("name"), is("b foo " + (i + 1)));
       }
       for (int i=0; i<3; i++) {
         JsonObject instance = json.getJsonObject(5 + i);
-        assertThat(instance.getString("title"), is("d foo " + (i + 1)));
+        assertThat(instance.getString("name"), is("d foo " + (i + 1)));
       }
     } );
 
@@ -693,7 +706,7 @@ public class PgUtilIT {
     Async async = testContext.async();
     String table = schema + ".user ";
     String sql = "INSERT INTO " + table + " SELECT uuid, json_build_object" +
-        "  ('title', '" + prefix + " ' || n, 'id', uuid)" +
+        "  ('name', '" + prefix + " ' || n, 'id', uuid)" +
         "  FROM (SELECT generate_series(1, " + n + ") AS n, gen_random_uuid() AS uuid) AS uuids";
     pg.execute(sql, testContext.asyncAssertSuccess(updated -> {
         testContext.assertEquals(n, updated.getUpdated());
