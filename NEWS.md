@@ -1,3 +1,9 @@
+## 23.9.0 2019-03-01
+
+ * RMB-338 TenantLoading: allow property of JSON Object to be set
+ * Generated HTTP client now sets X-Okapi-Url header
+ * TenantLoading: handle null TenantAttributes
+
 ## 23.8.0 2019-02-27
 
  * RMB-337 Extend TenangLoading API
