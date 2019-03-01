@@ -391,6 +391,10 @@ public class ClientGenerator {
     JConditional ifClause = body._if(tenantId.ne(JExpr._null()));
     ifClause._then().directStatement("request.putHeader(\"X-Okapi-Token\", token);");
     ifClause._then().directStatement("request.putHeader(\""+OKAPI_HEADER_TENANT+"\", tenantId);");
+
+    JConditional ifClause2 = body._if(this.okapiUrl.ne(JExpr._null()));
+    ifClause2._then().directStatement("request.putHeader(\"X-Okapi-Url\", okapiUrl);");
+
     /* add response handler to each function */
     JClass handler = jcodeModel.ref(Handler.class).narrow(HttpClientResponse.class);
     jmCreate.param(handler, "responseHandler");
