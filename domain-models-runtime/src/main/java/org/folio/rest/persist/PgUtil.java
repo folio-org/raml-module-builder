@@ -12,6 +12,8 @@ import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.persist.Criteria.Limit;
+import org.folio.rest.persist.Criteria.Offset;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -510,6 +512,18 @@ private static String getAscDesc(ModifierSet modifierSet) {
    * @return true if an optimized query gets executed, false otherwise
    * @throws QueryValidationException on invalid CQL
    */
+  public static CQLWrapper createCQLWrapper(
+    String query,
+    int limit,
+    int offset,
+    List<String> fields) throws FieldException {
+
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON(fields);
+
+    return new CQLWrapper(cql2pgJson, query)
+      .setLimit(new Limit(limit))
+      .setOffset(new Offset(offset));
+  }
   public static String optimizedSql(PreparedCQL preparedCql, String tenantId, PostgresClient postgresClient,
       int offset, int limit, String column ) throws Exception {
 

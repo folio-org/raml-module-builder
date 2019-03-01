@@ -2,6 +2,7 @@ package org.folio.rest.persist;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
@@ -13,19 +14,22 @@ import org.folio.rest.jaxrs.model.Users;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.folio.rest.persist.PgUtil.PreparedCQL;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
-import org.junit.Assert.assertThat;
+import org.z3950.zing.cql.cql2pgjson.FieldException;
 
-import org.hamcrest.CoreMatchers.containsString;
-import org.hamcrest.CoreMatchers.hasItem;
-import org.hamcrest.CoreMatchers.is;
-import org.hamcrest.CoreMatchers.nullValue;
-import org.hamcrest.core.IsNull.notNullValue;
+import static org.junit.Assert.assertThat;
+
+ import static org.hamcrest.CoreMatchers.containsString;
+ import static org.hamcrest.CoreMatchers.hasItem;
+ import static org.hamcrest.CoreMatchers.is;
+ import static org.hamcrest.CoreMatchers.nullValue;
+ import static org.hamcrest.core.IsNull.notNullValue;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -34,8 +38,11 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
@@ -48,6 +55,7 @@ public class PgUtilIT {
   static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
   static private Vertx vertx;
 
+  private static final Logger log = LoggerFactory.getLogger(PgUtilIT.class);
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
@@ -107,7 +115,12 @@ public class PgUtilIT {
     });
     async.await();
   }
+  private static void executeAndNotify(TestContext context, String sql,Handler<AsyncResult<JsonArray>>  handler ) {
+    Async async = context.async();
+    PostgresClient.getInstance(vertx).getClient().querySingle(sql, handler);
+    async.await();
 
+  }
   private static void executeIgnore(TestContext context, String sql) {
     Async async = context.async();
     PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
@@ -576,84 +589,101 @@ public class PgUtilIT {
     insert(testContext, pg, "c", n);
     insert(testContext, pg, "d foo", 5);
     insert(testContext, pg, "e", n);
-
+    String columnName = "name";
     // limit=9
-    JsonObject json = searchForInstances("title=foo sortBy title", 0, 9);
-    JsonArray allInstances = json.getJsonArray("instances");
-    assertThat(allInstances.size(), is(9));
-    assertThat(json.getInteger("totalRecords"), is(10));
-    for (int i=0; i<5; i++) {
-      JsonObject instance = allInstances.getJsonObject(i);
-      assertThat(instance.getString("title"), is("b foo " + (i + 1)));
+    //prepare optimized sql
+    String optimizedSQL = "";
+    try {
+    	optimizedSQL = PgUtil.optimizedSql(new PreparedCQL("user", PgUtil.createCQLWrapper("title=foo sortBy title", 0, 9, Arrays.asList(schema + ".user "))), "testtenant", pg, 0, 9, columnName);
+    } catch(FieldException fe) {
+    	testContext.fail(fe.getCause());
+    } catch(Exception e) {
+   	 	testContext.fail(e.getCause());
     }
-    for (int i=0; i<3; i++) {
-      JsonObject instance = allInstances.getJsonObject(5 + i);
-      assertThat(instance.getString("title"), is("d foo " + (i + 1)));
-    }
+    log.info("optimized sql is " + optimizedSQL);
+    //execut sql
+    executeAndNotify(testContext,optimizedSQL,reply -> {
+      //handle return and
+      if (reply.failed()) {
+    	  testContext.fail(reply.cause());
+      }
+      JsonArray json = reply.result();
+      assertThat(json.size(), is(9));
+     
+      for (int i=0; i<5; i++) {
+        JsonObject instance = json.getJsonObject(i);
+        assertThat(instance.getString("title"), is("b foo " + (i + 1)));
+      }
+      for (int i=0; i<3; i++) {
+        JsonObject instance = json.getJsonObject(5 + i);
+        assertThat(instance.getString("title"), is("d foo " + (i + 1)));
+      }
+    } );
 
-    // limit=5
-    json = searchForInstances("title=foo sortBy title", 0, 5);
-    allInstances = json.getJsonArray("instances");
-    assertThat(allInstances.size(), is(5));
-    assertThat(json.getInteger("totalRecords"), is(999999999));
-    for (int i=0; i<5; i++) {
-      JsonObject instance = allInstances.getJsonObject(i);
-      assertThat(instance.getString("title"), is("b foo " + (i + 1)));
-    }
 
-    // offset=6, limit=3
-    json = searchForInstances("title=foo sortBy title", 6, 3);
-    allInstances = json.getJsonArray("instances");
-    assertThat(allInstances.size(), is(3));
-    assertThat(json.getInteger("totalRecords"), is(10));
-    for (int i=0; i<3; i++) {
-      JsonObject instance = allInstances.getJsonObject(i);
-      assertThat(instance.getString("title"), is("d foo " + (1 + i + 1)));
-    }
+    // // limit=5
+    // json = searchForInstances("title=foo sortBy title", 0, 5);
+    // allInstances = json.getJsonArray("instances");
+    // assertThat(allInstances.size(), is(5));
+    // assertThat(json.getInteger("totalRecords"), is(999999999));
+    // for (int i=0; i<5; i++) {
+    //   JsonObject instance = allInstances.getJsonObject(i);
+    //   assertThat(instance.getString("title"), is("b foo " + (i + 1)));
+    // }
 
-    // offset=1, limit=8
-    json = searchForInstances("title=foo sortBy title", 1, 8);
-    allInstances = json.getJsonArray("instances");
-    assertThat(allInstances.size(), is(8));
-    assertThat(json.getInteger("totalRecords"), is(10));
-    for (int i=0; i<4; i++) {
-      JsonObject instance = allInstances.getJsonObject(i);
-      assertThat(instance.getString("title"), is("b foo " + (1 + i + 1)));
-    }
-    for (int i=0; i<4; i++) {
-      JsonObject instance = allInstances.getJsonObject(4 + i);
-      assertThat(instance.getString("title"), is("d foo " + (i + 1)));
-    }
+    // // offset=6, limit=3
+    // json = searchForInstances("title=foo sortBy title", 6, 3);
+    // allInstances = json.getJsonArray("instances");
+    // assertThat(allInstances.size(), is(3));
+    // assertThat(json.getInteger("totalRecords"), is(10));
+    // for (int i=0; i<3; i++) {
+    //   JsonObject instance = allInstances.getJsonObject(i);
+    //   assertThat(instance.getString("title"), is("d foo " + (1 + i + 1)));
+    // }
 
-    // "b foo", offset=1, limit=20
-    json = searchForInstances("title=b sortBy title/sort.ascending", 1, 20);
-    allInstances = json.getJsonArray("instances");
-    assertThat(allInstances.size(), is(4));
-    assertThat(json.getInteger("totalRecords"), is(5));
-    for (int i=0; i<4; i++) {
-      JsonObject instance = allInstances.getJsonObject(i);
-      assertThat(instance.getString("title"), is("b foo " + (1 + i + 1)));
-    }
+    // // offset=1, limit=8
+    // json = searchForInstances("title=foo sortBy title", 1, 8);
+    // allInstances = json.getJsonArray("instances");
+    // assertThat(allInstances.size(), is(8));
+    // assertThat(json.getInteger("totalRecords"), is(10));
+    // for (int i=0; i<4; i++) {
+    //   JsonObject instance = allInstances.getJsonObject(i);
+    //   assertThat(instance.getString("title"), is("b foo " + (1 + i + 1)));
+    // }
+    // for (int i=0; i<4; i++) {
+    //   JsonObject instance = allInstances.getJsonObject(4 + i);
+    //   assertThat(instance.getString("title"), is("d foo " + (i + 1)));
+    // }
 
-    // sort.descending, offset=1, limit=3
-    json = searchForInstances("title=foo sortBy title/sort.descending", 1, 3);
-    allInstances = json.getJsonArray("instances");
-    assertThat(allInstances.size(), is(3));
-    assertThat(json.getInteger("totalRecords"), is(999999999));
-    for (int i=0; i<3; i++) {
-      JsonObject instance = allInstances.getJsonObject(i);
-      assertThat(instance.getString("title"), is("d foo " + (4 - i)));
-    }
+    // // "b foo", offset=1, limit=20
+    // json = searchForInstances("title=b sortBy title/sort.ascending", 1, 20);
+    // allInstances = json.getJsonArray("instances");
+    // assertThat(allInstances.size(), is(4));
+    // assertThat(json.getInteger("totalRecords"), is(5));
+    // for (int i=0; i<4; i++) {
+    //   JsonObject instance = allInstances.getJsonObject(i);
+    //   assertThat(instance.getString("title"), is("b foo " + (1 + i + 1)));
+    // }
 
-    // sort.descending, offset=6, limit=3
-    json = searchForInstances("title=foo sortBy title/sort.descending", 6, 3);
-    allInstances = json.getJsonArray("instances");
-    assertThat(allInstances.size(), is(3));
-    assertThat(json.getInteger("totalRecords"), is(10));
-    for (int i=0; i<3; i++) {
-      JsonObject instance = allInstances.getJsonObject(i);
-      assertThat(instance.getString("title"), is("b foo " + (4 - i)));
-    }
+    // // sort.descending, offset=1, limit=3
+    // json = searchForInstances("title=foo sortBy title/sort.descending", 1, 3);
+    // allInstances = json.getJsonArray("instances");
+    // assertThat(allInstances.size(), is(3));
+    // assertThat(json.getInteger("totalRecords"), is(999999999));
+    // for (int i=0; i<3; i++) {
+    //   JsonObject instance = allInstances.getJsonObject(i);
+    //   assertThat(instance.getString("title"), is("d foo " + (4 - i)));
+    // }
+
+    // // sort.descending, offset=6, limit=3
+    // json = searchForInstances("title=foo sortBy title/sort.descending", 6, 3);
+    // allInstances = json.getJsonArray("instances");
+    // assertThat(allInstances.size(), is(3));
+    // assertThat(json.getInteger("totalRecords"), is(10));
+    // for (int i=0; i<3; i++) {
+    //   JsonObject instance = allInstances.getJsonObject(i);
+    //   assertThat(instance.getString("title"), is("b foo " + (4 - i)));
+    // }
 }
   /**
    * Insert n records into instance table where the title field is build using
@@ -661,7 +691,7 @@ public class PgUtilIT {
    */
   private void insert(TestContext testContext, PostgresClient pg, String prefix, int n) {
     Async async = testContext.async();
-    String table = PostgresClient.convertToPsqlStandard("test_tenant") + ".instance";
+    String table = schema + ".user ";
     String sql = "INSERT INTO " + table + " SELECT uuid, json_build_object" +
         "  ('title', '" + prefix + " ' || n, 'id', uuid)" +
         "  FROM (SELECT generate_series(1, " + n + ") AS n, gen_random_uuid() AS uuid) AS uuids";
@@ -671,40 +701,7 @@ public class PgUtilIT {
       }));
     async.await(10000 /* ms */);
   }
-/**
-   * Run a get request using the provided cql query and the provided offset and limit values
-   * (a negative value means no offset or no limit).
-   * <p>
-   * Example 1: searchForInstances("title = t*", -1, -1);
-   * <p>
-   * Example 2: searchForInstances("title = t*", 30, 10);
-   * <p>
-   * The examples runs an API request with "?query=title+%3D+t*" and "?query=title+%3D+t*&offset=30&limit=10"
-   *
-   * @return the response as an JsonObject
-   */
-  private JsonObject searchForInstances(String cql, int offset, int limit) {
-    try {
-      CompletableFuture<Response> searchCompleted = new CompletableFuture<Response>();
 
-      String url = "/instance-storage/instances" + "?query="
-          + URLEncoder.encode(cql, StandardCharsets.UTF_8.name());
-      if (offset >= 0) {
-        url += "&offset=" + offset;
-      }
-      if (limit >= 0) {
-        url += "&limit=" + limit;
-      }
-
-      client.get(url, "test_tenant", ResponseHandler.json(searchCompleted));
-      Response searchResponse = searchCompleted.get(5, TimeUnit.SECONDS);
-
-      assertThat(searchResponse.getStatusCode(), is(200));
-      return searchResponse.getJson();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
   static class ResponseImpl extends ResponseDelegate {
     public static class AnotherInnerClass {  // for code coverage of the for loop in PgUtil.post
       public String foo;
