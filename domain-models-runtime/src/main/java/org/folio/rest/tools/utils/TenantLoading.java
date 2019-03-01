@@ -128,20 +128,9 @@ public class TenantLoading {
     req.end(json);
   }
 
-  private static void loadURL(Map<String, String> headers, URL url,
-    HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
+  private static String getId(LoadingEntry loadingEntry, URL url, String content,
     Future<Void> f) {
 
-    log.info("loadURL url=" + url.toString());
-    String content;
-    try {
-      InputStream stream = url.openStream();
-      content = IOUtils.toString(stream, StandardCharsets.UTF_8);
-      stream.close();
-    } catch (IOException ex) {
-      f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
-      return;
-    }
     String id = null;
     switch (loadingEntry.strategy) {
       case BASENAME:
@@ -149,7 +138,7 @@ public class TenantLoading {
         int suf = url.getPath().lastIndexOf('.');
         if (base == -1) {
           f.handle(Future.failedFuture("No basename for " + url.toString()));
-          return;
+          return null;
         }
         if (suf > base) {
           id = url.getPath().substring(base, suf);
@@ -166,17 +155,38 @@ public class TenantLoading {
 
           f.handle(Future.failedFuture("Missing property "
             + loadingEntry.idProperty + " for url=" + url.toString()));
-          return;
+          return null;
         }
         try {
           id = URLEncoder.encode(id, StandardCharsets.UTF_8.name());
         } catch (UnsupportedEncodingException ex) {
-          f.handle(Future.failedFuture("Encoding of " + id + " failed"));
-          return;
+          f.handle(Future.failedFuture("Encoding of " + id + FAILED_STR));
+          return null;
         }
         break;
       case RAW:
         break;
+    }
+    return id;
+  }
+
+  private static void loadURL(Map<String, String> headers, URL url,
+    HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
+    Future<Void> f) {
+
+    log.info("loadURL url=" + url.toString());
+    String content;
+    try {
+      InputStream stream = url.openStream();
+      content = IOUtils.toString(stream, StandardCharsets.UTF_8);
+      stream.close();
+    } catch (IOException ex) {
+      f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
+      return;
+    }
+    String id = getId(loadingEntry, url, content, f);
+    if (f.isComplete()) {
+      return;
     }
     StringBuilder putUri = new StringBuilder();
     if (id == null) {
@@ -202,9 +212,9 @@ public class TenantLoading {
         reqPost.exceptionHandler(ex -> {
           if (!f.isComplete()) {
             f.handle(Future.failedFuture(PUT_STR + putUri.toString()
-              + " exception " + ex.getMessage()));
+              + ": " + ex.getMessage()));
           }
-          log.warn(POST_STR + endPointUrl + " exception " + ex.getMessage());
+          log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
         });
         endWithXHeaders(reqPost, headers, content);
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 204) {
@@ -217,10 +227,10 @@ public class TenantLoading {
     });
     reqPut.exceptionHandler(ex -> {
       if (!f.isComplete()) {
-        f.handle(Future.failedFuture(PUT_STR + putUri.toString() +
-          " exception " + ex.getMessage()));
+        f.handle(Future.failedFuture(PUT_STR + putUri.toString()
+          + ": " + ex.getMessage()));
       }
-      log.warn(PUT_STR + putUri.toString() + " exception " + ex.getMessage());
+      log.warn(PUT_STR + putUri.toString() + ": " + ex.getMessage());
     });
     endWithXHeaders(reqPut, headers, content);
   }
