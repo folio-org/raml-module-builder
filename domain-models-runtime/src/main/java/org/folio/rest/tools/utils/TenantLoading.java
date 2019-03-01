@@ -13,9 +13,11 @@ import io.vertx.core.logging.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Enumeration;
@@ -35,7 +37,7 @@ public class TenantLoading {
   private static final String RETURNED_STATUS = " returned status ";
   private static final String FAILED_STR = " failed ";
   private static final String POST_STR = "POST ";
-  private static final String PUT_STR = "POST ";
+  private static final String PUT_STR = "PUT ";
 
   private enum Strategy {
     CONTENT, // Id in JSON content PUT/POST
@@ -49,18 +51,22 @@ public class TenantLoading {
     String lead;
     String filePath;
     String uriPath;
+    String idProperty;
     private Strategy strategy;
 
-    LoadingEntry(String key, String lead, String filePath, String uriPath, Strategy strategy) {
+    LoadingEntry(String key, String lead, String filePath, String uriPath, Strategy strategy,
+      String idProperty) {
       this.key = key;
       this.lead = lead;
       this.filePath = filePath;
       this.uriPath = uriPath;
       this.strategy = strategy;
+      this.idProperty = idProperty;
     }
 
     LoadingEntry() {
       this.strategy = Strategy.CONTENT;
+      this.idProperty = "id";
     }
   }
 
@@ -122,6 +128,48 @@ public class TenantLoading {
     req.end(json);
   }
 
+  private static String getId(LoadingEntry loadingEntry, URL url, String content,
+    Future<Void> f) {
+
+    String id = null;
+    switch (loadingEntry.strategy) {
+      case BASENAME:
+        int base = url.getPath().lastIndexOf(File.separator);
+        int suf = url.getPath().lastIndexOf('.');
+        if (base == -1) {
+          f.handle(Future.failedFuture("No basename for " + url.toString()));
+          return null;
+        }
+        if (suf > base) {
+          id = url.getPath().substring(base, suf);
+        } else {
+          id = url.getPath().substring(base);
+        }
+        break;
+      case CONTENT:
+        JsonObject jsonObject = new JsonObject(content);
+        id = jsonObject.getString(loadingEntry.idProperty);
+        if (id == null) {
+          log.warn("Missing property "
+            + loadingEntry.idProperty + " for url=" + url.toString());
+
+          f.handle(Future.failedFuture("Missing property "
+            + loadingEntry.idProperty + " for url=" + url.toString()));
+          return null;
+        }
+        try {
+          id = URLEncoder.encode(id, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException ex) {
+          f.handle(Future.failedFuture("Encoding of " + id + FAILED_STR));
+          return null;
+        }
+        break;
+      case RAW:
+        break;
+    }
+    return id;
+  }
+
   private static void loadURL(Map<String, String> headers, URL url,
     HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
     Future<Void> f) {
@@ -136,31 +184,9 @@ public class TenantLoading {
       f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
       return;
     }
-    String id = null;
-    switch (loadingEntry.strategy) {
-      case BASENAME:
-        int base = url.getPath().lastIndexOf(File.separator);
-        int suf = url.getPath().lastIndexOf('.');
-        if (base == -1) {
-          f.handle(Future.failedFuture("No basename for " + url.toString()));
-          return;
-        }
-        if (suf > base) {
-          id = url.getPath().substring(base, suf);
-        } else {
-          id = url.getPath().substring(base);
-        }
-        break;
-      case CONTENT:
-        JsonObject jsonObject = new JsonObject(content);
-        id = jsonObject.getString("id");
-        if (id == null) {
-          f.handle(Future.failedFuture("Missing id for url=" + url.toString()));
-          return;
-        }
-        break;
-      case RAW:
-        break;
+    String id = getId(loadingEntry, url, content, f);
+    if (f.isComplete()) {
+      return;
     }
     StringBuilder putUri = new StringBuilder();
     if (id == null) {
@@ -175,22 +201,21 @@ public class TenantLoading {
     HttpClientRequest reqPut = httpClient.putAbs(putUri.toString(), resPut -> {
       if (loadingEntry.strategy != Strategy.RAW
         && (resPut.statusCode() == 404 || resPut.statusCode() == 400)) {
-        HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost
-          -> resPost.endHandler(x -> {
-            if (resPost.statusCode() == 201) {
-              f.handle(Future.succeededFuture());
-            } else {
-              f.handle(Future.failedFuture(POST_STR + endPointUrl
-                + RETURNED_STATUS + resPost.statusCode()));
-            }
-          })
-        );
-        reqPost.exceptionHandler(x
-          -> {
-          log.warn(POST_STR + endPointUrl + FAILED_STR);
-          f.handle(Future.failedFuture(POST_STR + endPointUrl + FAILED_STR));
-        }
-        );
+        HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost -> {
+          if (resPost.statusCode() == 201) {
+            f.handle(Future.succeededFuture());
+          } else {
+            f.handle(Future.failedFuture(POST_STR + endPointUrl
+              + RETURNED_STATUS + resPost.statusCode()));
+          }
+        });
+        reqPost.exceptionHandler(ex -> {
+          if (!f.isComplete()) {
+            f.handle(Future.failedFuture(PUT_STR + putUri.toString()
+              + ": " + ex.getMessage()));
+          }
+          log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
+        });
         endWithXHeaders(reqPost, headers, content);
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 204) {
         f.handle(Future.succeededFuture());
@@ -200,26 +225,22 @@ public class TenantLoading {
           + RETURNED_STATUS + resPut.statusCode()));
       }
     });
-    reqPut.exceptionHandler(x
-      -> {
-      log.warn(PUT_STR + putUri.toString() + FAILED_STR);
-      f.handle(Future.failedFuture(PUT_STR + putUri.toString() + FAILED_STR));
+    reqPut.exceptionHandler(ex -> {
+      if (!f.isComplete()) {
+        f.handle(Future.failedFuture(PUT_STR + putUri.toString()
+          + ": " + ex.getMessage()));
+      }
+      log.warn(PUT_STR + putUri.toString() + ": " + ex.getMessage());
     });
     endWithXHeaders(reqPut, headers, content);
   }
 
-  private static void loadData(Map<String, String> headers,
+  private static void loadData(String okapiUrl, Map<String, String> headers,
     LoadingEntry loadingEntry, HttpClient httpClient,
     Handler<AsyncResult<Integer>> res) {
 
     final String filePath = loadingEntry.lead + File.separator + loadingEntry.filePath;
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
-    String okapiUrl = headers.get("X-Okapi-Url-to");
-    if (okapiUrl == null) {
-      log.warn("loadData No X-Okapi-Url-to header");
-      res.handle(Future.failedFuture("No X-Okapi-Url-to header"));
-      return;
-    }
     final String endPointUrl = okapiUrl + "/" + loadingEntry.uriPath;
     List<Future> futures = new LinkedList<>();
     try {
@@ -246,33 +267,47 @@ public class TenantLoading {
     }
   }
 
-  public void performR(TenantAttributes ta, Map<String, String> headers, Iterator<LoadingEntry> it,
+  public void performR(String okapiUrl, TenantAttributes ta,
+    Map<String, String> headers, Iterator<LoadingEntry> it,
     HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res) {
     if (!it.hasNext()) {
       res.handle(Future.succeededFuture(number));
     } else {
       LoadingEntry le = it.next();
-      for (Parameter parameter : ta.getParameters()) {
-        if (le.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
-          loadData(headers, le, httpClient, x -> {
+      if (ta != null) {
+        for (Parameter parameter : ta.getParameters()) {
+          if (le.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
+            loadData(okapiUrl, headers, le, httpClient, x -> {
               if (x.failed()) {
                 res.handle(Future.failedFuture(x.cause()));
               } else {
-                performR(ta, headers, it, httpClient, number + x.result(), res);
+                performR(okapiUrl, ta, headers, it, httpClient, number + x.result(), res);
               }
             });
-          return;
+            return;
+          }
         }
       }
-      performR(ta, headers, it, httpClient, number, res);
+      performR(okapiUrl, ta, headers, it, httpClient, number, res);
     }
   }
 
   public void perform(TenantAttributes ta, Map<String, String> headers,
     Vertx vertx, Handler<AsyncResult<Integer>> handler) {
+
+    String okapiUrl = headers.get("X-Okapi-Url-to");
+    if (okapiUrl == null) {
+      log.warn("TenantLoading.perform No X-Okapi-Url-to header");
+      okapiUrl = headers.get("X-Okapi-Url");
+    }
+    if (okapiUrl == null) {
+      log.warn("TenantLoading.perform No X-Okapi-Url header");
+      handler.handle(Future.failedFuture("No X-Okapi-Url header"));
+      return;
+    }
     Iterator<LoadingEntry> it = loadingEntries.iterator();
     HttpClient httpClient = vertx.createHttpClient();
-    performR(ta, headers, it, httpClient, 0, res -> {
+    performR(okapiUrl, ta, headers, it, httpClient, 0, res -> {
       handler.handle(res);
       httpClient.close();
     });
@@ -289,6 +324,13 @@ public class TenantLoading {
   }
 
   public TenantLoading withIdContent() {
+    nextEntry.idProperty = "id";
+    nextEntry.strategy = Strategy.CONTENT;
+    return this;
+  }
+
+  public TenantLoading withContent(String idProperty) {
+    nextEntry.idProperty = idProperty;
     nextEntry.strategy = Strategy.CONTENT;
     return this;
   }
@@ -304,7 +346,8 @@ public class TenantLoading {
   }
 
   public TenantLoading add(String filePath, String uriPath) {
-    loadingEntries.add(new LoadingEntry(nextEntry.key, nextEntry.lead, filePath, uriPath, nextEntry.strategy));
+    loadingEntries.add(new LoadingEntry(nextEntry.key, nextEntry.lead,
+      filePath, uriPath, nextEntry.strategy, nextEntry.idProperty));
     return this;
   }
 
