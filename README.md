@@ -960,9 +960,9 @@ public void postTenant(TenantAttributes ta, Map<String, String> headers,
 }
 ```
 
-If data is already in resources, fine.. If not, for example, if in root of project in
-project, copy it with maven-resource-plugin. For example, to copy `reference-data` to
-`ref-data` in resources:
+If data is already in resources, fine.. If not, for example, if in root of
+project in project, copy it with maven-resource-plugin. For example, to
+copy `reference-data` to `ref-data` in resources:
 
 ```xml
 <execution>
