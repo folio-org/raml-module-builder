@@ -21,8 +21,6 @@ CREATE TRIGGER set_${table.tableName}_md_trigger BEFORE INSERT ON ${myuniversity
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_${table.tableName}_md_json()
 RETURNS TRIGGER AS $$
 DECLARE
-  createdDate timestamp WITH TIME ZONE;
-  createdBy text;
   updatedDate timestamp WITH TIME ZONE;
   updatedBy text;
 
@@ -30,26 +28,26 @@ DECLARE
   injectedMetadata jsonb;
 
 BEGIN
+  if NEW.creation_date IS NULL then
+  	RETURN NEW;
+  end if;
+
   SET TIME ZONE 'UTC';
 
-  createdBy = NEW.created_by;
-  createdDate = NEW.creation_date;
   updatedDate = NEW.jsonb->'metadata'->>'updatedDate';
   updatedBy = NEW.jsonb->'metadata'->>'updatedByUserId';
 
-  if createdDate IS NOT NULL then
-
-    injectedMetadata = jsonb_build_object(
-      'createdByUserId', createdBy,
-      'createdDate', to_char(createdDate, dateFormat),
+  injectedMetadata = jsonb_build_object(
+      'createdByUserId', NEW.created_by,
+      'createdDate', to_char(NEW.creation_date, dateFormat),
       'updatedDate', to_char(updatedDate, dateFormat)
     );
-    if updatedBy IS NOT NULL then
-      injectedMetadata = jsonb_set(injectedMetadata, '{updatedByUserId}', to_jsonb(updatedBy));
-    end if;
 
-    NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata}', injectedMetadata);
+  if updatedBy IS NOT NULL then
+    injectedMetadata = jsonb_set(injectedMetadata, '{updatedByUserId}', to_jsonb(updatedBy));
   end if;
+
+  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata}', injectedMetadata);
 
 RETURN NEW;
 END;
