@@ -1551,24 +1551,22 @@ public class RestVerticle extends AbstractVerticle {
         JsonObject j = new JsonObject(json);
         userId = j.getString("user_id");
       }
-      if(userId != null){
-        Metadata md = new Metadata();
-        md.setUpdatedDate(new Date());
-        md.setCreatedDate(new Date());
-        md.setCreatedByUserId(userId);
-        md.setUpdatedByUserId(userId);
-        try{
+
+      Metadata md = new Metadata();
+      md.setUpdatedDate(new Date());
+      md.setCreatedDate(new Date());
+      md.setCreatedByUserId(userId);
+      md.setUpdatedByUserId(userId);
+      try {
           /* if a metadata section is passed in by client, we cannot assume it is correct.
            * entity.getClass().getMethod("getMetaData",
           new Class[] { }).invoke(entity);*/
-          entity.getClass().getMethod("setMetadata",
-            new Class[] { Metadata.class }).invoke(entity,  md);
-        }
-        catch(Exception e){
-          //do nothing - if this is thrown then the setMetaData() failed, assume pojo
-          // (aka) json schema - didnt include a reference to it.
-          log.debug(e.getMessage(), e);
-        }
+        entity.getClass().getMethod("setMetadata",
+          new Class[]{Metadata.class}).invoke(entity, md);
+      } catch (Exception e) {
+        //do nothing - if this is thrown then the setMetaData() failed, assume pojo
+        // (aka) json schema - didnt include a reference to it.
+        log.debug(e.getMessage(), e);
       }
     } catch (Exception e) {
       log.warn("Problem parsing " + OKAPI_HEADER_TOKEN + " header, for path " + path + " - " + e.getMessage());
