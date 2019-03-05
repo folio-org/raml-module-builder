@@ -47,7 +47,7 @@ public final class PgUtil {
   private static final String NOT_FOUND = "Not found";
 
   /** Number of records to use from the title sort index in optimizedSql method */
-  private static int optimizedSqlSize = 10000;
+  
   private PgUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
@@ -449,12 +449,7 @@ public final class PgUtil {
 
 
 /** Number of records to use from the title sort index in optimizedSql method */
-public static int getOptimizedSqlSize() {
-  return optimizedSqlSize;
-}
-public static void setOptimizedSqlSize(int val) {
-  optimizedSqlSize  = val;
-}
+
 static CQLSortNode getSortNode(String cql) {
   try {
     CQLParser parser = new CQLParser();
@@ -525,7 +520,7 @@ private static String getAscDesc(ModifierSet modifierSet) {
       .setOffset(new Offset(offset));
   }
   public static String optimizedSql(PreparedCQL preparedCql, String tenantId, PostgresClient postgresClient,
-      int offset, int limit, String column ) throws Exception {
+      int offset, int limit, String column, int size ) throws Exception {
 
     String cql = preparedCql.getCqlWrapper().getQuery();
     CQLSortNode cqlSortNode = getSortNode(cql);
@@ -571,7 +566,7 @@ private static String getAscDesc(ModifierSet modifierSet) {
       + "             ( SELECT lower(f_unaccent(jsonb->>'" + column + "'))"
       + "               FROM " + tableName
       + "               ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
-      + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
+      + "               OFFSET " + size + " LIMIT 1"
       + "             )"
       + "   ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
       + "   LIMIT " + limit + " OFFSET " + offset
