@@ -95,15 +95,19 @@ public class PgUtilIT {
 
   private static void createUserTable(TestContext context) {
     execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
+    execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
     execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD 'testtenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
+    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
     execute(context, "CREATE TABLE " + schema + ".user " +
         "(_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL);");
     execute(context, "CREATE TABLE " + schema + ".duplicateid " +
         "(_id UUID DEFAULT             gen_random_uuid(), jsonb JSONB NOT NULL);");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
+    
+   
   }
 
   private static void execute(TestContext context, String sql) {
@@ -119,7 +123,7 @@ public class PgUtilIT {
   private static void executeAndNotify(TestContext context, String sql,Handler<AsyncResult<JsonArray>>  handler ) {
     Async async = context.async();
     PostgresClient.getInstance(vertx).getClient().querySingle(sql, handler);
-    async.await();
+    async.complete();
 
   }
   private static void executeIgnore(TestContext context, String sql) {
@@ -597,23 +601,15 @@ public class PgUtilIT {
     PreparedCQL pCQL = null;
     CQLWrapper wrapper = null;
     try {
-    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 0, 9, Arrays.asList(schema + ".user "));
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    try {
+    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 0, 9, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    try {
     	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 0, 9, columnName);
     } catch(FieldException fe) {
     	testContext.fail(fe.getMessage());
     } catch(Exception e) {
     	testContext.fail(e.getMessage());
     }
-    log.info("optimized sql is " + optimizedSQL);
+    log.error("optimized sql is " + optimizedSQL);
     //execut sql
     executeAndNotify(testContext,optimizedSQL,reply -> {
       //handle return and
@@ -635,68 +631,170 @@ public class PgUtilIT {
 
 
     // // limit=5
+    
     // json = searchForInstances("title=foo sortBy title", 0, 5);
-    // allInstances = json.getJsonArray("instances");
-    // assertThat(allInstances.size(), is(5));
-    // assertThat(json.getInteger("totalRecords"), is(999999999));
-    // for (int i=0; i<5; i++) {
-    //   JsonObject instance = allInstances.getJsonObject(i);
-    //   assertThat(instance.getString("title"), is("b foo " + (i + 1)));
-    // }
+    try {
+    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 0, 5, Arrays.asList(schema + ".user.jsonb "));
+    	pCQL = new PreparedCQL("user", wrapper );
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 0, 5, columnName);
+    } catch(FieldException fe) {
+    	testContext.fail(fe.getMessage());
+    } catch(Exception e) {
+    	testContext.fail(e.getMessage());
+    }
+    log.error("optimized sql is " + optimizedSQL);
+    executeAndNotify(testContext,optimizedSQL,reply -> {
+        //handle return and
+        if (reply.failed()) {
+      	  testContext.fail(reply.cause());
+        }
+        JsonArray json = reply.result();
+        assertThat(json.size(), is(5));
+       
+        for (int i=0; i<5; i++) {
+          JsonObject instance = json.getJsonObject(i);
+          assertThat(instance.getString("name"), is("b foo " + (i + 1)));
+        }
+      } );
 
     // // offset=6, limit=3
     // json = searchForInstances("title=foo sortBy title", 6, 3);
-    // allInstances = json.getJsonArray("instances");
-    // assertThat(allInstances.size(), is(3));
-    // assertThat(json.getInteger("totalRecords"), is(10));
-    // for (int i=0; i<3; i++) {
-    //   JsonObject instance = allInstances.getJsonObject(i);
-    //   assertThat(instance.getString("title"), is("d foo " + (1 + i + 1)));
-    // }
-
+    try {
+    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 6, 3, Arrays.asList(schema + ".user.jsonb "));
+    	pCQL = new PreparedCQL("user", wrapper );
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 6, 3, columnName);
+    } catch(FieldException fe) {
+    	testContext.fail(fe.getMessage());
+    } catch(Exception e) {
+    	testContext.fail(e.getMessage());
+    }
+    log.error("optimized sql is " + optimizedSQL);
+    executeAndNotify(testContext,optimizedSQL,reply -> {
+        //handle return and
+        if (reply.failed()) {
+      	  testContext.fail(reply.cause());
+        }
+        JsonArray json = reply.result();
+        assertThat(json.size(), is(5));
+       
+        for (int i=0; i<3; i++) {
+          JsonObject instance = json.getJsonObject(i);
+          assertThat(instance.getString("name"), is("d foo " + (1 + i + 1)));
+        }
+      } );
     // // offset=1, limit=8
     // json = searchForInstances("title=foo sortBy title", 1, 8);
-    // allInstances = json.getJsonArray("instances");
-    // assertThat(allInstances.size(), is(8));
-    // assertThat(json.getInteger("totalRecords"), is(10));
-    // for (int i=0; i<4; i++) {
-    //   JsonObject instance = allInstances.getJsonObject(i);
-    //   assertThat(instance.getString("title"), is("b foo " + (1 + i + 1)));
-    // }
-    // for (int i=0; i<4; i++) {
-    //   JsonObject instance = allInstances.getJsonObject(4 + i);
-    //   assertThat(instance.getString("title"), is("d foo " + (i + 1)));
-    // }
+    try {
+    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 1, 8, Arrays.asList(schema + ".user.jsonb "));
+    	pCQL = new PreparedCQL("user", wrapper );
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 1, 8, columnName);
+    } catch(FieldException fe) {
+    	testContext.fail(fe.getMessage());
+    } catch(Exception e) {
+    	testContext.fail(e.getMessage());
+    }
+    log.error("optimized sql is " + optimizedSQL);
+    executeAndNotify(testContext,optimizedSQL,reply -> {
+        //handle return and
+        if (reply.failed()) {
+      	  testContext.fail(reply.cause());
+        }
+        JsonArray json = reply.result();
+        assertThat(json.size(), is(8));
+       
+         for (int i=0; i<4; i++) {
+           JsonObject instance = json.getJsonObject(i);
+           assertThat(instance.getString("name"), is("b foo " + (1 + i + 1)));
+         }
+         for (int i=0; i<4; i++) {
+           JsonObject instance = json.getJsonObject(4 + i);
+           assertThat(instance.getString("name"), is("d foo " + (i + 1)));
+         }
+      } );
+
 
     // // "b foo", offset=1, limit=20
     // json = searchForInstances("title=b sortBy title/sort.ascending", 1, 20);
-    // allInstances = json.getJsonArray("instances");
-    // assertThat(allInstances.size(), is(4));
-    // assertThat(json.getInteger("totalRecords"), is(5));
-    // for (int i=0; i<4; i++) {
-    //   JsonObject instance = allInstances.getJsonObject(i);
-    //   assertThat(instance.getString("title"), is("b foo " + (1 + i + 1)));
-    // }
+    try {
+    	wrapper = PgUtil.createCQLWrapper("name=b sortBy sortBy title/name.ascending", 1, 20, Arrays.asList(schema + ".user.jsonb "));
+    	pCQL = new PreparedCQL("user", wrapper );
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 1, 20, columnName);
+    } catch(FieldException fe) {
+    	testContext.fail(fe.getMessage());
+    } catch(Exception e) {
+    	testContext.fail(e.getMessage());
+    }
+    log.error("optimized sql is " + optimizedSQL);
+    executeAndNotify(testContext,optimizedSQL,reply -> {
+        //handle return and
+        if (reply.failed()) {
+      	  testContext.fail(reply.cause());
+        }
+        JsonArray json = reply.result();
+        assertThat(json.size(), is(4));
+       
+         for (int i=0; i<4; i++) {
+           JsonObject instance = json.getJsonObject(i);
+           assertThat(instance.getString("name"), is("b foo " + (1 + i + 1)));
+         }
+      } );
+
 
     // // sort.descending, offset=1, limit=3
     // json = searchForInstances("title=foo sortBy title/sort.descending", 1, 3);
-    // allInstances = json.getJsonArray("instances");
-    // assertThat(allInstances.size(), is(3));
-    // assertThat(json.getInteger("totalRecords"), is(999999999));
-    // for (int i=0; i<3; i++) {
-    //   JsonObject instance = allInstances.getJsonObject(i);
-    //   assertThat(instance.getString("title"), is("d foo " + (4 - i)));
-    // }
+    try {
+    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy sortBy title/name.ascending", 1, 3, Arrays.asList(schema + ".user.jsonb "));
+    	pCQL = new PreparedCQL("user", wrapper );
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 1, 3, columnName);
+    } catch(FieldException fe) {
+    	testContext.fail(fe.getMessage());
+    } catch(Exception e) {
+    	testContext.fail(e.getMessage());
+    }
+    log.error("optimized sql is " + optimizedSQL);
+    executeAndNotify(testContext,optimizedSQL,reply -> {
+        //handle return and
+        if (reply.failed()) {
+      	  testContext.fail(reply.cause());
+        }
+        JsonArray json = reply.result();
+        assertThat(json.size(), is(3));
+       
+        
+         for (int i=0; i<3; i++) {
+           JsonObject instance = json.getJsonObject(i);
+           assertThat(instance.getString("name"), is("d foo " + (4 - i)));
+         }
+      } );
+
 
     // // sort.descending, offset=6, limit=3
     // json = searchForInstances("title=foo sortBy title/sort.descending", 6, 3);
-    // allInstances = json.getJsonArray("instances");
-    // assertThat(allInstances.size(), is(3));
-    // assertThat(json.getInteger("totalRecords"), is(10));
-    // for (int i=0; i<3; i++) {
-    //   JsonObject instance = allInstances.getJsonObject(i);
-    //   assertThat(instance.getString("title"), is("b foo " + (4 - i)));
-    // }
+    try {
+    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy sortBy title/name.ascending", 6, 3, Arrays.asList(schema + ".user.jsonb "));
+    	pCQL = new PreparedCQL("user", wrapper );
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 6, 3, columnName);
+    } catch(FieldException fe) {
+    	testContext.fail(fe.getMessage());
+    } catch(Exception e) {
+    	testContext.fail(e.getMessage());
+    }
+    log.error("optimized sql is " + optimizedSQL);
+    executeAndNotify(testContext,optimizedSQL,reply -> {
+        //handle return and
+        if (reply.failed()) {
+      	  testContext.fail(reply.cause());
+        }
+        JsonArray json = reply.result();
+        assertThat(json.size(), is(3));
+       
+        
+         for (int i=0; i<3; i++) {
+           JsonObject instance = json.getJsonObject(i);
+           assertThat(instance.getString("name"), is("b foo " + (4 - i)));
+         }
+    });
+
 }
   /**
    * Insert n records into instance table where the title field is build using
