@@ -17,8 +17,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
-
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 
@@ -33,11 +31,7 @@ public class MetadataTriggerIT {
   @BeforeClass
   public static void setUp(TestContext context) {
     vertx = VertxUtils.getVertxWithExceptionHandler();
-    try {
-      PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-    } catch (IOException e) {
-      context.fail(e);
-    }
+    PostgresClient.getInstance(vertx);
 
     Async async = context.async();
     int port = NetworkUtils.nextFreePort();
