@@ -22,33 +22,36 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_${table.tableName}_md
 RETURNS TRIGGER AS $$
 DECLARE
   createdDate timestamp WITH TIME ZONE;
-  createdBy text ;
+  createdBy text;
   updatedDate timestamp WITH TIME ZONE;
-  updatedBy text ;
-  injectedId text;
+  updatedBy text;
+
+  dateFormat text := 'YYYY-MM-DD"T"HH24:MI:SS.MSOF';
+  injectedMetadata jsonb;
+
 BEGIN
+  SET TIME ZONE 'UTC';
+
   createdBy = NEW.created_by;
   createdDate = NEW.creation_date;
   updatedDate = NEW.jsonb->'metadata'->>'updatedDate';
   updatedBy = NEW.jsonb->'metadata'->>'updatedByUserId';
 
-  if createdBy ISNULL then
-    createdBy = 'undefined';
-  end if;
-  if updatedBy ISNULL then
-    updatedBy = 'undefined';
-  end if;
   if createdDate IS NOT NULL then
--- creation date and update date will always be injected by rmb - if created date is null it means that there is no meta data object
--- associated with this object - so only add the meta data if created date is not null -- created date being null may be a problem
--- and should be handled at the app layer for now -- currently this protects against an exception in the db if no md is present in the json
-    injectedId = '{"createdDate":"'||to_char(createdDate,'YYYY-MM-DD"T"HH24:MI:SS.MS')||'" , "createdByUserId":"'||createdBy||'", "updatedDate":"'||to_char(updatedDate,'YYYY-MM-DD"T"HH24:MI:SS.MSOF')||'" , "updatedByUserId":"'||updatedBy||'"}';
-    NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata}' ,  injectedId::jsonb , false);
-  else
-    NEW.jsonb = NEW.jsonb;
-  end if;
-RETURN NEW;
 
+    injectedMetadata = jsonb_build_object(
+      'createdByUserId', createdBy,
+      'createdDate', to_char(createdDate, dateFormat),
+      'updatedDate', to_char(updatedDate, dateFormat)
+    );
+    if updatedBy IS NOT NULL then
+      injectedMetadata = jsonb_set(injectedMetadata, '{updatedByUserId}', to_jsonb(updatedBy));
+    end if;
+
+    NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata}', injectedMetadata);
+  end if;
+
+RETURN NEW;
 END;
 $$ language 'plpgsql';
 
