@@ -4,6 +4,11 @@
       "tableName": "test_tenantapi",
       "pkColumnName": "_id",
       "generateId": true
+    },
+    {
+      "tableName": "test_md_trigger_table",
+      "pkColumnName": "_id",
+      "withMetadata": true
     }
   ]
 }
