@@ -4,6 +4,23 @@ types:
   User: !include user.schema
 
 /users/{id}:
+  post:
+    description: Post user in XML format
+    body:
+      application/xml:
+        type: string
+    responses:
+      201:
+        description: OK
+        body:
+          application/xml:
+            type: string
+            example: "<x>y</x>"
+      400:
+        description: User Error
+        body:
+          text/plain:
+            example: user error
   get:
     queryParameters:
       lang:
@@ -18,5 +35,26 @@ types:
             type: User
       400:
         description: Bad Request
+        body:
+          text/plain:
       404:
         description: Not Found
+        body:
+          text/plain:
+/usersupload:
+  post:
+    description: Upload users
+    body:
+      application/octet-stream:
+    responses:
+      201:
+        description: OK
+        body:
+          text/plain:
+            type: string
+            example: "123"
+      400:
+        description: User Error
+        body:
+          text/plain:
+            example: user error

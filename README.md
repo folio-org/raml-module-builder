@@ -1,7 +1,7 @@
 
 # Raml-Module-Builder
 
-Copyright (C) 2016-2018 The Open Library Foundation
+Copyright (C) 2016-2019 The Open Library Foundation
 
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
@@ -271,7 +271,7 @@ See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/d
 ## Local development server
 
 To get going quickly with running a local instance of Okapi, adding a tenant and some test data,
-and deploying some modules, see 
+and deploying some modules, see
 [Running a local FOLIO system](https://dev.folio.org/guides/run-local-folio/).
 
 ## Creating a new module
@@ -390,12 +390,12 @@ The [mod-notify](https://github.com/folio-org/mod-notify) is an exemplar.
 
 Remove the temporary copy of the "ramls" directory from Step 1, and replace with your own.
 
-Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files,
+Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
-NOTE: At this stage ensure that using head of its "raml1.0" branch.
+The "raml1.0" branch is the current and default branch.
 
 Create JSON schemas indicating the objects exposed by the module.
 Use the `description` field alongside the `type` field to explain the content and
@@ -408,6 +408,10 @@ common ramls directory.
 
 The documentation of HTTP response codes
 is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java)
+
+Use the collection/collection-item pattern provided by the
+[collection resource type](https://github.com/folio-org/raml/tree/raml1.0/rtypes) explained
+in the [RAML 200 tutorial](https://raml.org/developers/raml-200-tutorial#resource-types).
 
 The RMB does do some validation of RAML files at compile-time.
 There are some useful tools to assist with command-line validation,
@@ -422,9 +426,6 @@ RAML-aware text editors are very helpful, such as
 
 Remember that the POM configuration enables viewing your RAML and interacting
 with your application via the local [API documentation](#documentation-of-the-apis).
-
-NOTE: The FOLIO project is currently using `RAML 0.8` version until the
-`RAML 1.0` tools have [settled](https://issues.folio.org/browse/FOLIO-523).
 
 ## Adding an init() implementation
 
@@ -659,8 +660,13 @@ For example, to upload a large file without having to save it all in memory:
  - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
  - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
 
-The RMB will then call the function every time a chunk of data is received. This means that a new Object is
-instantiated by the RMB for each chunk of data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
+The RMB will then call the function every time a chunk of data is received.
+This means that a new Object is instantiated by the RMB for each chunk of
+data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
+
+For each invocation RMB adds header `streamed_id` which will be unique
+for the current stream. For the last invocation, header `complete` is supplied
+to indicate "end-of-stream".
 
 
 ## PostgreSQL integration
@@ -861,11 +867,127 @@ The Postgres Client support in the RMB is schema specific, meaning that it expec
 
 The RAML defining the API:
 
-https://github.com/folio-org/raml/blob/3e5a4a58e141fb9d4a6968723df50e0f0b8d8de1/ramls/tenant.raml
+   https://github.com/folio-org/raml/blob/raml1.0/ramls/tenant.raml
+
+By default RMB includes an implementation of the Tenant API which assumes Postgres being present. Implementation in
+ [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) . You might want to extend/override this because:
+
+1. You want to not call it at all (your module is not using Postgres).
+2. You want to provide further Tenant control - such as loading reference and/or sample data.
+
+#### Extending the Tenant Init
+
+In order to implement your tenant API, extend `TenantAPI` class:
+
+```java
+package org.folio.rest.impl;
+import javax.ws.rs.core.Response;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+
+public class MyTenantAPI extends TenantAPI {
+ @Override
+  public void postTenant(TenantAttributes ta, Map<String, String> headers,
+    Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+
+    ..
+    }
+  @Override
+  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+    ..
+  }
+  ..
+}
+
+```
+
+If you wish to call the Post Tenant API (with Postgres) , just call the corresponding super-class, eg:
+```java
+@Override
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+  super.postTenant(ta, headers, hndlr, cntxt);
+}
+```
+(not much point in that though - it would be the same as not defining it as all).
+
+If you wish to load data for your module, that should be done after the DB has been successfully initialized,
+eg you'll do something like:
+```
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  super.postTenant(ta, headers, res -> {
+    if (res.failed()) {
+      hndlr.handle(res);
+      return;
+    }
+    // load data here
+    hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+      .respond201WithApplicationJson("")));
+  }, cntxt);
+}
+```
+
+There's no right way to load data, but consider that data load will be both happening for first time tenant
+usage of the module and during an upgrade process. Your data loading should be idempotent. If files are stored
+as resources and as JSON files, you can use the TenantLoading utility.
+
+```java
+import org.folio.rest.tools.utils.TenantLoading;
+
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  super.postTenant(ta, headers, res -> {
+    if (res.failed()) {
+      hndlr.handle(res);
+      return;
+    }
+    TenantLoading tl = new TenantLoading();
+    // two sets of reference data files
+    // resources ref-data/data1 and ref-data/data2 .. loaded to
+    // okapi-url/instances and okapi-url/items respectively
+    tl.withKey("loadReference").withLead("ref-data")
+      .withIdContent().
+      .add("data1", "instances")
+      .add("data2", "items");
+    tl.perform(ta, headers, vertx, res1 -> {
+      if (res1.failed()) {
+        hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+          .respond500WithTextPlain(res1.cause().getLocalizedMessage())));
+        return;
+      }
+      hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+        .respond201WithApplicationJson("")));
+    });
+  }, cntxt);
+}
+```
+
+If data is already in resources, fine.. If not, for example, if in root of
+project in project, copy it with maven-resource-plugin. For example, to
+copy `reference-data` to `ref-data` in resources:
+
+```xml
+<execution>
+  <id>copy-reference-data</id>
+  <phase>process-resources</phase>
+  <goals>
+    <goal>copy-resources</goal>
+  </goals>
+  <configuration>
+    <outputDirectory>${basedir}/target/classes/ref-data</outputDirectory>
+    <resources>
+      <resource>
+        <directory>${basedir}/reference-data</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+  </configuration>
+</execution>
+```
+
 
 #### The Post Tenant API
 
-RMB will look for a file at `/resources/templates/db_scripts/` called **schema.json**
+The Postgres based Tenant API implementation will look for a file at `/resources/templates/db_scripts/`
+called **schema.json**
 
 The file contains an array of tables and views to create for a tenant on registration (tenant api post)
 
@@ -1116,7 +1238,20 @@ The JSON Schemas API is a multiple interface which affords RMB modules to expose
 }
 ```
 
-The interface has a single GET endpoint with an optional query parameter path. Without the path query parameter the response will be an application/json array of the available JSON Schemas. This will be the immediate JSON Schemas the module provides. If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
+The interface has a single GET endpoint with an optional query parameter path.
+Without the path query parameter the response will be an application/json array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
+Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
+`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
+specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify 
+directory in the form of glob expression (e.g. "raml-util/**") 
+ For example:
+```
+<systemProperty>
+  <key>schema_paths</key>
+  <value>schemas/**,raml-util/**</value>
+</systemProperty>
+```
+If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
 
 The RAML defining the API:
 

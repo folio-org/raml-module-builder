@@ -1,3 +1,40 @@
+## 23.9.0 2019-03-01
+
+ * RMB-338 TenantLoading: allow property of JSON Object to be set
+ * Generated HTTP client now sets X-Okapi-Url header
+ * TenantLoading: handle null TenantAttributes
+
+## 23.8.0 2019-02-27
+
+ * RMB-337 Extend TenangLoading API
+
+## 23.7.0 2019-02-25
+
+ * RMB-330 Gin index lost lower and f_unaccent functions
+ * RMB-329 TenantLoading API
+
+## 23.6.0 2019-02-18
+
+ * RMB-332 Move BooksDemoAPI impl to test
+ * Update cql2pgjson from 3.0.3 to 3.1.0 CQLPG-76 CQLPG-86
+
+## 23.5.0 2019-01-29
+
+ * RMB-324 Fix No Content-Type for most errors returned by RMB
+ * RMB-325 Make /_/jsonSchemas to return schemas from subfolders
+ * RMB-326 Fix Upload: complete state set before end-of-stream
+ * Document headers streamed_id and complete
+
+## 23.4.0 2019-01-16
+
+ * RMB-304 PostgresClient.get(txConn, sql, params, replyHandler) for SELECT in a transaction
+ * RMB-305 Add support for DISTINCT ON
+ * RMB-310 XML handling different when going to RAML 1.0 / RMB 20+
+ * RMB-312 Integration tests fails: too many open files
+ * RMB-313 NullPointerException PostgresClientIT.tearDownClass on Windows
+ * RMB-315 Fix security vulnerabilities in jackson-databind >= 2.9.0, < 2.9.8
+ * RMB-322 Add offset and limit getter in CQLWrapper
+
 ## 23.3.0 2018-12-14
 
  * RMB-162 Simplify PostgresClient.getInstance

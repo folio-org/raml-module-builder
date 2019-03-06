@@ -143,6 +143,11 @@ public class DemoRamlRestTest {
   }
 
   @Test
+  public void getOk(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1900&author=me&rating=1.2", 200);
+  }
+
+  @Test
   public void history(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
   }
@@ -153,11 +158,7 @@ public class DemoRamlRestTest {
     d.setAuthor("a");
     d.setGenre("g");
     d.setDescription("asdfss");
-//    d.setLink("link");
-//    d.setTitle("title");
     b.setData(d);
-/*    b.setStatus(0);
-    b.setSuccess(true);*/
     ObjectMapper om = new ObjectMapper();
     String book = "";
     try {
@@ -518,14 +519,17 @@ public class DemoRamlRestTest {
             + System.currentTimeMillis() + " mode " + mode + " for " + url);
 
       if (statusCode == errorCode) {
-        if(statusCode == 422){
-          String str = response.getHeader("Content-type");
-          if(str != null && str.contains("application/json")){
+        final String str = response.getHeader("Content-type");
+        if (str == null && statusCode >= 400) {
+          context.fail(new RuntimeException("No Content-Type", stacktrace));
+        }
+        if (statusCode == 422) {
+          if (str.contains("application/json")){
             context.assertTrue(true);
           }
           else{
             context.fail(new RuntimeException(
-                "422 response code should contain a content type header of application/json",
+                "422 response code should contain a Content-Type header of application/json",
                 stacktrace));
           }
         }

@@ -46,7 +46,7 @@ import io.vertx.ext.sql.ResultSet;
 
 public class AdminAPI implements Admin {
 
-  private static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger(BooksDemoAPI.class);
+  private static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger(AdminAPI.class);
   // format of the percentages returned by the /memory api
   private static final DecimalFormat                DECFORMAT        = new DecimalFormat("###.##");
   private static LRUCache<Date, String>             jvmMemoryHistory = LRUCache.newInstance(100);

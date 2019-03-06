@@ -120,7 +120,6 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
   private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept, x-okapi-tenant";
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
-  private static final String       SUPPORTED_CONTENT_TYPE_STREAMIN = "application/octet-stream";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_API_DEF = "application/vnd.api+json";
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
@@ -836,6 +835,8 @@ public class RestVerticle extends AbstractVerticle {
       rc.response().setStatusCode(status);
       if(status == 422){
         rc.response().putHeader("Content-type", SUPPORTED_CONTENT_TYPE_JSON_DEF);
+      } else {
+        rc.response().putHeader("Content-type", SUPPORTED_CONTENT_TYPE_TEXT_DEF);
       }
       if(message != null){
         rc.response().write(message);
@@ -866,7 +867,7 @@ public class RestVerticle extends AbstractVerticle {
     mm.forEach(consumer);
   }
 
-  public void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
+  private void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
       Map<String,String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
 
     String generateRCforFunc = PomReader.INSTANCE.getProps().getProperty("generate_routing_context");
@@ -879,8 +880,6 @@ public class RestVerticle extends AbstractVerticle {
         }
       }
     }
-
-    Context context = vertx.getOrCreateContext();
 
     //if streaming is requested the status will be 0 (streaming started)
     //or 1 streaming data complete
@@ -921,25 +920,22 @@ public class RestVerticle extends AbstractVerticle {
     }*/
     newArray[params.length - (size-pos)] = headers;
 
-    context.runOnContext(v -> {
+    try {
+      method.invoke(o, newArray);
+      // response.setChunked(true);
+      // response.setStatusCode(((Response)result).getStatus());
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      String message;
       try {
-        method.invoke(o, newArray);
-        // response.setChunked(true);
-        // response.setStatusCode(((Response)result).getStatus());
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        String message;
-        try {
-          // catch exception for now in case of null point and show generic
-          // message
-          message = e.getCause().getMessage();
-        } catch (Throwable ee) {
-          message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
-        }
-        endRequestWithError(rc, 400, true, message, new boolean[] { true });
+        // catch exception for now in case of null point and show generic
+        // message
+        message = e.getCause().getMessage();
+      } catch (Throwable ee) {
+        message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
       }
-
-    });
+      endRequestWithError(rc, 400, true, message, new boolean[]{true});
+    }
   }
 
   public JsonObject loadConfig(String configFile) {
@@ -1259,6 +1255,9 @@ public class RestVerticle extends AbstractVerticle {
               if(bodyContent != null){
                 if("java.io.Reader".equals(valueType)){
                   paramArray[order] = new StringReader(bodyContent);
+                }
+                else if ("java.lang.String".equals(valueType)) {
+                  paramArray[order] = bodyContent;
                 }
                 else if(bodyContent.length() > 0) {
                   try {

@@ -4,12 +4,18 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertThat;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import io.vertx.core.json.JsonObject;
+import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configurator;
@@ -17,6 +23,7 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
+import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -54,6 +61,7 @@ public class PostgresClientIT {
   /** table name */
   static private final String INVALID_JSON = "invalid_json";
   static private final String INVALID_JSON_UUID = "49999999-4999-4999-8999-899999999999";
+  static private final String MOCK_POLINES_TABLE = "mock_po_lines";
   static private Vertx vertx = null;
 
   /** Log4j2 logging level */
@@ -1432,5 +1440,123 @@ public class PostgresClientIT {
   @Test
   public void selectStreamParamTxFailed(TestContext context) {
     postgresClient().selectStream(Future.failedFuture("failed"), "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectDistinctOn(TestContext context) throws IOException {
+    Async async = context.async();
+    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+
+    postgresClient.select("SELECT DISTINCT ON (jsonb->>'owner') * FROM mock_po_lines  ORDER BY (jsonb->>'owner') DESC", select -> {
+      context.assertEquals(3, select.result().getResults().size());
+      async.complete();
+    });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetDistinctOn(TestContext context) throws IOException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
+      "jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+        context.assertEquals(2, objectCount.get());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetDistinctOnWithFacets(TestContext context) throws IOException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    List<FacetField> facets = new ArrayList<FacetField>() {{
+      add(new FacetField("jsonb-->'edition'"));
+    }};
+
+    postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
+      facets,"jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+        context.assertEquals(2, objectCount.get());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void getDistinctOn(TestContext context) throws IOException {
+    Async async = context.async();
+    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    //without facets
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
+      false, null, "jsonb->>'order_format'", handler -> {
+        context.assertEquals(4, handler.result().getResults().size());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void getDistinctOnWithFacets(TestContext context) throws IOException {
+    Async async = context.async();
+    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+
+    List<FacetField> facets = new ArrayList<FacetField>() {{
+      add(new FacetField("jsonb-->'edition'"));
+    }};
+
+    //without facets
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
+      false, null, "jsonb->>'order_format'", handler -> {
+        context.assertEquals(4, handler.result().getResults().size());
+        async.complete();
+      });
+    async.awaitSuccess();
+
+    //with facets
+    Async async2 = context.async();
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
+      false, facets, "jsonb->>'order_format'", handler -> {
+        context.assertEquals(4, handler.result().getResults().size());
+        async2.complete();
+      });
+    async2.awaitSuccess();
+  }
+
+  private PostgresClient createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
+    String schema = PostgresClient.convertToPsqlStandard(TENANT);
+    String polines = getMockData("mockdata/poLines.json");
+    postgresClient = createTable(context, TENANT, tableName, tableDefiniton);
+    for (String jsonbValue:  polines.split("\n")){
+      String additionalField = new JsonObject(jsonbValue).getString("publication_date");
+      execute(context, "INSERT INTO " + schema + "." + tableName + " (jsonb, distinct_test_field) VALUES " +
+        "('" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
+    }
+    return postgresClient;
+  }
+
+  public static String getMockData(String path) throws IOException {
+    try (InputStream resourceAsStream = PostgresClientIT.class.getClassLoader().getResourceAsStream(path)) {
+      if (resourceAsStream != null) {
+        return IOUtils.toString(resourceAsStream, StandardCharsets.UTF_8);
+      } else {
+        StringBuilder sb = new StringBuilder();
+        try (Stream<String> lines = Files.lines(Paths.get(path))) {
+          lines.forEach(sb::append);
+        }
+        return sb.toString();
+      }
+    }
   }
 }
