@@ -48,8 +48,8 @@ public class MetadataTriggerIT {
   }
 
   @AfterClass
-  public static void tearDown() {
-    PostgresClient.stopEmbeddedPostgres();
+  public static void tearDown(TestContext context) {
+    vertx.close(context.asyncAssertSuccess());
   }
 
   @Test
