@@ -83,6 +83,9 @@ RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there
         withPlainOK -> respond200WithTextPlain
         withJsonCreated -> respond201WithApplicationJson
 
+    Since RMB v23.3.0 PgUtil provides the methods deleteById, getById, post and put that
+    automatically create the correct response.
+
     Note: For 201 / created codes, the location header has changed and is no longer a string
     but an object and should be passed in as:
       PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
