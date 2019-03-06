@@ -5,7 +5,7 @@
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.${table.tableName}_set_md()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.creation_date = to_timestamp(NEW.jsonb->'metadata'->>'createdDate', 'YYYY-MM-DD"T"HH24:MI:SS.MS');
+  NEW.creation_date = (NEW.jsonb->'metadata'->>'createdDate')::timestamp at time zone 'UTC';
   NEW.created_by = NEW.jsonb->'metadata'->>'createdByUserId';
   RETURN NEW;
 END;
@@ -34,7 +34,7 @@ BEGIN
 
   SET TIME ZONE 'UTC';
 
-  updatedDate = NEW.jsonb->'metadata'->>'updatedDate';
+  updatedDate = (NEW.jsonb->'metadata'->>'updatedDate')::timestamp at time zone 'UTC';
   updatedBy = NEW.jsonb->'metadata'->>'updatedByUserId';
 
   injectedMetadata = jsonb_build_object(
