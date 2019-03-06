@@ -269,7 +269,7 @@ public class GenerateRunner {
    */
   private void copyConfigProperties(Properties properties, Map<String, String> config) {
     properties.stringPropertyNames().stream()
-      .filter(property -> property.startsWith(SCHEMA_CONFIG_PROPERTY_PREFIX))
+      .filter(name -> name.startsWith(SCHEMA_CONFIG_PROPERTY_PREFIX))
       .forEach(name -> {
           String value = (String) properties.get(name);
           config.put(name.substring(SCHEMA_CONFIG_PROPERTY_PREFIX.length()), value);
