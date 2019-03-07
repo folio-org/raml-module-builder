@@ -45,8 +45,6 @@ public final class PgUtil {
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
-
-  /** Number of records to use from the title sort index in optimizedSql method */
   
   private PgUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
@@ -501,11 +499,13 @@ private static String getAscDesc(ModifierSet modifierSet) {
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
   }
   /**
-   * Execute an optimized query with performance hints for the PostgreSQL optimizer.
+   * Generate a CQLWrapper object for use by optimization.
    *
-   * @param preparedCql the query to optimize
-   * @return true if an optimized query gets executed, false otherwise
-   * @throws QueryValidationException on invalid CQL
+   * @param query the cql query to parse
+   * @param limit the max objects to return
+   * @param offset the start index of objects to return
+   * @param fields the fields to apply the cql query above to
+   * @return CQLWrapper
    */
   public static CQLWrapper createCQLWrapper(
     String query,
@@ -519,6 +519,19 @@ private static String getAscDesc(ModifierSet modifierSet) {
       .setLimit(new Limit(limit))
       .setOffset(new Offset(offset));
   }
+  /**
+   * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
+   *
+   * @param preparedCql the cql query
+   * @param tenantId the tenant used to generate schema location
+   * @param postgresClient client used to execute the query
+   * @param offset start index of objects to return
+   * @param limit max number of objects to return
+   * @param column the index column to use 
+   * @param size the number of rows that determines which method will be used to generate the ultimate result 
+   * @return CQLWrapper
+   * @throws Exception on generation failure
+   */
   public static String optimizedSql(PreparedCQL preparedCql, String tenantId, PostgresClient postgresClient,
       int offset, int limit, String column, int size ) throws Exception {
 
