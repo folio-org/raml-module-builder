@@ -730,7 +730,7 @@ public class PgUtilIT {
     // // "b foo", offset=1, limit=20
     // json = searchForInstances("title=b sortBy title/sort.ascending", 1, 20);
     try {
-    	wrapper = PgUtil.createCQLWrapper("name=b sortBy sortBy title/name.ascending", 1, 20, Arrays.asList(schema + ".user.jsonb "));
+        wrapper = PgUtil.createCQLWrapper("name=b sortBy name/sort.ascending", 1, 20, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
     	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 1, 20, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
@@ -757,7 +757,7 @@ public class PgUtilIT {
     // // sort.descending, offset=1, limit=3
     // json = searchForInstances("title=foo sortBy title/sort.descending", 1, 3);
     try {
-    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy sortBy title/name.ascending", 1, 3, Arrays.asList(schema + ".user.jsonb "));
+        wrapper = PgUtil.createCQLWrapper("name=foo sortBy name/sort.ascending", 1, 3, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
     	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 1, 3, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
@@ -785,7 +785,7 @@ public class PgUtilIT {
     // // sort.descending, offset=6, limit=3
     // json = searchForInstances("title=foo sortBy title/sort.descending", 6, 3);
     try {
-    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy sortBy title/name.ascending", 6, 3, Arrays.asList(schema + ".user.jsonb "));
+        wrapper = PgUtil.createCQLWrapper("name=foo sortBy name/sort.ascending", 6, 3, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
     	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 6, 3, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
