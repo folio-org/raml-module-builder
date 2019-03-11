@@ -611,7 +611,7 @@ public class PgUtilIT {
     try {
     	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 0, 9, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 0, 9, columnName, optimizdSQLSize);
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant",  0, 9, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
     	testContext.fail(fe.getMessage());
     } catch(Exception e) {
@@ -647,7 +647,7 @@ public class PgUtilIT {
     try {
     	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 0, 5, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 0, 5, columnName, optimizdSQLSize);
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant",  0, 5, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
     	testContext.fail(fe.getMessage());
     } catch(Exception e) {
@@ -676,7 +676,7 @@ public class PgUtilIT {
     try {
     	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 6, 3, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 6, 3, columnName, optimizdSQLSize);
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", 6, 3, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
     	testContext.fail(fe.getMessage());
     } catch(Exception e) {
@@ -701,7 +701,7 @@ public class PgUtilIT {
     try {
     	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 1, 8, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 1, 8, columnName, optimizdSQLSize);
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", 1, 8, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
     	testContext.fail(fe.getMessage());
     } catch(Exception e) {
@@ -732,7 +732,7 @@ public class PgUtilIT {
     try {
         wrapper = PgUtil.createCQLWrapper("name=b sortBy name/sort.ascending", 1, 20, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 1, 20, columnName, optimizdSQLSize);
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant",  1, 20, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
     	testContext.fail(fe.getMessage());
     } catch(Exception e) {
@@ -759,7 +759,7 @@ public class PgUtilIT {
     try {
         wrapper = PgUtil.createCQLWrapper("name=foo sortBy name/sort.ascending", 1, 3, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 1, 3, columnName, optimizdSQLSize);
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant",  1, 3, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
     	testContext.fail(fe.getMessage());
     } catch(Exception e) {
@@ -787,7 +787,7 @@ public class PgUtilIT {
     try {
         wrapper = PgUtil.createCQLWrapper("name=foo sortBy name/sort.ascending", 6, 3, Arrays.asList(schema + ".user.jsonb "));
     	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", pg, 6, 3, columnName, optimizdSQLSize);
+    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", 6, 3, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
     	testContext.fail(fe.getMessage());
     } catch(Exception e) {
