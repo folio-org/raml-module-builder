@@ -48,13 +48,13 @@ public class TenantLoading {
 
   private class LoadingEntry {
 
+    UnaryOperator<String> contentFilter;
     String key;
     String lead;
     String filePath;
     String uriPath;
     String idProperty;
     private Strategy strategy;
-    UnaryOperator<String> contentFilter;
 
     LoadingEntry(String key, String lead, String filePath, String uriPath, Strategy strategy,
       String idProperty, UnaryOperator<String> contentFilter) {
