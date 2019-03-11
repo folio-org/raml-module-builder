@@ -11,6 +11,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -122,6 +123,36 @@ public class TenantLoadingTest {
       context.assertTrue(ids.contains("2"));
       async.complete();
     });
+  }
+
+  public String myFilter(String content) {
+    JsonObject obj = new JsonObject(content);
+    String id = obj.getString("id");
+    obj.put("id", "1" + id);
+    return obj.encodePrettily();
+  }
+
+  @Test
+  public void testOKWithContentFilter(TestContext context) {
+    Async async = context.async();
+    List<Parameter> parameters = new LinkedList<>();
+    parameters.add(new Parameter().withKey("loadRef").withValue("true"));
+    TenantAttributes tenantAttributes = new TenantAttributes()
+      .withModuleTo("mod-1.0.0")
+      .withParameters(parameters);
+    Map<String, String> headers = new HashMap<String, String>();
+    headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
+    TenantLoading tl = new TenantLoading()
+      .withKey("loadRef")
+      .withLead("tenant-load-ref")
+      .add("data");
+    tl.perform(tenantAttributes, headers, vertx, res -> {
+      context.assertTrue(res.succeeded());
+      context.assertEquals(2, res.result());
+      context.assertTrue(ids.contains("11"));
+      context.assertTrue(ids.contains("12"));
+      async.complete();
+    }, this::myFilter);
   }
 
   @Test

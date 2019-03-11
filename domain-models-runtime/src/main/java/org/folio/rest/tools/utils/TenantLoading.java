@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import org.apache.commons.io.IOUtils;
@@ -172,7 +173,7 @@ public class TenantLoading {
 
   private static void loadURL(Map<String, String> headers, URL url,
     HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
-    Future<Void> f) {
+    Future<Void> f, Function<String, String> contentFilter) {
 
     log.info("loadURL url=" + url.toString());
     String content;
@@ -180,10 +181,14 @@ public class TenantLoading {
       InputStream stream = url.openStream();
       content = IOUtils.toString(stream, StandardCharsets.UTF_8);
       stream.close();
+      if (contentFilter != null) {
+        content = contentFilter.apply(content);
+      }
     } catch (IOException ex) {
       f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
       return;
     }
+    final String fContent = content;
     String id = getId(loadingEntry, url, content, f);
     if (f.isComplete()) {
       return;
@@ -216,7 +221,7 @@ public class TenantLoading {
           }
           log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
         });
-        endWithXHeaders(reqPost, headers, content);
+        endWithXHeaders(reqPost, headers, fContent);
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 204) {
         f.handle(Future.succeededFuture());
       } else {
@@ -237,7 +242,7 @@ public class TenantLoading {
 
   private static void loadData(String okapiUrl, Map<String, String> headers,
     LoadingEntry loadingEntry, HttpClient httpClient,
-    Handler<AsyncResult<Integer>> res) {
+    Handler<AsyncResult<Integer>> res, Function<String, String> contentFilter) {
 
     final String filePath = loadingEntry.lead + File.separator + loadingEntry.filePath;
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
@@ -251,7 +256,7 @@ public class TenantLoading {
       for (URL url : urls) {
         Future<Void> f = Future.future();
         futures.add(f);
-        loadURL(headers, url, httpClient, loadingEntry, endPointUrl, f);
+        loadURL(headers, url, httpClient, loadingEntry, endPointUrl, f, contentFilter);
       }
       CompositeFuture.all(futures).setHandler(x -> {
         if (x.failed()) {
@@ -267,9 +272,10 @@ public class TenantLoading {
     }
   }
 
-  public void performR(String okapiUrl, TenantAttributes ta,
+  private void performR(String okapiUrl, TenantAttributes ta,
     Map<String, String> headers, Iterator<LoadingEntry> it,
-    HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res) {
+    HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res,
+    Function<String, String> contentFilter) {
     if (!it.hasNext()) {
       res.handle(Future.succeededFuture(number));
     } else {
@@ -281,19 +287,24 @@ public class TenantLoading {
               if (x.failed()) {
                 res.handle(Future.failedFuture(x.cause()));
               } else {
-                performR(okapiUrl, ta, headers, it, httpClient, number + x.result(), res);
+                performR(okapiUrl, ta, headers, it, httpClient, number + x.result(), res, contentFilter);
               }
-            });
+            }, contentFilter);
             return;
           }
         }
       }
-      performR(okapiUrl, ta, headers, it, httpClient, number, res);
+      performR(okapiUrl, ta, headers, it, httpClient, number, res, contentFilter);
     }
   }
 
   public void perform(TenantAttributes ta, Map<String, String> headers,
     Vertx vertx, Handler<AsyncResult<Integer>> handler) {
+    perform(ta, headers, vertx, handler, null);
+  }
+
+  public void perform(TenantAttributes ta, Map<String, String> headers,
+    Vertx vertx, Handler<AsyncResult<Integer>> handler, Function<String, String> contentFilter) {
 
     String okapiUrl = headers.get("X-Okapi-Url-to");
     if (okapiUrl == null) {
@@ -310,7 +321,7 @@ public class TenantLoading {
     performR(okapiUrl, ta, headers, it, httpClient, 0, res -> {
       handler.handle(res);
       httpClient.close();
-    });
+    }, contentFilter);
   }
 
   public TenantLoading withKey(String key) {
