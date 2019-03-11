@@ -7,6 +7,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -43,7 +44,8 @@ public class TenantLoading {
   private enum Strategy {
     CONTENT, // Id in JSON content PUT/POST
     BASENAME, // PUT with ID as basename
-    RAW  // PUT with no ID
+    RAW_PUT, // PUT with no ID
+    RAW_POST, // POST with no ID
   }
 
   private class LoadingEntry {
@@ -168,7 +170,8 @@ public class TenantLoading {
           return null;
         }
         break;
-      case RAW:
+      case RAW_PUT:
+      case RAW_POST:
         break;
     }
     return id;
@@ -197,6 +200,12 @@ public class TenantLoading {
       return;
     }
     StringBuilder putUri = new StringBuilder();
+    HttpMethod method1;
+    if (loadingEntry.strategy == Strategy.RAW_POST) {
+      method1 = HttpMethod.POST;
+    } else {
+      method1 = HttpMethod.PUT;
+    }
     if (id == null) {
       putUri.append(endPointUrl);
     } else {
@@ -206,8 +215,9 @@ public class TenantLoading {
         putUri.append(endPointUrl + "/" + id);
       }
     }
-    HttpClientRequest reqPut = httpClient.putAbs(putUri.toString(), resPut -> {
-      if (loadingEntry.strategy != Strategy.RAW
+    HttpClientRequest reqPut = httpClient.requestAbs(method1, putUri.toString(), resPut -> {
+      if (loadingEntry.strategy != Strategy.RAW_PUT
+        && loadingEntry.strategy != Strategy.RAW_POST
         && (resPut.statusCode() == 404 || resPut.statusCode() == 400)) {
         HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost -> {
           if (resPost.statusCode() == 201) {
@@ -225,7 +235,7 @@ public class TenantLoading {
           log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
         });
         endWithXHeaders(reqPost, headers, fContent);
-      } else if (resPut.statusCode() == 200 || resPut.statusCode() == 204) {
+      } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201 || resPut.statusCode() == 204) {
         f.handle(Future.succeededFuture());
       } else {
         log.warn(PUT_STR + putUri.toString() + RETURNED_STATUS + resPut.statusCode());
@@ -354,7 +364,12 @@ public class TenantLoading {
   }
 
   public TenantLoading withIdRaw() {
-    nextEntry.strategy = Strategy.RAW;
+    nextEntry.strategy = Strategy.RAW_PUT;
+    return this;
+  }
+
+  public TenantLoading withPostOnly() {
+    nextEntry.strategy = Strategy.RAW_POST;
     return this;
   }
 
