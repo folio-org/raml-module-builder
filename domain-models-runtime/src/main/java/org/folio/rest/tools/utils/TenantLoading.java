@@ -39,7 +39,6 @@ public class TenantLoading {
   private static final String RETURNED_STATUS = " returned status ";
   private static final String FAILED_STR = " failed ";
   private static final String POST_STR = "POST ";
-  private static final String PUT_STR = "PUT ";
 
   private enum Strategy {
     CONTENT, // Id in JSON content PUT/POST
@@ -229,7 +228,7 @@ public class TenantLoading {
         });
         reqPost.exceptionHandler(ex -> {
           if (!f.isComplete()) {
-            f.handle(Future.failedFuture(PUT_STR + putUri.toString()
+            f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
               + ": " + ex.getMessage()));
           }
           log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
@@ -238,17 +237,17 @@ public class TenantLoading {
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201 || resPut.statusCode() == 204) {
         f.handle(Future.succeededFuture());
       } else {
-        log.warn(PUT_STR + putUri.toString() + RETURNED_STATUS + resPut.statusCode());
-        f.handle(Future.failedFuture(PUT_STR + putUri.toString()
+        log.warn(method1.name() + " " + putUri.toString() + RETURNED_STATUS + resPut.statusCode());
+        f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
           + RETURNED_STATUS + resPut.statusCode()));
       }
     });
     reqPut.exceptionHandler(ex -> {
       if (!f.isComplete()) {
-        f.handle(Future.failedFuture(PUT_STR + putUri.toString()
+        f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
           + ": " + ex.getMessage()));
       }
-      log.warn(PUT_STR + putUri.toString() + ": " + ex.getMessage());
+      log.warn(method1.name() + " " + putUri.toString() + ": " + ex.getMessage());
     });
     endWithXHeaders(reqPut, headers, content);
   }
