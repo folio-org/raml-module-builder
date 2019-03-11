@@ -644,17 +644,7 @@ public class PgUtilIT {
     // // limit=5
     
     // json = searchForInstances("title=foo sortBy title", 0, 5);
-    try {
-    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 0, 5, Arrays.asList(schema + ".user.jsonb "));
-    	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant",  0, 5, columnName, optimizdSQLSize);
-    } catch(FieldException fe) {
-    	testContext.fail(fe.getMessage());
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    //log.error("optimized sql is " + optimizedSQL);
-    executeAndNotify(testContext,optimizedSQL,reply -> {
+    searchForData("name=foo sortBy name", 0, 5,"user","testtenant",testContext,columnName,optimizdSQLSize, reply -> {
         //handle return and
     	log.error("second test returned");
         if (reply.failed()) {
@@ -673,17 +663,7 @@ public class PgUtilIT {
 
     // // offset=6, limit=3
     // json = searchForInstances("title=foo sortBy title", 6, 3);
-    try {
-    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 6, 3, Arrays.asList(schema + ".user.jsonb "));
-    	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", 6, 3, columnName, optimizdSQLSize);
-    } catch(FieldException fe) {
-    	testContext.fail(fe.getMessage());
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    log.error("optimized sql is " + optimizedSQL);
-    executeAndNotify(testContext,optimizedSQL,reply -> {
+    searchForData("name=foo sortBy name", 6, 3,"user","testtenant",testContext,columnName,optimizdSQLSize, reply -> {
         //handle return and
         if (reply.failed()) {
       	  testContext.fail(reply.cause());
@@ -698,17 +678,7 @@ public class PgUtilIT {
       } );
     // // offset=1, limit=8
     // json = searchForInstances("title=foo sortBy title", 1, 8);
-    try {
-    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 1, 8, Arrays.asList(schema + ".user.jsonb "));
-    	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", 1, 8, columnName, optimizdSQLSize);
-    } catch(FieldException fe) {
-    	testContext.fail(fe.getMessage());
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    log.error("optimized sql is " + optimizedSQL);
-    executeAndNotify(testContext,optimizedSQL,reply -> {
+    searchForData("name=foo sortBy name", 1, 8,"user","testtenant",testContext,columnName,optimizdSQLSize,reply -> {
         //handle return and
         if (reply.failed()) {
       	  testContext.fail(reply.cause());
@@ -729,17 +699,7 @@ public class PgUtilIT {
 
     // // "b foo", offset=1, limit=20
     // json = searchForInstances("title=b sortBy title/sort.ascending", 1, 20);
-    try {
-        wrapper = PgUtil.createCQLWrapper("name=b sortBy name/sort.ascending", 1, 20, Arrays.asList(schema + ".user.jsonb "));
-    	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant",  1, 20, columnName, optimizdSQLSize);
-    } catch(FieldException fe) {
-    	testContext.fail(fe.getMessage());
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    log.error("optimized sql is " + optimizedSQL);
-    executeAndNotify(testContext,optimizedSQL,reply -> {
+    searchForData("name=b sortBy name/sort.ascending", 1, 20,"user","testtenant",testContext,columnName,optimizdSQLSize,reply -> {
         //handle return and
         if (reply.failed()) {
       	  testContext.fail(reply.cause());
@@ -756,17 +716,7 @@ public class PgUtilIT {
 
     // // sort.descending, offset=1, limit=3
     // json = searchForInstances("title=foo sortBy title/sort.descending", 1, 3);
-    try {
-        wrapper = PgUtil.createCQLWrapper("name=foo sortBy name/sort.ascending", 1, 3, Arrays.asList(schema + ".user.jsonb "));
-    	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant",  1, 3, columnName, optimizdSQLSize);
-    } catch(FieldException fe) {
-    	testContext.fail(fe.getMessage());
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    log.error("optimized sql is " + optimizedSQL);
-    executeAndNotify(testContext,optimizedSQL,reply -> {
+    searchForData("name=foo sortBy name/sort.ascending", 1, 3,"user","testtenant",testContext,columnName,optimizdSQLSize,reply -> {
         //handle return and
         if (reply.failed()) {
       	  testContext.fail(reply.cause());
@@ -784,17 +734,7 @@ public class PgUtilIT {
 
     // // sort.descending, offset=6, limit=3
     // json = searchForInstances("title=foo sortBy title/sort.descending", 6, 3);
-    try {
-        wrapper = PgUtil.createCQLWrapper("name=foo sortBy name/sort.ascending", 6, 3, Arrays.asList(schema + ".user.jsonb "));
-    	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant", 6, 3, columnName, optimizdSQLSize);
-    } catch(FieldException fe) {
-    	testContext.fail(fe.getMessage());
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    log.error("optimized sql is " + optimizedSQL);
-    executeAndNotify(testContext,optimizedSQL,reply -> {
+      searchForData("name=foo sortBy name/sort.ascending" ,6,3,"user","testtenant",testContext,columnName,optimizdSQLSize,  reply -> {
         //handle return and
         if (reply.failed()) {
       	  testContext.fail(reply.cause());
@@ -810,6 +750,23 @@ public class PgUtilIT {
     });
 
 }
+  private void searchForData(String cql,int limit, int offset, String table,String tennant,TestContext testContext, String columnName,int optimizdSQLSize,
+      Handler<AsyncResult<JsonArray>>  handler ) {
+    String optimizedSQL = "";
+    PreparedCQL pCQL = null;
+    CQLWrapper wrapper = null;
+    try {
+      wrapper = PgUtil.createCQLWrapper(cql, limit, offset, Arrays.asList(schema + "." + table + ".jsonb "));
+      pCQL = new PreparedCQL(table, wrapper );
+      optimizedSQL = PgUtil.optimizedSql(pCQL, tennant, 6, 3, columnName, optimizdSQLSize);
+    } catch(FieldException fe) {
+      testContext.fail(fe.getMessage());
+    } catch(Exception e) {
+      testContext.fail(e.getMessage());
+    }
+    log.error("optimized sql is " + optimizedSQL);
+    executeAndNotify(testContext,optimizedSQL,handler);
+  }
   /**
    * Insert n records into instance table where the title field is build using
    * prefix and the number from 1 .. n.
