@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import org.apache.commons.io.IOUtils;
@@ -173,7 +174,7 @@ public class TenantLoading {
 
   private static void loadURL(Map<String, String> headers, URL url,
     HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
-    Future<Void> f, Function<String, String> contentFilter) {
+    Future<Void> f, UnaryOperator<String> contentFilter) {
 
     log.info("loadURL url=" + url.toString());
     String content;
@@ -242,7 +243,7 @@ public class TenantLoading {
 
   private static void loadData(String okapiUrl, Map<String, String> headers,
     LoadingEntry loadingEntry, HttpClient httpClient,
-    Handler<AsyncResult<Integer>> res, Function<String, String> contentFilter) {
+    Handler<AsyncResult<Integer>> res, UnaryOperator<String> contentFilter) {
 
     final String filePath = loadingEntry.lead + File.separator + loadingEntry.filePath;
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
@@ -275,7 +276,7 @@ public class TenantLoading {
   private void performR(String okapiUrl, TenantAttributes ta,
     Map<String, String> headers, Iterator<LoadingEntry> it,
     HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res,
-    Function<String, String> contentFilter) {
+    UnaryOperator<String> contentFilter) {
     if (!it.hasNext()) {
       res.handle(Future.succeededFuture(number));
     } else {
@@ -304,7 +305,7 @@ public class TenantLoading {
   }
 
   public void perform(TenantAttributes ta, Map<String, String> headers,
-    Vertx vertx, Handler<AsyncResult<Integer>> handler, Function<String, String> contentFilter) {
+    Vertx vertx, Handler<AsyncResult<Integer>> handler, UnaryOperator<String> contentFilter) {
 
     String okapiUrl = headers.get("X-Okapi-Url-to");
     if (okapiUrl == null) {
