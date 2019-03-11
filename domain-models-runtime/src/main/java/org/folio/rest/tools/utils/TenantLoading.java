@@ -25,7 +25,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -55,20 +54,23 @@ public class TenantLoading {
     String uriPath;
     String idProperty;
     private Strategy strategy;
+    UnaryOperator<String> contentFilter;
 
     LoadingEntry(String key, String lead, String filePath, String uriPath, Strategy strategy,
-      String idProperty) {
+      String idProperty, UnaryOperator<String> contentFilter) {
       this.key = key;
       this.lead = lead;
       this.filePath = filePath;
       this.uriPath = uriPath;
       this.strategy = strategy;
       this.idProperty = idProperty;
+      this.contentFilter = contentFilter;
     }
 
     LoadingEntry() {
       this.strategy = Strategy.CONTENT;
       this.idProperty = "id";
+      this.contentFilter = null;
     }
   }
 
@@ -174,7 +176,7 @@ public class TenantLoading {
 
   private static void loadURL(Map<String, String> headers, URL url,
     HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
-    Future<Void> f, UnaryOperator<String> contentFilter) {
+    Future<Void> f) {
 
     log.info("loadURL url=" + url.toString());
     String content;
@@ -182,8 +184,8 @@ public class TenantLoading {
       InputStream stream = url.openStream();
       content = IOUtils.toString(stream, StandardCharsets.UTF_8);
       stream.close();
-      if (contentFilter != null) {
-        content = contentFilter.apply(content);
+      if (loadingEntry.contentFilter != null) {
+        content = loadingEntry.contentFilter.apply(content);
       }
     } catch (IOException ex) {
       f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
@@ -243,7 +245,7 @@ public class TenantLoading {
 
   private static void loadData(String okapiUrl, Map<String, String> headers,
     LoadingEntry loadingEntry, HttpClient httpClient,
-    Handler<AsyncResult<Integer>> res, UnaryOperator<String> contentFilter) {
+    Handler<AsyncResult<Integer>> res) {
 
     final String filePath = loadingEntry.lead + File.separator + loadingEntry.filePath;
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
@@ -257,7 +259,7 @@ public class TenantLoading {
       for (URL url : urls) {
         Future<Void> f = Future.future();
         futures.add(f);
-        loadURL(headers, url, httpClient, loadingEntry, endPointUrl, f, contentFilter);
+        loadURL(headers, url, httpClient, loadingEntry, endPointUrl, f);
       }
       CompositeFuture.all(futures).setHandler(x -> {
         if (x.failed()) {
@@ -275,8 +277,7 @@ public class TenantLoading {
 
   private void performR(String okapiUrl, TenantAttributes ta,
     Map<String, String> headers, Iterator<LoadingEntry> it,
-    HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res,
-    UnaryOperator<String> contentFilter) {
+    HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res) {
     if (!it.hasNext()) {
       res.handle(Future.succeededFuture(number));
     } else {
@@ -288,24 +289,19 @@ public class TenantLoading {
               if (x.failed()) {
                 res.handle(Future.failedFuture(x.cause()));
               } else {
-                performR(okapiUrl, ta, headers, it, httpClient, number + x.result(), res, contentFilter);
+                performR(okapiUrl, ta, headers, it, httpClient, number + x.result(), res);
               }
-            }, contentFilter);
+            });
             return;
           }
         }
       }
-      performR(okapiUrl, ta, headers, it, httpClient, number, res, contentFilter);
+      performR(okapiUrl, ta, headers, it, httpClient, number, res);
     }
   }
 
   public void perform(TenantAttributes ta, Map<String, String> headers,
     Vertx vertx, Handler<AsyncResult<Integer>> handler) {
-    perform(ta, headers, vertx, handler, null);
-  }
-
-  public void perform(TenantAttributes ta, Map<String, String> headers,
-    Vertx vertx, Handler<AsyncResult<Integer>> handler, UnaryOperator<String> contentFilter) {
 
     String okapiUrl = headers.get("X-Okapi-Url-to");
     if (okapiUrl == null) {
@@ -322,7 +318,7 @@ public class TenantLoading {
     performR(okapiUrl, ta, headers, it, httpClient, 0, res -> {
       handler.handle(res);
       httpClient.close();
-    }, contentFilter);
+    });
   }
 
   public TenantLoading withKey(String key) {
@@ -347,6 +343,11 @@ public class TenantLoading {
     return this;
   }
 
+  public TenantLoading withFilter(UnaryOperator<String> contentFilter) {
+    nextEntry.contentFilter = contentFilter;
+    return this;
+  }
+
   public TenantLoading withIdBasename() {
     nextEntry.strategy = Strategy.BASENAME;
     return this;
@@ -359,7 +360,8 @@ public class TenantLoading {
 
   public TenantLoading add(String filePath, String uriPath) {
     loadingEntries.add(new LoadingEntry(nextEntry.key, nextEntry.lead,
-      filePath, uriPath, nextEntry.strategy, nextEntry.idProperty));
+      filePath, uriPath, nextEntry.strategy, nextEntry.idProperty,
+      nextEntry.contentFilter));
     return this;
   }
 

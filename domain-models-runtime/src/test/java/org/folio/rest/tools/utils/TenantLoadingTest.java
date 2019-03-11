@@ -145,6 +145,7 @@ public class TenantLoadingTest {
     TenantLoading tl = new TenantLoading()
       .withKey("loadRef")
       .withLead("tenant-load-ref")
+      .withFilter(this::myFilter)
       .add("data");
     tl.perform(tenantAttributes, headers, vertx, res -> {
       context.assertTrue(res.succeeded());
@@ -152,7 +153,7 @@ public class TenantLoadingTest {
       context.assertTrue(ids.contains("11"));
       context.assertTrue(ids.contains("12"));
       async.complete();
-    }, this::myFilter);
+    });
   }
 
   @Test
