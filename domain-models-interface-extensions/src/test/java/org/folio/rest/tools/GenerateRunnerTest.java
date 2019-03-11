@@ -138,6 +138,18 @@ public class GenerateRunnerTest {
   }
 
   @Test
+  public void testPropertiesForConfiguringSchemaGeneration() throws Exception {
+    System.setProperty("project.basedir", baseDir);
+    System.setProperty("jsonschema2pojo.config.includeToString", "true");
+    System.setProperty("jsonschema2pojo.config.includeHashcodeAndEquals", "true");
+    GenerateRunner.main(null);
+    assertThat(testJava(), allOf(
+      containsString("public String toString"),
+      containsString("public int hashCode"),
+      containsString("public boolean equals")));
+  }
+
+  @Test
   public void testCreateRamlsLookupList() throws Exception {
     List<String> actualRamls = testCreateLookupList(GenerateRunner.RAML_LIST, Collections.singletonList(".raml"));
     Assert.assertThat(actualRamls, containsInAnyOrder("test.raml"));
