@@ -519,12 +519,17 @@ private static String getAscDesc(ModifierSet modifierSet) {
       .setLimit(new Limit(limit))
       .setOffset(new Offset(offset));
   }
+  public static class SQLOptimizationException extends Exception {
+    private static final long serialVersionUID = 7772172153233445467L;
+    public SQLOptimizationException(String string) {
+      super(string);
+    }
+  }
   /**
    * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
    *
    * @param preparedCql the cql query
    * @param tenantId the tenant used to generate schema location
-   * @param postgresClient client used to execute the query
    * @param offset start index of objects to return
    * @param limit max number of objects to return
    * @param column the index column to use 
@@ -532,21 +537,21 @@ private static String getAscDesc(ModifierSet modifierSet) {
    * @return CQLWrapper
    * @throws Exception on generation failure
    */
-  public static String optimizedSql(PreparedCQL preparedCql, String tenantId, PostgresClient postgresClient,
-      int offset, int limit, String column, int size ) throws Exception {
+  public static String optimizedSql(PreparedCQL preparedCql, String tenantId, 
+      int offset, int limit, String column, int size ) throws SQLOptimizationException, QueryValidationException {
 
     String cql = preparedCql.getCqlWrapper().getQuery();
     CQLSortNode cqlSortNode = getSortNode(cql);
     if (cqlSortNode == null) {
-      throw new Exception("sort node is missing");
+      throw new SQLOptimizationException("sort node is missing");
     }
     List<ModifierSet> sortIndexes = cqlSortNode.getSortIndexes();
     if (sortIndexes.size() != 1) {
-      throw new Exception("sort index is missing");
+      throw new SQLOptimizationException("sort index is missing");
     }
     ModifierSet modifierSet = sortIndexes.get(0);
     if (! modifierSet.getBase().equals(column)) {
-      throw new Exception("column name does not match");
+      throw new SQLOptimizationException("column name does not match");
     }
     String ascDesc = getAscDesc(modifierSet);
     cql = cqlSortNode.getSubtree().toCQL();
