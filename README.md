@@ -1351,6 +1351,16 @@ the `jsonschema.customfield` key can contain multiple json values (delimited by 
 A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
 
+To customize generation of java classes, add a system property to plugin definition running `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`.
+Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes, 
+incomplete list of available properties:
+- jsonschema2pojo.config.includeHashcodeAndEquals - adds hashCode and equals methods
+- jsonschema2pojo.config.includeToString - adds toString method
+- jsonschema2pojo.config.serializable - makes classes serializable
+
+For more available properties see:
+ https://joelittlejohn.github.io/jsonschema2pojo/site/1.0.0/generate-mojo.html
+ https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java 
 ## Overriding RAML (traits) / query parameters
 
 A module may require slight changes to existing RAML traits.

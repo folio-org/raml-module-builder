@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import org.apache.commons.io.IOUtils;
@@ -47,6 +48,7 @@ public class TenantLoading {
 
   private class LoadingEntry {
 
+    UnaryOperator<String> contentFilter;
     String key;
     String lead;
     String filePath;
@@ -55,18 +57,20 @@ public class TenantLoading {
     private Strategy strategy;
 
     LoadingEntry(String key, String lead, String filePath, String uriPath, Strategy strategy,
-      String idProperty) {
+      String idProperty, UnaryOperator<String> contentFilter) {
       this.key = key;
       this.lead = lead;
       this.filePath = filePath;
       this.uriPath = uriPath;
       this.strategy = strategy;
       this.idProperty = idProperty;
+      this.contentFilter = contentFilter;
     }
 
     LoadingEntry() {
       this.strategy = Strategy.CONTENT;
       this.idProperty = "id";
+      this.contentFilter = null;
     }
   }
 
@@ -180,10 +184,14 @@ public class TenantLoading {
       InputStream stream = url.openStream();
       content = IOUtils.toString(stream, StandardCharsets.UTF_8);
       stream.close();
+      if (loadingEntry.contentFilter != null) {
+        content = loadingEntry.contentFilter.apply(content);
+      }
     } catch (IOException ex) {
       f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
       return;
     }
+    final String fContent = content;
     String id = getId(loadingEntry, url, content, f);
     if (f.isComplete()) {
       return;
@@ -216,7 +224,7 @@ public class TenantLoading {
           }
           log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
         });
-        endWithXHeaders(reqPost, headers, content);
+        endWithXHeaders(reqPost, headers, fContent);
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 204) {
         f.handle(Future.succeededFuture());
       } else {
@@ -267,7 +275,7 @@ public class TenantLoading {
     }
   }
 
-  public void performR(String okapiUrl, TenantAttributes ta,
+  private void performR(String okapiUrl, TenantAttributes ta,
     Map<String, String> headers, Iterator<LoadingEntry> it,
     HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res) {
     if (!it.hasNext()) {
@@ -335,6 +343,11 @@ public class TenantLoading {
     return this;
   }
 
+  public TenantLoading withFilter(UnaryOperator<String> contentFilter) {
+    nextEntry.contentFilter = contentFilter;
+    return this;
+  }
+
   public TenantLoading withIdBasename() {
     nextEntry.strategy = Strategy.BASENAME;
     return this;
@@ -347,7 +360,8 @@ public class TenantLoading {
 
   public TenantLoading add(String filePath, String uriPath) {
     loadingEntries.add(new LoadingEntry(nextEntry.key, nextEntry.lead,
-      filePath, uriPath, nextEntry.strategy, nextEntry.idProperty));
+      filePath, uriPath, nextEntry.strategy, nextEntry.idProperty,
+      nextEntry.contentFilter));
     return this;
   }
 
