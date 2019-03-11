@@ -128,7 +128,7 @@ public class TenantLoadingTest {
   public String myFilter(String content) {
     JsonObject obj = new JsonObject(content);
     String id = obj.getString("id");
-    obj.put("id", "1" + id);
+    obj.put("id", "X" + id);
     return obj.encodePrettily();
   }
 
@@ -150,8 +150,8 @@ public class TenantLoadingTest {
     tl.perform(tenantAttributes, headers, vertx, res -> {
       context.assertTrue(res.succeeded());
       context.assertEquals(2, res.result());
-      context.assertTrue(ids.contains("11"));
-      context.assertTrue(ids.contains("12"));
+      context.assertTrue(ids.contains("X1"));
+      context.assertTrue(ids.contains("X2"));
       async.complete();
     });
   }
