@@ -276,6 +276,27 @@ public class TenantLoadingTest {
   }
 
   @Test
+  public void testOkStatusCode(TestContext context) {
+    Async async = context.async();
+    List<Parameter> parameters = new LinkedList<>();
+    parameters.add(new Parameter().withKey("loadRef").withValue("true"));
+    TenantAttributes tenantAttributes = new TenantAttributes()
+      .withModuleTo("mod-1.0.0")
+      .withParameters(parameters);
+    Map<String, String> headers = new HashMap<String, String>();
+    headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
+
+    TenantLoading tl = new TenantLoading();
+    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withAcceptStatus(422);
+    putStatus = 422;
+    tl.perform(tenantAttributes, headers, vertx, res -> {
+      context.assertTrue(res.succeeded());
+      async.complete();
+    });
+  }
+
+  @Test
   public void testPostOk(TestContext context) {
     Async async = context.async();
     List<Parameter> parameters = new LinkedList<>();

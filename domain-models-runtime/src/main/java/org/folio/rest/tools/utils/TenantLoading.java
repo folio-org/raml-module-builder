@@ -22,10 +22,12 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -50,6 +52,7 @@ public class TenantLoading {
   private class LoadingEntry {
 
     UnaryOperator<String> contentFilter;
+    Set<Integer> statusAccept;
     String key;
     String lead;
     String filePath;
@@ -57,21 +60,22 @@ public class TenantLoading {
     String idProperty;
     private Strategy strategy;
 
-    LoadingEntry(String key, String lead, String filePath, String uriPath, Strategy strategy,
-      String idProperty, UnaryOperator<String> contentFilter) {
-      this.key = key;
-      this.lead = lead;
-      this.filePath = filePath;
-      this.uriPath = uriPath;
-      this.strategy = strategy;
-      this.idProperty = idProperty;
-      this.contentFilter = contentFilter;
+    LoadingEntry(LoadingEntry le) {
+      this.key = le.key;
+      this.lead = le.lead;
+      this.filePath = le.filePath;
+      this.uriPath = le.uriPath;
+      this.strategy = le.strategy;
+      this.idProperty = le.idProperty;
+      this.contentFilter = le.contentFilter;
+      this.statusAccept = le.statusAccept;
     }
 
     LoadingEntry() {
       this.strategy = Strategy.CONTENT;
       this.idProperty = "id";
       this.contentFilter = null;
+      this.statusAccept = new HashSet<>();
     }
   }
 
@@ -234,7 +238,8 @@ public class TenantLoading {
           log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
         });
         endWithXHeaders(reqPost, headers, fContent);
-      } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201 || resPut.statusCode() == 204) {
+      } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
+        ||  resPut.statusCode() == 204 || loadingEntry.statusAccept.contains(resPut.statusCode())) {
         f.handle(Future.succeededFuture());
       } else {
         log.warn(method1.name() + " " + putUri.toString() + RETURNED_STATUS + resPut.statusCode());
@@ -357,6 +362,11 @@ public class TenantLoading {
     return this;
   }
 
+  public TenantLoading withAcceptStatus(int code) {
+    nextEntry.statusAccept.add(code);
+    return this;
+  }
+
   public TenantLoading withIdBasename() {
     nextEntry.strategy = Strategy.BASENAME;
     return this;
@@ -373,9 +383,9 @@ public class TenantLoading {
   }
 
   public TenantLoading add(String filePath, String uriPath) {
-    loadingEntries.add(new LoadingEntry(nextEntry.key, nextEntry.lead,
-      filePath, uriPath, nextEntry.strategy, nextEntry.idProperty,
-      nextEntry.contentFilter));
+    nextEntry.filePath = filePath;
+    nextEntry.uriPath = uriPath;
+    loadingEntries.add(new LoadingEntry(nextEntry));
     return this;
   }
 
