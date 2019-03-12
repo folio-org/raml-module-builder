@@ -122,13 +122,9 @@ public class PgUtilIT {
   }
   private static void executeAndNotify(TestContext context, String sql,Handler<AsyncResult<JsonArray>>  handler ) {
     Async async = context.async();
-    log.error("execute and notify called");
     PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
-    	log.error("query single returned");
     	async.complete();
     	handler.handle(reply);
-    	log.error("query handler done");
-    	
       });
     async.await();
 
@@ -608,27 +604,13 @@ public class PgUtilIT {
     String optimizedSQL = "";
     PreparedCQL pCQL = null;
     CQLWrapper wrapper = null;
-    try {
-    	wrapper = PgUtil.createCQLWrapper("name=foo sortBy name", 0, 9, Arrays.asList(schema + ".user.jsonb "));
-    	pCQL = new PreparedCQL("user", wrapper );
-    	optimizedSQL = PgUtil.optimizedSql(pCQL, "testtenant",  0, 9, columnName, optimizdSQLSize);
-    } catch(FieldException fe) {
-    	testContext.fail(fe.getMessage());
-    } catch(Exception e) {
-    	testContext.fail(e.getMessage());
-    }
-    //log.error("optimized sql is " + optimizedSQL);
-    //execut sql
-    executeAndNotify(testContext,optimizedSQL,reply -> {
+    searchForData("name=foo sortBy name", 0, 9,"user","testtenant",testContext,columnName,optimizdSQLSize,reply -> {
       //handle return and
-    log.error("first test returned");
       if (reply.failed()) {
     	  testContext.fail(reply.cause());
       }
       JsonArray json = reply.result();
-      log.error("first part 1 " + json.size());
       assertThat(json.size(), is(3));
-      log.error("first midway");
       for (int i=0; i<5; i++) {
         JsonObject instance = json.getJsonObject(i);
         assertThat(instance.getString("name"), is("b foo " + (i + 1)));
@@ -637,7 +619,6 @@ public class PgUtilIT {
         JsonObject instance = json.getJsonObject(5 + i);
         assertThat(instance.getString("name"), is("d foo " + (i + 1)));
       }
-      log.error("first test finished");
     } );
 
 
@@ -758,7 +739,7 @@ public class PgUtilIT {
     try {
       wrapper = PgUtil.createCQLWrapper(cql, limit, offset, Arrays.asList(schema + "." + table + ".jsonb "));
       pCQL = new PreparedCQL(table, wrapper );
-      optimizedSQL = PgUtil.optimizedSql(pCQL, tennant, 6, 3, columnName, optimizdSQLSize);
+      optimizedSQL = PgUtil.generateOptimizedSql(pCQL, tennant, 6, 3, columnName, optimizdSQLSize);
     } catch(FieldException fe) {
       testContext.fail(fe.getMessage());
     } catch(Exception e) {

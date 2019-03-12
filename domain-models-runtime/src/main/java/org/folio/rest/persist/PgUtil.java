@@ -519,12 +519,6 @@ private static String getAscDesc(ModifierSet modifierSet) {
       .setLimit(new Limit(limit))
       .setOffset(new Offset(offset));
   }
-  public static class SQLOptimizationException extends Exception {
-    private static final long serialVersionUID = 7772172153233445467L;
-    public SQLOptimizationException(String string) {
-      super(string);
-    }
-  }
   /**
    * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
    *
@@ -534,24 +528,24 @@ private static String getAscDesc(ModifierSet modifierSet) {
    * @param limit max number of objects to return
    * @param column the index column to use 
    * @param size the number of rows that determines which method will be used to generate the ultimate result 
-   * @return CQLWrapper
+   * @return String
    * @throws Exception on generation failure
    */
-  public static String optimizedSql(PreparedCQL preparedCql, String tenantId, 
-      int offset, int limit, String column, int size ) throws SQLOptimizationException, QueryValidationException {
+  public static String generateOptimizedSql(PreparedCQL preparedCql, String tenantId, 
+      int offset, int limit, String column, int size ) throws QueryValidationException {
 
     String cql = preparedCql.getCqlWrapper().getQuery();
     CQLSortNode cqlSortNode = getSortNode(cql);
     if (cqlSortNode == null) {
-      throw new SQLOptimizationException("sort node is missing");
+      return null;
     }
     List<ModifierSet> sortIndexes = cqlSortNode.getSortIndexes();
     if (sortIndexes.size() != 1) {
-      throw new SQLOptimizationException("sort index is missing");
+      return null;
     }
     ModifierSet modifierSet = sortIndexes.get(0);
     if (! modifierSet.getBase().equals(column)) {
-      throw new SQLOptimizationException("column name does not match");
+      return null;
     }
     String ascDesc = getAscDesc(modifierSet);
     cql = cqlSortNode.getSubtree().toCQL();
@@ -605,8 +599,7 @@ private static String getAscDesc(ModifierSet modifierSet) {
       + " )"
       + " ORDER BY title " + ascDesc;
 
-      logger.info("optimized SQL generated from CQL: " + sql);
-
+    logger.info("optimized SQL generated from CQL: " + sql);
     return sql;
 
 
