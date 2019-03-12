@@ -1,3 +1,11 @@
+## 23.10.0 2019-03-12
+
+ * RMB-339/RMB-340 More facilities for TenantLoading
+ * RMB-334 Add option to generate toString, hashCode and equals
+   methods in generated classes
+ * Enable JUnit5 in Eclipse
+ * Minimum Java version runtime check
+
 ## 23.9.0 2019-03-01
 
  * RMB-338 TenantLoading: allow property of JSON Object to be set
