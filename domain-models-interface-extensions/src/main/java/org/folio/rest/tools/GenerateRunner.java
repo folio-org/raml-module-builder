@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,6 +48,7 @@ public class GenerateRunner {
 
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
   private static final String RESOURCE_DEFAULT = "target/classes";
+  private static final String SCHEMA_CONFIG_PROPERTY_PREFIX = "jsonschema2pojo.config.";
 
   private String outputDirectory = null;
   private String outputDirectoryWithPackage = null;
@@ -78,6 +80,7 @@ public class GenerateRunner {
     Map<String, String> config = new HashMap<>();
     config.put("customAnnotator", "org.folio.rest.tools.plugins.CustomTypeAnnotator");
     config.put("isIncludeJsr303Annotations", "true");
+    copyConfigProperties(System.getProperties(), config);
     configuration.setJsonMapperConfiguration(config);
 
   }
@@ -259,4 +262,18 @@ public class GenerateRunner {
     return input;
   }
 
+  /**
+   * Copies properties that start with prefix SCHEMA_CONFIG_PROPERTY_PREFIX into specified map
+   * @param properties Properties to copy
+   * @param config target map
+   */
+  private void copyConfigProperties(Properties properties, Map<String, String> config) {
+    properties.stringPropertyNames().stream()
+      .filter(name -> name.startsWith(SCHEMA_CONFIG_PROPERTY_PREFIX))
+      .forEach(name -> {
+          String value = (String) properties.get(name);
+          config.put(name.substring(SCHEMA_CONFIG_PROPERTY_PREFIX.length()), value);
+        }
+      );
+  }
 }
