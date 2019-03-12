@@ -88,7 +88,7 @@ public class TenantLoading {
     nextEntry = new LoadingEntry();
   }
 
-  protected static List<URL> getURLsFromClassPathDir(String directoryName)
+  public static List<URL> getURLsFromClassPathDir(String directoryName)
     throws URISyntaxException, IOException {
 
     List<URL> filenames = new LinkedList<>();
