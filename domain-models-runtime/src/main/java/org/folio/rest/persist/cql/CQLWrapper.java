@@ -1,5 +1,7 @@
 package org.folio.rest.persist.cql;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,12 +12,12 @@ import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
 public class CQLWrapper {
 
+  private static final Logger log = LoggerFactory.getLogger(CQLWrapper.class);
   CQL2PgJSON field;
   String query;
   private Limit  limit = new Limit();
   private Offset offset = new Offset();
   private List<WrapTheWrapper> addedWrappers = new ArrayList<>();
-
 
   public CQLWrapper() {
     super();
@@ -167,6 +169,7 @@ public class CQLWrapper {
     }
     spaceAppend(sb, limit.toString());
     spaceAppend(sb, offset.toString());
+    log.info("CQL >>> SQL " + this.query + " >>>" + sb.toString());
     return sb.toString();
   }
 
