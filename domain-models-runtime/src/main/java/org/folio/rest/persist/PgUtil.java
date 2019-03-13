@@ -499,7 +499,7 @@ private static String getAscDesc(ModifierSet modifierSet) {
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
   }
   /**
-   * Generate a CQLWrapper object for use by optimization.
+   * Generate a CQLWrapper object.
    *
    * @param query the cql query to parse
    * @param limit the max objects to return
