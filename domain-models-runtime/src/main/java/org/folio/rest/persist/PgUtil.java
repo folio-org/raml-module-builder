@@ -8,6 +8,7 @@ import java.io.IOException;
 
 import javax.ws.rs.core.Response;
 
+import org.folio.rest.jaxrs.model.Instances;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -519,6 +520,36 @@ private static String getAscDesc(ModifierSet modifierSet) {
       .setLimit(new Limit(limit))
       .setOffset(new Offset(offset));
   }
+  public static boolean getWithOptimizedSql(PostgresClient postgresClient,Class<? extends ResponseDelegate> clazz,PreparedCQL preparedCql, String tenantId, 
+      int offset, int limit, String column, int size, Handler<AsyncResult<Response>> asyncResultHandler) {
+      String sql = null;
+      try {
+        generateOptimizedSql( preparedCql,  tenantId, 
+             offset,  limit,  column,  size);
+      } catch (QueryValidationException e) {
+        return false;
+      } 
+      Method respond200 = clazz.getMethod(RESPOND_200_WITH_APPLICATION_JSON, clazz);
+      Method respond500 = clazz.getMethod(RESPOND_500_WITH_TEXT_PLAIN,clazz);
+      postgresClient.select(sql, reply -> {
+        try {
+ 
+          if (reply.failed()) {
+            logger.error("optimized SQL failed: " + reply.cause().getMessage());
+            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(respond500(reply.cause().getMessage())));
+          }
+          Instances instances = instances(reply.result(), limit);
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+              respond200(instances)));
+        } catch (Exception e) {
+          logger.error("Exception with reply from optimized SQL: " + e.getMessage(), e.getCause());
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+              respond500(e.getMessage())));
+        }
+      });
+      return true;
+    
+  }
   /**
    * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
    *
@@ -529,7 +560,6 @@ private static String getAscDesc(ModifierSet modifierSet) {
    * @param column the index column to use 
    * @param size the number of rows that determines which method will be used to generate the ultimate result 
    * @return String
-   * @throws Exception on generation failure
    */
   public static String generateOptimizedSql(PreparedCQL preparedCql, String tenantId, 
       int offset, int limit, String column, int size ) throws QueryValidationException {
