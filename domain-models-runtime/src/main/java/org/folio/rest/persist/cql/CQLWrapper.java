@@ -171,7 +171,7 @@ public class CQLWrapper {
     spaceAppend(sb, offset.toString());
     String sql = sb.toString();
     if (log.isInfoEnabled()) {
-      log.info("CQL >>> SQL " + this.query + " >>>" + sql);
+      log.info("CQL >>> SQL: " + this.query + " >>>" + sql);
     }
     return sql;
   }
