@@ -47,7 +47,7 @@ public final class PgUtil {
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
-  
+
   private PgUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
@@ -447,50 +447,50 @@ public final class PgUtil {
     }
   }
 
+  /** Number of records to use from the title sort index in optimizedSql method */
 
-/** Number of records to use from the title sort index in optimizedSql method */
-
-static CQLSortNode getSortNode(String cql) {
-  try {
-    CQLParser parser = new CQLParser();
-    CQLNode node = parser.parse(cql);
-    return getSortNode(node);
-  } catch (IOException|CQLParseException|NullPointerException e) {
-    return null;
-  }
-}
-
-private static CQLSortNode getSortNode(CQLNode node) {
-  CqlSortNodeVisitor visitor = new CqlSortNodeVisitor();
-  node.traverse(visitor);
-  return visitor.sortNode;
-}
-
-private static class CqlSortNodeVisitor extends CQLDefaultNodeVisitor {
-  CQLSortNode sortNode = null;
-
-  @Override
-  public void onSortNode(CQLSortNode cqlSortNode) {
-    sortNode = cqlSortNode;
-  }
-}
-
-private static String getAscDesc(ModifierSet modifierSet) {
-  String ascDesc = "";
-  for (Modifier modifier : modifierSet.getModifiers()) {
-    switch (modifier.getType()) {
-    case "sort.ascending":
-      ascDesc = "ASC";
-      break;
-    case "sort.descending":
-      ascDesc = "DESC";
-      break;
-    default:
-      // ignore
+  static CQLSortNode getSortNode(String cql) {
+    try {
+      CQLParser parser = new CQLParser();
+      CQLNode node = parser.parse(cql);
+      return getSortNode(node);
+    } catch (IOException|CQLParseException|NullPointerException e) {
+      return null;
     }
   }
-  return ascDesc;
-}
+
+  private static CQLSortNode getSortNode(CQLNode node) {
+    CqlSortNodeVisitor visitor = new CqlSortNodeVisitor();
+    node.traverse(visitor);
+    return visitor.sortNode;
+  }
+
+  private static class CqlSortNodeVisitor extends CQLDefaultNodeVisitor {
+    CQLSortNode sortNode = null;
+
+    @Override
+    public void onSortNode(CQLSortNode cqlSortNode) {
+      sortNode = cqlSortNode;
+    }
+  }
+
+  private static String getAscDesc(ModifierSet modifierSet) {
+    String ascDesc = "";
+    for (Modifier modifier : modifierSet.getModifiers()) {
+      switch (modifier.getType()) {
+      case "sort.ascending":
+        ascDesc = "ASC";
+        break;
+      case "sort.descending":
+        ascDesc = "DESC";
+        break;
+      default:
+        // ignore
+      }
+    }
+    return ascDesc;
+  }
+
   /**
    * Return a PostgresClient.
    * @param vertxContext  Where to get a Vertx from.
@@ -500,6 +500,7 @@ private static String getAscDesc(ModifierSet modifierSet) {
   public static PostgresClient postgresClient(Context vertxContext, Map<String, String> okapiHeaders) {
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
   }
+
   /**
    * Generate a CQLWrapper object.
    *
@@ -510,49 +511,48 @@ private static String getAscDesc(ModifierSet modifierSet) {
    * @return CQLWrapper
    */
   public static CQLWrapper createCQLWrapper(
-    String query,
-    int limit,
-    int offset,
-    List<String> fields) throws FieldException {
+      String query,
+      int limit,
+      int offset,
+      List<String> fields) throws FieldException {
 
     CQL2PgJSON cql2pgJson = new CQL2PgJSON(fields);
 
     return new CQLWrapper(cql2pgJson, query)
-      .setLimit(new Limit(limit))
-      .setOffset(new Offset(offset));
+        .setLimit(new Limit(limit))
+        .setOffset(new Offset(offset));
   }
-  /** 
-   * 
+
+  /**
+   *
    * @param postgresClient the client to run the query with
    * @param preparedCql cql to pass on to the optimizer function
    * @param tenantId tenant to pass on to the optimizer
    * @param offset offset value
    * @param limit max items to return
-   * @param column ame of the column 
+   * @param column ame of the column
    * @param size amount of results to hinge the optimization on
    * @param asyncResultHandler reply function to return back result
    * @return
    */
-  public static boolean getWithOptimizedSql(PostgresClient postgresClient,PreparedCQL preparedCql, String tenantId, 
+  public static boolean getWithOptimizedSql(PostgresClient postgresClient, PreparedCQL preparedCql, String tenantId,
       int offset, int limit, String column, int size, Handler<AsyncResult<ResultSet>> asyncResultHandler) {
-      String sql = null;
+    String sql = null;
+    try {
+      generateOptimizedSql(preparedCql, tenantId, offset, limit, column, size);
+    } catch (QueryValidationException e) {
+      return false;
+    }
+    postgresClient.select(sql, reply -> {
       try {
-        generateOptimizedSql( preparedCql,  tenantId, 
-             offset,  limit,  column,  size);
-      } catch (QueryValidationException e) {
-        return false;
+        asyncResultHandler.handle(reply);
+      } catch (Exception e) {
+        logger.error("Exception with reply from optimized SQL: " + e.getMessage(), e.getCause());
       }
-      postgresClient.select(sql, reply -> {
-        try {
-          asyncResultHandler.handle(reply);
-        } catch (Exception e) {
-          logger.error("Exception with reply from optimized SQL: " + e.getMessage(), e.getCause());
-         
-        }
-      });
-      return true;  
+    });
+    return true;
   }
-  
+
   /**
    * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
    *
@@ -560,11 +560,11 @@ private static String getAscDesc(ModifierSet modifierSet) {
    * @param tenantId the tenant used to generate schema location
    * @param offset start index of objects to return
    * @param limit max number of objects to return
-   * @param column the index column to use 
-   * @param size the number of rows that determines which method will be used to generate the ultimate result 
+   * @param column the index column to use
+   * @param size the number of rows that determines which method will be used to generate the ultimate result
    * @return String
    */
-  public static String generateOptimizedSql(PreparedCQL preparedCql, String tenantId, 
+  public static String generateOptimizedSql(PreparedCQL preparedCql, String tenantId,
       int offset, int limit, String column, int size ) throws QueryValidationException {
 
     String cql = preparedCql.getCqlWrapper().getQuery();
@@ -583,8 +583,7 @@ private static String getAscDesc(ModifierSet modifierSet) {
     String ascDesc = getAscDesc(modifierSet);
     cql = cqlSortNode.getSubtree().toCQL();
     String lessGreater = "";
-    if(ascDesc.equals("DESC") )
-    {
+    if (ascDesc.equals("DESC")) {
       lessGreater = ">" ;
     } else {
       lessGreater = "<";
@@ -634,9 +633,8 @@ private static String getAscDesc(ModifierSet modifierSet) {
 
     logger.info("optimized SQL generated from CQL: " + sql);
     return sql;
-
-
   }
+
   static class PreparedCQL {
     private final String tableName;
     private final CQLWrapper cqlWrapper;
@@ -653,8 +651,5 @@ private static String getAscDesc(ModifierSet modifierSet) {
     public CQLWrapper getCqlWrapper() {
       return cqlWrapper;
     }
-
   }
-
 }
-
