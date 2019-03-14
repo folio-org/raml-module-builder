@@ -169,8 +169,11 @@ public class CQLWrapper {
     }
     spaceAppend(sb, limit.toString());
     spaceAppend(sb, offset.toString());
-    log.info("CQL >>> SQL " + this.query + " >>>" + sb.toString());
-    return sb.toString();
+    String sql = sb.toString();
+    if (log.isInfoEnabled()) {
+      log.info("CQL >>> SQL " + this.query + " >>>" + sql);
+    }
+    return sql;
   }
 
   class WrapTheWrapper {
