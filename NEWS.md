@@ -1,3 +1,8 @@
+## 23.11.0 2019-03-14
+
+ * RMB-342 TenantLoading / empty list for empty directory
+ * RMB-341 Log CQL and generated SQL WHERE clause together
+
 ## 23.10.0 2019-03-12
 
  * RMB-339/RMB-340 More facilities for TenantLoading
