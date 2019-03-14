@@ -261,7 +261,10 @@ public class TenantLoading {
     LoadingEntry loadingEntry, HttpClient httpClient,
     Handler<AsyncResult<Integer>> res) {
 
-    final String filePath = loadingEntry.lead + File.separator + loadingEntry.filePath;
+    String filePath = loadingEntry.lead;
+    if (!loadingEntry.filePath.isEmpty()) {
+      filePath = filePath + File.separator + loadingEntry.filePath;
+    }
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
     final String endPointUrl = okapiUrl + "/" + loadingEntry.uriPath;
     List<Future> futures = new LinkedList<>();
