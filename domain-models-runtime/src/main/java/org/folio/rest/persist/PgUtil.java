@@ -12,9 +12,6 @@ import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.persist.cql.CQLWrapper;
-import org.folio.rest.persist.Criteria.Limit;
-import org.folio.rest.persist.Criteria.Offset;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.core.Context;
@@ -30,8 +27,6 @@ import org.z3950.zing.cql.CQLParser;
 import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
 import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
 /**
@@ -499,28 +494,6 @@ public final class PgUtil {
    */
   public static PostgresClient postgresClient(Context vertxContext, Map<String, String> okapiHeaders) {
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
-  }
-
-  /**
-   * Generate a CQLWrapper object.
-   *
-   * @param query the cql query to parse
-   * @param limit the max objects to return
-   * @param offset the start index of objects to return
-   * @param fields the fields to apply the cql query above to
-   * @return CQLWrapper
-   */
-  public static CQLWrapper createCQLWrapper(
-      String query,
-      int limit,
-      int offset,
-      List<String> fields) throws FieldException {
-
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON(fields);
-
-    return new CQLWrapper(cql2pgJson, query)
-        .setLimit(new Limit(limit))
-        .setOffset(new Offset(offset));
   }
 
   /**

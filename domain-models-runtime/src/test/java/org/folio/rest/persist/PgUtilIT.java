@@ -2,7 +2,6 @@ package org.folio.rest.persist;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
@@ -32,8 +31,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
 import org.mockito.stubbing.VoidAnswer2;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
-
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import com.github.mauricio.async.db.postgresql.exceptions.QueryMustNotBeNullOrEmptyException;
 
 import static org.junit.Assert.assertThat;
@@ -755,23 +753,18 @@ public class PgUtilIT {
     async.await();
   }
 
-  private void searchForData(String cql, int limit, int offset,
-      String table, String tennant, TestContext testContext, String columnName, int optimizdSQLSize,
-      Handler<AsyncResult<JsonArray>>  handler) {
-    String optimizedSQL = "";
-    PreparedCQL pCQL = null;
-    CQLWrapper wrapper = null;
+  private void searchForData(String cql,int limit, int offset, String table, String tennant, TestContext testContext, String columnName, int optimizdSQLSize,
+      Handler<AsyncResult<JsonArray>>  handler ) {
     try {
-      wrapper = PgUtil.createCQLWrapper(cql, limit, offset, Arrays.asList(schema + "." + table + ".jsonb "));
-      pCQL = new PreparedCQL(table, wrapper );
-      optimizedSQL = PgUtil.generateOptimizedSql(pCQL, tennant, 6, 3, columnName, optimizdSQLSize);
-    } catch(FieldException fe) {
-
-    } catch(Exception e) {
-
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(schema + "." + table + ".jsonb");
+      CQLWrapper wrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
+      PreparedCQL pCQL = new PreparedCQL(table, wrapper );
+      String optimizedSQL = PgUtil.generateOptimizedSql(pCQL, tennant, 6, 3, columnName, optimizdSQLSize);
+      log.info("optimized sql is " + optimizedSQL);
+      executeAndNotify(testContext,optimizedSQL,handler);
+    } catch (Exception e) {
+      testContext.fail(e);
     }
-    log.info("optimized sql is " + optimizedSQL);
-    executeAndNotify(testContext,optimizedSQL,handler);
   }
 
   /**
