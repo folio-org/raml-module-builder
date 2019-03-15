@@ -601,121 +601,75 @@ public class PgUtilIT {
     insert(testContext, pg, "d foo", 5);
     insert(testContext, pg, "e", n);
     String columnName = "name";
+
     // limit=9
-    //prepare optimized sql
-    String optimizedSQL = "";
-    PreparedCQL pCQL = null;
-    CQLWrapper wrapper = null;
+    JsonArray json = searchForData("name=foo sortBy name", 0, 9, "user", "testtenant", testContext, columnName);
+    assertThat(json.size(), is(3));
+    for (int i=0; i<5; i++) {
+      JsonObject instance = json.getJsonObject(i);
+      assertThat(instance.getString("name"), is("b foo " + (i + 1)));
+    }
+    for (int i=0; i<3; i++) {
+      JsonObject instance = json.getJsonObject(5 + i);
+      assertThat(instance.getString("name"), is("d foo " + (i + 1)));
+    }
 
-    searchForData("name=foo sortBy name", 0, 9, "user", "testtenant", testContext, columnName, optimizdSQLSize, reply -> {
-      //handle return and
-      if (reply.failed()) {
-        testContext.fail(reply.cause());
-      }
-      JsonArray json = reply.result();
-      assertThat(json.size(), is(3));
-      for (int i=0; i<5; i++) {
-        JsonObject instance = json.getJsonObject(i);
-        assertThat(instance.getString("name"), is("b foo " + (i + 1)));
-      }
-      for (int i=0; i<3; i++) {
-        JsonObject instance = json.getJsonObject(5 + i);
-        assertThat(instance.getString("name"), is("d foo " + (i + 1)));
-      }
-    });
+    // limit=5
+    json = searchForData("name=foo sortBy name", 0, 5, "user", "testtenant", testContext, columnName);
+    assertThat(json.size(), is(5));
+    for (int i=0; i<5; i++) {
+      JsonObject instance = json.getJsonObject(i);
+      assertThat(instance.getString("name"), is("b foo " + (i + 1)));
+    }
 
-    // // limit=5
-    searchForData("name=foo sortBy name", 0, 5, "user", "testtenant", testContext, columnName, optimizdSQLSize, reply -> {
-      //handle return and
-      if (reply.failed()) {
-        testContext.fail(reply.cause());
-      }
-      JsonArray json = reply.result();
-      assertThat(json.size(), is(5));
-      for (int i=0; i<5; i++) {
-        JsonObject instance = json.getJsonObject(i);
-        assertThat(instance.getString("name"), is("b foo " + (i + 1)));
-      }
-    });
+    // offset=6, limit=3
+    json = searchForData("name=foo sortBy name", 6, 3, "user", "testtenant", testContext, columnName);
+    assertThat(json.size(), is(5));
 
-    // // offset=6, limit=3
-    searchForData("name=foo sortBy name", 6, 3, "user", "testtenant", testContext, columnName, optimizdSQLSize, reply -> {
-      //handle return and
-      if (reply.failed()) {
-        testContext.fail(reply.cause());
-      }
-      JsonArray json = reply.result();
-      assertThat(json.size(), is(5));
+    for (int i=0; i<3; i++) {
+      JsonObject instance = json.getJsonObject(i);
+      assertThat(instance.getString("name"), is("d foo " + (1 + i + 1)));
+    }
 
-      for (int i=0; i<3; i++) {
-        JsonObject instance = json.getJsonObject(i);
-        assertThat(instance.getString("name"), is("d foo " + (1 + i + 1)));
-      }
-    } );
+    // offset=1, limit=8
+    json = searchForData("name=foo sortBy name", 1, 8, "user", "testtenant", testContext, columnName);
+    assertThat(json.size(), is(8));
 
-    // // offset=1, limit=8
-    searchForData("name=foo sortBy name", 1, 8, "user", "testtenant", testContext, columnName, optimizdSQLSize, reply -> {
-      //handle return and
-      if (reply.failed()) {
-        testContext.fail(reply.cause());
-      }
-      JsonArray json = reply.result();
-      assertThat(json.size(), is(8));
+    for (int i=0; i<4; i++) {
+      JsonObject instance = json.getJsonObject(i);
+      assertThat(instance.getString("name"), is("b foo " + (1 + i + 1)));
+    }
+    for (int i=0; i<4; i++) {
+      JsonObject instance = json.getJsonObject(4 + i);
+      assertThat(instance.getString("name"), is("d foo " + (i + 1)));
+    }
 
-      for (int i=0; i<4; i++) {
-        JsonObject instance = json.getJsonObject(i);
-        assertThat(instance.getString("name"), is("b foo " + (1 + i + 1)));
-      }
-      for (int i=0; i<4; i++) {
-        JsonObject instance = json.getJsonObject(4 + i);
-        assertThat(instance.getString("name"), is("d foo " + (i + 1)));
-      }
-    });
+    // "b foo", offset=1, limit=20
+    json = searchForData("name=b sortBy name/sort.ascending", 1, 20, "user", "testtenant", testContext, columnName);
+    assertThat(json.size(), is(4));
 
-    // // "b foo", offset=1, limit=20
-    searchForData("name=b sortBy name/sort.ascending", 1, 20, "user", "testtenant", testContext, columnName, optimizdSQLSize, reply -> {
-      //handle return and
-      if (reply.failed()) {
-        testContext.fail(reply.cause());
-      }
-      JsonArray json = reply.result();
-      assertThat(json.size(), is(4));
+    for (int i=0; i<4; i++) {
+      JsonObject instance = json.getJsonObject(i);
+      assertThat(instance.getString("name"), is("b foo " + (1 + i + 1)));
+    }
 
-      for (int i=0; i<4; i++) {
-        JsonObject instance = json.getJsonObject(i);
-        assertThat(instance.getString("name"), is("b foo " + (1 + i + 1)));
-      }
-    });
+    // sort.descending, offset=1, limit=3
+    json = searchForData("name=foo sortBy name/sort.ascending", 1, 3, "user", "testtenant", testContext, columnName);
+    assertThat(json.size(), is(3));
 
-    // // sort.descending, offset=1, limit=3
-    searchForData("name=foo sortBy name/sort.ascending", 1, 3, "user", "testtenant", testContext, columnName, optimizdSQLSize, reply -> {
-      //handle return and
-      if (reply.failed()) {
-        testContext.fail(reply.cause());
-      }
-      JsonArray json = reply.result();
-      assertThat(json.size(), is(3));
+    for (int i=0; i<3; i++) {
+      JsonObject instance = json.getJsonObject(i);
+      assertThat(instance.getString("name"), is("d foo " + (4 - i)));
+    }
 
-      for (int i=0; i<3; i++) {
-        JsonObject instance = json.getJsonObject(i);
-        assertThat(instance.getString("name"), is("d foo " + (4 - i)));
-      }
-    });
+    // sort.descending, offset=6, limit=3
+    json = searchForData("name=foo sortBy name/sort.ascending", 6, 3, "user", "testtenant", testContext, columnName);
+    assertThat(json.size(), is(3));
 
-    // // sort.descending, offset=6, limit=3
-    searchForData("name=foo sortBy name/sort.ascending", 6, 3, "user", "testtenant", testContext, columnName, optimizdSQLSize, reply -> {
-      //handle return and
-      if (reply.failed()) {
-        testContext.fail(reply.cause());
-      }
-      JsonArray json = reply.result();
-      assertThat(json.size(), is(3));
-
-      for (int i=0; i<3; i++) {
-        JsonObject instance = json.getJsonObject(i);
-        assertThat(instance.getString("name"), is("b foo " + (4 - i)));
-      }
-    });
+    for (int i=0; i<3; i++) {
+      JsonObject instance = json.getJsonObject(i);
+      assertThat(instance.getString("name"), is("b foo " + (4 - i)));
+    }
   }
 
   private void optimizedSql500(TestContext testContext, VoidAnswer2<String, Handler> answer, String expected) {
@@ -724,7 +678,7 @@ public class PgUtilIT {
     doAnswer(AdditionalAnswers.answerVoid(answer))
     .when(postgresClient).select(anyString(), any(Handler.class));
     exception.expect(QueryMustNotBeNullOrEmptyException.class);
-    searchForData("name=a sortBy title",0,10,"nonexistingTableName","testtenant",testContext,"user",10000,reply -> {
+    searchForData("name=a sortBy title", 0, 10, "nonexistingTableName", "testtenant", testContext, "user", reply -> {
 
       testContext.assertEquals(false, reply.succeeded());
     });
@@ -744,27 +698,29 @@ public class PgUtilIT {
         null);
   }
 
-  private static void executeAndNotify(TestContext context, String sql, Handler<AsyncResult<JsonArray>> handler) {
-    Async async = context.async();
-    PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
-        async.complete();
-        handler.handle(reply);
-      });
-    async.await();
-  }
-
-  private void searchForData(String cql,int limit, int offset, String table, String tennant, TestContext testContext, String columnName, int optimizdSQLSize,
+  private void searchForData(String cql,int limit, int offset, String table, String tennant, TestContext testContext, String columnName,
       Handler<AsyncResult<JsonArray>>  handler ) {
     try {
       CQL2PgJSON cql2pgJson = new CQL2PgJSON(schema + "." + table + ".jsonb");
       CQLWrapper wrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
-      PreparedCQL pCQL = new PreparedCQL(table, wrapper );
-      String optimizedSQL = PgUtil.generateOptimizedSql(pCQL, tennant, 6, 3, columnName, optimizdSQLSize);
+      PreparedCQL pCQL = new PreparedCQL(table, wrapper, okapiHeaders);
+      String optimizedSQL = PgUtil.generateOptimizedSql(columnName, pCQL, 6, 3);
       log.info("optimized sql is " + optimizedSQL);
-      executeAndNotify(testContext,optimizedSQL,handler);
+      PostgresClient.getInstance(vertx).getClient().querySingle(optimizedSQL, handler);
     } catch (Exception e) {
       testContext.fail(e);
     }
+  }
+
+  private JsonArray searchForData(String cql,int limit, int offset, String table, String tenant, TestContext testContext, String columnName) {
+    Async async = testContext.async();
+    JsonArray [] jsonArray = new JsonArray [1];
+    searchForData(cql, limit, offset, table, tenant, testContext, columnName, testContext.asyncAssertSuccess(result -> {
+      jsonArray[0] = result;
+      async.complete();
+    }));
+    async.await();
+    return jsonArray[0];
   }
 
   /**
