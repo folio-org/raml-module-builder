@@ -1574,8 +1574,8 @@ public class RestVerticle extends AbstractVerticle {
     String json;
     try {
       String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
-      if(userId == null){
-        String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
+      String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
+      if (userId == null && token != null) {
         String[] split = token.split("\\.");
         //the split array contains the 3 parts of the token - the body is the middle part
         json = JwtUtils.getJson(split[1]);
