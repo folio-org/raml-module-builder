@@ -346,6 +346,7 @@ public final class PgUtil {
             if (message == null) {
               message = reply.cause().getMessage();
             }
+            logger.error(message, reply.cause());
             asyncResultHandler.handle(response(message, respond400, respond500));
             return;
           }

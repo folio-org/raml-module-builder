@@ -2,13 +2,15 @@ package org.folio.rest.persist;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.jaxrs.model.User;
+import org.folio.rest.jaxrs.model.UserdataCollection;
 import org.folio.rest.jaxrs.model.Users;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
@@ -45,7 +47,6 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -600,75 +601,74 @@ public class PgUtilIT {
     insert(testContext, pg, "c", n);
     insert(testContext, pg, "d foo", 5);
     insert(testContext, pg, "e", n);
-    String columnName = "name";
 
     // limit=9
-    JsonArray json = searchForData("name=foo sortBy name", 0, 9, "user", "testtenant", testContext, columnName);
-    assertThat(json.size(), is(3));
+    UserdataCollection c = searchForData("name=foo sortBy name", 0, 9, testContext);
+    assertThat(c.getUsers().size(), is(9));
     for (int i=0; i<5; i++) {
-      JsonObject instance = json.getJsonObject(i);
-      assertThat(instance.getString("name"), is("b foo " + (i + 1)));
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (i + 1)));
     }
     for (int i=0; i<3; i++) {
-      JsonObject instance = json.getJsonObject(5 + i);
-      assertThat(instance.getString("name"), is("d foo " + (i + 1)));
+      User user = c.getUsers().get(5 + i);
+      assertThat(user.getUsername(), is("d foo " + (i + 1)));
     }
 
     // limit=5
-    json = searchForData("name=foo sortBy name", 0, 5, "user", "testtenant", testContext, columnName);
-    assertThat(json.size(), is(5));
+    c = searchForData("name=foo sortBy name", 0, 5, testContext);
+    assertThat(c.getUsers().size(), is(5));
     for (int i=0; i<5; i++) {
-      JsonObject instance = json.getJsonObject(i);
-      assertThat(instance.getString("name"), is("b foo " + (i + 1)));
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (i + 1)));
     }
 
     // offset=6, limit=3
-    json = searchForData("name=foo sortBy name", 6, 3, "user", "testtenant", testContext, columnName);
-    assertThat(json.size(), is(5));
+    c = searchForData("name=foo sortBy name", 6, 3, testContext);
+    assertThat(c.getUsers(), is(5));
 
     for (int i=0; i<3; i++) {
-      JsonObject instance = json.getJsonObject(i);
-      assertThat(instance.getString("name"), is("d foo " + (1 + i + 1)));
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("d foo " + (1 + i + 1)));
     }
 
     // offset=1, limit=8
-    json = searchForData("name=foo sortBy name", 1, 8, "user", "testtenant", testContext, columnName);
-    assertThat(json.size(), is(8));
+    c = searchForData("name=foo sortBy name", 1, 8, testContext);
+    assertThat(c.getUsers(), is(8));
 
     for (int i=0; i<4; i++) {
-      JsonObject instance = json.getJsonObject(i);
-      assertThat(instance.getString("name"), is("b foo " + (1 + i + 1)));
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (1 + i + 1)));
     }
     for (int i=0; i<4; i++) {
-      JsonObject instance = json.getJsonObject(4 + i);
-      assertThat(instance.getString("name"), is("d foo " + (i + 1)));
+      User user = c.getUsers().get(4 + i);
+      assertThat(user.getUsername(), is("d foo " + (i + 1)));
     }
 
     // "b foo", offset=1, limit=20
-    json = searchForData("name=b sortBy name/sort.ascending", 1, 20, "user", "testtenant", testContext, columnName);
-    assertThat(json.size(), is(4));
+    c = searchForData("name=b sortBy name/sort.ascending", 1, 20, testContext);
+    assertThat(c.getUsers(), is(4));
 
     for (int i=0; i<4; i++) {
-      JsonObject instance = json.getJsonObject(i);
-      assertThat(instance.getString("name"), is("b foo " + (1 + i + 1)));
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (1 + i + 1)));
     }
 
     // sort.descending, offset=1, limit=3
-    json = searchForData("name=foo sortBy name/sort.ascending", 1, 3, "user", "testtenant", testContext, columnName);
-    assertThat(json.size(), is(3));
+    c = searchForData("name=foo sortBy name/sort.ascending", 1, 3, testContext);
+    assertThat(c.getUsers(), is(3));
 
     for (int i=0; i<3; i++) {
-      JsonObject instance = json.getJsonObject(i);
-      assertThat(instance.getString("name"), is("d foo " + (4 - i)));
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("d foo " + (4 - i)));
     }
 
     // sort.descending, offset=6, limit=3
-    json = searchForData("name=foo sortBy name/sort.ascending", 6, 3, "user", "testtenant", testContext, columnName);
-    assertThat(json.size(), is(3));
+    c = searchForData("name=foo sortBy name/sort.ascending", 6, 3, testContext);
+    assertThat(c.getUsers(), is(3));
 
     for (int i=0; i<3; i++) {
-      JsonObject instance = json.getJsonObject(i);
-      assertThat(instance.getString("name"), is("b foo " + (4 - i)));
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (4 - i)));
     }
   }
 
@@ -678,8 +678,8 @@ public class PgUtilIT {
     doAnswer(AdditionalAnswers.answerVoid(answer))
     .when(postgresClient).select(anyString(), any(Handler.class));
     exception.expect(QueryMustNotBeNullOrEmptyException.class);
-    searchForData("name=a sortBy title", 0, 10, "nonexistingTableName", "testtenant", testContext, "user", reply -> {
-
+    PgUtil.getWithOptimizedSql("nonexistingTableName", User.class, UserdataCollection.class, "title", "name=a sortBy title",
+        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class, reply -> {
       testContext.assertEquals(false, reply.succeeded());
     });
   }
@@ -698,29 +698,46 @@ public class PgUtilIT {
         null);
   }
 
-  private void searchForData(String cql,int limit, int offset, String table, String tennant, TestContext testContext, String columnName,
-      Handler<AsyncResult<JsonArray>>  handler ) {
+  private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
+    UserdataCollection userdataCollection = new UserdataCollection();
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON(schema + "." + table + ".jsonb");
-      CQLWrapper wrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
-      PreparedCQL pCQL = new PreparedCQL(table, wrapper, okapiHeaders);
-      String optimizedSQL = PgUtil.generateOptimizedSql(columnName, pCQL, 6, 3);
-      log.info("optimized sql is " + optimizedSQL);
-      PostgresClient.getInstance(vertx).getClient().querySingle(optimizedSQL, handler);
+      Async async = testContext.async();
+      PgUtil.getWithOptimizedSql(
+          "user", User.class, UserdataCollection.class, "name", cql, offset, limit, okapiHeaders,
+          vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(result -> {
+            Response response = result;
+            testContext.assertEquals(200, response.getStatus());
+            UserdataCollection c = (UserdataCollection) response.getEntity();
+            userdataCollection.setTotalRecords(c.getTotalRecords());
+            userdataCollection.setUsers(c.getUsers());
+            async.complete();
+      }));
+      async.await();
     } catch (Exception e) {
       testContext.fail(e);
     }
+    return userdataCollection;
   }
 
-  private JsonArray searchForData(String cql,int limit, int offset, String table, String tenant, TestContext testContext, String columnName) {
-    Async async = testContext.async();
-    JsonArray [] jsonArray = new JsonArray [1];
-    searchForData(cql, limit, offset, table, tenant, testContext, columnName, testContext.asyncAssertSuccess(result -> {
-      jsonArray[0] = result;
-      async.complete();
-    }));
-    async.await();
-    return jsonArray[0];
+  private List<JsonObject> searchForData2(String cql, int offset, int limit, TestContext testContext) {
+    List<JsonObject> list = new ArrayList<>();
+    try {
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(schema + ".user.jsonb");
+      CQLWrapper wrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
+      PreparedCQL pCQL = new PreparedCQL("user", wrapper, okapiHeaders);
+      String optimizedSQL = PgUtil.generateOptimizedSql("name", pCQL, offset, limit);
+      log.info("optimized sql is " + optimizedSQL);
+     System.out.println("optimizedSQL = " + optimizedSQL);
+      Async async = testContext.async();
+      PostgresClient.getInstance(vertx).getClient().query(optimizedSQL, testContext.asyncAssertSuccess(result -> {
+        result.getRows().stream().map(row -> new JsonObject(row.getString("jsonb"))).forEach(list::add);
+        async.complete();
+      }));
+      async.await();
+    } catch (Exception e) {
+      testContext.fail(e);
+    }
+    return list;
   }
 
   /**
@@ -755,6 +772,10 @@ public class PgUtilIT {
       return new ResponseImpl(response, entity);
     }
     public static Response respond200WithApplicationJson(User entity) {
+      Response response = Response.status(200).header("Content-Type", "application/json").entity(entity).build();
+      return new ResponseImpl(response, entity);
+    }
+    public static Response respond200WithApplicationJson(UserdataCollection entity) {
       Response response = Response.status(200).header("Content-Type", "application/json").entity(entity).build();
       return new ResponseImpl(response, entity);
     }
