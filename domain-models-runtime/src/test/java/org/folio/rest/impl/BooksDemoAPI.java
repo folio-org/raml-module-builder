@@ -14,6 +14,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
+import java.io.InputStream;
 
 /**
  * This is a demo class for unit testing - and to serve as an examle only!
@@ -72,6 +73,12 @@ public class BooksDemoAPI implements Rmbtests {
       log.error( e.getMessage(),  e );
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(null));
     }
+  }
+
+  @Validate
+  @Override
+  public void postRmbtestsTestStream(InputStream inputStream, Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
   }
 
 }
