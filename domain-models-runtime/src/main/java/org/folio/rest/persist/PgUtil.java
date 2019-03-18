@@ -51,6 +51,8 @@ public final class PgUtil {
   private static final String NOT_FOUND = "Not found";
   /** mapper between JSON and Java instance (POJO) */
   private static final ObjectMapper OBJECT_MAPPER = ObjectMapperTool.getMapper();
+  /** Number of records to read from the sort index in getWithOptimizedSql and generateOptimizedSql method */
+  private static int optimizedSqlSize = 10000;
 
   private PgUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
@@ -625,9 +627,6 @@ public final class PgUtil {
   public static PostgresClient postgresClient(Context vertxContext, Map<String, String> okapiHeaders) {
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
   }
-
-  /** Number of records to read from the sort index in getWithOptimizedSql and generateOptimizedSql method */
-  private static int optimizedSqlSize = 10000;
 
   /** Number of records to read from the sort index in getWithOptimizedSql method */
   public static int getOptimizedSqlSize() {
