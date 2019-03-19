@@ -274,6 +274,64 @@ public class DemoRamlRestTest {
     });*/
   }
 
+  private void testStream(TestContext context, boolean chunk) {
+    int chunkSize = 1024;
+    int numberChunks = 50;
+    Async async = context.async();
+      log.info("testStream 1");
+    HttpClient httpClient = vertx.createHttpClient();
+    HttpClientRequest req = httpClient.post(port, "localhost", "/rmbtests/testStream", res -> {
+      log.info("testStream 2");
+      Buffer resBuf = Buffer.buffer();
+      res.handler(resBuf::appendBuffer);
+      res.endHandler(x -> {
+        log.info("testStream 3");
+        context.assertEquals(200, res.statusCode());
+        JsonObject jo = new JsonObject(resBuf);
+        context.assertTrue(jo.getBoolean("complete"));
+        async.complete();
+      });
+      res.exceptionHandler(x -> {
+        if (!async.isCompleted()) {
+          context.assertTrue(false, "exceptionHandler res: " + x.getLocalizedMessage());
+          async.complete();
+        }
+      });
+    });
+    req.exceptionHandler(x -> {
+      if (!async.isCompleted()) {
+        context.assertTrue(false, "exceptionHandler req: " + x.getLocalizedMessage());
+        async.complete();
+      }
+    });
+    if (chunk) {
+      req.setChunked(true);
+    } else {
+      req.putHeader("Content-Length", Integer.toString(chunkSize * numberChunks));
+    }
+    req.putHeader("Accept", "application/json,text/plain");
+    req.putHeader("Content-type", "application/octet-stream");
+    req.putHeader("x-okapi-tenant", TENANT);
+    Buffer buf = Buffer.buffer(chunkSize);
+    for (int i = 0; i < chunkSize; i++) {
+      buf.appendString("X");
+    }
+    for (int i = 0; i < numberChunks; i++) {
+      req.write(buf);
+    }
+    req.end();
+  }
+
+  @Test
+  public void testStreamWithLength(TestContext context) {
+    testStream(context, false);
+  }
+
+  @Test
+  public void testStreamChunked(TestContext context) {
+    testStream(context, true);
+  }
+
   /**
    * @param context
    *

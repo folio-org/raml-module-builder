@@ -11,17 +11,21 @@ import org.folio.rest.tools.utils.OutStream;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
 import java.io.InputStream;
+import org.folio.rest.annotations.Stream;
 
 /**
  * This is a demo class for unit testing - and to serve as an examle only!
  */
 public class BooksDemoAPI implements Rmbtests {
 
-  private static final io.vertx.core.logging.Logger log = LoggerFactory.getLogger(BooksDemoAPI.class);
+  private static final Logger log = LoggerFactory.getLogger(BooksDemoAPI.class);
 
   /**
    * validate to test the validation aspect
@@ -32,9 +36,8 @@ public class BooksDemoAPI implements Rmbtests {
       List<String> facets, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetRmbtestsBooksResponse.respond200WithApplicationJson(new
+    asyncResultHandler.handle(Future.succeededFuture(GetRmbtestsBooksResponse.respond200WithApplicationJson(new
       org.folio.rest.jaxrs.model.Book())));
-
   }
 
   @Validate
@@ -42,8 +45,7 @@ public class BooksDemoAPI implements Rmbtests {
   public void putRmbtestsBooks(Number accessToken, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)   {
 
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(null));
-
+    asyncResultHandler.handle(Future.succeededFuture(null));
   }
 
   @Validate
@@ -54,7 +56,7 @@ public class BooksDemoAPI implements Rmbtests {
     PostRmbtestsBooksResponse.HeadersFor201 headers =
         PostRmbtestsBooksResponse.headersFor201().withLocation("/dummy/location");
     stream.setData(entity);
-    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostRmbtestsBooksResponse.
+    asyncResultHandler.handle(Future.succeededFuture(PostRmbtestsBooksResponse.
       respond201WithApplicationJson( stream , headers)));
   }
 
@@ -67,18 +69,22 @@ public class BooksDemoAPI implements Rmbtests {
     OutStream os = new OutStream();
     try {
       os.setData(routingContext.getBodyAsJson());
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+      asyncResultHandler.handle(Future.succeededFuture(
         PostRmbtestsTestResponse.respond200WithApplicationJson(os)));
     } catch (Exception e) {
       log.error( e.getMessage(),  e );
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(null));
+      asyncResultHandler.handle(Future.succeededFuture(null));
     }
   }
 
   @Validate
   @Override
+  @Stream
   public void postRmbtestsTestStream(InputStream inputStream, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    JsonObject jo = new JsonObject();
+    jo.put("complete", okapiHeaders.containsKey("COMPLETE"));
+    asyncResultHandler.handle(Future.succeededFuture(
+      PostRmbtestsTestStreamResponse.respond200WithApplicationJson(jo.encodePrettily())));
   }
-
 }
