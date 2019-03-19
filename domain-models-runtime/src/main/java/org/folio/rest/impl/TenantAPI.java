@@ -210,54 +210,20 @@ public class TenantAPI implements Tenant {
       String ftLanguage = getLanguage4FT(headers.get(CONTENT_LANGUAGE));
       log.info("sending... postTenant for " + tenantId);
       try {
-        boolean isUpdateMode[] = new boolean[]{false};
         //body is optional so that the TenantAttributes
         if(entity != null){
           log.debug("upgrade from " + entity.getModuleFrom() + " to " + entity.getModuleTo());
-          try {
-            if(entity.getModuleFrom() != null){
-              isUpdateMode[0] = true;
-            }
-          } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-              respond400WithTextPlain(e.getMessage())));
-            return;
-          }
         }
 
         tenantExists(context, tenantId,
           h -> {
             try {
-              boolean tenantExists = false;
-              if(h.succeeded()){
-                tenantExists = h.result();
-                if(tenantExists && !isUpdateMode[0]){
-                  //tenant exists and a create tenant request was made, then this should do nothing
-                  //if tenant exists then only update tenant request is acceptable
-                  handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-                    .respond204()));
-                  log.warn("Tenant already exists: " + tenantId);
-                  return;
-                }
-                else if(!tenantExists && isUpdateMode[0]){
-                  //update requested for a non-existant tenant
-                  log.error("Can not update non-existant tenant " + tenantId);
-                  handlers.handle(io.vertx.core.Future.succeededFuture(
-                    PostTenantResponse.respond400WithTextPlain(
-                      "Update tenant requested for tenant " + tenantId + ", but tenant does not exist")));
-                  return;
-                }
-                else{
-                  log.info("adding/updating tenant " + tenantId);
-                }
-              }
-              else{
+              if (h.failed()) {
                 handlers.handle(io.vertx.core.Future.failedFuture(h.cause().getMessage()));
                 log.error(h.cause().getMessage(), h.cause());
                 return;
               }
-
+              final boolean tenantExists = h.result();
               InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(
                 TABLE_JSON);
 
@@ -272,7 +238,7 @@ public class TenantAPI implements Tenant {
               TenantOperation op = TenantOperation.CREATE;
               String previousVersion = null;
               String newVersion = null;
-              if (isUpdateMode[0]) {
+              if (tenantExists) {
                 op = TenantOperation.UPDATE;
                 previousVersion = entity.getModuleFrom();
                 newVersion = entity.getModuleTo();
@@ -313,7 +279,7 @@ public class TenantAPI implements Tenant {
                       } else {
                         OutStream os = new OutStream();
                         os.setData(res);
-                        if (isUpdateMode[0]) {
+                        if (tenantExists) {
                           handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond200WithApplicationJson(os)));
                         } else {
                           handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(os)));
