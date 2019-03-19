@@ -22,6 +22,13 @@ public class UsersuploadAPI implements Usersupload {
   public void postUsersupload(InputStream entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     final String id = okapiHeaders.get("streamed_id");
     final String complete = okapiHeaders.get("complete");
+    final String aborting = okapiHeaders.get("streamed_abort");
+    if (aborting != null) {
+      System.out.println("ABORTING");
+      asyncResultHandler.handle(Future.succeededFuture(
+        PostUsersuploadResponse.respond400WithTextPlain("aborting")));
+      return;
+    }
     int length = streams.getOrDefault(id, 0);
     try {
       byte[] buf = new byte[100];
