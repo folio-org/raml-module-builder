@@ -39,6 +39,8 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.net.NetClient;
+import io.vertx.core.net.NetSocket;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -274,18 +276,59 @@ public class DemoRamlRestTest {
     });*/
   }
 
+  private void testStreamTcpClient(TestContext context, int size) {
+    Async async = context.async();
+    NetClient netClient = vertx.createNetClient();
+    netClient.connect(port, "localhost", con -> {
+      context.assertTrue(con.succeeded());
+      if (con.failed()) {
+        async.complete();
+        return;
+      }
+      NetSocket socket = con.result();
+      socket.write("POST /rmbtests/testStream HTTP/1.1\r\n");
+      socket.write("Host: localhost:" + Integer.toString(port) + "\r\n");
+      socket.write("Content-Type: application/octet-stream\r\n");
+      socket.write("Accept: application/json,text/plain\r\n");
+      socket.write("X-Okapi-Tenant: " + TENANT + "\r\n");
+      socket.write("Content-Length: " + Integer.toString(size) + "\r\n");
+      socket.write("\r\n");
+      socket.write("123\r\n");  // body is 5 bytes
+      Buffer buf = Buffer.buffer();
+      socket.handler(buf::appendBuffer);
+      vertx.setTimer(100, x -> {
+        socket.end();
+        if (!async.isCompleted()) {
+          async.complete();
+        }
+      });
+      socket.endHandler(x -> {
+        if (!async.isCompleted()) {
+          async.complete();
+        }
+      });
+    });
+  }
+
+  @Test
+  public void testStreamManual(TestContext context) {
+    testStreamTcpClient(context, 5);
+  }
+
+  @Test
+  public void testStreamAbort(TestContext context) {
+    testStreamTcpClient(context, 10);
+  }
+
   private void testStream(TestContext context, boolean chunk) {
     int chunkSize = 1024;
     int numberChunks = 50;
     Async async = context.async();
-      log.info("testStream 1");
     HttpClient httpClient = vertx.createHttpClient();
     HttpClientRequest req = httpClient.post(port, "localhost", "/rmbtests/testStream", res -> {
-      log.info("testStream 2");
       Buffer resBuf = Buffer.buffer();
       res.handler(resBuf::appendBuffer);
       res.endHandler(x -> {
-        log.info("testStream 3");
         context.assertEquals(200, res.statusCode());
         JsonObject jo = new JsonObject(resBuf);
         context.assertTrue(jo.getBoolean("complete"));

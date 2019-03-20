@@ -21,7 +21,7 @@ import java.io.InputStream;
 import org.folio.rest.annotations.Stream;
 
 /**
- * This is a demo class for unit testing - and to serve as an examle only!
+ * This is a demo class for unit testing - and to serve as an example only!
  */
 public class BooksDemoAPI implements Rmbtests {
 
