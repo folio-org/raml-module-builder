@@ -591,6 +591,7 @@ public class RestVerticle extends AbstractVerticle {
     request.endHandler( e -> {
       StreamStatus stat = new StreamStatus();
       stat.setStatus(1);
+      paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
       invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
         LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
         //all data has been stored in memory - not necessarily all processed
@@ -602,6 +603,7 @@ public class RestVerticle extends AbstractVerticle {
       public void handle(Throwable event) {
         StreamStatus stat = new StreamStatus();
         stat.setStatus(2);
+        paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
         invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, stat, v -> {
           LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
         });
