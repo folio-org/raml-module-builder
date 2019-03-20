@@ -689,7 +689,7 @@ public final class PgUtil {
     }
 
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON(".jsonb");
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       String sql = generateOptimizedSql(sortField, preparedCql, offset, limit);
