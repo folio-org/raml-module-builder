@@ -92,3 +92,17 @@ traits:
         302:
           headers:
             Location:
+  /testStream:
+    post:
+      body:
+        application/octet-stream:
+      responses:
+        200:
+          body:
+            application/json:
+        400:
+          body:
+            text/plain:
+        500:
+          body:
+            text/plain:
