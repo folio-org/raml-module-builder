@@ -603,12 +603,13 @@ public class RestVerticle extends AbstractVerticle {
       public void handle(Throwable event) {
         StreamStatus stat = new StreamStatus();
         stat.setStatus(2);
-        paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
-        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, stat, v -> {
-          LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
-        });
+        paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
+        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, stat, v
+          -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run)
+        );
         endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
-      }});
+      }
+    });
   }
   /**
    * @param method2Run

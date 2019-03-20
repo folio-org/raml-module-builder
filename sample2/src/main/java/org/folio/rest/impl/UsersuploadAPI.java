@@ -24,7 +24,6 @@ public class UsersuploadAPI implements Usersupload {
     final String complete = okapiHeaders.get("complete");
     final String aborting = okapiHeaders.get("streamed_abort");
     if (aborting != null) {
-      System.out.println("ABORTING");
       asyncResultHandler.handle(Future.succeededFuture(
         PostUsersuploadResponse.respond400WithTextPlain("aborting")));
       return;
