@@ -625,7 +625,7 @@ public class PgUtilIT {
 
     // offset=6, limit=3
     c = searchForData("username=foo sortBy username", 6, 3, testContext);
-    assertThat(c.getUsers(), is(5));
+    assertThat(c.getUsers().size(), is(3));
 
     for (int i=0; i<3; i++) {
       User user = c.getUsers().get(i);
@@ -634,7 +634,7 @@ public class PgUtilIT {
 
     // offset=1, limit=8
     c = searchForData("username=foo sortBy username", 1, 8, testContext);
-    assertThat(c.getUsers(), is(8));
+    assertThat(c.getUsers().size(), is(8));
 
     for (int i=0; i<4; i++) {
       User user = c.getUsers().get(i);
@@ -647,7 +647,7 @@ public class PgUtilIT {
 
     // "b foo", offset=1, limit=20
     c = searchForData("username=b sortBy username/sort.ascending", 1, 20, testContext);
-    assertThat(c.getUsers(), is(4));
+    assertThat(c.getUsers().size(), is(4));
 
     for (int i=0; i<4; i++) {
       User user = c.getUsers().get(i);
@@ -655,8 +655,8 @@ public class PgUtilIT {
     }
 
     // sort.descending, offset=1, limit=3
-    c = searchForData("username=foo sortBy username/sort.ascending", 1, 3, testContext);
-    assertThat(c.getUsers(), is(3));
+    c = searchForData("username=foo sortBy username/sort.descending", 1, 3, testContext);
+    assertThat(c.getUsers().size(), is(3));
 
     for (int i=0; i<3; i++) {
       User user = c.getUsers().get(i);
@@ -664,8 +664,8 @@ public class PgUtilIT {
     }
 
     // sort.descending, offset=6, limit=3
-    c = searchForData("username=foo sortBy username/sort.ascending", 6, 3, testContext);
-    assertThat(c.getUsers(), is(3));
+    c = searchForData("username=foo sortBy username/sort.descending", 6, 3, testContext);
+    assertThat(c.getUsers().size(), is(3));
 
     for (int i=0; i<3; i++) {
       User user = c.getUsers().get(i);
@@ -681,14 +681,14 @@ public class PgUtilIT {
     });
   }
 
-  
+  @Test
   public void optimizedSqlCanFail(TestContext testContext) {
     optimizedSql500(testContext,
         (String sql, Handler h) -> h.handle(Future.failedFuture("can fail")),
         "can fail");
   }
 
-  
+  @Test
   public void optimizedSqlCanCatchException(TestContext testContext) {
     optimizedSql500(testContext,
         (String sql, Handler h) -> h.handle(null),
