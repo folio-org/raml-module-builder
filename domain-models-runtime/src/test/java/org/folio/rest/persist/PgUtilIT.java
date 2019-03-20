@@ -24,17 +24,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
-import org.mockito.AdditionalAnswers;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyString;
+
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
 import org.mockito.stubbing.VoidAnswer2;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import com.github.mauricio.async.db.postgresql.exceptions.QueryMustNotBeNullOrEmptyException;
+
 
 import static org.junit.Assert.assertThat;
 
@@ -674,10 +670,6 @@ public class PgUtilIT {
 
   private void optimizedSql500(TestContext testContext, VoidAnswer2<String, Handler> answer, String expected) {
 
-    PostgresClient postgresClient = mock(PostgresClient.class);
-    doAnswer(AdditionalAnswers.answerVoid(answer))
-    .when(postgresClient).select(anyString(), any(Handler.class));
-    exception.expect(QueryMustNotBeNullOrEmptyException.class);
     PgUtil.getWithOptimizedSql("nonexistingTableName", User.class, UserdataCollection.class, "title", "name=a sortBy title",
         0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class, reply -> {
       testContext.assertEquals(false, reply.succeeded());
@@ -700,21 +692,25 @@ public class PgUtilIT {
 
   private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
     UserdataCollection userdataCollection = new UserdataCollection();
+    Async async = testContext.async();
     try {
-      Async async = testContext.async();
+      
       PgUtil.getWithOptimizedSql(
           "user", User.class, UserdataCollection.class, "name", cql, offset, limit, okapiHeaders,
           vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(result -> {
+            async.complete();
             Response response = result;
             testContext.assertEquals(200, response.getStatus());
             UserdataCollection c = (UserdataCollection) response.getEntity();
             userdataCollection.setTotalRecords(c.getTotalRecords());
             userdataCollection.setUsers(c.getUsers());
-            async.complete();
+            
+            
       }));
       async.await();
     } catch (Exception e) {
       testContext.fail(e);
+      async.complete();
     }
     return userdataCollection;
   }
@@ -722,7 +718,7 @@ public class PgUtilIT {
   private List<JsonObject> searchForData2(String cql, int offset, int limit, TestContext testContext) {
     List<JsonObject> list = new ArrayList<>();
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON(schema + ".user.jsonb");
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
       CQLWrapper wrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL pCQL = new PreparedCQL("user", wrapper, okapiHeaders);
       String optimizedSQL = PgUtil.generateOptimizedSql("name", pCQL, offset, limit);

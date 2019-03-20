@@ -9,6 +9,7 @@ import java.io.IOException;
 
 import javax.ws.rs.core.Response;
 
+import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
@@ -679,7 +680,7 @@ public final class PgUtil {
     final Method respond200;
     final Method respond400;
     try {
-      respond200 = responseDelegateClass.getMethod(RESPOND_200_WITH_APPLICATION_JSON, Object.class);
+      respond200 = responseDelegateClass.getMethod(RESPOND_200_WITH_APPLICATION_JSON, User.class);
       respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
@@ -688,7 +689,7 @@ public final class PgUtil {
     }
 
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table);
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(".jsonb");
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       String sql = generateOptimizedSql(sortField, preparedCql, offset, limit);
