@@ -2,9 +2,7 @@ package org.folio.rest.persist;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -16,8 +14,6 @@ import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.junit.ExpectedException;
-import org.folio.rest.persist.PgUtil.PreparedCQL;
-import org.folio.rest.persist.cql.CQLWrapper;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -29,12 +25,9 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
 import org.mockito.stubbing.VoidAnswer2;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-
-
 import static org.junit.Assert.assertThat;
 
- import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.*;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -43,9 +36,6 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
@@ -62,8 +52,6 @@ public class PgUtilIT {
   static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
   static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
   static private Vertx vertx;
-
-  private static final Logger log = LoggerFactory.getLogger(PgUtilIT.class);
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
@@ -293,6 +281,20 @@ public class PgUtilIT {
     PgUtil.deleteById("user", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout204.class,
         asyncAssertSuccess(testContext, 500, "respond204"));
+  }
+
+  @Test
+  public void getResponseWithout500(TestContext testContext) {
+    PgUtil.get("user", User.class, UserdataCollection.class, "username=b", 0, 9,
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
+        asyncAssertFail(testContext, "respond500WithTextPlain"));
+  }
+
+  @Test
+  public void getResponseWithout400(TestContext testContext) {
+    PgUtil.get("user", User.class, UserdataCollection.class, "username=b", 0, 9,
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout400.class,
+        asyncAssertFail(testContext, "respond400WithTextPlain"));
   }
 
   @Test
@@ -585,6 +587,11 @@ public class PgUtilIT {
   }
 
   @Test
+  public void getSortNodeException() {
+    assertThat(PgUtil.getSortNode(null), is(nullValue()));
+  }
+
+  @Test
   public void canGetWithOptimizedSql(TestContext testContext) {
     int optimizdSQLSize = 10000;
     int n = optimizdSQLSize / 2;
@@ -597,11 +604,7 @@ public class PgUtilIT {
     insert(testContext, pg, "c", n);
     insert(testContext, pg, "d foo", 5);
     insert(testContext, pg, "e", n);
-    
-    
-    UserdataCollection d = searchForData("username=*", 0, 10, testContext);
-    int total = d.getUsers().size();
-    
+
     // limit=9
     UserdataCollection c = searchForData("username=foo sortBy username", 0, 9, testContext);
     int val = c.getUsers().size();
@@ -676,9 +679,9 @@ public class PgUtilIT {
   private void optimizedSql500(TestContext testContext, VoidAnswer2<String, Handler> answer, String expected) {
 
     PgUtil.getWithOptimizedSql("nonexistingTableName", User.class, UserdataCollection.class, "title", "username=a sortBy title",
-        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class, reply -> {
-      testContext.assertEquals(false, reply.succeeded());
-    });
+        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(reply -> {
+      testContext.assertEquals(500, reply.getStatus(), "status");
+    }));
   }
 
   @Test
@@ -695,50 +698,35 @@ public class PgUtilIT {
         null);
   }
 
+  @Test
+  public void optimizedSqlCanSetSize() {
+    int oldSize = PgUtil.getOptimizedSqlSize();
+    int newSize = 54321;
+    PgUtil.setOptimizedSqlSize(54321);
+    assertThat(PgUtil.getOptimizedSqlSize(), is(newSize));
+    PgUtil.setOptimizedSqlSize(oldSize);
+    assertThat(PgUtil.getOptimizedSqlSize(), is(oldSize));
+  }
+
   private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
-    try {
-      
-      PgUtil.getWithOptimizedSql(
-          "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
-          vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(result -> {
-            
-            Response response = result;
-            UserdataCollection c = (UserdataCollection) response.getEntity();
-            /*if (200 ==  response.getStatus()) {*/
-              userdataCollection.setTotalRecords(c.getTotalRecords());
-              userdataCollection.setUsers(c.getUsers());
-            //}
+    PgUtil.getWithOptimizedSql(
+        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
+          if (response.getStatus() != 200) {
+            testContext.fail("Expected status 200, got "
+                + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
             async.complete();
-      }));
-      async.await();
-    } catch (Exception e) {
-      testContext.fail(e);
-      async.complete();
-    }
+            return;
+          }
+          UserdataCollection c = (UserdataCollection) response.getEntity();
+          userdataCollection.setTotalRecords(c.getTotalRecords());
+          userdataCollection.setUsers(c.getUsers());
+          async.complete();
+    }));
+    async.await(5000 /* ms */);
     return userdataCollection;
-  }
-
-  private List<JsonObject> searchForData2(String cql, int offset, int limit, TestContext testContext) {
-    List<JsonObject> list = new ArrayList<>();
-    try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
-      CQLWrapper wrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
-      PreparedCQL pCQL = new PreparedCQL("user", wrapper, okapiHeaders);
-      String optimizedSQL = PgUtil.generateOptimizedSql("username", pCQL, offset, limit);
-      log.info("optimized sql is " + optimizedSQL);
-     System.out.println("optimizedSQL = " + optimizedSQL);
-      Async async = testContext.async();
-      PostgresClient.getInstance(vertx).getClient().query(optimizedSQL, testContext.asyncAssertSuccess(result -> {
-        result.getRows().stream().map(row -> new JsonObject(row.getString("jsonb"))).forEach(list::add);
-        async.complete();
-      }));
-      async.await();
-    } catch (Exception e) {
-      testContext.fail(e);
-    }
-    return list;
   }
 
   /**
