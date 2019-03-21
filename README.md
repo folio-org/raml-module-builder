@@ -668,6 +668,8 @@ For each invocation RMB adds header `streamed_id` which will be unique
 for the current stream. For the last invocation, header `complete` is supplied
 to indicate "end-of-stream".
 
+As of RMB 23.12.0 and later, if a HTTP client prematurely closes the upload
+before complete, the handler will be called with `streamed_abort`.
 
 ## PostgreSQL integration
 

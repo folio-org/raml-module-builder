@@ -109,6 +109,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        OKAPI_REQUESTID_HEADER          = "X-Okapi-Request-Id";
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+  public static final String        STREAM_ABORT                    =  "STREAMED_ABORT";
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
@@ -588,21 +589,27 @@ public class RestVerticle extends AbstractVerticle {
       }
     });
     request.endHandler( e -> {
-
       StreamStatus stat = new StreamStatus();
       stat.setStatus(1);
+      paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
       invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
         LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
         //all data has been stored in memory - not necessarily all processed
         sendResponse(rc, v, start, tenantId[0]);
       });
-
     });
-    request.exceptionHandler(new Handler<Throwable>(){
+    request.exceptionHandler(new Handler<Throwable>() {
       @Override
       public void handle(Throwable event) {
+        StreamStatus stat = new StreamStatus();
+        stat.setStatus(2);
+        paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
+        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, stat, v
+          -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run)
+        );
         endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
-      }});
+      }
+    });
   }
   /**
    * @param method2Run
@@ -860,25 +867,27 @@ public class RestVerticle extends AbstractVerticle {
     requestHeaders.forEach(consumer);
   }
 
-  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message,  boolean[] isValid) {
+  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, boolean[] isValid) {
     if (isValid[0]) {
-      rc.response().setChunked(chunked);
-      rc.response().setStatusCode(status);
-      if(status == 422){
-        rc.response().putHeader("Content-type", SUPPORTED_CONTENT_TYPE_JSON_DEF);
-      } else {
-        rc.response().putHeader("Content-type", SUPPORTED_CONTENT_TYPE_TEXT_DEF);
+      HttpServerResponse response = rc.response();
+      if (!response.closed()) {
+        response.setChunked(chunked);
+        response.setStatusCode(status);
+        if (status == 422) {
+          response.putHeader("Content-type", SUPPORTED_CONTENT_TYPE_JSON_DEF);
+        } else {
+          response.putHeader("Content-type", SUPPORTED_CONTENT_TYPE_TEXT_DEF);
+        }
+        if (message != null) {
+          response.write(message);
+        } else {
+          message = "";
+        }
+        response.end();
       }
-      if(message != null){
-        rc.response().write(message);
-      }
-      else {
-        message = "";
-      }
-      rc.response().end();
       LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
-        rc.request().version().toString(), rc.response().getStatusCode(), -1, rc.response().bytesWritten(),
-        rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), null, message);
+        rc.request().version().toString(), response.getStatusCode(), -1, rc.response().bytesWritten(),
+        rc.request().path(), rc.request().query(), response.getStatusMessage(), null, message);
     }
     // once we are here the call is not valid
     isValid[0] = false;
@@ -914,6 +923,7 @@ public class RestVerticle extends AbstractVerticle {
 
     //if streaming is requested the status will be 0 (streaming started)
     //or 1 streaming data complete
+    //or 2 streaming aborted
     //otherwise it will be -1 and flags wont be set
     if(streamed.status == 0){
       headers.put(STREAM_ID, String.valueOf(rc.hashCode()));
@@ -921,6 +931,10 @@ public class RestVerticle extends AbstractVerticle {
     else if(streamed.status == 1){
       headers.put(STREAM_ID, String.valueOf(rc.hashCode()));
       headers.put(STREAM_COMPLETE, String.valueOf(rc.hashCode()));
+    }
+    else if (streamed.status == 2){
+      headers.put(STREAM_ID, String.valueOf(rc.hashCode()));
+      headers.put(STREAM_ABORT, String.valueOf(rc.hashCode()));
     }
 
     Object[] newArray = new Object[params.length];
