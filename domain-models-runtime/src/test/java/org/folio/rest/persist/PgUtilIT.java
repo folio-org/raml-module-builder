@@ -40,7 +40,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
   @Rule
-  public Timeout timeoutRule = Timeout.seconds(60);
+  public Timeout timeoutRule = Timeout.seconds(10);
 
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
@@ -604,10 +604,14 @@ public class PgUtilIT {
     insert(testContext, pg, "c", n);
     insert(testContext, pg, "d foo", 5);
     insert(testContext, pg, "e", n);
-
-    // limit=9
-    UserdataCollection c = searchForData("username=foo sortBy username", 0, 9, testContext);
+    //unoptimized sql case
+    UserdataCollection c = searchForData("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
+    assertThat(val, is(9));
+    
+    // limit=9
+     c = searchForData("username=foo sortBy username", 0, 9, testContext);
+    val = c.getUsers().size();
     assertThat(val, is(9));
     for (int i=0; i<5; i++) {
       User user = c.getUsers().get(i);
