@@ -1389,15 +1389,10 @@ public class PostgresClient {
   ) {
 
     vertx.runOnContext(v -> {
-      log.info("doGet where=" + where);
       try {
         QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets, distinctOn);
 
-        log.info("queryHelper.countQuery: " + queryHelper.countQuery);
-        log.info("queryHelper.selectQuery: " + queryHelper.selectQuery);
-
         if (returnCount) {
-          log.info("abt to call processQueryWithCount");
           processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
             totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
         } else {
@@ -1576,12 +1571,10 @@ public class PostgresClient {
 
     prepareCountQuery(queryHelper);
 
-    log.info("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    log.info("Attempting count query: " + queryHelper.countQuery);
+    log.debug("Attempting count query: " + queryHelper.countQuery);
     connection.querySingle(queryHelper.countQuery, countQuery -> {
       try {
         if (countQuery.failed()) {
-          log.debug("query single failed");
           if (!queryHelper.transactionMode) {
             connection.close();
           }
@@ -1589,7 +1582,7 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(countQuery.cause()));
           return;
         }
-        log.info("query single works");
+
         int total = countQuery.result().getInteger(0);
 
         long countQueryTime = (System.nanoTime() - start);
@@ -1605,7 +1598,7 @@ public class PostgresClient {
           replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
           return;
         }
-        log.info("abt to call processQuery");
+
         processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
       } catch (Exception e) {
         if (!queryHelper.transactionMode) {
@@ -1629,14 +1622,10 @@ public class PostgresClient {
     queryHelper.countQuery = parsedQuery.getCountQuery();
 
     if (queryHelper.facets != null && !queryHelper.facets.isEmpty() && queryHelper.table != null) {
-      log.info("prepareCountQuery facets case");
       FacetManager facetManager = buildFacetManager(queryHelper.table, parsedQuery, queryHelper.facets);
       // this method call invokes freemarker templating
-      log.info("selectQuery1=" + queryHelper.selectQuery);
       queryHelper.selectQuery = facetManager.generateFacetQuery();
-      log.info("selectQuery2=" + queryHelper.selectQuery);
       queryHelper.countQuery = facetManager.getCountQuery();
-      log.info("countQuery=" + queryHelper.countQuery);
 
       offsetClause = facetManager.getOffsetClause();
     } else {
@@ -1665,7 +1654,7 @@ public class PostgresClient {
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) {
     long start = System.nanoTime();
-    log.info("processQuery: selectQuery: " + queryHelper.selectQuery);
+    log.debug("Attempting query: " + queryHelper.selectQuery);
     connection.query(queryHelper.selectQuery, query -> {
       if (!queryHelper.transactionMode) {
         connection.close();
@@ -1706,7 +1695,6 @@ public class PostgresClient {
     fm.setOffsetClause(parsedQuery.getOffsetClause());
     fm.setMainQuery(parsedQuery.getQueryWithoutLimOff());
     fm.setSchema(schemaName);
- //   fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(parsedQuery.getCountQuery()));
     fm.setCountQuery(parsedQuery.getCountQuery());
     return fm;
   }
