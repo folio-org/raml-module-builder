@@ -255,6 +255,9 @@
               <goal>exec</goal>
             </goals>
             <configuration>
+              <!-- For the <skip> we only support -Dmaven.test.skip=true, not -DskipTests and not -DskipITs
+                   to avoid complicated configuration using profiles -->
+              <skip>${maven.test.skip}</skip>
               <executable>java</executable>
               <async>true</async>
               <classpathScope>test</classpathScope>
@@ -272,6 +275,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
+              <skip>${maven.test.skip}</skip>
               <classpathScope>test</classpathScope>
               <mainClass>org.folio.rest.persist.PostgresWaiter</mainClass>
             </configuration>
@@ -283,6 +287,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
+              <skip>${maven.test.skip}</skip>
               <classpathScope>test</classpathScope>
               <mainClass>org.folio.rest.persist.PostgresStopper</mainClass>
             </configuration>
