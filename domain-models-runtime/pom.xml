@@ -256,8 +256,6 @@
             </goals>
             <configuration>
               <skip>${maven.test.skip}</skip>
-              <skip>${skipTests}</skip>
-              <skip>${skipITs}</skip>
               <executable>java</executable>
               <async>true</async>
               <classpathScope>test</classpathScope>
@@ -276,8 +274,6 @@
             </goals>
             <configuration>
               <skip>${maven.test.skip}</skip>
-              <skip>${skipTests}</skip>
-              <skip>${skipITs}</skip>
               <classpathScope>test</classpathScope>
               <mainClass>org.folio.rest.persist.PostgresWaiter</mainClass>
             </configuration>
@@ -290,8 +286,6 @@
             </goals>
             <configuration>
               <skip>${maven.test.skip}</skip>
-              <skip>${skipTests}</skip>
-              <skip>${skipITs}</skip>
               <classpathScope>test</classpathScope>
               <mainClass>org.folio.rest.persist.PostgresStopper</mainClass>
             </configuration>
