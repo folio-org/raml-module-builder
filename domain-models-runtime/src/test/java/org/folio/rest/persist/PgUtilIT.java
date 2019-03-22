@@ -5,20 +5,29 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
-
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.jaxrs.model.User;
+import org.folio.rest.jaxrs.model.UserdataCollection;
 import org.folio.rest.jaxrs.model.Users;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.hamcrest.junit.ExpectedException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
+
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
+import org.mockito.quality.Strictness;
+import org.mockito.stubbing.VoidAnswer2;
+import static org.junit.Assert.assertThat;
+
+import static org.hamcrest.CoreMatchers.*;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -33,6 +42,11 @@ public class PgUtilIT {
   @Rule
   public Timeout timeoutRule = Timeout.seconds(10);
 
+  @Rule
+  public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
+
+  @Rule
+  public final ExpectedException exception = ExpectedException.none();
   /** If we start and stop our own embedded postgres */
   static private boolean ownEmbeddedPostgres = false;
   static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
@@ -77,10 +91,12 @@ public class PgUtilIT {
 
   private static void createUserTable(TestContext context) {
     execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
+    execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
     execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD 'testtenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
+    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
     execute(context, "CREATE TABLE " + schema + ".user " +
         "(_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL);");
     execute(context, "CREATE TABLE " + schema + ".duplicateid " +
@@ -265,6 +281,20 @@ public class PgUtilIT {
     PgUtil.deleteById("user", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout204.class,
         asyncAssertSuccess(testContext, 500, "respond204"));
+  }
+
+  @Test
+  public void getResponseWithout500(TestContext testContext) {
+    PgUtil.get("user", User.class, UserdataCollection.class, "username=b", 0, 9,
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
+        asyncAssertFail(testContext, "respond500WithTextPlain"));
+  }
+
+  @Test
+  public void getResponseWithout400(TestContext testContext) {
+    PgUtil.get("user", User.class, UserdataCollection.class, "username=b", 0, 9,
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout400.class,
+        asyncAssertFail(testContext, "respond400WithTextPlain"));
   }
 
   @Test
@@ -556,6 +586,170 @@ public class PgUtilIT {
     testContext.assertEquals("some runtime exception", future.cause().getCause().getMessage());
   }
 
+  @Test
+  public void getSortNodeException() {
+    assertThat(PgUtil.getSortNode(null), is(nullValue()));
+  }
+
+  @Test
+  public void canGetWithOptimizedSql(TestContext testContext) {
+    int optimizdSQLSize = 10000;
+    int n = optimizdSQLSize / 2;
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+
+    // "b foo" records are before the getOptimizedSqlSize() limit
+    // "d foo" records are after the getOptimizedSqlSize() limit
+    insert(testContext, pg, "a", n);
+    insert(testContext, pg, "b foo", 5);
+    insert(testContext, pg, "c", n);
+    insert(testContext, pg, "d foo", 5);
+    insert(testContext, pg, "e", n);
+    //unoptimized sql case
+    UserdataCollection c = searchForData("username=*", 0, 9, testContext);
+    int val = c.getUsers().size();
+    assertThat(val, is(9));
+    
+    // limit=9
+     c = searchForData("username=foo sortBy username", 0, 9, testContext);
+    val = c.getUsers().size();
+    assertThat(val, is(9));
+    for (int i=0; i<5; i++) {
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (i + 1)));
+    }
+    for (int i=0; i<3; i++) {
+      User user = c.getUsers().get(5 + i);
+      assertThat(user.getUsername(), is("d foo " + (i + 1)));
+    }
+
+    // limit=5
+    c = searchForData("username=foo sortBy username", 0, 5, testContext);
+    assertThat(c.getUsers().size(), is(5));
+    for (int i=0; i<5; i++) {
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (i + 1)));
+    }
+
+    // offset=6, limit=3
+    c = searchForData("username=foo sortBy username", 6, 3, testContext);
+    assertThat(c.getUsers().size(), is(3));
+
+    for (int i=0; i<3; i++) {
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("d foo " + (1 + i + 1)));
+    }
+
+    // offset=1, limit=8
+    c = searchForData("username=foo sortBy username", 1, 8, testContext);
+    assertThat(c.getUsers().size(), is(8));
+
+    for (int i=0; i<4; i++) {
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (1 + i + 1)));
+    }
+    for (int i=0; i<4; i++) {
+      User user = c.getUsers().get(4 + i);
+      assertThat(user.getUsername(), is("d foo " + (i + 1)));
+    }
+
+    // "b foo", offset=1, limit=20
+    c = searchForData("username=b sortBy username/sort.ascending", 1, 20, testContext);
+    assertThat(c.getUsers().size(), is(4));
+
+    for (int i=0; i<4; i++) {
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (1 + i + 1)));
+    }
+
+    // sort.descending, offset=1, limit=3
+    c = searchForData("username=foo sortBy username/sort.descending", 1, 3, testContext);
+    assertThat(c.getUsers().size(), is(3));
+
+    for (int i=0; i<3; i++) {
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("d foo " + (4 - i)));
+    }
+
+    // sort.descending, offset=6, limit=3
+    c = searchForData("username=foo sortBy username/sort.descending", 6, 3, testContext);
+    assertThat(c.getUsers().size(), is(3));
+
+    for (int i=0; i<3; i++) {
+      User user = c.getUsers().get(i);
+      assertThat(user.getUsername(), is("b foo " + (4 - i)));
+    }
+  }
+
+  private void optimizedSql500(TestContext testContext, VoidAnswer2<String, Handler> answer, String expected) {
+
+    PgUtil.getWithOptimizedSql("nonexistingTableName", User.class, UserdataCollection.class, "title", "username=a sortBy title",
+        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(reply -> {
+      testContext.assertEquals(500, reply.getStatus(), "status");
+    }));
+  }
+
+  @Test
+  public void optimizedSqlCanFail(TestContext testContext) {
+    optimizedSql500(testContext,
+        (String sql, Handler h) -> h.handle(Future.failedFuture("can fail")),
+        "can fail");
+  }
+
+  @Test
+  public void optimizedSqlCanCatchException(TestContext testContext) {
+    optimizedSql500(testContext,
+        (String sql, Handler h) -> h.handle(null),
+        null);
+  }
+
+  @Test
+  public void optimizedSqlCanSetSize() {
+    int oldSize = PgUtil.getOptimizedSqlSize();
+    int newSize = 54321;
+    PgUtil.setOptimizedSqlSize(54321);
+    assertThat(PgUtil.getOptimizedSqlSize(), is(newSize));
+    PgUtil.setOptimizedSqlSize(oldSize);
+    assertThat(PgUtil.getOptimizedSqlSize(), is(oldSize));
+  }
+
+  private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
+    UserdataCollection userdataCollection = new UserdataCollection();
+    Async async = testContext.async();
+    PgUtil.getWithOptimizedSql(
+        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
+          if (response.getStatus() != 200) {
+            testContext.fail("Expected status 200, got "
+                + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+            async.complete();
+            return;
+          }
+          UserdataCollection c = (UserdataCollection) response.getEntity();
+          userdataCollection.setTotalRecords(c.getTotalRecords());
+          userdataCollection.setUsers(c.getUsers());
+          async.complete();
+    }));
+    async.await(5000 /* ms */);
+    return userdataCollection;
+  }
+
+  /**
+   * Insert n records into instance table where the title field is build using
+   * prefix and the number from 1 .. n.
+   */
+  private void insert(TestContext testContext, PostgresClient pg, String prefix, int n) {
+    Async async = testContext.async();
+    String table = schema + ".user ";
+    String sql = "INSERT INTO " + table + " SELECT uuid, json_build_object" +
+        "  ('username', '" + prefix + " ' || n, 'id', uuid)" +
+        "  FROM (SELECT generate_series(1, " + n + ") AS n, gen_random_uuid() AS uuid) AS uuids";
+    pg.execute(sql, testContext.asyncAssertSuccess(updated -> {
+        testContext.assertEquals(n, updated.getUpdated());
+        async.complete();
+      }));
+    async.await(10000 /* ms */);
+  }
+
   static class ResponseImpl extends ResponseDelegate {
     public static class AnotherInnerClass {  // for code coverage of the for loop in PgUtil.post
       public String foo;
@@ -571,6 +765,10 @@ public class PgUtilIT {
       return new ResponseImpl(response, entity);
     }
     public static Response respond200WithApplicationJson(User entity) {
+      Response response = Response.status(200).header("Content-Type", "application/json").entity(entity).build();
+      return new ResponseImpl(response, entity);
+    }
+    public static Response respond200WithApplicationJson(UserdataCollection entity) {
       Response response = Response.status(200).header("Content-Type", "application/json").entity(entity).build();
       return new ResponseImpl(response, entity);
     }
