@@ -885,50 +885,55 @@ public class PostgresClient {
   }
 
   public void saveBatch(String table, JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
-    long start = System.nanoTime();
-    if (entities == null || entities.isEmpty()) {
-      // return empty result
-      ResultSet resultSet = new ResultSet(
-          Collections.singletonList(idField), Collections.emptyList(), null);
-      replyHandler.handle(Future.succeededFuture(resultSet));
-      return;
-    }
     client.getConnection(res -> {
       if (res.failed()) {
         replyHandler.handle(Future.failedFuture(res.cause()));
         return;
       }
-
-      if (log.isInfoEnabled()) {
-        log.info("starting: saveBatch size=" + entities.size());
-      }
-      SQLConnection connection = res.result();
-      StringBuilder sql = new StringBuilder()
-          .append(INSERT_CLAUSE)
-          .append(schemaName).append(DOT).append(table)
-          .append(" (").append(column).append(") VALUES (?)");
-      for (int i=1; i<entities.size(); i++) {
-        sql.append(",(?)");
-      }
-      sql.append(" RETURNING ").append(idField);
-
-      connection.queryWithParams(sql.toString(), entities, queryRes -> {
-        connection.close();
-        if (queryRes.failed()) {
-          log.error("saveBatch size=" + entities.size()
-            + SPACE +
-              queryRes.cause().getMessage(),
-              queryRes.cause());
-          statsTracker("saveBatchFailed", table, start);
-          replyHandler.handle(Future.failedFuture(queryRes.cause()));
-          return;
-        }
-        if (log.isInfoEnabled()) {
-          log.info("success: saveBatch size=" + entities.size());
-        }
-        statsTracker("saveBatch", table, start);
-        replyHandler.handle(Future.succeededFuture(queryRes.result()));
+      saveBatch(res, table, entities, column, x -> {
+        res.result().close();
+        replyHandler.handle(x);
       });
+    });
+  }
+
+  public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table, JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
+    long start = System.nanoTime();
+    if (entities == null || entities.isEmpty()) {
+      // return empty result
+      ResultSet resultSet = new ResultSet(
+        Collections.singletonList(idField), Collections.emptyList(), null);
+      replyHandler.handle(Future.succeededFuture(resultSet));
+      return;
+    }
+    if (log.isInfoEnabled()) {
+      log.info("starting: saveBatch size=" + entities.size());
+    }
+    StringBuilder sql = new StringBuilder()
+      .append(INSERT_CLAUSE)
+      .append(schemaName).append(DOT).append(table)
+      .append(" (").append(column).append(") VALUES (?)");
+    for (int i = 1; i < entities.size(); i++) {
+      sql.append(",(?)");
+    }
+    sql.append(" RETURNING ").append(idField);
+
+    SQLConnection connection = sqlConnection.result();
+    connection.queryWithParams(sql.toString(), entities, queryRes -> {
+      if (queryRes.failed()) {
+        log.error("saveBatch size=" + entities.size()
+          + SPACE
+          + queryRes.cause().getMessage(),
+          queryRes.cause());
+        statsTracker("saveBatchFailed", table, start);
+        replyHandler.handle(Future.failedFuture(queryRes.cause()));
+        return;
+      }
+      if (log.isInfoEnabled()) {
+        log.info("success: saveBatch size=" + entities.size());
+      }
+      statsTracker("saveBatch", table, start);
+      replyHandler.handle(Future.succeededFuture(queryRes.result()));
     });
   }
 
