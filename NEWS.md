@@ -1,3 +1,8 @@
+## 23.11.1 2019-03-25
+
+ * RMB-354 Add PostClient.saveBatch variant with SQLConnection
+ * RMB-350 Fix PgUtilIT not tested
+
 ## 23.11.0 2019-03-14
 
  * RMB-342 TenantLoading / empty list for empty directory
