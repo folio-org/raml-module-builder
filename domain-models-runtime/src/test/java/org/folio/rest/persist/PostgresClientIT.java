@@ -510,6 +510,22 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveBatchXTrans(TestContext context) {
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.saveBatch(trans, FOO, list, context.asyncAssertSuccess(save -> {
+        final String id = save.getResults().get(0).getString(0);
+          postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+            postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+            context.assertEquals("x", get.getString("key"));
+            }));
+          }));
+      }));
+    }));
+  }
+
+  @Test
   public void saveBatchJson(TestContext context) {
     JsonArray array = new JsonArray()
         .add("{ \"x\" : \"a\" }")
