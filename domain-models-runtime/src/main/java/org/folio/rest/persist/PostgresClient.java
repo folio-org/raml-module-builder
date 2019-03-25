@@ -884,7 +884,9 @@ public class PostgresClient {
     saveBatch(table, entities, DEFAULT_JSONB_FIELD_NAME, replyHandler);
   }
 
-  public void saveBatch(String table, JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
+  public void saveBatch(String table, JsonArray entities, String column,
+    Handler<AsyncResult<ResultSet>> replyHandler) {
+
     client.getConnection(res -> {
       if (res.failed()) {
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -897,7 +899,9 @@ public class PostgresClient {
     });
   }
 
-  public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table, JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
+  private void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
+    JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
+
     long start = System.nanoTime();
     if (entities == null || entities.isEmpty()) {
       // return empty result
@@ -937,15 +941,9 @@ public class PostgresClient {
     });
   }
 
-  /***
-   * Save a list of POJOs.
-   * POJOs are converted to json and saved in a single sql call. The generated IDs of the
-   * inserted records are returned in the ResultSet.
-   * @param table  destination table to insert into
-   * @param entities  each list element is a POJO
-   * @param replyHandler  result, containing the id field for each inserted POJO
-   */
-  public void saveBatch(String table, List<Object> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
+  private JsonArray batchEntitiesToJsonArray(List<Object> entities,
+    Handler<AsyncResult<ResultSet>> replyHandler) {
+
     JsonArray jsonArray = new JsonArray();
     try {
       for (Object entity : entities) {
@@ -954,9 +952,35 @@ public class PostgresClient {
       }
     } catch (Exception e) {
       replyHandler.handle(Future.failedFuture(e));
-      return;
+      return null;
     }
-    saveBatch(table, jsonArray, replyHandler);
+    return jsonArray;
+  }
+
+  /***
+   * Save a list of POJOs.
+   * POJOs are converted to json and saved in a single sql call. The generated IDs of the
+   * inserted records are returned in the ResultSet.
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @param replyHandler result, containing the id field for each inserted POJO
+   */
+  public void saveBatch(String table, List<Object> entities,
+    Handler<AsyncResult<ResultSet>> replyHandler) {
+
+    JsonArray jsonArray = batchEntitiesToJsonArray(entities, replyHandler);
+    if (jsonArray != null) {
+      saveBatch(table, jsonArray, replyHandler);
+    }
+  }
+
+  public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
+    List<Object> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
+
+    JsonArray jsonArray = batchEntitiesToJsonArray(entities, replyHandler);
+    if (jsonArray != null) {
+      saveBatch(sqlConnection, table, jsonArray, DEFAULT_JSONB_FIELD_NAME, replyHandler);
+    }
   }
 
   /**
