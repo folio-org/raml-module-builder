@@ -58,6 +58,8 @@ public class PostgresClientIT {
   static private final String TENANT = "tenant";
   /** table name */
   static private final String FOO = "foo";
+  /** table name of something that does not exist */
+  static private final String BAR = "bar";
   /** table name */
   static private final String INVALID_JSON = "invalid_json";
   static private final String INVALID_JSON_UUID = "49999999-4999-4999-8999-899999999999";
@@ -516,6 +518,14 @@ public class PostgresClientIT {
       context.assertEquals(2, res.getRows().size());
       context.assertEquals("_id", res.getColumnNames().get(0));
     }));
+  }
+
+  @Test
+  public void saveBatchJsonFail(TestContext context) {
+    JsonArray array = new JsonArray()
+        .add("{ \"x\" : \"a\" }")
+        .add("{ \"y\" : \"'\" }");
+    createFoo(context).saveBatch(BAR, array, context.asyncAssertFailure());
   }
 
   @Test
