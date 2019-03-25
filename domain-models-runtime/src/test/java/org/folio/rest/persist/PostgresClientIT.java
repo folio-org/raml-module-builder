@@ -58,6 +58,8 @@ public class PostgresClientIT {
   static private final String TENANT = "tenant";
   /** table name */
   static private final String FOO = "foo";
+  /** table name of something that does not exist */
+  static private final String BAR = "bar";
   /** table name */
   static private final String INVALID_JSON = "invalid_json";
   static private final String INVALID_JSON_UUID = "49999999-4999-4999-8999-899999999999";
@@ -508,6 +510,22 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveBatchXTrans(TestContext context) {
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.saveBatch(trans, FOO, list, context.asyncAssertSuccess(save -> {
+        final String id = save.getResults().get(0).getString(0);
+          postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+            postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+            context.assertEquals("x", get.getString("key"));
+            }));
+          }));
+      }));
+    }));
+  }
+
+  @Test
   public void saveBatchJson(TestContext context) {
     JsonArray array = new JsonArray()
         .add("{ \"x\" : \"a\" }")
@@ -516,6 +534,14 @@ public class PostgresClientIT {
       context.assertEquals(2, res.getRows().size());
       context.assertEquals("_id", res.getColumnNames().get(0));
     }));
+  }
+
+  @Test
+  public void saveBatchJsonFail(TestContext context) {
+    JsonArray array = new JsonArray()
+        .add("{ \"x\" : \"a\" }")
+        .add("{ \"y\" : \"'\" }");
+    createFoo(context).saveBatch(BAR, array, context.asyncAssertFailure());
   }
 
   @Test
