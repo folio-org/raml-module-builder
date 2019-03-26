@@ -39,6 +39,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
+import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
@@ -54,6 +55,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
+  private static final Logger log = LoggerFactory.getLogger(PostgresClientIT.class);
 
   static private final String TENANT = "tenant";
   /** table name */
@@ -1516,6 +1518,15 @@ public class PostgresClientIT {
         async.complete();
       });
     async.awaitSuccess();
+
+    String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
+    Async async2 = context.async();
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", whereClause, false, false,
+      facets,"jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+        context.assertEquals(3, objectCount.get());
+        async2.complete();
+      });
+    async2.awaitSuccess();
   }
 
   @Test
@@ -1542,9 +1553,10 @@ public class PostgresClientIT {
       add(new FacetField("jsonb-->'edition'"));
     }};
 
+    String distinctOn = "jsonb->>'order_format'";
     //without facets
     postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
-      false, null, "jsonb->>'order_format'", handler -> {
+      false, null, distinctOn, handler -> {
         context.assertEquals(4, handler.result().getResults().size());
         async.complete();
       });
@@ -1553,11 +1565,40 @@ public class PostgresClientIT {
     //with facets
     Async async2 = context.async();
     postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
-      false, facets, "jsonb->>'order_format'", handler -> {
+      false, facets, distinctOn, handler -> {
         context.assertEquals(4, handler.result().getResults().size());
         async2.complete();
       });
     async2.awaitSuccess();
+
+    String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
+    //without facets and where clause
+    Async async3 = context.async();
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", whereClause, false, false,
+      false, null, distinctOn, handler -> {
+        context.assertEquals(1, handler.result().getResults().size());
+        async3.complete();
+      });
+    async3.awaitSuccess();
+
+    //with facets and where clause
+    Async async4 = context.async();
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", whereClause, false, false,
+      false, facets, distinctOn, handler -> {
+        context.assertEquals(1, handler.result().getResults().size());
+        async4.complete();
+      });
+    async4.awaitSuccess();
+
+    //with facets and where clause and return count RMB-355
+    // this should succeed .. only difference between this and former is returnCount=true
+    Async async5 = context.async();
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", whereClause, true, false,
+      false, facets, distinctOn, handler -> {
+        context.assertEquals(1, handler.result().getResults().size());
+        async5.complete();
+      });
+    async5.awaitSuccess();
   }
 
   private PostgresClient createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
