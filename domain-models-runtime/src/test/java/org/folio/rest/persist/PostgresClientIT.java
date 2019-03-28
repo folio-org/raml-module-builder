@@ -52,6 +52,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.rest.jaxrs.model.Facet;
+import org.folio.rest.jaxrs.model.ResultInfo;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
@@ -1529,20 +1531,20 @@ public class PostgresClientIT {
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     String distinctOn = "jsonb->>'order_format'";
-    //without facets
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", false, false,
       false, null, distinctOn, handler -> {
-        context.assertEquals(4, handler.result().getResults().size());
+        ResultInfo resultInfo = handler.result().getResultInfo();
+        context.assertEquals(4, resultInfo.getTotalRecords());
         async.complete();
       });
     async.awaitSuccess();
 
     String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
-    //without facets and where clause
     Async async2 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", whereClause, false, false,
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, false, false,
       false, null, distinctOn, handler -> {
-        context.assertEquals(1, handler.result().getResults().size());
+        ResultInfo resultInfo = handler.result().getResultInfo();
+        context.assertEquals(1, resultInfo.getTotalRecords());
         async2.complete();
       });
     async2.awaitSuccess();
@@ -1559,52 +1561,29 @@ public class PostgresClientIT {
     String distinctOn = "jsonb->>'order_format'";
     //with facets and return count
     Async async1 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", true, false,
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", true, false,
       false, facets, distinctOn, handler -> {
-        if (handler.succeeded()) {
-          context.assertEquals(4, handler.result().getResults().size());
-        } else {
-          final String ignoreString = "column \"_id\" does not exist";
-          log.warn("Ignoring " + ignoreString);
-          context.assertTrue(handler.cause().getMessage().contains(ignoreString));
-        }
+        ResultInfo resultInfo = handler.result().getResultInfo();
+        context.assertEquals(4, resultInfo.getTotalRecords());
+        List<Facet> retFacets = resultInfo.getFacets();
+        context.assertEquals(1, retFacets.size());
         async1.complete();
       });
     async1.awaitSuccess();
 
     String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
 
-    //with facets and where clause and return count RMB-355
-    // this should succeed .. only difference between this and former is returnCount=true
+    //with facets and where clause RMB-355
     Async async2 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", whereClause, true, false,
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, true, false,
       false, facets, distinctOn, handler -> {
-        if (handler.succeeded()) {
-          context.assertEquals(1, handler.result().getResults().size());
-        } else {
-          final String ignoreString = "column \"_id\" does not exist";
-          log.warn("Ignoring " + ignoreString);
-          context.assertTrue(handler.cause().getMessage().contains(ignoreString));
-        }
+        ResultInfo resultInfo = handler.result().getResultInfo();
+        context.assertEquals(1, resultInfo.getTotalRecords());
+        List<Facet> retFacets = resultInfo.getFacets();
+        context.assertEquals(1, retFacets.size());
         async2.complete();
       });
     async2.awaitSuccess();
-
-    // with facets and where clause and return count RMB-355
-    // this should succeed .. only difference between this and former is returnCount=true
-    Async async3 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", whereClause, true, false,
-      false, facets, null, handler -> {
-        if (handler.succeeded()) {
-          context.assertEquals(1, handler.result().getResults().size());
-        } else {
-          final String ignoreString = "column \"_id\" does not exist";
-          log.warn("Ignoring " + ignoreString);
-          context.assertTrue(handler.cause().getMessage().contains(ignoreString));
-        }
-        async3.complete();
-      });
-    async3.awaitSuccess();
   }
 
   private PostgresClient createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
