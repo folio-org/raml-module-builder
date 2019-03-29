@@ -364,6 +364,70 @@ public class PostgresClientTest {
   }
 
   @Test
+  public void testPrepareCountQueryWithFacetsAndWhereClause() throws IOException, TemplateException {
+    PostgresClient testClient = PostgresClient.testClient();
+    List<FacetField> facets = new ArrayList<FacetField>() {{
+      add(new FacetField("jsonb->>'biz'"));
+    }};
+    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
+    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo WHERE jsonb->>'my' LIMIT 10 OFFSET 1";
+    testClient.prepareCountQuery(queryHelper);
+
+    // The string argument to count_estimate_smart2 is correctly escaped..
+    // But the LIMIT 10 OFFSET 1 is gone!
+    assertThat(queryHelper.selectQuery.replace("\r\n", "\n"), is(
+      "with facets as (\n" +
+      "    SELECT id, foo, bar FROM test_jsonb_pojo WHERE jsonb->>'my'  \n" +
+      "     LIMIT 10000 \n" +
+      " )\n" +
+      " ,\n" +
+      " count_on as (\n" +
+      "    SELECT\n" +
+      "      test_raml_module_builder.count_estimate_smart2(count(*) , 10000, 'SELECT COUNT(*) FROM test_jsonb_pojo WHERE jsonb->>''my''') AS count\n" +
+      "    FROM facets\n" +
+      " )\n" +
+      " ,\n" +
+      " grouped_by as (\n" +
+      "    SELECT\n" +
+      "        jsonb->>'biz' as biz,\n" +
+      "      count(*) as count\n" +
+      "    FROM facets\n" +
+      "    GROUP BY GROUPING SETS (\n" +
+      "        biz    )\n" +
+      " )\n" +
+      " ,\n" +
+      "   lst1 as(\n" +
+      "     SELECT\n" +
+      "        jsonb_build_object(\n" +
+      "            'type' , 'biz',\n" +
+      "            'facetValues',\n" +
+      "            json_build_array(\n" +
+      "                jsonb_build_object(\n" +
+      "                'value', biz,\n" +
+      "                'count', count)\n" +
+      "            )\n" +
+      "        ) AS jsonb,\n" +
+      "        count as count\n" +
+      "    FROM grouped_by\n" +
+      "     where biz is not null\n" +
+      "     group by biz, count\n" +
+      "     order by count desc\n" +
+      "     )\n" +
+      ",\n" +
+      "ret_records as (\n" +
+      "       select _id as _id, jsonb  FROM facets\n" +
+      "       )\n" +
+      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as _id, jsonb FROM lst1 limit 5)\n" +
+      "  \n" +
+      "  UNION\n" +
+      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as _id,  jsonb_build_object('count' , count) FROM count_on)\n" +
+      "  UNION ALL\n" +
+      "  (select _id as _id, jsonb from ret_records  );\n")
+    );
+    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_jsonb_pojo WHERE jsonb->>'my'"));
+  }
+
+  @Test
   public void testProcessQuery() {
     PostgresClient testClient = PostgresClient.testClient();
     List<FacetField> facets = new ArrayList<FacetField>() {{
