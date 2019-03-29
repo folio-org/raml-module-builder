@@ -1502,7 +1502,7 @@ public class PostgresClientIT {
   }
 
   // While facets are passed, this does NOT seem to deal with facets
-  // in fact it, quite possibly streamGet do not support facets at all
+  // In fact, quite possibly, streamGet do not support facets at all
   @Test
   public void streamGetDistinctOnWithFacets(TestContext context) throws IOException {
     AtomicInteger objectCount = new AtomicInteger();
