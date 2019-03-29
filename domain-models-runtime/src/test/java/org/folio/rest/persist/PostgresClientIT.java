@@ -39,6 +39,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
+import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
@@ -51,13 +52,18 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.rest.jaxrs.model.Facet;
+import org.folio.rest.jaxrs.model.ResultInfo;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
+  private static final Logger log = LoggerFactory.getLogger(PostgresClientIT.class);
 
   static private final String TENANT = "tenant";
   /** table name */
   static private final String FOO = "foo";
+  /** table name of something that does not exist */
+  static private final String BAR = "bar";
   /** table name */
   static private final String INVALID_JSON = "invalid_json";
   static private final String INVALID_JSON_UUID = "49999999-4999-4999-8999-899999999999";
@@ -508,6 +514,22 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveBatchXTrans(TestContext context) {
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.saveBatch(trans, FOO, list, context.asyncAssertSuccess(save -> {
+        final String id = save.getResults().get(0).getString(0);
+          postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+            postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+            context.assertEquals("x", get.getString("key"));
+            }));
+          }));
+      }));
+    }));
+  }
+
+  @Test
   public void saveBatchJson(TestContext context) {
     JsonArray array = new JsonArray()
         .add("{ \"x\" : \"a\" }")
@@ -516,6 +538,14 @@ public class PostgresClientIT {
       context.assertEquals(2, res.getRows().size());
       context.assertEquals("_id", res.getColumnNames().get(0));
     }));
+  }
+
+  @Test
+  public void saveBatchJsonFail(TestContext context) {
+    JsonArray array = new JsonArray()
+        .add("{ \"x\" : \"a\" }")
+        .add("{ \"y\" : \"'\" }");
+    createFoo(context).saveBatch(BAR, array, context.asyncAssertFailure());
   }
 
   @Test
@@ -1471,6 +1501,8 @@ public class PostgresClientIT {
     async.awaitSuccess();
   }
 
+  // While facets are passed, this does NOT seem to deal with facets
+  // In fact, quite possibly, streamGet do not support facets at all
   @Test
   public void streamGetDistinctOnWithFacets(TestContext context) throws IOException {
     AtomicInteger objectCount = new AtomicInteger();
@@ -1479,7 +1511,7 @@ public class PostgresClientIT {
     final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb-->'edition'"));
+      add(new FacetField("jsonb->>'edition'"));
     }};
 
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
@@ -1497,38 +1529,58 @@ public class PostgresClientIT {
     Async async = context.async();
     final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    //without facets
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
-      false, null, "jsonb->>'order_format'", handler -> {
-        context.assertEquals(4, handler.result().getResults().size());
+
+    String distinctOn = "jsonb->>'order_format'";
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", false, false,
+      false, null, distinctOn, handler -> {
+        ResultInfo resultInfo = handler.result().getResultInfo();
+        context.assertEquals(4, resultInfo.getTotalRecords());
         async.complete();
       });
     async.awaitSuccess();
+
+    String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
+    Async async2 = context.async();
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, false, false,
+      false, null, distinctOn, handler -> {
+        ResultInfo resultInfo = handler.result().getResultInfo();
+        context.assertEquals(1, resultInfo.getTotalRecords());
+        async2.complete();
+      });
+    async2.awaitSuccess();
   }
 
   @Test
   public void getDistinctOnWithFacets(TestContext context) throws IOException {
-    Async async = context.async();
     final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb-->'edition'"));
+      add(new FacetField("jsonb->>'edition'"));
     }};
-
-    //without facets
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
-      false, null, "jsonb->>'order_format'", handler -> {
-        context.assertEquals(4, handler.result().getResults().size());
-        async.complete();
+    String distinctOn = "jsonb->>'order_format'";
+    //with facets and return count
+    Async async1 = context.async();
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", true, false,
+      false, facets, distinctOn, handler -> {
+        ResultInfo resultInfo = handler.result().getResultInfo();
+        context.assertEquals(4, resultInfo.getTotalRecords());
+        List<Facet> retFacets = resultInfo.getFacets();
+        context.assertEquals(1, retFacets.size());
+        async1.complete();
       });
-    async.awaitSuccess();
+    async1.awaitSuccess();
 
-    //with facets
+    String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
+
+    //with facets and where clause RMB-355
     Async async2 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
-      false, facets, "jsonb->>'order_format'", handler -> {
-        context.assertEquals(4, handler.result().getResults().size());
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, true, false,
+      false, facets, distinctOn, handler -> {
+        ResultInfo resultInfo = handler.result().getResultInfo();
+        context.assertEquals(1, resultInfo.getTotalRecords());
+        List<Facet> retFacets = resultInfo.getFacets();
+        context.assertEquals(1, retFacets.size());
         async2.complete();
       });
     async2.awaitSuccess();
@@ -1538,10 +1590,27 @@ public class PostgresClientIT {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     String polines = getMockData("mockdata/poLines.json");
     postgresClient = createTable(context, TENANT, tableName, tableDefiniton);
-    for (String jsonbValue:  polines.split("\n")){
+
+    // get count_estimate_smart2 definition
+    Async async = context.async();
+    try {
+      String sql = IOUtils.toString(
+        getClass().getClassLoader().getResourceAsStream("templates/db_scripts/funcs.sql"), "UTF-8");
+      sql = sql.replaceAll("tenants_raml_module_builder.", "");
+      postgresClient.getClient().update(sql, reply -> {
+        assertSuccess(context, reply);
+        async.complete();
+      });
+    } catch (IOException ex) {
+      log.error("createTable: " + ex.getMessage());
+      async.complete();
+    }
+    async.awaitSuccess(1000);
+
+    for (String jsonbValue : polines.split("\n")) {
       String additionalField = new JsonObject(jsonbValue).getString("publication_date");
-      execute(context, "INSERT INTO " + schema + "." + tableName + " (jsonb, distinct_test_field) VALUES " +
-        "('" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
+      execute(context, "INSERT INTO " + schema + "." + tableName + " (jsonb, distinct_test_field) VALUES "
+        + "('" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
     }
     return postgresClient;
   }
