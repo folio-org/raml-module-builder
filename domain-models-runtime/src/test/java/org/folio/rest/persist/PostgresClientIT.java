@@ -520,11 +520,11 @@ public class PostgresClientIT {
     postgresClient.startTx(asyncAssertTx(context, trans -> {
       postgresClient.saveBatch(trans, FOO, list, context.asyncAssertSuccess(save -> {
         final String id = save.getResults().get(0).getString(0);
-          postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
-            postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
             context.assertEquals("x", get.getString("key"));
-            }));
           }));
+        }));
       }));
     }));
   }

@@ -805,45 +805,31 @@ public class PostgresClient {
   }
 
   /**
-   * Save entity in table. Use the transaction of sqlConnection. Return the created id via the replyHandler;
-   * this is only the same as the id in the entity if some database trigger syncs them.
-   * @param sqlConnection  connection with transaction
-   * @param table  where to insert the entity record
-   * @param entity  the record to insert
-   * @param replyHandler  where to report success status and the created id
+   * Save entity in table. Use the transaction of sqlConnection. Return the
+   * created id via the replyHandler; this is only the same as the id in the
+   * entity if some database trigger syncs them.
+   *
+   * @param sqlConnection connection with transaction
+   * @param table where to insert the entity record
+   * @param entity the record to insert
+   * @param replyHandler where to report success status and the created id
    */
-  public void save(AsyncResult<SQLConnection> sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    long start = System.nanoTime();
+  public void save(AsyncResult<SQLConnection> sqlConnection, String table, Object entity,
+    Handler<AsyncResult<String>> replyHandler) {
 
-    log.debug("save called on " + table);
-    SQLConnection connection = null;
-    try {
-      // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
-      connection = sqlConnection.result();
-      String pojo = pojo2json(entity);
-      connection.queryWithParams(INSERT_CLAUSE + schemaName + DOT + table +
-        " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
-        new JsonArray().add(pojo), query -> {
-          if (query.failed()) {
-            replyHandler.handle(Future.failedFuture(query.cause()));
-          } else {
-            replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
-          }
-          statsTracker(SAVE_STAT_METHOD, table, start);
-        });
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+    save(sqlConnection, table, null, entity, replyHandler);
   }
 
   /**
-   * Save entity in table. Use the transaction of sqlConnection. Return the id of the id field (primary key)
-   * via the replyHandler. If id (primary key) and the id of entity (jsonb field) are different you may need
-   * a trigger in the database to sync them.
-   * @param sqlConnection  connection with transaction
-   * @param table  where to insert the entity record
-   * @param id  the value for the id field (primary key); may be different from the id in entity (= in the jsonb field)
+   * Save entity in table. Use the transaction of sqlConnection. Return the id
+   * of the id field (primary key) via the replyHandler. If id (primary key) and
+   * the id of entity (jsonb field) are different you may need a trigger in the
+   * database to sync them.
+   *
+   * @param sqlConnection connection with transaction
+   * @param table where to insert the entity record
+   * @param id  the value for the id field (primary key); may be different from the id in entity
+   * (= in the jsonb field). may be null in which case* it is ignored.
    * @param entity  the record to insert
    * @param replyHandler  where to report success status and the final id of the id field
    */
@@ -853,14 +839,25 @@ public class PostgresClient {
     long start = System.nanoTime();
 
     log.debug("save (with connection and id) called on " + table);
-    SQLConnection connection = null;
     try {
-      // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
-      connection = sqlConnection.result();
+      if (sqlConnection.failed()) {
+        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
+        return;
+      }
+      SQLConnection connection = sqlConnection.result();
       String pojo = pojo2json(entity);
+      JsonArray ar = new JsonArray();
+      String idColumn = "";
+      String idVal = "";
+      if (id != null) {
+        ar.add(id);
+        idColumn = idField + ", ";
+        idVal = "?, ";
+      }
+      ar.add(pojo);
       connection.queryWithParams(INSERT_CLAUSE + schemaName + DOT + table +
-        " (" + idField + ", " + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?, ?::JSON) RETURNING " + idField,
-        new JsonArray().add(id).add(pojo), query -> {
+        " (" + idColumn + DEFAULT_JSONB_FIELD_NAME + ") VALUES (" + idVal + "?::JSON) RETURNING " + idField,
+        ar, query -> {
           if (query.failed()) {
             replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
@@ -890,7 +887,7 @@ public class PostgresClient {
     client.getConnection(conn -> saveBatch(conn, table, entities, column, closeAndHandleResult(conn, replyHandler)));
   }
 
-  private void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
+  public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
     JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
 
     long start = System.nanoTime();
@@ -913,39 +910,32 @@ public class PostgresClient {
     }
     sql.append(" RETURNING ").append(idField);
 
-    SQLConnection connection = sqlConnection.result();
-    connection.queryWithParams(sql.toString(), entities, queryRes -> {
-      if (queryRes.failed()) {
-        log.error("saveBatch size=" + entities.size()
-          + SPACE
-          + queryRes.cause().getMessage(),
-          queryRes.cause());
-        statsTracker("saveBatchFailed", table, start);
-        replyHandler.handle(Future.failedFuture(queryRes.cause()));
+    try {
+      if (sqlConnection.failed()) {
+        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
-      if (log.isInfoEnabled()) {
-        log.info("success: saveBatch size=" + entities.size());
-      }
-      statsTracker("saveBatch", table, start);
-      replyHandler.handle(Future.succeededFuture(queryRes.result()));
-    });
-  }
-
-  private JsonArray batchEntitiesToJsonArray(List<Object> entities,
-    Handler<AsyncResult<ResultSet>> replyHandler) {
-
-    JsonArray jsonArray = new JsonArray();
-    try {
-      for (Object entity : entities) {
-        String json = pojo2json(entity);
-        jsonArray.add(json);
-      }
+      SQLConnection connection = sqlConnection.result();
+      connection.queryWithParams(sql.toString(), entities, queryRes -> {
+        if (queryRes.failed()) {
+          log.error("saveBatch size=" + entities.size()
+            + SPACE
+            + queryRes.cause().getMessage(),
+            queryRes.cause());
+          statsTracker("saveBatchFailed", table, start);
+          replyHandler.handle(Future.failedFuture(queryRes.cause()));
+          return;
+        }
+        if (log.isInfoEnabled()) {
+          log.info("success: saveBatch size=" + entities.size());
+        }
+        statsTracker("saveBatch", table, start);
+        replyHandler.handle(Future.succeededFuture(queryRes.result()));
+      });
     } catch (Exception e) {
+      log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
-      return null;
     }
-    return jsonArray;
   }
 
   /***
@@ -956,18 +946,24 @@ public class PostgresClient {
    * @param entities  each list element is a POJO
    * @param replyHandler result, containing the id field for each inserted POJO
    */
-  public void saveBatch(String table, List<Object> entities,
+  public <T> void saveBatch(String table, List<T> entities,
     Handler<AsyncResult<ResultSet>> replyHandler) {
 
     client.getConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
   }
 
-  public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
-    List<Object> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
+  public <T> void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
+    List<T> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
 
-    JsonArray jsonArray = batchEntitiesToJsonArray(entities, replyHandler);
-    if (jsonArray != null) {
+    try {
+      JsonArray jsonArray = new JsonArray();
+      for (Object entity : entities) {
+        String json = pojo2json(entity);
+        jsonArray.add(json);
+      }
       saveBatch(sqlConnection, table, jsonArray, DEFAULT_JSONB_FIELD_NAME, replyHandler);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
     }
   }
 
