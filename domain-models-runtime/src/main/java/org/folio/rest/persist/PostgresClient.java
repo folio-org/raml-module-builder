@@ -674,7 +674,7 @@ public class PostgresClient {
    * @return the Handler
    */
   static <T> Handler<AsyncResult<T>> closeAndHandleResult(
-      AsyncResult<SQLConnection> conn, Handler<AsyncResult<T>> handler) {
+    AsyncResult<SQLConnection> conn, Handler<AsyncResult<T>> handler) {
 
     return ar -> {
       if (conn.failed()) {
@@ -682,7 +682,12 @@ public class PostgresClient {
         handler.handle(ar);
         return;
       }
-      conn.result().close(close -> {
+      SQLConnection sqlConnection = conn.result();
+      if (sqlConnection == null) {
+        handler.handle(ar);
+        return;
+      }
+      sqlConnection.close(close -> {
         if (close.failed()) {
           log.error("Closing SQLConnection failed: " + close.cause().getMessage(), close.cause());
         }
@@ -898,9 +903,7 @@ public class PostgresClient {
       replyHandler.handle(Future.succeededFuture(resultSet));
       return;
     }
-    if (log.isInfoEnabled()) {
-      log.info("starting: saveBatch size=" + entities.size());
-    }
+    log.info("starting: saveBatch size=" + entities.size());
     StringBuilder sql = new StringBuilder()
       .append(INSERT_CLAUSE)
       .append(schemaName).append(DOT).append(table)
@@ -926,9 +929,7 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(queryRes.cause()));
           return;
         }
-        if (log.isInfoEnabled()) {
-          log.info("success: saveBatch size=" + entities.size());
-        }
+        log.info("success: saveBatch size=" + entities.size());
         statsTracker("saveBatch", table, start);
         replyHandler.handle(Future.succeededFuture(queryRes.result()));
       });
@@ -1080,10 +1081,6 @@ public class PostgresClient {
   private void doUpdate(SQLConnection connection, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
     Handler<AsyncResult<UpdateResult>> replyHandler) {
     vertx.runOnContext(v -> {
-      if (connection == null) {
-        replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
-        return;
-      }
       long start = System.nanoTime();
       StringBuilder sb = new StringBuilder();
       if (whereClause != null) {

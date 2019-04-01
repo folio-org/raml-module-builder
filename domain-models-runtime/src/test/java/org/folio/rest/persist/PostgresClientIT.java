@@ -467,6 +467,18 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void updateNullConnection1(TestContext context) {
+    postgresClientNullConnection()
+      .update(FOO, xPojo, randomUuid(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void updateGetConnectionFails1(TestContext context) {
+    postgresClientGetConnectionFails()
+      .update(FOO, xPojo, randomUuid(), context.asyncAssertFailure());
+  }
+
+  @Test
   public void updateSingleQuote(TestContext context) {
     createFoo(context)
       .update(FOO, singleQuotePojo, randomUuid(), context.asyncAssertSuccess());
@@ -478,6 +490,22 @@ public class PostgresClientIT {
     updateSection.addField("key").setValue("x");
     createFoo(context)
       .update(FOO, updateSection, (Criterion) null, false, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void updateNullConnection2(TestContext context) {
+    UpdateSection updateSection = new UpdateSection();
+    updateSection.addField("key").setValue("x");
+    postgresClientNullConnection().
+      update(FOO, updateSection, (Criterion) null, false, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void updateGetConnectionFails2(TestContext context) {
+    UpdateSection updateSection = new UpdateSection();
+    updateSection.addField("key").setValue("x");
+    postgresClientGetConnectionFails().
+      update(FOO, updateSection, (Criterion) null, false, context.asyncAssertFailure());
   }
 
   @Ignore("fails: unterminated quoted identifier")
@@ -527,6 +555,19 @@ public class PostgresClientIT {
         }));
       }));
     }));
+  }
+
+  @Test
+  public void saveBatchNullConnection(TestContext context) {
+    log.fatal("saveBatchNullConnection started");
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClientNullConnection().saveBatch(FOO, list, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveBatchGetConnectionFails(TestContext context) {
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClientGetConnectionFails().saveBatch(FOO, list, context.asyncAssertFailure());
   }
 
   @Test
@@ -617,6 +658,16 @@ public class PostgresClientIT {
     AsyncResult<SQLConnection> trans = null;
     setRootLevel(Level.FATAL);
     postgresClient.save(trans, FOO, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveConnectionNullConnection(TestContext context) {
+    postgresClientNullConnection().save(FOO, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveConnectionGetConnectionFails(TestContext context) {
+    postgresClientGetConnectionFails().save(FOO, xPojo, context.asyncAssertFailure());
   }
 
   @Test
