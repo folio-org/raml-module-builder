@@ -1060,41 +1060,31 @@ public class PostgresClient {
     }
   }
 
-  public void update(AsyncResult<SQLConnection> conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
-  {
-    SQLConnection connection = null;
-    if(conn != null){
-      connection = conn.result();
-      doUpdate(connection, true, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
+  public void update(AsyncResult<SQLConnection> conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    if (conn.failed()) {
+      replyHandler.handle(Future.failedFuture(conn.cause()));
+      return;
     }
-    else{
-      replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
+    try {
+      doUpdate(conn.result(), table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
     }
   }
 
-  public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
-  {
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        doUpdate(connection, false, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
-      }
-      else{
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
+  public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    client.getConnection(conn -> update(conn, table, entity, jsonbField, whereClause, returnUpdatedIds, closeAndHandleResult(conn, replyHandler)));
   }
 
-  private void doUpdate(SQLConnection connection, boolean transactionMode, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
-      Handler<AsyncResult<UpdateResult>> replyHandler){
+  private void doUpdate(SQLConnection connection, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
+    Handler<AsyncResult<UpdateResult>> replyHandler) {
     vertx.runOnContext(v -> {
-      if(connection == null){
+      if (connection == null) {
         replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
         return;
       }
-
       long start = System.nanoTime();
-
       StringBuilder sb = new StringBuilder();
       if (whereClause != null) {
         sb.append(whereClause);
@@ -1104,14 +1094,11 @@ public class PostgresClient {
         returning.append(returningId);
       }
       try {
-        String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = ?::jsonb "  + whereClause
-            + SPACE + returning;
+        String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = ?::jsonb " + whereClause
+          + SPACE + returning;
         log.debug("doUpdate query = " + q);
         String pojo = pojo2json(entity);
         connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
-          if(!transactionMode){
-            connection.close();
-          }
           if (query.failed()) {
             log.error(query.cause().getMessage(),query.cause());
             replyHandler.handle(Future.failedFuture(query.cause()));
@@ -1121,9 +1108,6 @@ public class PostgresClient {
           statsTracker(UPDATE_STAT_METHOD, table, start);
         });
       } catch (Exception e) {
-        if(!transactionMode){
-          connection.close();
-        }
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
