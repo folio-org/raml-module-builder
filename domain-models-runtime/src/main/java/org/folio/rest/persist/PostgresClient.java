@@ -887,16 +887,7 @@ public class PostgresClient {
   public void saveBatch(String table, JsonArray entities, String column,
     Handler<AsyncResult<ResultSet>> replyHandler) {
 
-    client.getConnection(res -> {
-      if (res.failed()) {
-        replyHandler.handle(Future.failedFuture(res.cause()));
-        return;
-      }
-      saveBatch(res, table, entities, column, x -> {
-        res.result().close();
-        replyHandler.handle(x);
-      });
-    });
+    client.getConnection(conn -> saveBatch(conn, table, entities, column, closeAndHandleResult(conn, replyHandler)));
   }
 
   private void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
@@ -968,10 +959,7 @@ public class PostgresClient {
   public void saveBatch(String table, List<Object> entities,
     Handler<AsyncResult<ResultSet>> replyHandler) {
 
-    JsonArray jsonArray = batchEntitiesToJsonArray(entities, replyHandler);
-    if (jsonArray != null) {
-      saveBatch(table, jsonArray, replyHandler);
-    }
+    client.getConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
   }
 
   public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
