@@ -1066,26 +1066,10 @@ public class PostgresClient {
       replyHandler.handle(Future.failedFuture(conn.cause()));
       return;
     }
-    try {
-      doUpdate(conn.result(), table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
-  }
-
-  public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    client.getConnection(conn -> update(conn, table, entity, jsonbField, whereClause, returnUpdatedIds, closeAndHandleResult(conn, replyHandler)));
-  }
-
-  private void doUpdate(SQLConnection connection, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
-    Handler<AsyncResult<UpdateResult>> replyHandler) {
     vertx.runOnContext(v -> {
       long start = System.nanoTime();
       StringBuilder sb = new StringBuilder();
-      if (whereClause != null) {
-        sb.append(whereClause);
-      }
+      sb.append(whereClause);
       StringBuilder returning = new StringBuilder();
       if (returnUpdatedIds) {
         returning.append(returningId);
@@ -1093,11 +1077,11 @@ public class PostgresClient {
       try {
         String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = ?::jsonb " + whereClause
           + SPACE + returning;
-        log.debug("doUpdate query = " + q);
+        log.debug("update query = " + q);
         String pojo = pojo2json(entity);
-        connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
+        conn.result().updateWithParams(q, new JsonArray().add(pojo), query -> {
           if (query.failed()) {
-            log.error(query.cause().getMessage(),query.cause());
+            log.error(query.cause().getMessage(), query.cause());
             replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
@@ -1109,6 +1093,10 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(e));
       }
     });
+  }
+
+  public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    client.getConnection(conn -> update(conn, table, entity, jsonbField, whereClause, returnUpdatedIds, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
