@@ -728,6 +728,16 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void getByIdGetConnectionFails(TestContext context) {
+    postgresClientGetConnectionFails().get(FOO, StringPojo.class, "sql", true, false, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void getByIdNullConnection(TestContext context) {
+    postgresClientNullConnection().get(FOO, StringPojo.class, "sql", true, false, context.asyncAssertFailure());
+  }
+
+  @Test
   public void getByIdUsingSqlPrimaryKey(TestContext context) {
     Async async = context.async();
     postgresClient = createFoo(context);
