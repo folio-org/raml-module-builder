@@ -1672,11 +1672,13 @@ public class PostgresClientIT {
     PostgresClient.pojo2json(null);
   }
 
+  @Test
   public void pojo2jsonJson(TestContext context) throws Exception {
     JsonObject j = new JsonObject().put("a", "b");
     context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2json(j));
   }
 
+  @Test
   public void pojo2jsonMap(TestContext context) throws Exception {
     Map<String,String> m = new HashMap<>();
     m.put("a", "b");
