@@ -596,9 +596,7 @@ public class PostgresClient {
         try {
           connection.setAutoCommit(false, res1 -> {
             if (res1.failed()) {
-              if (connection != null) {
-                connection.close();
-              }
+              connection.close();
               done.handle(Future.failedFuture(res1.cause()));
             } else {
               done.handle(Future.succeededFuture(connection));
