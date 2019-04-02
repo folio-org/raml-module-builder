@@ -1724,7 +1724,7 @@ public class PostgresClient {
     fm.setOffsetClause(parsedQuery.getOffsetClause());
     fm.setMainQuery(parsedQuery.getQueryWithoutLimOff());
     fm.setSchema(schemaName);
-    fm.setCountQuery(org.apache.commons.lang.StringEscapeUtils.escapeSql(parsedQuery.getCountQuery()));
+    fm.setCountQuery(parsedQuery.getCountQuery());
     return fm;
   }
 
