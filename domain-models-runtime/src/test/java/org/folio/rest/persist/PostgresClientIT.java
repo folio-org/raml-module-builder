@@ -558,6 +558,19 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveBatchXTrans2(TestContext context) {
+    log.fatal("started saveBatchXTrans2");
+    List<Object> list = new LinkedList<>();
+    list.add(context);
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.saveBatch(trans, FOO, list, context.asyncAssertFailure(save -> {
+        // postgresClient.endTx(trans, context.asyncAssertSuccess());
+      }));
+    }));
+  }
+
+  @Test
   public void saveBatchNullConnection(TestContext context) {
     log.fatal("saveBatchNullConnection started");
     List<Object> list = Collections.singletonList(xPojo);
@@ -677,6 +690,16 @@ public class PostgresClientIT {
     AsyncResult<SQLConnection> trans = null;
     setRootLevel(Level.FATAL);
     postgresClient.save(trans, FOO, id, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void startTxGetConnectionFails(TestContext context) {
+    postgresClientGetConnectionFails().startTx(context.asyncAssertFailure());
+  }
+
+  @Test
+  public void startTxNullConnection(TestContext context) {
+    postgresClientNullConnection().startTx(context.asyncAssertFailure());
   }
 
   @Test
