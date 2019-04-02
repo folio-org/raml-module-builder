@@ -1667,6 +1667,27 @@ public class PostgresClientIT {
     async2.awaitSuccess();
   }
 
+  @Test(expected = Exception.class)
+  public void pojo2jsonNull() throws Exception {
+    PostgresClient.pojo2json(null);
+  }
+
+  public void pojo2jsonJson(TestContext context) throws Exception {
+    JsonObject j = new JsonObject().put("a", "b");
+    context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2json(j));
+  }
+
+  public void pojo2jsonMap(TestContext context) throws Exception {
+    Map<String,String> m = new HashMap<>();
+    m.put("a", "b");
+    context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2json(m));
+  }
+
+  @Test(expected = Exception.class)
+  public void pojo2jsonBadMap(TestContext context) throws Exception {
+    PostgresClient.pojo2json(postgresClient);
+  }
+
   private PostgresClient createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     String polines = getMockData("mockdata/poLines.json");
