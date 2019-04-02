@@ -1310,18 +1310,12 @@ public class PostgresClient {
   }
 
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
-      boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
+    boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
+    Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        doGet(connection, false, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
-      }
-      else{
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
+    client.getConnection(conn
+      -> doGet(conn, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn,
+        closeAndHandleResult(conn, replyHandler)));
   }
 
   static class QueryHelper {
@@ -1363,14 +1357,20 @@ public class PostgresClient {
    * @param replyHandler
    */
   private <T> void doGet(
-    SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
+    AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
     String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
     List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
   ) {
 
+    if (conn.failed()) {
+      log.error(conn.cause().getMessage(), conn.cause());
+      replyHandler.handle(Future.failedFuture(conn.cause()));
+      return;
+    }
+    SQLConnection connection = conn.result();
     vertx.runOnContext(v -> {
       try {
-        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets, distinctOn);
+        QueryHelper queryHelper = buildSelectQueryHelper(true, table, fieldName, where, returnIdField, facets, distinctOn);
 
         if (returnCount) {
           processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
@@ -1379,11 +1379,7 @@ public class PostgresClient {
           processQuery(connection, queryHelper, null, GET_STAT_METHOD,
             totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
         }
-
       } catch (Exception e) {
-        if (!transactionMode) {
-          connection.close();
-        }
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
@@ -1851,7 +1847,7 @@ public class PostgresClient {
   }
 
   public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
-      List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
+    List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     StringBuilder sb = new StringBuilder();
     StringBuilder fromClauseFromCriteria = new StringBuilder();
@@ -1862,13 +1858,11 @@ public class PostgresClient {
         fromClauseFromCriteria.insert(0, COMMA);
       }
     }
-    if(conn == null){
+    if (conn == null) {
       get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
         returnCount, true, setId, facets, replyHandler);
-    }
-    else{
-      SQLConnection sqlConnection = conn.result();
-      doGet(sqlConnection, true, table, clazz, DEFAULT_JSONB_FIELD_NAME,
+    } else {
+      doGet(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
         fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, null, replyHandler);
     }
   }
