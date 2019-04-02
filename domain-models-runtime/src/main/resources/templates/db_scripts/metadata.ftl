@@ -22,7 +22,7 @@
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.${table.tableName}_set_md()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.creation_date = to_timestamp(NEW.jsonb->'metadata'->>'createdDate', 'YYYY-MM-DD"T"HH24:MI:SS.MS');
+  NEW.creation_date = NEW.jsonb->'metadata'->>'createdDate' || '+0000';
   NEW.created_by = NEW.jsonb->'metadata'->>'createdByUserId';
   RETURN NEW;
 END;
@@ -37,15 +37,12 @@ CREATE TRIGGER set_${table.tableName}_md_trigger BEFORE INSERT ON ${myuniversity
 -- Overwrite createdDate and createdByUserId by the values stored in creation_date and created_by.
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_${table.tableName}_md_json()
 RETURNS TRIGGER AS $$
-DECLARE
-  createdDate jsonb;
 BEGIN
   if NEW.creation_date IS NULL then
     RETURN NEW;
   end if;
 
-  createdDate = to_jsonb(to_char(NEW.creation_date at time zone '+0000', 'YYYY-MM-DD"T"HH24:MI:SS.MS'));
-  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdDate}', createdDate);
+  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdDate}', to_jsonb(NEW.creation_date AT TIME ZONE '+0000'));
   if NEW.created_by IS NULL then
     NEW.jsonb = NEW.jsonb #- '{metadata,createdByUserId}';
   else

@@ -126,6 +126,8 @@ public class TenantAPIIT {
   }
 
   private static String table = " folio_shared_raml_module_builder.test_tenantapi ";
+  /** set database time zone to check that this doesn't interfere with UTC storage */
+  private static String setTimeZone = "SET TIME ZONE '+02:00'";
 
   private Book insert(TestContext context, String ... keyValue) {
     String uuid = UUID.randomUUID().toString();
@@ -134,11 +136,12 @@ public class TenantAPIIT {
     Async async = context.async();
     PostgresClient postgresClient = PgUtil.postgresClient(vertx.getOrCreateContext(), okapiHeaders);
     String sql = "INSERT INTO" + table + "VALUES ('" + uuid + "', '" + asMetadata(keyValue) + "')";
-    System.err.println("SQL=" + sql);
-    postgresClient.execute(sql, context.asyncAssertSuccess(i -> {
-      postgresClient.getById("test_tenantapi", uuid, Book.class, context.asyncAssertSuccess(g -> {
-        book[0] = g;
-        async.complete();
+    postgresClient.execute(setTimeZone, context.asyncAssertSuccess(zone -> {
+      postgresClient.execute(sql, context.asyncAssertSuccess(i -> {
+        postgresClient.getById("test_tenantapi", uuid, Book.class, context.asyncAssertSuccess(g -> {
+          book[0] = g;
+          async.complete();
+        }));
       }));
     }));
     async.await(5000 /* ms */);
@@ -152,11 +155,12 @@ public class TenantAPIIT {
     Async async = context.async();
     PostgresClient postgresClient = PgUtil.postgresClient(vertx.getOrCreateContext(), okapiHeaders);
     String sql = "UPDATE" + table + "SET jsonb='" + asMetadata(keyValue) + "' WHERE _id='" + uuid + "'";
-    System.err.println("SQL=" + sql);
-    postgresClient.execute(sql, context.asyncAssertSuccess(u -> {
-      postgresClient.getById("test_tenantapi", uuid, Book.class, context.asyncAssertSuccess(g -> {
-        book[0] = g;
-        async.complete();
+    postgresClient.execute(setTimeZone, context.asyncAssertSuccess(zone -> {
+      postgresClient.execute(sql, context.asyncAssertSuccess(u -> {
+        postgresClient.getById("test_tenantapi", uuid, Book.class, context.asyncAssertSuccess(g -> {
+          book[0] = g;
+          async.complete();
+        }));
       }));
     }));
     async.await(5000 /* ms */);
