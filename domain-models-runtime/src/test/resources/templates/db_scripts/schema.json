@@ -3,7 +3,8 @@
     {
       "tableName": "test_tenantapi",
       "pkColumnName": "_id",
-      "generateId": true
+      "generateId": true,
+      "withMetadata": true
     }
   ]
 }

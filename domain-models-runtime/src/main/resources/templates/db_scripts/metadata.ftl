@@ -1,7 +1,24 @@
 
 -- auto populate the meta data schema
 
--- on create of ${myuniversity}_${mymodule}.${table.tableName} record - pull creation date and creator into dedicated column - rmb auto-populates these fields in the md fields
+-- These are the metadata fields:
+-- creation_date
+-- created_by
+-- jsonb->'metadata'->>'createdDate'
+-- jsonb->'metadata'->>'createdByUserId'
+-- jsonb->'metadata'->>'updatedDate'
+-- jsonb->'metadata'->>'updatedByUserId'
+
+-- RestVerticle sets all 4 jsonb->'metadata' fields to the current date and current user on insert and on update.
+-- The insert trigger copies createdDate and createdByUserId to creation_date and created_by.
+-- The update trigger overwrites createdDate and createdByUserId by the values stored
+-- in creation_date and created_by.
+-- Special case: If NEW.creation_date is null on update then save NEW.jsonb->'metadata' without changes.
+
+-- Restrictions specified in metadata.schema:
+-- jsonb->'metadata' is optional, but if it exists then jsonb->'metadata'->>'createdDate' is required.
+
+-- Trigger for insert: Copy createdDate and createdByUserId to creation_date and created_by.
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.${table.tableName}_set_md()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -16,39 +33,25 @@ DROP TRIGGER IF EXISTS set_${table.tableName}_md_trigger ON ${myuniversity}_${my
 CREATE TRIGGER set_${table.tableName}_md_trigger BEFORE INSERT ON ${myuniversity}_${mymodule}.${table.tableName}
    FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.${table.tableName}_set_md();
 
--- on update populate md fields from the creation date and creator fields
-
+-- Trigger for update:
+-- Overwrite createdDate and createdByUserId by the values stored in creation_date and created_by.
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_${table.tableName}_md_json()
 RETURNS TRIGGER AS $$
 DECLARE
-  createdDate timestamp WITH TIME ZONE;
-  createdBy text ;
-  updatedDate timestamp WITH TIME ZONE;
-  updatedBy text ;
-  injectedId text;
+  createdDate jsonb;
 BEGIN
-  createdBy = NEW.created_by;
-  createdDate = NEW.creation_date;
-  updatedDate = NEW.jsonb->'metadata'->>'updatedDate';
-  updatedBy = NEW.jsonb->'metadata'->>'updatedByUserId';
+  if NEW.creation_date IS NULL then
+    RETURN NEW;
+  end if;
 
-  if createdBy ISNULL then
-    createdBy = 'undefined';
-  end if;
-  if updatedBy ISNULL then
-    updatedBy = 'undefined';
-  end if;
-  if createdDate IS NOT NULL then
--- creation date and update date will always be injected by rmb - if created date is null it means that there is no meta data object
--- associated with this object - so only add the meta data if created date is not null -- created date being null may be a problem
--- and should be handled at the app layer for now -- currently this protects against an exception in the db if no md is present in the json
-    injectedId = '{"createdDate":"'||to_char(createdDate,'YYYY-MM-DD"T"HH24:MI:SS.MS')||'" , "createdByUserId":"'||createdBy||'", "updatedDate":"'||to_char(updatedDate,'YYYY-MM-DD"T"HH24:MI:SS.MSOF')||'" , "updatedByUserId":"'||updatedBy||'"}';
-    NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata}' ,  injectedId::jsonb , false);
+  createdDate = to_jsonb(to_char(NEW.creation_date at time zone '+0000', 'YYYY-MM-DD"T"HH24:MI:SS.MS'));
+  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdDate}', createdDate);
+  if NEW.created_by IS NULL then
+    NEW.jsonb = NEW.jsonb #- '{metadata,createdByUserId}';
   else
-    NEW.jsonb = NEW.jsonb;
+    NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdByUserId}', to_jsonb(NEW.created_by));
   end if;
-RETURN NEW;
-
+  RETURN NEW;
 END;
 $$ language 'plpgsql';
 
