@@ -213,6 +213,13 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void closeAllClients(TestContext context) {
+    PostgresClient c = PostgresClient.getInstance(vertx);
+    context.assertNotNull(c.getClient(), "getClient()");
+    PostgresClient.closeAllClients();
+  }
+
+  @Test
   public void getInstance(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx);
     PostgresClient c2 = PostgresClient.getInstance(vertx);
