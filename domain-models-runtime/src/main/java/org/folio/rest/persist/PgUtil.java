@@ -245,50 +245,6 @@ public final class PgUtil {
       asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
     }
   }
-
-  /**
-   * Get records by CQL.
-   * @param table  the table that contains the records
-   * @param clazz  the class of the record type T
-   * @param collectionClazz  the class of the collection type C containing records of type T
-   * @param cql  the CQL query for filtering and sorting the records
-   * @param okapiHeaders  http headers provided by okapi
-   * @param vertxContext  the current context
-   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
-   *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
-   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
-   */
-  public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
-      String cql, int offset, int limit,
-      Map<String, String> okapiHeaders, Context vertxContext,
-      Class<? extends ResponseDelegate> responseDelegateClass,
-      Handler<AsyncResult<Response>> asyncResultHandler) {
-
-    final Method respond500;
-    final Method respond400;
-    try {
-      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
-      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
-    }
-
-    try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table);
-      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
-      PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
-      get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
-    } catch (FieldException e) {
-      logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
-    }
-  }
-
   /**
    * Return the first method whose name starts with <code>set</code> and that takes a List as parameter,
    * for example {@code setUser(List<User>)}.
@@ -320,6 +276,50 @@ public final class PgUtil {
     setTotalRecords.invoke(collection, totalRecords);
     return collection;
   }
+  /**
+   * Get records by CQL.
+   * @param table  the table that contains the records
+   * @param clazz  the class of the record type T
+   * @param collectionClazz  the class of the collection type C containing records of type T
+   * @param cql  the CQL query for filtering and sorting the records
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
+   */
+  public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
+      String cql, int offset, int limit,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+
+    final Method respond500;
+    final Method respond400;
+    try {
+      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      return;
+    }
+
+    try {
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
+      PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
+      get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
+    } catch (FieldException e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+    }
+  }
+
+
 
   static <T, C> void get(PreparedCQL preparedCql, Class<T> clazz, Class<C> collectionClazz,
       Map<String, String> okapiHeaders, Context vertxContext,
