@@ -678,7 +678,7 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (4 - i)));
     }
-    c = searchForData("username=foo sortBy username^&*%$sort.descending", 6, 3, testContext);
+    c = searchForDataExpectFailure("username=foo sortBy username^&*%$sort.descending", 6, 3, testContext);
   }
   @SuppressWarnings("deprecation")
   @Test
@@ -773,7 +773,26 @@ public class PgUtilIT {
     async.await(5000 /* ms */);
     return userdataCollection;
   }
-
+  private UserdataCollection searchForDataExpectFailure(String cql, int offset, int limit, TestContext testContext) {
+    UserdataCollection userdataCollection = new UserdataCollection();
+    Async async = testContext.async();
+    PgUtil.getWithOptimizedSql(
+        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
+          if (response.getStatus() != 500) {
+            testContext.fail("Expected status 500, got "
+                + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+            async.complete();
+            return;
+          }
+          UserdataCollection c = (UserdataCollection) response.getEntity();
+          userdataCollection.setTotalRecords(c.getTotalRecords());
+          userdataCollection.setUsers(c.getUsers());
+          async.complete();
+    }));
+    async.await(5000 /* ms */);
+    return userdataCollection;
+  }
   /**
    * Insert n records into instance table where the title field is build using
    * prefix and the number from 1 .. n.
