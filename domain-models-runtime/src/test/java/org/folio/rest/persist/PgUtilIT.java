@@ -592,17 +592,10 @@ public class PgUtilIT {
   }
   @Test
   public void canGetWithUnOptimizedSql(TestContext testContext) {
-    int optimizdSQLSize = 10000;
-    int n = optimizdSQLSize / 2;
+
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
 
-    // "b foo" records are before the getOptimizedSqlSize() limit
-    // "d foo" records are after the getOptimizedSqlSize() limit
-    insert(testContext, pg, "a", n);
-    insert(testContext, pg, "b foo", 5);
-    insert(testContext, pg, "c", n);
-    insert(testContext, pg, "d foo", 5);
-    insert(testContext, pg, "e", n);
+    setUpUserDBForTest(testContext, pg);
     //unoptimized sql case
     UserdataCollection c = searchForDataUnoptimized("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
@@ -643,13 +636,7 @@ public class PgUtilIT {
     int n = optimizdSQLSize / 2;
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
 
-    // "b foo" records are before the getOptimizedSqlSize() limit
-    // "d foo" records are after the getOptimizedSqlSize() limit
-    insert(testContext, pg, "a", n);
-    insert(testContext, pg, "b foo", 5);
-    insert(testContext, pg, "c", n);
-    insert(testContext, pg, "d foo", 5);
-    insert(testContext, pg, "e", n);
+    setUpUserDBForTest(testContext, pg);
     //unoptimized sql case
     UserdataCollection c = searchForData("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
@@ -726,22 +713,17 @@ public class PgUtilIT {
     }
     String failure = searchForDataExpectFailure("username=foo sortBy username^&*%$sort.descending", 6, 3, testContext);
   }
+  
   @SuppressWarnings("deprecation")
   @Test
   public void getWithOptimizedSqlCanFailDueToResponse(TestContext testContext) {
-    int optimizdSQLSize = 10000;
-    int n = optimizdSQLSize / 2;
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    insert(testContext, pg, "a", n);
-    insert(testContext, pg, "b foo", 5);
-    insert(testContext, pg, "c", n);
-    insert(testContext, pg, "d foo", 5);
-    insert(testContext, pg, "e", n);
+    setUpUserDBForTest(testContext, pg);
     exception.expect(NullPointerException.class);
     searchForDataWithNo500("username=b sortBy username/sort.ascending", 1, 20, testContext);
     searchForDataWithNo400("username=b sortBy username/sort.ascending", 1, 20, testContext);
   }
-
+  
   @Test
   public void optimizedSQLwithNo500(TestContext testContext) {
     PgUtil.getWithOptimizedSql("user", User.class, UserdataCollection.class, "title", "username=a sortBy title",
@@ -758,6 +740,16 @@ public class PgUtilIT {
     assertThat(PgUtil.getOptimizedSqlSize(), is(newSize));
     PgUtil.setOptimizedSqlSize(oldSize);
     assertThat(PgUtil.getOptimizedSqlSize(), is(oldSize));
+  }
+  
+  private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
+    int optimizdSQLSize = 10000;
+    int n = optimizdSQLSize / 2;
+    insert(testContext, pg, "a", n);
+    insert(testContext, pg, "b foo", 5);
+    insert(testContext, pg, "c", n);
+    insert(testContext, pg, "d foo", 5);
+    insert(testContext, pg, "e", n);
   }
   
   private UserdataCollection searchForDataWithNo500(String cql, int offset, int limit, TestContext testContext) {
