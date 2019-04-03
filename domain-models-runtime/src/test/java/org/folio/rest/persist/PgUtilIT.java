@@ -739,8 +739,8 @@ public class PgUtilIT {
     PgUtil.getWithOptimizedSql(
         "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseWithout400.class, testContext.asyncAssertSuccess(response -> {
-          if (response.getStatus() != 500) {
-            testContext.fail("Expected status 500, got "
+          if (response.getStatus() != 400) {
+            testContext.fail("Expected status 400, got "
                 + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
             async.complete();
             return;
