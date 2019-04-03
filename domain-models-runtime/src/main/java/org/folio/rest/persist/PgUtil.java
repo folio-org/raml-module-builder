@@ -49,6 +49,8 @@ public final class PgUtil {
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
+  
+  private static final String JSON_COLUMN = "jsonb";
   /** mapper between JSON and Java instance (POJO) */
   private static final ObjectMapper OBJECT_MAPPER = ObjectMapperTool.getMapper();
   /** Number of records to read from the sort index in getWithOptimizedSql and generateOptimizedSql method */
@@ -306,7 +308,7 @@ public final class PgUtil {
     }
 
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
@@ -688,7 +690,7 @@ public final class PgUtil {
     }
 
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       String sql = generateOptimizedSql(sortField, preparedCql, offset, limit);
