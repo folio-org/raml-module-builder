@@ -26,7 +26,7 @@ import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
 import org.mockito.stubbing.VoidAnswer2;
 import static org.junit.Assert.assertThat;
-
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
 
 import io.vertx.core.AsyncResult;
@@ -678,28 +678,29 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (4 - i)));
     }
+    c = searchForData("username=foo sortBy username^&*%$sort.descending", 6, 3, testContext);
   }
-
-  private void optimizedSql500(TestContext testContext, VoidAnswer2<String, Handler> answer, String expected) {
-
-    PgUtil.getWithOptimizedSql("nonexistingTableName", User.class, UserdataCollection.class, "title", "username=a sortBy title",
-        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(reply -> {
-      testContext.assertEquals(500, reply.getStatus(), "status");
-    }));
-  }
-
+  @SuppressWarnings("deprecation")
   @Test
-  public void optimizedSqlCanFail(TestContext testContext) {
-    optimizedSql500(testContext,
-        (String sql, Handler h) -> h.handle(Future.failedFuture("can fail")),
-        "can fail");
+  public void getWithOptimizedSqlCanFailDueToResponse(TestContext testContext) {
+    int optimizdSQLSize = 10000;
+    int n = optimizdSQLSize / 2;
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    insert(testContext, pg, "a", n);
+    insert(testContext, pg, "b foo", 5);
+    insert(testContext, pg, "c", n);
+    insert(testContext, pg, "d foo", 5);
+    insert(testContext, pg, "e", n);
+    exception.expect(NullPointerException.class);
+    searchForDataWithNo500("username=b sortBy username/sort.ascending", 1, 20, testContext);
+    searchForDataWithNo400("username=b sortBy username/sort.ascending", 1, 20, testContext);
   }
-
   @Test
-  public void optimizedSqlCanCatchException(TestContext testContext) {
-    optimizedSql500(testContext,
-        (String sql, Handler h) -> h.handle(null),
-        null);
+  public void optimizedSQLwithNo500(TestContext testContext) {
+    PgUtil.getWithOptimizedSql("user", User.class, UserdataCollection.class, "title", "username=a sortBy title",
+        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, reply -> {
+          
+        });
   }
 
   @Test
@@ -711,7 +712,47 @@ public class PgUtilIT {
     PgUtil.setOptimizedSqlSize(oldSize);
     assertThat(PgUtil.getOptimizedSqlSize(), is(oldSize));
   }
-
+  
+  private UserdataCollection searchForDataWithNo500(String cql, int offset, int limit, TestContext testContext) {
+    UserdataCollection userdataCollection = new UserdataCollection();
+    Async async = testContext.async();
+    PgUtil.getWithOptimizedSql(
+        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertSuccess(response -> {
+          if (response.getStatus() != 500) {
+            testContext.fail("Expected status 200, got "
+                + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+            async.complete();
+            return;
+          }
+          UserdataCollection c = (UserdataCollection) response.getEntity();
+          userdataCollection.setTotalRecords(c.getTotalRecords());
+          userdataCollection.setUsers(c.getUsers());
+          async.complete();
+    }));
+    async.await(5000 /* ms */);
+    return userdataCollection;
+  }
+  private UserdataCollection searchForDataWithNo400(String cql, int offset, int limit, TestContext testContext) {
+    UserdataCollection userdataCollection = new UserdataCollection();
+    Async async = testContext.async();
+    PgUtil.getWithOptimizedSql(
+        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        vertx.getOrCreateContext(), ResponseWithout400.class, testContext.asyncAssertSuccess(response -> {
+          if (response.getStatus() != 500) {
+            testContext.fail("Expected status 500, got "
+                + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+            async.complete();
+            return;
+          }
+          UserdataCollection c = (UserdataCollection) response.getEntity();
+          userdataCollection.setTotalRecords(c.getTotalRecords());
+          userdataCollection.setUsers(c.getUsers());
+          async.complete();
+    }));
+    async.await(5000 /* ms */);
+    return userdataCollection;
+  }
   private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
