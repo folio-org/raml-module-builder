@@ -49,10 +49,8 @@ public final class PgUtil {
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
-  
-  /* This is the name of the column used by all modules to store actual data */
+  /** This is the name of the column used by all modules to store actual data */
   private static final String JSON_COLUMN = "jsonb";
-  
   /** mapper between JSON and Java instance (POJO) */
   private static final ObjectMapper OBJECT_MAPPER = ObjectMapperTool.getMapper();
   /** Number of records to read from the sort index in getWithOptimizedSql and generateOptimizedSql method */
@@ -319,8 +317,6 @@ public final class PgUtil {
       asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
     } 
   }
-
-
 
   static <T, C> void get(PreparedCQL preparedCql, Class<T> clazz, Class<C> collectionClazz,
       Map<String, String> okapiHeaders, Context vertxContext,

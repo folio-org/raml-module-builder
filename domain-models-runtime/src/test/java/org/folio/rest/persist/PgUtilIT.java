@@ -24,9 +24,7 @@ import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
-import org.mockito.stubbing.VoidAnswer2;
 import static org.junit.Assert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
 
 import io.vertx.core.AsyncResult;
@@ -40,7 +38,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
   @Rule
-  public Timeout timeoutRule = Timeout.seconds(600);
+  public Timeout timeoutRule = Timeout.seconds(10);
 
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
