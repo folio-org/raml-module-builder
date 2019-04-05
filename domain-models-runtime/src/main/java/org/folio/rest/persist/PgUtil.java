@@ -733,7 +733,7 @@ public final class PgUtil {
     List<T> recordList = new ArrayList<>(jsonList.size());
     int totalRecords = 0;
     for (JsonObject object : jsonList) {
-      String jsonb = object.getString("jsonb");
+      String jsonb = object.getString(JSON_COLUMN);
       recordList.add(OBJECT_MAPPER.readValue(jsonb, clazz));
       totalRecords = object.getInteger("count");
     }
