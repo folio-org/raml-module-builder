@@ -96,13 +96,15 @@
   <build>
     <plugins>
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
+        <groupId>com.github.m50d</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.9</version>
+        <version>1.11.1</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
+          <complianceLevel>1.9</complianceLevel>
+          <source>1.9</source>
+          <target>1.9</target>
           <includes>
             <include>**/*.java</include>
             <include>**/*.aj</include>

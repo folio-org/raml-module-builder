@@ -48,9 +48,9 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.9</complianceLevel>
+          <complianceLevel>1.10</complianceLevel>
           <source>1.9</source>
-          <source>1.9</source>
+          <target>1.9</target>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
           <includes>
