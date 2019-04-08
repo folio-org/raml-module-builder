@@ -165,6 +165,7 @@ public class SchemaMakerTest {
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
 
     String ddl = tidy(schemaMaker.generateDDL());
+    System.out.println("ddl: " + ddl);
 
     // by default all indexes are wrapped with lower/f_unaccent
     // except full text index which uses to_tsvector to normalize text token
@@ -173,6 +174,7 @@ public class SchemaMakerTest {
     assertTrue(ddl.contains("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
     assertTrue(ddl.contains("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
     assertTrue(ddl.contains("GIN(to_tsvector('english',(jsonb->>'title')))"));
+    assertTrue(ddl.contains("GIN(to_tsvector('english', jsonb->>'firstName' || jsonb->>'lastName'))"));
   }
 
 }

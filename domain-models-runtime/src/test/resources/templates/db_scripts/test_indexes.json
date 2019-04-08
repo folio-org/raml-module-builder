@@ -34,6 +34,11 @@
         {
           "fieldName": "title",
           "tOps": "ADD"
+        },
+        {
+          "fieldName": "username",
+          "fieldPath" : "jsonb->>'firstName' || jsonb->>'lastName'",
+          "tOps": "ADD"
         }
       ]
     }

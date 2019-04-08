@@ -207,14 +207,16 @@ public class SchemaMaker {
         }
 
         List<Index> ftInd = t.getFullTextIndex();
-        if(ftInd != null){
+        if (ftInd != null) {
           for (int j = 0; j < ftInd.size(); j++) {
             Index u = ftInd.get(j);
-            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), true, u, true, true);
-            u.setFieldPath(path);
+            if (u.getFieldPath() == null) {
+              String path = convertDotPath2PostgresNotation(null, u.getFieldName(), true, u, true, true);
+              u.setFieldPath(path);
+            }
             //remove . from path since this is incorrect syntax in postgres
             String normalized = normalizeFieldName(u.getFieldName());
-            indexMap.put(t.getTableName()+"_"+normalized, u);
+            indexMap.put(t.getTableName() + "_" + normalized, u);
             u.setFieldName(normalized);
           }
         }
