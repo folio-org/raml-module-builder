@@ -627,6 +627,8 @@ public class PgUtilIT {
     // sort.descending, offset=6, limit=3
     c = searchForDataUnoptimized("username=foo sortBy username/sort.descending", 6, 3, testContext);
     assertThat(c.getUsers().size(), is(3));
+    exception.expect(ClassCastException.class);
+    searchForDataUnoptimizedNoClass("username=foo sortBy username/sort.descending", 6, 3, testContext);
   }
   @Test
   public void canGetWithOptimizedSql(TestContext testContext) {
@@ -709,7 +711,9 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (4 - i)));
     }
-    String failure = searchForDataExpectFailure("username=foo sortBy username^&*%$sort.descending", 6, 3, testContext);
+    searchForDataExpectFailure("username=foo sortBy username^&*%$sort.descending", 6, 3, testContext);
+    exception.expect(NullPointerException.class);
+    searchForDataNullHeadersExpectFailure("username=foo sortBy username/sort.descending", 6, 3, testContext);
   }
   
   @SuppressWarnings("deprecation")
@@ -763,9 +767,6 @@ public class PgUtilIT {
             async.complete();
             return;
           }
-          UserdataCollection c = (UserdataCollection) response.getEntity();
-          userdataCollection.setTotalRecords(c.getTotalRecords());
-          userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
     async.await(5000 /* ms */);
@@ -783,9 +784,7 @@ public class PgUtilIT {
             async.complete();
             return;
           }
-          UserdataCollection c = (UserdataCollection) response.getEntity();
-          userdataCollection.setTotalRecords(c.getTotalRecords());
-          userdataCollection.setUsers(c.getUsers());
+
           async.complete();
     }));
     async.await(5000 /* ms */);
@@ -799,6 +798,26 @@ public class PgUtilIT {
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 200) {
             testContext.fail("Expected status 400, got "
+                + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+            async.complete();
+            return;
+          }
+          UserdataCollection c = (UserdataCollection) response.getEntity();
+          userdataCollection.setTotalRecords(c.getTotalRecords());
+          userdataCollection.setUsers(c.getUsers());
+          async.complete();
+    }));
+    async.await(5000 /* ms */);
+    return userdataCollection;
+  }
+  private UserdataCollection searchForDataUnoptimizedNoClass(String cql, int offset, int limit, TestContext testContext) {
+    UserdataCollection userdataCollection = new UserdataCollection();
+    Async async = testContext.async();
+    PgUtil.get(
+        "user", User.class, Object.class, cql, offset, limit, okapiHeaders,
+        vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
+          if (response.getStatus() != 500) {
+            testContext.fail("Expected status 500, got "
                 + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
             async.complete();
             return;
@@ -839,6 +858,25 @@ public class PgUtilIT {
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 400) {
             testContext.fail("Expected status 400, got "
+                + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+            async.complete();
+            return;
+          }
+          String c = (String) response.getEntity();
+          responseString.concat(c);
+          async.complete();
+    }));
+    async.await(5000 /* ms */);
+    return responseString;
+  }
+  private String searchForDataNullHeadersExpectFailure(String cql, int offset, int limit, TestContext testContext) {
+    String responseString = new String();
+    Async async = testContext.async();
+    PgUtil.getWithOptimizedSql(
+        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, null,
+        vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
+          if (response.getStatus() != 500) {
+            testContext.fail("Expected status 500, got "
                 + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
             async.complete();
             return;

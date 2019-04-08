@@ -696,10 +696,8 @@ public final class PgUtil {
         return;
       }
 
-      if (logger.isInfoEnabled()) {
-        logger.info("Optimized SQL generated. Source CQL: " + cql);
-      }
-
+      logger.info("Optimized SQL generated. Source CQL: " + cql);
+      
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.select(sql, reply -> {
         try {
