@@ -213,6 +213,13 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void closeAllClients(TestContext context) {
+    PostgresClient c = PostgresClient.getInstance(vertx);
+    context.assertNotNull(c.getClient(), "getClient()");
+    PostgresClient.closeAllClients();
+  }
+
+  @Test
   public void getInstance(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx);
     PostgresClient c2 = PostgresClient.getInstance(vertx);
@@ -467,6 +474,18 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void updateNullConnection1(TestContext context) {
+    postgresClientNullConnection()
+      .update(FOO, xPojo, randomUuid(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void updateGetConnectionFails1(TestContext context) {
+    postgresClientGetConnectionFails()
+      .update(FOO, xPojo, randomUuid(), context.asyncAssertFailure());
+  }
+
+  @Test
   public void updateSingleQuote(TestContext context) {
     createFoo(context)
       .update(FOO, singleQuotePojo, randomUuid(), context.asyncAssertSuccess());
@@ -478,6 +497,22 @@ public class PostgresClientIT {
     updateSection.addField("key").setValue("x");
     createFoo(context)
       .update(FOO, updateSection, (Criterion) null, false, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void updateNullConnection2(TestContext context) {
+    UpdateSection updateSection = new UpdateSection();
+    updateSection.addField("key").setValue("x");
+    postgresClientNullConnection().
+      update(FOO, updateSection, (Criterion) null, false, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void updateGetConnectionFails2(TestContext context) {
+    UpdateSection updateSection = new UpdateSection();
+    updateSection.addField("key").setValue("x");
+    postgresClientGetConnectionFails().
+      update(FOO, updateSection, (Criterion) null, false, context.asyncAssertFailure());
   }
 
   @Ignore("fails: unterminated quoted identifier")
@@ -520,13 +555,39 @@ public class PostgresClientIT {
     postgresClient.startTx(asyncAssertTx(context, trans -> {
       postgresClient.saveBatch(trans, FOO, list, context.asyncAssertSuccess(save -> {
         final String id = save.getResults().get(0).getString(0);
-          postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
-            postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
             context.assertEquals("x", get.getString("key"));
-            }));
           }));
+        }));
       }));
     }));
+  }
+
+  @Test
+  public void saveBatchXTrans2(TestContext context) {
+    log.fatal("started saveBatchXTrans2");
+    List<Object> list = new LinkedList<>();
+    list.add(context);
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.saveBatch(trans, FOO, list, context.asyncAssertFailure(save -> {
+        // postgresClient.endTx(trans, context.asyncAssertSuccess());
+      }));
+    }));
+  }
+
+  @Test
+  public void saveBatchNullConnection(TestContext context) {
+    log.fatal("saveBatchNullConnection started");
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClientNullConnection().saveBatch(FOO, list, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveBatchGetConnectionFails(TestContext context) {
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClientGetConnectionFails().saveBatch(FOO, list, context.asyncAssertFailure());
   }
 
   @Test
@@ -620,12 +681,32 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveConnectionNullConnection(TestContext context) {
+    postgresClientNullConnection().save(FOO, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveConnectionGetConnectionFails(TestContext context) {
+    postgresClientGetConnectionFails().save(FOO, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
   public void saveTransIdNull(TestContext context) {
     String id = randomUuid();
     postgresClient = createFoo(context);
     AsyncResult<SQLConnection> trans = null;
     setRootLevel(Level.FATAL);
     postgresClient.save(trans, FOO, id, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void startTxGetConnectionFails(TestContext context) {
+    postgresClientGetConnectionFails().startTx(context.asyncAssertFailure());
+  }
+
+  @Test
+  public void startTxNullConnection(TestContext context) {
+    postgresClientNullConnection().startTx(context.asyncAssertFailure());
   }
 
   @Test
@@ -644,6 +725,16 @@ public class PostgresClientIT {
   public void saveBatchSingleQuote(TestContext context) {
     List<Object> list = Collections.singletonList(singleQuotePojo);
     createFoo(context).saveBatch(FOO, list, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void getByIdGetConnectionFails(TestContext context) {
+    postgresClientGetConnectionFails().get(FOO, StringPojo.class, "sql", true, false, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void getByIdNullConnection(TestContext context) {
+    postgresClientNullConnection().get(FOO, StringPojo.class, "sql", true, false, context.asyncAssertFailure());
   }
 
   @Test
@@ -1584,6 +1675,29 @@ public class PostgresClientIT {
         async2.complete();
       });
     async2.awaitSuccess();
+  }
+
+  @Test(expected = Exception.class)
+  public void pojo2jsonNull() throws Exception {
+    PostgresClient.pojo2json(null);
+  }
+
+  @Test
+  public void pojo2jsonJson(TestContext context) throws Exception {
+    JsonObject j = new JsonObject().put("a", "b");
+    context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2json(j));
+  }
+
+  @Test
+  public void pojo2jsonMap(TestContext context) throws Exception {
+    Map<String,String> m = new HashMap<>();
+    m.put("a", "b");
+    context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2json(m));
+  }
+
+  @Test(expected = Exception.class)
+  public void pojo2jsonBadMap(TestContext context) throws Exception {
+    PostgresClient.pojo2json(postgresClient);
   }
 
   private PostgresClient createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {

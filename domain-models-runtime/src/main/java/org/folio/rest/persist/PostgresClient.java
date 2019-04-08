@@ -596,9 +596,7 @@ public class PostgresClient {
         try {
           connection.setAutoCommit(false, res1 -> {
             if (res1.failed()) {
-              if (connection != null) {
-                connection.close();
-              }
+              connection.close();
               done.handle(Future.failedFuture(res1.cause()));
             } else {
               done.handle(Future.succeededFuture(connection));
@@ -674,7 +672,7 @@ public class PostgresClient {
    * @return the Handler
    */
   static <T> Handler<AsyncResult<T>> closeAndHandleResult(
-      AsyncResult<SQLConnection> conn, Handler<AsyncResult<T>> handler) {
+    AsyncResult<SQLConnection> conn, Handler<AsyncResult<T>> handler) {
 
     return ar -> {
       if (conn.failed()) {
@@ -682,7 +680,12 @@ public class PostgresClient {
         handler.handle(ar);
         return;
       }
-      conn.result().close(close -> {
+      SQLConnection sqlConnection = conn.result();
+      if (sqlConnection == null) {
+        handler.handle(ar);
+        return;
+      }
+      sqlConnection.close(close -> {
         if (close.failed()) {
           log.error("Closing SQLConnection failed: " + close.cause().getMessage(), close.cause());
         }
@@ -805,45 +808,31 @@ public class PostgresClient {
   }
 
   /**
-   * Save entity in table. Use the transaction of sqlConnection. Return the created id via the replyHandler;
-   * this is only the same as the id in the entity if some database trigger syncs them.
-   * @param sqlConnection  connection with transaction
-   * @param table  where to insert the entity record
-   * @param entity  the record to insert
-   * @param replyHandler  where to report success status and the created id
+   * Save entity in table. Use the transaction of sqlConnection. Return the
+   * created id via the replyHandler; this is only the same as the id in the
+   * entity if some database trigger syncs them.
+   *
+   * @param sqlConnection connection with transaction
+   * @param table where to insert the entity record
+   * @param entity the record to insert
+   * @param replyHandler where to report success status and the created id
    */
-  public void save(AsyncResult<SQLConnection> sqlConnection, String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    long start = System.nanoTime();
+  public void save(AsyncResult<SQLConnection> sqlConnection, String table, Object entity,
+    Handler<AsyncResult<String>> replyHandler) {
 
-    log.debug("save called on " + table);
-    SQLConnection connection = null;
-    try {
-      // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
-      connection = sqlConnection.result();
-      String pojo = pojo2json(entity);
-      connection.queryWithParams(INSERT_CLAUSE + schemaName + DOT + table +
-        " (" + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?::JSON) RETURNING " + idField,
-        new JsonArray().add(pojo), query -> {
-          if (query.failed()) {
-            replyHandler.handle(Future.failedFuture(query.cause()));
-          } else {
-            replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
-          }
-          statsTracker(SAVE_STAT_METHOD, table, start);
-        });
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+    save(sqlConnection, table, null, entity, replyHandler);
   }
 
   /**
-   * Save entity in table. Use the transaction of sqlConnection. Return the id of the id field (primary key)
-   * via the replyHandler. If id (primary key) and the id of entity (jsonb field) are different you may need
-   * a trigger in the database to sync them.
-   * @param sqlConnection  connection with transaction
-   * @param table  where to insert the entity record
-   * @param id  the value for the id field (primary key); may be different from the id in entity (= in the jsonb field)
+   * Save entity in table. Use the transaction of sqlConnection. Return the id
+   * of the id field (primary key) via the replyHandler. If id (primary key) and
+   * the id of entity (jsonb field) are different you may need a trigger in the
+   * database to sync them.
+   *
+   * @param sqlConnection connection with transaction
+   * @param table where to insert the entity record
+   * @param id  the value for the id field (primary key); may be different from the id in entity
+   * (= in the jsonb field). may be null in which case* it is ignored.
    * @param entity  the record to insert
    * @param replyHandler  where to report success status and the final id of the id field
    */
@@ -853,14 +842,25 @@ public class PostgresClient {
     long start = System.nanoTime();
 
     log.debug("save (with connection and id) called on " + table);
-    SQLConnection connection = null;
     try {
-      // connection not closed by this FUNCTION ONLY BY END TRANSACTION call!
-      connection = sqlConnection.result();
+      if (sqlConnection.failed()) {
+        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
+        return;
+      }
+      SQLConnection connection = sqlConnection.result();
       String pojo = pojo2json(entity);
+      JsonArray ar = new JsonArray();
+      String idColumn = "";
+      String idVal = "";
+      if (id != null) {
+        ar.add(id);
+        idColumn = idField + ", ";
+        idVal = "?, ";
+      }
+      ar.add(pojo);
       connection.queryWithParams(INSERT_CLAUSE + schemaName + DOT + table +
-        " (" + idField + ", " + DEFAULT_JSONB_FIELD_NAME + ") VALUES (?, ?::JSON) RETURNING " + idField,
-        new JsonArray().add(id).add(pojo), query -> {
+        " (" + idColumn + DEFAULT_JSONB_FIELD_NAME + ") VALUES (" + idVal + "?::JSON) RETURNING " + idField,
+        ar, query -> {
           if (query.failed()) {
             replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
@@ -887,19 +887,10 @@ public class PostgresClient {
   public void saveBatch(String table, JsonArray entities, String column,
     Handler<AsyncResult<ResultSet>> replyHandler) {
 
-    client.getConnection(res -> {
-      if (res.failed()) {
-        replyHandler.handle(Future.failedFuture(res.cause()));
-        return;
-      }
-      saveBatch(res, table, entities, column, x -> {
-        res.result().close();
-        replyHandler.handle(x);
-      });
-    });
+    client.getConnection(conn -> saveBatch(conn, table, entities, column, closeAndHandleResult(conn, replyHandler)));
   }
 
-  private void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
+  public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
     JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
 
     long start = System.nanoTime();
@@ -910,9 +901,7 @@ public class PostgresClient {
       replyHandler.handle(Future.succeededFuture(resultSet));
       return;
     }
-    if (log.isInfoEnabled()) {
-      log.info("starting: saveBatch size=" + entities.size());
-    }
+    log.info("starting: saveBatch size=" + entities.size());
     StringBuilder sql = new StringBuilder()
       .append(INSERT_CLAUSE)
       .append(schemaName).append(DOT).append(table)
@@ -922,39 +911,30 @@ public class PostgresClient {
     }
     sql.append(" RETURNING ").append(idField);
 
-    SQLConnection connection = sqlConnection.result();
-    connection.queryWithParams(sql.toString(), entities, queryRes -> {
-      if (queryRes.failed()) {
-        log.error("saveBatch size=" + entities.size()
-          + SPACE
-          + queryRes.cause().getMessage(),
-          queryRes.cause());
-        statsTracker("saveBatchFailed", table, start);
-        replyHandler.handle(Future.failedFuture(queryRes.cause()));
+    try {
+      if (sqlConnection.failed()) {
+        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
-      if (log.isInfoEnabled()) {
+      SQLConnection connection = sqlConnection.result();
+      connection.queryWithParams(sql.toString(), entities, queryRes -> {
+        if (queryRes.failed()) {
+          log.error("saveBatch size=" + entities.size()
+            + SPACE
+            + queryRes.cause().getMessage(),
+            queryRes.cause());
+          statsTracker("saveBatchFailed", table, start);
+          replyHandler.handle(Future.failedFuture(queryRes.cause()));
+          return;
+        }
         log.info("success: saveBatch size=" + entities.size());
-      }
-      statsTracker("saveBatch", table, start);
-      replyHandler.handle(Future.succeededFuture(queryRes.result()));
-    });
-  }
-
-  private JsonArray batchEntitiesToJsonArray(List<Object> entities,
-    Handler<AsyncResult<ResultSet>> replyHandler) {
-
-    JsonArray jsonArray = new JsonArray();
-    try {
-      for (Object entity : entities) {
-        String json = pojo2json(entity);
-        jsonArray.add(json);
-      }
+        statsTracker("saveBatch", table, start);
+        replyHandler.handle(Future.succeededFuture(queryRes.result()));
+      });
     } catch (Exception e) {
+      log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
-      return null;
     }
-    return jsonArray;
   }
 
   /***
@@ -965,21 +945,24 @@ public class PostgresClient {
    * @param entities  each list element is a POJO
    * @param replyHandler result, containing the id field for each inserted POJO
    */
-  public void saveBatch(String table, List<Object> entities,
+  public <T> void saveBatch(String table, List<T> entities,
     Handler<AsyncResult<ResultSet>> replyHandler) {
 
-    JsonArray jsonArray = batchEntitiesToJsonArray(entities, replyHandler);
-    if (jsonArray != null) {
-      saveBatch(table, jsonArray, replyHandler);
-    }
+    client.getConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
   }
 
-  public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
-    List<Object> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
+  public <T> void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
+    List<T> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
 
-    JsonArray jsonArray = batchEntitiesToJsonArray(entities, replyHandler);
-    if (jsonArray != null) {
+    try {
+      JsonArray jsonArray = new JsonArray();
+      for (Object entity : entities) {
+        String json = pojo2json(entity);
+        jsonArray.add(json);
+      }
       saveBatch(sqlConnection, table, jsonArray, DEFAULT_JSONB_FIELD_NAME, replyHandler);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
     }
   }
 
@@ -1076,60 +1059,27 @@ public class PostgresClient {
     }
   }
 
-  public void update(AsyncResult<SQLConnection> conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
-  {
-    SQLConnection connection = null;
-    if(conn != null){
-      connection = conn.result();
-      doUpdate(connection, true, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
+  public void update(AsyncResult<SQLConnection> conn, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    if (conn.failed()) {
+      replyHandler.handle(Future.failedFuture(conn.cause()));
+      return;
     }
-    else{
-      replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
-    }
-  }
-
-  public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler)
-  {
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        doUpdate(connection, false, table, entity, jsonbField, whereClause, returnUpdatedIds, replyHandler);
-      }
-      else{
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
-  }
-
-  private void doUpdate(SQLConnection connection, boolean transactionMode, String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
-      Handler<AsyncResult<UpdateResult>> replyHandler){
     vertx.runOnContext(v -> {
-      if(connection == null){
-        replyHandler.handle(Future.failedFuture(new Exception("update() called with a null connection...")));
-        return;
-      }
-
       long start = System.nanoTime();
-
       StringBuilder sb = new StringBuilder();
-      if (whereClause != null) {
-        sb.append(whereClause);
-      }
+      sb.append(whereClause);
       StringBuilder returning = new StringBuilder();
       if (returnUpdatedIds) {
         returning.append(returningId);
       }
       try {
-        String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = ?::jsonb "  + whereClause
-            + SPACE + returning;
-        log.debug("doUpdate query = " + q);
+        String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = ?::jsonb " + whereClause
+          + SPACE + returning;
+        log.debug("update query = " + q);
         String pojo = pojo2json(entity);
-        connection.updateWithParams(q, new JsonArray().add(pojo), query -> {
-          if(!transactionMode){
-            connection.close();
-          }
+        conn.result().updateWithParams(q, new JsonArray().add(pojo), query -> {
           if (query.failed()) {
-            log.error(query.cause().getMessage(),query.cause());
+            log.error(query.cause().getMessage(), query.cause());
             replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
             replyHandler.handle(Future.succeededFuture(query.result()));
@@ -1137,13 +1087,14 @@ public class PostgresClient {
           statsTracker(UPDATE_STAT_METHOD, table, start);
         });
       } catch (Exception e) {
-        if(!transactionMode){
-          connection.close();
-        }
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
     });
+  }
+
+  public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    client.getConnection(conn -> update(conn, table, entity, jsonbField, whereClause, returnUpdatedIds, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
@@ -1359,18 +1310,12 @@ public class PostgresClient {
   }
 
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
-      boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
+    boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
+    Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        doGet(connection, false, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
-      }
-      else{
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
+    client.getConnection(conn
+      -> doGet(conn, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn,
+        closeAndHandleResult(conn, replyHandler)));
   }
 
   static class QueryHelper {
@@ -1412,14 +1357,20 @@ public class PostgresClient {
    * @param replyHandler
    */
   private <T> void doGet(
-    SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
+    AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
     String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
     List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
   ) {
 
+    if (conn.failed()) {
+      log.error(conn.cause().getMessage(), conn.cause());
+      replyHandler.handle(Future.failedFuture(conn.cause()));
+      return;
+    }
+    SQLConnection connection = conn.result();
     vertx.runOnContext(v -> {
       try {
-        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets, distinctOn);
+        QueryHelper queryHelper = buildSelectQueryHelper(true, table, fieldName, where, returnIdField, facets, distinctOn);
 
         if (returnCount) {
           processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
@@ -1428,11 +1379,7 @@ public class PostgresClient {
           processQuery(connection, queryHelper, null, GET_STAT_METHOD,
             totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
         }
-
       } catch (Exception e) {
-        if (!transactionMode) {
-          connection.close();
-        }
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
@@ -1900,7 +1847,7 @@ public class PostgresClient {
   }
 
   public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
-      List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
+    List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     StringBuilder sb = new StringBuilder();
     StringBuilder fromClauseFromCriteria = new StringBuilder();
@@ -1911,13 +1858,11 @@ public class PostgresClient {
         fromClauseFromCriteria.insert(0, COMMA);
       }
     }
-    if(conn == null){
+    if (conn == null) {
       get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
         returnCount, true, setId, facets, replyHandler);
-    }
-    else{
-      SQLConnection sqlConnection = conn.result();
-      doGet(sqlConnection, true, table, clazz, DEFAULT_JSONB_FIELD_NAME,
+    } else {
+      doGet(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
         fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, null, replyHandler);
     }
   }
