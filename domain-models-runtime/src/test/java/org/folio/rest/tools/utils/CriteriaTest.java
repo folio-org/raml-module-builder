@@ -14,20 +14,13 @@ public class CriteriaTest {
   @Test
   public void testCriteria(){
     try {
-      //pass schema so that type is known
-      Criteria schema = new Criteria("userdata.json");
+      Criteria schema = new Criteria();
       schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
       assertEquals("(jsonb->'personal'->>'lastName') =  '123'", schema.toString());
 
-      //pass schema so that type is known
-      schema = new Criteria("userdata.json");
-      schema.addField("'active'").setOperation("=").setValue("true");
-      assertEquals("(jsonb->>'active')::boolean = true", schema.toString());
-
-      //guess op type is numeric
       schema = new Criteria();
-      schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
-      assertEquals("(jsonb->'personal'->>'lastName')::numeric = 123", schema.toString());
+      schema.addField("'active'").setOperation("=").setValue("true");
+      assertEquals("(jsonb->>'active') =  'true'", schema.toString());
 
       //guess op type is string since not null, numeric or boolean
       Criteria c = new Criteria();
@@ -39,16 +32,16 @@ public class CriteriaTest {
       //guess op type is boolean by checking operation
       Criteria d = new Criteria();
       d.addField("'rush'");
-      d.setOperation( Criteria.OP_IS_FALSE );
+      d.setOperation("IS FALSE");
       d.setValue(null);
-      assertEquals("(jsonb->>'rush')::boolean IS FALSE", d.toString().trim());
+      assertEquals("(jsonb->>'rush') IS FALSE null", d.toString().trim());
 
       //guess op type is boolean by checking value
       Criteria aa = new Criteria();
       aa.addField("'rush'");
       aa.setOperation( "!=" );
       aa.setValue( "true" );
-      assertEquals("(jsonb->>'rush')::boolean != true", aa.toString().trim());
+      assertEquals("(jsonb->>'rush') !=  'true'", aa.toString().trim());
 
 
       Criteria nb = new Criteria();
