@@ -49,6 +49,8 @@ public final class PgUtil {
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
+  /** This is the name of the column used by all modules to store actual data */
+  private static final String JSON_COLUMN = "jsonb";
   /** mapper between JSON and Java instance (POJO) */
   private static final ObjectMapper OBJECT_MAPPER = ObjectMapperTool.getMapper();
   /** Number of records to read from the sort index in getWithOptimizedSql and generateOptimizedSql method */
@@ -245,50 +247,6 @@ public final class PgUtil {
       asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
     }
   }
-
-  /**
-   * Get records by CQL.
-   * @param table  the table that contains the records
-   * @param clazz  the class of the record type T
-   * @param collectionClazz  the class of the collection type C containing records of type T
-   * @param cql  the CQL query for filtering and sorting the records
-   * @param okapiHeaders  http headers provided by okapi
-   * @param vertxContext  the current context
-   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
-   *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
-   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
-   */
-  public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
-      String cql, int offset, int limit,
-      Map<String, String> okapiHeaders, Context vertxContext,
-      Class<? extends ResponseDelegate> responseDelegateClass,
-      Handler<AsyncResult<Response>> asyncResultHandler) {
-
-    final Method respond500;
-    final Method respond400;
-    try {
-      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
-      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
-    }
-
-    try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table);
-      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
-      PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
-      get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
-    } catch (FieldException e) {
-      logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
-    }
-  }
-
   /**
    * Return the first method whose name starts with <code>set</code> and that takes a List as parameter,
    * for example {@code setUser(List<User>)}.
@@ -319,6 +277,45 @@ public final class PgUtil {
     setList.invoke(collection, list);
     setTotalRecords.invoke(collection, totalRecords);
     return collection;
+  }
+  /**
+   * Get records by CQL.
+   * @param table  the table that contains the records
+   * @param clazz  the class of the record type T
+   * @param collectionClazz  the class of the collection type C containing records of type T
+   * @param cql  the CQL query for filtering and sorting the records
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
+   */
+  public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
+      String cql, int offset, int limit,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+
+    final Method respond500;
+    final Method respond400;
+    try {
+      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      return;
+    }
+
+    try {
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(JSON_COLUMN);
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
+      PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
+      get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
+    } catch (FieldException e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
+    } 
   }
 
   static <T, C> void get(PreparedCQL preparedCql, Class<T> clazz, Class<C> collectionClazz,
@@ -688,7 +685,7 @@ public final class PgUtil {
     }
 
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       String sql = generateOptimizedSql(sortField, preparedCql, offset, limit);
@@ -699,10 +696,8 @@ public final class PgUtil {
         return;
       }
 
-      if (logger.isInfoEnabled()) {
-        logger.info("Optimized SQL generated. Source CQL: " + cql);
-      }
-
+      logger.info("Optimized SQL generated. Source CQL: " + cql);
+      
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.select(sql, reply -> {
         try {
@@ -736,7 +731,7 @@ public final class PgUtil {
     List<T> recordList = new ArrayList<>(jsonList.size());
     int totalRecords = 0;
     for (JsonObject object : jsonList) {
-      String jsonb = object.getString("jsonb");
+      String jsonb = object.getString(JSON_COLUMN);
       recordList.add(OBJECT_MAPPER.readValue(jsonb, clazz));
       totalRecords = object.getInteger("count");
     }
