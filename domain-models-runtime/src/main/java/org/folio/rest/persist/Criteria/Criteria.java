@@ -55,16 +55,13 @@ public class Criteria {
 
   String arrayField = null;
 
-  public Criteria() {
-  }
-
   @Override
   public String toString() {
     return wrapClause();
   }
 
   private String wrapClause() {
-    if (operation != null && field != null) {
+    if (operation != null && !field.isEmpty()) {
 
       if (JSON_OPS.matcher(operation).find()) {
         isJsonOp = true;
@@ -114,16 +111,12 @@ public class Criteria {
   }
 
   private String wrapField() {
-    String cast = "";
     if (isJSONB) {
-      return "(" + addPrefix() + field2String(false) + ")";
+      return "(" + addPrefix() + field2String() + ")";
     } else if (alias != null) {
-      if (forceCast != null) {
-        cast = forceCast;
-      }
-      return alias + "." + field2String(false) + "::\"" + cast + "\"";
+      return alias + "." + field2String() + "::\"\"";
     }
-    return field2String(false);
+    return field2String();
   }
 
   private String addPrefix() {
@@ -162,7 +155,7 @@ public class Criteria {
    *
    * @return
    */
-  private String field2String(boolean validate) {
+  private String field2String() {
     StringBuilder sb = new StringBuilder();
     int size = field.size();
     if (size == 1 && isArray) {
@@ -180,34 +173,17 @@ public class Criteria {
         }
       }
       String fVal = field.get(i);
-      if (validate) {
-        //remove '' from field name when using schema to
-        //detect type
-        fVal = fVal.substring(1, fVal.length() - 1);
-      }
       sb.append(fVal);
       if (i + 2 == size) {
         //add final arrow either -> or ->>
         if (!isJsonOp) {
-          if (validate) {
-            sb.append(".");
-          } else {
-            sb.append("->>");
-          }
-        } else {
-          if (validate) {
-            sb.append(".");
-          } else {
-            sb.append("->");
-          }
-        }
-      } else if (i + 1 < size) {
-        //add ->
-        if (validate) {
-          sb.append(".");
+          sb.append("->>");
         } else {
           sb.append("->");
         }
+      } else if (i + 1 < size) {
+        //add ->
+        sb.append("->");
       }
     }
     return sb.toString();
@@ -240,10 +216,6 @@ public class Criteria {
     return false;
   }
 
-  public List<String> getField() {
-    return field;
-  }
-
   public Criteria addField(String field) {
     this.field.add(field);
     return this;
@@ -256,10 +228,6 @@ public class Criteria {
   public Criteria setValue(Object value) {
     this.value = value;
     return this;
-  }
-
-  public String getOperation() {
-    return operation;
   }
 
   /**
@@ -284,10 +252,6 @@ public class Criteria {
     return this.alias;
   }
 
-  public boolean isJSONB() {
-    return isJSONB;
-  }
-
   /**
    * set this to false if not a jsonb field criteria For example: the _id is not
    * in the jsonb object hence would be false if criteria based on _id
@@ -297,24 +261,12 @@ public class Criteria {
     return this;
   }
 
-  public boolean isNotQuery() {
-    return isNotQuery;
-  }
-
   public void setNotQuery(boolean isNotQuery) {
     this.isNotQuery = isNotQuery;
   }
 
-  public boolean isArray() {
-    return isArray;
-  }
-
   public void setArray(boolean isArray) {
     this.isArray = isArray;
-  }
-
-  public String getArrayField() {
-    return arrayField;
   }
 
   /**
@@ -342,24 +294,6 @@ public class Criteria {
    */
   public Criteria setJoinON(boolean joinON) {
     this.joinON = joinON;
-    return this;
-  }
-
-  public String getForceCast() {
-    return forceCast;
-  }
-
-  /**
-   * force cast is needed when using the criteria as part of a join statement -
-   * for example, in a case where we compare the id of records (not a jsonb
-   * field) to another table where the id is in a jsonb field (as a number,
-   * varchar (uuid), etc.) then we need to force cast the id from the non-jsonb
-   * field to the appropriate type so that the comparison will work generate the
-   * "varchar" part of the statement below: ON groups._id::"varchar" =
-   * (join_table.jsonb->>'groupId') in the above forceCast = varchar
-   */
-  public Criteria setForceCast(String forceCast) {
-    this.forceCast = forceCast;
     return this;
   }
 

@@ -12,15 +12,38 @@ import org.junit.Test;
 public class CriteriaTest {
 
   @Test
-  public void testCriteria(){
+  public void testCriteria() {
     try {
+      Criteria noOp = new Criteria();
+      noOp.addField("'personal'");
+      assertEquals("", noOp.toString());
+
+      Criteria noField = new Criteria();
+      noField.setOperation("=");
+      assertEquals("", noField.toString());
+
       Criteria schema = new Criteria();
       schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
       assertEquals("(jsonb->'personal'->>'lastName') =  '123'", schema.toString());
 
       schema = new Criteria();
-      schema.addField("'active'").setOperation("=").setValue("true");
-      assertEquals("(jsonb->>'active') =  'true'", schema.toString());
+      schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
+      schema.setAlias("foo");
+      assertEquals("(foo.jsonb->'personal'->>'lastName') =  '123'", schema.toString());
+
+      schema = new Criteria();
+      schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
+      assertEquals("(jsonb->'personal'->>'lastName') =  '123'", schema.toString());
+      schema.setNotQuery(true);
+      assertEquals("( NOT (jsonb->'personal'->>'lastName') =  '123')", schema.toString());
+
+      schema = new Criteria();
+      schema.addField("'personal'").setOperation("@>").setValue("{\"a\":\"b\"}");
+      assertEquals("(jsonb->'personal') @>  '{\"a\":\"b\"}'" , schema.toString());
+
+      schema = new Criteria();
+      schema.setAlias("'personal'").addField("'foo'").setValue("123");
+      assertEquals("('personal'.jsonb->>'foo')", schema.toString());
 
       //guess op type is string since not null, numeric or boolean
       Criteria c = new Criteria();
