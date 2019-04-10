@@ -1388,7 +1388,7 @@ public class PostgresClient {
 
   public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where, boolean returnIdField,
-    boolean setId, String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+    boolean setId, String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
   ) {
     streamGet(table, clazz, fieldName, where, returnIdField, setId, null, distinctOn, streamHandler, replyHandler);
   }
@@ -1396,7 +1396,7 @@ public class PostgresClient {
   public <T> void streamGet(
       String table, Class<T> clazz, String fieldName, String where,
       boolean returnIdField, boolean setId, List<FacetField> facets,
-      Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+      Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
     ) {
     streamGet(table, clazz, fieldName, where, returnIdField, setId, facets, null, streamHandler, replyHandler);
   }
@@ -1404,7 +1404,7 @@ public class PostgresClient {
   public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where,
     boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
-    Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+    Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
   ) {
     client.getConnection(res -> {
       if (res.succeeded()) {
@@ -1434,7 +1434,7 @@ public class PostgresClient {
   private <T> void doStreamGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
     String fieldName, String where, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
-    Handler<T> streamHandler, Handler<AsyncResult<?>> replyHandler
+    Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
   ) {
 
     vertx.runOnContext(v1 -> {
