@@ -8,11 +8,16 @@ import org.folio.rest.persist.PostgresClient;
 
 /**
  *
- * Criteria c = new Criteria(); c.field = "'price' -> 'po_currency' ->>
- * 'value'"; c.operation = "LIKE"; c.value = "USD";
+ * <code>
+ *         Criteria c = new Criteria();
+ *         c.field = "'price' -> 'po_currency' ->> 'value'";
+ *         c.operation = "LIKE";
+ *         c.value = "USD";
  *
- * c.field = "'rush'"; c.operation = "IS TRUE"; c.value = null;
- *
+ *         c.field = "'rush'";
+ *         c.operation = "IS TRUE";
+ *         c.value = null;
+ * </code>
  */
 public class Criteria {
 
@@ -172,8 +177,7 @@ public class Criteria {
           i++;
         }
       }
-      String fVal = field.get(i);
-      sb.append(fVal);
+      sb.append(field.get(i));
       if (i + 2 == size) {
         //add final arrow either -> or ->>
         if (!isJsonOp) {
