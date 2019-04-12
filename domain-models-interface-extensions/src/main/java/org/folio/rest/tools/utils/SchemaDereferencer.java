@@ -13,7 +13,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.net.URI;
-import java.net.URISyntaxException;
 
 public class SchemaDereferencer {
 
