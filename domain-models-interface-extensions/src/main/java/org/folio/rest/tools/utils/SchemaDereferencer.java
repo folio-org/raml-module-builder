@@ -56,7 +56,7 @@ public class SchemaDereferencer {
    * <li>If the base path is <code>"/home/peter"</code> the ref
    * becomes <code>"$ref": "file:/home/peter/dir/a.json"</code>.
    * <li>If the base path is <code>"C:\Users\peter"</code> the ref
-   * becomes <code>"$ref": "file:C:%5CUsers%5Cpeter%5Cdir%5Ca.json"</code>.
+   * becomes <code>"$ref": "file:///C:\Users\peter\dir\a.json"</code>.
    * </ul>
    *
    * <p>The absolute path is needed for generating the code from raml files
