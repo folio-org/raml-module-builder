@@ -12,6 +12,7 @@ import java.util.Map;
 
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.z3950.zing.cql.cql2pgjson.SchemaException;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;
@@ -56,11 +57,11 @@ public class SchemaMaker {
     this.rmbVersion = PomReader.INSTANCE.getRmbVersion();
   }
 
-  public String generateDDL() throws IOException, TemplateException {
+  public String generateDDL() throws IOException, TemplateException, SchemaException {
     return generateDDL(false);
   }
 
-  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException {
+  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException, SchemaException {
 
     templateInput.put("myuniversity", this.tenant);
 
@@ -114,15 +115,17 @@ public class SchemaMaker {
       int size = tables.size();
       for (int i = 0; i < size; i++) {
         Table t = tables.get(i);
-
-        if(t.getMode() == null){
+        if(t.isGenerateId()) {
+          throw new SchemaException("generateID is no longer supported.  Please see RMB documentation for suggested fixes");
+        }
+        if(t.getMode() == null){ 
           //the only relevant mode that the templates take into account is delete
           //otherwise update and new will always create if does not exist
           //so can set to either new or update , doesnt matter, leave the option
           //in case we do need to differentiate in the future between the two
           t.setMode("new");
         }
-
+        
         List<DeleteFields> dFields = t.getDeleteFields();
         if(dFields != null){
           for (int j = 0; j < dFields.size(); j++) {

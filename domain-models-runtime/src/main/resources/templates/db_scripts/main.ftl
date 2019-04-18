@@ -50,7 +50,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
   </#if>
   <#if table.mode != "delete">
     CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.tableName} (
-      ${table.pkColumnName} UUID PRIMARY KEY <#if table.generateId == true>DEFAULT gen_random_uuid()</#if>,
+      ${table.pkColumnName} UUID PRIMARY KEY,
       jsonb JSONB NOT NULL
     );
   <#else>
