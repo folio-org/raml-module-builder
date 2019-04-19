@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -23,6 +24,22 @@ public class SchemaMakerTest {
         .replaceAll(";", ";\n");         // one line per sql statement
   }
 
+  @Test
+  public void failsWhenGenerateID() throws  TemplateException {
+
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
+      "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
+    try {
+      String json = ResourceUtil.asString("templates/db_scripts/schemaGenerateId.json");
+      schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+      schemaMaker.generateDDL();
+      fail();
+    } catch(IOException e) {
+      assertThat(tidy(e.getMessage()), containsString(
+          "generateID is no longer supported"));
+    }
+  }
+  
   @Test
   public void lowerUnaccentIndex() throws IOException, TemplateException {
 
