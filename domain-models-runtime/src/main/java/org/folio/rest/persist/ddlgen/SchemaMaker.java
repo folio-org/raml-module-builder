@@ -57,11 +57,11 @@ public class SchemaMaker {
     this.rmbVersion = PomReader.INSTANCE.getRmbVersion();
   }
 
-  public String generateDDL() throws IOException, TemplateException, SchemaException {
+  public String generateDDL() throws IOException, TemplateException {
     return generateDDL(false);
   }
 
-  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException, SchemaException {
+  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException {
 
     templateInput.put("myuniversity", this.tenant);
 
@@ -116,7 +116,7 @@ public class SchemaMaker {
       for (int i = 0; i < size; i++) {
         Table t = tables.get(i);
         if(t.isGenerateId()) {
-          throw new SchemaException("generateID is no longer supported.  Please see RMB documentation for suggested fixes");
+          throw new IOException( "generateID is no longer supported.  Please see RMB documentation for suggested fixes" );
         }
         if(t.getMode() == null){ 
           //the only relevant mode that the templates take into account is delete
@@ -276,6 +276,7 @@ public class SchemaMaker {
       template = "indexes_only.ftl";
     }
     Template tableTemplate = cfg.getTemplate(template);
+   
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
 
