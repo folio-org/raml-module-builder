@@ -124,7 +124,6 @@ public class SchemaMaker {
           //in case we do need to differentiate in the future between the two
           t.setMode("new");
         }
-        
         List<DeleteFields> dFields = t.getDeleteFields();
         if(dFields != null){
           for (int j = 0; j < dFields.size(); j++) {
@@ -274,7 +273,7 @@ public class SchemaMaker {
     if(recreateIndexMode){
       template = "indexes_only.ftl";
     }
-    Template tableTemplate = cfg.getTemplate(template);   
+    Template tableTemplate = cfg.getTemplate(template);
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
 
