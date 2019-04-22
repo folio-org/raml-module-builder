@@ -12,7 +12,6 @@ import java.util.Map;
 
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.z3950.zing.cql.cql2pgjson.SchemaException;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;
@@ -275,8 +274,7 @@ public class SchemaMaker {
     if(recreateIndexMode){
       template = "indexes_only.ftl";
     }
-    Template tableTemplate = cfg.getTemplate(template);
-   
+    Template tableTemplate = cfg.getTemplate(template);   
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
 
