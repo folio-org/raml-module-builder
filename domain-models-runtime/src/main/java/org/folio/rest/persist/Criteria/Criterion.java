@@ -204,7 +204,7 @@ public class Criterion {
           int field2remove = -1;
           for (int i = 0; i < fields.length; i++) {
             if ("[]".equals(fields[i])) {
-              crit.isArray = true;
+              crit.setArray(true);
               field2remove = i;
             }
           }
@@ -214,11 +214,11 @@ public class Criterion {
           }
           crit.field = fieldList;
           if("STRING".equals(jsonNode.get("value").getNodeType().name())){
-            crit.value = jsonNode.get("value").textValue();
+            crit.setValue(jsonNode.get("value").textValue());
           }else{
-            crit.value = jsonNode.get("value");
+            crit.setValue(jsonNode.get("value"));
           }
-          crit.operation = jsonNode.get("op").textValue();
+          crit.setOperation(jsonNode.get("op").textValue());
           c[pos++] = crit;
         }
       }
@@ -227,7 +227,7 @@ public class Criterion {
       cc.addCriterion(c[0], op, c[1]);
     } else if (clauseCount == 2) {
       // not query
-      c[0].isNotQuery = true;
+      c[0].setNotQuery(true);
       cc.addCriterion(c[0]);
     } else if (clauseCount == 1) {
       cc.addCriterion(c[0]);

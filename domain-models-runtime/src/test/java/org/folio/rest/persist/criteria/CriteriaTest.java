@@ -1,4 +1,4 @@
-package org.folio.rest.tools.utils;
+package org.folio.rest.persist.criteria;
 
 import static org.junit.Assert.assertEquals;
 

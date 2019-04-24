@@ -34,10 +34,6 @@ public class Criteria {
 
   boolean joinON = false;
 
-  String forceCast = null;
-
-  int valueType = 1;
-
   String column;
   /**
    * field - in the format of column_name -> field -> subfield ->>
@@ -75,7 +71,7 @@ public class Criteria {
       populateSnippet();
 
       String clause = wrapField() + " " + operation + " " + wrapValue();
-      if (isNotQuery) {
+      if (isNotQuery()) {
         return "( " + OP_NOT + " " + clause + ")";
       }
       return clause;
@@ -99,7 +95,7 @@ public class Criteria {
   }
 
   private void createFromSnippet() {
-    if (isArray) {
+    if (isArray()) {
       from = new From();
       from.setSnippet(ARRAY_FROM_CLAUSE + "("
         + PostgresClient.DEFAULT_JSONB_FIELD_NAME + GET_JSON_FIELD + arrayField + ")");
@@ -108,7 +104,7 @@ public class Criteria {
   }
 
   private void createSelectSnippet() {
-    if (isArray) {
+    if (isArray()) {
       select = new Select();
       //replace surrounding '' from the field name
       select.setSnippet(field.get(0).replaceAll("^'|'$", ""));
@@ -146,7 +142,7 @@ public class Criteria {
       return prefix + GET_JSON_FIELD;
     } else {
       // top level field criteria
-      if (isArray) {
+      if (isArray()) {
         return "";
       } else {
         return prefix + GET_VALUE_FIELD;
@@ -163,7 +159,7 @@ public class Criteria {
   private String field2String() {
     StringBuilder sb = new StringBuilder();
     int size = field.size();
-    if (size == 1 && isArray) {
+    if (size == 1 && isArray()) {
       //query where claue should look like -
       return from.asValue;
     }
@@ -171,7 +167,7 @@ public class Criteria {
       return field.get(0);
     }
     for (int i = 0; i < size; i++) {
-      if (isArray) {
+      if (isArray()) {
         //skip first field if array - included in FROM clause with an AS
         if (i == 0) {
           i++;
@@ -196,7 +192,7 @@ public class Criteria {
   private Object wrapValue() {
     // value may be null for example - field IS NOT NULL criteria
     if (value != null && isJSONB) {
-      if (isArray) {
+      if (isArray()) {
         return " '" + value + "'";
       } else {
         if (isWrappedInQuotes((String) value)) {
@@ -257,34 +253,28 @@ public class Criteria {
   }
 
   /**
-   * set this to false if not a jsonb field criteria For example: the _id is not
-   * in the jsonb object hence would be false if criteria based on _id
+   * set this to false if not a jsonb field criteria. For example: the _id is
+   * not in the jsonb object hence would be false if criteria based on _id
    */
   public Criteria setJSONB(boolean isJSONB) {
     this.isJSONB = isJSONB;
     return this;
   }
 
+  public boolean isNotQuery() {
+    return isNotQuery;
+  }
+
   public void setNotQuery(boolean isNotQuery) {
     this.isNotQuery = isNotQuery;
   }
 
-  public void setArray(boolean isArray) {
-    this.isArray = isArray;
+  public boolean isArray() {
+    return isArray;
   }
 
-  /**
-   * arrays in jsonb are handled differently, need to open up the array and then
-   * compare the value in each slot to the requested value, therefore needs
-   * special handling. need to set the isArray to true and indicate which part
-   * of the field in the requested field path is the array.<br>
-   * for example: 'a'->'b'->'c' - is the path - if 'a' is an array (list) of
-   * items - then set this criteria isArray to true and set the arrayField as
-   * 'a' - if no arrayField is set then the first field will be extracted and
-   * used as the array field
-   */
-  public void setArrayField(String arrayField) {
-    this.arrayField = arrayField;
+  public void setArray(boolean isArray) {
+    this.isArray = isArray;
   }
 
   public boolean isJoinON() {
