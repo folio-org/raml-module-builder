@@ -34,9 +34,10 @@ public class SchemaMakerTest {
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
       schemaMaker.generateDDL();
       fail();
+      
     } catch(IOException e) {
       assertThat(tidy(e.getMessage()), containsString(
-          "generateID is no longer supported"));
+          "Unrecognized field \"generateId\""));
     }
   }
   

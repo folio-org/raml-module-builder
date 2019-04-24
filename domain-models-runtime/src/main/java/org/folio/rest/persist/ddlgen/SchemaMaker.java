@@ -114,9 +114,6 @@ public class SchemaMaker {
       int size = tables.size();
       for (int i = 0; i < size; i++) {
         Table t = tables.get(i);
-        if(t.isGenerateId()) {
-          throw new IOException( "generateID is no longer supported.  Please see RMB documentation for suggested fixes" );
-        }
         if(t.getMode() == null){ 
           //the only relevant mode that the templates take into account is delete
           //otherwise update and new will always create if does not exist

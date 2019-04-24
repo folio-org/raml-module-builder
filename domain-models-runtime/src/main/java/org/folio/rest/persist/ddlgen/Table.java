@@ -11,7 +11,6 @@ public class Table extends Versioned {
   private String mode;
   private String tableName;
   private boolean withMetadata;
-  private boolean generateId;
   private boolean withAuditing;
   private List<Index> likeIndex;
   private List<Index> uniqueIndex;
@@ -56,14 +55,6 @@ public class Table extends Versioned {
 
   public void setForeignKeys(List<ForeignKeys> foreignKeys) {
     this.foreignKeys = foreignKeys;
-  }
-
-  public boolean isGenerateId() {
-    return generateId;
-  }
-
-  public void setGenerateId(boolean generateId) {
-    this.generateId = generateId;
   }
 
   public String getCustomSnippetPath() {
