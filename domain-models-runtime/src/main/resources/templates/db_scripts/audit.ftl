@@ -22,24 +22,26 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
       ${table.auditingSnippet.insert.declare}
       </#if>
     </#if>
+    id TEXT
     BEGIN
+    id = to_char(current_timestamp,'YYYY-MM-DD"T"HH24:MI:SS.MS')
         IF (TG_OP = 'DELETE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.delete??>
             ${table.auditingSnippet.delete.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT gen_random_uuid(), OLD.${table.pkColumnName}, 'D', OLD.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, OLD.${table.pkColumnName}, 'D', OLD.jsonb, current_timestamp;
             RETURN OLD;
         ELSIF (TG_OP = 'UPDATE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.update??>
             ${table.auditingSnippet.update.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT gen_random_uuid(), NEW.${table.pkColumnName}, 'U', NEW.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, NEW.${table.pkColumnName}, 'U', NEW.jsonb, current_timestamp;
             RETURN NEW;
         ELSIF (TG_OP = 'INSERT') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.insert??>
             ${table.auditingSnippet.insert.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT gen_random_uuid(), NEW.${table.pkColumnName}, 'I', NEW.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, NEW.${table.pkColumnName}, 'I', NEW.jsonb, current_timestamp;
             RETURN NEW;
         END IF;
         RETURN NULL;

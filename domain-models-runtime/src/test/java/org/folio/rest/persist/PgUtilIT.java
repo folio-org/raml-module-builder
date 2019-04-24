@@ -95,10 +95,11 @@ public class PgUtilIT {
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
+    String uuid = randomUuid();
     execute(context, "CREATE TABLE " + schema + ".user " +
-        "(_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL);");
+        "(_id UUID PRIMARY KEY DEFAULT " + uuid + ", jsonb JSONB NOT NULL);");
     execute(context, "CREATE TABLE " + schema + ".duplicateid " +
-        "(_id UUID DEFAULT             gen_random_uuid(), jsonb JSONB NOT NULL);");
+        "(_id UUID DEFAULT             " + uuid + ", jsonb JSONB NOT NULL);");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
@@ -121,7 +122,7 @@ public class PgUtilIT {
     async.await();
   }
 
-  private String randomUuid() {
+  private static String randomUuid() {
     return UUID.randomUUID().toString();
   }
 
@@ -937,9 +938,10 @@ public class PgUtilIT {
   private void insert(TestContext testContext, PostgresClient pg, String prefix, int n) {
     Async async = testContext.async();
     String table = schema + ".user ";
+    String uuid = randomUuid();
     String sql = "INSERT INTO " + table + " SELECT uuid, json_build_object" +
         "  ('username', '" + prefix + " ' || n, 'id', uuid)" +
-        "  FROM (SELECT generate_series(1, " + n + ") AS n, gen_random_uuid() AS uuid) AS uuids";
+        "  FROM (SELECT generate_series(1, " + n + ") AS n, " + uuid + " AS uuid) AS uuids";
     pg.execute(sql, testContext.asyncAssertSuccess(updated -> {
         testContext.assertEquals(n, updated.getUpdated());
         async.complete();
