@@ -18,8 +18,7 @@ import org.folio.rest.persist.PostgresClient;
  *         c.field = "'rush'";
  *         c.operation = "IS TRUE";
  *         c.value = null;
- * }
- * </pre>
+ * }</pre>
  */
 public class Criteria {
 
