@@ -8,7 +8,8 @@ import org.folio.rest.persist.PostgresClient;
 
 /**
  *
- * <code>
+ * <pre>
+ * {@code
  *         Criteria c = new Criteria();
  *         c.field = "'price' -> 'po_currency' ->> 'value'";
  *         c.operation = "LIKE";
@@ -17,7 +18,8 @@ import org.folio.rest.persist.PostgresClient;
  *         c.field = "'rush'";
  *         c.operation = "IS TRUE";
  *         c.value = null;
- * </code>
+ * }
+ * </pre>
  */
 public class Criteria {
 
