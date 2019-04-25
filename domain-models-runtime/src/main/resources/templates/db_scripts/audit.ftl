@@ -24,7 +24,11 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
     </#if>
     id TEXT
     BEGIN
-    id = to_char(current_timestamp,'YYYY-MM-DD"T"HH24:MI:SS.MS')
+    IF((select COUNT(*) from ${myuniversity}_${mymodule}.audit_${table.tableName}) = 0)
+      id = MD5(current_timestamp + "${myuniversity}_${mymodule}.audit_${table.tableName}" + jsonb)
+    ELSE
+      id = maxUUID(${myuniversity}_${mymodule}.audit_${table.tableName}) + 1;
+    END IF 
         IF (TG_OP = 'DELETE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.delete??>
             ${table.auditingSnippet.delete.statement}
