@@ -51,7 +51,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>24.0.0</version>
+      <version>24.0.1-SNAPSHOT</version>
     </dependency>
 
     <dependency>
