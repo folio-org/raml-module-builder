@@ -1,3 +1,25 @@
+## 24.0.0 2019-04-25
+
+ * RMB-368 Update RMB for non-schema usage and CQLPG-90
+   CQL2PgJSON constructors removed:
+```
+     CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons)
+     CQL2PgJSON(String field, String schemaJson)
+     CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons, List<String> serverChoiceIndexes)
+```
+   Public Criteria removes:
+```
+     Criteria(String schema)
+     boolean isJSONB()
+     String getArrayField()
+     void setArrayField(String arrayField)
+     String getForceCast()
+     Criteria setForceCast(String forceCast)
+```
+ * PostgresClient.streamGet: use Void for stream async result handler
+ * RMB-357 Increase code coverage of PostgresClient
+ * RMB-352 Increase code coverage of PgUtil
+
 ## 23.12.0 2019-04-05
 
  * RMB-350 PgUtilIT not tested

@@ -217,7 +217,7 @@ public class PostgresClientTransactionsIT {
     c1.startTx( handler -> {
       if(handler.succeeded()){
         Criteria c = new Criteria();
-        c.addField("'id'").setOperation(Criteria.OP_EQUAL).setValue("2");
+        c.addField("'id'").setOperation("=").setValue("2");
         c1.delete(handler, "z", new Criterion(c) , reply -> {
             if(reply.succeeded()){
               //make sure record is deleted when querying using this connection
