@@ -343,13 +343,13 @@ public class PostgresClientIT {
 
   private PostgresClient createFoo(TestContext context) {
     return createTable(context, TENANT, FOO,
-        "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL");
+        "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL");
   }
 
   /** bar's primary key is "id" without underscore */
   private PostgresClient createBarIdHasNoUnderscore(TestContext context) {
     postgresClient = createTable(context, "bartenant", "bar",
-        "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL");
+        "id UUID PRIMARY KEY, jsonb JSONB NOT NULL");
     postgresClient.setIdField("id");
     return postgresClient;
   }
@@ -357,7 +357,7 @@ public class PostgresClientIT {
   private PostgresClient createInvalidJson(TestContext context) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     postgresClient = createTable(context, TENANT, INVALID_JSON,
-        "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb VARCHAR(99) NOT NULL");
+        "_id UUID PRIMARY KEY, jsonb VARCHAR(99) NOT NULL");
     execute(context, "INSERT INTO " + schema + "." + INVALID_JSON + " VALUES "
         +"('" + INVALID_JSON_UUID + "', '}');");
     return postgresClient;
@@ -1566,7 +1566,7 @@ public class PostgresClientIT {
   @Test
   public void selectDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     postgresClient.select("SELECT DISTINCT ON (jsonb->>'owner') * FROM mock_po_lines  ORDER BY (jsonb->>'owner') DESC", select -> {
@@ -1581,7 +1581,7 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
@@ -1599,7 +1599,7 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
       add(new FacetField("jsonb->>'edition'"));
@@ -1618,7 +1618,7 @@ public class PostgresClientIT {
   @Test
   public void getDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     String distinctOn = "jsonb->>'order_format'";
@@ -1643,7 +1643,7 @@ public class PostgresClientIT {
 
   @Test
   public void getDistinctOnWithFacets(TestContext context) throws IOException {
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
