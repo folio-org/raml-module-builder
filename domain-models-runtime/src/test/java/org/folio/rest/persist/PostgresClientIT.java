@@ -612,8 +612,9 @@ public class PostgresClientIT {
   @Test
   public void saveTrans(TestContext context) {
     postgresClient = createFoo(context);
+    String uuid = randomUuid();
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.save(trans, FOO, xPojo, context.asyncAssertSuccess(id -> {
+      postgresClient.save(trans, FOO,uuid, xPojo, context.asyncAssertSuccess(id -> {
         Criterion filter = new Criterion(new Criteria().addField("_id").setJSONB(false)
             .setOperation("=").setValue("'" + id  + "'"));
         postgresClient.get(trans, FOO, StringPojo.class, filter, false, false, context.asyncAssertSuccess(reply1 -> {

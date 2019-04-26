@@ -907,10 +907,10 @@ public class PostgresClient {
     StringBuilder sql = new StringBuilder()
       .append(INSERT_CLAUSE)
       .append(schemaName).append(DOT).append(table)
-      .append(" (").append("_id ,").append(column).append(") VALUES (?,?)");
+      .append(" (").append("_id ,").append(column).append(") VALUES ('").append(UUID.randomUUID().toString()).append("',?)");
     for (int i = 1; i < entities.size(); i++) {
       
-      sql.append(",(").append(UUID.randomUUID().toString()).append(",?)");
+      sql.append(",('").append(UUID.randomUUID().toString()).append("',?)");
     }
     sql.append(" RETURNING ").append(idField);
 
