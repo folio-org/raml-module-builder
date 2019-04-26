@@ -35,6 +35,10 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
 
 SET search_path TO public, ${myuniversity}_${mymodule};
 
+<#if mode.name() == "CREATE">
+  <#include "uuid.ftl">
+</#if>
+
 <#include "general_functions.ftl">
 
 <#-- Loop over all tables that need updating / adding / deleting -->
