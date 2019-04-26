@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} 
    );
 
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_changes() RETURNS TRIGGER AS $${table.tableName}_audit$
-    <#if table.auditingSnippet??>
     DECLARE
+    <#if table.auditingSnippet??>
       <#if table.auditingSnippet.delete??>
       ${table.auditingSnippet.delete.declare}
       </#if>
@@ -22,13 +22,18 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
       ${table.auditingSnippet.insert.declare}
       </#if>
     </#if>
-    id TEXT
+      seed TEXT;
+      id UUID;
     BEGIN
-    IF((select COUNT(*) from ${myuniversity}_${mymodule}.audit_${table.tableName}) = 0)
-      id = MD5(current_timestamp + "${myuniversity}_${mymodule}.audit_${table.tableName}" + jsonb)
-    ELSE
-      id = maxUUID(${myuniversity}_${mymodule}.audit_${table.tableName}) + 1;
-    END IF 
+        id := SELECT max(${table.pkColumnName}) FROM ${myuniversity}_${mymodule}.audit_${table.tableName};
+        IF id IS NULL THEN
+            seed = md5(concat('${myuniversity}_${mymodule}.audit_${table.tableName}', OLD.jsonb, NEW.jsonb));
+            seed = overlay(seed placing '4' from 13);  -- UUID version byte
+            seed = overlay(seed placing '8' from 17);  -- UUID variant byte
+            id = seed::uuid;
+        ELSE
+            id = next_uuid(id);
+        END IF;
         IF (TG_OP = 'DELETE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.delete??>
             ${table.auditingSnippet.delete.statement}
