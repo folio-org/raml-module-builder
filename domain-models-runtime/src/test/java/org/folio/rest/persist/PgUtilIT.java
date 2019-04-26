@@ -946,9 +946,8 @@ public class PgUtilIT {
     Async async = testContext.async();
     String table = schema + ".user ";
     String sql = "INSERT INTO " + table +
-        "  SELECT uuid, json_build_object('username', '" + prefix + " ' || n, 'id', uuid)" +
-        "  FROM (SELECT     generate_series(1, " + n + ") AS n, " +
-        "               md5(generate_series(1, " + n + ") || '" + prefix + "')::uuid AS uuid) AS subquery";
+        " SELECT md5(username)::uuid, json_build_object('username', username, 'id', md5(username)::uuid)" +
+        "  FROM (SELECT '" + prefix + " ' || generate_series(1, " + n + ") AS username) AS subquery";
     pg.execute(sql, testContext.asyncAssertSuccess(updated -> {
         testContext.assertEquals(n, updated.getUpdated());
         async.complete();
