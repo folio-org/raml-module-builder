@@ -682,12 +682,14 @@ public class PostgresClientIT {
 
   @Test
   public void saveConnectionNullConnection(TestContext context) {
-    postgresClientNullConnection().save(FOO, xPojo, context.asyncAssertFailure());
+    String uuid = randomUuid();
+    postgresClientNullConnection().save(FOO, uuid, xPojo, context.asyncAssertFailure());
   }
 
   @Test
   public void saveConnectionGetConnectionFails(TestContext context) {
-    postgresClientGetConnectionFails().save(FOO, xPojo, context.asyncAssertFailure());
+    String uuid = randomUuid();
+    postgresClientGetConnectionFails().save(FOO, uuid, xPojo, context.asyncAssertFailure());
   }
 
   @Test
@@ -740,8 +742,9 @@ public class PostgresClientIT {
   @Test
   public void getByIdUsingSqlPrimaryKey(TestContext context) {
     Async async = context.async();
+    String uuid = randomUuid();
     postgresClient = createFoo(context);
-    postgresClient.save(FOO, xPojo, context.asyncAssertSuccess(id -> {
+    postgresClient.save(FOO, uuid, xPojo, context.asyncAssertSuccess(id -> {
       String sql = "WHERE _id='" + id + "'";
       postgresClient.get(FOO, StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
         try {
@@ -758,8 +761,9 @@ public class PostgresClientIT {
   @Test
   public void getByIdUsingSqlPrimaryKeyWithoutUnderscore(TestContext context) {
     Async async = context.async();
+    String uuid = randomUuid();
     postgresClient = createBarIdHasNoUnderscore(context);
-    postgresClient.save("bar", xPojo, context.asyncAssertSuccess(id -> {
+    postgresClient.save("bar", uuid, xPojo, context.asyncAssertSuccess(id -> {
       String sql = "WHERE id='" + id + "'";
       postgresClient.get("bar", StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
         try {
@@ -776,8 +780,9 @@ public class PostgresClientIT {
   @Test
   public void getByIdAsString(TestContext context) {
     Async async = context.async();
+    String uuid = randomUuid();
     postgresClient = createFoo(context);
-    postgresClient.save(FOO, xPojo, res -> {
+    postgresClient.save(FOO, uuid, xPojo, res -> {
       assertSuccess(context, res);
       String id = res.result();
       postgresClient.getByIdAsString(FOO, id, get -> {
@@ -793,8 +798,9 @@ public class PostgresClientIT {
   @Test
   public void getByIdAsPojo(TestContext context) {
     Async async = context.async();
+    String uuid = randomUuid();
     postgresClient = createFoo(context);
-    postgresClient.save(FOO, xPojo, res -> {
+    postgresClient.save(FOO, uuid, xPojo, res -> {
       assertSuccess(context, res);
       String id = res.result();
       postgresClient.getById(FOO, id, StringPojo.class, get -> {
