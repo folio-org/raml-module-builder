@@ -1728,10 +1728,9 @@ public class PostgresClientIT {
     async.awaitSuccess(1000);
 
     for (String jsonbValue : polines.split("\n")) {
-      String uuid = randomUuid();
       String additionalField = new JsonObject(jsonbValue).getString("publication_date");
       execute(context, "INSERT INTO " + schema + "." + tableName + " (_id, jsonb, distinct_test_field) VALUES "
-        + "('" + uuid + "' ,'" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
+        + "('" + randomUuid() + "', '" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
     }
     return postgresClient;
   }
