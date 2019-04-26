@@ -95,11 +95,10 @@ public class PgUtilIT {
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
-    String uuid = randomUuid();
     execute(context, "CREATE TABLE " + schema + ".user " +
-        "(_id UUID PRIMARY KEY DEFAULT " + uuid + ", jsonb JSONB NOT NULL);");
+        "(_id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
     execute(context, "CREATE TABLE " + schema + ".duplicateid " +
-        "(_id UUID DEFAULT             " + uuid + ", jsonb JSONB NOT NULL);");
+        "(_id UUID, jsonb JSONB NOT NULL);");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
@@ -589,6 +588,7 @@ public class PgUtilIT {
   public void getSortNodeException() {
     assertThat(PgUtil.getSortNode(null), is(nullValue()));
   }
+
   @Test
   public void canGetWithUnOptimizedSql(TestContext testContext) {
 
@@ -599,16 +599,16 @@ public class PgUtilIT {
     UserdataCollection c = searchForDataUnoptimized("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
     assertThat(val, is(9));
-    
+
     // limit=9
      c = searchForDataUnoptimized("username=foo sortBy username", 0, 9, testContext);
     val = c.getUsers().size();
     assertThat(val, is(9));
-   
+
     // limit=5
     c = searchForDataUnoptimized("username=foo sortBy username", 0, 5, testContext);
     assertThat(c.getUsers().size(), is(5));
-    
+
     // offset=6, limit=3
     c = searchForDataUnoptimized("username=foo sortBy username", 6, 3, testContext);
     assertThat(c.getUsers().size(), is(3));
@@ -628,10 +628,10 @@ public class PgUtilIT {
     // sort.descending, offset=6, limit=3
     c = searchForDataUnoptimized("username=foo sortBy username/sort.descending", 6, 3, testContext);
     assertThat(c.getUsers().size(), is(3));
-    
+
     exception.expect(ClassCastException.class);
     searchForDataUnoptimizedNoClass("username=foo sortBy username/sort.descending", 6, 3, testContext);
-    
+
     searchForDataUnoptimizedNo500("username=foo sortBy username/sort.descending", 6, 3, testContext);
   }
   @Test
@@ -645,7 +645,7 @@ public class PgUtilIT {
     UserdataCollection c = searchForData("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
     assertThat(val, is(9));
-    
+
     // limit=9
      c = searchForData("username=foo sortBy username", 0, 9, testContext);
     val = c.getUsers().size();
@@ -720,7 +720,7 @@ public class PgUtilIT {
     searchForDataNullHeadersExpectFailure("username=foo sortBy username/sort.descending", 6, 3, testContext);
     searchForDataNoClass("username=foo sortBy username/sort.descending",6, 3, testContext);
   }
-  
+
   @SuppressWarnings("deprecation")
   @Test
   public void getWithOptimizedSqlCanFailDueToResponse(TestContext testContext) {
@@ -730,7 +730,7 @@ public class PgUtilIT {
     searchForDataWithNo500("username=b sortBy username/sort.ascending", 1, 20, testContext);
     searchForDataWithNo400("username=b sortBy username/sort.ascending", 1, 20, testContext);
   }
-  
+
   @Test
   public void optimizedSQLwithNo500(TestContext testContext) {
     PgUtil.getWithOptimizedSql("user", User.class, UserdataCollection.class, "title", "username=a sortBy title",
@@ -749,8 +749,14 @@ public class PgUtilIT {
     PgUtil.setOptimizedSqlSize(oldSize);
     assertThat(PgUtil.getOptimizedSqlSize(), is(oldSize));
   }
-  
+
   private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
+    Async async = testContext.async();
+    pg.execute("truncate " + schema + ".user", testContext.asyncAssertSuccess(truncated -> {
+      async.complete();
+    }));
+    async.await(1000 /* ms */);
+
     int optimizdSQLSize = 10000;
     int n = optimizdSQLSize / 2;
     insert(testContext, pg, "a", n);
@@ -759,7 +765,7 @@ public class PgUtilIT {
     insert(testContext, pg, "d foo", 5);
     insert(testContext, pg, "e", n);
   }
-  
+
   private UserdataCollection searchForDataWithNo500(String cql, int offset, int limit, TestContext testContext) {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
@@ -931,6 +937,7 @@ public class PgUtilIT {
     async.await(5000 /* ms */);
     return responseString;
   }
+
   /**
    * Insert n records into instance table where the title field is build using
    * prefix and the number from 1 .. n.
@@ -938,10 +945,10 @@ public class PgUtilIT {
   private void insert(TestContext testContext, PostgresClient pg, String prefix, int n) {
     Async async = testContext.async();
     String table = schema + ".user ";
-    String uuid = randomUuid();
-    String sql = "INSERT INTO " + table + " SELECT uuid, json_build_object" +
-        "  ('username', '" + prefix + " ' || n, 'id', uuid)" +
-        "  FROM (SELECT generate_series(1, " + n + ") AS n, " + uuid + " AS uuid) AS uuids";
+    String sql = "INSERT INTO " + table +
+        "  SELECT uuid, json_build_object('username', '" + prefix + " ' || n, 'id', uuid)" +
+        "  FROM (SELECT     generate_series(1, " + n + ") AS n, " +
+        "               md5(generate_series(1, " + n + ") || '" + prefix + "')::uuid AS uuid) AS subquery";
     pg.execute(sql, testContext.asyncAssertSuccess(updated -> {
         testContext.assertEquals(n, updated.getUpdated());
         async.complete();
