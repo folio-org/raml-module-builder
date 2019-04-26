@@ -1572,7 +1572,7 @@ public class PostgresClientIT {
   @Test
   public void selectDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY, jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     postgresClient.select("SELECT DISTINCT ON (jsonb->>'owner') * FROM mock_po_lines  ORDER BY (jsonb->>'owner') DESC", select -> {
@@ -1587,7 +1587,7 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY, jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
@@ -1605,7 +1605,7 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY, jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
       add(new FacetField("jsonb->>'edition'"));
@@ -1624,7 +1624,7 @@ public class PostgresClientIT {
   @Test
   public void getDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY, jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     String distinctOn = "jsonb->>'order_format'";
@@ -1649,7 +1649,7 @@ public class PostgresClientIT {
 
   @Test
   public void getDistinctOnWithFacets(TestContext context) throws IOException {
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY, jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
@@ -1729,8 +1729,8 @@ public class PostgresClientIT {
 
     for (String jsonbValue : polines.split("\n")) {
       String additionalField = new JsonObject(jsonbValue).getString("publication_date");
-      execute(context, "INSERT INTO " + schema + "." + tableName + " (jsonb, distinct_test_field) VALUES "
-        + "('" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
+      execute(context, "INSERT INTO " + schema + "." + tableName + " (_id, jsonb, distinct_test_field) VALUES "
+        + "('" + randomUuid() + "', '" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
     }
     return postgresClient;
   }
