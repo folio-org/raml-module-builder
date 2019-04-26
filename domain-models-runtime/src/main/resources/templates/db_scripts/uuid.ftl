@@ -68,7 +68,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE AGGREAGTE max(uuid) (
+CREATE AGGREGATE max(uuid) (
   stype = uuid,
   sfunc = uuid_larger,
   combinefunc = uuid_larger,
@@ -76,7 +76,7 @@ CREATE AGGREAGTE max(uuid) (
   sortop = operator (>)
 );
 
-CREATE AGGREAGTE min(uuid) (
+CREATE AGGREGATE min(uuid) (
   stype = uuid,
   sfunc = uuid_smaller,
   combinefunc = uuid_smaller,
