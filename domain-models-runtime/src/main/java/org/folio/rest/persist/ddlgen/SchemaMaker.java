@@ -114,7 +114,7 @@ public class SchemaMaker {
       int size = tables.size();
       for (int i = 0; i < size; i++) {
         Table t = tables.get(i);
-        if(t.getMode() == null){ 
+        if(t.getMode() == null) {
           //the only relevant mode that the templates take into account is delete
           //otherwise update and new will always create if does not exist
           //so can set to either new or update , doesnt matter, leave the option
