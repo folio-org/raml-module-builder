@@ -204,7 +204,7 @@ public class Criterion {
           int field2remove = -1;
           for (int i = 0; i < fields.length; i++) {
             if ("[]".equals(fields[i])) {
-              crit.isArray = true;
+              crit.setArray(true);
               field2remove = i;
             }
           }
@@ -214,11 +214,11 @@ public class Criterion {
           }
           crit.field = fieldList;
           if("STRING".equals(jsonNode.get("value").getNodeType().name())){
-            crit.value = jsonNode.get("value").textValue();
+            crit.setValue(jsonNode.get("value").textValue());
           }else{
-            crit.value = jsonNode.get("value");
+            crit.setValue(jsonNode.get("value"));
           }
-          crit.operation = jsonNode.get("op").textValue();
+          crit.setOperation(jsonNode.get("op").textValue());
           c[pos++] = crit;
         }
       }
@@ -227,7 +227,7 @@ public class Criterion {
       cc.addCriterion(c[0], op, c[1]);
     } else if (clauseCount == 2) {
       // not query
-      c[0].isNotQuery = true;
+      c[0].setNotQuery(true);
       cc.addCriterion(c[0]);
     } else if (clauseCount == 1) {
       cc.addCriterion(c[0]);
@@ -276,80 +276,4 @@ public class Criterion {
     }
     return sb.toString();
   }
-
-  public static void main(String args[]) throws Exception {
-
-    Criteria schema = new Criteria("userdata.json");
-    schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
-    System.out.println(schema.toString());
-
-    schema = new Criteria("userdata.json");
-    schema.addField("'active'").setOperation("=").setValue("true");
-    System.out.println(schema.toString());
-
-    schema = new Criteria();
-    schema.addField("'personal'").addField("'lastName'").setOperation("=").setValue("123");
-    System.out.println(schema.toString());
-
-/*    PostgresClient.setConfigFilePath("C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\postgres-conf.json");
-    PostgresClient.getInstance(Vertx.factory.vertx() , "myuniversity3").get("users",
-      JsonObject.class, new Criterion(nb), true, reply -> {
-        reply.succeeded();
-      });*/
-
-    Criterion a =  json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]");
-    // System.out.println(a.toString());
-    Criteria b = new Criteria();
-    b.field.add("'note'");
-    b.operation = "=";
-    b.value = "a";
-    b.isArray = true;
-
-    Criteria c = new Criteria();
-    c.addField("'price'").addField("'po_currency'").addField("'value'");
-    c.operation = "like";
-    c.value = "USD";
-    //c.isArray = true;
-
-    Criteria d = new Criteria();
-    d.field.add("'rush'");
-    d.operation = Criteria.OP_IS_FALSE;
-    d.value = null;
-
-    Criteria aa = new Criteria();
-    aa.field.add("'rush'");
-    aa.operation = "!=";
-    aa.value = "true";
-    /*
-     * Criteria a = new Criteria(); a.field = "'rush'"; a.operation = "!=";
-     * a.value = "true";
-     *
-     * Criteria aa = new Criteria(); aa.field = "'rush'"; aa.operation = "=";
-     * aa.value = null;
-     */
-
-    // Criterion cc = new Criterion();
-    // cc.addCriterion(aa);
-    // cc.addCriterion(c, "OR", b);
-    // cc.addCriterion(a);
-/*    a.addCriterion(c, "OR", b, "AND");
-    a.addCriterion(d, "OR");
-    a.addCriterion(d, "AND");
-    a.addCriterion(d, "OR");*/
-
-    //a.addCriterion(c, "OR", b);
-    //a.addCriterion(c, "OR", b);
-    GroupedCriterias gc = new GroupedCriterias();
-    GroupedCriterias gc1 = new GroupedCriterias();
-    gc1.addCriteria(c, "OR");
-    gc1.addCriteria(b);
-    gc1.setGroupOp("NOT");
-    a.addGroupOfCriterias( gc.addCriteria(b).addCriteria(c, "OR").addCriteria(d, "AND")).addCriterion(aa).addGroupOfCriterias( gc1 );
-    /*
-     * Criterion bb = new Criterion(); bb.addCriterion(cc, "AND", a);
-     */
-
-    System.out.println("SELECT " + a.selects2String() + " FROM " + a.from2String() + a.toString());
-  }
-
 }
