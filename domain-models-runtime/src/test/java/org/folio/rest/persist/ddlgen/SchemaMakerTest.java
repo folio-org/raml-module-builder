@@ -35,7 +35,7 @@ public class SchemaMakerTest {
     String result = schemaMaker.generateDDL();
     assertThat(result, containsString("CREATE TABLE IF NOT EXISTS harvard_circ.audit_test_tenantapi"));
     
-    assertThat(result,containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_tenantapi_changes() RETURNS TRIGGER AS $tenantapi_audit$"));
+    assertThat(result,containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_test_tenantapi_changes() RETURNS TRIGGER AS $test_tenantapi_audit$"));
   }
   @Test
   public void failsWhenGenerateID() throws  TemplateException {
