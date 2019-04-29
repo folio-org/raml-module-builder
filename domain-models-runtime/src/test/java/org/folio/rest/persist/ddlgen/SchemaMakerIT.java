@@ -76,11 +76,14 @@ public class SchemaMakerIT extends PostgresClientITBase {
       //assertions here
       String result = schemaMaker.generateDDL();
       PostgresClient postgresClient = PostgresClient.getInstance(vertx);
+      Async async = context.async();
       postgresClient.execute( result, new ArrayList<JsonArray>(), rs -> {
         if (rs.failed()) {
           context.fail(rs.cause());
         }
+        async.complete();
       });
+      async.await();
   }
   
 }
