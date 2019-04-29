@@ -1,5 +1,9 @@
+-- UUID functions
+
+-- Unit tests: org.folio.rest.persist.ddlgen.UuidIT.java
+
 -- Return the smallest UUID, or null if both UUIDs are null.
-CREATE OR REPLACE FUNCTION uuid_smaller(uuid, uuid) RETURNS uuid AS $$
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.uuid_smaller(uuid, uuid) RETURNS uuid AS $$
 BEGIN
   IF $1 IS NULL THEN
     RETURN $2;
@@ -16,7 +20,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Return the largest UUID, or null if both UUIDs are null.
-CREATE OR REPLACE FUNCTION uuid_larger(uuid, uuid) RETURNS uuid AS $$
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.uuid_larger(uuid, uuid) RETURNS uuid AS $$
 BEGIN
   IF $1 IS NULL THEN
     RETURN $2;
@@ -33,8 +37,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Return the next UUID (xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx) by adding 1 to x
--- skipping version byte M and variant byte N.
-CREATE OR REPLACE FUNCTION next_uuid(uuid) RETURNS uuid AS $$
+-- but change neither version byte M nor variant byte N.
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.next_uuid(uuid) RETURNS uuid AS $$
 DECLARE
   uuid text;
   digit text;
@@ -42,6 +46,7 @@ BEGIN
   uuid = $1;
   FOR i IN REVERSE 36..1 LOOP
     digit := substring(uuid from i for 1);
+    -- skip minus, version byte M and variant byte N
     CONTINUE WHEN digit = '-' OR i = 15 OR i = 20;
     CASE digit
       WHEN '0' THEN digit := '1';
@@ -60,26 +65,28 @@ BEGIN
       WHEN 'd' THEN digit := 'e';
       WHEN 'e' THEN digit := 'f';
       WHEN 'f' THEN digit := '0';
+      ELSE NULL;
     END CASE;
     uuid = overlay(uuid placing digit from i);
     EXIT WHEN digit <> '0';
   END LOOP;
   RETURN uuid;
 END;
-$$ LANGUAGE plpgsql;
+$$
+LANGUAGE plpgsql;
 
-CREATE AGGREGATE max(uuid) (
+CREATE AGGREGATE ${myuniversity}_${mymodule}.max(uuid) (
   stype = uuid,
-  sfunc = uuid_larger,
-  combinefunc = uuid_larger,
+  sfunc = ${myuniversity}_${mymodule}.uuid_larger,
+  combinefunc = ${myuniversity}_${mymodule}.uuid_larger,
   parallel = safe,
   sortop = operator (>)
 );
 
-CREATE AGGREGATE min(uuid) (
+CREATE AGGREGATE ${myuniversity}_${mymodule}.min(uuid) (
   stype = uuid,
-  sfunc = uuid_smaller,
-  combinefunc = uuid_smaller,
+  sfunc = ${myuniversity}_${mymodule}.uuid_smaller,
+  combinefunc = ${myuniversity}_${mymodule}.uuid_smaller,
   parallel = safe,
   sortop = operator (<)
 );

@@ -28,11 +28,13 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
         id := SELECT max(${table.pkColumnName}) FROM ${myuniversity}_${mymodule}.audit_${table.tableName};
         IF id IS NULL THEN
             seed = md5(concat('${myuniversity}_${mymodule}.audit_${table.tableName}', OLD.jsonb, NEW.jsonb));
-            seed = overlay(seed placing '4' from 13);  -- UUID version byte
-            seed = overlay(seed placing '8' from 17);  -- UUID variant byte
+            -- UUID version byte
+            seed = overlay(seed placing '4' from 13);
+            -- UUID variant byte
+            seed = overlay(seed placing '8' from 17);
             id = seed::uuid;
         ELSE
-            id = next_uuid(id);
+            id = ${myuniversity}_${mymodule}.next_uuid(id);
         END IF;
         IF (TG_OP = 'DELETE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.delete??>
