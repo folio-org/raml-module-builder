@@ -28,8 +28,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class SchemaMakerIT extends PostgresClientITBase {
   /** If we start and stop our own embedded postgres */
   static private boolean ownEmbeddedPostgres = false;
-  static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
-  static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
+  static private final String schema = "harvard_circ";
   static private Vertx vertx;
 
   @BeforeClass
@@ -70,7 +69,10 @@ public class SchemaMakerIT extends PostgresClientITBase {
   public void canMakeAuditedTable(TestContext context) throws IOException, TemplateException {
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
         "mod-foo-18.2.3", "mod-foo-18.2.4");
-
+    execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
+    executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD 'testtenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
+    execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
+    execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
       String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
       //assertions here
