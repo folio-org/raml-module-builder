@@ -1,3 +1,37 @@
+## 24.0.0 2019-04-25
+
+ * RMB-368 Update RMB for non-schema usage and CQLPG-90
+   CQL2PgJSON constructors removed:
+```
+     CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons)
+     CQL2PgJSON(String field, String schemaJson)
+     CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons, List<String> serverChoiceIndexes)
+```
+   Public Criteria removes:
+```
+     Criteria(String schema)
+     boolean isJSONB()
+     String getArrayField()
+     void setArrayField(String arrayField)
+     String getForceCast()
+     Criteria setForceCast(String forceCast)
+```
+ * PostgresClient.streamGet: use Void for stream async result handler
+ * RMB-357 Increase code coverage of PostgresClient
+ * RMB-352 Increase code coverage of PgUtil
+
+## 23.12.0 2019-04-05
+
+ * RMB-350 PgUtilIT not tested
+ * RMB-331 Tenant upgrade failed if older version has no db schema
+ * RMB-335 Signal stream closed (prematurely)
+ * RMB-343 Get rid of " WARNING Problem parsing x-okapi-token header" message
+ * RMB-345 Document TenantLoading and proper behavior of CRUD services
+ * RMB-349 Do not spawn postgres-runner when using -Dmaven.test.skip=true
+ * RMB-351 Enable Junit4 + Junit5 and make it work in Eclipse
+ * RMB-354 Add PostgresClient.saveBatch variant with SQLConnection parameter
+ * RMB-355 Facets broken in RMB 22 (and later)
+
 ## 23.11.0 2019-03-14
 
  * RMB-342 TenantLoading / empty list for empty directory
