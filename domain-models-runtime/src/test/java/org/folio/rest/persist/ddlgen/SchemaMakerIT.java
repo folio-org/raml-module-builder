@@ -73,6 +73,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD 'testtenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
+    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
       String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
       //assertions here
