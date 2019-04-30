@@ -418,7 +418,7 @@ public class PostgresClient {
   /**
    * @return this instance's AsyncSQLClient that can connect to Postgres
    */
-  AsyncSQLClient getClient() {
+  public AsyncSQLClient getClient() {
     return client;
   }
 
