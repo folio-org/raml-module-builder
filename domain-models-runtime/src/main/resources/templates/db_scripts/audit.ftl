@@ -25,9 +25,10 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
       seed TEXT;
       id UUID;
     BEGIN
-        id := SELECT max(${table.pkColumnName}) FROM ${myuniversity}_${mymodule}.audit_${table.tableName};
+   
+        id := (SELECT ${table.pkColumnName} FROM ${myuniversity}_${mymodule}.audit_${table.tableName} ORDER BY ${table.pkColumnName} DESC LIMIT 1);
         IF id IS NULL THEN
-            seed = md5(concat('${myuniversity}_${mymodule}.audit_${table.tableName}', OLD.jsonb, NEW.jsonb));
+            seed = md5(concat('${myuniversity}_${mymodule}.audit_${table.tableName}', NEW.jsonb));
             -- UUID version byte
             seed = overlay(seed placing '4' from 13);
             -- UUID variant byte
