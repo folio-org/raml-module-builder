@@ -1002,7 +1002,7 @@ Entries in the json file to be aware of:
 For each **table**:
 
 1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
-2. `generateId` - whether to auto generate the id of entries for this table - (will add the following to the id column `DEFAULT gen_random_uuid()`)
+2. `generateId` - No longer supported.  This functionality is not stable in Pgpool-II see https://www.pgpool.net/docs/latest/en/html/restrictions.html.  The solution is to generate a UUID in java in the same manner as https://github.com/folio-org/raml-module-builder/blob/v23.11.0/domain-models-runtime/src/main/java/org/folio/rest/persist/PgUtil.java#L358
 3. `fromModuleVersion` - this field indicates the version in which the table was created / updated in. When a tenant update is requested - only versions older than the indicated version will generate the declared table. This ensures that if a module upgrades from an older version, the needed tables will be generated for it, however, subsequent upgrades from versions equal or later than the version indicated for the table will not re-generate the table.
  - Note that this is enforced for all tables, views, indexes, FK, triggers, etc... - via the `IF NOT EXISTS` sql Postgres statement
 4. `mode` - should be used only to indicate `delete`

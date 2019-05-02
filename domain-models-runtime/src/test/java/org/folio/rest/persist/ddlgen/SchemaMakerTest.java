@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -22,7 +23,37 @@ public class SchemaMakerTest {
         .replaceAll(" *\\) *", ")")      // remove space before and after )
         .replaceAll(";", ";\n");         // one line per sql statement
   }
+  @Test
+  public void canCreateAuditedTable() throws IOException, TemplateException {
 
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
+      "mod-foo-18.2.3", "mod-foo-18.2.4");
+
+    String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+    //assertions here
+    String result = schemaMaker.generateDDL();
+    assertThat(result, containsString("CREATE TABLE IF NOT EXISTS harvard_circ.audit_test_tenantapi"));
+    
+    assertThat(result,containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_test_tenantapi_changes() RETURNS TRIGGER AS $test_tenantapi_audit$"));
+  }
+  @Test
+  public void failsWhenGenerateID() throws  TemplateException {
+
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
+      "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
+    try {
+      String json = ResourceUtil.asString("templates/db_scripts/schemaGenerateId.json");
+      schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+      schemaMaker.generateDDL();
+      fail();
+      
+    } catch(IOException e) {
+      assertThat(tidy(e.getMessage()), containsString(
+          "Unrecognized field \"generateId\""));
+    }
+  }
+  
   @Test
   public void lowerUnaccentIndex() throws IOException, TemplateException {
 
