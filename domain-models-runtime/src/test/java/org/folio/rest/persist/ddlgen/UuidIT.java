@@ -21,14 +21,12 @@ public class UuidIT extends PostgresClientITBase {
   public static void uuidFtl(TestContext context) {
     String uuidFtl = ResourceUtil.asString("templates/db_scripts/uuid.ftl");
     uuidFtl = uuidFtl.replace("${myuniversity}_${mymodule}", schema);
-    getClient().runSQLFile(uuidFtl, true, context.asyncAssertSuccess(result -> {
-      if (result.isEmpty()) {
-        return;
-      }
-      context.fail(result.toString());
-    }));
+    runSqlFileAsSuperuser(context, uuidFtl);
   }
 
+  /**
+   * @return PostgresClient for superuser
+   */
   private static PostgresClient getClient() {
     return PostgresClient.getInstance(vertx);
   }
@@ -46,30 +44,30 @@ public class UuidIT extends PostgresClientITBase {
 
   @Test
   public void minMax(TestContext context) {
-    execute(context, "DROP TABLE IF EXISTS " + t);
-    execute(context, "CREATE TABLE " + t + " (uuid UUID)");
+    executeSuperuser(context, "DROP TABLE IF EXISTS " + t);
+    executeSuperuser(context, "CREATE TABLE " + t + " (uuid UUID)");
     assertMinMax(context, null, null);
-    execute(context, "INSERT INTO " + t + " VALUES (null)");
+    executeSuperuser(context, "INSERT INTO " + t + " VALUES (null)");
     assertMinMax(context, null, null);
-    execute(context, "INSERT INTO " + t + " VALUES (null)");
+    executeSuperuser(context, "INSERT INTO " + t + " VALUES (null)");
     assertMinMax(context, null, null);
-    execute(context, "INSERT INTO " + t + " VALUES ('ffffffff-4321-4321-8765-1234567890ab')");
+    executeSuperuser(context, "INSERT INTO " + t + " VALUES ('ffffffff-4321-4321-8765-1234567890ab')");
     assertMinMax(context, "ffffffff-4321-4321-8765-1234567890ab", "ffffffff-4321-4321-8765-1234567890ab");
-    execute(context, "INSERT INTO " + t + " VALUES ('01234567-4321-4321-8765-1234567890ab')");
+    executeSuperuser(context, "INSERT INTO " + t + " VALUES ('01234567-4321-4321-8765-1234567890ab')");
     assertMinMax(context, "01234567-4321-4321-8765-1234567890ab", "ffffffff-4321-4321-8765-1234567890ab");
-    execute(context, "INSERT INTO " + t + " VALUES ('00000000-0000-0000-0000-000000000000')");
+    executeSuperuser(context, "INSERT INTO " + t + " VALUES ('00000000-0000-0000-0000-000000000000')");
     assertMinMax(context, "00000000-0000-0000-0000-000000000000", "ffffffff-4321-4321-8765-1234567890ab");
-    execute(context, "INSERT INTO " + t + " VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff')");
+    executeSuperuser(context, "INSERT INTO " + t + " VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff')");
     assertMinMax(context, "00000000-0000-0000-0000-000000000000", "ffffffff-ffff-ffff-ffff-ffffffffffff");
-    execute(context, "INSERT INTO " + t + " VALUES (null)");
+    executeSuperuser(context, "INSERT INTO " + t + " VALUES (null)");
     assertMinMax(context, "00000000-0000-0000-0000-000000000000", "ffffffff-ffff-ffff-ffff-ffffffffffff");
   }
 
   @Test
   public void minMaxUsingIndex(TestContext context) {
-    execute(context, "DROP TABLE IF EXISTS " + t);
-    execute(context, "CREATE TABLE " + t + " (uuid UUID PRIMARY KEY)");
-    execute(context, "INSERT INTO " + t + " VALUES (md5(generate_series(1, 1000)::text)::uuid)");
+    executeSuperuser(context, "DROP TABLE IF EXISTS " + t);
+    executeSuperuser(context, "CREATE TABLE " + t + " (uuid UUID PRIMARY KEY)");
+    executeSuperuser(context, "INSERT INTO " + t + " VALUES (md5(generate_series(1, 1000)::text)::uuid)");
     getClient().select("EXPLAIN SELECT " + schema + ".min(uuid) FROM " + t, context.asyncAssertSuccess(result -> {
       String explain = result.getResults().toString();
       context.assertTrue(explain.contains("Index Only Scan using t_pkey on t"), explain);

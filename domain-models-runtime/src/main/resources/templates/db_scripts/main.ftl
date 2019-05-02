@@ -35,6 +35,9 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
 
 SET search_path TO public, ${myuniversity}_${mymodule};
 
+<#if mode.name() == "CREATE">
+  <#include "uuid.ftl">
+</#if>
 
 <#include "general_functions.ftl">
 
@@ -98,7 +101,6 @@ SET search_path TO public, ${myuniversity}_${mymodule};
     </#if>
 
     <#if table.withAuditing == true>
-      <#include "uuid.ftl">
       <#include "audit.ftl">
     </#if>
 

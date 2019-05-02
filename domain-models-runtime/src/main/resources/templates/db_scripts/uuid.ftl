@@ -75,6 +75,8 @@ END;
 $$
 LANGUAGE plpgsql;
 
+-- Note: We do not "DROP AGGREGATE" because it fails if any objects depend on it
+
 CREATE AGGREGATE ${myuniversity}_${mymodule}.max(uuid) (
   stype = uuid,
   sfunc = ${myuniversity}_${mymodule}.uuid_larger,
