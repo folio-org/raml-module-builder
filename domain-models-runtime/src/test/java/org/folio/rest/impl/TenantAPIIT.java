@@ -126,21 +126,23 @@ public class TenantAPIIT {
   }
 
   private static String table = " folio_shared_raml_module_builder.test_tenantapi ";
-  /** set database time zone to check that this doesn't interfere with UTC storage */
-  private static String setTimeZone = "SET TIME ZONE '+02:00'";
+  /** set database client time zone to check that this doesn't interfere with UTC storage */
+  private static String setTimeZone5 = "SET TIME ZONE '+05'";
+  private static String setTimeZone6 = "SET TIME ZONE '+06'";
 
   private Book insert(TestContext context, String ... keyValue) {
     String uuid = UUID.randomUUID().toString();
     Book [] book = new Book [1];
-
     Async async = context.async();
     PostgresClient postgresClient = PgUtil.postgresClient(vertx.getOrCreateContext(), okapiHeaders);
     String sql = "INSERT INTO" + table + "VALUES ('" + uuid + "', '" + asMetadata(keyValue) + "')";
-    postgresClient.execute(setTimeZone, context.asyncAssertSuccess(zone -> {
+    postgresClient.execute(setTimeZone5, context.asyncAssertSuccess(zone5 -> {
       postgresClient.execute(sql, context.asyncAssertSuccess(i -> {
-        postgresClient.getById("test_tenantapi", uuid, Book.class, context.asyncAssertSuccess(g -> {
-          book[0] = g;
-          async.complete();
+        postgresClient.execute(setTimeZone6, context.asyncAssertSuccess(zone6 -> {
+          postgresClient.getById("test_tenantapi", uuid, Book.class, context.asyncAssertSuccess(g -> {
+            book[0] = g;
+            async.complete();
+          }));
         }));
       }));
     }));
@@ -155,11 +157,13 @@ public class TenantAPIIT {
     Async async = context.async();
     PostgresClient postgresClient = PgUtil.postgresClient(vertx.getOrCreateContext(), okapiHeaders);
     String sql = "UPDATE" + table + "SET jsonb='" + asMetadata(keyValue) + "' WHERE _id='" + uuid + "'";
-    postgresClient.execute(setTimeZone, context.asyncAssertSuccess(zone -> {
+    postgresClient.execute(setTimeZone5, context.asyncAssertSuccess(zone5 -> {
       postgresClient.execute(sql, context.asyncAssertSuccess(u -> {
-        postgresClient.getById("test_tenantapi", uuid, Book.class, context.asyncAssertSuccess(g -> {
-          book[0] = g;
-          async.complete();
+        postgresClient.execute(setTimeZone6, context.asyncAssertSuccess(zone6 -> {
+          postgresClient.getById("test_tenantapi", uuid, Book.class, context.asyncAssertSuccess(g -> {
+            book[0] = g;
+            async.complete();
+          }));
         }));
       }));
     }));
@@ -185,10 +189,12 @@ public class TenantAPIIT {
   }
 
   private void testMetadata(TestContext context) {
-    String date1 = "2019-12-31T23:15:57.999";
+    String date1   = "2019-12-31T23:15:57.999";
+    String date1tz = "2019-12-31T21:15:57.999-02";
     String date2 = "2020-01-16T14:15:16.777";
     String date3 = "2021-02-19T09:10:11.666";
-    String date4 = "2022-04-21T19:20:21.555";
+    String date4   = "2022-04-21T19:20:21.555";
+    String date4tz = "2022-04-21T22:20:21.555+03";
 
     Book book = insert(context, "createdDate", date1, "createdByUserId", "foo");
     assertMetadata(book, date1, "foo", null, null);
@@ -196,7 +202,7 @@ public class TenantAPIIT {
     assertMetadata(book, date1, "foo", date2, "bar");
     book = update(context, book.getId(), "updatedDate", date3, "updatedByUserId", null);
     assertMetadata(book, date1, "foo", date3, null);
-    book = update(context, book.getId(), "updatedDate", date4, "updatedByUserId", "bin");
+    book = update(context, book.getId(), "updatedDate", date4tz, "updatedByUserId", "bin");
     assertMetadata(book, date1, "foo", date4, "bin");
 
     // RMB-320: all metadata is populated, updating with empty metadata caused trigger failure:
@@ -204,7 +210,7 @@ public class TenantAPIIT {
     book = update(context, book.getId());
     assertThat(book.getMetadata(), is(nullValue()));
 
-    book = insert(context, "createdDate", date1);
+    book = insert(context, "createdDate", date1tz);
     assertMetadata(book, date1, null, null, null);
     book = update(context, book.getId(), "createdDate", date3, "createdByUserId", "foo",
                                          "updatedDate", date2, "updatedByUserId", "baz");
