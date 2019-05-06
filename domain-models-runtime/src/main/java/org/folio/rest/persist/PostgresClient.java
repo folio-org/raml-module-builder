@@ -74,6 +74,8 @@ import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.SQLRowStream;
 import io.vertx.ext.sql.UpdateResult;
 import java.util.Optional;
+import java.util.UUID;
+
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.OrderByElement;
@@ -416,7 +418,7 @@ public class PostgresClient {
   /**
    * @return this instance's AsyncSQLClient that can connect to Postgres
    */
-  AsyncSQLClient getClient() {
+  public AsyncSQLClient getClient() {
     return client;
   }
 
@@ -905,9 +907,10 @@ public class PostgresClient {
     StringBuilder sql = new StringBuilder()
       .append(INSERT_CLAUSE)
       .append(schemaName).append(DOT).append(table)
-      .append(" (").append(column).append(") VALUES (?)");
+      .append(" (").append("_id ,").append(column).append(") VALUES ('").append(UUID.randomUUID().toString()).append("',?)");
     for (int i = 1; i < entities.size(); i++) {
-      sql.append(",(?)");
+      
+      sql.append(",('").append(UUID.randomUUID().toString()).append("',?)");
     }
     sql.append(" RETURNING ").append(idField);
 

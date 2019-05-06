@@ -79,7 +79,7 @@ public class TenantAPIIT {
       try {
         tenantAPI.deleteTenant(okapiHeaders, h -> {
           tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
-            context.assertFalse(bool, "tenant exists");
+            context.assertFalse(bool, "tenant exists during delete");
             async.complete();
           }));
         }, Vertx.currentContext());
@@ -98,7 +98,7 @@ public class TenantAPIIT {
         TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAPI.postTenant(tenantAttributes, okapiHeaders, h -> {
           tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
-            context.assertTrue(bool, "tenant exists");
+            context.assertTrue(bool, "tenant exists during post");
             async.complete();
           }));
         }, Vertx.currentContext());
