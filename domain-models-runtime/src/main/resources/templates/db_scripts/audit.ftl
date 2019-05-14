@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} 
    );
 
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_changes() RETURNS TRIGGER AS $${table.tableName}_audit$
-    <#if table.auditingSnippet??>
     DECLARE
+    <#if table.auditingSnippet??>
       <#if table.auditingSnippet.delete??>
       ${table.auditingSnippet.delete.declare}
       </#if>
@@ -22,24 +22,37 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
       ${table.auditingSnippet.insert.declare}
       </#if>
     </#if>
+      seed TEXT;
+      id UUID;
     BEGIN
+        id = (SELECT ${myuniversity}_${mymodule}.max(${table.pkColumnName}) FROM ${myuniversity}_${mymodule}.audit_${table.tableName});
+        IF id IS NULL THEN
+            seed = md5(concat('${myuniversity}_${mymodule}.audit_${table.tableName}', NEW.jsonb));
+            -- UUID version byte
+            seed = overlay(seed placing '4' from 13);
+            -- UUID variant byte
+            seed = overlay(seed placing '8' from 17);
+            id = seed::uuid;
+        ELSE
+            id = ${myuniversity}_${mymodule}.next_uuid(id);
+        END IF;
         IF (TG_OP = 'DELETE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.delete??>
             ${table.auditingSnippet.delete.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT gen_random_uuid(), OLD.${table.pkColumnName}, 'D', OLD.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, OLD.${table.pkColumnName}, 'D', OLD.jsonb, current_timestamp;
             RETURN OLD;
         ELSIF (TG_OP = 'UPDATE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.update??>
             ${table.auditingSnippet.update.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT gen_random_uuid(), NEW.${table.pkColumnName}, 'U', NEW.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, NEW.${table.pkColumnName}, 'U', NEW.jsonb, current_timestamp;
             RETURN NEW;
         ELSIF (TG_OP = 'INSERT') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.insert??>
             ${table.auditingSnippet.insert.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT gen_random_uuid(), NEW.${table.pkColumnName}, 'I', NEW.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, NEW.${table.pkColumnName}, 'I', NEW.jsonb, current_timestamp;
             RETURN NEW;
         END IF;
         RETURN NULL;

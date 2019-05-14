@@ -13,7 +13,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.net.URI;
-import java.net.URISyntaxException;
 
 public class SchemaDereferencer {
 
@@ -57,7 +56,7 @@ public class SchemaDereferencer {
    * <li>If the base path is <code>"/home/peter"</code> the ref
    * becomes <code>"$ref": "file:/home/peter/dir/a.json"</code>.
    * <li>If the base path is <code>"C:\Users\peter"</code> the ref
-   * becomes <code>"$ref": "file:C:%5CUsers%5Cpeter%5Cdir%5Ca.json"</code>.
+   * becomes <code>"$ref": "file:///C:\Users\peter\dir\a.json"</code>.
    * </ul>
    *
    * <p>The absolute path is needed for generating the code from raml files
@@ -79,12 +78,8 @@ public class SchemaDereferencer {
     String file = jsonObject.getString("$ref");
     if (file != null && !hasUriScheme(file)) {
       Path nPath = path.resolveSibling(file);
-      try {
-        URI u = new URI("file", nPath.toAbsolutePath().normalize().toString(), null);
-        jsonObject.put("$ref", u.toString());
-      } catch (URISyntaxException ex) {
-        throw new IOException(ex.getLocalizedMessage());
-      }
+      //fix the problem of uri.getpath()==null in windows environment
+      jsonObject.put("$ref", nPath.toUri().toString());
     }
   }
 }

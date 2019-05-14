@@ -343,13 +343,13 @@ public class PostgresClientIT {
 
   private PostgresClient createFoo(TestContext context) {
     return createTable(context, TENANT, FOO,
-        "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL");
+        "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL");
   }
 
   /** bar's primary key is "id" without underscore */
   private PostgresClient createBarIdHasNoUnderscore(TestContext context) {
     postgresClient = createTable(context, "bartenant", "bar",
-        "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL");
+        "id UUID PRIMARY KEY, jsonb JSONB NOT NULL");
     postgresClient.setIdField("id");
     return postgresClient;
   }
@@ -357,7 +357,7 @@ public class PostgresClientIT {
   private PostgresClient createInvalidJson(TestContext context) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     postgresClient = createTable(context, TENANT, INVALID_JSON,
-        "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb VARCHAR(99) NOT NULL");
+        "_id UUID PRIMARY KEY, jsonb VARCHAR(99) NOT NULL");
     execute(context, "INSERT INTO " + schema + "." + INVALID_JSON + " VALUES "
         +"('" + INVALID_JSON_UUID + "', '}');");
     return postgresClient;
@@ -612,8 +612,9 @@ public class PostgresClientIT {
   @Test
   public void saveTrans(TestContext context) {
     postgresClient = createFoo(context);
+    String uuid = randomUuid();
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.save(trans, FOO, xPojo, context.asyncAssertSuccess(id -> {
+      postgresClient.save(trans, FOO,uuid, xPojo, context.asyncAssertSuccess(id -> {
         Criterion filter = new Criterion(new Criteria().addField("_id").setJSONB(false)
             .setOperation("=").setValue("'" + id  + "'"));
         postgresClient.get(trans, FOO, StringPojo.class, filter, false, false, context.asyncAssertSuccess(reply1 -> {
@@ -682,12 +683,14 @@ public class PostgresClientIT {
 
   @Test
   public void saveConnectionNullConnection(TestContext context) {
-    postgresClientNullConnection().save(FOO, xPojo, context.asyncAssertFailure());
+    String uuid = randomUuid();
+    postgresClientNullConnection().save(FOO, uuid, xPojo, context.asyncAssertFailure());
   }
 
   @Test
   public void saveConnectionGetConnectionFails(TestContext context) {
-    postgresClientGetConnectionFails().save(FOO, xPojo, context.asyncAssertFailure());
+    String uuid = randomUuid();
+    postgresClientGetConnectionFails().save(FOO, uuid, xPojo, context.asyncAssertFailure());
   }
 
   @Test
@@ -740,8 +743,9 @@ public class PostgresClientIT {
   @Test
   public void getByIdUsingSqlPrimaryKey(TestContext context) {
     Async async = context.async();
+    String uuid = randomUuid();
     postgresClient = createFoo(context);
-    postgresClient.save(FOO, xPojo, context.asyncAssertSuccess(id -> {
+    postgresClient.save(FOO, uuid, xPojo, context.asyncAssertSuccess(id -> {
       String sql = "WHERE _id='" + id + "'";
       postgresClient.get(FOO, StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
         try {
@@ -758,8 +762,9 @@ public class PostgresClientIT {
   @Test
   public void getByIdUsingSqlPrimaryKeyWithoutUnderscore(TestContext context) {
     Async async = context.async();
+    String uuid = randomUuid();
     postgresClient = createBarIdHasNoUnderscore(context);
-    postgresClient.save("bar", xPojo, context.asyncAssertSuccess(id -> {
+    postgresClient.save("bar", uuid, xPojo, context.asyncAssertSuccess(id -> {
       String sql = "WHERE id='" + id + "'";
       postgresClient.get("bar", StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
         try {
@@ -776,8 +781,9 @@ public class PostgresClientIT {
   @Test
   public void getByIdAsString(TestContext context) {
     Async async = context.async();
+    String uuid = randomUuid();
     postgresClient = createFoo(context);
-    postgresClient.save(FOO, xPojo, res -> {
+    postgresClient.save(FOO, uuid, xPojo, res -> {
       assertSuccess(context, res);
       String id = res.result();
       postgresClient.getByIdAsString(FOO, id, get -> {
@@ -793,8 +799,9 @@ public class PostgresClientIT {
   @Test
   public void getByIdAsPojo(TestContext context) {
     Async async = context.async();
+    String uuid = randomUuid();
     postgresClient = createFoo(context);
-    postgresClient.save(FOO, xPojo, res -> {
+    postgresClient.save(FOO, uuid, xPojo, res -> {
       assertSuccess(context, res);
       String id = res.result();
       postgresClient.getById(FOO, id, StringPojo.class, get -> {
@@ -1566,7 +1573,7 @@ public class PostgresClientIT {
   @Test
   public void selectDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     postgresClient.select("SELECT DISTINCT ON (jsonb->>'owner') * FROM mock_po_lines  ORDER BY (jsonb->>'owner') DESC", select -> {
@@ -1581,7 +1588,7 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
@@ -1599,7 +1606,7 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
       add(new FacetField("jsonb->>'edition'"));
@@ -1618,7 +1625,7 @@ public class PostgresClientIT {
   @Test
   public void getDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     String distinctOn = "jsonb->>'order_format'";
@@ -1643,7 +1650,7 @@ public class PostgresClientIT {
 
   @Test
   public void getDistinctOnWithFacets(TestContext context) throws IOException {
-    final String tableDefiniton = "_id UUID PRIMARY KEY DEFAULT gen_random_uuid(), jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
@@ -1723,8 +1730,8 @@ public class PostgresClientIT {
 
     for (String jsonbValue : polines.split("\n")) {
       String additionalField = new JsonObject(jsonbValue).getString("publication_date");
-      execute(context, "INSERT INTO " + schema + "." + tableName + " (jsonb, distinct_test_field) VALUES "
-        + "('" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
+      execute(context, "INSERT INTO " + schema + "." + tableName + " (_id, jsonb, distinct_test_field) VALUES "
+        + "('" + randomUuid() + "', '" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
     }
     return postgresClient;
   }

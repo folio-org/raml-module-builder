@@ -68,7 +68,7 @@ public class TenantAPIIT {
         map.put("TenantId", tenantId);
         tenantAPI.deleteTenant(map, h -> {
           tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
-            context.assertFalse(bool, "tenant exists");
+            context.assertFalse(bool, "tenant exists during delete");
             async.complete();
           }));
         }, Vertx.currentContext());
@@ -89,7 +89,7 @@ public class TenantAPIIT {
         map.put("TenantId", tenantId);
         tenantAPI.postTenant(tenantAttributes, map, h -> {
           tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
-            context.assertTrue(bool, "tenant exists");
+            context.assertTrue(bool, "tenant exists during post");
             async.complete();
           }));
         }, Vertx.currentContext());
