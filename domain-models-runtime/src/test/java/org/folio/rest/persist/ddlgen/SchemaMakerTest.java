@@ -1,6 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -60,6 +61,12 @@ public class SchemaMakerTest {
     thrown.expectMessage("Unrecognized field \"pkColumnName\"");
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
     schemaMaker.generateDDL();
+  }
+
+  @Test
+  public void pkColumnName() {
+    assertThat(new Table().getPkColumnName(), is("id"));
+    assertThat(new View().getPkColumnName(), is("id"));
   }
 
   @Test
