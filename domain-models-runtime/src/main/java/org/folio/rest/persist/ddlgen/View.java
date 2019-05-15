@@ -10,10 +10,6 @@ public class View extends Versioned {
 
   private String viewName;
   private String mode;
-  //pkColumnName should be the id column (not in jsonb) of the table within the view whose results
-  //we will be returning from the select on this view, since the postgresClient exposes mapping the id
-  //into the jsonb or returning that id for the pojos it maps to from the returned jsons
-  private String pkColumnName = "id";
   private String joinType = "JOIN";
   private List<Join> join;
 
@@ -29,11 +25,12 @@ public class View extends Versioned {
   public void setMode(String mode) {
     this.mode = mode;
   }
+  /**
+   * Name of the primary key field of the referenced table. This is no longer configurable and is always "id".
+   * A basic table has these two fields: id UUID PRIMARY KEY, jsonb JSONB NOT NULL.
+   */
   public String getPkColumnName() {
-    return pkColumnName;
-  }
-  public void setPkColumnName(String pkColumnName) {
-    this.pkColumnName = pkColumnName;
+    return Table.PK_COLUMN_NAME;
   }
   public String getJoinType() {
     return joinType;

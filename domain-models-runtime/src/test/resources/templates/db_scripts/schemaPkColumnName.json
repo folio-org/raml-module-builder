@@ -2,7 +2,7 @@
   "tables": [
     {
       "tableName": "test_tenantapi",
-      "generateId" : true
+      "pkColumnName": "_id"
     }
   ]
 }

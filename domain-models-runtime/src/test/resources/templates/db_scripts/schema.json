@@ -1,8 +1,7 @@
 {
   "tables": [
     {
-      "tableName": "test_tenantapi",
-      "pkColumnName": "_id"
+      "tableName": "test_tenantapi"
     }
   ]
 }
