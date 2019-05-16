@@ -8,13 +8,13 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 public class AnnotationGrabberTest {
   private static final Logger log = LoggerFactory.getLogger(AnnotationGrabberTest.class);
 
   @Test
-  void generateMappings() throws Exception {
+  public void generateMappings() throws Exception {
     JsonObject mappings = AnnotationGrabber.generateMappings();
     log.debug(mappings.encodePrettily());
     JsonObject unittests = mappings.getJsonObject("^unittests");
