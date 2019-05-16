@@ -177,9 +177,6 @@
           "pkColumnName": {
             "type": "string"
           },
-          "populateJsonWithId": {
-            "type": "boolean"
-          },
           "tableName": {
             "type": "string"
           },

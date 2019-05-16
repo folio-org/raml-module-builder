@@ -72,7 +72,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
   private void assertIdJsonb(TestContext context, String id, String idInJsonb) {
     Async async = context.async();
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
-    String sql = "SELECT _id, jsonb->>'id' FROM " + schema + ".test_tenantapi";
+    String sql = "SELECT id, jsonb->>'id' FROM " + schema + ".test_tenantapi";
     postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
       context.assertEquals(id       , result.getString(0), "id");
       context.assertEquals(idInJsonb, result.getString(1), "jsonb->>'id'");
@@ -83,7 +83,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
 
   @Test
   public void canSetIdInJsonb(TestContext context) throws Exception {
-    createSchema(context, "templates/db_scripts/schemaPopulateJsonWithId.json");
+    createSchema(context, "templates/db_scripts/schemaWithAudit.json");
     String table = schema + ".test_tenantapi";
     String uuid1 = UUID.randomUUID().toString();
     String uuid2 = UUID.randomUUID().toString();
@@ -91,7 +91,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertIdJsonb(context, uuid1, uuid1);
     executeSuperuser(context, "UPDATE " + table + " SET jsonb='{\"id\":\"" + uuid2 + "\"}'");
     assertIdJsonb(context, uuid1, uuid1);
-    executeSuperuser(context, "UPDATE " + table + " SET _id='" + uuid2 + "'");
+    executeSuperuser(context, "UPDATE " + table + " SET id='" + uuid2 + "'");
     assertIdJsonb(context, uuid2, uuid2);
   }
 }

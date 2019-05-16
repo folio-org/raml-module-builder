@@ -45,7 +45,7 @@ public class PostgresClientITBase {
     executeSuperuser(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE");
     executeSuperuserIgnore(context, "DROP OWNED BY " + schema + " CASCADE");
     executeSuperuser(context, "DROP ROLE IF EXISTS " + schema);
-    // Prevent "aclcheck_error" "permission denied for schema ..."
+    // Prevent "aclcheck_error" "permission denied for schema"
     // when recreating the ROLE with the same name but a different role OID.
     PostgresClient.closeAllClients();
   }

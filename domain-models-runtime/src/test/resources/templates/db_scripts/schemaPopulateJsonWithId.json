@@ -3,7 +3,7 @@
     {
       "tableName": "test_tenantapi",
       "populateJsonWithId": true,
-      "pkColumnName": "_id"
+      "pkColumnName": "id"
     }
   ]
 }

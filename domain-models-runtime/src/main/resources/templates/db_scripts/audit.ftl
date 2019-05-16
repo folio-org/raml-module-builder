@@ -23,36 +23,36 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
       </#if>
     </#if>
       seed TEXT;
-      id UUID;
+      maxid UUID;
     BEGIN
-        id = (SELECT ${myuniversity}_${mymodule}.max(${table.pkColumnName}) FROM ${myuniversity}_${mymodule}.audit_${table.tableName});
-        IF id IS NULL THEN
+        maxid = (SELECT ${myuniversity}_${mymodule}.max(${table.pkColumnName}) FROM ${myuniversity}_${mymodule}.audit_${table.tableName});
+        IF maxid IS NULL THEN
             seed = md5(concat('${myuniversity}_${mymodule}.audit_${table.tableName}', NEW.jsonb));
             -- UUID version byte
             seed = overlay(seed placing '4' from 13);
             -- UUID variant byte
             seed = overlay(seed placing '8' from 17);
-            id = seed::uuid;
+            maxid = seed::uuid;
         ELSE
-            id = ${myuniversity}_${mymodule}.next_uuid(id);
+            maxid = ${myuniversity}_${mymodule}.next_uuid(maxid);
         END IF;
         IF (TG_OP = 'DELETE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.delete??>
             ${table.auditingSnippet.delete.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, OLD.${table.pkColumnName}, 'D', OLD.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, OLD.${table.pkColumnName}, 'D', OLD.jsonb, current_timestamp;
             RETURN OLD;
         ELSIF (TG_OP = 'UPDATE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.update??>
             ${table.auditingSnippet.update.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, NEW.${table.pkColumnName}, 'U', NEW.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, NEW.${table.pkColumnName}, 'U', NEW.jsonb, current_timestamp;
             RETURN NEW;
         ELSIF (TG_OP = 'INSERT') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.insert??>
             ${table.auditingSnippet.insert.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT id, NEW.${table.pkColumnName}, 'I', NEW.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, NEW.${table.pkColumnName}, 'I', NEW.jsonb, current_timestamp;
             RETURN NEW;
         END IF;
         RETURN NULL;
@@ -62,5 +62,3 @@ $${table.tableName}_audit$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS audit_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
 
 CREATE TRIGGER audit_${table.tableName} AFTER INSERT OR UPDATE OR DELETE ON ${myuniversity}_${mymodule}.${table.tableName} FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.audit_${table.tableName}_changes();
-
-GRANT ALL PRIVILEGES ON audit_${table.tableName} TO ${myuniversity}_${mymodule};
