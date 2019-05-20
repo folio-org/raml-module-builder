@@ -83,7 +83,7 @@
              contains jackson-databind >= 2.9.8 -->
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>2.9.8</version>
+        <version>2.9.9</version>
       </dependency>
       <dependency>
         <groupId>javax.el</groupId>
@@ -123,7 +123,7 @@
       <dependency>
         <groupId>org.glassfish.jersey.media</groupId>
         <artifactId>jersey-media-json-jackson</artifactId>
-        <version>2.22</version>
+        <version>2.26</version>
       </dependency>
       <dependency>
         <groupId>com.google.guava</groupId>
@@ -175,12 +175,12 @@
             <configuration>
               <rules>
                  <requireMavenVersion>
-                  <message>Maven &gt;= 3.3 required</message>
+                  <message>Maven >= 3.3 required</message>
                   <version>3.3</version>
                 </requireMavenVersion>
                 <requireJavaVersion>
                   <message>
-                    JDK &gt;= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
+                    JDK >= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
                     https://dev.folio.org/guides/troubleshooting/#missing-certificate-authority-for-lets-encrypt
                   </message>
                   <version>1.8.0-101</version>
