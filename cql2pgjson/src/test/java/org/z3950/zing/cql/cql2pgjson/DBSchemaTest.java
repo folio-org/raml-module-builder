@@ -1,5 +1,8 @@
 package org.z3950.zing.cql.cql2pgjson;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -28,9 +31,7 @@ public class DBSchemaTest {
           break;
         }
       }
-      if(!found) {
-        throw new Exception(String.format("Missing tableName '%s' in db schema", tableName));
-      }
+      assertThat(tableName, found, is(true));
     }
   }
 }

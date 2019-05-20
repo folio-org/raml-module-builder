@@ -93,6 +93,7 @@ public class ComparableVersion
 
     private ListItem items;
 
+    @SuppressWarnings("squid:S1214")  // suppress "Move constants to a class or enum."
     private interface Item
     {
         int INT_ITEM = 3;

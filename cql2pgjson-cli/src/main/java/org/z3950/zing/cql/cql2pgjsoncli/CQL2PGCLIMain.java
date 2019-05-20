@@ -31,13 +31,17 @@ public class CQL2PGCLIMain {
   static IntConsumer exit = System::exit;
   private static Logger logger = Logger.getLogger(CQL2PGCLIMain.class.getName());
 
+  @SuppressWarnings({
+    "squid:S1148",  // suppress "Use a logger to log this exception." because it's a CLI
+    "squid:S106",   // suppress "Replace this use of System.out or System.err by a logger." because it's a CLI
+  })
   public static void main( String[] args ) {
     try {
       System.out.println(handleOptions(args));
     } catch( Exception e ) {
       System.err.println(String.format("Got error %s, %s: ", e.getClass().toString(),
           e.getLocalizedMessage()));
-      e.printStackTrace();
+      e.printStackTrace(System.err);
       exit.accept(1);
     }
   }
@@ -91,11 +95,10 @@ public class CQL2PGCLIMain {
     return content;
   }
 
-  static protected String parseCQL(CQL2PgJSON cql2pgJson, String dbName, String cql) throws IOException,
-    QueryValidationException {
+  protected static String parseCQL(CQL2PgJSON cql2pgJson, String dbName, String cql) throws QueryValidationException {
     SqlSelect sql = cql2pgJson.toSql(cql);
     String orderby = sql.getOrderBy();
-    logger.log(Level.FINE, String.format("orderby for cql query '%s' is '%s'", cql, orderby));
+    logger.log(Level.FINE, () -> String.format("orderby for cql query '%s' is '%s'", cql, orderby));
     if(StringUtils.isBlank(orderby)) {
       return String.format("select * from %s where %s", dbName, sql.getWhere());
     }
