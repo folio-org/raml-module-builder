@@ -9,7 +9,10 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
  * @author shale
  *
  */
-public class ObjectMapperTool {
+public final class ObjectMapperTool {
+  private ObjectMapperTool() {
+    throw new UnsupportedOperationException("Cannot instantiate utility class.");
+  }
 
   private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper();
 
