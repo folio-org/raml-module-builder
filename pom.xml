@@ -10,6 +10,9 @@
     <module>rules</module>
     <module>testing</module>
     <module>util</module>
+    <module>dbschema</module>
+    <module>cql2pgjson</module>
+    <module>cql2pgjson-cli</module>
     <module>domain-models-api-aspects</module>
     <module>domain-models-interface-extensions</module>
     <module>domain-models-api-interfaces</module>
