@@ -101,8 +101,9 @@ public class PostgresClient {
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
   private static final String    SELECT = "SELECT ";
-  private static final String    FROM   = " FROM ";
   private static final String    UPDATE = "UPDATE ";
+  private static final String    DELETE = "DELETE ";
+  private static final String    FROM   = " FROM ";
   private static final String    SET    = " SET ";
   private static final String    WHERE  = " WHERE ";
   private static final String    AND    = " AND ";
@@ -909,7 +910,7 @@ public class PostgresClient {
       .append(schemaName).append(DOT).append(table)
       .append(" (").append("_id ,").append(column).append(") VALUES ('").append(UUID.randomUUID().toString()).append("',?)");
     for (int i = 1; i < entities.size(); i++) {
-      
+
       sql.append(",('").append(UUID.randomUUID().toString()).append("',?)");
     }
     sql.append(" RETURNING ").append(idField);
@@ -1178,56 +1179,89 @@ public class PostgresClient {
     });
   }
 
-  public void delete(String table, CQLWrapper cql, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    String where = "";
+  /**
+   * Delete by id.
+   * @param table table name without schema
+   * @param id primary key value of the record to delete
+   */
+  public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) {
+    client.getConnection(conn -> delete(conn, table, id, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Delete by id.
+   * @param connection where to run, can be within a transaction
+   * @param table table name without schema
+   * @param id primary key value of the record to delete
+   * @param replyHandler
+   */
+  public void delete(AsyncResult<SQLConnection> connection, String table, String id,
+      Handler<AsyncResult<UpdateResult>> replyHandler) {
+
     try {
-      if (cql != null) {
-        where = cql.toString();
+      if (connection.failed()) {
+        replyHandler.handle(Future.failedFuture(connection.cause()));
+        return;
       }
-      doDelete(table, where, replyHandler);
+      connection.result().updateWithParams(
+          "DELETE FROM " + schemaName + DOT + table + WHERE + idField + "=?",
+          new JsonArray().add(id),
+          replyHandler);
     } catch (Exception e) {
       replyHandler.handle(Future.failedFuture(e));
     }
   }
 
   /**
-   * Delete based on id of record - the id is not in the json object but is a separate column
-   * @param table
-   * @param id
-   * @param replyHandler
+   * Delete by CQL wrapper.
+   * @param table table name without schema
+   * @param cql which records to delete
    */
-  public void delete(String table, String id, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    doDelete(table, WHERE + idField + "='" + id + "'", replyHandler);
+  public void delete(String table, CQLWrapper cql,
+      Handler<AsyncResult<UpdateResult>> replyHandler) {
+    client.getConnection(conn -> delete(conn, table, cql, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Delete by CQL wrapper.
+   * @param connection where to run, can be within a transaction
+   * @param table table name without schema
+   * @param cql which records to delete
+   */
+  public void delete(AsyncResult<SQLConnection> connection, String table, CQLWrapper cql,
+      Handler<AsyncResult<UpdateResult>> replyHandler) {
+    try {
+      String where = cql == null ? "" : cql.toString();
+      doDelete(connection, table, where, replyHandler);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   /**
    * Delete based on filter
-   * @param table
+   * @param table table name without schema
    * @param filter
    * @param replyHandler
    */
   public void delete(String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    StringBuilder sb = new StringBuilder();
-    if (filter != null) {
-      sb.append(filter.toString());
-    }
-    doDelete(table, sb.toString(), replyHandler);
+    client.getConnection(conn -> delete(conn, table, filter, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
    * Delete as part of a transaction
-   * @param conn
-   * @param table
-   * @param filter
-   * @param replyHandler
+   * @param conn where to run, can be within a transaction
+   * @param table table name without schema
+   * @param filter which records to delete
    */
-  public void delete(AsyncResult<SQLConnection> conn, String table, Criterion filter, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    SQLConnection sqlConnection = conn.result();
-    StringBuilder sb = new StringBuilder();
-    if (filter != null) {
-      sb.append(filter.toString());
+  public void delete(AsyncResult<SQLConnection> conn, String table, Criterion filter,
+      Handler<AsyncResult<UpdateResult>> replyHandler) {
+    try {
+      String where = filter == null ? "" : filter.toString();
+      doDelete(conn, table, where, replyHandler);
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
     }
-    doDelete(sqlConnection, true, table, sb.toString(), replyHandler);
   }
 
   /**
@@ -1238,66 +1272,57 @@ public class PostgresClient {
    * @param replyHandler
    */
   public void delete(String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    String pojo = null;
+    client.getConnection(conn -> delete(conn, table, entity, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  public void delete(AsyncResult<SQLConnection> connection, String table, Object entity,
+      Handler<AsyncResult<UpdateResult>> replyHandler) {
     try {
-      pojo = pojo2json(entity);
-    } catch (Exception e) {
-      replyHandler.handle(Future.failedFuture(e));
-      return;
-    }
-    doDelete(table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", replyHandler);
-  }
-
-  public void delete(AsyncResult<SQLConnection> conn, String table, Object entity, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    SQLConnection sqlConnection = conn.result();
-    String pojo = null;
-    try {
-      pojo = pojo2json(entity);
-    } catch (Exception e) {
-      replyHandler.handle(Future.failedFuture(e));
-      return;
-    }
-    doDelete(sqlConnection, true, table, WHERE + DEFAULT_JSONB_FIELD_NAME + "@>'" + pojo + "' ", replyHandler);
-  }
-
-  private void doDelete(String table, String where, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        doDelete(connection, false, table, where, replyHandler);
+      long start = System.nanoTime();
+      if (connection.failed()) {
+        replyHandler.handle(Future.failedFuture(connection.cause()));
+        return;
       }
-      else{
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
-  }
-
-  private void doDelete(SQLConnection connection, boolean transactionMode, String table, String where, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    long start = System.nanoTime();
-    vertx.runOnContext(v -> {
-      try {
-        String q = "DELETE FROM " + schemaName + DOT + table + " " + where;
-        log.debug("doDelete query = " + q);
-        connection.update(q, query -> {
-          if(!transactionMode){
-            connection.close();
-          }
-          if (query.failed()) {
-            log.error(query.cause().getMessage(), query.cause());
-            replyHandler.handle(Future.failedFuture(query.cause()));
-          } else {
-            replyHandler.handle(Future.succeededFuture(query.result()));
-          }
-          statsTracker(DELETE_STAT_METHOD, table, start);
-        });
-      } catch (Exception e) {
-        if(!transactionMode){
-          connection.close();
+      String json = pojo2json(entity);
+      String sql = DELETE + FROM + schemaName + DOT + table + WHERE + DEFAULT_JSONB_FIELD_NAME + "@>?";
+      log.debug("delete by entity, query = " + sql + "; ?=" + json);
+      connection.result().updateWithParams(sql, new JsonArray().add(json), delete -> {
+        statsTracker(DELETE_STAT_METHOD, table, start);
+        if (delete.failed()) {
+          log.error(delete.cause().getMessage(), delete.cause());
+          replyHandler.handle(Future.failedFuture(delete.cause()));
+          return;
         }
-        log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
+        replyHandler.handle(Future.succeededFuture(delete.result()));
+      });
+    } catch (Exception e) {
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  private void doDelete(AsyncResult<SQLConnection> connection, String table, String where,
+      Handler<AsyncResult<UpdateResult>> replyHandler) {
+    try {
+      long start = System.nanoTime();
+      String sql = DELETE + FROM + schemaName + DOT + table + " " + where;
+      log.debug("doDelete query = " + sql);
+      if (connection.failed()) {
+        replyHandler.handle(Future.failedFuture(connection.cause()));
+        return;
       }
-    });
+      connection.result().update(sql, query -> {
+        statsTracker(DELETE_STAT_METHOD, table, start);
+        if (query.failed()) {
+          log.error(query.cause().getMessage(), query.cause());
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        replyHandler.handle(Future.succeededFuture(query.result()));
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
