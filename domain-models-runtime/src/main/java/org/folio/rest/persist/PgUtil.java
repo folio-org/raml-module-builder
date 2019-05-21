@@ -9,11 +9,13 @@ import java.io.IOException;
 
 import javax.ws.rs.core.Response;
 
-import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -31,8 +33,6 @@ import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
-import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -315,7 +315,7 @@ public final class PgUtil {
     } catch (FieldException e) {
       logger.error(e.getMessage(), e);
       asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
-    } 
+    }
   }
 
   static <T, C> void get(PreparedCQL preparedCql, Class<T> clazz, Class<C> collectionClazz,
@@ -697,7 +697,7 @@ public final class PgUtil {
       }
 
       logger.info("Optimized SQL generated. Source CQL: " + cql);
-      
+
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.select(sql, reply -> {
         try {

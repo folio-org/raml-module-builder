@@ -54,7 +54,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
   </#if>
   <#if table.mode != "delete">
     CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.tableName} (
-      ${table.pkColumnName} UUID PRIMARY KEY,
+      id UUID PRIMARY KEY,
       jsonb JSONB NOT NULL
     );
     -- old trigger name
@@ -72,7 +72,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
     <#if table.withMetadata == true>
     <#-- add the two needed columns per table -->
     ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}
-      ADD COLUMN IF NOT EXISTS creation_date timestamp WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS creation_date timestamp,
       ADD COLUMN IF NOT EXISTS created_by text;
     <#else>
     ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}

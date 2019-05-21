@@ -1,0 +1,845 @@
+{
+  "fullText": {
+    "defaultDictionary": "simple"
+  },
+
+  "tables": [
+    {
+      "tableName": "loan_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "material_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "locinstitution",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "loccampus",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "institutionId",
+          "targetTable": "locinstitution",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "loclibrary",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "campusId",
+          "targetTable": "loccampus",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "location",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "code",
+          "tOps": "ADD"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "institutionId",
+          "targetTable": "locinstitution",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "campusId",
+          "targetTable": "loccampus",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "libraryId",
+          "targetTable": "loclibrary",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "service_point",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "code",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "service_point_user",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "userId",
+          "tOps": "ADD"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "defaultServicePointId",
+          "targetTable": "service_point",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "identifier_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "instance_relationship_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "contributor_type",
+      "withMetadata": false,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "code",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "contributor_name_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "instance_type",
+      "withMetadata": false,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "code",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "instance_format",
+      "withMetadata": false,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "code",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "classification_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "electronic_access_relationship",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "statistical_code_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "code",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "statistical_code",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "code, statisticalCodeTypeId",
+          "tOps": "ADD"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "statisticalCodeTypeId",
+          "targetTable": "statistical_code_type",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "instance_status",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "code",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "mode_of_issuance",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "alternative_title_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "instance",
+      "withMetadata": true,
+      "foreignKeys": [
+        {
+          "fieldName": "instanceStatusId",
+          "targetTable": "instance_status",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "modeOfIssuanceId",
+          "targetTable": "mode_of_issuance",
+          "tOps": "ADD"
+        }
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "hrid",
+          "tOps": "ADD"
+        }
+      ],
+      "ginIndex": [
+        {
+          "fieldName": "title",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "indexTitle",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "contributors",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "identifiers",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "instanceTypeId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "instanceStatusId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "modeOfIssuanceId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "classifications",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "subjects",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "indexTitle",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "title",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "statisticalCodeIds",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "contributors",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "publication",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "title"
+        },
+        {
+          "fieldName": "languages"
+        },
+        {
+          "fieldName": "instanceTypeId"
+        }
+      ],
+      "customSnippetPath": "instanceHrid.sql"
+    },
+    {
+      "tableName": "instance_relationship",
+      "withMetadata": true,
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "superInstanceId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "subInstanceId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "superInstanceId",
+          "targetTable": "instance",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "subInstanceId",
+          "targetTable": "instance",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "instanceRelationshipTypeId",
+          "targetTable": "instance_relationship_type",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "instance_source_marc",
+      "withMetadata": true,
+      "customSnippetPath": "instanceSourceMarc.sql"
+    },
+    {
+      "tableName": "ill_policy",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "call_number_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "holdings_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "holdings_note_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "item_note_type",
+      "withMetadata": true,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "holdings_record",
+      "withMetadata": true,
+      "foreignKeys": [
+        {
+          "fieldName": "instanceId",
+          "targetTable": "instance",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "permanentLocationId",
+          "targetTable": "location",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "temporaryLocationId",
+          "targetTable": "location",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "holdingsTypeId",
+          "targetTable": "holdings_type",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "callNumberTypeId",
+          "targetTable": "call_number_type",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "illPolicyId",
+          "targetTable": "ill_policy",
+          "tOps": "ADD"
+        }
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "hrid",
+          "tOps": "ADD"
+        }
+      ],
+      "ginIndex": [
+        {
+          "fieldName": "instanceId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "permanentLocationId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "temporaryLocationId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "instanceId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "permanentLocationId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "temporaryLocationId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "customSnippetPath": "holdingsRecordHrid.sql"
+    },
+    {
+      "tableName": "item",
+      "withMetadata": true,
+      "foreignKeys": [
+        {
+          "fieldName": "holdingsRecordId",
+          "targetTable": "holdings_record",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "permanentLoanTypeId",
+          "targetTable": "loan_type",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "temporaryLoanTypeId",
+          "targetTable": "loan_type",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "materialTypeId",
+          "targetTable": "material_type",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "permanentLocationId",
+          "targetTable": "location",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "temporaryLocationId",
+          "targetTable": "location",
+          "tOps": "ADD"
+        }
+
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "hrid",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "holdingsRecordId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "materialTypeId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "barcode",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "status.name",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "id",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "ginIndex": [
+        {
+          "fieldName": "barcode",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "status.name",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "materialTypeId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "holdingsRecordId",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "barcode",
+          "tOps": "ADD"
+        }
+      ],
+      "customSnippetPath": "itemHrid.sql"
+    }
+  ],
+  "views": [
+    {
+      "viewName": "items_mt_view",
+      "join": [
+        {
+          "table": {
+            "tableName": "item",
+            "joinOnField": "materialTypeId"
+          },
+          "joinTable": {
+            "tableName": "material_type",
+            "joinOnField": "id",
+            "jsonFieldAlias": "mt_jsonb"
+          }
+        }
+      ]
+    },
+    {
+      "viewName": "instance_holding_view",
+      "join": [
+        {
+          "table": {
+            "tableName": "instance",
+            "joinOnField": "id"
+          },
+          "joinTable": {
+            "tableName": "holdings_record",
+            "joinOnField": "instanceId",
+            "jsonFieldAlias": "ho_jsonb"
+          }
+        }
+      ]
+    },
+    {
+      "viewName": "instance_holding_item_view",
+      "joinType": "LEFT JOIN",
+      "join": [
+        {
+          "table": {
+            "tableName": "instance",
+            "joinOnField": "id"
+          },
+          "joinTable": {
+            "tableName": "holdings_record",
+            "joinOnField": "instanceId",
+            "jsonFieldAlias": "ho_jsonb"
+          }
+        },
+        {
+          "table": {
+            "tableName": "holdings_record",
+            "joinOnField": "id",
+            "jsonFieldAlias": "ho2_jsonb"
+          },
+          "joinTable": {
+            "tableName": "item",
+            "joinOnField": "holdingsRecordId",
+            "jsonFieldAlias": "it_jsonb"
+          }
+        }
+      ]
+    }
+  ]
+}

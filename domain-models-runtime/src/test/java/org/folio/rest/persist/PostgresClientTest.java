@@ -49,7 +49,7 @@ public class PostgresClientTest {
   "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb @> '{\"barcode\":4}' limit 100 offset 0",
   "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb @> '{\" AND IS TRUE \":4}' limit 100 offset 0",
   //"SELECT * FROM table WHERE items0_mt_view.jsonb->>' ORDER BY items1_mt_view.jsonb->>''aaa'' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items3_mt_view.jsonb->>''aaa'' '",
-  "SELECT _id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}' LIMIT 1 OFFSET 0 ",
+  "SELECT id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}' LIMIT 1 OFFSET 0 ",
   "select * from diku999_circulation_storage.audit_loan WHERE audit_loan.jsonb->>'id' = 'cf23adf0-61ba-4887-bf82-956c4aae2260 order by created_date LIMIT 10 OFFSET 0' order by created_date LIMIT 10 OFFSET 0 ",
   "select * from slowtest99_mod_inventory_storage.item where (item.jsonb->'barcode') = to_jsonb('1000000'::int)  order by a LIMIT 30;",
   "SELECT  * FROM slowtest_cql5_mod_inventory_storage.item  WHERE lower(f_unaccent(item.jsonb->>'default')) LIKE lower(f_unaccent('true')) ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC LIMIT 10 OFFSET 0",
@@ -196,11 +196,10 @@ public class PostgresClientTest {
   public void testGetExternalColumnSetters() throws NoSuchMethodException {
     PostgresClient testClient = PostgresClient.testClient();
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
-      "id", "foo", "bar", "biz", "baz"
+      "foo", "bar", "biz", "baz"
     }));
     Map<String, Method> externalColumnSettters = testClient.getExternalColumnSetters(columnNames, TestPojo.class, false);
-    assertThat(externalColumnSettters.size(), is(5));
-    assertThat(externalColumnSettters.get("id"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("id"), String.class)));
+    assertThat(externalColumnSettters.size(), is(4));
     assertThat(externalColumnSettters.get("foo"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("foo"), String.class)));
     assertThat(externalColumnSettters.get("bar"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("bar"), String.class)));
     assertThat(externalColumnSettters.get("biz"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("biz"), Double.class)));
@@ -215,7 +214,6 @@ public class PostgresClientTest {
     }));
     Map<String, Method> externalColumnSettters = testClient.getExternalColumnSetters(columnNames, TestPojo.class, false);
     TestPojo o = new TestPojo();
-    String id = "80c72dad-f88c-4d48-a516-9a0ab16a029b";
     String foo = "Hello";
     String bar = "World";
     Double biz = 1.0;
@@ -223,13 +221,11 @@ public class PostgresClientTest {
       "This", "is", "a", "test"
     }));
     JsonObject row = new JsonObject()
-        .put("id", id)
         .put("foo", foo)
         .put("bar", bar)
         .put("biz", biz)
         .put("baz", baz);
     testClient.populateExternalColumns(externalColumnSettters, o, row);
-    assertThat(o.getId(), is(id));
     assertThat(o.getFoo(), is(foo));
     assertThat(o.getBar(), is(bar));
     assertThat(o.getBiz(), is(biz));
@@ -351,14 +347,14 @@ public class PostgresClientTest {
       "     )\n" +
       ",\n" +
       "ret_records as (\n" +
-      "       select _id as _id, jsonb  FROM facets\n" +
+      "       select id as id, jsonb  FROM facets\n" +
       "       )\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as _id, jsonb FROM lst1 limit 5)\n" +
+      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id, jsonb FROM lst1 limit 5)\n" +
       "  \n" +
       "  UNION\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as _id,  jsonb_build_object('count' , count) FROM count_on)\n" +
+      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id,  jsonb_build_object('count' , count) FROM count_on)\n" +
       "  UNION ALL\n" +
-      "  (select _id as _id, jsonb from ret_records  LIMIT 10  OFFSET 1);\n")
+      "  (select id as id, jsonb from ret_records  LIMIT 10  OFFSET 1);\n")
     );
     assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_jsonb_pojo"));
   }
@@ -415,14 +411,14 @@ public class PostgresClientTest {
       "     )\n" +
       ",\n" +
       "ret_records as (\n" +
-      "       select _id as _id, jsonb  FROM facets\n" +
+      "       select id as id, jsonb  FROM facets\n" +
       "       )\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as _id, jsonb FROM lst1 limit 5)\n" +
+      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id, jsonb FROM lst1 limit 5)\n" +
       "  \n" +
       "  UNION\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as _id,  jsonb_build_object('count' , count) FROM count_on)\n" +
+      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id,  jsonb_build_object('count' , count) FROM count_on)\n" +
       "  UNION ALL\n" +
-      "  (select _id as _id, jsonb from ret_records  );\n")
+      "  (select id as id, jsonb from ret_records  );\n")
     );
     assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_jsonb_pojo WHERE jsonb->>'my'"));
   }

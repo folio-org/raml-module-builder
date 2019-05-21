@@ -2,7 +2,7 @@
 -- audit table to keep a history of the changes
 -- made to a record.
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} (
-   ${table.pkColumnName} UUID PRIMARY KEY,
+   id UUID PRIMARY KEY,
    orig_id UUID NOT NULL,
    operation char(1) NOT NULL,
    jsonb jsonb,
@@ -25,7 +25,7 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
       seed TEXT;
       maxid UUID;
     BEGIN
-        maxid = (SELECT ${myuniversity}_${mymodule}.max(${table.pkColumnName}) FROM ${myuniversity}_${mymodule}.audit_${table.tableName});
+        maxid = (SELECT ${myuniversity}_${mymodule}.max(id) FROM ${myuniversity}_${mymodule}.audit_${table.tableName});
         IF maxid IS NULL THEN
             seed = md5(concat('${myuniversity}_${mymodule}.audit_${table.tableName}', NEW.jsonb));
             -- UUID version byte
@@ -40,19 +40,19 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
           <#if table.auditingSnippet?? && table.auditingSnippet.delete??>
             ${table.auditingSnippet.delete.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, OLD.${table.pkColumnName}, 'D', OLD.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, OLD.id, 'D', OLD.jsonb, current_timestamp;
             RETURN OLD;
         ELSIF (TG_OP = 'UPDATE') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.update??>
             ${table.auditingSnippet.update.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, NEW.${table.pkColumnName}, 'U', NEW.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, NEW.id, 'U', NEW.jsonb, current_timestamp;
             RETURN NEW;
         ELSIF (TG_OP = 'INSERT') THEN
           <#if table.auditingSnippet?? && table.auditingSnippet.insert??>
             ${table.auditingSnippet.insert.statement}
           </#if>
-            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, NEW.${table.pkColumnName}, 'I', NEW.jsonb, current_timestamp;
+            INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} SELECT maxid, NEW.id, 'I', NEW.jsonb, current_timestamp;
             RETURN NEW;
         END IF;
         RETURN NULL;

@@ -1,0 +1,30 @@
+{
+  "title": "Recursive Query schema",
+  "type": "object",
+  "properties": {
+    "term": {
+      "type": "string"
+    },
+    "boolean": {
+      "type": "object",
+      "properties": {
+        "op" : {
+          "type": "string"
+        },
+        "left": {
+          "$ref" : "file:/q/target/classes/query.json"
+        },
+        "right": {
+          "$ref" : "file:/q/target/classes/query.json"
+        }
+      }
+    },
+    "prox": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref" : "file:/q/target/classes/query.json"
+      }
+    }
+  }
+}

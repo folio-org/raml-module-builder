@@ -4,8 +4,8 @@
   "description": "Includes type and category of job, and whether it is enabled.",
   "type": "object",
   "properties": {
-    "_id": {
-      "description" : "_id",
+    "id": {
+      "description" : "id",
       "type": "string"
     },
     "module": {

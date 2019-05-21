@@ -2,12 +2,10 @@
   "tables": [
     {
       "tableName": "test_tenantapi",
-      "pkColumnName": "id",
       "withAuditing": true
     },
     {
       "tableName": "test_tenantapi2",
-      "pkColumnName": "id",
       "withAuditing": true
     }
   ]
