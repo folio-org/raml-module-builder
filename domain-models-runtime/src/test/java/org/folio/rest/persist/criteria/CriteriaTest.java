@@ -1,9 +1,17 @@
 package org.folio.rest.persist.criteria;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+
+import java.util.stream.Stream;
 
 import org.folio.rest.persist.Criteria.Criteria;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * @author shale
@@ -81,4 +89,22 @@ public class CriteriaTest {
       e.printStackTrace();
     }
   }
+
+  @ParameterizedTest
+  @MethodSource
+  void criteriaValue(String value, String sql) {
+    Criteria criteria = new Criteria().addField("'f'").setOperation("=").setValue(value);
+    assertThat(criteria.toString().replace(" ", ""), is("(jsonb->>'f')=" + sql));
+  }
+
+  static Stream<Arguments> criteriaValue() {
+    return Stream.of(
+        arguments("a",       "'a'"),
+        //arguments("'a'",     "'''a'''"),
+        //arguments("O'Kapi",  "'O''Kapi'"),
+        //arguments("'",       "''''"),
+        //arguments("Up/\\Up", "'Up/\\\\Up'"),
+        arguments("",        "''")
+    );
+}
 }
