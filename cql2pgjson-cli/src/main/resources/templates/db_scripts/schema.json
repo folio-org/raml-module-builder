@@ -7,7 +7,6 @@
     {
       "tableName": "loan_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -19,7 +18,6 @@
     {
       "tableName": "material_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -37,7 +35,6 @@
     {
       "tableName": "locinstitution",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -49,7 +46,6 @@
     {
       "tableName": "loccampus",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -68,7 +64,6 @@
     {
       "tableName": "loclibrary",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -87,7 +82,6 @@
     {
       "tableName": "location",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -120,7 +114,6 @@
     {
       "tableName": "service_point",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -136,7 +129,6 @@
     {
       "tableName": "service_point_user",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -155,7 +147,6 @@
     {
       "tableName": "identifier_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -173,7 +164,6 @@
     {
       "tableName": "instance_relationship_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -191,7 +181,6 @@
     {
       "tableName": "contributor_type",
       "withMetadata": false,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -213,7 +202,6 @@
     {
       "tableName": "contributor_name_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -231,7 +219,6 @@
     {
       "tableName": "instance_type",
       "withMetadata": false,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -253,7 +240,6 @@
     {
       "tableName": "instance_format",
       "withMetadata": false,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -275,7 +261,6 @@
     {
       "tableName": "classification_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -293,7 +278,6 @@
     {
       "tableName": "electronic_access_relationship",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -305,7 +289,6 @@
     {
       "tableName": "statistical_code_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -317,7 +300,6 @@
     {
       "tableName": "statistical_code",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -336,7 +318,6 @@
     {
       "tableName": "instance_status",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -352,7 +333,6 @@
     {
       "tableName": "mode_of_issuance",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -364,7 +344,6 @@
     {
       "tableName": "alternative_title_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -376,7 +355,6 @@
     {
       "tableName": "instance",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "foreignKeys": [
         {
           "fieldName": "instanceStatusId",
@@ -505,7 +483,6 @@
     {
       "tableName": "instance_relationship",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "index": [
         {
           "fieldName": "id",
@@ -547,13 +524,11 @@
     {
       "tableName": "instance_source_marc",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "customSnippetPath": "instanceSourceMarc.sql"
     },
     {
       "tableName": "ill_policy",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -565,7 +540,6 @@
     {
       "tableName": "call_number_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -577,7 +551,6 @@
     {
       "tableName": "holdings_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -589,7 +562,6 @@
     {
       "tableName": "holdings_note_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -601,7 +573,6 @@
     {
       "tableName": "item_note_type",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -613,7 +584,6 @@
     {
       "tableName": "holdings_record",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "foreignKeys": [
         {
           "fieldName": "instanceId",
@@ -703,7 +673,6 @@
     {
       "tableName": "item",
       "withMetadata": true,
-      "pkColumnName": "_id",
       "foreignKeys": [
         {
           "fieldName": "holdingsRecordId",
@@ -813,7 +782,6 @@
   "views": [
     {
       "viewName": "items_mt_view",
-      "pkColumnName": "_id",
       "join": [
         {
           "table": {
@@ -830,7 +798,6 @@
     },
     {
       "viewName": "instance_holding_view",
-      "pkColumnName": "_id",
       "join": [
         {
           "table": {
@@ -847,7 +814,6 @@
     },
     {
       "viewName": "instance_holding_item_view",
-      "pkColumnName": "_id",
       "joinType": "LEFT JOIN",
       "join": [
         {

@@ -96,9 +96,9 @@ public class PgUtilIT {
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
     execute(context, "CREATE TABLE " + schema + ".user " +
-        "(_id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
+        "(id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
     execute(context, "CREATE TABLE " + schema + ".duplicateid " +
-        "(_id UUID, jsonb JSONB NOT NULL);");
+        "(id UUID, jsonb JSONB NOT NULL);");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 

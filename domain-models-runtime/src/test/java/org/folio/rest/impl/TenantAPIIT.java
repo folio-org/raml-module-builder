@@ -147,7 +147,6 @@ public class TenantAPIIT {
       }));
     }));
     async.await(5000 /* ms */);
-    book[0].setId(uuid);  // cannot use populateJsonWithId because book.schema incorrectly uses _id (instead of id)
     return book[0];
   }
 
@@ -156,7 +155,7 @@ public class TenantAPIIT {
 
     Async async = context.async();
     PostgresClient postgresClient = PgUtil.postgresClient(vertx.getOrCreateContext(), okapiHeaders);
-    String sql = "UPDATE" + table + "SET jsonb='" + asMetadata(keyValue) + "' WHERE _id='" + uuid + "'";
+    String sql = "UPDATE" + table + "SET jsonb='" + asMetadata(keyValue) + "' WHERE id='" + uuid + "'";
     postgresClient.execute(setTimeZone5, context.asyncAssertSuccess(zone5 -> {
       postgresClient.execute(sql, context.asyncAssertSuccess(u -> {
         postgresClient.execute(setTimeZone6, context.asyncAssertSuccess(zone6 -> {
@@ -168,7 +167,6 @@ public class TenantAPIIT {
       }));
     }));
     async.await(5000 /* ms */);
-    book[0].setId(uuid);  // cannot use populateJsonWithId because book.schema incorrectly uses _id (instead of id)
     return book[0];
   }
 

@@ -33,7 +33,6 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
 
   private void updateTransaction(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
-    c1.setIdField("id");
     Async async = context.async();
     //create connection
     c1.startTx(handler -> {
@@ -106,7 +105,6 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
 
   private void rollback(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
-    c1.setIdField("id");
     Async async = context.async();
     c1.startTx( handler -> {
       if(handler.succeeded()){
@@ -154,7 +152,6 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
 
   private void deleteTransaction(TestContext context) {
     PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
-    c1.setIdField("id");
     Async async = context.async();
     //create connection
     c1.startTx( handler -> {

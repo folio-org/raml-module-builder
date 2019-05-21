@@ -4,7 +4,7 @@
   "description": "Bulk of a job",
   "type": "object",
   "properties": {
-    "_id": {
+    "id": {
       "description": "primary identifier",
       "type": "string"
     },

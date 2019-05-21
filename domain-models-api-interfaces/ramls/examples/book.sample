@@ -5,13 +5,13 @@
     "genre": "ABCDEFGHIJKLMNOPQRSTUVWXYZAB",
     "author": "ABCDE",
     "link": "ABCDEFGHIJ",
-    "_id": "ABCDEFGH",
+    "id": "ABCDEFGH",
     "datetime": {
       "$date": "ABCD"
     }
   },
   "success": false,
   "status": 165,
-  "_id": "ABCDEFGHIJKLMNOPQRSTUVWX",
+  "id": "ABCDEFGHIJKLMNOPQRSTUVWX",
   "image": "ABCDEFGHIJKLMNOPQRSTUVWX"
 }

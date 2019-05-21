@@ -2,6 +2,7 @@
   "tables": [
     {
       "tableName": "test_tenantapi",
+      "populateJsonWithId": true,
       "withMetadata": true
     }
   ]
