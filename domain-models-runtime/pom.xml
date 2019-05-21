@@ -18,7 +18,6 @@
   </repositories>
 
   <properties>
-    <droolsVersion>6.4.0.Final</droolsVersion>
     <log_path>${basedir}/logs/api.log</log_path>
     <filebeat_log_path>${basedir}/logs/filebeat</filebeat_log_path>
     <filebeat_registry_file>${basedir}/logs/filebeat/registry</filebeat_registry_file>
@@ -112,9 +111,9 @@
       <artifactId>javax.el-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.z3950.zing</groupId>
+      <groupId>org.folio</groupId>
       <artifactId>cql2pgjson</artifactId>
-      <version>4.0.0</version>
+      <version>${project.parent.version}</version>
     </dependency>
     <dependency>
       <groupId>javax.validation</groupId>
@@ -156,6 +155,11 @@
       <version>1.1.1</version>
       <scope>provided</scope>
     </dependency>
+		<dependency>
+	    <groupId>commons-io</groupId>
+	    <artifactId>commons-io</artifactId>
+	    <version>2.6</version>
+		</dependency>
     <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-collections4</artifactId>
@@ -236,7 +240,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>1.5.0</version>
+        <version>1.6.0</version>
         <executions>
           <execution>
             <id>generate_client</id>

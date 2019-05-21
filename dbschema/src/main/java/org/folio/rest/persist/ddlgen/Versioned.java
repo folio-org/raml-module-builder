@@ -1,6 +1,6 @@
 package org.folio.rest.persist.ddlgen;
 
-import org.drools.compiler.kie.builder.impl.KieRepositoryImpl.ComparableVersion;
+import org.folio.util.ComparableVersion;
 
 public abstract class Versioned {
 

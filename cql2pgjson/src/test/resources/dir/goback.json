@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "relative": {
+      "type": "object",
+      "$ref" :  "file:/z/target/classes/refs.json"
+    }
+  }
+}

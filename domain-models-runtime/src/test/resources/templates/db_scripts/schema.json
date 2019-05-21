@@ -1,7 +1,8 @@
 {
   "tables": [
     {
-      "tableName": "test_tenantapi"
+      "tableName": "test_tenantapi",
+      "withMetadata": true
     }
   ]
 }

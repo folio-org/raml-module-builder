@@ -3,9 +3,9 @@ package org.folio.rest.tools.utils;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
 import com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException;
 import com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage;
