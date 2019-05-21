@@ -343,21 +343,13 @@ public class PostgresClientIT {
 
   private PostgresClient createFoo(TestContext context) {
     return createTable(context, TENANT, FOO,
-        "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL");
-  }
-
-  /** bar's primary key is "id" without underscore */
-  private PostgresClient createBarIdHasNoUnderscore(TestContext context) {
-    postgresClient = createTable(context, "bartenant", "bar",
-        "id UUID PRIMARY KEY, jsonb JSONB NOT NULL");
-    postgresClient.setIdField("id");
-    return postgresClient;
+        "id UUID PRIMARY KEY , jsonb JSONB NOT NULL");
   }
 
   private PostgresClient createInvalidJson(TestContext context) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     postgresClient = createTable(context, TENANT, INVALID_JSON,
-        "_id UUID PRIMARY KEY, jsonb VARCHAR(99) NOT NULL");
+        "id UUID PRIMARY KEY, jsonb VARCHAR(99) NOT NULL");
     execute(context, "INSERT INTO " + schema + "." + INVALID_JSON + " VALUES "
         +"('" + INVALID_JSON_UUID + "', '}');");
     return postgresClient;
@@ -597,7 +589,7 @@ public class PostgresClientIT {
         .add("{ \"y\" : \"'\" }");
     createFoo(context).saveBatch(FOO, array, context.asyncAssertSuccess(res -> {
       context.assertEquals(2, res.getRows().size());
-      context.assertEquals("_id", res.getColumnNames().get(0));
+      context.assertEquals("id", res.getColumnNames().get(0));
     }));
   }
 
@@ -615,7 +607,7 @@ public class PostgresClientIT {
     String uuid = randomUuid();
     postgresClient.startTx(asyncAssertTx(context, trans -> {
       postgresClient.save(trans, FOO,uuid, xPojo, context.asyncAssertSuccess(id -> {
-        Criterion filter = new Criterion(new Criteria().addField("_id").setJSONB(false)
+        Criterion filter = new Criterion(new Criteria().addField("id").setJSONB(false)
             .setOperation("=").setValue("'" + id  + "'"));
         postgresClient.get(trans, FOO, StringPojo.class, filter, false, false, context.asyncAssertSuccess(reply1 -> {
           context.assertEquals(1, reply1.getResults().size());
@@ -637,7 +629,7 @@ public class PostgresClientIT {
     postgresClient.startTx(asyncAssertTx(context, trans -> {
       postgresClient.save(trans, FOO, id, xPojo, context.asyncAssertSuccess(res -> {
         context.assertEquals(id, res);
-        Criterion filter = new Criterion(new Criteria().addField("_id").setJSONB(false)
+        Criterion filter = new Criterion(new Criteria().addField("id").setJSONB(false)
             .setOperation("=").setValue("'" + id  + "'"));
         postgresClient.get(trans, FOO, StringPojo.class, filter, false, false, context.asyncAssertSuccess(reply -> {
           context.assertEquals(1, reply.getResults().size());
@@ -719,7 +711,7 @@ public class PostgresClientIT {
     createFoo(context).saveBatch(FOO, list, res -> {
       assertSuccess(context, res);
       context.assertEquals(0, res.result().getRows().size());
-      context.assertEquals("_id", res.result().getColumnNames().get(0));
+      context.assertEquals("id", res.result().getColumnNames().get(0));
       async.complete();
     });
   }
@@ -746,27 +738,8 @@ public class PostgresClientIT {
     String uuid = randomUuid();
     postgresClient = createFoo(context);
     postgresClient.save(FOO, uuid, xPojo, context.asyncAssertSuccess(id -> {
-      String sql = "WHERE _id='" + id + "'";
-      postgresClient.get(FOO, StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
-        try {
-          assertThat(results.getResults(), hasSize(1));
-          assertThat(results.getResults().get(0).key, is("x"));
-          async.complete();
-        } catch (Exception e) {
-          context.fail(e);
-        }
-      }));
-    }));
-  }
-
-  @Test
-  public void getByIdUsingSqlPrimaryKeyWithoutUnderscore(TestContext context) {
-    Async async = context.async();
-    String uuid = randomUuid();
-    postgresClient = createBarIdHasNoUnderscore(context);
-    postgresClient.save("bar", uuid, xPojo, context.asyncAssertSuccess(id -> {
       String sql = "WHERE id='" + id + "'";
-      postgresClient.get("bar", StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
+      postgresClient.get(FOO, StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
         try {
           assertThat(results.getResults(), hasSize(1));
           assertThat(results.getResults().get(0).key, is("x"));
@@ -1106,7 +1079,7 @@ public class PostgresClientIT {
     Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE _id='" + ids.getString(1) + "'", res -> {
+    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'", res -> {
       assertSuccess(context, res);
       context.assertEquals(1, res.result().getUpdated());
       async.complete();
@@ -1138,7 +1111,7 @@ public class PostgresClientIT {
     Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE _id=?", new JsonArray().add(ids.getString(0)), res -> {
+    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=?", new JsonArray().add(ids.getString(0)), res -> {
       assertSuccess(context, res);
       context.assertEquals(1, res.result().getUpdated());
       async.complete();
@@ -1172,7 +1145,7 @@ public class PostgresClientIT {
     PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
-      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE _id='" + ids.getString(1) + "'", res -> {
+      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'", res -> {
         assertSuccess(context, res);
         postgresClient.rollbackTx(trans, rollback -> {
           assertSuccess(context, rollback);
@@ -1185,7 +1158,7 @@ public class PostgresClientIT {
     Async async2 = context.async();
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
-      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE _id='" + ids.getString(0) + "'", res -> {
+      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(0) + "'", res -> {
         assertSuccess(context, res);
         postgresClient.endTx(trans, end -> {
           assertSuccess(context, end);
@@ -1234,7 +1207,7 @@ public class PostgresClientIT {
     postgresClient = insertXAndSingleQuotePojo(context, ids);
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
-      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE _id=?", new JsonArray().add(ids.getString(1)), res -> {
+      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id=?", new JsonArray().add(ids.getString(1)), res -> {
         assertSuccess(context, res);
         postgresClient.rollbackTx(trans, rollback -> {
           assertSuccess(context, rollback);
@@ -1247,7 +1220,7 @@ public class PostgresClientIT {
     Async async2 = context.async();
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
-      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE _id=?", new JsonArray().add(ids.getString(0)), res -> {
+      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id=?", new JsonArray().add(ids.getString(0)), res -> {
         assertSuccess(context, res);
         postgresClient.endTx(trans, end -> {
           assertSuccess(context, end);
@@ -1300,7 +1273,7 @@ public class PostgresClientIT {
     List<JsonArray> list = new ArrayList<>(2);
     list.add(new JsonArray().add(ids.getString(0)));
     list.add(new JsonArray().add(ids.getString(1)));
-    insertXAndSingleQuotePojo(context, ids).execute("DELETE FROM tenant_raml_module_builder.foo WHERE _id=?", list, res -> {
+    insertXAndSingleQuotePojo(context, ids).execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=?", list, res -> {
       assertSuccess(context, res);
       List<UpdateResult> result = res.result();
       context.assertEquals(2, result.size());
@@ -1573,7 +1546,7 @@ public class PostgresClientIT {
   @Test
   public void selectDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     postgresClient.select("SELECT DISTINCT ON (jsonb->>'owner') * FROM mock_po_lines  ORDER BY (jsonb->>'owner') DESC", select -> {
@@ -1588,7 +1561,7 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
@@ -1606,7 +1579,7 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
       add(new FacetField("jsonb->>'edition'"));
@@ -1625,7 +1598,7 @@ public class PostgresClientIT {
   @Test
   public void getDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     String distinctOn = "jsonb->>'order_format'";
@@ -1650,7 +1623,7 @@ public class PostgresClientIT {
 
   @Test
   public void getDistinctOnWithFacets(TestContext context) throws IOException {
-    final String tableDefiniton = "_id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     postgresClient = createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     List<FacetField> facets = new ArrayList<FacetField>() {{
@@ -1730,7 +1703,7 @@ public class PostgresClientIT {
 
     for (String jsonbValue : polines.split("\n")) {
       String additionalField = new JsonObject(jsonbValue).getString("publication_date");
-      execute(context, "INSERT INTO " + schema + "." + tableName + " (_id, jsonb, distinct_test_field) VALUES "
+      execute(context, "INSERT INTO " + schema + "." + tableName + " (id, jsonb, distinct_test_field) VALUES "
         + "('" + randomUuid() + "', '" + jsonbValue + "' ," + additionalField + " ) ON CONFLICT DO NOTHING;");
     }
     return postgresClient;

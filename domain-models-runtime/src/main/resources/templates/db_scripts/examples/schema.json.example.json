@@ -95,7 +95,6 @@
         }
       ],
       "withAuditing": true,
-      "pkColumnName": "id",
       "auditingSnippet": {
         "delete": {
           "declare": "injectedAction text;",

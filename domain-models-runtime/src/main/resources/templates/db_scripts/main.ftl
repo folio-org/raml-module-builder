@@ -54,7 +54,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
   </#if>
   <#if table.mode != "delete">
     CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.tableName} (
-      ${table.pkColumnName} UUID PRIMARY KEY,
+      id UUID PRIMARY KEY,
       jsonb JSONB NOT NULL
     );
   <#else>

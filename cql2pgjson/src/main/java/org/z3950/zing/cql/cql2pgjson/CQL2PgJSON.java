@@ -57,6 +57,9 @@ public class CQL2PgJSON {
    */
   private static Logger logger = Logger.getLogger(CQL2PgJSON.class.getName());
 
+  /** name of the primary key column */
+  private static final String PK_COLUMN_NAME = "id";
+
   private String jsonField = null;
   private List<String> jsonFields = null;
 
@@ -352,7 +355,7 @@ public class CQL2PgJSON {
       }  // ASC not needed, it's Postgres' default
 
       if (modifierSet.getBase().equals("id")) {
-        order.append(getPkColumnName()).append(desc);
+        order.append(PK_COLUMN_NAME).append(desc);
         continue;
       }
 
@@ -368,13 +371,6 @@ public class CQL2PgJSON {
       order.append(wrapInLowerUnaccent(vals.getIndexText())).append(desc);
     }
     return new SqlSelect(where, order.toString());
-  }
-
-  String getPkColumnName() {
-    if (dbTable == null) {
-      return "id";
-    }
-    return StringUtils.defaultIfBlank(dbTable.getPkColumnName(), "id");
   }
 
   private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
@@ -564,7 +560,6 @@ public class CQL2PgJSON {
    */
   private String pgId(CQLTermNode node) throws QueryValidationException {
     final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
-    String pkColumnName = getPkColumnName();
     String comparator = StringUtils.defaultString(node.getRelation().getBase());
     if (!node.getRelation().getModifiers().isEmpty()) {
       throw new QueryValidationException("CQL: Unsupported modifier "
@@ -580,7 +575,7 @@ public class CQL2PgJSON {
       if (!term.matches(uuidPattern)) {
         throw new QueryValidationException("CQL: Invalid UUID after id comparator " + comparator + ": " + term);
       }
-      return pkColumnName + comparator + "'" + term + "'";
+      return PK_COLUMN_NAME + comparator + "'" + term + "'";
     case "==":
     case "=":
       comparator = "=";
@@ -607,7 +602,7 @@ public class CQL2PgJSON {
             ? "false /* id == invalid UUID */"
             : "true /* id <> invalid UUID */";
       }
-      return pkColumnName + comparator + "'" + term + "'";
+      return PK_COLUMN_NAME + comparator + "'" + term + "'";
     }
     String truncTerm = term.replaceFirst("\\*$", ""); // remove trailing '*'
     if (truncTerm.contains("*")) { // any remaining '*' is an error
@@ -623,11 +618,11 @@ public class CQL2PgJSON {
                     : "true /* id <> invalid UUID */";
     }
     if (equals) {
-      return "(" + pkColumnName + ">='" + lo + "'"
-        + " and " + pkColumnName + "<='" + hi + "')";
+      return "(" + PK_COLUMN_NAME + ">='" + lo + "'"
+        + " and " + PK_COLUMN_NAME + "<='" + hi + "')";
     } else {
-      return "(" + pkColumnName + "<'" + lo + "'"
-          + " or " + pkColumnName + ">'" + hi + "')";
+      return "(" + PK_COLUMN_NAME + "<'" + lo + "'"
+          + " or " + PK_COLUMN_NAME + ">'" + hi + "')";
     }
   }
 

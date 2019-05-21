@@ -32,7 +32,6 @@ import org.junit.Test;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
-import junitparams.converters.Nullable;
 
 @RunWith(JUnitParamsRunner.class)
 public class CQL2PgJSONTest extends DatabaseTestBase {
@@ -735,11 +734,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
     "id=*,                                        true",
-    "id=\"11111111-1111-1111-1111-111111111111\",  _id='11111111-1111-1111-1111-111111111111'",
-    "id=\"2*\",                                  (_id>='20000000-0000-0000-0000-000000000000' and "
-                                               + "_id<='2fffffff-ffff-ffff-ffff-ffffffffffff')",
-    "id=\"22222222*\",                           (_id>='22222222-0000-0000-0000-000000000000' and "
-                                               + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')",
+    "id=\"11111111-1111-1111-1111-111111111111\",  id='11111111-1111-1111-1111-111111111111'",
+    "id=\"2*\",                                  (id>='20000000-0000-0000-0000-000000000000' and "
+                                               + "id<='2fffffff-ffff-ffff-ffff-ffffffffffff')",
+    "id=\"22222222*\",                           (id>='22222222-0000-0000-0000-000000000000' and "
+                                               + "id<='22222222-ffff-ffff-ffff-ffffffffffff')",
   })
   public void pkColumnRelation(String cql, String expectedSql) throws QueryValidationException {
     assertEquals(expectedSql, cql2pgJson.toSql(cql).getWhere());
@@ -748,32 +747,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "null, id=\"11111111-1111-1111-1111-111111111111\", WHERE id='11111111-1111-1111-1111-111111111111' ",
-    "id  , id=\"11111111-1111-1111-1111-111111111111\", WHERE id='11111111-1111-1111-1111-111111111111' ",
-    "_id , id=\"11111111-1111-1111-1111-111111111111\", WHERE _id='11111111-1111-1111-1111-111111111111'",
-    "pk  , id=\"11111111-1111-1111-1111-111111111111\", WHERE pk='11111111-1111-1111-1111-111111111111' ",
-    "null, cql.allRecords=1 sortBy id                 , WHERE true ORDER BY id                          ",
-    "id  , cql.allRecords=1 sortBy id                 , WHERE true ORDER BY id                          ",
-    "_id , cql.allRecords=1 sortBy id                 , WHERE true ORDER BY _id                         ",
-    "pk  , cql.allRecords=1 sortBy id                 , WHERE true ORDER BY pk                          ",
-  })
-  public void pkColumnName(@Nullable String pkColumnName, String cql, String expectedSql) throws CQL2PgJSONException {
-    CQL2PgJSON c = new CQL2PgJSON("users.user_data");
-    // putting a null triggers the default name "id"
-    c.getDbTable().setPkColumnName(pkColumnName);
-    assertEquals(expectedSql, c.toSql(cql).toString());
-  }
-
-  @Test
-  @Parameters({
-    "cql.allRecords=1 sortBy id                               , WHERE true ORDER BY pk     ",
-    "cql.allRecords=1 sortBy id/number                        , WHERE true ORDER BY pk     ",
-    "cql.allRecords=1 sortBy id/sort.descending               , WHERE true ORDER BY pk DESC",
-    "cql.allRecords=1 sortBy id/sort.descending age/number id , WHERE true ORDER BY pk DESC\\, users.user_data->'age'\\, pk",
+    "cql.allRecords=1 sortBy id                               , WHERE true ORDER BY id     ",
+    "cql.allRecords=1 sortBy id/number                        , WHERE true ORDER BY id     ",
+    "cql.allRecords=1 sortBy id/sort.descending               , WHERE true ORDER BY id DESC",
+    "cql.allRecords=1 sortBy id/sort.descending age/number id , WHERE true ORDER BY id DESC\\, users.user_data->'age'\\, id",
   })
   public void pkColumnSort(String cql, String expectedSql) throws CQL2PgJSONException {
     CQL2PgJSON c = new CQL2PgJSON("users.user_data");
-    c.getDbTable().setPkColumnName("pk");
     assertEquals(expectedSql, c.toSql(cql).toString());
   }
 
@@ -831,12 +811,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void pKey(String testcase) {
     select(cql2pgJson, testcase);
-  }
-
-  @Test
-  public void getPkColumnNameNull() throws FieldException {
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("not.existing");
-    assertThat(aCql2pgJson.getPkColumnName(), is("id"));
   }
 
   //

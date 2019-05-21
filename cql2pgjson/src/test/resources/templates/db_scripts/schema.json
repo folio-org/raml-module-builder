@@ -2,7 +2,6 @@
   "tables": [
     {
       "tableName": "users",
-      "pkColumnName": "_id",
       "withAuditing": false,
       "ginIndex": [
         {
@@ -43,7 +42,6 @@
     },
     {
       "tableName": "groups",
-      "pkColumnName": "_id",
       "withAuditing": false,
       "fullTextIndex": [
         {

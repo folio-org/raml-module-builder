@@ -718,7 +718,7 @@ There is one exception to this. Lets take an example of an auditing table which 
 For example:
 
 
-_id| orig_id | operation | jsonb | creation_date
+id| orig_id | operation | jsonb | creation_date
 ------------ | -------------  | -------------  | -------------  | -------------  |
  |  |
 12345| 11111 | insert | {json with current data} | 1/1/2010
@@ -735,7 +735,7 @@ For example: JSON schema representing the entire auditing table row:
   "$schema":"http://json-schema.org/draft-04/schema#",
   "type":"object",
   "properties":{
-    "_id":{
+    "id":{
       "type":"string"
     },
     "orig_id":{
@@ -841,7 +841,7 @@ Example:
 
 ```sql
 CREATE TABLE item (
-  _id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY,
   jsonb JSONB NOT NULL,
   permanentLoanTypeId UUID REFERENCES loan_type,
   temporaryLoanTypeId UUID REFERENCES loan_type
@@ -1028,20 +1028,20 @@ For each **table**:
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
  - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
  - See additional options in the likeIndex section above
-11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
-12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
-13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
-14. `fullTextIndex` - create a full text index using teh tsvector features of postgres. These do their
+12. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
+13. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
+14. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
+15. `fullTextIndex` - create a full text index using teh tsvector features of postgres. These do their
  - own normalizing, so there is no need to use `caseSensitive` or `removeAccents`. The `tOps`
  - is optional (like for all indexes), and defaults to ADDing the index. `whereClause` and
  - `stringType` work as for `likeIndex` above.
+16. `pkColumnName` - No longer supported. The name of the primary key column is always `id`. Use `populateJsonWithId` for a trigger that copies it into `jsonb->'id'`. The method PostgresClient.setIdField(String) no longer exists.
 
 The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```
   "views": [
     {
       "viewName": "items_mt_view",
-      "pkColumnName": "_id",
       "join": [
         {
           "table": {
@@ -1061,7 +1061,7 @@ The **views** section is a bit more self explanatory as it indicates a viewName 
 Behind the scenes this will produce the following statement which will be run as part of the schema creation:
 
     CREATE OR REPLACE VIEW ${tenantid}_${module_name}.items_mt_view AS
-      SELECT u._id, u.jsonb as jsonb, g.jsonb as mt_jsonb
+      SELECT u.id, u.jsonb as jsonb, g.jsonb as mt_jsonb
       FROM ${tenantid}_${module_name}.item u
       JOIN ${tenantid}_${module_name}.material_type g
         ON lower(f_unaccent(g.jsonb->>'id')) = lower(f_unaccent(u.jsonb->>'materialTypeId'))
@@ -1073,7 +1073,6 @@ A three table join would look something like this:
 ```
     {
       "viewName": "instance_holding_item_view",
-      "pkColumnName": "_id",
       "join": [
         {
           "table": {
@@ -1187,7 +1186,7 @@ Remember to call beginTx and endTx
 Querying for similar POJOs in the DB (with or without additional criteria):
 
 ```java
-Criterion c = new Criterion(new Criteria().addField("_id").setJSONB(false).setOperation("=").setValue("'"+entryId+"'"));
+Criterion c = new Criterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setValue("'"+entryId+"'"));
 
 postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
               reply -> {...
