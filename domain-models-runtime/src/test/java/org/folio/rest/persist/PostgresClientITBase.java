@@ -1,12 +1,19 @@
 package org.folio.rest.persist;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
+import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.rest.persist.ddlgen.SchemaMaker;
+import org.folio.rest.persist.ddlgen.TenantOperation;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.folio.util.ResourceUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import freemarker.template.TemplateException;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -45,6 +52,9 @@ public class PostgresClientITBase {
     executeSuperuser(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE");
     executeSuperuserIgnore(context, "DROP OWNED BY " + schema + " CASCADE");
     executeSuperuser(context, "DROP ROLE IF EXISTS " + schema);
+    // Prevent "aclcheck_error" "permission denied for schema"
+    // when recreating the ROLE with the same name but a different role OID.
+    PostgresClient.closeAllClients();
   }
 
   /**
@@ -119,5 +129,27 @@ public class PostgresClientITBase {
       context.fail(new RuntimeException(result.get(0) + ". SQL File: " + sqlFile));
     }));
     async.awaitSuccess();
+  }
+
+  /**
+   * Run the DDL SQL from SchemaMaker as defined by schema.json.
+   */
+  public static void runSchemaMaker(TestContext context) {
+    runSchemaMaker(context, "templates/db_scripts/schema.json");
+  }
+
+  /**
+   * Run the DDL SQL from SchemaMaker as defined by the schemaJsonFilename.
+   */
+  public static void runSchemaMaker(TestContext context, String schemaJsonFilename) {
+    SchemaMaker schemaMaker = new SchemaMaker(tenant, PostgresClient.getModuleName(),
+        TenantOperation.CREATE, null, null);
+    String json = ResourceUtil.asString(schemaJsonFilename);
+    try {
+      schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+      runSqlFileAsSuperuser(context, schemaMaker.generateDDL());
+    } catch (IOException|TemplateException e) {
+      context.fail(e);
+    }
   }
 }
