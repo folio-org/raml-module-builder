@@ -2,7 +2,6 @@
   "tables": [
     {
       "tableName": "item",
-      "pkColumnName": "_id",
       "index": [
         {
           "fieldName": "title",

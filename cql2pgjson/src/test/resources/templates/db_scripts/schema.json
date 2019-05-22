@@ -1,0 +1,112 @@
+{
+  "tables": [
+    {
+      "tableName": "users",
+      "withAuditing": false,
+      "ginIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "address.zip",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "lang",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "group",
+          "targetTable": "groups"
+        }
+      ]
+    },
+    {
+      "tableName": "groups",
+      "withAuditing": false,
+      "fullTextIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ]
+    },
+
+    {
+      "tableName": "instances",
+      "fullTextIndex": [
+        {
+          "fieldName": "name"
+        }
+      ]
+    },
+    {
+      "tableName": "holdings",
+      "fullTextIndex": [
+        {
+          "fieldName": "name"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "permLoc"
+        },
+        {
+          "fieldName": "tempLoc"
+        },
+        {
+          "fieldName": "callNumber"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "instanceId",
+          "targetTable": "instances"
+        }
+      ]
+    },
+    {
+      "tableName": "items",
+      "fullTextIndex": [
+        {
+          "fieldName": "name"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "permLoc"
+        },
+        {
+          "fieldName": "tempLoc"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "holdingsId",
+          "targetTable": "holdings"
+        }
+      ]
+    }
+  ]
+}

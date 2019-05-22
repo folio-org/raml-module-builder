@@ -2,7 +2,7 @@
 CREATE OR REPLACE VIEW ${myuniversity}_${mymodule}.${view.viewName} AS select
   <#list view.join as joins>
     <#if joins?index==0>
-    ${joins.table.prefix}.${view.pkColumnName},
+    ${joins.table.prefix}.id,
     </#if>
     ${joins.table.prefix}.jsonb as ${joins.table.jsonFieldAlias},
     ${joins.joinTable.prefix}.jsonb as ${joins.joinTable.jsonFieldAlias}<#sep>,

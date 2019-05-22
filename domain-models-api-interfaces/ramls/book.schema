@@ -8,7 +8,7 @@
       "description" : "book data",
       "type":"object",
       "properties":{
-        "_id":{
+        "id":{
           "description" : "data identifier",
           "type":"string"
         },
@@ -51,7 +51,7 @@
         "link"
       ]
     },
-    "_id":{
+    "id":{
       "description" : "identifier",
       "type":"string"
     },
