@@ -96,9 +96,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
 
     <#include "populate_id.ftl">
 
-    <#if table.withMetadata == true>
-      <#include "metadata.ftl">
-    </#if>
+    <#include "metadata.ftl">
 
     <#if table.withAuditing == true>
       <#include "audit.ftl">
