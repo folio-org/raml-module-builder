@@ -23,7 +23,6 @@ public class Table extends Versioned {
   private String customSnippetPath;
   private List<AddFields> addFields;
   private List<DeleteFields> deleteFields;
-  private boolean populateJsonWithId;
   private AuditingSnippet auditingSnippet;
 
   public String getTableName() {
@@ -112,14 +111,6 @@ public class Table extends Versioned {
 
   public void setDeleteFields(List<DeleteFields> deleteFields) {
     this.deleteFields = deleteFields;
-  }
-
-  public boolean isPopulateJsonWithId() {
-    return populateJsonWithId;
-  }
-
-  public void setPopulateJsonWithId(boolean populateJsonWithId) {
-    this.populateJsonWithId = populateJsonWithId;
   }
 
   public AuditingSnippet getAuditingSnippet() {
