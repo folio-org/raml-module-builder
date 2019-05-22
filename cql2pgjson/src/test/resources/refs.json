@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "$ref" :  "file:/x/target/test-classes/userdata.json"
+    },
+    "query": {
+      "$ref" :  "file:/x/target/test-classes/query.json"
+    },
+    "subdir": {
+      "$ref" :  "file:/z/target/classes/dir/goback.json"
+    },
+    "windows": {
+      "$ref" :  "file:C:%5CUsers%5Citsme%5Cmod-users%5Ctarget%5Cclasses%5Cuserdata.json"
+    },
+    "http": {
+      "$ref" :  "http://example.com/x/target/test-classes/query.json"
+    }
+  }
+}

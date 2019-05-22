@@ -9,8 +9,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
  * @author shale
  *
  */
-public class ObjectMapperTool {
-
+public final class ObjectMapperTool {
   private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper();
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -18,6 +17,10 @@ public class ObjectMapperTool {
   static {
     DEFAULT_MAPPER.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     MAPPER.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+  }
+
+  private ObjectMapperTool() {
+    throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
 
   public static ObjectMapper getDefaultMapper() {

@@ -28,7 +28,6 @@ import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.text.StrSubstitutor;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -96,6 +95,9 @@ public class PostgresClient {
 
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
+
+  private static final String    ID_FIELD                 = "id";
+  private static final String    RETURNING_ID             = " RETURNING id ";
 
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
@@ -166,10 +168,6 @@ public class PostgresClient {
   private AsyncSQLClient client;
   private final String tenantId;
   private final String schemaName;
-  private String idField                     = "_id";
-
-  private String returningIdTemplate         = " RETURNING ${id} ";
-  private String returningId                 = " RETURNING _id ";
 
   static {
     REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("LIMIT", Pattern.compile("LIMIT\\s+[\\d]+(?=(([^']*'){2})*[^']*$)", 2)));
@@ -236,22 +234,6 @@ public class PostgresClient {
     if (log.isDebugEnabled()) {
       logTimer(descriptionKey, sql, startNanoTime, endNanoTime);
     }
-  }
-
-  /**
-   * Set the name of the primary key field. Default is "_id".
-   *
-   * <p>Danger: getInstance(Vertx vertx) and getInstance(Vertx vertx, String tenantId) may
-   * cache PostgresClient instances. This includes the name set for the id field.
-   *
-   * @param id  the new name
-   */
-  public void setIdField(String id){
-    idField = id;
-    Map<String, String> replaceMapping = new HashMap<>();
-    replaceMapping.put("id", idField);
-    StrSubstitutor sub = new StrSubstitutor(replaceMapping);
-    returningId = sub.replace(returningIdTemplate);
   }
 
   /**
@@ -751,17 +733,17 @@ public class PostgresClient {
           StringBuilder clientId = new StringBuilder("");
           if(id != null){
             clientId.append("'").append(id).append("',");
-            clientIdField.append(idField).append(COMMA);
+            clientIdField.append(ID_FIELD).append(COMMA);
           }
           String returning = "";
           if(returnId){
-            returning = " RETURNING " + idField;
+            returning = " RETURNING " + ID_FIELD;
           }
 
           try {
             String upsertClause = "";
             if(upsert){
-              upsertClause = " ON CONFLICT ("+idField+") DO UPDATE SET " +
+              upsertClause = " ON CONFLICT ("+ID_FIELD+") DO UPDATE SET " +
                 DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + SPACE;
             }
             JsonArray queryArg = new JsonArray();
@@ -857,12 +839,12 @@ public class PostgresClient {
       String idVal = "";
       if (id != null) {
         ar.add(id);
-        idColumn = idField + ", ";
+        idColumn = ID_FIELD + ", ";
         idVal = "?, ";
       }
       ar.add(pojo);
       connection.queryWithParams(INSERT_CLAUSE + schemaName + DOT + table +
-        " (" + idColumn + DEFAULT_JSONB_FIELD_NAME + ") VALUES (" + idVal + "?::JSON) RETURNING " + idField,
+        " (" + idColumn + DEFAULT_JSONB_FIELD_NAME + ") VALUES (" + idVal + "?::JSON) RETURNING " + ID_FIELD,
         ar, query -> {
           if (query.failed()) {
             replyHandler.handle(Future.failedFuture(query.cause()));
@@ -900,7 +882,7 @@ public class PostgresClient {
     if (entities == null || entities.isEmpty()) {
       // return empty result
       ResultSet resultSet = new ResultSet(
-        Collections.singletonList(idField), Collections.emptyList(), null);
+        Collections.singletonList(ID_FIELD), Collections.emptyList(), null);
       replyHandler.handle(Future.succeededFuture(resultSet));
       return;
     }
@@ -908,12 +890,12 @@ public class PostgresClient {
     StringBuilder sql = new StringBuilder()
       .append(INSERT_CLAUSE)
       .append(schemaName).append(DOT).append(table)
-      .append(" (").append("_id ,").append(column).append(") VALUES ('").append(UUID.randomUUID().toString()).append("',?)");
+      .append(" (").append("id ,").append(column).append(") VALUES ('").append(UUID.randomUUID().toString()).append("',?)");
     for (int i = 1; i < entities.size(); i++) {
 
       sql.append(",('").append(UUID.randomUUID().toString()).append("',?)");
     }
-    sql.append(" RETURNING ").append(idField);
+    sql.append(RETURNING_ID);
 
     try {
       if (sqlConnection.failed()) {
@@ -978,7 +960,7 @@ public class PostgresClient {
    * @param replyHandler
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<UpdateResult>> replyHandler) {
-    update(table, entity, DEFAULT_JSONB_FIELD_NAME, WHERE + idField + "='" + id + "'", false, replyHandler);
+    update(table, entity, DEFAULT_JSONB_FIELD_NAME, WHERE + ID_FIELD + "='" + id + "'", false, replyHandler);
   }
 
   /**
@@ -1074,7 +1056,7 @@ public class PostgresClient {
       sb.append(whereClause);
       StringBuilder returning = new StringBuilder();
       if (returnUpdatedIds) {
-        returning.append(returningId);
+        returning.append(RETURNING_ID);
       }
       try {
         String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = ?::jsonb " + whereClause
@@ -1148,7 +1130,7 @@ public class PostgresClient {
           }
           StringBuilder returning = new StringBuilder();
           if (returnUpdatedIdsCount) {
-            returning.append(returningId);
+            returning.append(RETURNING_ID);
           }
           try {
             String q = UPDATE + schemaName + DOT + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
@@ -1204,7 +1186,7 @@ public class PostgresClient {
         return;
       }
       connection.result().updateWithParams(
-          "DELETE FROM " + schemaName + DOT + table + WHERE + idField + "=?",
+          "DELETE FROM " + schemaName + DOT + table + WHERE + ID_FIELD + "=?",
           new JsonArray().add(id),
           replyHandler);
     } catch (Exception e) {
@@ -1484,7 +1466,7 @@ public class PostgresClient {
               isAuditFlavored
             );
 
-            String idPropName = databaseFieldToPojoSetter(idField);
+            String idPropName = databaseFieldToPojoSetter(ID_FIELD);
 
             sqlRowStream.resultSetClosedHandler(v ->  sqlRowStream.moreResults()).handler(r -> {
               JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
@@ -1538,7 +1520,7 @@ public class PostgresClient {
   ) {
     String addIdField = "";
     if (returnIdField) {
-      addIdField = COMMA + idField;
+      addIdField = COMMA + ID_FIELD;
     }
 
     if (!"null".equals(fieldName) && fieldName.contains("*")) {
@@ -1598,7 +1580,7 @@ public class PostgresClient {
             connection.close();
           }
           log.debug("Skipping query due to no results expected!");
-          ResultSet emptyResultSet = new ResultSet(Collections.singletonList(idField), Collections.emptyList(), null);
+          ResultSet emptyResultSet = new ResultSet(Collections.singletonList(ID_FIELD), Collections.emptyList(), null);
           replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
           return;
         }
@@ -1694,7 +1676,7 @@ public class PostgresClient {
       fm.setWhere(" where " + parsedQuery.getWhereClause());
     }
     fm.setSupportFacets(facets);
-    fm.setIdField(idField);
+    fm.setIdField(ID_FIELD);
     fm.setLimitClause(parsedQuery.getLimitClause());
     fm.setOffsetClause(parsedQuery.getOffsetClause());
     fm.setMainQuery(parsedQuery.getQueryWithoutLimOff());
@@ -1930,7 +1912,7 @@ public class PostgresClient {
       SQLConnection connection = res.result();
       String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
           + FROM + schemaName + DOT + table
-          + WHERE + idField + "= ?";
+          + WHERE + ID_FIELD + "= ?";
       connection.querySingleWithParams(sql, new JsonArray().add(id), query -> {
         connection.close();
         if (query.failed()) {
@@ -2010,9 +1992,9 @@ public class PostgresClient {
 
       SQLConnection connection = res.result();
       StringBuilder sql = new StringBuilder()
-          .append(SELECT).append(idField).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
+          .append(SELECT).append(ID_FIELD).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
           .append(FROM).append(schemaName).append(DOT).append(table)
-          .append(WHERE).append(idField).append(" IN (?");
+          .append(WHERE).append(ID_FIELD).append(" IN (?");
       for (int i=1; i<ids.size(); i++) {
         sql.append(",?");
       }
@@ -2335,7 +2317,7 @@ public class PostgresClient {
       isAuditFlavored
     );
 
-    String idPropName = databaseFieldToPojoSetter(idField);
+    String idPropName = databaseFieldToPojoSetter(ID_FIELD);
 
     for(JsonObject row : resultsHelper.resultSet.getRows()) {
       try {
@@ -2361,7 +2343,7 @@ public class PostgresClient {
   ) throws IOException, InstantiationException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
 
     Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
-    Object id = row.getValue(idField);
+    Object id = row.getValue(ID_FIELD);
 
     Object o = null;
 
@@ -2441,7 +2423,7 @@ public class PostgresClient {
   <T> Map<String, Method> getExternalColumnSetters(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
     Map<String, Method> externalColumnSettters = new HashMap<>();
     for (String columnName : columnNames) {
-      if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(idField)) {
+      if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(ID_FIELD)) {
         String methodName = databaseFieldToPojoSetter(columnName);
         for (Method method : clazz.getMethods()) {
           if (method.getName().equals(methodName)) {
