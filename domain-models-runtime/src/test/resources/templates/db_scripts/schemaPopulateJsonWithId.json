@@ -2,7 +2,8 @@
   "tables": [
     {
       "tableName": "test_tenantapi",
-      "withMetadata": true
+      "populateJsonWithId": true,
+      "pkColumnName": "id"
     }
   ]
 }
