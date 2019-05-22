@@ -118,9 +118,6 @@
           "fromModuleVersion": {
             "type": "number"
           },
-          "generateId": {
-            "type": "boolean"
-          },
           "ginIndex": {
             "additionalItems": false,
             "items": {
@@ -173,12 +170,6 @@
               "type": "object"
             },
             "type": "array"
-          },
-          "pkColumnName": {
-            "type": "string"
-          },
-          "populateJsonWithId": {
-            "type": "boolean"
           },
           "tableName": {
             "type": "string"

@@ -10,6 +10,9 @@
     <module>rules</module>
     <module>testing</module>
     <module>util</module>
+    <module>dbschema</module>
+    <module>cql2pgjson</module>
+    <module>cql2pgjson-cli</module>
     <module>domain-models-api-aspects</module>
     <module>domain-models-interface-extensions</module>
     <module>domain-models-api-interfaces</module>
@@ -78,12 +81,13 @@
       <dependency>
         <!-- Security update:
              https://issues.folio.org/browse/FOLIO-1682
-             https://issues.folio.org/browse/RMB-315
+	     https://issues.folio.org/browse/RMB-315
+             https://issues.folio.org/browse/RMB-377
              TODO: Remove this jackson-databind dependency when vertx-stack-depchain
-             contains jackson-databind >= 2.9.8 -->
+             contains jackson-databind >= 2.9.9 -->
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>2.9.8</version>
+        <version>2.9.9</version>
       </dependency>
       <dependency>
         <groupId>javax.el</groupId>
@@ -94,6 +98,11 @@
         <groupId>javax.ws.rs</groupId>
         <artifactId>javax.ws.rs-api</artifactId>
         <version>2.0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>${junit-jupiter-version}</version>
       </dependency>
       <dependency>
         <groupId>org.junit.jupiter</groupId>
@@ -123,7 +132,7 @@
       <dependency>
         <groupId>org.glassfish.jersey.media</groupId>
         <artifactId>jersey-media-json-jackson</artifactId>
-        <version>2.22</version>
+        <version>2.28</version>
       </dependency>
       <dependency>
         <groupId>com.google.guava</groupId>

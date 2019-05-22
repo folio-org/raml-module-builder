@@ -1,0 +1,9 @@
+{
+  "tables": [
+    {
+      "tableName": "test_tenantapi",
+      "populateJsonWithId": true,
+      "pkColumnName": "id"
+    }
+  ]
+}

@@ -8,6 +8,8 @@ import java.util.List;
  */
 public class Table extends Versioned {
 
+  static final String PK_COLUMN_NAME = "id";
+
   private String mode;
   private String tableName;
   private boolean withMetadata;
@@ -21,9 +23,7 @@ public class Table extends Versioned {
   private String customSnippetPath;
   private List<AddFields> addFields;
   private List<DeleteFields> deleteFields;
-  private boolean populateJsonWithId;
   private AuditingSnippet auditingSnippet;
-  private String pkColumnName = "id";
 
   public String getTableName() {
     return tableName;
@@ -113,14 +113,6 @@ public class Table extends Versioned {
     this.deleteFields = deleteFields;
   }
 
-  public boolean isPopulateJsonWithId() {
-    return populateJsonWithId;
-  }
-
-  public void setPopulateJsonWithId(boolean populateJsonWithId) {
-    this.populateJsonWithId = populateJsonWithId;
-  }
-
   public AuditingSnippet getAuditingSnippet() {
     return auditingSnippet;
   }
@@ -129,12 +121,12 @@ public class Table extends Versioned {
     this.auditingSnippet = auditingSnippet;
   }
 
+  /**
+   * Name of the primary key field. This is no longer configurable and is always "id".
+   * A basic table has these two fields: id UUID PRIMARY KEY, jsonb JSONB NOT NULL.
+   */
   public String getPkColumnName() {
-    return pkColumnName;
-  }
-
-  public void setPkColumnName(String pkColumnName) {
-    this.pkColumnName = pkColumnName;
+    return PK_COLUMN_NAME;
   }
 
   public List<Index> getGinIndex() {

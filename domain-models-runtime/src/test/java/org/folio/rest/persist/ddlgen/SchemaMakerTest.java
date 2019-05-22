@@ -1,6 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -10,11 +11,16 @@ import java.io.IOException;
 
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
+import org.hamcrest.junit.ExpectedException;
+import org.junit.Rule;
 import org.junit.Test;
 
 import freemarker.template.TemplateException;
 
 public class SchemaMakerTest {
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
+
   private String tidy(String s) {
     return s
         .replaceAll("-- [^\n\r]*", " ")  // remove comment
@@ -23,6 +29,7 @@ public class SchemaMakerTest {
         .replaceAll(" *\\) *", ")")      // remove space before and after )
         .replaceAll(";", ";\n");         // one line per sql statement
   }
+
   @Test
   public void canCreateAuditedTable() throws IOException, TemplateException {
 
@@ -34,26 +41,53 @@ public class SchemaMakerTest {
     //assertions here
     String result = schemaMaker.generateDDL();
     assertThat(result, containsString("CREATE TABLE IF NOT EXISTS harvard_circ.audit_test_tenantapi"));
-    
+
     assertThat(result,containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_test_tenantapi_changes() RETURNS TRIGGER AS $test_tenantapi_audit$"));
   }
+
   @Test
-  public void failsWhenGenerateID() throws  TemplateException {
+  public void failsWhenGenerateID() throws Exception {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
+      "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
+    String json = ResourceUtil.asString("templates/db_scripts/schemaGenerateId.json");
+    thrown.expectMessage("Unrecognized field \"generateId\"");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+    schemaMaker.generateDDL();
+  }
+
+  @Test
+  public void failsWhenPkColumnName() throws Exception {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
+      "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
+    String json = ResourceUtil.asString("templates/db_scripts/schemaPkColumnName.json");
+    thrown.expectMessage("Unrecognized field \"pkColumnName\"");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+    schemaMaker.generateDDL();
+  }
+
+  @Test
+  public void pkColumnName() {
+    assertThat(new Table().getPkColumnName(), is("id"));
+    assertThat(new View().getPkColumnName(), is("id"));
+  }
+
+  @Test
+  public void failsWhenPopulateJsonWithId() throws  TemplateException {
 
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
     try {
-      String json = ResourceUtil.asString("templates/db_scripts/schemaGenerateId.json");
+      String json = ResourceUtil.asString("templates/db_scripts/schemaPopulateJsonWithId.json");
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
       schemaMaker.generateDDL();
       fail();
-      
+
     } catch(IOException e) {
       assertThat(tidy(e.getMessage()), containsString(
-          "Unrecognized field \"generateId\""));
+          "Unrecognized field \"populateJsonWithId\""));
     }
   }
-  
+
   @Test
   public void lowerUnaccentIndex() throws IOException, TemplateException {
 

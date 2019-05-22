@@ -1579,7 +1579,7 @@ public class RestVerticle extends AbstractVerticle {
     return new Object[]{Boolean.valueOf(ret), content};
   }
 
-  private void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path){
+  static void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path) {
     //try to populate meta data section of the passed in json (converted to pojo already as this stage)
     //will only succeed if the pojo (json schema) has a reference to the metaData schema.
     //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema
