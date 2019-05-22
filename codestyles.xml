@@ -29,7 +29,7 @@
       <property name="max" value="30"/> <!-- max lines for inner class / lambda - note java spec = 20 -->
     </module>
     <!-- AvoidInlineConditionals is disabled to match the FOLIO sonar rules where ternary operators can be used (but not nested):
-	 https://sonarcloud.io/organizations/folio-org/rules?languages=java&q=ternary
+         https://sonarcloud.io/organizations/folio-org/rules?languages=java&q=ternary
     -->
     <module name="AvoidStaticImport"> <!-- avoid static imports as they are confusing, allow the list included below -->
       <property name="excludes" value="java.lang.System.out,java.lang.Math.*"/>
