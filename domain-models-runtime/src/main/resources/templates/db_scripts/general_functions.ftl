@@ -102,3 +102,11 @@ $func$
 SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
 $func$  LANGUAGE sql IMMUTABLE;
 
+-- This trigger function copies primary key id from NEW.id to NEW.jsonb->'id'.
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_id_in_jsonb()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.jsonb = jsonb_set(NEW.jsonb, '{id}', to_jsonb(NEW.id));
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
