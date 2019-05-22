@@ -39,6 +39,8 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.net.NetClient;
+import io.vertx.core.net.NetSocket;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -143,6 +145,11 @@ public class DemoRamlRestTest {
   }
 
   @Test
+  public void getOk(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1900&author=me&rating=1.2", 200);
+  }
+
+  @Test
   public void history(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
   }
@@ -153,11 +160,7 @@ public class DemoRamlRestTest {
     d.setAuthor("a");
     d.setGenre("g");
     d.setDescription("asdfss");
-//    d.setLink("link");
-//    d.setTitle("title");
     b.setData(d);
-/*    b.setStatus(0);
-    b.setSuccess(true);*/
     ObjectMapper om = new ObjectMapper();
     String book = "";
     try {
@@ -261,7 +264,7 @@ public class DemoRamlRestTest {
     //use generated client
     //checkClientCode(context);
 
-/*    RmbtestsClient testClient = new RmbtestsClient("localhost", port, "abc", "abc", false);
+/*    RmbtestsClient testClient = new RmbtestsClient("http://localhost:" + port, "abc", "abc", false);
     String[] facets = new String[]{"author:10", "name:5"};
     testClient.getRmbtestsBooks("aaa", new BigDecimal(1999), new BigDecimal(1999), null, facets, handler -> {
       if(handler.statusCode() != 200){
@@ -271,6 +274,105 @@ public class DemoRamlRestTest {
         log.info(handler.statusCode() + "----------------------------------------- passed ---------------------------");
       }
     });*/
+  }
+
+  private void testStreamTcpClient(TestContext context, int size) {
+    Async async = context.async();
+    NetClient netClient = vertx.createNetClient();
+    netClient.connect(port, "localhost", con -> {
+      context.assertTrue(con.succeeded());
+      if (con.failed()) {
+        async.complete();
+        return;
+      }
+      NetSocket socket = con.result();
+      socket.write("POST /rmbtests/testStream HTTP/1.1\r\n");
+      socket.write("Host: localhost:" + Integer.toString(port) + "\r\n");
+      socket.write("Content-Type: application/octet-stream\r\n");
+      socket.write("Accept: application/json,text/plain\r\n");
+      socket.write("X-Okapi-Tenant: " + TENANT + "\r\n");
+      socket.write("Content-Length: " + Integer.toString(size) + "\r\n");
+      socket.write("\r\n");
+      socket.write("123\r\n");  // body is 5 bytes
+      Buffer buf = Buffer.buffer();
+      socket.handler(buf::appendBuffer);
+      vertx.setTimer(100, x -> {
+        socket.end();
+        if (!async.isCompleted()) {
+          async.complete();
+        }
+      });
+      socket.endHandler(x -> {
+        if (!async.isCompleted()) {
+          async.complete();
+        }
+      });
+    });
+  }
+
+  @Test
+  public void testStreamManual(TestContext context) {
+    testStreamTcpClient(context, 5);
+  }
+
+  @Test
+  public void testStreamAbort(TestContext context) {
+    testStreamTcpClient(context, 10);
+  }
+
+  private void testStream(TestContext context, boolean chunk) {
+    int chunkSize = 1024;
+    int numberChunks = 50;
+    Async async = context.async();
+    HttpClient httpClient = vertx.createHttpClient();
+    HttpClientRequest req = httpClient.post(port, "localhost", "/rmbtests/testStream", res -> {
+      Buffer resBuf = Buffer.buffer();
+      res.handler(resBuf::appendBuffer);
+      res.endHandler(x -> {
+        context.assertEquals(200, res.statusCode());
+        JsonObject jo = new JsonObject(resBuf);
+        context.assertTrue(jo.getBoolean("complete"));
+        async.complete();
+      });
+      res.exceptionHandler(x -> {
+        if (!async.isCompleted()) {
+          context.assertTrue(false, "exceptionHandler res: " + x.getLocalizedMessage());
+          async.complete();
+        }
+      });
+    });
+    req.exceptionHandler(x -> {
+      if (!async.isCompleted()) {
+        context.assertTrue(false, "exceptionHandler req: " + x.getLocalizedMessage());
+        async.complete();
+      }
+    });
+    if (chunk) {
+      req.setChunked(true);
+    } else {
+      req.putHeader("Content-Length", Integer.toString(chunkSize * numberChunks));
+    }
+    req.putHeader("Accept", "application/json,text/plain");
+    req.putHeader("Content-type", "application/octet-stream");
+    req.putHeader("x-okapi-tenant", TENANT);
+    Buffer buf = Buffer.buffer(chunkSize);
+    for (int i = 0; i < chunkSize; i++) {
+      buf.appendString("X");
+    }
+    for (int i = 0; i < numberChunks; i++) {
+      req.write(buf);
+    }
+    req.end();
+  }
+
+  @Test
+  public void testStreamWithLength(TestContext context) {
+    testStream(context, false);
+  }
+
+  @Test
+  public void testStreamChunked(TestContext context) {
+    testStream(context, true);
   }
 
   /**
@@ -283,7 +385,7 @@ public class DemoRamlRestTest {
     try {
       Async async = context.async(3);
 
-      AdminClient aClient = new AdminClient("localhost", port, "abc", "abc", false);
+      AdminClient aClient = new AdminClient("http://localhost:" + port, "abc", "abc", false);
       /*
       AdminUploadmultipartPostMultipartFormData data =
           new AdminUploadmultipartPostMultipartFormDataImpl();
@@ -309,7 +411,7 @@ public class DemoRamlRestTest {
         });
       });
 
-      TenantClient tc = new TenantClient("localhost", 8888, "harvard", "harvard");
+      TenantClient tc = new TenantClient("http://localhost:" + 8888, "harvard", "harvard");
       tc.post(null, response -> {
         response.bodyHandler( body -> {
           System.out.println(body.toString());
@@ -518,14 +620,17 @@ public class DemoRamlRestTest {
             + System.currentTimeMillis() + " mode " + mode + " for " + url);
 
       if (statusCode == errorCode) {
-        if(statusCode == 422){
-          String str = response.getHeader("Content-type");
-          if(str != null && str.contains("application/json")){
+        final String str = response.getHeader("Content-type");
+        if (str == null && statusCode >= 400) {
+          context.fail(new RuntimeException("No Content-Type", stacktrace));
+        }
+        if (statusCode == 422) {
+          if (str.contains("application/json")){
             context.assertTrue(true);
           }
           else{
             context.fail(new RuntimeException(
-                "422 response code should contain a content type header of application/json",
+                "422 response code should contain a Content-Type header of application/json",
                 stacktrace));
           }
         }

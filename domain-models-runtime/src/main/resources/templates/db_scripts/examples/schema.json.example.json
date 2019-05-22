@@ -35,7 +35,7 @@
           "fieldName": "patronGroup",
           "tOps": "ADD",
           "caseSensitive": true
-        }        
+        }
       ],
       "fullTextIndex": [
         {
@@ -46,15 +46,15 @@
           "fieldName": "username",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": false         
+          "removeAccents": false
         },
         {
           "fieldName": "username, type",
           "tOps": "ADD",
           "caseSensitive": true,
           "removeAccents": false
-        }         
-      ],      
+        }
+      ],
       "likeIndex": [
         {
           "fieldName": "username",
@@ -65,13 +65,13 @@
           "fieldName": "type",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": false          
+          "removeAccents": false
         },
         {
           "fieldName": "username,type",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": false          
+          "removeAccents": false
         }
       ],
       "ginIndex": [
@@ -80,7 +80,7 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true
-        },      
+        },
         {
           "fieldName": "username, type",
           "tOps": "ADD",
@@ -92,10 +92,9 @@
           "tOps": "ADD",
           "caseSensitive": true,
           "removeAccents": false
-        }        
+        }
       ],
       "withAuditing": true,
-      "pkColumnName": "id",
       "auditingSnippet": {
         "delete": {
           "declare": "injectedAction text;",

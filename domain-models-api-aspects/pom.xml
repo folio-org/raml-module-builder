@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>20.0.0-SNAPSHOT</version>
+    <version>24.1.0-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-api-aspects</artifactId>
 
@@ -34,7 +34,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-    </dependency>     
+    </dependency>
   </dependencies>
 
 

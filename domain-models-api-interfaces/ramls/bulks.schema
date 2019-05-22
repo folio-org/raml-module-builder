@@ -1,17 +1,21 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Bulks",
+  "description": "Bulks of jobs",
   "type": "object",
   "properties": {
     "bulks": {
+      "description" : "bulks array",
       "id": "bulks",
       "type": "array",
       "items": {
         "type": "object",
-        "$ref" : "bulk",
+        "$ref" : "bulk.schema",
         "readonly": true
       }
     },
     "total_records": {
+      "description" : "total records",
       "type": "integer"
     }
   },

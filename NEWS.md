@@ -1,33 +1,236 @@
+## 24.0.0 2019-04-25
+
+ * RMB-368 Update RMB for non-schema usage and CQLPG-90
+   CQL2PgJSON constructors removed:
+```
+     CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons)
+     CQL2PgJSON(String field, String schemaJson)
+     CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons, List<String> serverChoiceIndexes)
+```
+   Public Criteria removes:
+```
+     Criteria(String schema)
+     boolean isJSONB()
+     String getArrayField()
+     void setArrayField(String arrayField)
+     String getForceCast()
+     Criteria setForceCast(String forceCast)
+```
+ * PostgresClient.streamGet: use Void for stream async result handler
+ * RMB-357 Increase code coverage of PostgresClient
+ * RMB-352 Increase code coverage of PgUtil
+
+## 23.12.0 2019-04-05
+
+ * RMB-350 PgUtilIT not tested
+ * RMB-331 Tenant upgrade failed if older version has no db schema
+ * RMB-335 Signal stream closed (prematurely)
+ * RMB-343 Get rid of " WARNING Problem parsing x-okapi-token header" message
+ * RMB-345 Document TenantLoading and proper behavior of CRUD services
+ * RMB-349 Do not spawn postgres-runner when using -Dmaven.test.skip=true
+ * RMB-351 Enable Junit4 + Junit5 and make it work in Eclipse
+ * RMB-354 Add PostgresClient.saveBatch variant with SQLConnection parameter
+ * RMB-355 Facets broken in RMB 22 (and later)
+
+## 23.11.0 2019-03-14
+
+ * RMB-342 TenantLoading / empty list for empty directory
+ * RMB-341 Log CQL and generated SQL WHERE clause together
+
+## 23.10.0 2019-03-12
+
+ * RMB-339/RMB-340 More facilities for TenantLoading
+ * RMB-334 Add option to generate toString, hashCode and equals
+   methods in generated classes
+ * Enable JUnit5 in Eclipse
+ * Minimum Java version runtime check
+
+## 23.9.0 2019-03-01
+
+ * RMB-338 TenantLoading: allow property of JSON Object to be set
+ * Generated HTTP client now sets X-Okapi-Url header
+ * TenantLoading: handle null TenantAttributes
+
+## 23.8.0 2019-02-27
+
+ * RMB-337 Extend TenangLoading API
+
+## 23.7.0 2019-02-25
+
+ * RMB-330 Gin index lost lower and f_unaccent functions
+ * RMB-329 TenantLoading API
+
+## 23.6.0 2019-02-18
+
+ * RMB-332 Move BooksDemoAPI impl to test
+ * Update cql2pgjson from 3.0.3 to 3.1.0 CQLPG-76 CQLPG-86
+
+## 23.5.0 2019-01-29
+
+ * RMB-324 Fix No Content-Type for most errors returned by RMB
+ * RMB-325 Make /_/jsonSchemas to return schemas from subfolders
+ * RMB-326 Fix Upload: complete state set before end-of-stream
+ * Document headers streamed_id and complete
+
+## 23.4.0 2019-01-16
+
+ * RMB-304 PostgresClient.get(txConn, sql, params, replyHandler) for SELECT in a transaction
+ * RMB-305 Add support for DISTINCT ON
+ * RMB-310 XML handling different when going to RAML 1.0 / RMB 20+
+ * RMB-312 Integration tests fails: too many open files
+ * RMB-313 NullPointerException PostgresClientIT.tearDownClass on Windows
+ * RMB-315 Fix security vulnerabilities in jackson-databind >= 2.9.0, < 2.9.8
+ * RMB-322 Add offset and limit getter in CQLWrapper
+
+## 23.3.0 2018-12-14
+
+ * RMB-162 Simplify PostgresClient.getInstance
+ * RMB-185 Nicer constructor for the CQLWrapper
+ * RMB-288 StorageHelper post put deleteById getById
+ * RMB-293 executeTransParamSyntaxError: IllegalStateException: Test
+          already completed
+ * RMB-308 enum values not matched
+ * RMB-311 Validation of URI parameters
+ * Update to cql2pgjson 3.0.3
+
+## 23.2.0 2018-11-29
+
+ * RMB-296 Tenant init for loading reference data
+ * RMB-299 simplify embedded postgres start
+ * RMB-300 Optional leading slash for ResourceUtil::asString
+ * RMB-303 Remove org.junit.Assert dependency from UtilityClassTester
+ * RMB-306 Add support for application/vnd.api+json content type for POST requests
+ * RMB-307 Type check for query parameters broken
+
+## 23.1.0 2018-11-08
+ * RMB-297 Several connection.close() missing - totalCount calculation hangs after 5-12 errors.
+ * RMB-282 Use description fields in RAML JSON schemas.
+ * RMB-290 Document why environment variables with dots/periods are deprecated.
+ * RMB-291 Exclude android, fix jzlib compression bug.
+ * RMB-292 Enable compression of HTTP traffic in RestVerticle.
+ * RMB-294 Broken maven-surefire-plugin.
+ * RMB-295 Fix broken link to schema.json.example.json.
+
+## 23.0.0 2018-10-18
+ * RMB-284 id="foo\*" search results in QueryValidationException: CQL: Invalid UUID foo\*.
+ * RMB-18 The "local apidocs" for "admin" and "jobs" has extra "/v1/" in path.
+ * RMB-275 Windows backslash: Illegal character in opaque part at index 7: file:C:\Users\...
+ * RMB-279 Fix false positive password vulnerability warning (sonarqube/sonarlint).
+ * RMB-280 Provide a POM snippet to configure local apidocs.
+ * RMB-281 Update vert.x libraries to fix security vulnerabilities (CVE-2018-12537)
+ * RMB-255 Add streaming support to RMB.
+
+## 22.1.0 2018-10-16
+ * RMB-265 Allow recursion in JSON schema references (loops).
+ * RMB-274 Implement PostgresClient::save(sqlConnection, table, id, entity, replyHandler).
+
+## 22.0.1 2018-10-14
+ * RMB-273 CQL2PG v3.0.1: Fix validating of array field names.
+
+## 22.0.0 2018-10-13
+ * RMB-272 Update cql2pg-json to version 3.0.0:
+   * CQLPG-63 Drop field name to full field path resolution. This is a breaking change,
+     using the unambiguous suffix "email" no longer resolves to "personal.email".
+   * CQLPG-61 Equals empty is not same as equals star. Matching "*" means all records,
+     matching "" means all records where that field is defined. This is a breaking change.
+   * CQLPG-58 Performance: Convert id searches using '=' or '==' into primary key _id searches.
+     This is a breaking change because it restricts the operators allowed for id and assumes
+     that id is a UUID.
+ * RMB-271 Also accept windows \r\n line endings in unit test.
+ * RMB-256 Unit tests for PostgresClient.doGet.
+ * RMB-257 Unit tests for PostgresClient.processResult.
+ * RMB-289 private class TotaledResults: total needs to be Integer to afford null.
+ * RMB-268 Remove finished MD creation code.
+ * RMB-261 Skip all tests in PostgresClientIT on Windows.
+ * RMB-262 Disable warning "Overriding managed version 3.5.1 for
+   vertx-mysql-postgresql-client.
+ * RMB-243 Add PostgresClient.execute(...) with SQL placeholders/parameters.
+ * RMB-258 Drop IOException of ResourceUtils.resource2String.
+ * RMB-230, RMB-254 PostgresClient: init moduleName, add getTenantId() and getSchemaName().
+
+## 21.0.4 2018-10-04
+ * RMB-266 Fix path parameters reversed when calling handler
+
+## 21.0.3 2018-10-01
+ * RMB-259 Windows compile failure - schema files.
+
+## 21.0.2 2018-09-28
+ * RMB-251 Add tests for missign query returns 500 Internal Error.
+ * RMB-250 Fix fulltext search: stop words, trailing space and *.
+ * RMB-249 Default to the 'simple' directory for fulltext searches.
+
+## 21.0.1 2018-09-07
+* RMB-245 Fix Invalid path for client generator
+
+## 21.0.0 2018-09-06
+
+* RMB-213 Commence doc directory, move upgrading notes, tidy for RMBv20+
+* RMB-237 Do we need to bundle twitter.raml, github.raml, .. in fat jar?
+* RMB-238 Extend PostgresClient.getById with POJO (change of API)
+* RMB-239 Fix apidocs of RMB does not support RAML 1.0
+
+## 20.0.0 2018-08-31
+
+* RMB-221 Single quote SQL Injection in PostgresClient.saveBatch(table, list, handler)
+* RMB-231 Errors in mod-inventory-storage when upgrading RMB from 19.1.5 to 19.3.1
+* RMB-1 Specifying a RAML that only uses GET fails with RMB
+* RMB-44 use generics for PostgresClient.get(...) and .join(...)
+* RMB-109 RAML 1.0 support: use raml-for-jax-rs rather than obsolete raml-jaxrs-codegen
+* RMB-149 Security update PostgreSQL 10.3 CVE-2018-1058 search_path
+* RMB-174 mvn install leaves a postgres process running
+* RMB-186 HTTP_ACCEPTED = 202, HTTP_OK = 200
+* RMB-191 Reenable JUnit 5
+* RMB-192 Add AdminAPI.postAdminImportSQL error reporting
+* RMB-193 Add RestVerticle stacktrace error reporting
+* RMB-195 Stacktrace logging on exception in AdminAPI
+* RMB-202 Create small RMB example
+* RMB-203 $ref should follow the JSON schema spec
+* RMB-206 Add PostgresClient.getById
+* RMB-207 Upgrade to maven-compiler-plugin 3.8.0
+* RMB-225 PostgresClient: Replace "Object conn" by "Future<SQLConnection> conn"
+* RMB-227 raml-cop rejects jobs.raml of RMB
+* RMB-229 PostgresClientTransactionsIT hangs on old database
+* RMB-234 Do NOT create tsvector indexes with lowercase/unaccent
+
 ## 19.3.1 2018-08-01
-Fix regression caused by RMB-176
+
+* Fix regression caused by RMB-176
 
 ## 19.3.0 2018-08-01
-*RMB-176 Support index for multiple properties in declarative schema
+
+* RMB-176 Support index for multiple properties in declarative schema
 
 ## 19.2.0 2018-07-16
+
 * RMB-184 new "fulltext" index type in schema.json
 * RMB-183 add ability to set the result set distinct
 
 ## 19.1.5 2018-07-05
+
 * RMB-179 net.sf.jsqlparser does not support "IS TRUE" and "a@>b"
 * RMB-178 parseQuery throws StackOverflowError for deeply nested SQL query
 * RMB-181 Rewrite getLastStartPos for reducing stack size
 
 ## 19.1.4 2018-07-02
+
 * RMB-154 Investigate postgresql connection pool
 
 ## 19.1.3 2018-06-10
+
 * RMB-167 consistently use runOnContext for DB operations
 * RMB-172 add /admin api to drop , create indexes per module
 
 ## 19.1.2 2018-06-03
+
 * RMB-168 PostgresClient makes a wrong callback
 
 ## 19.1.1 2018-05-23
+
 * RMB-163 Fail to find API implementation due to subtle class loading order difference
 * RMB-166 Reduce stack size for SQL queries
 
 ## 19.1.0 2018-04-24
+
 * RMB-136: Default paging in storage modules prevents operations on entire contents
 * RMB-138: SchemaDereferencer: Support name to name.schema resolution
 * RMB-143: Version update: vertx 3.5.1, jackson 2.9.4
@@ -46,6 +249,7 @@ Fix regression caused by RMB-176
 * FOLIO-1187: Add lint-raml-cop.sh
 
 ## 19.0.0 2018-03-01
+
 * RMB-140: Move to v19, 18.0.1 requires entry in pom
 
         <plugin>
@@ -69,18 +273,21 @@ Fix regression caused by RMB-176
         </plugin>
 
 ## 18.0.1 2018-02-28
+
 * RMB-130: Use target/generated-sources for generated code
 * RMB-135: Parse version from Module ID in `module_{from,to}`
 * RMB-137: Move JsonPathParser.main() to JsonPathParserTest; use JUnit
 * RMB-139: Add transaction support for get() and delete()
 
 ## 18.0.0 2018-02-19
+
 * RMB-133: start, rollback and end transactions should use a handler of type `handler<asyncresult<object>>`
 * RMB-132: Allow update() method to be called within a transaction.
 * RMB-131: PostgresClient: asynchronous functions must not throw exceptions
 * RMB-128: Upgrade to postgres v10
 
 ## 17.0.0 2017-01-17
+
 * RMB-119: CQL's default relation "=" now uses "adj" relation for strings (was "all")
 * CQLPG-30, CQLPG-31: Fix number handling in CQL queries
 * RMB-124: Lift time limit of PostgresClientMultiVertxIT
@@ -97,6 +304,7 @@ Fix regression caused by RMB-176
 * RMB-98: Foreign key trigger created in public schema and not in tenant's schema
 
 ## 16.0.3 2017-12-19
+
 * RMB-103: Schema dereferencing requires a ramls/ directory with the raml and schema files.
 * RMB-106: Set Locale.US, use Logger, split into separate tests.
 * importSQL tenant sensitive
@@ -106,13 +314,16 @@ Fix regression caused by RMB-176
 * CQLPG-29 "sortBy field" sorts by null (cql2pgjson:1.3.3)
 
 ## 16.0.2 2017-12-05
+
 * RMB-94: "readonly" fields should be ignored
 * MODINVSTOR-38: Fix number in string by updating cql2pgjson to 1.3.2
 
 ## 16.0.1 2017-12-01
+
 * UICHKOUT-39: Update cql2pgjson to v1.3.1 fixing number handling
 
 ## 16.0.0 2017-11-29
+
 * RMB-56 add SchemaDereferencer that replaces "$ref" in raml files
 * RMB-82 additional / optimize counting of results via postgresClient
 * RMB-84 fix facet mechanism to use new counting RMB-82
@@ -123,6 +334,7 @@ Fix regression caused by RMB-176
 * RMB-77 fix documentation for declaration of json schema
 
 ## 15.0.2 2017-11-04
+
 * RMB-64
 * RMB-63
 * RMB-66
@@ -170,6 +382,7 @@ Fix regression caused by RMB-176
 * FOLIO-685 explore auto-generation of fakes (mocks) for module testing
 
 ## 12.1.4
+
 * RMB-32 fix JSON encoding of String in UpdateSection
 * RMB-40 submodule util with ResourceUtil.asString(...), IOUtil.toUTF8String(InputStream)
 * RMB-36 fix PostgresClient.runSQLFile(...) when last sql statement does not end with ;
@@ -219,3 +432,4 @@ Fix regression caused by RMB-176
 ## 10.0.7 2017-05-02
 
 * Non-snapshot version.
+

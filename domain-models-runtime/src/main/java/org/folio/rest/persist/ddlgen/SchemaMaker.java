@@ -91,7 +91,7 @@ public class SchemaMaker {
     templateInput.put("version", pVersion);
 
     templateInput.put("newVersion", this.newVersion);
-    
+
     FullText fullText = this.schema.getFullText();
 
     String defaultDictionary = FullText.DEFAULT_DICTIONARY;
@@ -114,15 +114,13 @@ public class SchemaMaker {
       int size = tables.size();
       for (int i = 0; i < size; i++) {
         Table t = tables.get(i);
-
-        if(t.getMode() == null){
+        if(t.getMode() == null) {
           //the only relevant mode that the templates take into account is delete
           //otherwise update and new will always create if does not exist
           //so can set to either new or update , doesnt matter, leave the option
           //in case we do need to differentiate in the future between the two
           t.setMode("new");
         }
-
         List<DeleteFields> dFields = t.getDeleteFields();
         if(dFields != null){
           for (int j = 0; j < dFields.size(); j++) {
@@ -196,7 +194,7 @@ public class SchemaMaker {
             if(!u.isStringType()){
               u.setCaseSensitive(true);
               u.setRemoveAccents(false);
-            }            
+            }
             String path = convertDotPath2PostgresNotation(null,u.getFieldName(), u.isStringType(), u, false);
             u.setFieldPath(path);
             String normalized = normalizeFieldName(u.getFieldName());
@@ -205,12 +203,12 @@ public class SchemaMaker {
             u.setFieldName(normalized);
           }
         }
-        
+
         List<Index> ftInd = t.getFullTextIndex();
         if(ftInd != null){
           for (int j = 0; j < ftInd.size(); j++) {
             Index u = ftInd.get(j);
-            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), true, u, true);
+            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), true, u, true, true);
             u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres
             String normalized = normalizeFieldName(u.getFieldName());
@@ -237,8 +235,8 @@ public class SchemaMaker {
           ViewTable vt = join.getJoinTable();
           vt.setPrefix(vt.getTableName());
           Index index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
-          vt.setJoinOnField(convertDotPath2PostgresNotation(vt.getPrefix(), 
-            vt.getPrefix() +"." + vt.getJoinOnField()  , true, index, false));
+          vt.setJoinOnField(convertDotPath2PostgresNotation(vt.getPrefix(),
+            vt.getJoinOnField(), true, index, false));
           if(index != null){
           //when creating the join on condition, we want to create it the same way as we created the index
           //so that the index will get used, for example:
@@ -250,7 +248,7 @@ public class SchemaMaker {
           vt = join.getTable();
           vt.setPrefix(vt.getTableName());
           index = indexMap.get(vt.getTableName()+"_"+normalizeFieldName(vt.getJoinOnField()));
-          vt.setJoinOnField( convertDotPath2PostgresNotation(vt.getPrefix(), 
+          vt.setJoinOnField( convertDotPath2PostgresNotation(vt.getPrefix(),
             vt.getJoinOnField() , true, index, false));
           if(index != null){
             vt.setIndexUsesCaseSensitive( index.isCaseSensitive() );
@@ -321,9 +319,39 @@ public class SchemaMaker {
   private static String normalizeFieldName(String path) {
     return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
   }
-  
-  public static String convertDotPath2PostgresNotation(String prefix, 
-    String path, boolean stringType, Index index, boolean isFullText){
+
+  /**
+   * A bridge method to {@link #convertDotPath2PostgresNotation(String, String, boolean, Index, boolean, boolean)}
+   * which has an extra parameter <code>isFtIndex<code> to indicate whether given index is full text index.
+   * Default value for parameter <code>isFtIndex</code> is <code>false</code>.
+   *
+   * @param prefix
+   * @param path
+   * @param stringType
+   * @param index
+   * @param isFullText
+   * @return
+   */
+  private static String convertDotPath2PostgresNotation(String prefix,
+      String path, boolean stringType, Index index, boolean isFullText){
+    return convertDotPath2PostgresNotation(prefix, path, stringType, index, isFullText, false);
+  }
+
+  /**
+   * Convert JSON dot path to PostgreSQL notation. By default string type index will be
+   * wrapped with lower/f_unaccent functions except full text index <code>(isFtIndex = true)</code>.
+   * Full text index uses to_tsvector to normalize token, so no need of lower/f_unaccent.
+   *
+   * @param prefix
+   * @param path
+   * @param stringType
+   * @param index
+   * @param isFullText
+   * @param isFtIndex - is it a full text index?
+   * @return
+   */
+  private static String convertDotPath2PostgresNotation(String prefix,
+    String path, boolean stringType, Index index, boolean isFullText, boolean isFtIndex){
     //when an index is on multiple columns, this will be defined something like "username,type"
     //so split on command and build a path for each and then combine
     String []requestIndexPath = path.split(",");
@@ -331,11 +359,11 @@ public class SchemaMaker {
     for (int i = 0; i < requestIndexPath.length; i++) {
       if(finalClause.length() > 0) {
         if(isFullText) {
-          finalClause.append(" || ' ' || "); 
+          finalClause.append(" || ' ' || ");
         }
         else {
           finalClause.append(" , ");
-        }        
+        }
       }
       //generate index based on paths - note that all indexes will be with a -> to allow
       //postgres to treat the different data types differently and not ->> which would be all
@@ -359,7 +387,8 @@ public class SchemaMaker {
         }
         sb.append("'").append(pathParts[j]).append("'");
       }
-      if(index != null && stringType) {
+      if (index != null && stringType && !isFtIndex) {
+        // fulltext indexes let PG do all unaccent/lowercase stuff
         if(index.isRemoveAccents() || !index.isCaseSensitive()) {
           if(index.isRemoveAccents()) {
             sb.insert(0, "f_unaccent(").append(")");

@@ -1,16 +1,20 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Configurations for Jobs",
+  "description": "Each configuration includes type and category of job, and whether it is enabled.",
   "type": "object",
   "properties": {
     "job_confs": {
+      "description": "array of jobs",
       "id": "jobConfs",
       "type": "array",
       "items": {
         "type": "object",
-        "$ref" : "jobs_conf"
+        "$ref" : "jobs_conf.schema"
       }
     },
     "total_records": {
+      "description": "total records",
       "type": "integer"
     }
   },

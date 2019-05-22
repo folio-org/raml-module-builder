@@ -2,6 +2,8 @@ package org.folio.rest.testing;
 
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Constructor;
+
 import org.junit.Test;
 
 public class UtilityClassTesterTest {
@@ -17,7 +19,8 @@ public class UtilityClassTesterTest {
       if (e.getMessage().contains(message)) {
         return;
       }
-      fail(clazz.getName() + " throws exception, but it does not contains '"
+      e.printStackTrace();
+      fail(clazz.getName() + " throws exception, but it does not contain '"
           + message + "': " + e.getMessage());
     }
     fail(clazz.getName() + " must throw exception containing '" + message + "'");
@@ -51,6 +54,13 @@ public class UtilityClassTesterTest {
   @Test
   public void constructorThrowsWrongException() {
     assertMessage(ConstructorThrowsWrongException.class, "must throw UnsupportedOperationException");
+  }
+
+  @Test(expected = AssertionError.class)
+  public void constructorIsAccessible() throws SecurityException, NoSuchMethodException {
+    final Constructor<?> constructor = ConstructorIsAccessible.class.getDeclaredConstructor();
+    constructor.setAccessible(true);
+    UtilityClassTester.assertNonAccessible(constructor);
   }
 
   @Test
@@ -103,6 +113,12 @@ final class ConstructorWithoutException {
 final class ConstructorThrowsWrongException {
   private ConstructorThrowsWrongException() {
     throw new RuntimeException("Cannot instantiate utility class.");
+  }
+}
+
+final class ConstructorIsAccessible {
+  private ConstructorIsAccessible() {  // only the test code can invoke setAccessible(true)
+    throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
 }
 

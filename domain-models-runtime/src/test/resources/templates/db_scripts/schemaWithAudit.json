@@ -1,0 +1,12 @@
+{
+  "tables": [
+    {
+      "tableName": "test_tenantapi",
+      "withAuditing": true
+    },
+    {
+      "tableName": "test_tenantapi2",
+      "withAuditing": true
+    }
+  ]
+}

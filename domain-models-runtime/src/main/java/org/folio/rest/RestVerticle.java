@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -108,6 +109,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        OKAPI_REQUESTID_HEADER          = "X-Okapi-Request-Id";
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
+  public static final String        STREAM_ABORT                    =  "STREAMED_ABORT";
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
@@ -119,8 +121,8 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
   private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept, x-okapi-tenant";
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
-  private static final String       SUPPORTED_CONTENT_TYPE_STREAMIN = "application/octet-stream";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
+  private static final String       SUPPORTED_CONTENT_TYPE_JSON_API_DEF = "application/vnd.api+json";
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
   private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
@@ -131,6 +133,12 @@ public class RestVerticle extends AbstractVerticle {
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
   private static final String       DEFAULT_SCHEMA                  = "public";
+  /**
+   * Minimum java version used for runtime check.
+   *
+   * For compile time check see raml-module-builder/pom.xml maven-enforcer-plugin requireJavaVersion.
+   */
+  private static final String       MINIMUM_JAVA_VERSION              = "1.8.0_101";
 
   private static ValidatorFactory   validationFactory;
   private static String             deploymentId                     = "";
@@ -152,6 +160,31 @@ public class RestVerticle extends AbstractVerticle {
     //passed in the request body in put and post requests. The constraints validated by this factory
     //are the ones in the json schemas accompanying the raml files
     validationFactory = Validation.buildDefaultValidatorFactory();
+    checkJavaVersion(System.getProperty("java.runtime.version"));
+  }
+
+  /**
+   * Compare java version strings of the form 1.8.0_191
+   */
+  static int compareJavaVersion(String versionA, String versionB) {
+    String [] a = versionA.split("[^0-9]+");
+    String [] b = versionB.split("[^0-9]+");
+    for (int i=0; i<4; i++) {
+      int compare = Integer.compare(Integer.parseInt(a[i]), Integer.parseInt(b[i]));
+      if (compare != 0) {
+        return compare;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * @throws InternalError if javaVersion is less than {@link #MINIMUM_JAVA_VERSION}
+   */
+  static void checkJavaVersion(String javaVersion) {
+    if (compareJavaVersion(javaVersion, MINIMUM_JAVA_VERSION) < 0) {
+      throw new InternalError("Minimum java version is " + MINIMUM_JAVA_VERSION + " but found " + javaVersion);
+    }
   }
 
   // https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
@@ -229,6 +262,7 @@ public class RestVerticle extends AbstractVerticle {
     // see uploadHandler further down
     router.put().handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
+    router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_API_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_FORM).handler(handler);
@@ -282,7 +316,7 @@ public class RestVerticle extends AbstractVerticle {
         //if client includes an Accept-Encoding header which includes
         //the supported compressions - deflate or gzip.
         HttpServerOptions serverOptions = new HttpServerOptions();
-        serverOptions.setCompressionSupported(false);
+        serverOptions.setCompressionSupported(true);
 
         HttpServer server = vertx.createHttpServer(serverOptions);
         server.requestHandler(router::accept)
@@ -555,21 +589,27 @@ public class RestVerticle extends AbstractVerticle {
       }
     });
     request.endHandler( e -> {
-
       StreamStatus stat = new StreamStatus();
       stat.setStatus(1);
+      paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
       invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
         LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
         //all data has been stored in memory - not necessarily all processed
         sendResponse(rc, v, start, tenantId[0]);
       });
-
     });
-    request.exceptionHandler(new Handler<Throwable>(){
+    request.exceptionHandler(new Handler<Throwable>() {
       @Override
       public void handle(Throwable event) {
+        StreamStatus stat = new StreamStatus();
+        stat.setStatus(2);
+        paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
+        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, stat, v
+          -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run)
+        );
         endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
-      }});
+      }
+    });
   }
   /**
    * @param method2Run
@@ -827,23 +867,27 @@ public class RestVerticle extends AbstractVerticle {
     requestHeaders.forEach(consumer);
   }
 
-  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message,  boolean[] isValid) {
+  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, boolean[] isValid) {
     if (isValid[0]) {
-      rc.response().setChunked(chunked);
-      rc.response().setStatusCode(status);
-      if(status == 422){
-        rc.response().putHeader("Content-type", SUPPORTED_CONTENT_TYPE_JSON_DEF);
+      HttpServerResponse response = rc.response();
+      if (!response.closed()) {
+        response.setChunked(chunked);
+        response.setStatusCode(status);
+        if (status == 422) {
+          response.putHeader("Content-type", SUPPORTED_CONTENT_TYPE_JSON_DEF);
+        } else {
+          response.putHeader("Content-type", SUPPORTED_CONTENT_TYPE_TEXT_DEF);
+        }
+        if (message != null) {
+          response.write(message);
+        } else {
+          message = "";
+        }
+        response.end();
       }
-      if(message != null){
-        rc.response().write(message);
-      }
-      else {
-        message = "";
-      }
-      rc.response().end();
       LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
-        rc.request().version().toString(), rc.response().getStatusCode(), -1, rc.response().bytesWritten(),
-        rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), null, message);
+        rc.request().version().toString(), response.getStatusCode(), -1, rc.response().bytesWritten(),
+        rc.request().path(), rc.request().query(), response.getStatusMessage(), null, message);
     }
     // once we are here the call is not valid
     isValid[0] = false;
@@ -863,7 +907,7 @@ public class RestVerticle extends AbstractVerticle {
     mm.forEach(consumer);
   }
 
-  public void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
+  private void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
       Map<String,String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
 
     String generateRCforFunc = PomReader.INSTANCE.getProps().getProperty("generate_routing_context");
@@ -877,10 +921,9 @@ public class RestVerticle extends AbstractVerticle {
       }
     }
 
-    Context context = vertx.getOrCreateContext();
-
     //if streaming is requested the status will be 0 (streaming started)
     //or 1 streaming data complete
+    //or 2 streaming aborted
     //otherwise it will be -1 and flags wont be set
     if(streamed.status == 0){
       headers.put(STREAM_ID, String.valueOf(rc.hashCode()));
@@ -888,6 +931,10 @@ public class RestVerticle extends AbstractVerticle {
     else if(streamed.status == 1){
       headers.put(STREAM_ID, String.valueOf(rc.hashCode()));
       headers.put(STREAM_COMPLETE, String.valueOf(rc.hashCode()));
+    }
+    else if (streamed.status == 2){
+      headers.put(STREAM_ID, String.valueOf(rc.hashCode()));
+      headers.put(STREAM_ABORT, String.valueOf(rc.hashCode()));
     }
 
     Object[] newArray = new Object[params.length];
@@ -918,25 +965,22 @@ public class RestVerticle extends AbstractVerticle {
     }*/
     newArray[params.length - (size-pos)] = headers;
 
-    context.runOnContext(v -> {
+    try {
+      method.invoke(o, newArray);
+      // response.setChunked(true);
+      // response.setStatusCode(((Response)result).getStatus());
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      String message;
       try {
-        method.invoke(o, newArray);
-        // response.setChunked(true);
-        // response.setStatusCode(((Response)result).getStatus());
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        String message;
-        try {
-          // catch exception for now in case of null point and show generic
-          // message
-          message = e.getCause().getMessage();
-        } catch (Throwable ee) {
-          message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
-        }
-        endRequestWithError(rc, 400, true, message, new boolean[] { true });
+        // catch exception for now in case of null point and show generic
+        // message
+        message = e.getCause().getMessage();
+      } catch (Throwable ee) {
+        message = messages.getMessage("en", MessageConsts.UnableToProcessRequest);
       }
-
-    });
+      endRequestWithError(rc, 400, true, message, new boolean[]{true});
+    }
   }
 
   public JsonObject loadConfig(String configFile) {
@@ -1224,7 +1268,7 @@ public class RestVerticle extends AbstractVerticle {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
-    int []pathParamsIndex = new int[] { pathParams.length };
+    int []pathParamsIndex = new int[] { 0 };
 
     paramList.forEachRemaining(entry -> {
       if (validRequest[0]) {
@@ -1256,6 +1300,9 @@ public class RestVerticle extends AbstractVerticle {
               if(bodyContent != null){
                 if("java.io.Reader".equals(valueType)){
                   paramArray[order] = new StringReader(bodyContent);
+                }
+                else if ("java.lang.String".equals(valueType)) {
+                  paramArray[order] = bodyContent;
                 }
                 else if(bodyContent.length() > 0) {
                   try {
@@ -1341,13 +1388,12 @@ public class RestVerticle extends AbstractVerticle {
         } else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
           // these are placeholder values in the path - for example
           // /patrons/{patronid} - this would be the patronid value
-          paramArray[order] = pathParams[pathParamsIndex[0] - 1];
-          pathParamsIndex[0] = pathParamsIndex[0] - 1;
+          paramArray[order] = pathParams[pathParamsIndex[0]++];
         } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
           String param = queryParams.get(valueName);
           // support enum, numbers or strings as query parameters
           try {
-            if (valueType.contains("String")) {
+            if (valueType.equals("java.lang.String")) {
               // regular string param in query string - just push value
               if (param == null && defaultVal != null) {
                 // no value passed - check if there is a default value
@@ -1355,7 +1401,7 @@ public class RestVerticle extends AbstractVerticle {
               } else {
                 paramArray[order] = param;
               }
-            } else if (valueType.contains("int") || valueType.contains("Integer")) {
+            } else if (valueType.equals("int") || valueType.equals("java.lang.Integer")) {
               // cant pass null to an int type
               if (param == null) {
                 if (defaultVal != null) {
@@ -1370,7 +1416,7 @@ public class RestVerticle extends AbstractVerticle {
               else {
                 paramArray[order] = Integer.valueOf(param);
               }
-            } else if (valueType.contains("boolean") || valueType.contains("Boolean")) {
+            } else if (valueType.equals("boolean") || valueType.equals("java.lang.Boolean")) {
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = Boolean.valueOf((String)defaultVal);
@@ -1386,7 +1432,7 @@ public class RestVerticle extends AbstractVerticle {
               else {
                 paramArray[order] = vals;
               }
-            } else if (valueType.contains("BigDecimal") || valueType.contains("Number")) {
+            } else if (valueType.equals("java.math.BigDecimal") || valueType.equals("java.lang.Number")) {
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = new BigDecimal((String) defaultVal);
@@ -1402,31 +1448,7 @@ public class RestVerticle extends AbstractVerticle {
               }
             } else { // enum object type
               try {
-                Class<?> enumClazz1 = Class.forName(valueType);
-                if (enumClazz1.isEnum()) {
-                  Object defaultEnum = null;
-                  Object[] vals = enumClazz1.getEnumConstants();
-                  for (int i = 0; i < vals.length; i++) {
-                    if (vals[i].toString().equals(defaultVal)) {
-                      defaultEnum = vals[i];
-                    }
-                    // set default value (if there was one in the raml)
-                    // in case no value was passed in the request
-                    if (param == null && defaultEnum != null) {
-                      paramArray[order] = defaultEnum;
-                      break;
-                    }
-                    // make sure enum value is valid by converting the string to an enum
-                    else if (vals[i].toString().equals(param)) {
-                      paramArray[order] = vals[i];
-                      break;
-                    }
-                    if (i == vals.length - 1) {
-                      // if enum passed is not valid, replace with default value
-                      paramArray[order] = defaultEnum;
-                    }
-                  }
-                }
+                paramArray[order] = parseEnum(valueType, param, defaultVal);
               } catch (Exception ee) {
                 log.error(ee.getMessage(), ee);
                 endRequestWithError(rc, 400, true, ee.getMessage(), validRequest);
@@ -1443,6 +1465,45 @@ public class RestVerticle extends AbstractVerticle {
         }
       }
     });
+  }
+
+  /**
+   * @return the enum value of type valueType where value.name equals param (fall-back: equals defaultValue).
+   *         Return null if the type neither has param nor defaultValue.
+   * @throws ClassNotFoundException if valueType does not exist
+   */
+  @SuppressWarnings({
+    "squid:S1523",  // Suppress warning "Make sure that this dynamic injection or execution of code is safe."
+                    // This is safe because we accept an enum class only, and do not invoke any method.
+    "squid:S3011"}) // Suppress "Make sure that this accessibility update is safe here."
+                    // This is safe because we only read the field and it is a field of an enum.
+  static Object parseEnum(String valueType, String param, Object defaultValue)
+      throws ReflectiveOperationException {
+
+    Class<?> enumClass = Class.forName(valueType);
+    if (! enumClass.isEnum()) {
+      return null;
+    }
+    String defaultString = null;
+    if (defaultValue != null) {
+      defaultString = defaultValue.toString();
+    }
+    Object defaultEnum = null;
+    for (Object anEnum : enumClass.getEnumConstants()) {
+      Field nameField = anEnum.getClass().getDeclaredField("name");
+      nameField.setAccessible(true);  // access to private field
+      String enumName = nameField.get(anEnum).toString();
+      if (enumName.equals(param)) {
+        return anEnum;
+      }
+      if (enumName.equals(defaultString)) {
+        defaultEnum = anEnum;
+        if (param == null) {
+          return defaultEnum;
+        }
+      }
+    }
+    return defaultEnum;
   }
 
   /**
@@ -1518,7 +1579,7 @@ public class RestVerticle extends AbstractVerticle {
     return new Object[]{Boolean.valueOf(ret), content};
   }
 
-  private void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path){
+  static void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path) {
     //try to populate meta data section of the passed in json (converted to pojo already as this stage)
     //will only succeed if the pojo (json schema) has a reference to the metaData schema.
     //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema
@@ -1527,8 +1588,8 @@ public class RestVerticle extends AbstractVerticle {
     String json;
     try {
       String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
-      if(userId == null){
-        String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
+      String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
+      if (userId == null && token != null) {
         String[] split = token.split("\\.");
         //the split array contains the 3 parts of the token - the body is the middle part
         json = JwtUtils.getJson(split[1]);

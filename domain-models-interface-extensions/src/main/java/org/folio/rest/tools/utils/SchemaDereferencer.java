@@ -1,19 +1,10 @@
 package org.folio.rest.tools.utils;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.folio.util.IoUtil;
 
@@ -21,153 +12,74 @@ import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import java.net.URI;
 
-/**
- * Dereference JSON schemas of RAML files by replacing {@code ("$ref": <filename>)}
- * with the JSON content of that file.
- *
- * An instance of SchemaDereferencer forever caches the content of any
- * file it has already used.
- */
 public class SchemaDereferencer {
 
   static final Logger log = LoggerFactory.getLogger(SchemaDereferencer.class);
 
-  /** cache */
-  private Map<Path,JsonObject> dereferenced = new HashMap<>();
-
-  /**
-   * Return a schema with all $ref dereferenced.
-   *
-   * @param path  path of the schema file; it may be relative to basePath
-   * @return dereferenced schema
-   * @throws IOException  when any $ref file cannot be read
-   * @throws IllegalStateException  when the $ref chain has a loop
-   */
-  protected JsonObject dereferencedSchema(Path path) throws IOException {
-    return dereferencedSchema(path, new ArrayDeque<>());
-  }
-
-  /**
-   * Create a stream from the iterable.
-   * @param iterable  what to iterate
-   * @return the stream
-   */
-  private static <T> Stream<T> stream(Iterable<T> iterable) {
-    return StreamSupport.stream(iterable.spliterator(), false);
-  }
-
-  /**
-   * The paths in descending order, comma separated.
-   */
-  private String allPaths(Deque<Path> dereferenceStack) {
-    Iterable<Path> reverseStack = dereferenceStack::descendingIterator;
-    return stream(reverseStack).map(Path::toString).collect(Collectors.joining(", "));
-  }
-
-  /**
-   * Return a schema with all $ref dereferenced.
-   *
-   * @param inputPath  path of the schema file, may be relative to the current directory
-   * @param dereferenceStack  stack of the files chain for file
-   * @return dereferenced RAML
-   * @throws IOException  when any $ref file cannot be read
-   * @throws IllegalStateException  when the $ref chain has a loop
-   * @throws DecodeException  when the $ref file is not a JSON
-   */
-  protected JsonObject dereferencedSchema(Path inputPath, Deque<Path> dereferenceStack)
-      throws IOException {
-
-    Path path = inputPath.normalize().toAbsolutePath();
-
-    if (dereferenced.containsKey(path)) {
-      return dereferenced.get(path);
+  protected JsonObject dereferencedSchema(Path path, Path tPath) throws IOException {
+    String content;
+    try (InputStream reader = new FileInputStream(path.toFile())) {
+      content = IoUtil.toStringUtf8(reader);
     }
-
-    boolean loop = dereferenceStack.contains(path);
-    dereferenceStack.push(path);
-
-    if (loop) {
-      throw new IllegalStateException("$ref chain has a loop: " + allPaths(dereferenceStack));
+    JsonObject schema = null;
+    try {
+      schema = new JsonObject(content);
+    } catch (DecodeException e) {
+      throw new DecodeException(e.getLocalizedMessage());
     }
-
-    String schemaString = findCorrectSchemaPath(path);
-
-    JsonObject schema;
-    if (schemaString.indexOf('{') == -1) {
-      // schemaString contains the filename to open
-      Path newInputPath = inputPath.resolveSibling(Paths.get(schemaString)).normalize();
-      schema = dereferencedSchema(newInputPath, dereferenceStack);
-    } else {
-      try {
-        schema = new JsonObject(schemaString);
-      } catch (DecodeException e) {
-        throw new DecodeException(allPaths(dereferenceStack), e);
-      }
-      dereference(schema, inputPath, dereferenceStack);
-    }
-
-    dereferenceStack.pop();
-    dereferenced.put(path, schema);
-
+    fixupRef(tPath, schema);
     return schema;
   }
 
-  private String findCorrectSchemaPath(Path refPath) throws IOException {
-    Path path = refPath;
-    boolean exists = refPath.toFile().exists();
-    if(!exists){
-      //add a .schema suffix and retry
-      String wSchemaSuffix = refPath.toAbsolutePath().toString() + ".schema";
-      //add a .json suffix and retry
-      String wJsonSuffix = refPath.toAbsolutePath().toString() + ".json";
-      if(new File(wSchemaSuffix).exists()){
-        path = Paths.get(new File(wSchemaSuffix).toURI());
+  private boolean hasUriScheme(String uri) {
+    for (int i = 0; i < uri.length(); i++) {
+      char ch = uri.charAt(i);
+      if (ch == ':') {
+        return i >= 2;  // note drive letters
       }
-      else if(new File(wJsonSuffix).exists()){
-        path = Paths.get(new File(wJsonSuffix).toURI());
-      }
-      else{
-        //go to the raml map and find the real path as the value in the $ref does not lead to an actual file
-        String schema = RamlDirCopier.TYPE2PATH_MAP.get(refPath.getFileName().toString());
-        if(schema == null){
-          throw new IOException(refPath.getFileName() + " not found");
-        }
-        return schema;
+      if (ch == '/' || ch == '\\') {
+        break;
       }
     }
-    try (InputStream reader = new FileInputStream(path.toFile())) {
-      return IoUtil.toStringUtf8(reader);
-    }
+    return false;
   }
 
-
   /**
-   * Merge the file content of any {@code ("$ref": <filename>)} into jsonObject.
+   * Replace each $ref value containing a relative path by
+   * a file URI with an absolute path.
    *
-   * @param jsonObject  where to replace $ref
-   * @param jsonFile  the path of jsonObject
-   * @param dereferenceStack  dereferenceStack to check for loops
-   * @throws IllegalArgumentException  on $ref loop
-   * @throws IOException  when any $ref file cannot be read
-   * @throws ClassCastException  when $ref is not a String
+   * <p>Examples for <code>"$ref": "dir/a.json"</code>:
+   *
+   * <ul>
+   * <li>If the base path is <code>"/home/peter"</code> the ref
+   * becomes <code>"$ref": "file:/home/peter/dir/a.json"</code>.
+   * <li>If the base path is <code>"C:\Users\peter"</code> the ref
+   * becomes <code>"$ref": "file:///C:\Users\peter\dir\a.json"</code>.
+   * </ul>
+   *
+   * <p>The absolute path is needed for generating the code from raml files
+   * because raml-java-parser fails on relative JSON refs. See
+   * <a href="https://issues.folio.org/browse/RMB-265">RMB-265</a> and the
+   * <a href="https://github.com/raml-org/raml-java-parser/issues/362">bug report</a>.
+   *
+   * @param path  base path
+   * @param jsonObject  where to search and replace recursively
    */
-  private void dereference(JsonObject jsonObject, Path jsonPath, Deque<Path> dereferenceStack)
+  private void fixupRef(Path path, JsonObject jsonObject)
       throws IOException {
     for (Entry<String,Object> entry : jsonObject) {
       Object value = entry.getValue();
       if (value instanceof JsonObject) {
-        dereference((JsonObject) value, jsonPath, dereferenceStack);
+        fixupRef(path, (JsonObject) value);
       }
     }
-    // merge $ref after the for loop to avoid processing merged values
     String file = jsonObject.getString("$ref");
-    if (file == null) {
-      return;
+    if (file != null && !hasUriScheme(file)) {
+      Path nPath = path.resolveSibling(file);
+      //fix the problem of uri.getpath()==null in windows environment
+      jsonObject.put("$ref", nPath.toUri().toString());
     }
-    jsonObject.remove("$ref");
-    Path refPath = jsonPath.resolveSibling(Paths.get(file)).normalize();
-    JsonObject schema = dereferencedSchema(refPath, dereferenceStack);
-    jsonObject.mergeIn(schema);
   }
 }

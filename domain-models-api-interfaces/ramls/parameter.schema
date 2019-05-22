@@ -1,14 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Job configuration",
+  "description": "Schema for a job parameter consisting of a key-value pair",
   "type": "object",
   "properties": {
     "param": {
+      "description": "param array",
       "type": "object",
       "properties": {
         "key": {
+          "description": "key",
           "type": "string"
         },
         "value": {
+          "description": "value",
           "type": "string"
         }
       }

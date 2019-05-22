@@ -1,21 +1,23 @@
 package org.folio.rest.persist.cql;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.Criteria.Limit;
 import org.folio.rest.persist.Criteria.Offset;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
 public class CQLWrapper {
 
+  private static final Logger log = LoggerFactory.getLogger(CQLWrapper.class);
   CQL2PgJSON field;
   String query;
   private Limit  limit = new Limit();
   private Offset offset = new Offset();
   private List<WrapTheWrapper> addedWrappers = new ArrayList<>();
-
 
   public CQLWrapper() {
     super();
@@ -25,6 +27,46 @@ public class CQLWrapper {
     super();
     this.field = field;
     this.query = query;
+  }
+
+  /**
+   * CQLWrapper constructor setting query, limit and offset.
+   *
+   * <p>Intended usage:
+   *
+   * <pre>
+   * import org.folio.util.ResourceUtils;
+   *
+   * public class ... {
+   *   private static CQL2PgJSON cql2PgJson;
+   *   static {
+   *     try {
+   *       cql2PgJson = new CQL2PgJSON("users.jsonb", ResourceUtils.resource2String("ramls/user.json"));
+   *     } catch (Exception e) {
+   *       throw new RuntimeException(e);
+   *     }
+       }
+   *
+   *   private static CQLWrapper cqlWrapper(String cql, int offset, int limit) {
+   *     return new CQLWrapper(cql2PgJson, cql, offset, limit);
+   *   }
+   * </pre>
+   *
+   * @param field  JSONB field
+   * @param query  CQL query
+   * @param limit  maximum number of records to return; use a negative number for no limit
+   * @param offset  skip this number of records; use a negative number for no offset
+   */
+  public CQLWrapper(CQL2PgJSON field, String query, int limit, int offset) {
+    super();
+    this.field = field;
+    this.query = query;
+    if (limit >= 0) {
+      this.limit = new Limit(limit);
+    }
+    if (offset >= 0) {
+      this.offset = new Offset(offset);
+    }
   }
 
   public CQL2PgJSON getField() {
@@ -41,16 +83,20 @@ public class CQLWrapper {
     this.query = query;
     return this;
   }
+  public Limit getLimit() {
+    return limit;
+  }
   public CQLWrapper setLimit(Limit limit) {
     this.limit = limit;
     return this;
   }
-
+  public Offset getOffset() {
+    return offset;
+  }
   public CQLWrapper setOffset(Offset offset) {
     this.offset = offset;
     return this;
   }
-
   public CQLWrapper addWrapper(CQLWrapper wrapper){
     addWrapper(wrapper, "and");
     return this;
@@ -89,7 +135,7 @@ public class CQLWrapper {
   }
 
   /**
-   * Append text to sb. Do nothing if sb is null or empty.
+   * Append text to sb. Do nothing if text is null or empty.
    * Before appending append a space if sb is not empty.
    * @param sb where to append
    * @param text what to append
@@ -123,7 +169,11 @@ public class CQLWrapper {
     }
     spaceAppend(sb, limit.toString());
     spaceAppend(sb, offset.toString());
-    return sb.toString();
+    String sql = sb.toString();
+    if (log.isInfoEnabled()) {
+      log.info("CQL >>> SQL: " + this.query + " >>>" + sql);
+    }
+    return sql;
   }
 
   class WrapTheWrapper {

@@ -2,8 +2,6 @@
   "tables": [
     {
       "tableName": "item",
-      "generateId": false,
-      "pkColumnName": "_id",
       "index": [
         {
           "fieldName": "title",

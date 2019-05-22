@@ -1,13 +1,11 @@
 #%RAML 1.0
 
 title: e-BookMobile API
-baseUri: http://localhost:8081/{version}
+baseUri: http://localhost:8081
 version: v1
 
 types:
   book: !include book.schema
-  metadata: !include raml-util/schemas/metadata.schema
-  resultInfo: !include raml-util/schemas/resultInfo.schema
 
 traits:
   facets: !include raml-util/traits/facets.raml
@@ -45,7 +43,7 @@ traits:
          body:
            application/json:
             schema: book
-            example: 
+            example:
               strict: false
               value: |
                {
@@ -94,3 +92,17 @@ traits:
         302:
           headers:
             Location:
+  /testStream:
+    post:
+      body:
+        application/octet-stream:
+      responses:
+        200:
+          body:
+            application/json:
+        400:
+          body:
+            text/plain:
+        500:
+          body:
+            text/plain:

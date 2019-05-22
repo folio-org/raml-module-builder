@@ -1,0 +1,8 @@
+{
+  "tables": [
+    {
+      "tableName": "test_tenantapi",
+      "generateId" : true
+    }
+  ]
+}

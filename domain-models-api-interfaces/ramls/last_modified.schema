@@ -1,11 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Last modified",
+  "description": "Date and time of the last modification",
   "type": "object",
   "properties": {
     "last_modified": {
+      "description": "last modified object",
       "type": "object",
       "properties": {
         "$date": {
+          "description": "last modified date",
           "type": "string"
         }
       }

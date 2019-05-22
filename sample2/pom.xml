@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-sample2</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>24.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -18,7 +18,7 @@
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <vertx-version>3.5.1</vertx-version>
+    <vertx-version>3.5.4</vertx-version>
   </properties>
 
   <repositories>
@@ -51,7 +51,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>20.0.0-SNAPSHOT</version>
+      <version>24.1.0-SNAPSHOT</version>
     </dependency>
 
     <dependency>
@@ -111,6 +111,19 @@
           <source>1.8</source>
           <target>1.8</target>
           <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.22.1</version>
+        <configuration>
+          <!-- TODO: update to version 3.0.0 and remove useSystemClassLoader
+               https://issues.folio.org/browse/FOLIO-1609
+               https://issues.apache.org/jira/browse/SUREFIRE-1588
+          -->
+          <useSystemClassLoader>false</useSystemClassLoader>
         </configuration>
       </plugin>
 

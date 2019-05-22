@@ -8,16 +8,16 @@ import org.folio.rest.jaxrs.model.ResultInfo;
  * @author shale
  *
  */
-public class Results {
+public class Results <T> {
 
-  private List<? extends Object> list;
+  private List<T> list;
   private ResultInfo rInfo;
 
-  public void setResults(List<?> list){
+  public void setResults(List<T> list){
     this.list = list;
   }
 
-  public List<?> getResults(){
+  public List<T> getResults(){
     return list;
   }
 

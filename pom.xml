@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>20.0.0-SNAPSHOT</version>
+  <version>24.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -10,6 +10,9 @@
     <module>rules</module>
     <module>testing</module>
     <module>util</module>
+    <module>dbschema</module>
+    <module>cql2pgjson</module>
+    <module>cql2pgjson-cli</module>
     <module>domain-models-api-aspects</module>
     <module>domain-models-interface-extensions</module>
     <module>domain-models-api-interfaces</module>
@@ -27,9 +30,8 @@
 
   <properties>
     <aspectj.version>1.8.9</aspectj.version>
-    <junit-jupiter-version>5.2.0</junit-jupiter-version>
+    <junit-jupiter-version>5.4.1</junit-jupiter-version>
     <postgresql-embedded-version>2.9</postgresql-embedded-version>
-    <vertx-version>3.5.1</vertx-version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -72,19 +74,19 @@
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
-        <version>3.5.1</version>
+        <version>3.5.4</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
       <dependency>
-        <!-- vertx-stack-depchain sets the version for
-             com.fasterxml.jackson.core:jackson-core and
-             com.fasterxml.jackson.core:jackson-databind
-             https://github.com/vert-x3/vertx-dependencies/blob/master/pom.xml
-        -->
+        <!-- Security update:
+             https://issues.folio.org/browse/FOLIO-1682
+             https://issues.folio.org/browse/RMB-315
+             TODO: Remove this jackson-databind dependency when vertx-stack-depchain
+             contains jackson-databind >= 2.9.8 -->
         <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-annotations</artifactId>
-        <version>2.9.4</version>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.9.8</version>
       </dependency>
       <dependency>
         <groupId>javax.el</groupId>
@@ -108,6 +110,11 @@
       </dependency>
       <dependency>
         <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>${junit-jupiter-version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>
         <version>${junit-jupiter-version}</version>
       </dependency>
@@ -119,6 +126,16 @@
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-params</artifactId>
+        <version>${junit-jupiter-version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.platform</groupId>
+        <artifactId>junit-platform-engine</artifactId>
+        <version>1.4.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.vintage</groupId>
+        <artifactId>junit-vintage-engine</artifactId>
         <version>${junit-jupiter-version}</version>
       </dependency>
       <dependency>
@@ -185,6 +202,7 @@
                     https://dev.folio.org/guides/troubleshooting/#missing-certificate-authority-for-lets-encrypt
                   </message>
                   <version>1.8.0-101</version>
+                  <!-- for runtime check see domain-models-runtime RestVerticle.MINIMUM_JAVA_VERSION -->
                 </requireJavaVersion>
               </rules>
             </configuration>
@@ -233,27 +251,12 @@
         </configuration>
       </plugin>
 
-      <!-- JUnit 5 + JUnit 4 -->
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.22.0</version>
-        <dependencies>
-          <dependency>
-            <groupId>org.junit.platform</groupId>
-            <artifactId>junit-platform-surefire-provider</artifactId>
-            <version>1.2.0</version>
-          </dependency>
-          <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit-jupiter-version}</version>
-          </dependency>
-          <dependency>
-            <groupId>org.junit.vintage</groupId>
-            <artifactId>junit-vintage-engine</artifactId>
-            <version>${junit-jupiter-version}</version>
-          </dependency>
-        </dependencies>
+        <version>2.22.1</version>
+        <configuration>
+          <useSystemClassLoader>false</useSystemClassLoader>
+        </configuration>
       </plugin>
 
       <plugin>

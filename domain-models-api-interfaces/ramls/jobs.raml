@@ -1,7 +1,7 @@
 #%RAML 1.0
 
 title: Admin API
-baseUri: http://localhost:8081/v1
+baseUri: http://localhost:8081
 version: v1
 
 types:
@@ -20,7 +20,6 @@ traits:
   pageable:  !include raml-util/traits/pageable.raml
   searchable: !include raml-util/traits/searchable.raml
   language: !include raml-util/traits/language.raml
-  secured: !include raml-util/traits/auth.raml
 
 resourceTypes:
   collection: !include raml-util/rtypes/collection.raml

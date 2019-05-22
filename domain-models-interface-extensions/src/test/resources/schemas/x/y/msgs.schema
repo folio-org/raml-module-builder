@@ -7,7 +7,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "$ref": "msg"
+        "$ref": "../../a/b/msg.schema"
       }
     },
     "total_records": {

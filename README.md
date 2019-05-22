@@ -1,93 +1,62 @@
+<<<<<<< HEAD
 
 # Raml-Module-Builder
 
-Copyright (C) 2016-2018 The Open Library Foundation
+Copyright (C) 2016-2019 The Open Library Foundation
 
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
 
-## Upgrading to v20
+<!-- ../okapi/doc/md2toc -l 2 -h 3 README.md -->
+* [Introduction](#introduction)
+* [Upgrading](#upgrading)
+* [Overview](#overview)
+* [The basics](#the-basics)
+    * [Implement the interfaces](#implement-the-interfaces)
+    * [Set up your pom.xml](#set-up-your-pomxml)
+    * [Build and run](#build-and-run)
+* [Get started with a sample working module](#get-started-with-a-sample-working-module)
+* [Command-line options](#command-line-options)
+* [Environment Variables](#environment-variables)
+* [Local development server](#local-development-server)
+* [Creating a new module](#creating-a-new-module)
+    * [Step 1: Create new project directory layout](#step-1-create-new-project-directory-layout)
+    * [Step 2: Include the jars in your project pom.xml](#step-2-include-the-jars-in-your-project-pomxml)
+    * [Step 3: Add the plugins to your pom.xml](#step-3-add-the-plugins-to-your-pomxml)
+    * [Step 4: Build your project](#step-4-build-your-project)
+    * [Step 5: Implement the generated interfaces](#step-5-implement-the-generated-interfaces)
+    * [Step 6: Design the RAML files](#step-6-design-the-raml-files)
+* [Adding an init() implementation](#adding-an-init-implementation)
+* [Adding code to run periodically](#adding-code-to-run-periodically)
+* [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
+* [Adding a shutdown hook](#adding-a-shutdown-hook)
+* [Implementing file uploads](#implementing-file-uploads)
+* [PostgreSQL integration](#postgresql-integration)
+    * [Credentials](#credentials)
+    * [Securing DB Configuration file](#securing-db-configuration-file)
+    * [Foreign keys constraint](#foreign-keys-constraint)
+* [Tenant API](#tenant-api)
+* [RAMLs API](#ramls-api)
+* [JSON Schemas API](#json-schemas-api)
+* [Query Syntax](#query-syntax)
+* [Metadata](#metadata)
+* [Facet Support](#facet-support)
+* [JSON Schema fields](#json-schema-fields)
+* [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
+* [Drools integration](#drools-integration)
+* [Messages](#messages)
+* [Documentation of the APIs](#documentation-of-the-apis)
+* [Logging](#logging)
+* [Monitoring](#monitoring)
+* [Overriding Out of The Box RMB APIs](#overriding-out-of-the-box-rmb-apis)
+* [Client Generator](#client-generator)
+* [Querying multiple modules via HTTP](#querying-multiple-modules-via-http)
+* [A Little More on Validation](#a-little-more-on-validation)
+* [Advanced Features](#advanced-features)
+* [Additional Tools](#additional-tools)
+* [Some REST examples](#some-rest-examples)
+* [Additional information](#additional-information)
 
-RMB v20+ is based on RAML 1.0. This is a breaking change from RAML 0.8 and there are multiple changes that must be implemented by modules that upgrade to this version.
-
-```
-1. Update the "raml-util" git submodule to use its "raml1.0" branch.
-2. MUST change 0.8 to 1.0 in all RAML files (first line)
-3. MUST remove the '-' signs from the RAML
-	 e.g. CHANGE:  - configs: !include... TO configs: !include...
-4. MUST change the "schemas:" section to "types:"
-5. MUST change 'repeat: true' attributes in traits (see our facets) TO type: string[]
-6. MUST ensure that documentation field is this format:
-   documentation:
-     - title: Foo
-       content: Bar
-7. In resource types change 'schema:' to 'type:'
-   This also means that the '- schema:' in the raml is replaced with 'type:'
-	 For example:
-          body:
-            application/json:
-              type: <<schema>>
-8. Remove suffixes. Any suffix causes a problem (even `.json`) when it is used to populate
-   placeholders in the RAML file.
-   Declaring schemas with a suffix (such as metadata.schema) and only referencing them
-   from other schemas, is okay to use a suffix.
-   For example:
-        CHANGE:
-            kv_configuration.schema: !include ../_schemas/kv_configuration.schema
-        TO:
-            kv_configuration: !include ../_schemas/kv_configuration.schema
-        WHEN:
-	        kv_configuration is referenced anywhere in the raml
-9. Paths cannot be used as keys in the raml
-        CHANGE:
-            _schemas/kv_configuration.schema: !include _schemas/kv_configuration.schema
-        TO
-            kv_configuration: !include _schemas/kv_configuration.schema
-10. The resource type examples must not be strict (will result in invalid json content otherwise)
-        CHANGE:
-            example: <<exampleItem>>
-        TO:
-            example:
-                strict: false
-                value: <<exampleItem>>
-11. Generated interfaces dont have the 'Resource' suffix
-	  e.g. ConfigurationsResource -> Configurations
-12. Names of generated pojos (also referenced by the generated interfaces) may change
-    For example:
-        kv_configuration: !include ../_schemas/kv_configuration.schema
-        will produce a pojo called: KvConfiguration
-
-    Referencing the kv_configuration in a schema (example below will produce a pojo called Config)
-    which means the same pojo will be created twice with different names.
-    Therefore, it is preferable to synchronize names.
-            "configs": {
-              "id": "configurationData",
-              "type": "array",
-              "items": {
-                "type": "object",
-                "$ref": "kv_configuration"
-            }
-    This may affect which pojo is referenced by the interface - best to use the same name.
-13. Generated methods do not throw exceptions anymore.
-    This will require removing the 'throws Exception' from the implementing methods.
-14. Names of generated methods has changed
-15. The response codes have changed:
-        withJsonOK -> respond200WithApplicationJson
-        withNoContent -> respond204
-        withPlainBadRequest -> respond400WithTextPlain
-        withPlainNotFound -> respond404WithTextPlain
-        withPlainInternalServerError -> respond500WithTextPlain
-        withPlainUnauthorized -> respond401WithTextPlain
-        withJsonUnprocessableEntity -> respond422WithApplicationJson
-        withAnyOK -> respond200WithAnyAny
-        withPlainOK -> respond200WithTextPlain
-        withJsonCreated -> respond201WithApplicationJson
-
-    Note: For 201 / created codes, the location header has changed and is no longer a string
-    but an object and should be passed in as:
-      PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret)
-16. Multipart formdata is currently not supported
-```
 ## Introduction
 
 This documentation includes information about the Raml-Module-Builder (RMB) framework
@@ -142,6 +111,13 @@ The framework consists of a number of tools:
 - `rules` -- Basic Drools functionality allowing module developers to create
   validation rules via `*.drl` files for objects (JSON schemas).
 
+## Upgrading
+
+See separate [upgrading notes](doc/upgrading.md).
+
+Note: This version of the README is for RMB v20+ version.
+If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.
+
 ## Overview
 
 Follow the [Introduction](#introduction) section above to generally understand
@@ -154,8 +130,8 @@ When that is understood, then move on to the section
 [Creating a new module](#creating-a-new-module) to get your project started.
 
 Note that actually building this RAML Module Builder framework is not required.
-(Some of the images below are out-of-date.) The already published artifacts will
-be [incorporated](#step-2) into your project from the repository.
+(Some of the images below are out-of-date.) The already published RMB artifacts will
+be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your project from the repository.
 
 ## The basics
 
@@ -215,37 +191,34 @@ and other [modules](https://dev.folio.org/source-code/#server-side) (not all do 
 
 ## Get started with a sample working module
 
-The [mod-configuration](https://github.com/folio-org/mod-configuration)
+The [mod-notify](https://github.com/folio-org/mod-notify)
 is a full example which uses the RMB. Clone it, and then investigate:
 
 ```
-$ git clone --recursive https://github.com/folio-org/mod-configuration.git
-$ cd mod-configuration
+$ git clone --recursive https://github.com/folio-org/mod-notify.git
+$ cd mod-notify
 $ mvn clean install
 ```
-
-- This module implements basic configuration APIs. It contains two sub modules, the configuration server and a configuration client (which can be used to interact with the server in a more OO manner, instead of using URLs).
 
 - Its RAMLs and JSON schemas can be found in the `ramls` directory.
 These are also displayed as local [API documentation](#documentation-of-the-apis).
 
-- Open the pom.xml in the configuration server module - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files within the configuration server project. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
+- Open the pom.xml file - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files into the `target/generated-sources/raml-jaxrs` directory. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
 
-- Open the `mod-configuration-server/src/main/java/org/folio/rest/impl/ConfigAPI.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the ConfigAPI.java contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for the configuration module by the RMB at build time.
+- Investigate the `src/main/java/org/folio/rest/impl/NotificationsResourceImpl.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the class contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for this module by the RMB at build time.
 
 - **IMPORTANT NOTE:** Every interface implementation - by any module -
   must reside in package `org.folio.rest.impl`. This is the package that is
   scanned at runtime by the runtime framework, to find the needed runtime
   implementations of the generated interfaces.
 
-Now run the configuration module in standalone mode:
+Now run the module in standalone mode:
 
 ```
-$ java -jar mod-configuration-server/target/mod-configuration-server-fat.jar embed_postgres=true
+$ java -jar target/mod-notify-fat.jar embed_postgres=true
 ```
 
 Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
-(for example to view or set the [Logging](#logging) levels).
 
 At this stage there is not much that can be queried, so stop that quick demonstration now.
 After explaining general command-line options, etc.
@@ -259,7 +232,7 @@ we will get your local development server running and populated with test data.
 Or use `org.folio.rest.*` for all classes within a specific package,
 or `org.folio.rest.RestVerticle` for a specific class.)
 
-- `embed_postgres=true` (Optional -- defaults to false)
+- `embed_postgres=true` (Optional -- enforces starting an embedded postgreSQL, defaults to false)
 
 - `db_connection=[path]` (Optional -- path to an external JSON config file with
   connection parameters to a PostgreSQL DB)
@@ -292,180 +265,32 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_CHARSET
  - DB_MAXPOOLSIZE
 
+Environment variables with periods/dots in their names are deprecated in RMB because a period is [not POSIX compliant](http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html) and therefore some shells, notably, the BusyBox /bin/sh included in Alpine Linux, strip them (reference: [warning in OpenJDK docs](https://hub.docker.com/_/openjdk/)).
+
 See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables) section of the Okapi Guide for more information on how to deploy environment variables to RMB modules via Okapi.
 
 ## Local development server
 
 To get going quickly with running a local instance of Okapi, adding a tenant and some test data,
-and deploying some modules, run
-[folio/stable-backend, a prebuilt Vagrant box](https://github.com/folio-org/folio-ansible/blob/master/doc/index.md#prebuilt-vagrant-boxes)
-
-Ensure that the sample users are loaded, and that a query is successful:
-
-```
-curl -D - -w '\n' \
-  -H "X-Okapi-Tenant: diku" \
-  http://localhost:9131/users?active=true
-```
-
-Use the local [API documentation](#documentation-of-the-apis) to view the RAMLs and conduct some more requests
-(and remember to specify the "X-Okapi-Tenant: diku" header):
-```
-http://localhost:9131/apidocs/index.html?raml=raml/users.raml
-```
+and deploying some modules, see
+[Running a local FOLIO system](https://dev.folio.org/guides/run-local-folio/).
 
 ## Creating a new module
 
-### Step 1: Describe the APIs to be exposed by the new module
+### Step 1: Create new project directory layout
 
-Create the new project using the normal layout of files and basic POM file.
+Create the new project using the [normal layout](https://dev.folio.org/guides/commence-a-module/) of files, and basic POM file.
 
 Add the `/ramls` directory, the area for the RAML, schemas, and examples files.
 For a maven subproject the directory may be at the parent project only.
-(See [notes](#step-6-design-the-raml-files) below.)
-These define the API endpoints.
-Get started by using the following familiar example:
 
-`ebook.raml`
+To get a quick start, copy the "ramls" directory and POM file from
+[mod-notify](https://github.com/folio-org/mod-notify).
+(At [Step 6](#step-6-design-the-raml-files) below, these will be replaced to suit your project's needs.)
 
-```raml
-#%RAML 0.8
+Adjust the POM file to match your project, e.g. artifactID, version, etc.
 
-title: E-book API
-baseUri: http://api.example.com/{version}
-version: v1
-
-schemas:
-  - book: !include ebook.json
-
-/ebooks:
-  /{bookTitle}:
-    get:
-      queryParameters:
-        author:
-          displayName: Author
-          type: string
-          description: An author's full name
-          example: Mary Roach
-          required: false
-        publicationYear:
-          displayName: Pub Year
-          type: number
-          description: The year released for the first time in the US
-          example: 1984
-          required: false
-        rating:
-          displayName: Rating
-          type: number
-          description: Average rating (1-5) submitted by users
-          example: 3.14
-          required: false
-        isbn:
-          displayName: ISBN
-          type: string
-          minLength: 10
-          example: 03217360797
-      responses:
-        200:
-          body:
-            application/json:
-              schema: book
-              example: |
-                {
-                  "bookdata": {
-                    "id": "SbBGk",
-                    "title": "Stiff: The Curious Lives of Human Cadavers",
-                    "description": null,
-                    "datetime": 1341533193,
-                    "genre": "science",
-                    "author": "Mary Roach",
-                    "link": "http://e-bookmobile.com/books/Stiff"
-                  },
-                  "success": true,
-                  "status": 200
-                }
-    put:
-      queryParameters:
-        access_token:
-          displayName: Access Token
-          type: string
-          description: "Token giving you permission to make call"
-          required: true
-```
-
-Create JSON schemas indicating the objects exposed by the module:
-
-`ebook.json`
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "description": "Record of an e-book",
-  "type": "object",
-  "properties": {
-    "bookdata": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "Unique ID (UUID) of this record",
-          "type": "string"
-        },
-        "title": {
-          "description": "Title of the e-book",
-          "type": "string"
-        },
-        "description": {
-          "description": "Description of the content and the usage limitations of the e-book",
-          "type": "null"
-        },
-        "datetime": {
-          "description": "The last time this record has been changed",
-          "type": "integer"
-        },
-        "genre": {
-          "description": "Genre of the e-book",
-          "type": "string"
-        },
-        "author": {
-          "description": "Author of the e-book. Several authors are separated by comma.",
-          "type": "string"
-        },
-        "link": {
-          "description": "URL to access the e-book.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "title",
-        "description",
-        "datetime",
-        "genre",
-        "author",
-        "link"
-      ]
-    },
-    "success": {
-      "description": "False if there was some error during the request, true otherwise. An empty result can also have success=true.",
-      "type": "boolean"
-    },
-    "status": {
-      "description": "HTTP status code returned from the knowledge base.",
-      "type": "integer"
-    }
-  },
-  "required": [
-    "bookdata",
-    "success",
-    "status"
-  ]
-}
-```
-
-Use the `description` field alongside the `type` field to explain the content and
-usage and to add documentation.
-
-### <a name="step-2"></a>Step 2: Include the jars in your project pom.xml
+### Step 2: Include the jars in your project pom.xml
 
 ```xml
   <repositories>
@@ -479,8 +304,10 @@ usage and to add documentation.
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>16.0.3</version>
+      <version>20.0.0</version>
     </dependency>
+    ...
+    ...
   </dependencies>
 ```
 
@@ -497,8 +324,8 @@ Four plugins need to be declared in the POM file:
   correctly, parameters are of the correct type and contain the correct content
   as indicated by the RAML file.
 
-- The `maven-shade-plugin` which will generate a fat-jar runnable jar. While the
-  shade plugin is not mandatory, it does makes things easier. The important thing to
+- The `maven-shade-plugin` which will generate a fat-jar runnable jar.
+  The important thing to
   notice is the main class that will be run when running your module. Notice the
   `Main-class` and `Main-Verticle` in the shade plugin configuration.
 
@@ -506,209 +333,12 @@ Four plugins need to be declared in the POM file:
   under `/apidocs` so that the runtime framework can pick it up and display html
   documentation based on the RAML files.
 
-Add `ramlfiles_path` property indicating the location of the RAML directory,
-only this directory skipping subdirectories is scanned for .raml files:
+Add `ramlfiles_path` property indicating the location of the RAML directory.
 
 ```xml
   <properties>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
   </properties>
-```
-
-Example: https://github.com/folio-org/mod-circulation-storage/
-
-Alternatively the .raml files can be placed into the https://github.com/folio-org/raml
-repository and included as a git submodule in the raml-util directory,
-an example is https://github.com/folio-org/mod-codex-mock/ with
-
-`<ramlfiles_path>${basedir}/ramls/raml-util/ramls/codex</ramlfiles_path>`
-
-Add the plugins:
-
-```xml
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
-          <encoding>UTF-8</encoding>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.0.0</version>
-        <executions>
-          <execution>
-            <id>add_generated_sources_folder</id>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <phase>initialize</phase>
-            <configuration>
-              <sources>
-                <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.5.0</version>
-        <executions>
-          <execution>
-            <id>generate_interfaces</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-              <!-- <executable>java</executable> -->
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>raml_files</key>
-                  <value>${ramlfiles_path}</value>
-                </systemProperty>
-              </systemProperties>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.9</version>
-        <configuration>
-          <verbose>true</verbose>
-          <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
-          <includes>
-            <include>**/impl/*.java</include>
-            <include>**/*.aj</include>
-          </includes>
-          <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
-          <XaddSerialVersionUID>true</XaddSerialVersionUID>
-          <showWeaveInfo>true</showWeaveInfo>
-          <forceAjcCompile>true</forceAjcCompile>
-          <aspectLibraries>
-            <aspectLibrary>
-              <groupId>org.folio</groupId>
-              <artifactId>domain-models-api-aspects</artifactId>
-            </aspectLibrary>
-          </aspectLibraries>
-        </configuration>
-        <executions>
-          <execution>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-        </executions>
-        <dependencies>
-          <dependency>
-            <groupId>org.aspectj</groupId>
-            <artifactId>aspectjrt</artifactId>
-            <version>1.8.9</version>
-          </dependency>
-          <dependency>
-            <groupId>org.aspectj</groupId>
-            <artifactId>aspectjtools</artifactId>
-            <version>1.8.9</version>
-          </dependency>
-        </dependencies>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>3.0.1</version>
-        <executions>
-          <execution>
-            <id>copy-resources</id>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${basedir}/target/classes/apidocs/raml</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${ramlfiles_path}</directory>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <!-- Replace the baseUri and the protocols in the RAMLs that have been copied to
-        apidocs directory so that they can be used via the local html api console. -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-antrun-plugin</artifactId>
-        <version>1.8</version>
-        <executions>
-          <execution>
-            <phase>prepare-package</phase>
-            <configuration>
-              <target>
-                <replace token="baseUri: http://api.e-bookmobile.com/{version}"
-                  value="baseUri: http://localhost:{http.port}"
-                  dir="${basedir}/target/classes/apidocs/raml">
-                  <include name="**/*.raml" />
-                </replace>
-                <replace token="protocols: [ HTTPS ]" value="protocols: [ HTTP ]"
-                  dir="${basedir}/target/classes/apidocs/raml">
-                  <include name="**/*.raml" />
-                </replace>
-              </target>
-            </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.4</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <transformers>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <manifestEntries>
-                    <Main-Class>org.folio.rest.RestLauncher</Main-Class>
-                    <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
-                  </manifestEntries>
-                </transformer>
-              </transformers>
-              <artifactSet />
-              <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
 ```
 
 Compare the POM with other FOLIO RMB-based modules.
@@ -739,44 +369,38 @@ This should:
 
 Implement the interfaces associated with the RAML files you created. An
 interface is generated for every root endpoint in the RAML files.
-So, for the ebook RAML an
-`org.folio.rest.jaxrs.resource.EbooksResource` interface will be generated.
+For example an
+`org.folio.rest.jaxrs.resource.Ebooks` interface will be generated.
 Note that the `org.folio.rest.jaxrs.resource` will be the package for every
 generated interface.
 
 The implementations must go into the `org.folio.rest.impl` package because RMB's
-[RestVerticle](https://github.com/folio-org/raml-module-builder/blob/b95cd0e/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java#L372)
+[RestVerticle](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java)
 scans this package for a class that implements the required interface.  The class can
 have any name.
 RMB then uses reflection to invoke the constructor and the method.
 
-See [mod-user's org.folio.rest.impl package](https://github.com/folio-org/mod-users/tree/master/src/main/java/org/folio/rest/impl)
+See [mod-notify's org.folio.rest.impl package](https://github.com/folio-org/mod-notify/tree/master/src/main/java/org/folio/rest/impl)
 for example implementations.
 
 ### Step 6: Design the RAML files
 
 It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
 Investigate the other FOLIO modules for guidance.
-The [mod-notes](https://github.com/folio-org/mod-notes) is an exemplar.
+The [mod-notify](https://github.com/folio-org/mod-notify) is an exemplar.
 
-Add the shared suite of [RAML utility](https://dev.folio.org/source-code/#server-side) files,
+Remove the temporary copy of the "ramls" directory from Step 1, and replace with your own.
+
+Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files
 as the "raml-util" directory inside your "ramls" directory:
 ```
 git submodule add https://github.com/folio-org/raml ramls/raml-util
 ```
+The "raml1.0" branch is the current and default branch.
 
-NOTE: When using RMB v20+ then the following notes about JSON schema $ref have changed (see notes [Upgrading to v20](#upgrading-to-v20) above).
-
-When any schema file refers to an additional schema file using "$ref" syntax, then also use that pathname of the referenced second schema as the "key" name in the RAML "schemas" section, and wherever that schema is utilised in RAML files. Ideally ensure that all such referenced files are below the parent file.
-It is possible to use a relative path with one set of dot-dots "../" but definitely
-[not more](https://issues.folio.org/browse/RMB-30).
-This is why it is beneficial to place the "raml-util" git submodule inside the "ramls" directory.
-
-NOTE: The schema name of a collection must not have a filename extension like `.json` or `.schema` to produce the correct class name.
-Examples are `schemaCollection: noteCollection` in
-[note.raml](https://github.com/folio-org/mod-notes/blob/master/ramls/note.raml) and
-`schemaCollection: addresstypeCollection` in
-[addressTypes.raml](https://github.com/folio-org/raml/blob/master/ramls/mod-users/addressTypes.raml).
+Create JSON schemas indicating the objects exposed by the module.
+Use the `description` field alongside the `type` field to explain the content and
+usage and to add documentation.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
 `target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
@@ -785,6 +409,10 @@ common ramls directory.
 
 The documentation of HTTP response codes
 is in [HttpStatus.java](util/src/main/java/org/folio/HttpStatus.java)
+
+Use the collection/collection-item pattern provided by the
+[collection resource type](https://github.com/folio-org/raml/tree/raml1.0/rtypes) explained
+in the [RAML 200 tutorial](https://raml.org/developers/raml-200-tutorial#resource-types).
 
 The RMB does do some validation of RAML files at compile-time.
 There are some useful tools to assist with command-line validation,
@@ -799,12 +427,6 @@ RAML-aware text editors are very helpful, such as
 
 Remember that the POM configuration enables viewing your RAML and interacting
 with your application via the local [API documentation](#documentation-of-the-apis).
-
-NOTE: The FOLIO project is currently using `RAML 0.8` version until the
-`RAML 1.0` tools have [settled](https://issues.folio.org/browse/FOLIO-523).
-
-NOTE: RAML files must declare at least two endpoints, see
-[RMB-1](https://issues.folio.org/browse/RMB-1).
 
 ## Adding an init() implementation
 
@@ -906,7 +528,7 @@ public class InitConfigService implements PostDeployVerticle {
     /** hard code the secret key for now - in production env - change this to read from a secure place */
     String secretKey = "b2%2BS%2BX4F/NFys/0jMaEG1A";
     int port = context.config().getInteger("http.port");
-    AdminClient ac = new AdminClient("localhost", port, null);
+    AdminClient ac = new AdminClient("http://localhost:" + port, null);
     ac.postSetAESKey(secretKey, reply -> {
       if(reply.statusCode() == 204){
         handler.handle(io.vertx.core.Future.succeededFuture(true));
@@ -963,11 +585,11 @@ Note that when implementing the generated interfaces it is possible to add a con
 
 ## Implementing file uploads
 
-The RMB (RAML-Module-Builder) supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
+The RMB supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
 
-### Option 1
+#### File uploads Option 1
 
-#### A multipart RAML declaration may look something like this:
+A multipart RAML declaration may look something like this:
 
 ```raml
 /uploadmultipart:
@@ -1015,7 +637,7 @@ for (int i = 0; i < parts; i++) {
 
 where each section in the body (separated by the boundary) is a "part".
 
-#### An octet/stream can look something like this:
+An octet/stream can look something like this:
 
 ```raml
  /uploadOctet:
@@ -1031,7 +653,7 @@ The interfaces generated from the above will contain a parameter of type `java.i
 representing the uploaded file.
 
 
-### Option 2
+#### File uploads Option 2
 
 The RMB allows for content to be streamed to a specific implemented interface.
 For example, to upload a large file without having to save it all in memory:
@@ -1039,16 +661,29 @@ For example, to upload a large file without having to save it all in memory:
  - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
  - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
 
-The RMB will then call the function every time a chunk of data is received. This means that a new Object is
-instantiated by the RMB for each chunk of data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
+The RMB will then call the function every time a chunk of data is received.
+This means that a new Object is instantiated by the RMB for each chunk of
+data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
 
+For each invocation RMB adds header `streamed_id` which will be unique
+for the current stream. For the last invocation, header `complete` is supplied
+to indicate "end-of-stream".
+
+As of RMB 23.12.0 and later, if a HTTP client prematurely closes the upload
+before complete, the handler will be called with `streamed_abort`.
 
 ## PostgreSQL integration
 
-By default an embedded PostgreSQL is included in the runtime, but is not run by
-default. To change that add `embed_postgres=true` to the command line
-(`java -jar mod-configuration-server-fat.jar embed_postgres=true`).
-Connection parameters to a non-embedded PostgreSQL can be placed in `resources/postgres-conf.json` or passed via the command line.
+The PostgreSQL connection parameters locations are searched in this order:
+
+- [DB_* environment variables](#environment-variables)
+- Configuration file, defaults to `resources/postgres-conf.json` but can be set via [command-line options](#command-line-options)
+- Embedded PostgreSQL using [default credentials](#credentials)
+
+By default an embedded PostgreSQL is included in the runtime, but it is only run if neither DB_* environment variables
+nor a postgres configuration file are present. To start an embedded PostgreSQL using connection parameters from the
+environment variables or the configuration file add `embed_postgres=true` to the command line
+(`java -jar mod-notify-fat.jar embed_postgres=true`). Use PostgresClient.setEmbeddedPort(int) to overwrite the port.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
 operations in an ORM type fashion.
@@ -1083,7 +718,7 @@ There is one exception to this. Lets take an example of an auditing table which 
 For example:
 
 
-_id| orig_id | operation | jsonb | creation_date
+id| orig_id | operation | jsonb | creation_date
 ------------ | -------------  | -------------  | -------------  | -------------  |
  |  |
 12345| 11111 | insert | {json with current data} | 1/1/2010
@@ -1100,7 +735,7 @@ For example: JSON schema representing the entire auditing table row:
   "$schema":"http://json-schema.org/draft-04/schema#",
   "type":"object",
   "properties":{
-    "_id":{
+    "id":{
       "type":"string"
     },
     "orig_id":{
@@ -1184,7 +819,7 @@ public class InitConfigService implements PostDeployVerticle {
     //** hard code the secret key  - in production env - read from a secure place *//
     String secretKey = "b2%2BS%2BX4F/NFys/0jMaEG1A";
     int port = context.config().getInteger("http.port");
-    AdminClient ac = new AdminClient("localhost", port, null);
+    AdminClient ac = new AdminClient("http://localhost:" + port, null);
     ac.postSetAESKey(secretKey, reply -> {
       if(reply.statusCode() == 204){
         handler.handle(io.vertx.core.Future.succeededFuture(true));
@@ -1206,7 +841,7 @@ Example:
 
 ```sql
 CREATE TABLE item (
-  _id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY,
   jsonb JSONB NOT NULL,
   permanentLoanTypeId UUID REFERENCES loan_type,
   temporaryLoanTypeId UUID REFERENCES loan_type
@@ -1235,24 +870,140 @@ The Postgres Client support in the RMB is schema specific, meaning that it expec
 
 The RAML defining the API:
 
-https://github.com/folio-org/raml/blob/3e5a4a58e141fb9d4a6968723df50e0f0b8d8de1/ramls/tenant.raml
+   https://github.com/folio-org/raml/blob/raml1.0/ramls/tenant.raml
+
+By default RMB includes an implementation of the Tenant API which assumes Postgres being present. Implementation in
+ [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) . You might want to extend/override this because:
+
+1. You want to not call it at all (your module is not using Postgres).
+2. You want to provide further Tenant control - such as loading reference and/or sample data.
+
+#### Extending the Tenant Init
+
+In order to implement your tenant API, extend `TenantAPI` class:
+
+```java
+package org.folio.rest.impl;
+import javax.ws.rs.core.Response;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+
+public class MyTenantAPI extends TenantAPI {
+ @Override
+  public void postTenant(TenantAttributes ta, Map<String, String> headers,
+    Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+
+    ..
+    }
+  @Override
+  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+    ..
+  }
+  ..
+}
+
+```
+
+If you wish to call the Post Tenant API (with Postgres) , just call the corresponding super-class, eg:
+```java
+@Override
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+  super.postTenant(ta, headers, hndlr, cntxt);
+}
+```
+(not much point in that though - it would be the same as not defining it as all).
+
+If you wish to load data for your module, that should be done after the DB has been successfully initialized,
+eg you'll do something like:
+```
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  super.postTenant(ta, headers, res -> {
+    if (res.failed()) {
+      hndlr.handle(res);
+      return;
+    }
+    // load data here
+    hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+      .respond201WithApplicationJson("")));
+  }, cntxt);
+}
+```
+
+There's no right way to load data, but consider that data load will be both happening for first time tenant
+usage of the module and during an upgrade process. Your data loading should be idempotent. If files are stored
+as resources and as JSON files, you can use the TenantLoading utility.
+
+```java
+import org.folio.rest.tools.utils.TenantLoading;
+
+public void postTenant(TenantAttributes ta, Map<String, String> headers,
+  super.postTenant(ta, headers, res -> {
+    if (res.failed()) {
+      hndlr.handle(res);
+      return;
+    }
+    TenantLoading tl = new TenantLoading();
+    // two sets of reference data files
+    // resources ref-data/data1 and ref-data/data2 .. loaded to
+    // okapi-url/instances and okapi-url/items respectively
+    tl.withKey("loadReference").withLead("ref-data")
+      .withIdContent().
+      .add("data1", "instances")
+      .add("data2", "items");
+    tl.perform(ta, headers, vertx, res1 -> {
+      if (res1.failed()) {
+        hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+          .respond500WithTextPlain(res1.cause().getLocalizedMessage())));
+        return;
+      }
+      hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
+        .respond201WithApplicationJson("")));
+    });
+  }, cntxt);
+}
+```
+
+If data is already in resources, fine.. If not, for example, if in root of
+project in project, copy it with maven-resource-plugin. For example, to
+copy `reference-data` to `ref-data` in resources:
+
+```xml
+<execution>
+  <id>copy-reference-data</id>
+  <phase>process-resources</phase>
+  <goals>
+    <goal>copy-resources</goal>
+  </goals>
+  <configuration>
+    <outputDirectory>${basedir}/target/classes/ref-data</outputDirectory>
+    <resources>
+      <resource>
+        <directory>${basedir}/reference-data</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+  </configuration>
+</execution>
+```
+
 
 #### The Post Tenant API
 
-RMB will look for a file at `/resources/templates/db_scripts/` called **schema.json**
+The Postgres based Tenant API implementation will look for a file at `/resources/templates/db_scripts/`
+called **schema.json**
 
 The file contains an array of tables and views to create for a tenant on registration (tenant api post)
 
 An example can be found here:
 
- - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example
+ - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example.json
 
 Entries in the json file to be aware of:
 
 For each **table**:
 
 1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
-2. `generateId` - whether to auto generate the id of entries for this table - (will add the following to the id column `DEFAULT gen_random_uuid()`)
+2. `generateId` - No longer supported.  This functionality is not stable in Pgpool-II see https://www.pgpool.net/docs/latest/en/html/restrictions.html.  The solution is to generate a UUID in java in the same manner as https://github.com/folio-org/raml-module-builder/blob/v23.11.0/domain-models-runtime/src/main/java/org/folio/rest/persist/PgUtil.java#L358
 3. `fromModuleVersion` - this field indicates the version in which the table was created / updated in. When a tenant update is requested - only versions older than the indicated version will generate the declared table. This ensures that if a module upgrades from an older version, the needed tables will be generated for it, however, subsequent upgrades from versions equal or later than the version indicated for the table will not re-generate the table.
  - Note that this is enforced for all tables, views, indexes, FK, triggers, etc... - via the `IF NOT EXISTS` sql Postgres statement
 4. `mode` - should be used only to indicate `delete`
@@ -1277,16 +1028,20 @@ For each **table**:
  - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
  - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
  - See additional options in the likeIndex section above
-11. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
-12. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
-13. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
+12. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
+13. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
+14. `populateJsonWithId` - when the id is auto generated, and the id must be stored in the json as well
+15. `fullTextIndex` - create a full text index using teh tsvector features of postgres. These do their
+ - own normalizing, so there is no need to use `caseSensitive` or `removeAccents`. The `tOps`
+ - is optional (like for all indexes), and defaults to ADDing the index. `whereClause` and
+ - `stringType` work as for `likeIndex` above.
+16. `pkColumnName` - No longer supported. The name of the primary key column is always `id`. Use `populateJsonWithId` for a trigger that copies it into `jsonb->'id'`. The method PostgresClient.setIdField(String) no longer exists.
 
 The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```
   "views": [
     {
       "viewName": "items_mt_view",
-      "pkColumnName": "_id",
       "join": [
         {
           "table": {
@@ -1306,7 +1061,7 @@ The **views** section is a bit more self explanatory as it indicates a viewName 
 Behind the scenes this will produce the following statement which will be run as part of the schema creation:
 
     CREATE OR REPLACE VIEW ${tenantid}_${module_name}.items_mt_view AS
-      SELECT u._id, u.jsonb as jsonb, g.jsonb as mt_jsonb
+      SELECT u.id, u.jsonb as jsonb, g.jsonb as mt_jsonb
       FROM ${tenantid}_${module_name}.item u
       JOIN ${tenantid}_${module_name}.material_type g
         ON lower(f_unaccent(g.jsonb->>'id')) = lower(f_unaccent(u.jsonb->>'materialTypeId'))
@@ -1318,7 +1073,6 @@ A three table join would look something like this:
 ```
     {
       "viewName": "instance_holding_item_view",
-      "pkColumnName": "_id",
       "join": [
         {
           "table": {
@@ -1399,7 +1153,7 @@ To post a tenant via the client:
 
 ```java
 TenantClient tClient = null;
-tClient = new TenantClient("localhost", port, "mytenantid");
+tClient = new TenantClient("http://localhost:" + port, "mytenantid", "sometoken");
 tClient.post( response -> {
   response.bodyHandler( body -> {
     System.out.println(body.toString());
@@ -1432,7 +1186,7 @@ Remember to call beginTx and endTx
 Querying for similar POJOs in the DB (with or without additional criteria):
 
 ```java
-Criterion c = new Criterion(new Criteria().addField("_id").setJSONB(false).setOperation("=").setValue("'"+entryId+"'"));
+Criterion c = new Criterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setValue("'"+entryId+"'"));
 
 postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
               reply -> {...
@@ -1443,6 +1197,67 @@ The `Criteria` object which generates `where` clauses can also receive a JSON Sc
 ```java
 Criteria idCrit = new Criteria("ramls/schemas/userdata.json");
 ```
+
+## RAMLs API
+
+The RAMLs API is a multiple interface which affords RMB modules to expose their RAML files in a machine readable way. To enable the interface the module must add the following to the provides array of its module descriptor:
+
+```JSON
+{
+  "id": "_ramls",
+  "version": "1.0",
+  "interfaceType" : "multiple",
+  "handlers" : [
+    {
+      "methods" : [ "GET" ],
+      "pathPattern" : "/_/ramls"
+    }
+  ]
+}
+```
+
+The interface has a single GET endpoint with an optional query parameter path. Without the path query parameter the response will be an application/json array of the available RAMLs. This will be the immediate RAMLs the module provides. If the query parameter path is provided it will return the RAML at the path if exists. The RAML will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
+
+The RAML defining the API:
+
+https://github.com/folio-org/raml/blob/eda76de6db681076212e20c7f988c3913764b9b0/ramls/ramls.raml
+
+## JSON Schemas API
+
+The JSON Schemas API is a multiple interface which affords RMB modules to expose their JSON Schema files in a machine readable way. To enable the interface the module must add the following to the provides array of its module descriptor:
+
+```JSON
+{
+  "id": "_jsonSchemas",
+  "version": "1.0",
+  "interfaceType" : "multiple",
+  "handlers" : [
+    {
+      "methods" : [ "GET" ],
+      "pathPattern" : "/_/jsonSchemas"
+    }
+  ]
+}
+```
+
+The interface has a single GET endpoint with an optional query parameter path.
+Without the path query parameter the response will be an application/json array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
+Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
+`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
+specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify 
+directory in the form of glob expression (e.g. "raml-util/**") 
+ For example:
+```
+<systemProperty>
+  <key>schema_paths</key>
+  <value>schemas/**,raml-util/**</value>
+</systemProperty>
+```
+If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
+
+The RAML defining the API:
+
+https://github.com/folio-org/raml/blob/eda76de6db681076212e20c7f988c3913764b9b0/ramls/jsonSchemas.raml
 
 ## Query Syntax
 
@@ -1474,7 +1289,7 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Metadata
 
-RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/master/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed in json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl)
+RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed in json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
 
 ## Facet Support
 
@@ -1511,7 +1326,7 @@ Note that higher numbers will potentially affect performance.
 
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
-## Json Schema fields
+## JSON Schema fields
 
 It is possible to indicate that a field in the json is a readonly field when declaring the schema. `"readonly": true`. From example:
 ```
@@ -1538,6 +1353,16 @@ the `jsonschema.customfield` key can contain multiple json values (delimited by 
 A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
 
+To customize generation of java classes, add a system property to plugin definition running `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`.
+Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes, 
+incomplete list of available properties:
+- jsonschema2pojo.config.includeHashcodeAndEquals - adds hashCode and equals methods
+- jsonschema2pojo.config.includeToString - adds toString method
+- jsonschema2pojo.config.serializable - makes classes serializable
+
+For more available properties see:
+ https://joelittlejohn.github.io/jsonschema2pojo/site/1.0.0/generate-mojo.html
+ https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java 
 ## Overriding RAML (traits) / query parameters
 
 A module may require slight changes to existing RAML traits.
@@ -1680,7 +1505,12 @@ Note: parameters can also be passed when relevant. The raml-module-builder runti
 ## Documentation of the APIs
 
 The runtime framework includes a web application which exposes RAMLs in a
-view-friendly HTML format. The `maven-resources-plugin` plugin described earlier
+view-friendly HTML format.
+This uses [api-console](https://github.com/mulesoft/api-console)
+(Powered by [MuleSoft](http://www.MuleSoft.org) for RAML
+Copyright (c) 2013 MuleSoft, Inc.)
+
+The `maven-resources-plugin` plugin described earlier
 copies the RAML files into the correct directory in your project, so that the
 runtime framework can access it and show local API documentation.
 
@@ -1695,8 +1525,9 @@ If instead your [new module](#creating-a-new-module) is running on the default p
 then its API documentation is at:
 
 ```
-http://localhost:8081/apidocs/index.html?raml=raml/ebook.raml
+http://localhost:8081/apidocs/index.html?raml=raml/my-project.raml
 ```
+and remember to specify the "X-Okapi-Tenant: diku" header.
 
 The RMB also automatically provides other documentation, such as the "Admin API":
 
@@ -1828,7 +1659,7 @@ To generate a client API from your RAML add the following plugin to your pom.xml
 For the monitoring APIs exposed by the runtime framework, changing the log level via the client would look like this:
 
 ```java
-    AdminClient aClient = new AdminClient("localhost", 8083, "myuniversityId");
+    AdminClient aClient = new AdminClient("http://localhost:" + 8083, "myuniversityId", "sometoken");
     aClient.putLoglevel(Level.FINE, "org.folio",  apiResponse -> {
       System.out.println(apiResponse.statusCode());
     });
@@ -1837,7 +1668,7 @@ For the monitoring APIs exposed by the runtime framework, changing the log level
 Requesting a stack trace would look like this:
 
 ```java
-    AdminClient aClient = new AdminClient("localhost", 8083, "myuniversityId");
+    AdminClient aClient = new AdminClient("http://localhost:" + 8083, "myuniversityId", "sometoken");
     aClient.getJstack( trace -> {
       trace.bodyHandler( content -> {
         System.out.println(content);
@@ -1952,7 +1783,7 @@ For example:
 See the `JsonPathParser` class for more info.
 
 
-### An example
+#### An example HTTP request
 
     //create a client
     HttpClientInterface client = HttpClientFactory.getHttpClient(okapiURL, tenant);
@@ -1997,11 +1828,11 @@ See the `JsonPathParser` class for more info.
 Query parameters and header validation
 ![](images/validation.png)
 
-### Object validations
+#### Object validations
 
 ![](images/object_validation.png)
 
-### function example
+#### function example
 ```java
   @Validate
   @Override
@@ -2123,7 +1954,7 @@ Have these in the headers - currently not validated hence not mandatory:
 - Accept: application/json,text/plain
 - Content-Type: application/json;
 
-### Example 1: Add a fine to a patron (post)
+#### Example 1: Add a fine to a patron (post)
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
@@ -2143,31 +1974,31 @@ http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 }
 ```
 
-### Example 2: Get fines for patron with id
+#### Example 2: Get fines for patron with id
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 ```
 
-### Example 3: Get a specific patron
+#### Example 3: Get a specific patron
 
 ```
 http://localhost:8080/patrons/56dbe25ea12958478cec42ba
 ```
 
-### Example 4: Get all patrons
+#### Example 4: Get all patrons
 
 ```
 http://localhost:8080/patrons
 ```
 
-### Example 5: Delete a patron (delete)
+#### Example 5: Delete a patron (delete)
 
 ```
 http://localhost:8080/patrons/56dbe791a129584a506fb41a
 ```
 
-### Example 6: Add a patron (post)
+#### Example 6: Add a patron (post)
 
 ```
 http://localhost:8080/patrons
@@ -2230,3 +2061,194 @@ at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).
 
 Other FOLIO Developer documentation is at [dev.folio.org](https://dev.folio.org/)
 
+=======
+# cql2pgjson-java
+
+CQL (Contextual Query Language) to PostgreSQL JSON converter in Java.
+
+## License
+
+Copyright (C) 2016-2019 The Open Library Foundation
+
+This software is distributed under the terms of the Apache License,
+Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
+
+## Usage
+
+Invoke like this:
+
+    // users.user_data is a JSONB field in the users table.
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
+    String cql = "name=Miller";
+    String where = cql2pgJson.cql2pgJson(cql);
+    String sql = "select * from users where " + where;
+    // select * from users
+    // where CAST(users.user_data->'name' AS text)
+    //       ~ '(^|[[:punct:]]|[[:space:]])Miller($|[[:punct:]]|[[:space:]])'
+
+Or use `toSql(String cql)` to get the `ORDER BY` clause separately:
+
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
+    String cql = "name=Miller";
+    SqlSelect sqlSelect = cql2pgJson.toSql(cql);
+    String sql = "select * from users where " + sqlSelect.getWhere()
+                               + " order by " + sqlSelect.getOrderBy();
+
+
+Setting server choice indexes is possible, the next example searches `name=Miller or email=Miller`:
+
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+    String cql = "Miller";
+    String where = cql2pgJson.cql2pgJson(cql);
+    String sql = "select * from users where " + where;
+
+Searching across multiple JSONB fields works like this. The _first_ json field specified
+in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
+field name:
+
+    // Instantiation
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
+
+    // Query processing
+    where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
+    where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
+    where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
+
+## id
+
+The UUID field id is not searched in the JSON but in the table's primary key field. PostgreSQL automatically
+creates an index for the primary key.
+
+`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID.
+
+`=`, `==`, and `<>` relations allow `*` for right truncation.
+
+Modifiers are forbidden.
+
+## Relations
+
+Only these relations have been implemented yet:
+
+* `=` (this is `==` for a number and `adj` for a string.
+       Examples 1: `height = 3.4` Example 2: `title = Potter`)
+* `==` (exact match, for example `barcode == 883746123` or exact substring match `title == "*Harry Potter*"`;
+        numeric fields match any form: 3.4 = 3.400 = 0.34e1)
+* `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
+* `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
+* `adj` (substring phrase match: all words of the query string exist consecutively in that order, there may be any
+          whitespace and punctuation in between, `title adj "Harry Potter"` matches "Harry - . - Potter")
+* `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
+
+Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
+
+Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
+
+## Modifiers
+
+Functional modifiers: `ignoreCase`, `respectCase` and `ignoreAccents`, `respectAccents`
+are implemented for all characters (ASCII and Unicode). Default is `ignoreCase` and `ignoreAccents`.
+Example for respecting case and accents:
+`groupId==/respectCase/respectAccents 'd0faefc6-68c0-4612-8ee2-8aeaf058349d'`
+
+Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
+`honorWhitespace`, `substring`.
+
+Word begin and word end in JSON is only detected at whitespace and punctuation characters
+from the ASCII charset, not from other Unicode charsets.
+
+## Matching all records
+
+A search matching all records in the target index can be executed with a
+`cql.allRecords=1` query. `cql.allRecords=1` can be used alone or as part of
+a more complex query, for example
+`cql.allRecords=1 NOT name=Smith sortBy name/sort.ascending`
+
+* `cql.allRecords=1 NOT name=Smith` matches all records where name does not contain Smith
+   as a word or where name is not defined.
+* `name="" NOT name=Smith` matches all records where name is defined but does not contain
+   Smith as a word.
+* For performance reasons, searching for `*` in any fulltext field will match all records as well.
+
+## Matching undefined or empty values
+
+A relation does not match if the value on the left-hand side is undefined. (but see the fulltext
+`*` case above).
+A negation (using NOT) of a relation matches if the value on the left-hand side is
+not defined or if it is defined but doesn't match.
+
+* `name=""` matches all records where name is defined.
+* `cql.allRecords=1 NOT name=""` matches all records where name is not defined.
+* `name==""` matches all records where name is defined and empty.
+* `cql.allRecords=1 NOT name==""` matches all records where name is defined and not empty or
+   where name is not defined.
+* `name="" NOT name==""` matches all records where name is defined and not empty.
+
+## Matching array elements
+
+For matching the elements of an array use these queries (assuming that lang is either an array or not defined, and assuming
+an array element value does not contain double quotes):
+* `lang ==/respectAccents []` for matching records where lang is defined and an empty array
+* `cql.allRecords=1 NOT lang <>/respectAccents []` for matching records where lang is not defined or an empty array
+* `lang =/respectCase/respectAccents \"en\"` for matching records where lang is defined and contains the value en
+* `cql.allRecords=1 NOT lang =/respectCase/respectAccents \"en\"` for matching records where lang does not
+  contain the value en (including records where lang is not defined)
+* `lang = "" NOT lang =/respectCase/respectAccents \"en\"` for matching records where lang is defined and
+  and does not contain the value en
+* `lang = ""` for matching records where lang is defined
+* `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
+* `identifiers == "*\"value\": \"6316800312\", \"identifierTypeId\": \"8261054f-be78-422d-bd51-4ed9f33c3422\"*"`
+  (note to use `==` and not `=`) for matching the ISBN 6316800312 using ISBN's identifierTypeId where each element of
+  the identifiers array is a JSON object with the two keys value and identifierTypeId, for example
+
+      "identifiers": [ {
+        "value": "(OCoLC)968777846", "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace"
+      }, {
+        "value": "6316800312", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"
+      } ]
+
+To avoid the complicated syntax all ISBN values or all values can be extracted and used to create a view or an index:
+
+    SELECT COALESCE(jsonb_agg(value), '[]')
+       FROM jsonb_to_recordset(jsonb->'identifiers')
+         AS y(key text, value text)
+       WHERE key='8261054f-be78-422d-bd51-4ed9f33c3422'
+
+    SELECT COALESCE(jsonb_agg(value), '[]')
+      FROM jsonb_to_recordset(jsonb->'identifiers')
+        AS x(key text, value text)
+      WHERE value IS NOT NULL
+
+## Matching and comparing numbers
+
+Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number comparison must result in 10 > 2
+(in contrast to string comparison where "10" < "2").
+
+If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", and ">=" if the actual JSONB type of the stored value is `number`
+(JSONB has no `integer` type).
+
+## Exceptions
+
+All locally produced Exceptions are derived from a single parent so they can be caught collectively
+or individually. Methods that load a JSON data object model pass in the identity of the model as a
+resource file name, and may also throw a native `java.io.IOException`.
+
+    CQL2PgJSONException
+      ├── FieldException
+      ├── SchemaException
+      ├── ServerChoiceIndexesException
+      ├── CQLFeatureUnsupportedException
+      └── QueryValidationException
+            └── QueryAmbiguousException
+
+## Additional information
+
+* Further [CQL](https://dev.folio.org/reference/glossary/#cql) information.
+
+* See project [CQLPG](https://issues.folio.org/browse/CQLPG)
+at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker).
+
+* Other FOLIO Developer documentation is at [dev.folio.org](https://dev.folio.org/)
+
+* To run the unit tests in your IDE the Unicode input files must have been produced by running maven,
+  in Eclipse you may use "Run as ... Maven Build" for doing so.
+>>>>>>> cql2pgjson-java/master

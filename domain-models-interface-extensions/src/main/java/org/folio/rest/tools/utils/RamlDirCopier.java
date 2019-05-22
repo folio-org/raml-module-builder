@@ -52,7 +52,7 @@ public class RamlDirCopier extends SimpleFileVisitor<Path> {
       Path sourcePath = baseSourceDir.relativize(file);
       Path targetPath = baseTargetDir.resolve(sourcePath);
       if (sourcePath.toString().matches(".*(\\.json|\\.schema)$")) {
-        String json = schemaDereferencer.dereferencedSchema(file).encodePrettily();
+        String json = schemaDereferencer.dereferencedSchema(file, targetPath).encodePrettily();
         try (PrintWriter printWriter = new PrintWriter(targetPath.toFile())) {
           printWriter.println(json);
         }

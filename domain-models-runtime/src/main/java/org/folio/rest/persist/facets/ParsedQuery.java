@@ -6,18 +6,18 @@ package org.folio.rest.persist.facets;
  */
 public class ParsedQuery {
 
-  private String countFuncQuery;
+  private String countQuery;
   private String queryWithoutLimOff;
   private String whereClause;
   private String orderByClause;
   private String limitClause;
   private String offsetClause;
 
-  public String getCountFuncQuery() {
-    return countFuncQuery;
+  public String getCountQuery() {
+    return countQuery;
   }
-  public void setCountFuncQuery(String countFuncQuery) {
-    this.countFuncQuery = countFuncQuery;
+  public void setCountQuery(String countQuery) {
+    this.countQuery = countQuery;
   }
   public String getQueryWithoutLimOff() {
     return queryWithoutLimOff;
