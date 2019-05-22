@@ -4,7 +4,7 @@
   DECLARE
     injectedId text;
   BEGIN
-    injectedId = '"'||NEW.${table.pkColumnName}||'"';
+    injectedId = '"'||NEW.id||'"';
     NEW.jsonb = jsonb_set(NEW.jsonb, '{id}' ,  injectedId::jsonb , true);
       RETURN NEW;
   END;

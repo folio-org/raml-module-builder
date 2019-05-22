@@ -4,7 +4,7 @@
   "description": "Includes the configuration and status of the job.",
   "type": "object",
   "properties": {
-    "_id": {
+    "id": {
       "description": "identifier",
       "type": "string"
     },

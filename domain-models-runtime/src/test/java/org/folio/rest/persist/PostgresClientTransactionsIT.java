@@ -1,123 +1,65 @@
 package org.folio.rest.persist;
 
-import java.io.IOException;
-
-import org.apache.commons.io.IOUtils;
+import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.helpers.SimplePojo;
-import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.folio.rest.tools.utils.VertxUtils;
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
 
-import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class PostgresClientTransactionsIT {
-  static private final String TENANT = "tenants";
-  static private Vertx vertx;
+public class PostgresClientTransactionsIT extends PostgresClientITBase {
+  private static final String table = "z";
+  private static final String fullTable = schema + ".z";
 
   @BeforeClass
-  public static void setUpClass() throws Exception {
-    vertx = VertxUtils.getVertxWithExceptionHandler();
-    // init PostgresClient.moduleName
-    PostgresClient.getInstance(vertx);
+  public static void beforeClass(TestContext context) throws Exception {
+    setUpClass(context);
+    executeSuperuser(context,
+        "CREATE TABLE " + fullTable + " (id int PRIMARY KEY, jsonb JSONB NOT NULL)",
+        "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
-  @AfterClass
-  public static void tearDownClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+  private void fillTable(TestContext context, String name) {
+    execute(context, "INSERT INTO " + fullTable + " VALUES (1, '{ \"name\": \"" + name + "\"}');\n");
   }
 
-  private void dropSchemaRole(TestContext context, String schema) {
-    Async async = context.async();
-    String sql =
-        "DROP SCHEMA IF EXISTS " + schema + " CASCADE;\n"
-      + "DROP ROLE IF EXISTS " + schema + ";\n";
-    PostgresClient.getInstance(vertx).runSQLFile(sql, true, reply -> {
-      context.assertTrue(reply.succeeded());
-      for (String result : reply.result()) {
-        context.fail(result);
-      }
-      async.complete();
-    });
-    async.await();
-  }
-
-  private void execute(TestContext context, String sql) {
-    Async async = context.async();
-    PostgresClient.getInstance(vertx).runSQLFile(sql, false, reply -> {
-      context.assertTrue(reply.succeeded());
-      for (String result : reply.result()) {
-        context.fail(result);
-      }
-      async.complete();
-    });
-    async.await();
-  }
-
-  private void createSchema(TestContext context, String schema) throws IOException {
-
-    execute(context,"CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;\n");
-    execute(context,"CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;\n");
-    execute(context,"CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ "+
-        "SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary " +
-        "$func$  LANGUAGE sql IMMUTABLE;\n");
-    execute(context,
-      "CREATE ROLE " + schema + " PASSWORD '" + TENANT + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;\n");
-    execute(context, "CREATE SCHEMA IF NOT EXISTS " + schema + " AUTHORIZATION " + schema + ";\n");
-    execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema + ";\n");
-    execute(context, "CREATE TABLE IF NOT EXISTS " + schema + ".z (_id SERIAL PRIMARY KEY, jsonb jsonb);\n");
-    execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema + ";\n");
-    execute(context, IOUtils.toString(
-      getClass().getClassLoader().getResourceAsStream("templates/db_scripts/funcs.sql"), "UTF-8"));
-
-  }
-
-  private void fillTable(TestContext context, String schema, String value) {
-    execute(context,
-      "INSERT INTO " + schema + ".z (jsonb) VALUES (" + value + ");\n");
-  }
-
-  private void updateTransaction(TestContext context, String schema) {
-    PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
+  private void updateTransaction(TestContext context) {
+    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
     Async async = context.async();
     //create connection
-    c1.startTx( handler -> {
+    c1.startTx(handler -> {
       if(handler.succeeded()){
         SimplePojo z = new SimplePojo();
-        z.setId("99");
+        z.setId("1");
         z.setName("me");
         //update record
         CQL2PgJSON cql2pgJson = null;
         try {
-          cql2pgJson = new CQL2PgJSON("z.jsonb");
+          cql2pgJson = new CQL2PgJSON(table + ".jsonb");
         } catch (FieldException e1) {
           e1.printStackTrace();
           context.fail(e1);
         }
-        CQLWrapper cql = new CQLWrapper(cql2pgJson, "id==1");
+        CQLWrapper cql = new CQLWrapper(cql2pgJson, "name==d");
         c1.update(handler,
           "z", z, cql, true, reply -> {
             if(reply.succeeded()){
               //make sure record is not updated since not committed yet
-              c1.select("SELECT jsonb FROM " + schema + ".z;", reply2 -> {
+              c1.select("SELECT jsonb->>'name' FROM " + fullTable, reply2 -> {
                 if (! reply2.succeeded()) {
                   context.fail(reply2.cause());
                 }
                 try {
-                 SimplePojo sp =  ObjectMapperTool.getMapper().readValue(
-                    reply2.result().getResults().get(0).getString(0), SimplePojo.class);
-                 context.assertEquals(sp.getName(), "d", "Name property should not have been changed");
+                  String name = reply2.result().getResults().get(0).getString(0);
+                  context.assertEquals("d", name, "Name property should not have been changed");
                 } catch (Exception e) {
                   e.printStackTrace();
                   context.fail(e.getMessage());
@@ -126,15 +68,14 @@ public class PostgresClientTransactionsIT {
                 c1.endTx(handler, done -> {
                   if(done.succeeded()){
                     //record should have been updated
-                    c1.select("SELECT jsonb FROM " + schema + ".z;", selectReply -> {
+                    c1.select("SELECT jsonb->>'name' FROM " + fullTable, selectReply -> {
                       if (! selectReply.succeeded()) {
                         context.fail(selectReply.cause());
                       }
                       else{
                         try {
-                          SimplePojo sp =  ObjectMapperTool.getMapper().readValue(
-                            selectReply.result().getResults().get(0).getString(0), SimplePojo.class);
-                          context.assertEquals(sp.getName(), "me", "Name property should have been changed");
+                          String name = selectReply.result().getResults().get(0).getString(0);
+                          context.assertEquals("me", name, "Name property should have been changed");
                          } catch (Exception e) {
                            e.printStackTrace();
                            context.fail(e.getMessage());
@@ -158,32 +99,31 @@ public class PostgresClientTransactionsIT {
         context.fail(handler.cause());
       }
     });
-    async.await();
+    async.await(5000 /* ms */);
     c1.closeClient(context.asyncAssertSuccess());
   }
 
-  private void rollback(TestContext context, String schema){
-    PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
+  private void rollback(TestContext context) {
+    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
     Async async = context.async();
     c1.startTx( handler -> {
       if(handler.succeeded()){
         SimplePojo z = new SimplePojo();
-        z.setId("99");
+        z.setId("1");
         z.setName("me");
         c1.update(handler,
-          "z", z, "jsonb", "where (jsonb->>'id')::numeric = 1", true, reply -> {
+          table, z, "jsonb", "where (jsonb->>'name') = 'd'", true, reply -> {
             if(reply.succeeded()){
               c1.rollbackTx(handler, done -> {
                 if(done.succeeded()){
-                  c1.select("SELECT jsonb FROM " + schema + ".z;", reply2 -> {
+                  c1.select("SELECT jsonb->>'name' FROM " + table, reply2 -> {
                     if (! reply2.succeeded()) {
                       context.fail(reply2.cause());
                     }
                     else{
                       try {
-                        SimplePojo sp =  ObjectMapperTool.getMapper().readValue(
-                           reply2.result().getResults().get(0).getString(0), SimplePojo.class);
-                        context.assertEquals(sp.getName(), "me", "Name property should not have been changed");
+                        String name = reply2.result().getResults().get(0).getString(0);
+                        context.assertEquals("me", name, "Name property should not have been changed");
                       } catch (Exception e) {
                          e.printStackTrace();
                          context.fail(e.getMessage());
@@ -206,19 +146,19 @@ public class PostgresClientTransactionsIT {
         context.fail(handler.cause());
       }
     });
-    async.await();
+    async.await(5000 /* ms */);
     c1.closeClient(context.asyncAssertSuccess());
   }
 
-  private void deleteTransaction(TestContext context, String schema) {
-    PostgresClient c1 = PostgresClient.getInstance(vertx, TENANT);
+  private void deleteTransaction(TestContext context) {
+    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
     Async async = context.async();
     //create connection
     c1.startTx( handler -> {
       if(handler.succeeded()){
         Criteria c = new Criteria();
-        c.addField("'id'").setOperation("=").setValue("2");
-        c1.delete(handler, "z", new Criterion(c) , reply -> {
+        c.addField("'name'").setOperation("=").setValue("me");
+        c1.delete(handler, table, new Criterion(c) , reply -> {
             if(reply.succeeded()){
               //make sure record is deleted when querying using this connection
               //but since not committed yet we should still get it back
@@ -235,7 +175,7 @@ public class PostgresClientTransactionsIT {
                     context.assertEquals(0, size);
                     //call get() without the connection. since we did not commit yet
                     //this should still return the deleted record
-                    c1.get("z", SimplePojo.class , new Criterion(c) ,
+                    c1.get(table, SimplePojo.class , new Criterion(c) ,
                       true, true, reply3 -> {
                         if (! reply3.succeeded()) {
                           context.fail(reply3.cause());
@@ -251,7 +191,7 @@ public class PostgresClientTransactionsIT {
                             if(done.succeeded()){
                               //record should have been deleted, so only one record should return
                               //not both
-                              c1.select("SELECT jsonb FROM " + schema + ".z;", selectReply -> {
+                              c1.select("SELECT jsonb FROM " + fullTable, selectReply -> {
                                 if (! selectReply.succeeded()) {
                                   context.fail(selectReply.cause());
                                   async.complete();
@@ -259,7 +199,7 @@ public class PostgresClientTransactionsIT {
                                 else{
                                   try {
                                     int size3 = selectReply.result().getResults().size();
-                                    context.assertEquals(1, size3);
+                                    context.assertEquals(0, size3);
                                    } catch (Exception e) {
                                      e.printStackTrace();
                                      context.fail(e.getMessage());
@@ -291,32 +231,16 @@ public class PostgresClientTransactionsIT {
         context.fail(handler.cause());
       }
     });
-    async.await();
+    async.await(5000 /* ms */);
     c1.closeClient(context.asyncAssertSuccess());
   }
 
   @Test
   public void test(TestContext context) {
-    String schema = PostgresClient.convertToPsqlStandard(TENANT);
-
-    dropSchemaRole(context, schema);
-
-    try {
-      createSchema(context, schema);
-    } catch (IOException e) {
-      e.printStackTrace();
-      context.fail(e);
-    }
-
-    fillTable(context, schema, "'{\"id\": 1,\"name\": \"d\" }'");
-
-    updateTransaction(context, schema);
-
-    rollback(context, schema);
-
-    fillTable(context, schema, "'{\"id\": 2,\"name\": \"del test\" }'");
-
-    deleteTransaction(context, schema);
+    fillTable(context, "d");
+    updateTransaction(context);
+    rollback(context);
+    deleteTransaction(context);
   }
 
 }

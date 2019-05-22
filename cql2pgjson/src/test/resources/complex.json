@@ -1,0 +1,113 @@
+{
+  "title" : "Complex Object Model for Testing",
+  "type"  : "object",
+  "properties" : {
+    "parent" : {
+      "type" : "object",
+      "properties" : {
+        "name" : { "type" : "string" },
+        "dob"  : { "type" : "date" },
+        "properties" : { "type" : "integer" },
+        "type" : { "type" : "string" },
+        "items" : { "type" : "string" },
+        "address" : {
+          "type"       : "object",
+          "someOtherField" : "foo Bar",
+          "properties" : {
+            "streetNumber" : { "type" : "string" },
+            "street"       : { "type" : "string" },
+            "city"         : { "type" : "string" },
+            "zip"          : { "type" : "integer" },
+            "apartment"    : { "type" : "string" },
+            "phoneNumbers" : {
+              "type" : "array",
+              "items": {
+                "type" : "string"
+              }
+            }
+          }
+        },
+        "shirt" : {
+          "type" : "object",
+          "properties" : {
+            "size"  : { "type" : "string" },
+            "color" : { "type" : "string" }
+          }
+        },
+        "pants" : {
+          "type" : "object",
+          "properties" : {
+            "size"  : { "type" : "integer" },
+            "color" : { "type" : "string" }
+          }
+        },
+        "shoes" : {
+          "type" : "object",
+          "properties" : {
+            "size"  : { "type" : "integer" },
+            "color" : { "type" : "string" },
+            "style" : { "type" : "string" }
+          }
+        },
+        "hats" : {
+          "type" : "array",
+          "items": {
+            "type" : "string"
+          }
+        },
+        "umbrellas" : {
+          "type" : "array",
+          "items": {
+            "type" : "object",
+            "properties" : {
+              "color"  : { "type" : "string" }
+            }
+          }
+        }
+      }
+    },
+    "child" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "name"          : { "type" : "string" },
+          "dob"           : { "type" : "date" },
+          "favoriteColor" : { "type" : "string" },
+          "gender"        : { "type" : "string" },
+          "pet"           : {
+            "type" : "array",
+            "items": {
+              "type" : "object",
+              "properties" : {
+                "name"   : { "type" : "string" },
+                "type"   : { "type" : "string" },
+                "color"  : { "type" : "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "type"       : { "type" : "string" },
+    "properties" : { "type" : "integer" },
+    "items"      : { "type" : "string" },
+    "pet" : {
+      "type" : "array",
+      "items": {
+        "type" : "object",
+        "properties" : {
+          "name"   : { "type" : "string" },
+          "type"   : { "type" : "string" },
+          "color"  : { "type" : "string" }
+        }
+      }
+    },
+    "relatives" : {
+      "type" : "array",
+      "items": {
+        "type" : "string"
+      }
+    }
+  }
+}

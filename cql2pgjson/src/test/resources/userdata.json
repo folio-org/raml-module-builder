@@ -1,0 +1,38 @@
+{
+  "title": "User Schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "required": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "string",
+      "required": true
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string"
+        },
+        "zip": {
+          "type": "integer"
+        }
+      }
+    },
+    "lang": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "number": {
+      "type": "number"
+    }
+  }
+}

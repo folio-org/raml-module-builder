@@ -1,0 +1,50 @@
+{
+  "tables": [
+    {
+      "tableName": "item",
+      "withAuditing": true,
+      "auditingSnippet": {
+        "insert": { "declare": "-- extra declare for insert",
+                    "statement": "-- extra statement for insert" },
+        "update": { "declare": "-- extra declare for update",
+                    "statement": "-- extra statement for update" },
+        "delete": { "declare": "-- extra declare for delete",
+                    "statement": "-- extra statement for delete" }
+      },
+      "index": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD"
+        }
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD"
+        }
+      ],
+      "likeIndex": [
+        {
+          "fieldName": "type",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "ginIndex": [
+        {
+          "fieldName": "title",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "title",
+          "tOps": "ADD"
+        }
+      ]
+    }
+  ]
+}
