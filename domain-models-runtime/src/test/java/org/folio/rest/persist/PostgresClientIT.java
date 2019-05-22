@@ -14,31 +14,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.vertx.core.json.JsonObject;
-import org.apache.commons.io.IOUtils;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.LoggerConfig;
-import org.folio.rest.persist.Criteria.Criteria;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.Criteria.UpdateSection;
-import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.tools.utils.VertxUtils;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
@@ -52,8 +33,31 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
+import org.folio.rest.persist.Criteria.Criteria;
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.Criteria.UpdateSection;
+import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.helpers.SimplePojo;
+import org.folio.rest.tools.utils.VertxUtils;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
@@ -447,16 +451,163 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void deleteX(TestContext context) {
-    createFoo(context)
-      .delete(FOO, xPojo, context.asyncAssertSuccess());
+  public void deleteById(TestContext context) {
+    String id = randomUuid();
+    String id2 = randomUuid();
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(id).add(id2));
+    postgresClient.delete(FOO, id, context.asyncAssertSuccess(delete -> {
+      context.assertEquals(1, delete.getUpdated(), "number of records deleted");
+      postgresClient.selectSingle("SELECT count(*) FROM " + FOO, context.asyncAssertSuccess(select -> {
+        context.assertEquals(1, select.getInteger(0), "remaining records");
+        postgresClient.delete(FOO, id, context.asyncAssertSuccess(delete2 -> {
+          context.assertEquals(0, delete2.getUpdated(), "number of records deleted");
+        }));
+      }));
+    }));
   }
 
-  @Ignore("fails: unterminated quoted identifier")
   @Test
-  public void deleteSingleQuote(TestContext context) {
-    createFoo(context)
-      .delete(FOO, singleQuotePojo, context.asyncAssertSuccess());
+  public void deleteByIdFailure(TestContext context) {
+    createFoo(context).delete(Future.failedFuture("nada"), FOO, randomUuid(), context.asyncAssertFailure(delete -> {
+      context.assertEquals("nada", delete.getMessage());
+    }));
+  }
+
+  @Test
+  public void deleteByIdNullConnection(TestContext context) {
+    createFoo(context).delete(null, FOO, randomUuid(), context.asyncAssertFailure(fail -> {
+      context.assertTrue(fail instanceof NullPointerException);
+    }));
+  }
+
+  private void deleteByCqlWrapper(TestContext context, String key) throws FieldException {
+    Async async = context.async();
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
+    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "key==" + key);
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(randomUuid()));
+    postgresClient.delete(FOO, cqlWrapper, context.asyncAssertSuccess(delete -> {
+      context.assertEquals(1, delete.getUpdated(), "number of records deleted");
+      postgresClient.selectSingle("SELECT count(*) FROM " + FOO, context.asyncAssertSuccess(select -> {
+        context.assertEquals(1, select.getInteger(0), "remaining records");
+        async.complete();
+      }));
+    }));
+    async.await(5000);
+  }
+
+  @Test
+  public void deleteByCqlWrapper(TestContext context) throws FieldException {
+    deleteByCqlWrapper(context, "x");
+    deleteByCqlWrapper(context, "'");  // SQL injection?
+  }
+
+  @Test
+  public void deleteByCqlWrapperThatThrowsException(TestContext context) {
+    CQLWrapper cqlWrapper = new CQLWrapper() {
+      public String toString() {
+        throw new RuntimeException("ping pong");
+      }
+    };
+    createFoo(context).delete(FOO, cqlWrapper, context.asyncAssertFailure(fail -> {
+      context.assertTrue(fail.getMessage().contains("ping pong"));
+    }));
+  }
+
+  private void deleteByCriterion(TestContext context, String key) throws FieldException {
+    Async async = context.async();
+    Criterion criterion = new Criterion();
+    criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setValue(key));
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(randomUuid()));
+    postgresClient.delete(FOO, criterion, context.asyncAssertSuccess(delete -> {
+      context.assertEquals(1, delete.getUpdated(), "number of records deleted");
+      postgresClient.selectSingle("SELECT count(*) FROM " + FOO, context.asyncAssertSuccess(select -> {
+        context.assertEquals(1, select.getInteger(0), "remaining records");
+        async.complete();
+      }));
+    }));
+    async.await(5000);
+  }
+
+  @Test
+  public void deleteByCriterionX(TestContext context) throws FieldException {
+    deleteByCriterion(context, "x");
+  }
+
+  @Ignore("fails - SQL injection!")
+  @Test
+  public void deleteByCriterionSingleQuote(TestContext context) throws FieldException {
+    deleteByCriterion(context, "'");  // SQL injection?
+  }
+
+  @Test
+  public void deleteByCriterionThatThrowsException(TestContext context) {
+    Criterion criterion = new Criterion() {
+      public String toString() {
+        throw new RuntimeException("missing towel");
+      }
+    };
+    createFoo(context).delete(FOO, criterion, context.asyncAssertFailure(fail -> {
+      context.assertTrue(fail.getMessage().contains("missing towel"));
+    }));
+  }
+
+  @Test
+  public void deleteByCriterionFailedConnection(TestContext context) {
+    createFoo(context).delete(Future.failedFuture("okapi"), FOO, new Criterion(), context.asyncAssertFailure(fail -> {
+      context.assertTrue(fail.getMessage().contains("okapi"));
+    }));
+  }
+
+  @Test
+  public void deleteByCriterionNullConnection(TestContext context) {
+    createFoo(context).delete(null, FOO, new Criterion(), context.asyncAssertFailure(fail -> {
+      context.assertTrue(fail instanceof NullPointerException);
+    }));
+  }
+
+  @Test
+  public void deleteByCriterionDeleteFails(TestContext context) {
+    postgresClientQueryFails().delete(FOO, new Criterion(), context.asyncAssertFailure(fail -> {
+      context.assertTrue(fail.getMessage().contains("postgresClientQueryFails"));
+    }));
+  }
+
+  private void deleteByPojo(TestContext context, Object pojo) throws FieldException {
+    Async async = context.async();
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(randomUuid()));
+    postgresClient.delete(FOO, pojo, context.asyncAssertSuccess(delete -> {
+      context.assertEquals(1, delete.getUpdated(), "number of records deleted");
+      postgresClient.selectSingle("SELECT count(*) FROM " + FOO, context.asyncAssertSuccess(select -> {
+        context.assertEquals(1, select.getInteger(0), "remaining records");
+        async.complete();
+      }));
+    }));
+    async.await(5000);
+  }
+
+  @Test
+  public void deleteByPojoX(TestContext context) throws FieldException {
+    deleteByPojo(context, xPojo);
+  }
+
+  @Test
+  public void deleteByPojoSingleQuote(TestContext context) throws FieldException {
+    deleteByPojo(context, singleQuotePojo);  // SQL injection?
+  }
+
+  @Test
+  public void deleteByPojoFailedConnection(TestContext context) throws FieldException {
+    createFoo(context).delete(Future.failedFuture("bad"), FOO, new SimplePojo(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void deleteByPojoNullEntity(TestContext context) throws FieldException {
+    createFoo(context).delete(FOO, (SimplePojo) null, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void deleteByPojoDeleteFails(TestContext context) throws FieldException {
+    postgresClientQueryFails().delete(FOO, new SimplePojo(), context.asyncAssertFailure());
   }
 
   @Test
@@ -1015,6 +1166,62 @@ public class PostgresClientIT {
       public SQLConnection updateWithParams(String sql, JsonArray params,
           Handler<AsyncResult<UpdateResult>> resultHandler) {
         throw new RuntimeException();
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+    AsyncSQLClient client = new AsyncSQLClient() {
+      @Override
+      public SQLClient getConnection(Handler<AsyncResult<SQLConnection>> handler) {
+        handler.handle(Future.succeededFuture(sqlConnection));
+        return this;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+    try {
+      setRootLevel(Level.FATAL);
+      PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
+      postgresClient.setClient(client);
+      return postgresClient;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * @return a PostgresClient where invoking SQLConnection::update or SQLConnection::updateWithParams
+   * will report a failure via the resultHandler.
+   */
+  private PostgresClient postgresClientQueryFails() {
+    SQLConnection sqlConnection = new PostgreSQLConnectionImpl(null, null, null) {
+      @Override
+      public SQLConnection update(String sql, Handler<AsyncResult<UpdateResult>> resultHandler) {
+        resultHandler.handle(Future.failedFuture("postgresClientQueryFails"));
+        return null;
+      }
+
+      @Override
+      public SQLConnection updateWithParams(String sql, JsonArray params,
+          Handler<AsyncResult<UpdateResult>> resultHandler) {
+        resultHandler.handle(Future.failedFuture("postgresClientQueryFails"));
+        return null;
       }
 
       @Override
