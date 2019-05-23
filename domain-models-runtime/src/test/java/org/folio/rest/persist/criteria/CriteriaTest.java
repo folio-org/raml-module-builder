@@ -103,7 +103,8 @@ public class CriteriaTest {
         //arguments("'a'",     "'''a'''"),
         //arguments("O'Kapi",  "'O''Kapi'"),
         //arguments("'",       "''''"),
-        //arguments("Up/\\Up", "'Up/\\\\Up'"),
+        //arguments("''",      "''''''"),
+        arguments("Up/\\Up", "'Up/\\Up'"),  // Up/\Up -> 'Up/\Up' because SQL string does not use \ for masking
         arguments("",        "''")
     );
 }
