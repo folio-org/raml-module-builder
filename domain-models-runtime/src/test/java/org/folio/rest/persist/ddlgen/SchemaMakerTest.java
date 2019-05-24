@@ -5,6 +5,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -67,6 +69,23 @@ public class SchemaMakerTest {
   public void pkColumnName() {
     assertThat(new Table().getPkColumnName(), is("id"));
     assertThat(new View().getPkColumnName(), is("id"));
+  }
+
+  @Test
+  public void failsWhenPopulateJsonWithId() throws  TemplateException {
+
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
+      "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
+    try {
+      String json = ResourceUtil.asString("templates/db_scripts/schemaPopulateJsonWithId.json");
+      schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+      schemaMaker.generateDDL();
+      fail();
+
+    } catch(IOException e) {
+      assertThat(tidy(e.getMessage()), containsString(
+          "Unrecognized field \"populateJsonWithId\""));
+    }
   }
 
   @Test
