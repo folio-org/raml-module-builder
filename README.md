@@ -699,7 +699,7 @@ layer.
 
 **Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
 
-**Important Note:** Currently we only support Postgres version 10.
+**Important Note:** Currently we only support Postgres version 10. We cannot use version 11 because of reduced platform support of postgresql-embedded ([postgresql-embedded supported versions](https://github.com/yandex-qatools/postgresql-embedded/commit/15685611972bacd8ba61dd7f11d4dbdcb3ba8dc1), [PostgreSQL Database Download](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)).
 
 The PostgresClient expects tables in the following format:
 
