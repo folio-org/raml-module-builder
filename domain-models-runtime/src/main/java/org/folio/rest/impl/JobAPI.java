@@ -40,8 +40,6 @@ import io.vertx.core.logging.LoggerFactory;
 public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
 
   private static final Logger log = LoggerFactory.getLogger(JobAPI.class);
-  private static final String JOB_CONF_CLASS_NAME   = JobConf.class.getName();
-  private static final String JOB_CLASS_NAME        = Job.class.getName();
   private final Messages messages = Messages.getInstance();
 
   @Validate
@@ -129,7 +127,7 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
       Criteria c = new Criteria();
       c.addField("_id");
       c.setOperation("=");
-      c.setValue(jobconfsId);
+      c.setVal(jobconfsId);
       c.setJSONB(false);
       vertxContext.runOnContext(v -> {
         try {
@@ -447,12 +445,12 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
       Criteria c = new Criteria();
       c.addField("_id");
       c.setOperation("=");
-      c.setValue(jobId);
+      c.setVal(jobId);
       c.setJSONB(false);
       Criteria d = new Criteria();
       d.addField("job_conf_id");
       d.setOperation("=");
-      d.setValue(jobconfsId);
+      d.setVal(jobconfsId);
       d.setJSONB(false);
       vertxContext.runOnContext(v -> {
         try {
