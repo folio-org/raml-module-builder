@@ -1,12 +1,19 @@
 package org.z3950.zing.cql.cql2pgjson;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
@@ -23,11 +30,10 @@ import org.folio.cql2pgjson.model.IndexTextAndJsonValues;
 import org.folio.cql2pgjson.model.SqlSelect;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
+import org.folio.rest.persist.ddlgen.ForeignKeys;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.Table;
 import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.folio.util.IoUtil;
-import org.folio.util.ResourceUtil;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
@@ -59,6 +65,9 @@ public class CQL2PgJSON {
 
   /** name of the primary key column */
   private static final String PK_COLUMN_NAME = "id";
+
+  final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+  final String tableNamePattern = "^[0-9a-zA-Z_-]+\\.[0-9a-zA-Z_-]+";
 
   private String jsonField = null;
   private List<String> jsonFields = null;
@@ -158,19 +167,24 @@ public class CQL2PgJSON {
 
   public void setDbSchemaPath(String dbSchemaPath) {
     loadDbSchema(dbSchemaPath);
+    initDbTable();
   }
 
   private void loadDbSchema(String schemaPath) {
     try {
       String dbJson;
       if (schemaPath == null) {
-        dbJson = ResourceUtil.asString("templates/db_scripts/schema.json", CQL2PgJSON.class);
-      } else {
-        dbJson = IoUtil.toStringUtf8(schemaPath);
+        schemaPath = "templates/db_scripts/schema.json";
       }
+      ClassLoader classLoader = CQL2PgJSON.class.getClassLoader();
+      InputStream resourceAsStream = classLoader.getResourceAsStream(schemaPath);
+        
+        dbJson = IOUtils.toString(resourceAsStream, "UTF-8");
+        logger.log(Level.INFO, "loadDbSchema: Loaded " + schemaPath + " OK");
+      
       dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
-    } catch (IOException|UncheckedIOException ex) {
-      logger.log(Level.SEVERE, "No schema.json found: " + ex.getMessage(), ex);
+    } catch (IOException ex) {
+      logger.log(Level.SEVERE, "No schema.json found", ex);
     }
   }
 
@@ -478,6 +492,19 @@ public class CQL2PgJSON {
     if ("cql.allRecords".equalsIgnoreCase(node.getIndex())) {
       return "true";
     }
+    //determine right here whether this node deals with a foreign term on right or left side
+    Table t = checkForForeignLocationOfIndex(node);
+    Table u =  checkForForeignLocationOfTerm(node );
+    if(t != null ) {
+      //we are doing a foreign key search
+      //determine foreign key linking tables
+      String result = subQuery(node.getIndex() , node, t);
+      return result;
+    } else if (u != null) {
+      //we are doing a foreign key join 
+      String result = subQuery(node.getIndex() , node, u);
+      return result;
+    }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
         throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
@@ -491,6 +518,126 @@ public class CQL2PgJSON {
     return index2sql(node.getIndex(), node);
   }
 
+  //method to determine if the right side of the node is a foreign term
+  private Table checkForForeignLocationOfTerm(CQLTermNode node) {
+    String[] termParts = node.getTerm().split("\\.");
+    //if the table is not supplied we do not have enough information to proceed, thereby assume it is in current table
+    if(termParts.length == 1) {
+      return null;
+    }
+    return isItForeign(termParts[0]);
+  }
+
+  //method to determine if the right side of the node is a foreign term and returns the table it is attached to is so
+  private Table checkForForeignLocationOfIndex(CQLTermNode node) {
+    
+    String[] idxParts = node.getIndex().split("\\.");
+    //if the table is not supplied we do not have enough information to proceed, thereby assume it is in current table
+    if(idxParts.length == 1) {
+      return null;
+    }
+    return isItForeign(idxParts[0] );
+
+  }
+
+  private Table isItForeign(String item) {
+ 
+    List<Table> schemaTables = dbSchema.getTables();
+    Iterator<Table> it = schemaTables.iterator();
+    while (it.hasNext()) {
+      Object e = it.next();
+      if(((Table)e).getTableName().equals(item) && !((Table)e).getTableName().equals(dbTable.getTableName()) ) {
+        return ((Table)e);
+      }
+    }
+    
+    return null;
+  }
+
+  private String subQuery(String index,CQLTermNode node, Table correlation ) {
+    String[] idxParts = index.split("\\.");
+    String[] termParts = node.getTerm().split("\\.");
+    if (idxParts.length <= 1 && termParts.length <= 1 ) {
+      //considering the lack of a table.field as a failure even though it could be rescued with more work
+      logger.log(Level.SEVERE, "subQuery: needs at least two-part index  or term name, not ''{0}''", index);
+      return null;
+    } 
+    boolean isTableJoin = false;
+    String [] foreignTarget ;
+    if(idxParts.length > termParts.length ) { 
+      
+      foreignTarget = idxParts;
+    } else {
+      foreignTarget = termParts;
+      isTableJoin = true;
+    }
+    //TODO: replace pk column name here with possible list of fields if we allow other columns to be joined?
+    ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation );
+    //System.out.println("CQL2PgJSON.subQuery1FT(): Found foreignKey '" + fkey)
+
+    if (fkey == null) {
+      logger.log(Level.SEVERE, "subQuery(): No foreignKey ''{0}'' found", foreignTarget[0]);
+      return null;
+    }
+    if (fkey.getFieldName() ==  null || fkey.getTargetTable() == null) {
+      logger.log(Level.SEVERE, "subQuery: Malformed foreignKey section {0}", fkey);
+      return null;
+    }
+    String fkField = fkey.getFieldName(); // tagId
+    String fkTable = fkey.getTargetTable();  // tags
+    try {
+
+      CQL2PgJSON c = new CQL2PgJSON(foreignTarget[0] + ".jsonb");
+      String term = node.getTerm();
+      if (term.isEmpty()) {
+        term = "\"\"";
+      }
+      boolean isTermConstant = term.matches(uuidPattern);
+      boolean isTableTerm = term.matches(tableNamePattern);
+      if(!isTermConstant && !isTableTerm) {
+        logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue {0}", fkey);
+        return null;
+        
+      }
+      String myField = index2sqlText( dbTable.getTableName() + ".jsonb", "id" );
+      String targetField = index2sqlText( foreignTarget[0] + ".jsonb", foreignTarget[1] );
+      String correlationJoinClause = "";
+      String inKeyword = "";
+      String likeClause = null;
+      if(isTermConstant ) { 
+        correlationJoinClause = " WHERE (" + wrapInLowerUnaccent(myField + "::text") + " = "  + wrapInLowerUnaccent(targetField + "::text") + ")";
+        likeClause = isTermConstant ?  " LIKE " + wrapInLowerUnaccent(node.getTerm()) : null;
+      } else { 
+        inKeyword = " IN ";
+      }
+      String fld = index2sqlText(c.getjsonField(), foreignTarget[1]);
+      StringBuffer result = new StringBuffer( inKeyword + " ( SELECT " + fld + " from " + foreignTarget[0] + correlationJoinClause + ")" );
+      if(likeClause != null ) {
+        result.append(likeClause);
+      }
+      return  result.toString();
+    } catch (FieldException  e) {
+      // We should not get these exceptions, as we construct a valid query above,
+      // using a valid schema.
+      logger.log(Level.SEVERE, "subQuery Caught an exception", e);
+      return null;
+    }
+  }
+
+  private ForeignKeys findForeignKey(String field, Table targetTable) {
+    Iterator<ForeignKeys> it = targetTable.getForeignKeys().iterator();
+    while (it.hasNext()) {
+      Object e = it.next();
+      
+      ForeignKeys item = (ForeignKeys) e;
+        String target = item.getFieldName();
+        if (field.equalsIgnoreCase(target)) {
+          return item;
+        }
+      }
+    return null;
+  }
+  
   /**
    * Normalize a term for FT searching. Escape quotes, masking, etc
    *
@@ -559,7 +706,6 @@ public class CQL2PgJSON {
    * @throws QueryValidationException
    */
   private String pgId(CQLTermNode node) throws QueryValidationException {
-    final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
     String comparator = StringUtils.defaultString(node.getRelation().getBase());
     if (!node.getRelation().getModifiers().isEmpty()) {
       throw new QueryValidationException("CQL: Unsupported modifier "

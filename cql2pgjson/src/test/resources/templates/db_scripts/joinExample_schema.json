@@ -1,0 +1,38 @@
+{
+  "tables": [
+    {
+      "tableName": "TableA",
+      "pkColumnName": "_id",
+      "generateId": false,
+      "withAuditing": false,
+      "ginIndex": [
+      
+      ],
+      "fullTextIndex": [
+        
+      ],
+      "index": [
+        
+      ],
+      "foreignKeys": [
+       
+      ]
+    },
+    {
+      "tableName": "TableB",
+      "pkColumnName": "_id",
+      "generateId": false,
+      "withAuditing": false,
+      "fullTextIndex": [
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "_id",
+          "targetTable": "TableA"
+        }
+      ]
+    }
+
+   
+  ]
+}
