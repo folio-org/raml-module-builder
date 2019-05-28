@@ -95,10 +95,9 @@ public class PgUtilIT {
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
-    execute(context, "CREATE TABLE " + schema + ".user " +
-        "(id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
-    execute(context, "CREATE TABLE " + schema + ".duplicateid " +
-        "(id UUID, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".user            (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".duplicateid     (id UUID, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".referencinguser (id UUID REFERENCES " + schema + ".user);");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
@@ -265,6 +264,16 @@ public class PgUtilIT {
     PgUtil.deleteById("otherTable", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 500, "42P01"));
+  }
+
+  @Test
+  public void deleteByIdForeignKeyViolation(TestContext testContext) {
+    String uuid = randomUuid();
+    post(testContext, "Folio", uuid, 201);
+    execute(testContext, "INSERT INTO " + schema + ".referencinguser VALUES ('" + uuid + "')");
+    PgUtil.deleteById("user", uuid, okapiHeaders, vertx.getOrCreateContext(),
+        Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "referencinguser"));
   }
 
   @Test
@@ -752,7 +761,7 @@ public class PgUtilIT {
 
   private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
     Async async = testContext.async();
-    pg.execute("truncate " + schema + ".user", testContext.asyncAssertSuccess(truncated -> {
+    pg.execute("truncate " + schema + ".user CASCADE", testContext.asyncAssertSuccess(truncated -> {
       async.complete();
     }));
     async.await(1000 /* ms */);

@@ -54,24 +54,57 @@ public class PgExceptionUtilTest {
   }
 
   @Test
+  public void otherError() {
+    assertString("XX000", "internal error", "crash", null);
+  }
+
+  @Test
   public void utilityClass() {
     UtilityClassTester.assertUtilityClass(PgExceptionUtil.class);
   }
 
-  private void assertString(String sqlstate, String detail, String message, String expected) {
-    Map<Object, String> javaMap = new HashMap<>();
-    javaMap.put('C', sqlstate);
-    javaMap.put('D', detail);
-    javaMap.put('M', message);
-    ErrorMessage errorMessage = new ErrorMessage(scalaMap(javaMap));
-    String actual = PgExceptionUtil.badRequestMessage(new GenericDatabaseException(errorMessage));
-    assertThat(actual, is(expected));
+  @Test
+  public void isForeignKeyViolation() {
+    assertThat(PgExceptionUtil.isForeignKeyViolation(genericDatabaseException('C', "23503")), is(true));
+    assertThat(PgExceptionUtil.isForeignKeyViolation(genericDatabaseException('C', "22P02")), is(false));
+    assertThat(PgExceptionUtil.isForeignKeyViolation(genericDatabaseException()), is(false));
+    assertThat(PgExceptionUtil.isForeignKeyViolation(null), is(false));
+  }
+
+  @Test
+  public void isUniqueViolation() {
+    assertThat(PgExceptionUtil.isUniqueViolation(genericDatabaseException('C', "23505")), is(true));
+    assertThat(PgExceptionUtil.isUniqueViolation(genericDatabaseException('C', "23503")), is(false));
+  }
+
+  @Test
+  public void isInvalidTextRepresentationn() {
+    assertThat(PgExceptionUtil.isInvalidTextRepresentation(genericDatabaseException('C', "22P02")), is(true));
+    assertThat(PgExceptionUtil.isInvalidTextRepresentation(genericDatabaseException('C', "23503")), is(false));
   }
 
   /**
    * @return javaMap as an immutable scala map
    */
-  private scala.collection.immutable.Map<Object, String> scalaMap(Map<Object, String> javaMap) {
+  private static scala.collection.immutable.Map<Object, String> scalaMap(Map<Object, String> javaMap) {
     return JavaConverters.mapAsScalaMapConverter(javaMap).asScala().toMap(Predef.<Tuple2<Object, String>>conforms());
   }
+
+  /**
+   * @return GenericDatabaseException with ErrorMessage with the key value pairs listed in arguments, for example
+   *   {@code genericDatabaseException('C', sqlstate, 'D', detail, 'M', message)}
+   */
+  private static GenericDatabaseException genericDatabaseException(Object ... arguments) {
+    Map<Object, String> map = new HashMap<>();
+    for (int i=0; i<arguments.length; i+=2) {
+      map.put((Character) arguments[i], (String) arguments[i+1]);
+    }
+    return new GenericDatabaseException(new ErrorMessage(scalaMap(map)));
+  }
+
+  private void assertString(String sqlstate, String detail, String message, String expected) {
+    String actual = PgExceptionUtil.badRequestMessage(genericDatabaseException('C', sqlstate, 'D', detail, 'M', message));
+    assertThat(actual, is(expected));
+  }
+
 }
