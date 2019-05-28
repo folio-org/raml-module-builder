@@ -34,6 +34,7 @@ import org.folio.rest.persist.ddlgen.ForeignKeys;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.Table;
 import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.util.ResourceUtil;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
@@ -176,12 +177,8 @@ public class CQL2PgJSON {
       if (schemaPath == null) {
         schemaPath = "templates/db_scripts/schema.json";
       }
-      ClassLoader classLoader = CQL2PgJSON.class.getClassLoader();
-      InputStream resourceAsStream = classLoader.getResourceAsStream(schemaPath);
-        
-        dbJson = IOUtils.toString(resourceAsStream, "UTF-8");
-        logger.log(Level.INFO, "loadDbSchema: Loaded " + schemaPath + " OK");
-      
+      dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
+      logger.log(Level.INFO, "loadDbSchema: Loaded " + schemaPath + " OK");
       dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found", ex);
