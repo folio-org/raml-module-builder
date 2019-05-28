@@ -2,8 +2,6 @@
   "tables": [
     {
       "tableName": "TableA",
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "ginIndex": [
       
@@ -20,14 +18,12 @@
     },
     {
       "tableName": "TableB",
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "fullTextIndex": [
       ],
       "foreignKeys": [
         {
-          "fieldName": "_id",
+          "fieldName": "id",
           "targetTable": "TableA"
         }
       ]
