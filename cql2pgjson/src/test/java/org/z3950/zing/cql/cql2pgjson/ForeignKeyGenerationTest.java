@@ -88,13 +88,13 @@ public class ForeignKeyGenerationTest extends DatabaseTestBase {
   }
   @Test
   public void ForeignKeyFilterFailureDueToTable() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("TableA.tablea_data");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("TableC.tableb_data");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
     try {
       String sql = cql2pgJson.toSql("id == TableC.tableb_data").getWhere();
-      assertEquals("",sql);
-      sql = cql2pgJson.toSql("TableC.tableb_data == id").getWhere();
-      assertEquals("",sql);
+      assertEquals("false /* id == invalid UUID */",sql);
+      sql = cql2pgJson.toSql("tableb_data == id").getWhere();
+      assertEquals("lower(f_unaccent(TableC.tableb_data->>'tableb_data')) LIKE lower(f_unaccent('id'))",sql);
     } catch(Exception e) {
       e.printStackTrace();
     }
