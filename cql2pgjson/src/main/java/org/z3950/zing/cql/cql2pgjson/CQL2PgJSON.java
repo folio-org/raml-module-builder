@@ -1,19 +1,12 @@
 package org.z3950.zing.cql.cql2pgjson;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
