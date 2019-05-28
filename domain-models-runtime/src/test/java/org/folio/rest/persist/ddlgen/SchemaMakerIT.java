@@ -4,41 +4,52 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import java.util.UUID;
-
-import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.PostgresClientITBase;
-import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.folio.util.ResourceUtil;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.PostgresClientITBase;
+import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.util.ResourceUtil;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 @RunWith(VertxUnitRunner.class)
 public class SchemaMakerIT extends PostgresClientITBase {
-  private void createSchema(TestContext context, String schemaFilename) throws Exception {
+  @Before
+  public void wipeAll(TestContext context) {
     dropSchemaAndRole(context);
-    SchemaMaker schemaMaker = new SchemaMaker(tenant, PostgresClient.getModuleName(),
-        TenantOperation.CREATE, "mod-foo-18.2.3", "mod-foo-18.2.4");
-    String json = ResourceUtil.asString(schemaFilename);
-    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-    runSqlFileAsSuperuser(context, schemaMaker.generateDDL());
+  }
+
+  private void runSchema(TestContext context, TenantOperation tenantOperation, String filename) {
+    try {
+      SchemaMaker schemaMaker = new SchemaMaker(tenant, PostgresClient.getModuleName(),
+          tenantOperation, "mod-foo-18.2.3", "mod-foo-18.2.4");
+      String json = ResourceUtil.asString("templates/db_scripts/" + filename);
+        schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+      runSqlFileAsSuperuser(context, schemaMaker.generateDDL());
+    } catch (Exception e) {
+      context.fail(e);
+    }
   }
 
   private int selectInteger(TestContext context, String sql) {
-    int [] i = new int [1];
+    AtomicInteger i = new AtomicInteger();
 
     Async async = context.async();
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
     postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
-      i[0] = result.getInteger(0);
+      i.set(result.getInteger(0));
       async.complete();
     }));
 
-    async.awaitSuccess();
-    return i[0];
+    async.awaitSuccess(5000);
+    return i.get();
   }
 
   private void auditedTableCanInsertUpdateDelete(TestContext context, String table) {
@@ -64,9 +75,61 @@ public class SchemaMakerIT extends PostgresClientITBase {
   public void canMakeAuditedTable(TestContext context) throws Exception {
     // We need to create two different audited tables to check that "CREATE AGGREGATE" in uuid.ftl
     // is called only once per aggregate function.
-    createSchema(context, "templates/db_scripts/schemaWithAudit.json");
+    runSchema(context, TenantOperation.CREATE, "schemaWithAudit.json");
     auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi");
     auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi2");
+  }
+
+  private boolean triggerExists(TestContext context, String name) {
+    AtomicBoolean exists = new AtomicBoolean();
+    Async async = context.async();
+    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
+    postgresClient.selectSingle(
+        "SELECT count(*) FROM pg_trigger " +
+        "WHERE tgrelid = '" + schema + ".test_tenantapi'::regclass AND tgname='" + name + "'",
+        context.asyncAssertSuccess(count -> {
+          exists.set(count.getInteger(0) == 1);
+          async.complete();
+    }));
+    async.await(5000);
+    return exists.get();
+  }
+
+  private void assertMetadataTrigger(TestContext context, boolean expected) {
+    context.assertEquals(expected, triggerExists(context, "set_test_tenantapi_md_trigger"));
+    context.assertEquals(expected, triggerExists(context, "set_test_tenantapi_md_json_trigger"));
+  }
+
+  @Test
+  public void canCreateMetadataTriggerTrueTrue(TestContext context) throws Exception {
+    runSchema(context, TenantOperation.CREATE, "schema.json");
+    assertMetadataTrigger(context, true);
+    runSchema(context, TenantOperation.UPDATE, "schema.json");
+    assertMetadataTrigger(context, true);
+  }
+
+  @Test
+  public void canCreateWithoutTriggerFalseFalse(TestContext context) throws Exception {
+    runSchema(context, TenantOperation.CREATE, "schemaWithoutMetadata.json");
+    assertMetadataTrigger(context, false);
+    runSchema(context, TenantOperation.UPDATE, "schemaWithoutMetadata.json");
+    assertMetadataTrigger(context, false);
+  }
+
+  @Test
+  public void canCreateMetadataTriggerTrueFalse(TestContext context) throws Exception {
+    runSchema(context, TenantOperation.CREATE, "schema.json");
+    assertMetadataTrigger(context, true);
+    runSchema(context, TenantOperation.UPDATE, "schemaWithoutMetadata.json");
+    assertMetadataTrigger(context, false);
+  }
+
+  @Test
+  public void canCreateWithoutTriggerFalseTrue(TestContext context) throws Exception {
+    runSchema(context, TenantOperation.CREATE, "schemaWithoutMetadata.json");
+    assertMetadataTrigger(context, false);
+    runSchema(context, TenantOperation.UPDATE, "schema.json");
+    assertMetadataTrigger(context, true);
   }
 
   private void assertIdJsonb(TestContext context, String id, String idInJsonb) {
@@ -83,7 +146,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
 
   @Test
   public void canSetIdInJsonb(TestContext context) throws Exception {
-    createSchema(context, "templates/db_scripts/schemaWithAudit.json");
+    runSchema(context, TenantOperation.CREATE, "schemaWithAudit.json");
     String table = schema + ".test_tenantapi";
     String uuid1 = UUID.randomUUID().toString();
     String uuid2 = UUID.randomUUID().toString();
