@@ -66,6 +66,7 @@ public class CriteriaTest {
   void criteriaValue(String value, String sql) {
     Criteria criteria = new Criteria().addField("'f'").setOperation("=").setVal(value);
     assertThat(criteria, isSql("(jsonb->>'f') = " + sql));
+    assertThat(criteria.getVal(), is(value));
   }
 
   static Stream<Arguments> criteriaValue() {
