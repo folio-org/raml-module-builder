@@ -100,9 +100,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
 
     <#include "foreign_keys.ftl">
 
-    <#if table.withMetadata == true>
-      <#include "metadata.ftl">
-    </#if>
+    <#include "metadata.ftl">
 
     <#if table.withAuditing == true>
       <#include "audit.ftl">
