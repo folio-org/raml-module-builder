@@ -482,17 +482,18 @@ public class CQL2PgJSON {
     if ("cql.allRecords".equalsIgnoreCase(node.getIndex())) {
       return "true";
     }
+    //determine if this table is real by checking in schema
     //determine right here whether this node deals with a foreign term on right or left side
     Table t = checkForForeignLocationOfIndex(node);
-    Table u =  checkForForeignLocationOfTerm(node );
+    Table u =  checkForForeignLocationOfTerm(node);
     if(t != null ) {
       //we are doing a foreign key search
       //determine foreign key linking tables
-      String result = subQuery(node.getIndex() , node, t);
+      String result = subQuery(node.getIndex(), node, t);
       return result;
     } else if (u != null) {
       //we are doing a foreign key join 
-      String result = subQuery(node.getIndex() , node, u);
+      String result = subQuery(node.getIndex(), node, u);
       return result;
     }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {

@@ -50,13 +50,13 @@ public class ForeignKeyGenerationTest extends DatabaseTestBase {
   }
   @Test
   public void ForeignKeySearchFailureDueToTable() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("TableA.tablea_data" );
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("TableA" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
     try {
       String sql = cql2pgJson.toSql("TableC.tableb_data == 11111111-1111-1111-1111-111111111111").getWhere();
-      assertEquals("",sql);
+      assertEquals("lower(f_unaccent(TableA->'TableC'->>'tableb_data')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
       sql = cql2pgJson.toSql("ardgsdfgdsfg.tableb_data == 11111111-1111-1111-1111-111111111111").getWhere();
-      assertEquals("",sql);
+      assertEquals("lower(f_unaccent(TableA->'ardgsdfgdsfg'->>'tableb_data')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
     } catch(Exception e) {
       e.printStackTrace();
     }
