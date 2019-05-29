@@ -37,6 +37,7 @@ import org.z3950.zing.cql.CQLParseException;
 import org.z3950.zing.cql.CQLParser;
 import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.CQLTermNode;
+import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
 
 /**
@@ -260,6 +261,7 @@ public class CQL2PgJSON {
   public String cql2pgJson(String cql) throws QueryValidationException {
     try {
       CQLParser parser = new CQLParser();
+      logger.warning("INPUT CQL: " + cql);
       CQLNode node = parser.parse(cql);
       return pg(node);
     } catch (IOException|CQLParseException e) {
@@ -359,7 +361,7 @@ public class CQL2PgJSON {
         continue;
       }
 
-      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
+      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase(), null);
 
       // if sort field is marked explicitly as number type
       if (modifiers.getCqlTermFormat() == CqlTermFormat.NUMBER) {
@@ -424,10 +426,56 @@ public class CQL2PgJSON {
    *
    * @return SQL term
    */
-  private static String index2sqlText(String jsonField, String index) {
-    String result = jsonField + "->'" + index.replace(".", "'->'") + "'";
-    int lastArrow = result.lastIndexOf("->'");
-    return result.substring(0,  lastArrow) + "->>" + result.substring(lastArrow + 2);
+  private static String index2sqlText(String jsonField, String index, List<Modifier> modifiers) {
+    try {
+      StringBuilder res = new StringBuilder();
+      if (modifiers != null) {
+        res.append(jsonField);
+        res.append("-> '");
+        res.append(index);
+        res.append("'");
+        res.append(" @> '[");
+        int i = 0;
+        for (Modifier modifier : modifiers) {
+          if (modifier.getType().startsWith("@")) {
+            String s = modifier.getType().substring(1);
+            if (modifier.getValue() != null) {
+              if (i > 0) {
+                res.append(", ");
+              }
+              res.append("{\"");
+              res.append(s);
+              res.append("\": \"");
+              res.append(modifier.getValue());
+              res.append("\"}");
+              i++;
+            }
+          }
+        }
+        res.append("]'");
+        if (i > 0) {
+          logger.warning("ARRAY RETURNING " + res.toString());
+          return res.toString();
+        }
+      }
+      res.setLength(0);
+      String[] comp = index.split("\\.");
+      res.append(jsonField);
+      for (int j = 0; j < comp.length; j++) {
+        if (j < comp.length - 1) {
+          res.append("->");
+        } else {
+          res.append("->>");
+        }
+        res.append("\'");
+        res.append(comp[j]);
+        res.append("\'");
+      }
+      return res.toString();
+    } catch (Exception ex) {
+      logger.warning("EXCEPTION: " + ex.getMessage());
+      return "";
+    }
   }
 
   /**
@@ -443,14 +491,14 @@ public class CQL2PgJSON {
     return jsonField + "->'" + index.replace(".", "'->'") + "'";
   }
 
-  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
+  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index,List<Modifier> modifiers)
       throws QueryValidationException {
     if (jsonField == null) {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
     vals.setIndexJson(index2sqlJson(this.jsonField, index));
-    vals.setIndexText(index2sqlText(this.jsonField, index));
+    vals.setIndexText(index2sqlText(this.jsonField, index, modifiers));
     return vals;
   }
 
@@ -462,7 +510,7 @@ public class CQL2PgJSON {
       if (index.startsWith(f+'.')) {
         String indexTermWithinField = index.substring(f.length()+1);
         vals.setIndexJson(index2sqlJson(f, indexTermWithinField));
-        vals.setIndexText(index2sqlText(f, indexTermWithinField));
+        vals.setIndexText(index2sqlText(f, indexTermWithinField, null));
         return vals;
       }
     }
@@ -470,7 +518,7 @@ public class CQL2PgJSON {
     // if no json field name prefix is found, the default field name gets applied.
     String defaultJsonField = this.jsonFields.get(0);
     vals.setIndexJson(index2sqlJson(defaultJsonField, index));
-    vals.setIndexText(index2sqlText(defaultJsonField, index));
+    vals.setIndexText(index2sqlText(defaultJsonField, index, null));
     return vals;
   }
 
@@ -642,12 +690,15 @@ public class CQL2PgJSON {
       return pgId(node);
     }
 
-    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
+    CqlModifiers modifiers = new CqlModifiers(node);
+    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index, node.getRelation().getModifiers());
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, this.jsonField, index);
 
-    CqlModifiers modifiers = new CqlModifiers(node);
     String comparator = node.getRelation().getBase().toLowerCase();
 
+    if (vals.getIndexText().contains(" @> ")) {
+      return vals.getIndexText();
+    }
     switch (comparator) {
     case "=":
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
