@@ -891,9 +891,26 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-  //"lang = [] # a",                     // disable this till CQL-PG83 is done
+    "lang == []                    # a",
     "lang == [\"en\"]              # b",
-  //"lang = [\"en\"]               # b", // disable this till CQL-PG83 is done
+    "lang == \"en\"                #",
+    "lang = en                     # b; c; d; f; g; h; i",
+    "lang = au dk                  #",
+    "lang all au dk                # i",
+    "lang = de dk                  # i",
+    "lang = \"en-uk\"              # d",
+    "lang = en-uk                  # d",
+    "lang = uk-en                  #",
+    "lang = uk                     # d; e",
+    "contributors = terry          # a",
+    "contributors = \"2b94c631-fca9-4892-a730-03ee529ffe2a\" # a",
+    "name = terry                  #",
+    "contributors.name = terry     #",
+    "contributors.name = terry     #",
+    "identifiers =/ @value= 0552142352 foo # a",
+    "identifiers =/ @value= 0552142353 foo #",
+
+    //"lang = [\"en\"]               # b", // disable this till CQL-PG83 is done
   //"lang = [\"au\"]               # i", //
   //
   /*    "                     lang ==/respectAccents []     # a",

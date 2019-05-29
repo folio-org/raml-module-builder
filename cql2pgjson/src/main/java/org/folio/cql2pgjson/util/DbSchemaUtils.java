@@ -20,17 +20,13 @@ public class DbSchemaUtils {
    * For given index name, check if database has matching indexes.
    *
    * @param schema
-   * @param indexJson
+   * @param tableName
+   * @param indexName
    * @return
    */
-  public static DbIndex getDbIndex(Schema schema, String indexJson) {
+  public static DbIndex getDbIndex(Schema schema, String tableName, String indexName) {
 
     DbIndex dbIndexStatus = new DbIndex();
-
-    String fieldName = CqlUtils.getFieldNameFromIndexJson(indexJson);
-    String tableName = CqlUtils.getTableNameFromCqlField(fieldName);
-
-    String indexName = CqlUtils.getIndexNameFromIndexJson(indexJson);
 
     if (schema.getTables() != null && !schema.getTables().isEmpty()) {
       for (Table table : schema.getTables()) {
@@ -54,7 +50,7 @@ public class DbSchemaUtils {
   private static boolean checkDbIndex(String cqlIndex, List<Index> indexes) {
     if (indexes != null && !indexes.isEmpty()) {
       for (Index i : indexes) {
-        if (cqlIndex.equals(i.getFieldName()) || cqlIndex.equals(i.getFieldPath())) {
+        if (cqlIndex.equals(i.getFieldName())) {
           return true;
         }
       }
