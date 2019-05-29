@@ -40,7 +40,7 @@ public class DbSchemaUtilsTest {
 
   @Test
   public void testGetDbIndexForName() {
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users.jsonb->'name'");
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users", "name");
     assertTrue(dbIndex.isFt());
     assertTrue(dbIndex.isGin());
     assertTrue(dbIndex.isOther());
@@ -48,7 +48,7 @@ public class DbSchemaUtilsTest {
 
   @Test
   public void testGetDbIndexForEmail() {
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users.jsonb->'email'");
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users", "email");
     assertFalse(dbIndex.isFt());
     assertFalse(dbIndex.isGin());
     assertTrue(dbIndex.isOther());
@@ -56,7 +56,7 @@ public class DbSchemaUtilsTest {
 
   @Test
   public void testGetDbIndexForAddress() {
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users.jsonb->'address'");
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users", "address");
     assertFalse(dbIndex.isFt());
     assertFalse(dbIndex.isGin());
     assertTrue(dbIndex.isOther());

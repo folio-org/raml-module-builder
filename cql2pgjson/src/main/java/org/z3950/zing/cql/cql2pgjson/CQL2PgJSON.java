@@ -643,7 +643,7 @@ public class CQL2PgJSON {
     }
 
     IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, vals.getIndexJson());
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, this.jsonField, index);
 
     CqlModifiers modifiers = new CqlModifiers(node);
     String comparator = node.getRelation().getBase().toLowerCase();
