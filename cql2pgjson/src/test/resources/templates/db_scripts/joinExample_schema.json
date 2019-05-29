@@ -1,34 +1,16 @@
 {
   "tables": [
     {
-      "tableName": "TableA",
-      "withAuditing": false,
-      "ginIndex": [
-      
-      ],
-      "fullTextIndex": [
-        
-      ],
-      "index": [
-        
-      ],
-      "foreignKeys": [
-       
-      ]
+      "tableName": "tablea"
     },
     {
-      "tableName": "TableB",
-      "withAuditing": false,
-      "fullTextIndex": [
-      ],
+      "tableName": "tableb",
       "foreignKeys": [
         {
-          "fieldName": "id",
-          "targetTable": "TableA"
+          "fieldName": "tableaId",
+          "targetTable": "tablea"
         }
       ]
     }
-
-   
   ]
 }
