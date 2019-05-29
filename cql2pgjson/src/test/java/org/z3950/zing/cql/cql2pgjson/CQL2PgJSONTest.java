@@ -76,8 +76,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       String where = aCql2pgJson.cql2pgJson(cql);
       //sql = "select user_data->'name' from users where " + where;
       sql = "select " + blob + "->'name' from " + tablename + " where " + where;
-      logger.fine("select: cql: " + cql);
-      logger.fine("select: sql:" + sql);
+      logger.warning("select: CQL --> SQL: " + cql + " --> " + sql);
       runSqlFile(sqlFile);
       logger.fine("select: sqlfile done");
       String actualNames = "";
@@ -904,11 +903,15 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "lang = uk                     # d; e",
     "contributors = terry          # a",
     "contributors = \"2b94c631-fca9-4892-a730-03ee529ffe2a\" # a",
+    "contributors all \"contributornametypeid\" # a; b",
+    "contributors all \"contributorNameTypeId 2b94c631-fca9-4892-a730-03ee529ffe2a\" # a",
+    "contributors all \"contributorNameTypeId 2b94c631\" # a",
+    "contributors = \"contributorNameTypeId 2b94c631\" #",
+    "identifiers = \"value 0552142352\" # a",
+    "contributors = name           # a; b",
     "name = terry                  #",
     "contributors.name = terry     #",
-    "contributors.name = terry     #",
-    "identifiers =/ @value= 0552142352 foo # a",
-    "identifiers =/ @value= 0552142353 foo #",
+    "contributors.name = terry     #",    
 
     //"lang = [\"en\"]               # b", // disable this till CQL-PG83 is done
   //"lang = [\"au\"]               # i", //
