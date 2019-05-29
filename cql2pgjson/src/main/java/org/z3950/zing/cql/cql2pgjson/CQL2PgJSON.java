@@ -575,7 +575,7 @@ public class CQL2PgJSON {
       if (term.isEmpty()) {
         term = "\"\"";
       }
-      boolean isTermConstant = uuidPattern.matcher(term).matches();;
+      boolean isTermConstant = uuidPattern.matcher(term).matches();
       boolean isTableTerm = tableNamePattern.matcher(term).matches();
       if(!isTermConstant && !isTableTerm) {
         logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue {0}", fkey);
