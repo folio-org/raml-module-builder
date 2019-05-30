@@ -574,13 +574,13 @@ public class CQL2PgJSON {
         
       }
       String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
-      String targetField = index2sqlText(foreignTarget[0] + ".jsonb", foreignTarget[1]);
+      String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
       StringBuilder correlationJoinClause = new StringBuilder("");
       String inKeyword = "";
       StringBuilder likeClause = new StringBuilder();
       if (isTermConstant) { 
         correlationJoinClause.append(" WHERE (").append(wrapInLowerUnaccent(myField + "::text")).append(" = ").append(wrapInLowerUnaccent(targetField + "::text")).append(")");
-        likeClause.append(" LIKE ").append(wrapInLowerUnaccent(node.getTerm()));
+        likeClause.append(" LIKE ").append("'").append(wrapInLowerUnaccent(node.getTerm())).append("'");
       } else { 
         inKeyword = " IN ";
       }

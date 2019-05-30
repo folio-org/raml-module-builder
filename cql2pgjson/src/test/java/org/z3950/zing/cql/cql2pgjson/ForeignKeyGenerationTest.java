@@ -1,28 +1,21 @@
 package org.z3950.zing.cql.cql2pgjson;
 
-import static org.hamcrest.CoreMatchers.containsString;
+
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
 import java.util.logging.Logger;
 
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
+
 
 
 @RunWith(JUnitParamsRunner.class)
@@ -42,7 +35,7 @@ public class ForeignKeyGenerationTest  {
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
     String sql = cql2pgJson.toSql("tableb.tableb_data == 11111111-1111-1111-1111-111111111111").getWhere();
     // default pkColumnName is id without underscore
-    assertEquals(" ( SELECT tableb.jsonb->>'tableb_data' from tableb WHERE (lower(f_unaccent(tablea.jsonb->>'id'::text)) = lower(f_unaccent(tableb.jsonb->>'tableb_data'::text)))) LIKE lower(f_unaccent(11111111-1111-1111-1111-111111111111))", sql);
+    assertEquals(" ( SELECT tableb.jsonb->>'tableb_data' from tableb WHERE (lower(f_unaccent(tablea.jsonb->>'id'::text)) = lower(f_unaccent(tableb.jsonb->>'tableaId'::text)))) LIKE lower(f_unaccent(11111111-1111-1111-1111-111111111111))", sql);
   }
   @Test
   public void ForeignKeySearchWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
