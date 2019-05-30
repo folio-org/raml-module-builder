@@ -511,7 +511,7 @@ public class CQL2PgJSON {
   private Table checkForForeignLocationOfTerm(CQLTermNode node) {
     String[] termParts = node.getTerm().split("\\.");
     //if the table is not supplied we do not have enough information to proceed, thereby assume it is in current table
-    if(termParts.length == 1) {
+    if(termParts.length <= 1) {
       return null;
     }
     return getForeignTable(termParts[0]);
@@ -521,7 +521,7 @@ public class CQL2PgJSON {
   private Table checkForForeignLocationOfIndex(CQLTermNode node) {
     String[] idxParts = node.getIndex().split("\\.");
     //if the table is not supplied we do not have enough information to proceed, thereby assume it is in current table
-    if(idxParts.length == 1) {
+    if(idxParts.length <= 1) {
       return null;
     }
     return getForeignTable(idxParts[0]);
@@ -539,11 +539,7 @@ public class CQL2PgJSON {
   private String subQuery(String index,CQLTermNode node, Table correlation ) {
     String[] idxParts = index.split("\\.");
     String[] termParts = node.getTerm().split("\\.");
-    if (idxParts.length <= 1 && termParts.length <= 1 ) {
-      //considering the lack of a table.field as a failure even though it could be rescued with more work
-      logger.log(Level.SEVERE, "subQuery: needs at least two-part index  or term name, not ''{0}''", index);
-      return null;
-    }
+
     String [] foreignTarget ;
     if(idxParts.length > termParts.length ) { 
       
@@ -559,7 +555,7 @@ public class CQL2PgJSON {
       logger.log(Level.SEVERE, "subQuery(): No foreignKey ''{0}'' found", foreignTarget[0]);
       return null;
     }
-    if (fkey.getFieldName() ==  null || fkey.getTargetTable() == null) {
+    if (fkey.getTargetTable() == null) {
       logger.log(Level.SEVERE, "subQuery: Malformed foreignKey section {0}", fkey);
       return null;
     }
