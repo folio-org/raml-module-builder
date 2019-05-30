@@ -536,19 +536,19 @@ public class CQL2PgJSON {
     return null;
   }
 
-  private String subQuery(String index,CQLTermNode node, Table correlation ) {
+  private String subQuery(String index,CQLTermNode node, Table correlation) {
     String[] idxParts = index.split("\\.");
     String[] termParts = node.getTerm().split("\\.");
 
     String [] foreignTarget ;
-    if(idxParts.length > termParts.length ) { 
+    if (idxParts.length > termParts.length) { 
       
       foreignTarget = idxParts;
     } else {
       foreignTarget = termParts;
     }
     //TODO: replace pk column name here with possible list of fields if we allow other columns to be joined?
-    ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation );
+    ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation);
     //System.out.println("CQL2PgJSON.subQuery1FT(): Found foreignKey '" + fkey)
 
     if (fkey == null) {
@@ -568,18 +568,18 @@ public class CQL2PgJSON {
       }
       boolean isTermConstant = uuidPattern.matcher(term).matches();
       boolean isTableTerm = tableNamePattern.matcher(term).matches();
-      if(!isTermConstant && !isTableTerm) {
+      if (!isTermConstant && !isTableTerm) {
         logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue {0}", fkey);
         return null;
         
       }
-      String myField = index2sqlText( dbTable.getTableName() + ".jsonb", "id" );
-      String targetField = index2sqlText( foreignTarget[0] + ".jsonb", foreignTarget[1] );
+      String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
+      String targetField = index2sqlText(foreignTarget[0] + ".jsonb", foreignTarget[1]);
       StringBuilder correlationJoinClause = new StringBuilder("");
       String inKeyword = "";
       StringBuilder likeClause = new StringBuilder();
-      if(isTermConstant ) { 
-        correlationJoinClause.append( " WHERE (").append(wrapInLowerUnaccent(myField + "::text")).append(" = ").append(wrapInLowerUnaccent(targetField + "::text")).append(")");
+      if (isTermConstant) { 
+        correlationJoinClause.append(" WHERE (").append(wrapInLowerUnaccent(myField + "::text")).append(" = ").append(wrapInLowerUnaccent(targetField + "::text")).append(")");
         likeClause.append(" LIKE ").append(wrapInLowerUnaccent(node.getTerm()));
       } else { 
         inKeyword = " IN ";
@@ -587,7 +587,7 @@ public class CQL2PgJSON {
       String fld = index2sqlText(c.getjsonField(), foreignTarget[1]);
       StringBuilder builder = new StringBuilder(inKeyword);
       builder.append(" ( SELECT ").append(fld).append(" from ").append(foreignTarget[0]).append(correlationJoinClause).append(")").toString();
-      builder.append( likeClause);
+      builder.append(likeClause);
       
       return  builder.toString();
     } catch (FieldException  e) {
