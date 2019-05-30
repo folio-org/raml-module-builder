@@ -28,7 +28,7 @@ public class TestCLI {
   public void setup() throws URISyntaxException {
     exitStatus = 0;
     CQL2PGCLIMain.exit = status -> exitStatus = status;
-    dbSchemaPath = Paths.get(ClassLoader.getSystemResource("dbschema.json").toURI()).toString();
+    dbSchemaPath = Paths.get("./dbschema.json").toString();
   }
 
   private void main(String arguments) {
