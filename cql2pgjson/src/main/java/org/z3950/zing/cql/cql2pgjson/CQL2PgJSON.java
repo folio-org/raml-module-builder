@@ -587,9 +587,8 @@ public class CQL2PgJSON {
       String fld = index2sqlText(c.getjsonField(), foreignTarget[1]);
       StringBuilder builder = new StringBuilder(inKeyword);
       builder.append(" ( SELECT ").append(fld).append(" from ").append(foreignTarget[0]).append(correlationJoinClause).append(")").toString();
-      if(likeClause != null ) {
-        builder.append( likeClause);
-      }
+      builder.append( likeClause);
+      
       return  builder.toString();
     } catch (FieldException  e) {
       // We should not get these exceptions, as we construct a valid query above,
