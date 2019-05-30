@@ -26,21 +26,17 @@ import junitparams.Parameters;
 
 
 @RunWith(JUnitParamsRunner.class)
-public class ForeignKeyGenerationTest extends DatabaseTestBase {
+public class ForeignKeyGenerationTest  {
   private static Logger logger = Logger.getLogger(CQL2PgJSONTest.class.getName());
   private static CQL2PgJSON cql2pgJson;
 
   @BeforeClass
   public static void runOnceBeforeClass() throws Exception {
-    //setupDatabase();
-    //runSqlFile("joinExample.sql");
   }
-
   @AfterClass
   public static void runOnceAfterClass() {
-    //closeDatabase();
   }
-  
+  @Test
   public void ForeignKeySearch() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
@@ -48,7 +44,7 @@ public class ForeignKeyGenerationTest extends DatabaseTestBase {
     // default pkColumnName is id without underscore
     assertEquals(" ( SELECT tableb.jsonb->>'tableb_data' from tableb WHERE (lower(f_unaccent(tablea.jsonb->>'id'::text)) = lower(f_unaccent(tableb.jsonb->>'tableb_data'::text)))) LIKE lower(f_unaccent(11111111-1111-1111-1111-111111111111))", sql);
   }
-  
+  @Test
   public void ForeignKeySearchFailureDueToTable() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
@@ -78,7 +74,7 @@ public class ForeignKeyGenerationTest extends DatabaseTestBase {
     // default pkColumnName is id without underscore
     //assertEquals(" ( SELECT TableA.jsonb->>'tableb_data' from TableB WHERE (lower(f_unaccent(TableA.jsonb->>'id'::text)) = lower(f_unaccent(TableB.jsonb->>'tableb_data'::text)))) LIKE lower(f_unaccent(11111111-1111-1111-1111-111111111111))", sql);
   }
-  
+  @Test
   public void ForeignKeyFilter() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
