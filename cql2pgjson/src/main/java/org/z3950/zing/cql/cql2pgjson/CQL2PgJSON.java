@@ -3,7 +3,6 @@ package org.z3950.zing.cql.cql2pgjson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -489,13 +488,11 @@ public class CQL2PgJSON {
     if (indexTable != null) {
       //we are doing a foreign key search
       //determine foreign key linking tables
-      String result = subQuery(node.getIndex(), node, indexTable);
-      return result;
+      return subQuery(node.getIndex(), node, indexTable);
     }
     if (termTable != null) {
       //we are doing a foreign key join 
-      String result = subQuery(node.getIndex(), node, termTable);
-      return result;
+      return subQuery(node.getIndex(), node, termTable);
     }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
@@ -566,8 +563,6 @@ public class CQL2PgJSON {
       logger.log(Level.SEVERE, "subQuery: Malformed foreignKey section {0}", fkey);
       return null;
     }
-    String fkField = fkey.getFieldName(); // tagId
-    String fkTable = fkey.getTargetTable();  // tags
     try {
 
       CQL2PgJSON c = new CQL2PgJSON(foreignTarget[0] + ".jsonb");
@@ -584,21 +579,22 @@ public class CQL2PgJSON {
       }
       String myField = index2sqlText( dbTable.getTableName() + ".jsonb", "id" );
       String targetField = index2sqlText( foreignTarget[0] + ".jsonb", foreignTarget[1] );
-      String correlationJoinClause = "";
+      StringBuilder correlationJoinClause = new StringBuilder("");
       String inKeyword = "";
-      String likeClause = null;
+      StringBuilder likeClause = new StringBuilder();
       if(isTermConstant ) { 
-        correlationJoinClause = " WHERE (" + wrapInLowerUnaccent(myField + "::text") + " = "  + wrapInLowerUnaccent(targetField + "::text") + ")";
-        likeClause = isTermConstant ?  " LIKE " + wrapInLowerUnaccent(node.getTerm()) : null;
+        correlationJoinClause.append( " WHERE (").append(wrapInLowerUnaccent(myField + "::text")).append(" = ").append(wrapInLowerUnaccent(targetField + "::text")).append(")");
+        likeClause.append(" LIKE ").append(wrapInLowerUnaccent(node.getTerm()));
       } else { 
         inKeyword = " IN ";
       }
       String fld = index2sqlText(c.getjsonField(), foreignTarget[1]);
-      StringBuffer result = new StringBuffer( inKeyword + " ( SELECT " + fld + " from " + foreignTarget[0] + correlationJoinClause + ")" );
+      StringBuilder builder = new StringBuilder(inKeyword);
+      builder.append(" ( SELECT ").append(fld).append(" from ").append(foreignTarget[0]).append(correlationJoinClause).append(")").toString();
       if(likeClause != null ) {
-        result.append(likeClause);
+        builder.append( likeClause);
       }
-      return  result.toString();
+      return  builder.toString();
     } catch (FieldException  e) {
       // We should not get these exceptions, as we construct a valid query above,
       // using a valid schema.
@@ -610,8 +606,9 @@ public class CQL2PgJSON {
   private ForeignKeys findForeignKey(String field, Table targetTable) {
     for (ForeignKeys key : targetTable.getForeignKeys()) {
       String target = key.getFieldName();
-      field =  dbTable.getTableName() + field;
-      if (field.equalsIgnoreCase(target)) {
+      StringBuilder builder = new StringBuilder(dbTable.getTableName());
+      builder.append(field);
+      if (builder.toString().equalsIgnoreCase(target)) {
         return key;
       }
     }
