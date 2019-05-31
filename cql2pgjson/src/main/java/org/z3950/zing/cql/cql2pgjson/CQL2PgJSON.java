@@ -491,7 +491,7 @@ public class CQL2PgJSON {
       return subQuery(node.getIndex(), node, indexTable);
     }
     if (termTable != null) {
-      //we are doing a foreign key join 
+      //we are doing a foreign key join
       return subQuery(node.getIndex(), node, termTable);
     }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
@@ -541,8 +541,8 @@ public class CQL2PgJSON {
     String[] termParts = node.getTerm().split("\\.");
 
     String [] foreignTarget ;
-    if (idxParts.length > termParts.length) { 
-      
+    if (idxParts.length > termParts.length) {
+
       foreignTarget = idxParts;
     } else {
       foreignTarget = termParts;
@@ -569,26 +569,26 @@ public class CQL2PgJSON {
       boolean isTermConstant = uuidPattern.matcher(term).matches();
       boolean isTableTerm = tableNamePattern.matcher(term).matches();
       if (!isTermConstant && !isTableTerm) {
-        logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue {0}", fkey);
+        logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue: ", term);
         return null;
-        
+
       }
       String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
       String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
       StringBuilder correlationJoinClause = new StringBuilder("");
       String inKeyword = "";
       StringBuilder likeClause = new StringBuilder();
-      if (isTermConstant) { 
+      if (isTermConstant) {
         correlationJoinClause.append(" WHERE (").append(wrapInLowerUnaccent(myField + "::text")).append(" = ").append(wrapInLowerUnaccent(targetField + "::text")).append(")");
         likeClause.append(" LIKE ").append("'").append(wrapInLowerUnaccent(node.getTerm())).append("'");
-      } else { 
+      } else {
         inKeyword = " IN ";
       }
       String fld = index2sqlText(c.getjsonField(), foreignTarget[1]);
       StringBuilder builder = new StringBuilder(inKeyword);
       builder.append(" ( SELECT ").append(fld).append(" from ").append(foreignTarget[0]).append(correlationJoinClause).append(")").toString();
       builder.append(likeClause);
-      
+
       return  builder.toString();
     } catch (FieldException  e) {
       // We should not get these exceptions, as we construct a valid query above,
@@ -609,7 +609,7 @@ public class CQL2PgJSON {
     }
     return null;
   }
-  
+
   /**
    * Normalize a term for FT searching. Escape quotes, masking, etc
    *

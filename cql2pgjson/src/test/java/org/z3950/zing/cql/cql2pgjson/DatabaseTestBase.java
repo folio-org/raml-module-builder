@@ -205,6 +205,25 @@ public class DatabaseTestBase {
   }
 
   /**
+   * Run the selectStatement and return the first column of the result.
+   * @param sqlStatement  the SELECT command to run
+   * @return the first column of the result, converted into Strings
+   * @throws SQLRuntimeException on SQLException
+   */
+  static List<String> firstColumn(String selectStatement) {
+    try (Statement statement = conn.createStatement();
+         ResultSet resultSet = statement.executeQuery(selectStatement)) {
+      List<String> array = new ArrayList<>();
+      while (resultSet.next()) {
+        array.add(resultSet.getString(1));
+      }
+      return array;
+    } catch (SQLException e) {
+      throw new SQLRuntimeException(selectStatement, e);
+    }
+  }
+
+  /**
    * Run the SQL statement on conn with EXPLAIN ANALYSE.
    * @param sqlStatement  the SQL command to run (without prepended EXPLAIN ANALYSE).
    * @return the answer from the database
