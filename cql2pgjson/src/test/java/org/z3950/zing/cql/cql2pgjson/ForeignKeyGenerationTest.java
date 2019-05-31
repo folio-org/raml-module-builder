@@ -35,7 +35,7 @@ public class ForeignKeyGenerationTest  {
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
     String sql = cql2pgJson.toSql("tableb.tableb_data == 11111111-1111-1111-1111-111111111111").getWhere();
     // default pkColumnName is id without underscore
-    assertEquals(" ( SELECT tableb.jsonb->>'tableb_data' from tableb WHERE (lower(f_unaccent(tablea.jsonb->>'id'::text)) = lower(f_unaccent(tableb.jsonb->>'tableaId'::text)))) LIKE lower(f_unaccent(11111111-1111-1111-1111-111111111111))", sql);
+    assertEquals(" ( SELECT tableb.jsonb->>'tableb_data' from tableb WHERE (lower(f_unaccent(tablea.jsonb->>'id'::text)) = lower(f_unaccent(tableb.jsonb->>'tableaId'::text)))) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))", sql);
   }
   @Test
   public void ForeignKeySearchWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {

@@ -569,7 +569,7 @@ public class CQL2PgJSON {
       boolean isTermConstant = uuidPattern.matcher(term).matches();
       boolean isTableTerm = tableNamePattern.matcher(term).matches();
       if (!isTermConstant && !isTableTerm) {
-        logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue: ", term);
+        logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue: " + term);
         return null;
 
       }
@@ -580,7 +580,7 @@ public class CQL2PgJSON {
       StringBuilder likeClause = new StringBuilder();
       if (isTermConstant) {
         correlationJoinClause.append(" WHERE (").append(wrapInLowerUnaccent(myField + "::text")).append(" = ").append(wrapInLowerUnaccent(targetField + "::text")).append(")");
-        likeClause.append(" LIKE ").append("'").append(wrapInLowerUnaccent(node.getTerm())).append("'");
+        likeClause.append(" LIKE ").append(wrapInLowerUnaccent("'" + node.getTerm() + "'"));
       } else {
         inKeyword = " IN ";
       }
