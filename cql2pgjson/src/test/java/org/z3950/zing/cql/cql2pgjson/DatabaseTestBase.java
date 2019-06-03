@@ -116,7 +116,7 @@ public class DatabaseTestBase {
     }
 
     // often used local test database
-    urls.add("jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test");
+    urls.add("jdbc:postgresql://127.0.0.1:5432/postgres?currentSchema=public&user=test&password=test");
     // local test database of folio.org CI environment
     urls.add("jdbc:postgresql://127.0.0.1:5433/postgres?currentSchema=public&user=postgres&password=postgres");
     for (String url : urls) {

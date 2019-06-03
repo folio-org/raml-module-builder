@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.*;
 import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -37,26 +38,22 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
   }
 
-  @Ignore
   @Test
   public void foreignKeySearch0() throws Exception {
     String sql = cql2pgJson.toSql("tableb.tableb_data == x0").toString();
     assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), is(empty()));
   }
 
-  @Ignore
   @Test
   public void foreignKeySearch1() throws Exception {
     String sql = cql2pgJson.toSql("tableb.tableb_data == x1").toString();
     assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test1"));
   }
 
-  @Ignore
   @Test
-  public void foreignKeySearch2() throws Exception {
-    String sql = cql2pgJson.toSql("tableb.tableb_data == x2").toString();
+  public void foreignKeyFilter1() throws Exception {
+    String sql = cql2pgJson.toSql("id == tableb.tableaId").toString();
     // return a single tablea record even if two tableb records match
-    assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test2"));
+    assertTrue(firstColumn("select jsonb->>'name' from tablea " + sql).size() == 2);
   }
-
 }

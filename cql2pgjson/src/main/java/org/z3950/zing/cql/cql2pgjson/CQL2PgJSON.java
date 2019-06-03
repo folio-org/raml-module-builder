@@ -566,25 +566,26 @@ public class CQL2PgJSON {
       if (term.isEmpty()) {
         term = "\"\"";
       }
-      boolean isTermConstant = uuidPattern.matcher(term).matches();
-      boolean isTableTerm = tableNamePattern.matcher(term).matches();
-      if (!isTermConstant && !isTableTerm) {
-        logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue: " + term);
-        return null;
-
-      }
+      boolean isTermConstant = !tableNamePattern.matcher(term).matches();
+//      if (!isTermConstant && !isTableTerm) {
+//        logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue: " + term);
+//        return null;
+//
+//      }
       String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
       String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
       StringBuilder correlationJoinClause = new StringBuilder("");
       String inKeyword = "";
       StringBuilder likeClause = new StringBuilder();
+      String fld = index2sqlText(c.getjsonField(), foreignTarget[1]);
       if (isTermConstant) {
         correlationJoinClause.append(" WHERE (").append(wrapInLowerUnaccent(myField + "::text")).append(" = ").append(wrapInLowerUnaccent(targetField + "::text")).append(")");
         likeClause.append(" LIKE ").append(wrapInLowerUnaccent("'" + node.getTerm() + "'"));
       } else {
-        inKeyword = " IN ";
+        inKeyword = dbTable.getTableName() + ".id IN ";
+        fld = "Cast ( " + fld + "as UUID)";
       }
-      String fld = index2sqlText(c.getjsonField(), foreignTarget[1]);
+      
       StringBuilder builder = new StringBuilder(inKeyword);
       builder.append(" ( SELECT ").append(fld).append(" from ").append(foreignTarget[0]).append(correlationJoinClause).append(")").toString();
       builder.append(likeClause);

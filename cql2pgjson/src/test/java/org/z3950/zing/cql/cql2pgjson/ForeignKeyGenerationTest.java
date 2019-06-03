@@ -66,21 +66,7 @@ public class ForeignKeyGenerationTest  {
     // default pkColumnName is id without underscore
     //assertEquals(" ( SELECT TableA.jsonb->>'tableb_data' from TableB WHERE (lower(f_unaccent(TableA.jsonb->>'id'::text)) = lower(f_unaccent(TableB.jsonb->>'tableb_data'::text)))) LIKE lower(f_unaccent(11111111-1111-1111-1111-111111111111))", sql);
   }
-  @Test
-  public void ForeignKeySearchFailureDueToIncorrectIdFormat() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb" );
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
-    try {
-      String sql = cql2pgJson.toSql("tableb.tableb_data == 11111111111111111111111111111111").getWhere();
-      assertEquals("",sql);
-      sql = cql2pgJson.toSql("tableb.tableb_data == 1").getWhere();
-      assertEquals("",sql);
-    } catch(Exception e) {
-      e.printStackTrace();
-    }
-    // default pkColumnName is id without underscore
-    //assertEquals(" ( SELECT TableA.jsonb->>'tableb_data' from TableB WHERE (lower(f_unaccent(TableA.jsonb->>'id'::text)) = lower(f_unaccent(TableB.jsonb->>'tableb_data'::text)))) LIKE lower(f_unaccent(11111111-1111-1111-1111-111111111111))", sql);
-  }
+
   @Test
   public void ForeignKeyFilter() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
