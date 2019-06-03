@@ -930,7 +930,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contributors = name           # a; b",
     "name = terry                  #",
     "contributors.name = terry     #",
-    "contributors.name = terry     #",    
+    "contributors.name = terry     #",
 
     //"lang = [\"en\"]               # b", // disable this till CQL-PG83 is done
   //"lang = [\"au\"]               # i", //

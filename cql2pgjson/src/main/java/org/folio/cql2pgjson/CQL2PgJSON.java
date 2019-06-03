@@ -422,8 +422,6 @@ public class CQL2PgJSON {
    * user->'foo'->>'bar'
    * @param jsonField
    * @param index name to convert
-   * @param modifiers CQL modifiers
-   * @param includeKeys whether the query should return JSON keys as text as well
    *
    * @return SQL term
    */
@@ -662,18 +660,12 @@ public class CQL2PgJSON {
       return pgId(node);
     }
 
-    CqlModifiers modifiers = new CqlModifiers(node);
-
-    String comparator = node.getRelation().getBase().toLowerCase();
-
+    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, this.jsonField, index);
 
-    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
+    CqlModifiers modifiers = new CqlModifiers(node);
+    String comparator = node.getRelation().getBase().toLowerCase();
 
-
-    if (vals.getIndexText().contains(" @> ")) {
-      return vals.getIndexText();
-    }
     switch (comparator) {
     case "=":
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
