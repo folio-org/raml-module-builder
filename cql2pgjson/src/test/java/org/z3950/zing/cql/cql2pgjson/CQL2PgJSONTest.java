@@ -6,7 +6,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 import org.z3950.zing.cql.ModifierSet;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -17,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.logging.Logger;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;

@@ -39,6 +39,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
@@ -57,7 +58,6 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
