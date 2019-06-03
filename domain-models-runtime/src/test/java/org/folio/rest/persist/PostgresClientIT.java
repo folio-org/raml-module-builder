@@ -330,7 +330,9 @@ public class PostgresClientIT {
   private PostgresClient createTable(TestContext context,
       String tenant, String table, String tableDefinition) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
-    execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
+    execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
+    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS "
+        + "$$ SELECT public.unaccent('public.unaccent', $1) $$ LANGUAGE sql IMMUTABLE;");
     execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
@@ -516,7 +518,7 @@ public class PostgresClientIT {
   private void deleteByCriterion(TestContext context, String key) throws FieldException {
     Async async = context.async();
     Criterion criterion = new Criterion();
-    criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setValue(key));
+    criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setVal(key));
     PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(randomUuid()));
     postgresClient.delete(FOO, criterion, context.asyncAssertSuccess(delete -> {
       context.assertEquals(1, delete.getUpdated(), "number of records deleted");
@@ -759,7 +761,7 @@ public class PostgresClientIT {
     postgresClient.startTx(asyncAssertTx(context, trans -> {
       postgresClient.save(trans, FOO,uuid, xPojo, context.asyncAssertSuccess(id -> {
         Criterion filter = new Criterion(new Criteria().addField("id").setJSONB(false)
-            .setOperation("=").setValue("'" + id  + "'"));
+            .setOperation("=").setVal(id));
         postgresClient.get(trans, FOO, StringPojo.class, filter, false, false, context.asyncAssertSuccess(reply1 -> {
           context.assertEquals(1, reply1.getResults().size());
           context.assertEquals("x", reply1.getResults().get(0).key);
@@ -781,7 +783,7 @@ public class PostgresClientIT {
       postgresClient.save(trans, FOO, id, xPojo, context.asyncAssertSuccess(res -> {
         context.assertEquals(id, res);
         Criterion filter = new Criterion(new Criteria().addField("id").setJSONB(false)
-            .setOperation("=").setValue("'" + id  + "'"));
+            .setOperation("=").setVal(id));
         postgresClient.get(trans, FOO, StringPojo.class, filter, false, false, context.asyncAssertSuccess(reply -> {
           context.assertEquals(1, reply.getResults().size());
           context.assertEquals("x", reply.getResults().get(0).key);
