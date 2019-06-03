@@ -199,7 +199,8 @@ public final class PgUtil {
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param clazz  the ResponseDelegate class created from the RAML file with these methods:
-   *               respond204(), respond500WithTextPlain(Object).
+   *               respond204(), respond400WithTextPlain(Object), respond404WithTextPlain(Object),
+   *               respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by clazz
    */
   public static void deleteById(String table, String id,
@@ -218,13 +219,21 @@ public final class PgUtil {
 
     try {
       Method respond204 = clazz.getMethod(RESPOND_204);
+      Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
       PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
       postgresClient.delete(table, id, reply -> {
         if (reply.failed()) {
           String message = PgExceptionUtil.badRequestMessage(reply.cause());
           if (message == null) {
-            message = reply.cause().getMessage();
+            asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
+            return;
+          }
+          if (PgExceptionUtil.isForeignKeyViolation(reply.cause())) {
+            message = "Cannot delete record " + id + " in table " + table +
+                ", it is still in use in table " + PgExceptionUtil.get(reply.cause(), 't');
+            asyncResultHandler.handle(response(message, respond400, respond500));
+            return;
           }
           asyncResultHandler.handle(response(message, respond500, respond500));
           return;
@@ -372,7 +381,7 @@ public final class PgUtil {
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
-   *    must have these methods: respond200(T), respond500WithTextPlain(Object).
+   *    must have these methods: respond200(T), respond404WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by the responseDelegateClass
    */
   public static <T> void getById(String table, Class<T> clazz, String id,
@@ -623,6 +632,10 @@ public final class PgUtil {
    * @return the PostgresClient for the vertx and the tenantId
    */
   public static PostgresClient postgresClient(Context vertxContext, Map<String, String> okapiHeaders) {
+    String tenantId = TenantTool.tenantId(okapiHeaders);
+    if (PostgresClient.DEFAULT_SCHEMA.equals(tenantId)) {
+      return PostgresClient.getInstance(vertxContext.owner());
+    }
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
   }
 

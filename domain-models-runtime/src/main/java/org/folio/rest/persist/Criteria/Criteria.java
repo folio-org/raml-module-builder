@@ -10,15 +10,20 @@ import org.folio.rest.persist.PostgresClient;
  *
  * <pre>
  * {@code
- *         Criteria c = new Criteria();
- *         c.field = "'price' -> 'po_currency' ->> 'value'";
- *         c.operation = "LIKE";
- *         c.value = "USD";
- *
- *         c.field = "'rush'";
- *         c.operation = "IS TRUE";
- *         c.value = null;
+ * new Criteria().addField("'personal'").addField("'lastName'")
+ *   .setOperation("=").setVal("O'Kapi").toString()
  * }</pre>
+ * returns "(jsonb->'personal'->>'lastName') =  'O''Kapi'".
+ *
+ * <pre>
+ * {@code
+ * new Criteria().addField("'rush'").setOperation("IS TRUE").setVal(null).toString()
+ * }</pre>
+ * returns "(jsonb->'rush') IS TRUE  ".
+ *
+ * <p>Note: For best performance do not use
+ * {@code new Criteria().addField("'id'").setOperation("=").setVal(someId)}.
+ * Use PostgresClient.getById or PgUtil.getById (or any of the other primary key id taking methods) instead.
  */
 public class Criteria {
 
@@ -41,7 +46,7 @@ public class Criteria {
    * subfield_value for example: "'price' -> 'po_currency' ->> 'value'"
    */
   List<String> field = new ArrayList<>();
-  Object value;
+  String val;
 
   String operation;
 
@@ -57,6 +62,9 @@ public class Criteria {
 
   String arrayField = null;
 
+  /**
+   * Returns the SQL string.
+   */
   @Override
   public String toString() {
     return wrapClause();
@@ -71,7 +79,7 @@ public class Criteria {
 
       populateSnippet();
 
-      String clause = wrapField() + " " + operation + " " + wrapValue();
+      String clause = wrapField() + " " + operation + " " + wrapVal();
       if (isNotQuery()) {
         return "( " + OP_NOT + " " + clause + ")";
       }
@@ -190,31 +198,16 @@ public class Criteria {
     return sb.toString();
   }
 
-  private Object wrapValue() {
-    // value may be null for example - field IS NOT NULL criteria
-    if (value != null && isJSONB) {
-      if (isArray()) {
-        return " '" + value + "'";
-      } else {
-        if (isWrappedInQuotes((String) value)) {
-          return value;
-        } else {
-          return " '" + value + "'";
-        }
-      }
+  /**
+   * Wrap val into single quotes, mask any containing single quote by duplicating it.
+   * Return empty string of val is null.
+   */
+  private String wrapVal() {
+    if (val == null) {
+      // val may be null if unused, for example when operator = "IS NOT NULL"
+      return "";
     }
-    return value;
-  }
-
-  private boolean isWrappedInQuotes(String value) {
-    try {
-      if (value.charAt(0) == '\'' && value.charAt(value.length() - 1) == '\'') {
-        return true;
-      }
-    } catch (Exception e) {
-      return false;
-    }
-    return false;
+    return "'" + val.replace("'", "''") + "'";
   }
 
   public Criteria addField(String field) {
@@ -222,12 +215,16 @@ public class Criteria {
     return this;
   }
 
-  public Object getValue() {
-    return value;
+  public String getVal() {
+    return val;
   }
 
-  public Criteria setValue(Object value) {
-    this.value = value;
+  /**
+   * Set the string value, use null if unused. It will always wrap val into single quotes
+   * and duplicate any containing single quotes to create a proper SQL string constant.
+   */
+  public Criteria setVal(String val) {
+    this.val = val;
     return this;
   }
 
@@ -266,16 +263,18 @@ public class Criteria {
     return isNotQuery;
   }
 
-  public void setNotQuery(boolean isNotQuery) {
+  public Criteria setNotQuery(boolean isNotQuery) {
     this.isNotQuery = isNotQuery;
+    return this;
   }
 
   public boolean isArray() {
     return isArray;
   }
 
-  public void setArray(boolean isArray) {
+  public Criteria setArray(boolean isArray) {
     this.isArray = isArray;
+    return this;
   }
 
   public boolean isJoinON() {

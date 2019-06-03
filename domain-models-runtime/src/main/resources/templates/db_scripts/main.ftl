@@ -57,6 +57,12 @@ SET search_path TO public, ${myuniversity}_${mymodule};
       id UUID PRIMARY KEY,
       jsonb JSONB NOT NULL
     );
+    -- old trigger name
+    DROP TRIGGER IF EXISTS set_id_injson_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+    -- current trigger name
+    DROP TRIGGER IF EXISTS set_id_in_jsonb ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+    CREATE TRIGGER set_id_in_jsonb BEFORE INSERT OR UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
+      FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_id_in_jsonb();
   <#else>
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
   </#if>
@@ -94,11 +100,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
 
     <#include "foreign_keys.ftl">
 
-    <#include "populate_id.ftl">
-
-    <#if table.withMetadata == true>
-      <#include "metadata.ftl">
-    </#if>
+    <#include "metadata.ftl">
 
     <#if table.withAuditing == true>
       <#include "audit.ftl">

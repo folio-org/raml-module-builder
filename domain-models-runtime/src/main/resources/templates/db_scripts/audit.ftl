@@ -62,5 +62,3 @@ $${table.tableName}_audit$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS audit_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
 
 CREATE TRIGGER audit_${table.tableName} AFTER INSERT OR UPDATE OR DELETE ON ${myuniversity}_${mymodule}.${table.tableName} FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.audit_${table.tableName}_changes();
-
-GRANT ALL PRIVILEGES ON audit_${table.tableName} TO ${myuniversity}_${mymodule};

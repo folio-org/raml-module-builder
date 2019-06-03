@@ -213,11 +213,7 @@ public class Criterion {
             fieldList.remove(field2remove);
           }
           crit.field = fieldList;
-          if("STRING".equals(jsonNode.get("value").getNodeType().name())){
-            crit.setValue(jsonNode.get("value").textValue());
-          }else{
-            crit.setValue(jsonNode.get("value"));
-          }
+          crit.setVal(jsonNode.get("value").textValue());
           crit.setOperation(jsonNode.get("op").textValue());
           c[pos++] = crit;
         }

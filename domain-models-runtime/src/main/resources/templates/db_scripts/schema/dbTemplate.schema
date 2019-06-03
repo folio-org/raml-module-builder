@@ -171,9 +171,6 @@
             },
             "type": "array"
           },
-          "populateJsonWithId": {
-            "type": "boolean"
-          },
           "tableName": {
             "type": "string"
           },

@@ -18,6 +18,8 @@
 -- Restrictions specified in metadata.schema:
 -- jsonb->'metadata' is optional, but if it exists then jsonb->'metadata'->>'createdDate' is required.
 
+<#if table.withMetadata == true>
+
 -- Trigger for insert: Copy createdDate and createdByUserId to creation_date and created_by.
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.${table.tableName}_set_md()
 RETURNS TRIGGER AS $$
@@ -45,10 +47,22 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+<#else>
+
+DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.${table.tableName}_set_md() CASCADE;
+
+</#if>
+
 DROP TRIGGER IF EXISTS set_${table.tableName}_md_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+
+<#if table.withMetadata == true>
 
 CREATE TRIGGER set_${table.tableName}_md_trigger BEFORE INSERT ON ${myuniversity}_${mymodule}.${table.tableName}
    FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.${table.tableName}_set_md();
+
+</#if>
+
+<#if table.withMetadata == true>
 
 -- Trigger for update:
 -- Overwrite createdDate and createdByUserId by the values stored in creation_date and created_by.
@@ -69,9 +83,19 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+<#else>
+
+DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.set_${table.tableName}_md_json() CASCADE;
+
+</#if>
+
 DROP TRIGGER IF EXISTS set_${table.tableName}_md_json_trigger ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+
+<#if table.withMetadata == true>
 
 CREATE TRIGGER set_${table.tableName}_md_json_trigger BEFORE UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
   FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_${table.tableName}_md_json();
+
+</#if>
 
 ----- end auto populate meta data schema ------------
