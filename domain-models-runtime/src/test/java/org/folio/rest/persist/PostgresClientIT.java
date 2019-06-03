@@ -330,7 +330,9 @@ public class PostgresClientIT {
   private PostgresClient createTable(TestContext context,
       String tenant, String table, String tableDefinition) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
-    execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
+    execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
+    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS "
+        + "$$ SELECT public.unaccent('public.unaccent', $1) $$ LANGUAGE sql IMMUTABLE;");
     execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
