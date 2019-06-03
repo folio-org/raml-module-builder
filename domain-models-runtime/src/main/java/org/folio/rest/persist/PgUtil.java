@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -32,7 +33,6 @@ import org.z3950.zing.cql.CQLParser;
 import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -632,6 +632,10 @@ public final class PgUtil {
    * @return the PostgresClient for the vertx and the tenantId
    */
   public static PostgresClient postgresClient(Context vertxContext, Map<String, String> okapiHeaders) {
+    String tenantId = TenantTool.tenantId(okapiHeaders);
+    if (PostgresClient.DEFAULT_SCHEMA.equals(tenantId)) {
+      return PostgresClient.getInstance(vertxContext.owner());
+    }
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
   }
 

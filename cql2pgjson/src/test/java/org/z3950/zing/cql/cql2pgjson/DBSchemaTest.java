@@ -7,9 +7,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.rest.persist.ddlgen.Table;
 import org.junit.Test;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 public class DBSchemaTest {
 

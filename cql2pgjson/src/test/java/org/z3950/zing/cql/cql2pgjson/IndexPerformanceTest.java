@@ -4,13 +4,13 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
