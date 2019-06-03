@@ -360,7 +360,7 @@ public class CQL2PgJSON {
         continue;
       }
 
-      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase(), false);
+      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
 
       // if sort field is marked explicitly as number type
       if (modifiers.getCqlTermFormat() == CqlTermFormat.NUMBER) {
@@ -427,17 +427,14 @@ public class CQL2PgJSON {
    *
    * @return SQL term
    */
-  private static String index2sqlText(String jsonField, String index, boolean includeKeys) {
+  private static String index2sqlText(String jsonField, String index) {
     try {
       StringBuilder res = new StringBuilder();
       res.setLength(0);
       String[] comp = index.split("\\.");
-      if (includeKeys) {
-        res.append("(");
-      }
       res.append(jsonField);
       for (int j = 0; j < comp.length; j++) {
-        if (j < comp.length - 1 || includeKeys) {
+        if (j < comp.length - 1) {
           res.append("->");
         } else {
           res.append("->>");
@@ -445,9 +442,6 @@ public class CQL2PgJSON {
         res.append("\'");
         res.append(comp[j]);
         res.append("\'");
-      }
-      if (includeKeys) {
-        res.append(")::JSONB::TEXT");
       }
       return res.toString();
     } catch (Exception ex) {
@@ -469,14 +463,14 @@ public class CQL2PgJSON {
     return jsonField + "->'" + index.replace(".", "'->'") + "'";
   }
 
-  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index, boolean includeKeys)
+  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
       throws QueryValidationException {
     if (jsonField == null) {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
     vals.setIndexJson(index2sqlJson(this.jsonField, index));
-    vals.setIndexText(index2sqlText(this.jsonField, index, includeKeys));
+    vals.setIndexText(index2sqlText(this.jsonField, index));
     return vals;
   }
 
@@ -488,7 +482,7 @@ public class CQL2PgJSON {
       if (index.startsWith(f+'.')) {
         String indexTermWithinField = index.substring(f.length()+1);
         vals.setIndexJson(index2sqlJson(f, indexTermWithinField));
-        vals.setIndexText(index2sqlText(f, indexTermWithinField, false));
+        vals.setIndexText(index2sqlText(f, indexTermWithinField));
         return vals;
       }
     }
@@ -496,7 +490,7 @@ public class CQL2PgJSON {
     // if no json field name prefix is found, the default field name gets applied.
     String defaultJsonField = this.jsonFields.get(0);
     vals.setIndexJson(index2sqlJson(defaultJsonField, index));
-    vals.setIndexText(index2sqlText(defaultJsonField, index, false));
+    vals.setIndexText(index2sqlText(defaultJsonField, index));
     return vals;
   }
 
@@ -674,11 +668,7 @@ public class CQL2PgJSON {
 
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, this.jsonField, index);
 
-    boolean includeKeys = false;
-    if (dbIndex.isFt()) {
-      includeKeys = true;
-    }
-    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index, includeKeys);
+    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
 
 
     if (vals.getIndexText().contains(" @> ")) {
@@ -770,12 +760,30 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
     }
+    tsTerm += addRelationModifiers(node.getRelation().getModifiers());
     // "simple" dictionary only does lower_casing, so need f_unaccent
     String sql = "to_tsvector('simple', f_unaccent(" + index + ")) "
       + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))";
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
+    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{index, sql});
     return sql;
+  }
+
+  private String addRelationModifiers(List<Modifier> modifiers) {
+    StringBuilder res = new StringBuilder();
+    for (Modifier m : modifiers) {
+      if (m.getType().startsWith("@")) {
+        final String type = m.getType().substring(1);
+        final String value = m.getValue();
+        res.append(" & ");
+        res.append(type);
+        if (value != null) {
+          res.append(" & ");
+          res.append(value);
+        }
+      }
+    }
+    return res.toString();
   }
 
   /**
