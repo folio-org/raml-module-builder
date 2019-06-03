@@ -157,7 +157,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     c1.startTx( handler -> {
       if(handler.succeeded()){
         Criteria c = new Criteria();
-        c.addField("'name'").setOperation("=").setValue("me");
+        c.addField("'name'").setOperation("=").setVal("me");
         c1.delete(handler, table, new Criterion(c) , reply -> {
             if(reply.succeeded()){
               //make sure record is deleted when querying using this connection
