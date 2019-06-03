@@ -51,15 +51,13 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
   private static final String STRING  = "string";
   private static final String PATTERN = "pattern";
 
-  private Table<String, Object, JsonObject> annotationLookUp;
+  private Table<String, Object, JsonObject> annotationLookUp = HashBasedTable.create();
 
-  private Map<String, JsonObject> fields2annotate;
+  private Map<String, JsonObject> fields2annotate = new HashMap<>();
 
   public CustomTypeAnnotator(GenerationConfig generationConfig) {
     //called once for each json schema defined
     super(generationConfig);
-    annotationLookUp = HashBasedTable.create();
-    fields2annotate = new HashMap<>();
     //load into a table the custom json schema fields
     for (int j = 0; j < schemaCustomFields.length; j++) {
       JsonObject jo = new JsonObject(schemaCustomFields[j]);
