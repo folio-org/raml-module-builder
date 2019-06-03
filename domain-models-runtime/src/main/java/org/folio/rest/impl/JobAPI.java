@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.JobsConf;
 import org.folio.rest.jaxrs.model.JobsConfs;
 import org.folio.rest.jaxrs.model.JobsJobconfsGetOrder;
 import org.folio.rest.jaxrs.model.JobsJobconfsJobconfsIdJobsGetOrder;
+import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -40,8 +41,6 @@ import io.vertx.core.logging.LoggerFactory;
 public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
 
   private static final Logger log = LoggerFactory.getLogger(JobAPI.class);
-  private static final String JOB_CONF_CLASS_NAME   = JobConf.class.getName();
-  private static final String JOB_CLASS_NAME        = Job.class.getName();
   private final Messages messages = Messages.getInstance();
 
   @Validate
@@ -124,41 +123,9 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
 
-    System.out.println("sending... getJobsJobconfsByJobconfsId");
-    try {
-      Criteria c = new Criteria();
-      c.addField("_id");
-      c.setOperation("=");
-      c.setValue(jobconfsId);
-      c.setJSONB(false);
-      vertxContext.runOnContext(v -> {
-        try {
-          PostgresClient.getInstance(vertxContext.owner()).get(RTFConsts.JOB_CONF_COLLECTION, JobConf.class,
-            new Criterion(c), true, reply -> {
-              // FIXME
-              List<JobsConf> confs = (List<JobsConf>) (List) reply.result().getResults();
-              if (confs.isEmpty()) {
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  GetJobsJobconfsByJobconfsIdResponse.respond404WithTextPlain("JobConf "
-                    + messages.getMessage(lang, "10008"))));
-                return;
-              }
-              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                GetJobsJobconfsByJobconfsIdResponse.respond200WithApplicationJson(confs.get(0))));
-            });
-        }
-        catch (Exception e) {
-          log.error(e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdResponse
-            .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
-        }
-      });
-    } catch (Exception e) {
-      log.error(e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetJobsJobconfsByJobconfsIdResponse
-        .respond500WithTextPlain(messages.getMessage(lang, MessageConsts.InternalServerError))));
-    }
-
+    log.info("sending... getJobsJobconfsByJobconfsId");
+    PgUtil.getById(RTFConsts.JOB_CONF_COLLECTION, JobsConf.class, jobconfsId, okapiHeaders, vertxContext,
+        GetJobsJobconfsByJobconfsIdResponse.class, asyncResultHandler);
   }
 
   @Validate
@@ -445,19 +412,19 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
 
     try {
       Criteria c = new Criteria();
-      c.addField("_id");
+      c.addField("id");
       c.setOperation("=");
-      c.setValue(jobId);
+      c.setVal(jobId);
       c.setJSONB(false);
       Criteria d = new Criteria();
-      d.addField("job_conf_id");
+      d.addField("'job_conf_id'");
       d.setOperation("=");
-      d.setValue(jobconfsId);
-      d.setJSONB(false);
+      d.setVal(jobconfsId);
+      Criterion criterion = new Criterion().addCriterion(c, "AND", d);
       vertxContext.runOnContext(v -> {
         try {
           PostgresClient.getInstance(vertxContext.owner()).update(RTFConsts.JOBS_COLLECTION, entity,
-            new Criterion().addCriterion(c, "AND", d),  true,
+            criterion, true,
             reply -> {
               if (reply.succeeded() && reply.result().getUpdated() == 0) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(

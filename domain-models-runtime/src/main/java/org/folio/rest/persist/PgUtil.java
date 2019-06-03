@@ -632,6 +632,10 @@ public final class PgUtil {
    * @return the PostgresClient for the vertx and the tenantId
    */
   public static PostgresClient postgresClient(Context vertxContext, Map<String, String> okapiHeaders) {
+    String tenantId = TenantTool.tenantId(okapiHeaders);
+    if (PostgresClient.DEFAULT_SCHEMA.equals(tenantId)) {
+      return PostgresClient.getInstance(vertxContext.owner());
+    }
     return PostgresClient.getInstance(vertxContext.owner(), TenantTool.tenantId(okapiHeaders));
   }
 

@@ -19,10 +19,20 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
 public class PostgresClientITBase {
-  protected static final String tenant = "sometenant";
-  protected static final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", tenant);
-  protected static final String schema = PostgresClient.convertToPsqlStandard(tenant);
+  protected static String tenant;
+  protected static Map<String,String> okapiHeaders;
+  protected static String schema;
   protected static Vertx vertx;
+
+  static {
+    setTenant("sometenant");
+  }
+
+  public static void setTenant(String tenant) {
+    PostgresClientITBase.tenant = tenant;
+    okapiHeaders = Collections.singletonMap("x-okapi-tenant", tenant);
+    schema = PostgresClient.convertToPsqlStandard(tenant);
+  }
 
   protected static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
@@ -57,13 +67,20 @@ public class PostgresClientITBase {
     PostgresClient.closeAllClients();
   }
 
+  private static PostgresClient postgresClient() {
+    if (PostgresClient.DEFAULT_SCHEMA.equals(tenant)) {
+      return PostgresClient.getInstance(vertx);
+    }
+    return PostgresClient.getInstance(vertx, tenant);
+  }
+
   /**
    * Execute all statements, stop and fail if any fails.
    */
   public static void execute(TestContext context, String ... sqlStatements) {
     for (String sql : sqlStatements) {
       Async async = context.async();
-      PostgresClient.getInstance(vertx, tenant).execute(sql, reply -> {
+      postgresClient().execute(sql, reply -> {
         if (reply.failed()) {
           context.fail(new RuntimeException(reply.cause().getMessage() + ". SQL: " + sql, reply.cause()));
         } else {
@@ -80,7 +97,7 @@ public class PostgresClientITBase {
   public static void executeIgnore(TestContext context, String ... sqlStatements) {
     for (String sql : sqlStatements) {
       Async async = context.async();
-      PostgresClient.getInstance(vertx, tenant).execute(sql, reply -> {
+      postgresClient().execute(sql, reply -> {
         async.complete();
       });
       async.await();
