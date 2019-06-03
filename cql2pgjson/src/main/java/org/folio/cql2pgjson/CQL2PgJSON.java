@@ -547,9 +547,7 @@ public class CQL2PgJSON {
     } else {
       foreignTarget = termParts;
     }
-    //TODO: replace pk column name here with possible list of fields if we allow other columns to be joined?
     ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation);
-    //System.out.println("CQL2PgJSON.subQuery1FT(): Found foreignKey '" + fkey)
 
     if (fkey == null) {
       logger.log(Level.SEVERE, "subQuery(): No foreignKey ''{0}'' found", foreignTarget[0]);
@@ -567,11 +565,6 @@ public class CQL2PgJSON {
         term = "\"\"";
       }
       boolean isTermConstant = !tableNamePattern.matcher(term).matches();
-//      if (!isTermConstant && !isTableTerm) {
-//        logger.log(Level.SEVERE, "subQuery: term is not a constant id and not a table unable to continue: " + term);
-//        return null;
-//
-//      }
       String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
       String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
       StringBuilder correlationJoinClause = new StringBuilder("");
