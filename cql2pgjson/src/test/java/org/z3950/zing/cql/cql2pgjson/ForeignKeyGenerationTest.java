@@ -6,6 +6,7 @@ import org.junit.runner.RunWith;
 
 import java.util.logging.Logger;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;

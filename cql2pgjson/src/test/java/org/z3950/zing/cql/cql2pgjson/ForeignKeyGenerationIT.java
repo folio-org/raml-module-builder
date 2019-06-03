@@ -2,6 +2,8 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import static org.hamcrest.Matchers.*;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
+
 import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertThat;
