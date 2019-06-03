@@ -73,7 +73,7 @@ public class ForeignKeyGenerationTest  {
     cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
     String sql = cql2pgJson.toSql("id == tableb.tableb_data").getWhere();
     // default pkColumnName is id without underscore
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableb_data'as UUID)] from tableb)", sql);
+    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableb_data'as UUID) from tableb)", sql);
   }
   @Test
   public void ForeignKeyFilterWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
