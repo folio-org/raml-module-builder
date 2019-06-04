@@ -561,9 +561,7 @@ public class CQL2PgJSON {
 
       CQL2PgJSON c = new CQL2PgJSON(foreignTarget[0] + ".jsonb");
       String term = node.getTerm();
-      if (term.isEmpty()) {
-        term = "\"\"";
-      }
+
       boolean isTermConstant = !tableNamePattern.matcher(term).matches();
       String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
       String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
