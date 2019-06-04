@@ -58,12 +58,6 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   }
 
   @Test
-  public void barcode3Tables() throws Exception {
-    String sql = cql2pgJson.toSql("tablec.barcode == 8").toString();
-    assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test2"));
-  }
-
-  @Test
   public void foreignKeyFilter1() throws Exception {
     String sql = cql2pgJson.toSql("id == tableb.tableaId").toString();
     assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test1", "test2"));

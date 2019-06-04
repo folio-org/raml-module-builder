@@ -11,15 +11,6 @@
           "targetTable": "tablea"
         }
       ]
-    },
-    {
-      "tableName": "tablec",
-      "foreignKeys": [
-        {
-          "fieldName": "tablebId",
-          "targetTable": "tableb"
-        }
-      ]
     }
   ]
 }
