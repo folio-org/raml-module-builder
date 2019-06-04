@@ -7,12 +7,9 @@ import org.folio.cql2pgjson.CQL2PgJSON;
 import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import junitparams.JUnitParamsRunner;
@@ -25,7 +22,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   @BeforeClass
   public static void runOnceBeforeClass() throws Exception {
     setupDatabase();
-    runSqlFile("joinExample.sql");
+    runSqlFile("foreignKey.sql");
 
   }
 
@@ -37,7 +34,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   @Before
   public void before() throws Exception {
     cql2pgJson = new CQL2PgJSON("tablea.jsonb");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/joinExample_schema.json");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
   }
 
   @Test
@@ -53,9 +50,22 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   }
 
   @Test
+  public void foreignKeySearch2() throws Exception {
+    String sql = cql2pgJson.toSql("tableb.tableb_data == x2").toString();
+    // two tableb records match, but they both reference the same tablea record, therefore "test2" should be
+    // returned one time only
+    assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test2"));
+  }
+
+  @Test
+  public void barcode3Tables() throws Exception {
+    String sql = cql2pgJson.toSql("tablec.barcode == 8").toString();
+    assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test2"));
+  }
+
+  @Test
   public void foreignKeyFilter1() throws Exception {
     String sql = cql2pgJson.toSql("id == tableb.tableaId").toString();
-    // return a single tablea record even if two tableb records match
-    assertTrue(firstColumn("select jsonb->>'name' from tablea " + sql).size() == 2);
+    assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test1", "test2"));
   }
 }
