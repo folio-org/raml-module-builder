@@ -536,7 +536,7 @@ public class CQL2PgJSON {
     return null;
   }
 
-  private String subQuery(String index,CQLTermNode node, Table correlation) {
+  private String subQuery(String index,CQLTermNode node, Table correlation) throws QueryValidationException {
     String[] idxParts = index.split("\\.");
     String[] termParts = node.getTerm().split("\\.");
 
@@ -551,11 +551,11 @@ public class CQL2PgJSON {
 
     if (fkey == null) {
       logger.log(Level.SEVERE, "subQuery(): No foreignKey ''{0}'' found", foreignTarget[0]);
-      return null;
+      throw new QueryValidationException("subQuery(): No foreignKey " + foreignTarget[0] + " found");
     }
     if (fkey.getTargetTable() == null) {
       logger.log(Level.SEVERE, "subQuery: Malformed foreignKey section {0}", fkey);
-      return null;
+      throw new QueryValidationException("subQuery: Malformed foreignKey section " + fkey);
     }
     try {
 
@@ -588,7 +588,7 @@ public class CQL2PgJSON {
       // We should not get these exceptions, as we construct a valid query above,
       // using a valid schema.
       logger.log(Level.SEVERE, "subQuery Caught an exception", e);
-      return null;
+      throw new QueryValidationException("subQuery: caught exception");
     }
   }
 
