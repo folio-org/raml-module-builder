@@ -56,6 +56,7 @@ public class PostgresClientITBase {
   @AfterClass
   public static void afterClass(TestContext context) {
     tearDownClass(context);
+    setTenant("sometenant");
   }
 
   public static void dropSchemaAndRole(TestContext context) {
