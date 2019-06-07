@@ -5,10 +5,27 @@
     },
     {
       "tableName": "tableb",
+      "index": [
+        {
+          "fieldName": "prefix",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
       "foreignKeys": [
         {
           "fieldName": "tableaId",
           "targetTable": "tablea"
+        }
+      ]
+    },
+    {
+      "tableName": "tablec",
+      "foreignKeys": [
+        {
+          "fieldName": "tablebId",
+          "targetTable": "tableb"
         }
       ]
     }

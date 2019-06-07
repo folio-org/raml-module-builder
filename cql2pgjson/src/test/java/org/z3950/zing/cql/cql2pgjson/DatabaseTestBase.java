@@ -319,8 +319,13 @@ public class DatabaseTestBase {
    */
   static void runSqlFile(String path) {
     String file = ResourceUtil.asString(path);
+    // replace \r and \n inside of $$ and $$ by space
+    String [] chunks = file.split("\\$\\$");
+    for (int i = 1; i < chunks.length; i += 2) {
+      chunks[i] = chunks[i].replaceAll("[\\n\\r]+", " ");
+    }
     // split at semicolon at end of line (removing optional whitespace)
-    String [] statements = file.split(";\\s*[\\n\\r]+\\s*");
+    String [] statements = String.join("$$", chunks).split(";\\s*[\\n\\r]+\\s*");
     for (String sql : statements) {
       runSqlStatement(sql);
     }
