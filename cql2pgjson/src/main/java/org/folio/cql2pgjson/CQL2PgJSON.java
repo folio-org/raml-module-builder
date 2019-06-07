@@ -550,12 +550,14 @@ public class CQL2PgJSON {
     ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation);
 
     if (fkey == null) {
-      logger.log(Level.SEVERE, "subQuery(): No foreignKey ''{0}'' found", foreignTarget[0]);
-      throw new QueryValidationException("subQuery(): No foreignKey " + foreignTarget[0] + " found");
+      String msg = "subQuery(): No foreignKey for table " + foreignTarget[0] + " found";
+      logger.log(Level.SEVERE, msg);
+      throw new QueryValidationException(msg);
     }
     if (fkey.getTargetTable() == null) {
-      logger.log(Level.SEVERE, "subQuery: Malformed foreignKey section {0}", fkey);
-      throw new QueryValidationException("subQuery: Malformed foreignKey section " + fkey);
+      String msg = "subQuery: Missing target table for foreignKey field " + fkey.getFieldName();
+      logger.log(Level.SEVERE, msg);
+      throw new QueryValidationException(msg);
     }
     try {
 

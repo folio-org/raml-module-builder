@@ -39,19 +39,19 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
   @Test
   public void foreignKeySearch0() throws Exception {
-    String sql = cql2pgJson.toSql("tableb.tableb_data == x0").toString();
+    String sql = cql2pgJson.toSql("tableb.prefix == x0").toString();
     assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), is(empty()));
   }
 
   @Test
   public void foreignKeySearch1() throws Exception {
-    String sql = cql2pgJson.toSql("tableb.tableb_data == x1").toString();
+    String sql = cql2pgJson.toSql("tableb.prefix == x1").toString();
     assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test1"));
   }
 
   @Test
   public void foreignKeySearch2() throws Exception {
-    String sql = cql2pgJson.toSql("tableb.tableb_data == x2").toString();
+    String sql = cql2pgJson.toSql("tableb.prefix == x2").toString();
     // two tableb records match, but they both reference the same tablea record, therefore "test2" should be
     // returned one time only
     assertThat(firstColumn("select jsonb->>'name' from tablea " + sql), containsInAnyOrder("test2"));
