@@ -1,5 +1,7 @@
 ## 25.0.0 2019-06-07
 
+There are several breaking changes, see [upgrading instructions](doc/upgrading.md#version-25).
+
  * RMB-199 Fixed Single quote SQL Injection in
    `PostgresClient.delete(table, pojo, handler)`
  * RMB-376 Merge CQL2PG into RMB. Project cql2pgjson-java is now a
