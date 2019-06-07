@@ -601,11 +601,17 @@ public class CQL2PgJSON {
     }
   }
 
+  /**
+   * Return the ForeignKeys from targetTable where fieldName refers to field of the
+   * current table.
+   * @param field  field to find as foreign key
+   * @param targetTable  where to search
+   * @return the ForeignKeys if found, null otherwise
+   */
   private ForeignKeys findForeignKey(String field, Table targetTable) {
+    String fieldName = dbTable.getTableName() + field;
     for (ForeignKeys key : targetTable.getForeignKeys()) {
-      String target = key.getFieldName();
-      String fieldName = dbTable.getTableName() + field;
-      if (fieldName.equalsIgnoreCase(target)) {
+      if (fieldName.equalsIgnoreCase(key.getFieldName())) {
         return key;
       }
     }
