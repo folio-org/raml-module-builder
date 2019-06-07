@@ -48,7 +48,7 @@ public class DbSchemaUtils {
   }
 
   private static boolean checkDbIndex(String cqlIndex, List<Index> indexes) {
-    if (indexes != null && !indexes.isEmpty()) {
+    if (indexes != null) {
       for (Index i : indexes) {
         if (cqlIndex.equals(i.getFieldName())) {
           return true;

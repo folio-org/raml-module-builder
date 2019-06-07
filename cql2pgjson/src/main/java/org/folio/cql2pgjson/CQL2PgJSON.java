@@ -426,26 +426,20 @@ public class CQL2PgJSON {
    * @return SQL term
    */
   private static String index2sqlText(String jsonField, String index) {
-    try {
-      StringBuilder res = new StringBuilder();
-      res.setLength(0);
-      String[] comp = index.split("\\.");
-      res.append(jsonField);
-      for (int j = 0; j < comp.length; j++) {
-        if (j < comp.length - 1) {
-          res.append("->");
-        } else {
-          res.append("->>");
-        }
-        res.append("\'");
-        res.append(comp[j]);
-        res.append("\'");
+    StringBuilder res = new StringBuilder();
+    String[] comp = index.split("\\.");
+    res.append(jsonField);
+    for (int j = 0; j < comp.length; j++) {
+      if (j < comp.length - 1) {
+        res.append("->");
+      } else {
+        res.append("->>");
       }
-      return res.toString();
-    } catch (Exception ex) {
-      logger.warning("EXCEPTION: " + ex.getMessage());
-      return "";
+      res.append("\'");
+      res.append(comp[j]);
+      res.append("\'");
     }
+    return res.toString();
   }
 
   /**
