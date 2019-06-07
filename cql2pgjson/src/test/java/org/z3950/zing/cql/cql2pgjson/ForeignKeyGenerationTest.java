@@ -1,42 +1,30 @@
 package org.z3950.zing.cql.cql2pgjson;
 
-
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
-
-import java.util.logging.Logger;
 
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import junitparams.JUnitParamsRunner;
 
-
-
 @RunWith(JUnitParamsRunner.class)
 public class ForeignKeyGenerationTest  {
-  private static Logger logger = Logger.getLogger(CQL2PgJSONTest.class.getName());
-  private static CQL2PgJSON cql2pgJson;
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
 
-  @BeforeClass
-  public static void runOnceBeforeClass() throws Exception {
-  }
-  @AfterClass
-  public static void runOnceAfterClass() {
-  }
   @Test
   public void ForeignKeySearch() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("tableb.tableb_data == 11111111-1111-1111-1111-111111111111").getWhere();
+    String sql = cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     // default pkColumnName is id without underscore
-    assertEquals("Cast ( tablea.jsonb->>'id'as UUID) IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE (tableb.jsonb->>'tableb_data')::UUID = (11111111-1111-1111-1111-111111111111)::UUID)", sql);
+    assertEquals("Cast ( tablea.jsonb->>'id'as UUID) IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE (tableb.jsonb->>'prefix')::UUID = (11111111-1111-1111-1111-111111111111)::UUID)", sql);
   }
   @Test
   public void ForeignKeySearchWithConstant() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
@@ -66,84 +54,70 @@ public class ForeignKeyGenerationTest  {
   public void ForeignKeySearchWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMissingFK.json");
-    try {
-      cql2pgJson.toSql("tableb.tableb_data == 11111111-1111-1111-1111-111111111111").getWhere();
-      fail();
-    } catch(QueryValidationException q) {
-      //left empty on purpose
-    }
-    
+
+    thrown.expect(QueryValidationException.class);
+    thrown.expectMessage("No foreignKey for table tableb found");
+    cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
   }
+
   @Test
   public void ForeignKeySearchWithMalformedFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMalformedFK.json");
-    try {
-      cql2pgJson.toSql("tableb.tableb_data == 11111111-1111-1111-1111-111111111111").getWhere();
-      fail();
-    } catch(QueryValidationException q) {
-      //left empty on purpose
-    }
+
+    thrown.expect(QueryValidationException.class);
+    thrown.expectMessage("Missing target table");
+    thrown.expectMessage("field tableaId");
+    cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
   }
+
   @Test
   public void ForeignKeySearchFailureDueToTable() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    try {
-      String sql = cql2pgJson.toSql("tablec.tablec_data == 11111111-1111-1111-1111-111111111111").getWhere();
-      assertEquals("lower(f_unaccent(tablea.jsonb->'tablec'->>'tablec_data')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
-      sql = cql2pgJson.toSql("ardgsdfgdsfg.tableb_data == 11111111-1111-1111-1111-111111111111").getWhere();
-      assertEquals("lower(f_unaccent(tablea.jsonb->'ardgsdfgdsfg'->>'tableb_data')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
-    } catch(Exception e) {
-      e.printStackTrace();
-    }
-    // default pkColumnName is id without underscore
-    //assertEquals(" ( SELECT TableA.jsonb->>'tableb_data' from TableB WHERE (lower(f_unaccent(TableA.jsonb->>'id'::text)) = lower(f_unaccent(TableB.jsonb->>'tableb_data'::text)))) LIKE lower(f_unaccent(11111111-1111-1111-1111-111111111111))", sql);
+    String sql = cql2pgJson.toSql("tablec.tablec_data == 11111111-1111-1111-1111-111111111111").getWhere();
+    assertEquals("lower(f_unaccent(tablea.jsonb->'tablec'->>'tablec_data')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
+    sql = cql2pgJson.toSql("ardgsdfgdsfg.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
+    assertEquals("lower(f_unaccent(tablea.jsonb->'ardgsdfgdsfg'->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
   }
 
   @Test
   public void ForeignKeyFilter() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("id == tableb.tableb_data").getWhere();
-    // default pkColumnName is id without underscore
-    assertEquals("Cast ( tablea.jsonb->>'id'as UUID) IN  ( SELECT Cast ( tableb.jsonb->>'tableb_data'as UUID) from tableb)", sql);
+    String sql = cql2pgJson.toSql("id == tableb.prefix").getWhere();
+    assertEquals("Cast ( tablea.jsonb->>'id'as UUID) IN  ( SELECT Cast ( tableb.jsonb->>'prefix'as UUID) from tableb)", sql);
   }
+
   @Test
   public void ForeignKeyFilterWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMissingFK.json");
-    try {
-      cql2pgJson.toSql("id == tableb.tableb_data").getWhere();
-      fail();
-    } catch(QueryValidationException q) {
-      //left empty on purpose to pass test
-    }
+
+    thrown.expect(QueryValidationException.class);
+    thrown.expectMessage("No foreignKey");
+    thrown.expectMessage("for table tableb");
+    cql2pgJson.toSql("id == tableb.prefix").getWhere();
   }
+
   @Test
   public void ForeignKeyFilterWithMalformedFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMalformedFK.json");
-    try {
-      cql2pgJson.toSql("id == tableb.tableb_data").getWhere();
-      fail();
-    } catch(QueryValidationException q) {
-      //left empty on purpose to pass test
-    }
+
+    thrown.expect(QueryValidationException.class);
+    thrown.expectMessage("Missing target table");
+    thrown.expectMessage("field tableaId");
+    cql2pgJson.toSql("id == tableb.prefix").getWhere();
   }
+
   @Test
   public void ForeignKeyFilterFailureDueToTable() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    try {
-      String sql = cql2pgJson.toSql("id == tablec.tablec_data").getWhere();
-      assertEquals("false /* id == invalid UUID */",sql);
-      sql = cql2pgJson.toSql("tablec_data == id").getWhere();
-      assertEquals("lower(f_unaccent(tablea.jsonb->>'tablec_data')) LIKE lower(f_unaccent('id'))",sql);
-    } catch(Exception e) {
-      e.printStackTrace();
-    }
-    // default pkColumnName is id without underscore
-    //assertEquals("IN  ( SELECT TableC.jsonb->>'tableb_data' from TableC)", sql);
+    String sql = cql2pgJson.toSql("id == tablec.tablec_data").getWhere();
+    assertEquals("false /* id == invalid UUID */",sql);
+    sql = cql2pgJson.toSql("tablec_data == id").getWhere();
+    assertEquals("lower(f_unaccent(tablea.jsonb->>'tablec_data')) LIKE lower(f_unaccent('id'))",sql);
   }
 }

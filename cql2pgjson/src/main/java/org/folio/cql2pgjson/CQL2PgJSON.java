@@ -550,12 +550,14 @@ public class CQL2PgJSON {
     ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation);
 
     if (fkey == null) {
-      logger.log(Level.SEVERE, "subQuery(): No foreignKey ''{0}'' found", foreignTarget[0]);
-      throw new QueryValidationException("subQuery(): No foreignKey " + foreignTarget[0] + " found");
+      String msg = "subQuery(): No foreignKey for table " + foreignTarget[0] + " found";
+      logger.log(Level.SEVERE, msg);
+      throw new QueryValidationException(msg);
     }
     if (fkey.getTargetTable() == null) {
-      logger.log(Level.SEVERE, "subQuery: Malformed foreignKey section {0}", fkey);
-      throw new QueryValidationException("subQuery: Malformed foreignKey section " + fkey);
+      String msg = "subQuery: Missing target table for foreignKey field " + fkey.getFieldName();
+      logger.log(Level.SEVERE, msg);
+      throw new QueryValidationException(msg);
     }
     try {
 
@@ -564,13 +566,13 @@ public class CQL2PgJSON {
 
       boolean isTermConstant = !tableNamePattern.matcher(term).matches();
       boolean isTermUUID = uuidPattern.matcher(term).matches();
-      
+
       String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
       String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
       String whereField = index2sqlText(foreignTarget[0] + ".jsonb", foreignTarget[1]);
-      StringBuilder whereClause = new StringBuilder("");
+      String whereClause = "";
       String inKeyword = "";
-      
+
       String indexString = "";
       String selectString = "";
       if (isTermConstant) {
@@ -581,22 +583,18 @@ public class CQL2PgJSON {
         } else {
           termString = wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2like(term) + "'");
           indexString = wrapInLowerUnaccent(whereField);
-          
+
         }
         selectString = "Cast ( " +  targetField + "as UUID)";
         inKeyword = "Cast ( " + myField  + "as UUID) IN ";
-        whereClause.append(" WHERE ").append(indexString).append(" = ").append( termString );
-        
+        whereClause = " WHERE " + indexString + " = " + termString;
       } else {
         inKeyword = "Cast ( " + myField  + "as UUID) IN ";
         selectString = "Cast ( " + index2sqlText(c.getjsonField(), foreignTarget[1]) + "as UUID)";
       }
-      
-      StringBuilder builder = new StringBuilder(inKeyword);
-      builder.append(" ( SELECT ").append(selectString).append(" from ").append(foreignTarget[0]).append(whereClause).append(")").toString();
-      
 
-      return  builder.toString();
+      return  inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
+
     } catch (FieldException  e) {
       // We should not get these exceptions, as we construct a valid query above,
       // using a valid schema.
@@ -605,12 +603,17 @@ public class CQL2PgJSON {
     }
   }
 
+  /**
+   * Return the ForeignKeys from targetTable where fieldName refers to field of the
+   * current table.
+   * @param field  field to find as foreign key
+   * @param targetTable  where to search
+   * @return the ForeignKeys if found, null otherwise
+   */
   private ForeignKeys findForeignKey(String field, Table targetTable) {
+    String fieldName = dbTable.getTableName() + field;
     for (ForeignKeys key : targetTable.getForeignKeys()) {
-      String target = key.getFieldName();
-      StringBuilder builder = new StringBuilder(dbTable.getTableName());
-      builder.append(field);
-      if (builder.toString().equalsIgnoreCase(target)) {
+      if (fieldName.equalsIgnoreCase(key.getFieldName())) {
         return key;
       }
     }

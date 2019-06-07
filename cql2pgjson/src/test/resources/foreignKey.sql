@@ -18,9 +18,9 @@ INSERT into tablea (id, jsonb) VALUES
 UPDATE tablea SET jsonb = jsonb_set(jsonb, '{id}', to_jsonb(id));
 
 INSERT INTO tableb (id, jsonb) VALUES
-('B1111111-1111-1111-1111-111111111111', jsonb_build_object('tableb_data', 'x1', 'tableaId', 'A1111111-1111-1111-1111-111111111111')),
-('B2222222-2222-2222-2222-222222222222', jsonb_build_object('tableb_data', 'x2', 'tableaId', 'A2222222-2222-2222-2222-222222222222')),
-('B3333333-3333-3333-3333-333333333333', jsonb_build_object('tableb_data', 'x2', 'tableaId', 'A2222222-2222-2222-2222-222222222222'));
+('B1111111-1111-1111-1111-111111111111', jsonb_build_object('prefix', 'x1', 'tableaId', 'A1111111-1111-1111-1111-111111111111')),
+('B2222222-2222-2222-2222-222222222222', jsonb_build_object('prefix', 'x2', 'tableaId', 'A2222222-2222-2222-2222-222222222222')),
+('B3333333-3333-3333-3333-333333333333', jsonb_build_object('prefix', 'x2', 'tableaId', 'A2222222-2222-2222-2222-222222222222'));
 UPDATE tableb SET jsonb = jsonb_set(jsonb, '{id}', to_jsonb(id));
 
 
