@@ -112,8 +112,11 @@ public final class Cql2SqlUtil {
       case '.':
       case '+':
       case '(':
+      case ')':
       case '{':
+      case '}':
       case '[':
+      case ']':
       case '$':
         // Mask any character that is special in regexp. See list at
         // https://www.postgresql.org/docs/current/static/functions-matching.html#POSIX-SYNTAX-DETAILS

@@ -1,3 +1,32 @@
+## 25.0.0 2019-06-07
+
+There are several breaking changes, see [upgrading instructions](doc/upgrading.md#version-25).
+
+ * RMB-199 Fixed Single quote SQL Injection in
+   `PostgresClient.delete(table, pojo, handler)`
+ * RMB-376 Merge CQL2PG into RMB. Project cql2pgjson-java is now a
+   subject part of RMB. This should not impact users of RMB.
+ * RMB-379 Remove `Critiera.setValue` and replace it with `Criteria.setVal`
+   to fix wrong Criteria value masking results in SQL Injection. This is
+   major change.
+ * RMB-125 Fix no way to indicate a removal of the metadata trigger in
+   the schema.json
+ * RMB-277 Always 'id' for primary key name, drop configuration option.
+   This is a major change.
+ * RMB-346 Drop the `populateJsonWithId` option. This is a major change.
+ * RMB-347 Remove `gen_random_uuid()` as it fails in replication
+   environments. The `generateId` option is removed from schema.json.
+   This is major change.
+ * RMB-375 Fix AnnotationGrabberTest not executed
+ * RMB-377 jackson-databind 2.9.9: Block one more gadget type (CVE-2019-12086)
+ * RMB-378 Update jersey to 2.28, fixing security issues
+ * RMB-383 `PgUtil.deleteById`: make it return 400 on foreign key violation
+ * RMB-384 Fix Generated models might have "readOnly" properties which
+   are not in schema.
+ * RMB-392 Move CQL2PgJSON.java from `org.z3950.zing.cql.cql2pgjson` to
+   `org.folio.cql2pgjson` package . This is major change.
+ * RMB-396 mask ) ] } in regexp to prevent SQL injection
+
 ## 24.0.0 2019-04-25
 
  * RMB-368 Update RMB for non-schema usage and CQLPG-90
