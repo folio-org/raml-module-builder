@@ -564,6 +564,7 @@ public class CQL2PgJSON {
 
       boolean isTermConstant = !tableNamePattern.matcher(term).matches();
       boolean isTermUUID = uuidPattern.matcher(term).matches();
+      
       String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
       String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
       String whereField = index2sqlText(foreignTarget[0] + ".jsonb", foreignTarget[1]);
@@ -578,8 +579,9 @@ public class CQL2PgJSON {
           termString = "(" + term + ")::UUID";
           indexString =  "(" + whereField + ")::UUID";
         } else {
+          termString = wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2like(term) + "'");
           indexString = wrapInLowerUnaccent(whereField);
-          termString = wrapInLowerUnaccent("'" + term + "'");
+          
         }
         selectString = "Cast ( " +  targetField + "as UUID)";
         inKeyword = "Cast ( " + myField  + "as UUID) IN ";
