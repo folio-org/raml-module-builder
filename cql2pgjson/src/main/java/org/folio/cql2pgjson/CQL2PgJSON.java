@@ -563,23 +563,36 @@ public class CQL2PgJSON {
       String term = node.getTerm();
 
       boolean isTermConstant = !tableNamePattern.matcher(term).matches();
+      boolean isTermUUID = uuidPattern.matcher(term).matches();
       String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
       String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
-      StringBuilder correlationJoinClause = new StringBuilder("");
+      String whereField = index2sqlText(foreignTarget[0] + ".jsonb", foreignTarget[1]);
+      StringBuilder whereClause = new StringBuilder("");
       String inKeyword = "";
-      StringBuilder likeClause = new StringBuilder();
-      String fld = index2sqlText(c.getjsonField(), foreignTarget[1]);
+      
+      String indexString = "";
+      String selectString = "";
       if (isTermConstant) {
-        correlationJoinClause.append(" WHERE (").append(wrapInLowerUnaccent(myField + "::text")).append(" = ").append(wrapInLowerUnaccent(targetField + "::text")).append(")");
-        likeClause.append(" LIKE ").append(wrapInLowerUnaccent("'" + node.getTerm() + "'"));
+        String termString = "";
+        if(isTermUUID) {
+          termString = "(" + term + ")::UUID";
+          indexString =  "(" + whereField + ")::UUID";
+        } else {
+          indexString = wrapInLowerUnaccent(whereField);
+          termString = wrapInLowerUnaccent("'" + term + "'");
+        }
+        selectString = "Cast ( " +  targetField + "as UUID)";
+        inKeyword = "Cast ( " + myField  + "as UUID) IN ";
+        whereClause.append(" WHERE ").append(indexString).append(" = ").append( termString );
+        
       } else {
-        inKeyword = dbTable.getTableName() + ".id IN ";
-        fld = "Cast ( " + fld + "as UUID)";
+        inKeyword = "Cast ( " + myField  + "as UUID) IN ";
+        selectString = "Cast ( " + index2sqlText(c.getjsonField(), foreignTarget[1]) + "as UUID)";
       }
       
       StringBuilder builder = new StringBuilder(inKeyword);
-      builder.append(" ( SELECT ").append(fld).append(" from ").append(foreignTarget[0]).append(correlationJoinClause).append(")").toString();
-      builder.append(likeClause);
+      builder.append(" ( SELECT ").append(selectString).append(" from ").append(foreignTarget[0]).append(whereClause).append(")").toString();
+      
 
       return  builder.toString();
     } catch (FieldException  e) {
