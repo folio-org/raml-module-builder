@@ -50,7 +50,7 @@ class SchemaDereferencerTest {
     "../dir/a.json,  file:///dir/a.json",
   })
   void toFileUriLinux(String file, String expectedUri) {
-    Path basePath = new File("/home/peter").toPath();
+    Path basePath = new File("/home/peter.json").toPath();
     assertThat(SchemaDereferencer.toFileUri(basePath, file), is(expectedUri));
   }
 
@@ -63,7 +63,7 @@ class SchemaDereferencerTest {
     "..\\dir\\a.json,   file:///C:\\dir\\a.json",
   })
   void toFileUriWin(String file, String expectedUri) {
-    Path basePath = new File("C:\\Users\\peter").toPath();
+    Path basePath = new File("C:\\Users\\peter.json").toPath();
     assertThat(SchemaDereferencer.toFileUri(basePath, file), is(expectedUri));
   }
 }

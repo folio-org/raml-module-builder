@@ -81,16 +81,16 @@ public class SchemaDereferencer {
   }
 
   /**
-   * Return file as an URI with absolute path.
+   * Return file as an URI with absolute path with sibling base as input
    *
    * <p>Examples:
    *
    * <ul>
-   * <li>toFileUri(<code>new File("/home/peter").toPath(), "dir/a.json") = "file:///home/peter/dir/a.json"</code>
-   * <li>toFileUri(<code>new File("/home/peter").toPath(), "C:\Users\peter") = "file:///C:\Users\peter\dir\a.json"</code>
+   * <li>toFileUri(<code>new File("/home/peter/b.json").toPath(), "dir/a.json") = "file:///home/peter/dir/a.json"</code>
+   * <li>toFileUri(<code>new File("/home/peter/b.json").toPath(), "C:\Users\peter") = "file:///C:\Users\peter\dir\a.json"</code>
    * </ul>
    *
-   * @param basePath the path used to resolve the relative path <code>file</code> against.
+   * @param basePath existing path for component that is used as base sibling for path <code>file</code>.
    * @param file the relative path
    * @return the absolute path as a URI
    */
