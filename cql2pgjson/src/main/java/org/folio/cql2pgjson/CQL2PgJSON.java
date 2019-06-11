@@ -541,6 +541,7 @@ public class CQL2PgJSON {
     String[] termParts = node.getTerm().split("\\.");
 
     String [] foreignTarget ;
+    CqlModifiers modifiers = new CqlModifiers(node);
     if (idxParts.length > termParts.length) {
 
       foreignTarget = idxParts;
@@ -567,7 +568,7 @@ public class CQL2PgJSON {
       boolean isTermConstant = !tableNamePattern.matcher(term).matches();
       boolean isTermUUID = uuidPattern.matcher(term).matches();
 
-      String myField = index2sqlText(dbTable.getTableName() + ".jsonb", "id");
+      String myField = dbTable.getTableName() + ".id";
       String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
       String whereField = index2sqlText(foreignTarget[0] + ".jsonb", foreignTarget[1]);
       String whereClause = "";
@@ -581,15 +582,15 @@ public class CQL2PgJSON {
           termString = "(" + term + ")::UUID";
           indexString =  "(" + whereField + ")::UUID";
         } else {
-          termString = wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2like(term) + "'");
-          indexString = wrapInLowerUnaccent(whereField);
+          termString = wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2like(term) + "'", modifiers);
+          indexString = wrapInLowerUnaccent(whereField, modifiers);
 
         }
         selectString = "Cast ( " +  targetField + "as UUID)";
-        inKeyword = "Cast ( " + myField  + "as UUID) IN ";
+        inKeyword =  myField + " IN ";
         whereClause = " WHERE " + indexString + " = " + termString;
       } else {
-        inKeyword = "Cast ( " + myField  + "as UUID) IN ";
+        inKeyword = myField + " IN ";
         selectString = "Cast ( " + index2sqlText(c.getjsonField(), foreignTarget[1]) + "as UUID)";
       }
 
