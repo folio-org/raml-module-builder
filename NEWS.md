@@ -1,3 +1,7 @@
+## 25.0.1 2019-06-11
+
+ * RMB-397 Fix regression with $ref paths
+
 ## 25.0.0 2019-06-07
 
 There are several breaking changes, see [upgrading instructions](doc/upgrading.md#version-25).
