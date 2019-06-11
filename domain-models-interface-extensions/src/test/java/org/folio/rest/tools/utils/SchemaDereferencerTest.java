@@ -22,13 +22,13 @@ class SchemaDereferencerTest {
   @ValueSource(strings = {
       "{ \"$ref\": 1 }",              // number
       "{ \"$ref\": true }",           // boolean
-      "{ \"$ref\": { \"foo\" }",      // JSON Object
+      "{ \"$ref\": { \"foo\" : \"bar\" } }", // JSON Object
   })
   void fixupRefInvalid(String json) {
-    Exception exception = assertThrows(NullPointerException.class,
+    Exception exception = assertThrows(ClassCastException.class,
         () -> SchemaDereferencer.fixupRef(new File("/").toPath(), new JsonObject(json)));
     // $ref must be of type STRING
-    assertThat(exception.getMessage(), allOf(containsString("$ref"), containsString("STRING")));
+    assertThat(exception.getMessage(), allOf(containsString("java.lang.CharSequence")));
   }
 
   @Test
@@ -36,18 +36,18 @@ class SchemaDereferencerTest {
     JsonObject json = new JsonObject("{ \"$ref\": \"dir/a.json\", \"b\": { \"$ref\": \"dir/b.json\" } }");
     SchemaDereferencer.fixupRef(new File("/home/peter").toPath(), json);
     assertThat(json.encodePrettily(), json.getString("$ref"), allOf(
-        containsString("peter"), containsString("dir"), containsString("a.json")));
+        containsString("dir"), containsString("a.json")));
     assertThat(json.encodePrettily(), json.getJsonObject("b").getString("$ref"), allOf(
-        containsString("peter"), containsString("dir"), containsString("b.json")));
+        containsString("dir"), containsString("b.json")));
   }
 
   @EnabledOnOs(LINUX)
   @ParameterizedTest
   @CsvSource({
-    "dir/a.json    , file:///home/peter/dir/a.json",
-    "./dir/a.json  , file:///home/peter/dir/a.json",
-    "././dir/a.json, file:///home/peter/dir/a.json",
-    "../dir/a.json,  file:///home/dir/a.json",
+    "dir/a.json    , file:///home/dir/a.json",
+    "./dir/a.json  , file:///home/dir/a.json",
+    "././dir/a.json, file:///home/dir/a.json",
+    "../dir/a.json,  file:///dir/a.json",
   })
   void toFileUriLinux(String file, String expectedUri) {
     Path basePath = new File("/home/peter").toPath();
@@ -57,10 +57,10 @@ class SchemaDereferencerTest {
   @EnabledOnOs(WINDOWS)
   @ParameterizedTest
   @CsvSource({
-    "dir\\a.json,       file:///C:\\Users\\peter\\dir\\a.json",
-    ".\\dir\\a.json,    file:///C:\\Users\\peter\\dir\\a.json",
-    ".\\.\\dir\\a.json, file:///C:\\Users\\peter\\dir\\a.json",
-    "..\\dir\\a.json,   file:///C:\\Users\\dir\\a.json",
+    "dir\\a.json,       file:///C:\\Users\\dir\\a.json",
+    ".\\dir\\a.json,    file:///C:\\Users\\dir\\a.json",
+    ".\\.\\dir\\a.json, file:///C:\\Users\\dir\\a.json",
+    "..\\dir\\a.json,   file:///C:\\dir\\a.json",
   })
   void toFileUriWin(String file, String expectedUri) {
     Path basePath = new File("C:\\Users\\peter").toPath();
