@@ -12,7 +12,6 @@ import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import java.net.URI;
 
 public class SchemaDereferencer {
 
@@ -33,7 +32,7 @@ public class SchemaDereferencer {
     return schema;
   }
 
-  private boolean hasUriScheme(String uri) {
+  private static boolean hasUriScheme(String uri) {
     for (int i = 0; i < uri.length(); i++) {
       char ch = uri.charAt(i);
       if (ch == ':') {
@@ -54,7 +53,7 @@ public class SchemaDereferencer {
    *
    * <ul>
    * <li>If the base path is <code>"/home/peter"</code> the ref
-   * becomes <code>"$ref": "file:/home/peter/dir/a.json"</code>.
+   * becomes <code>"$ref": "file:///home/peter/dir/a.json"</code>.
    * <li>If the base path is <code>"C:\Users\peter"</code> the ref
    * becomes <code>"$ref": "file:///C:\Users\peter\dir\a.json"</code>.
    * </ul>
@@ -64,22 +63,40 @@ public class SchemaDereferencer {
    * <a href="https://issues.folio.org/browse/RMB-265">RMB-265</a> and the
    * <a href="https://github.com/raml-org/raml-java-parser/issues/362">bug report</a>.
    *
-   * @param path  base path
+   * @param basePath  base path
    * @param jsonObject  where to search and replace recursively
    */
-  private void fixupRef(Path path, JsonObject jsonObject)
+  static void fixupRef(Path basePath, JsonObject jsonObject)
       throws IOException {
     for (Entry<String,Object> entry : jsonObject) {
       Object value = entry.getValue();
       if (value instanceof JsonObject) {
-        fixupRef(path, (JsonObject) value);
+        fixupRef(basePath, (JsonObject) value);
       }
     }
     String file = jsonObject.getString("$ref");
     if (file != null && !hasUriScheme(file)) {
-      Path nPath = path.resolveSibling(file);
-      //fix the problem of uri.getpath()==null in windows environment
-      jsonObject.put("$ref", nPath.toUri().toString().replaceAll("/\\./", "/"));
+      jsonObject.put("$ref", toFileUri(basePath, file));
     }
+  }
+
+  /**
+   * Return file as an URI with absolute path.
+   *
+   * <p>Examples:
+   *
+   * <ul>
+   * <li>toFileUri(<code>new File("/home/peter").toPath(), "dir/a.json") = "file:///home/peter/dir/a.json"</code>
+   * <li>toFileUri(<code>new File("/home/peter").toPath(), "C:\Users\peter") = "file:///C:\Users\peter\dir\a.json"</code>
+   * </ul>
+   *
+   * @param basePath the path used to resolve the relative path <code>file</code> against.
+   * @param file the relative path
+   * @return the absolute path as a URI
+   */
+  static String toFileUri(Path basePath, String file) {
+    Path absolutePath = basePath.resolveSibling(file);
+    //fix the problem of uri.getpath()==null in windows environment
+    return absolutePath.toUri().toString().replaceAll("/\\./", "/");
   }
 }
