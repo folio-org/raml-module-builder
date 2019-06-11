@@ -77,8 +77,7 @@ public class SchemaDereferencer {
     }
     String file = jsonObject.getString("$ref");
     if (file != null && !hasUriScheme(file)) {
-      Path nPath = path.resolveSibling(file);
-      //fix the problem of uri.getpath()==null in windows environment
+      Path nPath = path.resolveSibling(file).normalize();
       jsonObject.put("$ref", nPath.toUri().toString());
     }
   }
