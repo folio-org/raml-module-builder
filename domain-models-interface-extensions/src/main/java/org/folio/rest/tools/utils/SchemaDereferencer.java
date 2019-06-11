@@ -52,10 +52,10 @@ public class SchemaDereferencer {
    * <p>Examples for <code>"$ref": "dir/a.json"</code>:
    *
    * <ul>
-   * <li>If the base path is <code>"/home/peter"</code> the ref
-   * becomes <code>"$ref": "file:///home/peter/dir/a.json"</code>.
-   * <li>If the base path is <code>"C:\Users\peter"</code> the ref
-   * becomes <code>"$ref": "file:///C:\Users\peter\dir\a.json"</code>.
+   * <li>If the base path file is <code>"/home/peter.json"</code> the ref
+   * becomes <code>"$ref": "file:///home/dir/a.json"</code>.
+   * <li>If the base path file is <code>"C:\Users\peter.json"</code> the ref
+   * becomes <code>"$ref": "file:///C:/Users/dir/a.json"</code>.
    * </ul>
    *
    * <p>The absolute path is needed for generating the code from raml files
@@ -63,39 +63,49 @@ public class SchemaDereferencer {
    * <a href="https://issues.folio.org/browse/RMB-265">RMB-265</a> and the
    * <a href="https://github.com/raml-org/raml-java-parser/issues/362">bug report</a>.
    *
-   * @param basePath  base path
+   * @param basePathFile  path of a file in the base path, the base path is used to
+   *                       resolve the relative path
    * @param jsonObject  where to search and replace recursively
    */
-  static void fixupRef(Path basePath, JsonObject jsonObject)
+  static void fixupRef(Path basePathFile, JsonObject jsonObject)
       throws IOException {
     for (Entry<String,Object> entry : jsonObject) {
       Object value = entry.getValue();
       if (value instanceof JsonObject) {
-        fixupRef(basePath, (JsonObject) value);
+        fixupRef(basePathFile, (JsonObject) value);
       }
     }
-    String file = jsonObject.getString("$ref");
-    if (file != null && !hasUriScheme(file)) {
-      jsonObject.put("$ref", toFileUri(basePath, file));
+    Object value = jsonObject.getValue("$ref");
+    if (value == null) {
+      return;
     }
+    if (! (value instanceof String)) {
+      throw new ClassCastException("\"$ref\" value must of type String, but it is of type "
+          + value.getClass().getName() + ": " + value);
+    }
+    String file = (String) value;
+    if (hasUriScheme(file)) {
+      return;
+    }
+    jsonObject.put("$ref", toFileUri(basePathFile, file));
   }
 
   /**
-   * Return file as an URI with absolute path with sibling base as input
+   * Return <code>file</code> as an URI with absolute path with sibling base as input.
    *
    * <p>Examples:
    *
    * <ul>
-   * <li>toFileUri(<code>new File("/home/peter/b.json").toPath(), "dir/a.json") = "file:///home/peter/dir/a.json"</code>
-   * <li>toFileUri(<code>new File("/home/peter/b.json").toPath(), "C:\Users\peter") = "file:///C:\Users\peter\dir\a.json"</code>
+   * <li>Linux: <code>toFileUri(new File("/home/peter.json").toPath(), "dir/a.json") = "file:///home/dir/a.json"</code>
+   * <li>Windows: <code>toFileUri(new File("C:\Users\peter.json").toPath(), "dir/a.json") = "file:///C:/Users/dir/a.json"</code>
    * </ul>
    *
-   * @param basePath existing path for component that is used as base sibling for path <code>file</code>.
+   * @param basePathFile existing path for component that is used as base sibling for path <code>file</code>.
    * @param file the relative path
    * @return the absolute path as a URI
    */
-  static String toFileUri(Path basePath, String file) {
-    Path absolutePath = basePath.resolveSibling(file).normalize();
+  static String toFileUri(Path basePathFile, String file) {
+    Path absolutePath = basePathFile.resolveSibling(file).normalize();
     return absolutePath.toUri().toString();
   }
 }

@@ -27,18 +27,21 @@ class SchemaDereferencerTest {
   void fixupRefInvalid(String json) {
     Exception exception = assertThrows(ClassCastException.class,
         () -> SchemaDereferencer.fixupRef(new File("/").toPath(), new JsonObject(json)));
-    // $ref must be of type STRING
-    assertThat(exception.getMessage(), allOf(containsString("java.lang.CharSequence")));
+    // $ref must be of type String
+    assertThat(exception.getMessage(), allOf(containsString("$ref"), containsString("String")));
   }
 
   @Test
   void fixupRef() throws IOException {
-    JsonObject json = new JsonObject("{ \"$ref\": \"dir/a.json\", \"b\": { \"$ref\": \"dir/b.json\" } }");
+    JsonObject json = new JsonObject("{ \"$ref\": \"dir/a.json\", "
+        + "\"b\": { \"$ref\": \"file:///tmp/b.json\" }, "
+        + "\"c\": { \"$ref\": \"dir/c.json\" } }");
     SchemaDereferencer.fixupRef(new File("/home/peter").toPath(), json);
     assertThat(json.encodePrettily(), json.getString("$ref"), allOf(
-        containsString("dir"), containsString("a.json")));
-    assertThat(json.encodePrettily(), json.getJsonObject("b").getString("$ref"), allOf(
-        containsString("dir"), containsString("b.json")));
+        containsString("file:///"), containsString("dir"), containsString("a.json")));
+    assertThat(json.encodePrettily(), json.getJsonObject("b").getString("$ref"), is("file:///tmp/b.json"));
+    assertThat(json.encodePrettily(), json.getJsonObject("c").getString("$ref"), allOf(
+        containsString("file:///"), containsString("dir"), containsString("c.json")));
   }
 
   @EnabledOnOs(LINUX)
@@ -50,8 +53,8 @@ class SchemaDereferencerTest {
     "../dir/a.json,  file:///dir/a.json",
   })
   void toFileUriLinux(String file, String expectedUri) {
-    Path basePath = new File("/home/peter.json").toPath();
-    assertThat(SchemaDereferencer.toFileUri(basePath, file), is(expectedUri));
+    Path basePathFile = new File("/home/peter.json").toPath();
+    assertThat(SchemaDereferencer.toFileUri(basePathFile, file), is(expectedUri));
   }
 
   @EnabledOnOs(WINDOWS)
@@ -63,7 +66,7 @@ class SchemaDereferencerTest {
     "..\\dir\\a.json,   file:///C:/dir/a.json",
   })
   void toFileUriWin(String file, String expectedUri) {
-    Path basePath = new File("C:\\Users\\peter.json").toPath();
-    assertThat(SchemaDereferencer.toFileUri(basePath, file), is(expectedUri));
+    Path basePathFile = new File("C:\\Users\\peter.json").toPath();
+    assertThat(SchemaDereferencer.toFileUri(basePathFile, file), is(expectedUri));
   }
 }
