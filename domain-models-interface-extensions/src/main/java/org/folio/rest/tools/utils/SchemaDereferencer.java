@@ -96,7 +96,6 @@ public class SchemaDereferencer {
    */
   static String toFileUri(Path basePath, String file) {
     Path absolutePath = basePath.resolveSibling(file).normalize();
-    //fix the problem of uri.getpath()==null in windows environment
     return absolutePath.toUri().toString();
   }
 }
