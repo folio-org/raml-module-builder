@@ -57,10 +57,10 @@ class SchemaDereferencerTest {
   @EnabledOnOs(WINDOWS)
   @ParameterizedTest
   @CsvSource({
-    "dir\\a.json,       file:///C:\\Users\\dir\\a.json",
-    ".\\dir\\a.json,    file:///C:\\Users\\dir\\a.json",
-    ".\\.\\dir\\a.json, file:///C:\\Users\\dir\\a.json",
-    "..\\dir\\a.json,   file:///C:\\dir\\a.json",
+    "dir\\a.json,       file:///C:/Users/dir/a.json",
+    ".\\dir\\a.json,    file:///C:/Users/dir/a.json",
+    ".\\.\\dir\\a.json, file:///C:/Users/dir/a.json",
+    "..\\dir\\a.json,   file:///C:/dir/a.json",
   })
   void toFileUriWin(String file, String expectedUri) {
     Path basePath = new File("C:\\Users\\peter.json").toPath();
