@@ -24,15 +24,15 @@ public class ForeignKeyGenerationTest  {
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     // default pkColumnName is id without underscore
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE (tableb.jsonb->>'prefix')::UUID = (11111111-1111-1111-1111-111111111111)::UUID)", sql);
+    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE (tableb.jsonb->>'prefix')::UUID = ('11111111-1111-1111-1111-111111111111')::UUID)", sql);
   }
   @Test
   public void ForeignKeySearchWithConstant() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("tableb.tableb_data == /respectAccents x0").getWhere();
+    String sql = cql2pgJson.toSql("tableb.prefix == x0").getWhere();
     // default pkColumnName is id without underscore
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE lower(tableb.jsonb->>'tableb_data') = lower('x0'))", sql);
+    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE lower(tableb.jsonb->>'prefix') = lower('x0'))", sql);
   }
   @Test
   public void ForeignKeySearchWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {

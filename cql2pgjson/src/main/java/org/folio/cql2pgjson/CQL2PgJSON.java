@@ -24,6 +24,7 @@ import org.folio.cql2pgjson.model.SqlSelect;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
 import org.folio.rest.persist.ddlgen.ForeignKeys;
+import org.folio.rest.persist.ddlgen.Index;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.Table;
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -573,7 +574,7 @@ public class CQL2PgJSON {
       String whereField = index2sqlText(foreignTarget[0] + ".jsonb", foreignTarget[1]);
       String whereClause = "";
       String inKeyword = "";
-
+      String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], correlation);
       String indexString = "";
       String selectString = "";
       if (isTermConstant) {
@@ -582,8 +583,8 @@ public class CQL2PgJSON {
           termString = "('" + Cql2SqlUtil.cql2like(term) + "')::UUID";
           indexString =  "(" + whereField + ")::UUID";
         } else {
-          termString = wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2like(term) + "'", modifiers);
-          indexString = wrapInLowerUnaccent(whereField, modifiers);
+          termString = String.format(template, "'" + Cql2SqlUtil.cql2like(term) + "'");
+          indexString = String.format(template,whereField);
 
         }
         selectString = "Cast ( " +  targetField + "as UUID)";
@@ -602,6 +603,21 @@ public class CQL2PgJSON {
       logger.log(Level.SEVERE, "subQuery Caught an exception", e);
       throw new QueryValidationException("subQuery: caught exception");
     }
+  }
+
+  private String getWrapTemplateWithSchemaDetection(String whereField,Table targetTable ) {
+    String wrappingStringTemplate = "%s";
+    for(Index i : targetTable.getIndex()) {
+      if(i.getFieldName().equals(whereField)) {
+        if(i.isRemoveAccents()) { 
+          wrappingStringTemplate = "f_unaccent(" +wrappingStringTemplate + ")";
+        }
+        if(!i.isCaseSensitive()) {
+          wrappingStringTemplate = "lower(" + wrappingStringTemplate + ")" ;
+        }
+      }
+    }
+    return wrappingStringTemplate;
   }
 
   /**
