@@ -1,13 +1,15 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import java.util.List;
 
 import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
-
+import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -65,11 +67,16 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
   @Test
   public void foreignKeyFilter1() throws Exception {
-    assertThat(cql("id == tableb.tableaId"), containsInAnyOrder("test1", "test2"));
+    assertThat(cql("id == tableb.tableaId"), containsInAnyOrder("test1", "test2", "test3"));
   }
 
   @Test
   public void uuidConstant() throws Exception {
     assertThat(cql("tableb.name == 33333333-3333-3333-3333-333333333333"), is(empty()));
+  }
+  @Test
+  public void ForeignKeySearchWithInjection1() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
+
+    assertThat(cql("tableb.prefix == \"x0')));((('DROP tableb\""), containsInAnyOrder("test3") );
   }
 }
