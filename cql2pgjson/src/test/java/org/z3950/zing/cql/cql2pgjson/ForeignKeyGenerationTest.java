@@ -35,6 +35,14 @@ public class ForeignKeyGenerationTest  {
     assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE lower(tableb.jsonb->>'prefix') = lower('x0'))", sql);
   }
   @Test
+  public void ForeignKeySearchWithConstantOther() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    String sql = cql2pgJson.toSql("tableb.otherindex == y0").getWhere();
+    // default pkColumnName is id without underscore
+    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE f_unaccent(tableb.jsonb->>'otherindex') = f_unaccent('y0'))", sql);
+  }
+  @Test
   public void ForeignKeySearchWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMissingFK.json");

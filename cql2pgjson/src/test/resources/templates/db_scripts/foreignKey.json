@@ -11,6 +11,12 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
+        },
+        {
+          "fieldName": "otherindex",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": true
         }
       ],
       "foreignKeys": [
