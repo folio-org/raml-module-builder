@@ -72,7 +72,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
   @Test
   public void uuidConstant() throws Exception {
-    assertThat(cql("tableb.name == 33333333-3333-3333-3333-333333333333"), is(empty()));
+    assertThat(cql("tableb.otherindex == 33333333-3333-3333-3333-333333333333"), is(empty()));
   }
   @Test
   public void ForeignKeySearchWithInjection1() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
