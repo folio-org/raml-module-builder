@@ -61,6 +61,7 @@ public class CQL2PgJSON {
   /** name of the primary key column */
   private static final String PK_COLUMN_NAME = "id";
 
+  /** null if jsonFields.size() > 1, else jsonFields.get(0) */
   private String jsonField = null;
   private List<String> jsonFields = null;
 
