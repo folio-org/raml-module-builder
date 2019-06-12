@@ -579,7 +579,7 @@ public class CQL2PgJSON {
       if (isTermConstant) {
         String termString = "";
         if(isTermUUID) {
-          termString = "(" + term + ")::UUID";
+          termString = "('" + Cql2SqlUtil.cql2like(term) + "')::UUID";
           indexString =  "(" + whereField + ")::UUID";
         } else {
           termString = wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2like(term) + "'", modifiers);
