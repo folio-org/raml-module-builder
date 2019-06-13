@@ -62,7 +62,7 @@ public class CQL2PgJSON {
   private static final String PK_COLUMN_NAME = "id";
 
   private final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-  private final Pattern tableNamePattern = Pattern.compile("^[0-9a-zA-Z_-]+\\.[0-9a-zA-Z_-]+$");
+  private final Pattern tableNamePattern = Pattern.compile("^[0-9a-zA-Z_]+\\.[0-9a-zA-Z_]+$");
 
   private String jsonField = null;
   private List<String> jsonFields = null;
@@ -561,48 +561,39 @@ public class CQL2PgJSON {
       logger.log(Level.SEVERE, msg);
       throw new QueryValidationException(msg);
     }
-    try {
+    String foreignTableJsonb = foreignTarget[0] + ".jsonb";
+    String term = node.getTerm();
 
-      CQL2PgJSON c = new CQL2PgJSON(foreignTarget[0] + ".jsonb");
-      String term = node.getTerm();
+    boolean isTermConstant = !tableNamePattern.matcher(term).matches();
+    boolean isTermUUID = uuidPattern.matcher(term).matches();
 
-      boolean isTermConstant = !tableNamePattern.matcher(term).matches();
-      boolean isTermUUID = uuidPattern.matcher(term).matches();
-
-      String myField = dbTable.getTableName() + ".id";
-      String targetField = index2sqlText(foreignTarget[0] + ".jsonb", fkey.getFieldName());
-      String whereField = index2sqlText(foreignTarget[0] + ".jsonb", foreignTarget[1]);
-      String whereClause = "";
-      String inKeyword = "";
-      String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], correlation);
-      String indexString = "";
-      String selectString = "";
-      if (isTermConstant) {
-        String termString = "";
-        if(isTermUUID) {
-          termString = "('" + Cql2SqlUtil.cql2like(term) + "')::UUID";
-          indexString =  "(" + whereField + ")::UUID";
-        } else {
-          termString = String.format(template, "'" + Cql2SqlUtil.cql2like(term) + "'");
-          indexString = String.format(template,whereField);
-
-        }
-        selectString = "Cast ( " +  targetField + "as UUID)";
-        inKeyword =  myField + " IN ";
-        whereClause = " WHERE " + indexString + " = " + termString;
+    String myField = dbTable.getTableName() + ".id";
+    String targetField = index2sqlText(foreignTableJsonb, fkey.getFieldName());
+    String whereField = index2sqlText(foreignTableJsonb, foreignTarget[1]);
+    String whereClause = "";
+    String inKeyword = "";
+    String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], correlation);
+    String indexString = "";
+    String selectString = "";
+    if (isTermConstant) {
+      String termString = "";
+      if (isTermUUID) {
+        termString = "('" + Cql2SqlUtil.cql2like(term) + "')::UUID";
+        indexString = "(" + whereField + ")::UUID";
       } else {
-        inKeyword = myField + " IN ";
-        selectString = "Cast ( " + index2sqlText(c.getjsonField(), foreignTarget[1]) + "as UUID)";
+        termString = String.format(template, "'" + Cql2SqlUtil.cql2like(term) + "'");
+        indexString = String.format(template, whereField);
+
       }
-
-      return  inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
-
-    } catch (FieldException  e) {
-      // We should not get these exceptions, as we construct a valid query above,
-      // using a valid schema.
-      logger.log(Level.SEVERE, "subQuery Caught an exception", e);
-      throw new QueryValidationException("subQuery: caught exception");
+      selectString = "Cast ( " + targetField + "as UUID)";
+      inKeyword = myField + " IN ";
+      whereClause = " WHERE " + indexString + " = " + termString;
+    } else {
+      inKeyword = myField + " IN ";
+      selectString = "Cast ( " + index2sqlText(foreignTableJsonb, foreignTarget[1]) + "as UUID)";
     }
+
+    return inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
   }
 
   private String getWrapTemplateWithSchemaDetection(String whereField,Table targetTable ) {

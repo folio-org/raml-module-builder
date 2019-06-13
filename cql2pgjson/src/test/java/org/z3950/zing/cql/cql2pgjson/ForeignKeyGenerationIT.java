@@ -79,4 +79,9 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
     assertThat(cql("tableb.prefix == \"x0')));((('DROP tableb\""), containsInAnyOrder("test3") );
   }
+  @Test
+  public void ForeignKeySearchWithInjection2() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
+
+    assertThat(cql("tableb.prefix == \"x0')  or 1=1)--\""), is(empty()) );
+  }
 }
