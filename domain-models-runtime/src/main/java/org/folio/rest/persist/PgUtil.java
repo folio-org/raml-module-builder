@@ -232,18 +232,13 @@ public final class PgUtil {
       PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
       postgresClient.delete(table, id, reply -> {
         if (reply.failed()) {
-          String message = PgExceptionUtil.badRequestMessage(reply.cause());
-          if (message == null) {
-            asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
-            return;
-          }
           if (PgExceptionUtil.isForeignKeyViolation(reply.cause())) {
-            message = "Cannot delete record " + id + " in table " + table +
+            String message = "Cannot delete record " + id + " in table " + table +
                 ", it is still in use in table " + PgExceptionUtil.get(reply.cause(), 't');
             asyncResultHandler.handle(response(message, respond400, respond500));
             return;
           }
-          asyncResultHandler.handle(response(message, respond500, respond500));
+          asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
           return;
         }
         int deleted = reply.result().getUpdated();
@@ -272,7 +267,7 @@ public final class PgUtil {
    * @return the method
    * @throws NoSuchMethodException if not found
    */
-  private static <C> Method getListSetter(Class<C> collectionClass) throws NoSuchMethodException {
+  static <C> Method getListSetter(Class<C> collectionClass) throws NoSuchMethodException {
     for (Method method : collectionClass.getMethods()) {
       Class<?> [] parameterTypes = method.getParameterTypes();
 

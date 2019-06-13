@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.jaxrs.model.User;
@@ -380,6 +381,13 @@ public class PgUtilIT {
   }
 
   @Test
+  public void postInvalidId(TestContext testContext) {
+    PgUtil.post("user", new User().withUsername("Kiri").withId("someInvalidUuid"),
+        okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
+  }
+
+  @Test
   public void postResponseWithout500(TestContext testContext) {
     PgUtil.post("user", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout500.class,
@@ -593,6 +601,11 @@ public class PgUtilIT {
     testContext.assertEquals("some runtime exception", future.cause().getCause().getMessage());
   }
 
+  @Test(expected = NoSuchMethodException.class)
+  public void getListSetterMissingSetterMethod() throws Exception {
+    PgUtil.getListSetter(String.class);
+  }
+
   @Test
   public void getSortNodeException() {
     assertThat(PgUtil.getSortNode(null), is(nullValue()));
@@ -643,6 +656,7 @@ public class PgUtilIT {
 
     searchForDataUnoptimizedNo500("username=foo sortBy username/sort.descending", 6, 3, testContext);
   }
+
   @Test
   public void canGetWithOptimizedSql(TestContext testContext) {
     int optimizdSQLSize = 10000;
