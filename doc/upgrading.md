@@ -3,7 +3,30 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 25
+
+* Remove any `"pkColumnName"`, `"generateId"` and `"populateJsonWithId"` entries in `src/main/resources/templates/db_scripts/schema.json`.
+    * Hint: `grep -v -e '"pkColumnName"' -e '"generateId"' -e '"populateJsonWithId"' < schema.json > schema.json.new`, review, `mv schema.json.new schema.json`
+* In Java files change cql2pgjson import statements:
+    * old: `import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;`
+    * old: `import org.z3950.zing.cql.cql2pgjson.FieldException;`
+    * new: `import org.folio.cql2pgjson.CQL2PgJSON;`
+    * new: `import org.folio.cql2pgjson.exception.FieldException;`
+* In Java files replace any `Criteria.setValue`.
+    * Consider using some org.folio.rest.persist.PgUtil method or some PostgresClient
+      method that takes a CQL query or an id because those methods have
+      optimizations that Criteria doesn't have.
+    * If you still want to use Criteria please note that setVal does both quoting
+      and masking.
+    * old: `setValue(s)`  // prone to SQL injection
+    * old: `setValue("'" + s + "'")`  // prone to SQL injection
+    * old: `setValue("'" + s.replace("'", "''") + "'")`
+    * new: `setVal(s)`
+* In SQL code replace `_id` (or whatever you used as pkColumnName) by `id`.
+* In SQL code remove `gen_random_uuid()` and generate the UUID before sending the query to the database, for example with Java's `UUID.randomUUID()`. This is needed because `gen_random_uuid()` produces different values on different nodes of a replicated database like Pgpool-II. Therefore we no longer support the extension `pgcrypto`.
 
 ## Version 20
 
