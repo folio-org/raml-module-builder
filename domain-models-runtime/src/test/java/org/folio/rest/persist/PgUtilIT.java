@@ -256,7 +256,7 @@ public class PgUtilIT {
   public void deleteByInvalidUuid(TestContext testContext) {
     PgUtil.deleteById("user", "invalidid", okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 500, "invalidid"));
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
 
   @Test
@@ -308,7 +308,7 @@ public class PgUtilIT {
   public void getByIdInvalidUuid(TestContext testContext) {
     PgUtil.getById("user", User.class, "invalidUuid", okapiHeaders, vertx.getOrCreateContext(),
         Users.GetUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 500, "22P02"));
+        asyncAssertSuccess(testContext, 404, "Invalid UUID format"));
   }
 
   @Test
@@ -457,7 +457,7 @@ public class PgUtilIT {
     PgUtil.put("user", new User().withUsername("Bö"), "SomeInvalidUuid",
         okapiHeaders, vertx.getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 400, "SomeInvalidUuid"));
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
 
   @Test
