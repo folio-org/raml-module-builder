@@ -542,9 +542,7 @@ public class CQL2PgJSON {
     String[] termParts = node.getTerm().split("\\.");
 
     String [] foreignTarget ;
-    CqlModifiers modifiers = new CqlModifiers(node);
     if (idxParts.length > termParts.length) {
-
       foreignTarget = idxParts;
     } else {
       foreignTarget = termParts;
@@ -577,13 +575,13 @@ public class CQL2PgJSON {
     String selectString = "";
     if (isTermConstant) {
       String termString = "";
-      if (isTermUUID) {
-        termString = "('" + Cql2SqlUtil.cql2like(term) + "')::UUID";
-        indexString = "(" + whereField + ")::UUID";
+      CqlModifiers modifiers = new CqlModifiers(node);
+      if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
+        termString = "('" + Cql2SqlUtil.cql2like(term) + "')::NUMERIC";
+        indexString = "(" + whereField + ")::NUMERIC";
       } else {
         termString = String.format(template, "'" + Cql2SqlUtil.cql2like(term) + "'");
         indexString = String.format(template, whereField);
-
       }
       selectString = "Cast ( " + targetField + "as UUID)";
       inKeyword = myField + " IN ";
@@ -595,6 +593,8 @@ public class CQL2PgJSON {
 
     return inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
   }
+
+
 
   private String getWrapTemplateWithSchemaDetection(String whereField,Table targetTable ) {
     String wrappingStringTemplate = "%s";

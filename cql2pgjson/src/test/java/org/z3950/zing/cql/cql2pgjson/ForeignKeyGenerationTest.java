@@ -17,14 +17,21 @@ import junitparams.JUnitParamsRunner;
 public class ForeignKeyGenerationTest  {
   @Rule
   public ExpectedException thrown = ExpectedException.none();
-
+  @Test
+  public void ForeignKeySearchNumeric() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    String sql = cql2pgJson.toSql("tableb.blah == /number 123452").getWhere();
+    // default pkColumnName is id without underscore
+    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE (tableb.jsonb->>'blah')::NUMERIC = ('123452')::NUMERIC)", sql);
+  }
   @Test
   public void ForeignKeySearch() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     // default pkColumnName is id without underscore
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE (tableb.jsonb->>'prefix')::UUID = ('11111111-1111-1111-1111-111111111111')::UUID)", sql);
+    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId'as UUID) from tableb WHERE lower(tableb.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
   }
   @Test
   public void ForeignKeySearchWithConstant() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
