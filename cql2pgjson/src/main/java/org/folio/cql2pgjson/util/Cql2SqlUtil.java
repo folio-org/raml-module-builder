@@ -24,7 +24,63 @@ public final class Cql2SqlUtil {
   private Cql2SqlUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
+  /**
+   * Convert a CQL string to an SQL LIKE string.
+   * CQL escapes * ? ^ \ and SQL LIKE escapes \ % _.
+   *
+   * @param s  CQL string without leading or trailing double quote
+   * @return SQL LIKE string without leading or trailing single quote
+   */
+  @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
+  public static String quotedString(String s) {
+    StringBuilder like = new StringBuilder();
+    /** true if the previous character is an escaping backslash */
+    boolean backslash = false;
+    for (char c : s.toCharArray()) {
+      switch (c) {
+      case '\\':
+        if (backslash) {
+          like.append("\\\\");
+          backslash = false;
+        } else {
+          backslash = true;
+        }
+        break;
+      case '?':
+        if (backslash) {
+          like.append("\\?");
+          backslash = false;
+        } else {
+          like.append('_');
+        }
+        break;
+      case '*':
+        if (backslash) {
+          like.append("\\*");
+          backslash = false;
+        } else {
+          like.append('%');
+        }
+        break;
+      case '\'':   // a single quote '
+        // postgres requires to double a ' inside a ' terminated string.
+        like.append("''");
+        backslash = false;
+        break;
+      default:
+        like.append(c);
+        backslash = false;
+        break;
+      }
+    }
 
+    if (backslash) {
+      // a single backslash at the end is an error but we handle it gracefully matching one.
+      like.append("\\\\");
+    }
+
+    return like.toString();
+  }
   /**
    * Convert a CQL string to an SQL LIKE string.
    * CQL escapes * ? ^ \ and SQL LIKE escapes \ % _.
