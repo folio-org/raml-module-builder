@@ -541,12 +541,7 @@ public class CQL2PgJSON {
     String[] idxParts = index.split("\\.");
     String[] termParts = node.getTerm().split("\\.");
 
-    String [] foreignTarget ;
-    if (idxParts.length > termParts.length) {
-      foreignTarget = idxParts;
-    } else {
-      foreignTarget = termParts;
-    }
+    String [] foreignTarget = (idxParts.length > termParts.length) ? idxParts : termParts;
     ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation);
 
     if (fkey == null) {
@@ -563,7 +558,6 @@ public class CQL2PgJSON {
     String term = node.getTerm();
 
     boolean isTermConstant = !tableNamePattern.matcher(term).matches();
-    boolean isTermUUID = uuidPattern.matcher(term).matches();
 
     String myField = dbTable.getTableName() + ".id";
     String targetField = index2sqlText(foreignTableJsonb, fkey.getFieldName());
