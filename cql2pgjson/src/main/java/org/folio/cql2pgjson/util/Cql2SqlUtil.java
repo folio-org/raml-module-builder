@@ -25,11 +25,11 @@ public final class Cql2SqlUtil {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
   /**
-   * Convert a CQL string to an SQL LIKE string.
-   * CQL escapes * ? ^ \ and SQL LIKE escapes \ % _.
-   *
+   * Convert a CQL string to an SQL quoted string.
+   * CQL escapes * ? ^ \ and SQL LIKE escapes \ .
+   * 
    * @param s  CQL string without leading or trailing double quote
-   * @return SQL LIKE string without leading or trailing single quote
+   * @return SQL string without leading or trailing single quote
    */
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
   public static String quotedString(String s) {
