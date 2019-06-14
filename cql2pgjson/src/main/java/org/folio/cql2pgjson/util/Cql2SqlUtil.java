@@ -63,6 +63,9 @@ public final class Cql2SqlUtil {
 
     return like.toString();
   }
+  public static String cql2like(String s) {
+    return cql2like(s, false);
+  }
   /**
    * Convert a CQL string to an SQL LIKE string.
    * CQL escapes * ? ^ \ and SQL LIKE escapes \ % _.
@@ -71,7 +74,7 @@ public final class Cql2SqlUtil {
    * @return SQL LIKE string without leading or trailing single quote
    */
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
-  public static String cql2like(String s) {
+  public static String cql2like(String s, boolean quoted) {
     StringBuilder like = new StringBuilder();
     /** true if the previous character is an escaping backslash */
     boolean backslash = false;
@@ -82,7 +85,9 @@ public final class Cql2SqlUtil {
         break;
       case '%':
       case '_':
-        backslash = escapePercentAndUnderscore(like, c);
+        if(!quoted) {
+          backslash = escapePercentAndUnderscore(like, c);
+        }
         break;
       case '?':
         backslash = escapeQuestionMark(like, backslash);
