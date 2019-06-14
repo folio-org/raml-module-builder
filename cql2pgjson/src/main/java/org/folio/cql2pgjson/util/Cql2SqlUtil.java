@@ -39,37 +39,19 @@ public final class Cql2SqlUtil {
     for (char c : s.toCharArray()) {
       switch (c) {
       case '\\':
-        if (backslash) {
-          like.append("\\\\");
-          backslash = false;
-        } else {
-          backslash = true;
-        }
+        backslash = escapeBackSlash(like, backslash);
         break;
       case '?':
-        if (backslash) {
-          like.append("\\?");
-          backslash = false;
-        } else {
-          like.append('_');
-        }
+        backslash = escapeQuestionMark(like, backslash);
         break;
       case '*':
-        if (backslash) {
-          like.append("\\*");
-          backslash = false;
-        } else {
-          like.append('%');
-        }
+        backslash = escapeStar(like, backslash);
         break;
       case '\'':   // a single quote '
-        // postgres requires to double a ' inside a ' terminated string.
-        like.append("''");
-        backslash = false;
+        backslash = escapeSingleQuote(like);
         break;
       default:
-        like.append(c);
-        backslash = false;
+        backslash = defaultAppend(like, c);
         break;
       }
     }
@@ -96,42 +78,23 @@ public final class Cql2SqlUtil {
     for (char c : s.toCharArray()) {
       switch (c) {
       case '\\':
-        if (backslash) {
-          like.append("\\\\");
-          backslash = false;
-        } else {
-          backslash = true;
-        }
+        backslash = escapeBackSlash(like, backslash);
         break;
       case '%':
       case '_':
-        like.append('\\').append(c);  // mask LIKE character
-        backslash = false;
+        backslash = escapePercentAndUnderscore(like, c);
         break;
       case '?':
-        if (backslash) {
-          like.append("\\?");
-          backslash = false;
-        } else {
-          like.append('_');
-        }
+        backslash = escapeQuestionMark(like, backslash);
         break;
       case '*':
-        if (backslash) {
-          like.append("\\*");
-          backslash = false;
-        } else {
-          like.append('%');
-        }
+        backslash = escapeStar(like, backslash);
         break;
       case '\'':   // a single quote '
-        // postgres requires to double a ' inside a ' terminated string.
-        like.append("''");
-        backslash = false;
+        backslash = escapeSingleQuote(like);
         break;
       default:
-        like.append(c);
-        backslash = false;
+        backslash = defaultAppend(like, c);
         break;
       }
     }
@@ -142,6 +105,52 @@ public final class Cql2SqlUtil {
     }
 
     return like.toString();
+  }
+  private static boolean defaultAppend(StringBuilder like, char c) {
+    boolean backslash;
+    like.append(c);
+    backslash = false;
+    return backslash;
+  }
+  private static boolean escapeSingleQuote(StringBuilder like) {
+    boolean backslash;
+    // postgres requires to double a ' inside a ' terminated string.
+    like.append("''");
+    backslash = false;
+    return backslash;
+  }
+  private static boolean escapeStar(StringBuilder like, boolean backslash) {
+    if (backslash) {
+      like.append("\\*");
+      backslash = false;
+    } else {
+      like.append('%');
+    }
+    return backslash;
+  }
+  private static boolean escapeQuestionMark(StringBuilder like, boolean backslash) {
+    if (backslash) {
+      like.append("\\?");
+      backslash = false;
+    } else {
+      like.append('_');
+    }
+    return backslash;
+  }
+  private static boolean escapePercentAndUnderscore(StringBuilder like, char c) {
+    boolean backslash;
+    like.append('\\').append(c);  // mask LIKE character
+    backslash = false;
+    return backslash;
+  }
+  private static boolean escapeBackSlash(StringBuilder like, boolean backslash) {
+    if (backslash) {
+      like.append("\\\\");
+      backslash = false;
+    } else {
+      backslash = true;
+    }
+    return backslash;
   }
 
   /**
@@ -158,12 +167,7 @@ public final class Cql2SqlUtil {
     for (char c : s.toCharArray()) {
       switch (c) {
       case '\\':
-        if (backslash) {
-          regexp.append("\\\\");
-          backslash = false;
-        } else {
-          backslash = true;
-        }
+        backslash = escapeBackSlash(regexp, backslash);
         break;
       case '.':
       case '+':
@@ -174,10 +178,7 @@ public final class Cql2SqlUtil {
       case '[':
       case ']':
       case '$':
-        // Mask any character that is special in regexp. See list at
-        // https://www.postgresql.org/docs/current/static/functions-matching.html#POSIX-SYNTAX-DETAILS
-        regexp.append('\\').append(c);
-        backslash = false;
+        backslash = escapePercentAndUnderscore(regexp, c);
         break;
       case '?':
         if (backslash) {
@@ -196,9 +197,7 @@ public final class Cql2SqlUtil {
         }
         break;
       case '\'':   // a single quote '
-        // postgres requires to double a ' inside a ' terminated string.
-        regexp.append("''");
-        backslash = false;
+        backslash = escapeSingleQuote(regexp);
         break;
       case '^':    // start of string or end of string
         if (backslash) {
@@ -209,8 +208,7 @@ public final class Cql2SqlUtil {
         }
         break;
       default:
-        regexp.append(c);
-        backslash = false;
+        backslash = defaultAppend(regexp, c);
         break;
       }
     }
