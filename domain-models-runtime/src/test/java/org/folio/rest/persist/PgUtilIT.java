@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.jaxrs.model.User;
@@ -256,7 +257,7 @@ public class PgUtilIT {
   public void deleteByInvalidUuid(TestContext testContext) {
     PgUtil.deleteById("user", "invalidid", okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 500, "invalidid"));
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
 
   @Test
@@ -308,7 +309,7 @@ public class PgUtilIT {
   public void getByIdInvalidUuid(TestContext testContext) {
     PgUtil.getById("user", User.class, "invalidUuid", okapiHeaders, vertx.getOrCreateContext(),
         Users.GetUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 500, "22P02"));
+        asyncAssertSuccess(testContext, 404, "Invalid UUID format"));
   }
 
   @Test
@@ -377,6 +378,13 @@ public class PgUtilIT {
     PgUtil.post("user", new User().withUsername("Elsa").withId(uuid),
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
         asyncAssertSuccess(testContext, 400, "duplicate key value"));
+  }
+
+  @Test
+  public void postInvalidId(TestContext testContext) {
+    PgUtil.post("user", new User().withUsername("Kiri").withId("someInvalidUuid"),
+        okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
 
   @Test
@@ -468,7 +476,7 @@ public class PgUtilIT {
     PgUtil.put("user", new User().withUsername("Bö"), "SomeInvalidUuid",
         okapiHeaders, vertx.getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 400, "SomeInvalidUuid"));
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
 
   @Test
@@ -604,6 +612,11 @@ public class PgUtilIT {
     testContext.assertEquals("some runtime exception", future.cause().getCause().getMessage());
   }
 
+  @Test(expected = NoSuchMethodException.class)
+  public void getListSetterMissingSetterMethod() throws Exception {
+    PgUtil.getListSetter(String.class);
+  }
+
   @Test
   public void getSortNodeException() {
     assertThat(PgUtil.getSortNode(null), is(nullValue()));
@@ -654,6 +667,7 @@ public class PgUtilIT {
 
     searchForDataUnoptimizedNo500("username=foo sortBy username/sort.descending", 6, 3, testContext);
   }
+
   @Test
   public void canGetWithOptimizedSql(TestContext testContext) {
     int optimizdSQLSize = 10000;
