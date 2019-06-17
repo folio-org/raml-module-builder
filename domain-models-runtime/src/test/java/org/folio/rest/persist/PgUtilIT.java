@@ -380,6 +380,17 @@ public class PgUtilIT {
   }
 
   @Test
+  public void postResponseWithUser201Method(TestContext testContext) {
+    String uuid = randomUuid();
+    PgUtil.post("user", new User().withUsername("Susi").withId(uuid),
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithUserFor201Method.class,
+        testContext.asyncAssertSuccess(result -> {
+          assertThat(result.getStatus(), is(201));
+          assertGetById(testContext, uuid, "Susi");
+        }));
+  }
+
+  @Test
   public void postResponseWithout500(TestContext testContext) {
     PgUtil.post("user", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout500.class,
@@ -1049,6 +1060,32 @@ public class PgUtilIT {
     public static class HeadersFor201 extends ResponseImpl.HeadersFor201 {
     }
     public static Response respond201WithApplicationJson(Object entity, HeadersFor201 headers) {
+      return ResponseImpl.respond201WithApplicationJson(entity, headers);
+    }
+    public static Response respond204() {
+      return ResponseImpl.respond204();
+    }
+    public static Response respond400WithTextPlain(Object entity) {
+      return ResponseImpl.respond400WithTextPlain(entity);
+    }
+    public static Response respond500WithTextPlain(Object entity) {
+      return ResponseImpl.respond500WithTextPlain(entity);
+    }
+  };
+
+  static class ResponseWithUserFor201Method extends ResponseDelegate {
+    private ResponseWithUserFor201Method(Response response) {
+      super(response);
+    }
+    public static Response respond200WithApplicationJson(User entity) {
+      return ResponseImpl.respond200WithApplicationJson(entity);
+    }
+    public static class HeadersFor201 extends ResponseImpl.HeadersFor201 {
+    }
+    public static HeadersFor201 headersFor201() {
+      return new HeadersFor201();
+    }
+    public static Response respond201WithApplicationJson(User entity, HeadersFor201 headers) {
       return ResponseImpl.respond201WithApplicationJson(entity, headers);
     }
     public static Response respond204() {
