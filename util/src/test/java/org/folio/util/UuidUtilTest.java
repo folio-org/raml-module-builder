@@ -51,10 +51,10 @@ class UuidUtilTest {
 
   @ParameterizedTest
   @CsvSource({
-    "00000000-0000-0000-0000-000000000000, true",
-    "11111111-1111-1111-1111-111111111111, true",
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, true",
-    "ffffffff-ffff-ffff-ffff-ffffffffffff, true",
+    "00000000-0000-0000-0000-000000000000",
+    "11111111-1111-1111-1111-111111111111",
+    "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "ffffffff-ffff-ffff-ffff-ffffffffffff",
   })
   void isLooseUuidButInvalidUuid(String s) {
     assertThat(UuidUtil.isLooseUuid(s), is(true));
