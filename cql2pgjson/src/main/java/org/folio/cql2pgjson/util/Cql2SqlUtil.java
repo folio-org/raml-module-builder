@@ -42,14 +42,12 @@ public final class Cql2SqlUtil {
         if (backslash) {
           like.append("\\\\");
           backslash = false;
-        } else {
-          backslash = true;
+          continue;
         }
         break;
       case '?':
         if (backslash) {
           like.append("\\?");
-          backslash = false;
         } else {
           like.append('_');
         }
@@ -57,7 +55,6 @@ public final class Cql2SqlUtil {
       case '*':
         if (backslash) {
           like.append("\\*");
-          backslash = false;
         } else {
           like.append('%');
         }
@@ -65,20 +62,17 @@ public final class Cql2SqlUtil {
       case '\'':   // a single quote '
         // postgres requires to double a ' inside a ' terminated string.
         like.append("''");
-        backslash = false;
         break;
       default:
         like.append(c);
-        backslash = false;
         break;
       }
+      backslash = c == '\\';
     }
-
     if (backslash) {
       // a single backslash at the end is an error but we handle it gracefully matching one.
       like.append("\\\\");
     }
-
     return like.toString();
   }
   /**
