@@ -93,19 +93,16 @@ public final class Cql2SqlUtil {
         if (backslash) {
           like.append("\\\\");
           backslash = false;
-        } else {
-          backslash = true;
+          continue;
         }
         break;
       case '%':
       case '_':
         like.append('\\').append(c);  // mask LIKE character
-        backslash = false;
         break;
       case '?':
         if (backslash) {
           like.append("\\?");
-          backslash = false;
         } else {
           like.append('_');
         }
@@ -113,7 +110,6 @@ public final class Cql2SqlUtil {
       case '*':
         if (backslash) {
           like.append("\\*");
-          backslash = false;
         } else {
           like.append('%');
         }
@@ -121,13 +117,12 @@ public final class Cql2SqlUtil {
       case '\'':   // a single quote '
         // postgres requires to double a ' inside a ' terminated string.
         like.append("''");
-        backslash = false;
         break;
       default:
         like.append(c);
-        backslash = false;
         break;
       }
+      backslash = c == '\\';
     }
 
     if (backslash) {
@@ -155,8 +150,7 @@ public final class Cql2SqlUtil {
         if (backslash) {
           regexp.append("\\\\");
           backslash = false;
-        } else {
-          backslash = true;
+          continue;
         }
         break;
       case '.':
@@ -171,12 +165,10 @@ public final class Cql2SqlUtil {
         // Mask any character that is special in regexp. See list at
         // https://www.postgresql.org/docs/current/static/functions-matching.html#POSIX-SYNTAX-DETAILS
         regexp.append('\\').append(c);
-        backslash = false;
         break;
       case '?':
         if (backslash) {
           regexp.append("\\?");
-          backslash = false;
         } else {
           regexp.append('.');
         }
@@ -184,7 +176,6 @@ public final class Cql2SqlUtil {
       case '*':
         if (backslash) {
           regexp.append("\\*");
-          backslash = false;
         } else {
           regexp.append(".*");
         }
@@ -192,21 +183,19 @@ public final class Cql2SqlUtil {
       case '\'':   // a single quote '
         // postgres requires to double a ' inside a ' terminated string.
         regexp.append("''");
-        backslash = false;
         break;
       case '^':    // start of string or end of string
         if (backslash) {
           regexp.append("\\^");
-          backslash = false;
         } else {
           regexp.append("(^|$)");
         }
         break;
       default:
         regexp.append(c);
-        backslash = false;
         break;
       }
+      backslash = c == '\\';
     }
 
     if (backslash) {
