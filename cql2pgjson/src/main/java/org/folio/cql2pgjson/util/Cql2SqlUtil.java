@@ -31,7 +31,7 @@ public final class Cql2SqlUtil {
    * @param s  CQL string without leading or trailing double quote
    * @return SQL string without leading or trailing single quote
    */
-  @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
+  @SuppressWarnings({"squid:S3776", "common-java:DuplicatedBlocks"})  // suppress "Cognitive Complexity of methods should not be too high"
   public static String quotedString(String s) {
     StringBuilder like = new StringBuilder();
     /** true if the previous character is an escaping backslash */
