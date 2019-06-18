@@ -76,10 +76,29 @@ public class Cql2SqlUtilTest {
 
   @Test
   @Parameters(method = "cql2likeParams")
-  public void cql2like(String cql, String sql) {
+  public void quotedString(String cql, String sql) {
     assertThat(Cql2SqlUtil.cql2like(cql), is(sql));
   }
+  public Object quotedStringParams() {
+    return params(
+        "           ",
+        "'     ''   ",
+        "a     a    ",
+        "*     %    ",
+        "?     _    ",
+        "\\    \\\\ ",
+        "\\*   \\*  ",
+        "\\?   \\?  ",
+        "\\'   ''   ",
+        "\\\\  \\\\ "
+        );
+  }
 
+  @Test
+  @Parameters(method = "quotedStringParams")
+  public void cql2like(String cql, String sql) {
+    assertThat(Cql2SqlUtil.quotedString(cql), is(sql));
+  }
   public Object cql2regexpParams() {
     return params(
         "           ",
