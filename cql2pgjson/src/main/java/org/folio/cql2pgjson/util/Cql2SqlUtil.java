@@ -33,9 +33,9 @@ public final class Cql2SqlUtil {
    */
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
   public static String cql2like(String s) {
-    return cql2String(s,false);
-  
+    return cql2string(s,false);
   }
+  
   /**
    * Convert a CQL string to an SQL string.
    * CQL escapes * ? ^ \ and SQL LIKE escapes \ % _.
@@ -45,7 +45,7 @@ public final class Cql2SqlUtil {
    * @return SQL string without leading or trailing single quote
    */
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
-  public static String cql2String(String s, boolean quotedString) {
+  public static String cql2string(String s, boolean quotedString) {
     StringBuilder like = new StringBuilder();
     /** true if the previous character is an escaping backslash */
     boolean backslash = false;

@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.omg.CosNaming.NamingContextPackage.NotEmpty;
 
 import junitparams.JUnitParamsRunner;
 
@@ -75,13 +76,16 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     assertThat(cql("tableb.name == 33333333-3333-3333-3333-333333333333"), is(empty()));
   }
   @Test
-  public void ForeignKeySearchWithInjection1() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
-
+  public void ForeignKeySearchWithInjection1() {
+    //check to see if we can execute some arbitrary sql
     assertThat(cql("tableb.prefix == \"x0')));((('DROP tableb\""), containsInAnyOrder("test3") );
+    //then check to see if the drop table worked by checking to see if there is anything there
+    assertThat(cql("tableb.prefix == \"x0')));((('DROP tableb\"").size() > 0, is(true));
   }
   @Test
-  public void ForeignKeySearchWithInjection2() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
-
+  public void ForeignKeySearchWithInjection2() {
+    //this test is to see if I can query more items then intended
+    //if the test passes it means it was not successful
     assertThat(cql("tableb.prefix == \"x0')  or 1=1)--\""), is(empty()) );
   }
 }
