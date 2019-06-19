@@ -38,7 +38,7 @@ public final class Cql2SqlUtil {
   
   /**
    * Convert a CQL string to an SQL string.
-   * CQL escapes * ? ^ \ and SQL LIKE escapes \ % _.
+   * and SQL string constant escapes only the single quote ' by doubling it.
    *
    * @param s  CQL string without leading or trailing double quote
    * @param quotedString  Whether this is a quoted String following an = sign
