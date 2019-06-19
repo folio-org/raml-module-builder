@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.util.UuidUtil;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
@@ -49,6 +50,9 @@ public final class PgUtil {
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
+  private static final String INVALID_UUID = "Invalid UUID format of id, should be "
+      + "xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx where M is 1-5 and N is 8, 9, a, b, A or B and "
+      + "x is 0-9, a-f or A-F.";
   /** This is the name of the column used by all modules to store actual data */
   private static final String JSON_COLUMN = "jsonb";
   /** mapper between JSON and Java instance (POJO) */
@@ -221,21 +225,20 @@ public final class PgUtil {
       Method respond204 = clazz.getMethod(RESPOND_204);
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
+      if (! UuidUtil.isUuid(id)) {
+        asyncResultHandler.handle(response(INVALID_UUID, respond400, respond500));
+        return;
+      }
       PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
       postgresClient.delete(table, id, reply -> {
         if (reply.failed()) {
-          String message = PgExceptionUtil.badRequestMessage(reply.cause());
-          if (message == null) {
-            asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
-            return;
-          }
           if (PgExceptionUtil.isForeignKeyViolation(reply.cause())) {
-            message = "Cannot delete record " + id + " in table " + table +
+            String message = "Cannot delete record " + id + " in table " + table +
                 ", it is still in use in table " + PgExceptionUtil.get(reply.cause(), 't');
             asyncResultHandler.handle(response(message, respond400, respond500));
             return;
           }
-          asyncResultHandler.handle(response(message, respond500, respond500));
+          asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
           return;
         }
         int deleted = reply.result().getUpdated();
@@ -256,6 +259,7 @@ public final class PgUtil {
       asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
     }
   }
+
   /**
    * Return the first method whose name starts with <code>set</code> and that takes a List as parameter,
    * for example {@code setUser(List<User>)}.
@@ -263,7 +267,7 @@ public final class PgUtil {
    * @return the method
    * @throws NoSuchMethodException if not found
    */
-  private static <C> Method getListSetter(Class<C> collectionClass) throws NoSuchMethodException {
+  static <C> Method getListSetter(Class<C> collectionClass) throws NoSuchMethodException {
     for (Method method : collectionClass.getMethods()) {
       Class<?> [] parameterTypes = method.getParameterTypes();
 
@@ -400,6 +404,10 @@ public final class PgUtil {
     try {
       Method respond200 = responseDelegateClass.getMethod(RESPOND_200_WITH_APPLICATION_JSON, clazz);
       Method respond404 = responseDelegateClass.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
+      if (! UuidUtil.isUuid(id)) {
+        asyncResultHandler.handle(response(INVALID_UUID, respond404, respond500));
+        return;
+      }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.getById(table, id, clazz, reply -> {
         if (reply.failed()) {
@@ -455,7 +463,36 @@ public final class PgUtil {
   }
 
   /**
+   * Return the method respond201WithApplicationJson(entity, headers) where the type of entity
+   * is assignable from entityClass and the type of headers is assignable from headersFor201Class.
+   *
+   * <p>Depending on the .raml file entity is either of type Object or of the POJO type (for example of type User).
+   *
+   * @throws NoSuchMethodException if not found
+   */
+  private static <T> Method getResponse201Method(Class<? extends ResponseDelegate> clazz, Class<T> entityClass,
+      Class<?> headersFor201Class) throws NoSuchMethodException {
+
+    for (Method method : clazz.getMethods()) {
+      if (! method.getName().equals(RESPOND_201_WITH_APPLICATION_JSON)) {
+        continue;
+      }
+      Class<?> [] parameterType = method.getParameterTypes();
+      if (parameterType.length == 2
+          && parameterType[0].isAssignableFrom(entityClass)
+          && parameterType[1].isAssignableFrom(headersFor201Class)) {
+        return method;
+      }
+    }
+    throw new NoSuchMethodException(RESPOND_201_WITH_APPLICATION_JSON
+        + "(" + entityClass.getName() + ", " + headersFor201Class.getName() + ") not found in "
+        + clazz.getCanonicalName());
+  }
+
+  /**
    * Post entity to table.
+   *
+   * <p>Create a random UUID for id if entity doesn't contain one.
    *
    * <p>All exceptions are caught and reported via the asyncResultHandler.
    *
@@ -464,7 +501,7 @@ public final class PgUtil {
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param clazz  the ResponseDelegate class generated as defined by the RAML file, must have these methods:
-   *               headersFor201(), respond201WithApplicationJson(Object, HeadersFor201),
+   *               headersFor201(), respond201WithApplicationJson(T, HeadersFor201),
    *               respond400WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by clazz
    */
@@ -499,10 +536,14 @@ public final class PgUtil {
         throw new ClassNotFoundException(headersFor201ClassName + " not found in " + clazz.getCanonicalName());
       }
       Method withLocation = headersFor201Class.getMethod("withLocation", String.class);
-      Method respond201 = clazz.getMethod(RESPOND_201_WITH_APPLICATION_JSON, Object.class, headersFor201Class);
+      Method respond201 = getResponse201Method(clazz, entity.getClass(), headersFor201Class);
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
 
       String id = initId(entity);
+      if (! UuidUtil.isUuid(id)) {
+        asyncResultHandler.handle(response(INVALID_UUID, respond400, respond500));
+        return;
+      }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.save(table, id, entity, reply -> {
         if (reply.failed()) {
@@ -529,7 +570,8 @@ public final class PgUtil {
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param clazz  the ResponseDelegate class created from the RAML file with these methods:
-   *               respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   *               respond204(), respond400WithTextPlain(Object), respond404WithTextPlain(Object),
+   *               respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by clazz
    */
   public static <T> void put(String table, T entity, String id,
@@ -551,6 +593,10 @@ public final class PgUtil {
       Method respond204 = clazz.getMethod(RESPOND_204);
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
+      if (! UuidUtil.isUuid(id)) {
+        asyncResultHandler.handle(response(INVALID_UUID, respond400, respond500));
+        return;
+      }
       setId(entity, id);
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.update(table, entity, id, reply -> {
