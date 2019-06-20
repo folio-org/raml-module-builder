@@ -32,17 +32,16 @@ public class SchemaMakerTest {
 
   @Test
   public void canCreateAuditedTable() throws IOException, TemplateException {
-
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4");
-
     String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-    //assertions here
     String result = schemaMaker.generateDDL();
-    assertThat(result, containsString("CREATE TABLE IF NOT EXISTS harvard_circ.audit_test_tenantapi"));
 
-    assertThat(result,containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_test_tenantapi_changes() RETURNS TRIGGER AS $test_tenantapi_audit$"));
+    assertThat(result, containsString("CREATE TABLE IF NOT EXISTS harvard_circ.audit_test_tenantapi"));
+    assertThat(result, containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_test_tenantapi_changes() RETURNS TRIGGER"));
+    // index for field in audit table
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS audit_test_tenantapi_origId_idx"));
   }
 
   @Test

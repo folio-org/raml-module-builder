@@ -64,11 +64,11 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertThat("total number of audit entries",
         selectInteger(context, count), is(15));
     assertThat("total number of audit entries for insert",
-        selectInteger(context, count + " WHERE operation='I' AND jsonb->>'foo' IS NULL"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='I' AND jsonb->>'foo' IS NULL"), is(5));
     assertThat("total number of audit entries for update",
-        selectInteger(context, count + " WHERE operation='U' AND jsonb->>'foo' = 'bar'"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='U' AND jsonb->>'foo' = 'bar'"), is(5));
     assertThat("total number of audit entries for delete",
-        selectInteger(context, count + " WHERE operation='D' AND jsonb->>'foo' = 'bar'"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='D' AND jsonb->>'foo' = 'bar'"), is(5));
   }
 
   @Test

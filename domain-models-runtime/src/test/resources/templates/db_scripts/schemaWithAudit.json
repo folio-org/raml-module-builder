@@ -7,6 +7,24 @@
     {
       "tableName": "test_tenantapi2",
       "withAuditing": true
+    },
+    {
+      "tableName": "audit_test_tenantapi",
+      "index": [
+        {
+          "fieldName": "origId",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "audit_test_tenantapi2",
+      "index": [
+        {
+          "fieldName": "origId",
+          "tOps": "ADD"
+        }
+      ]
     }
   ]
 }
