@@ -24,7 +24,6 @@ import org.folio.cql2pgjson.model.SqlSelect;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
 import org.folio.rest.persist.ddlgen.Schema;
-import org.folio.rest.persist.ddlgen.Table;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.util.IoUtil;
 import org.folio.util.ResourceUtil;
