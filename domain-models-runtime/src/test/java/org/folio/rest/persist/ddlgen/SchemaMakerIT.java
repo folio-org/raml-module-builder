@@ -78,6 +78,9 @@ public class SchemaMakerIT extends PostgresClientITBase {
     runSchema(context, TenantOperation.CREATE, "schemaWithAudit.json");
     auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi");
     auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi2");
+    // Check that '"withAuditing": true' implicitly creates audit_test_implicit
+    // without an explicit table entry for audit_test_implicit
+    auditedTableCanInsertUpdateDelete(context, schema + ".test_implicit");
   }
 
   private boolean triggerExists(TestContext context, String name) {

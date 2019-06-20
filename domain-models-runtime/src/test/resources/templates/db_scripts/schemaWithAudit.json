@@ -9,6 +9,10 @@
       "withAuditing": true
     },
     {
+      "tableName": "test_implicit",
+      "withAuditing": true
+    },
+    {
       "tableName": "audit_test_tenantapi",
       "index": [
         {
