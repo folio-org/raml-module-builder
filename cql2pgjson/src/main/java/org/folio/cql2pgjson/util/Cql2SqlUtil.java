@@ -37,10 +37,7 @@ public final class Cql2SqlUtil {
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
   public static String cql2like(String s) {
     StringBuilder like = new StringBuilder();
-    /**
-     * true if the previous character is an escaping backslash
-     */
-    boolean backslash = false;
+    boolean backslash = false;  // previous character is backslash
     for (char c : s.toCharArray()) {
       switch (c) {
         case '\\':
@@ -140,10 +137,7 @@ public final class Cql2SqlUtil {
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
   public static String cql2regexp(String s) {
     StringBuilder regexp = new StringBuilder();
-    /**
-     * true if the previous character is an escaping backslash
-     */
-    boolean backslash = false;
+    boolean backslash = false;  // previous character is backslash
     for (char c : s.toCharArray()) {
       switch (c) {
         case '\\':
