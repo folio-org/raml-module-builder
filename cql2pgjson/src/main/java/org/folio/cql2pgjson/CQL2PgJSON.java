@@ -617,10 +617,10 @@ public class CQL2PgJSON {
     vals.setIndexText(index2sqlText("t.c", relationModifier.getSubfield()));
 
     final String table = this.jsonField.split("\\.")[0];
-    final String jsonField = this.jsonField.split("\\.")[1];
+    final String field = this.jsonField.split("\\.")[1];
 
     res.append("id in (select t.id from (select id as id, jsonb_array_elements(");
-    res.append(jsonField + "->'" + index + "') as c from " + table + ") as t where t.c");
+    res.append(field + "->'" + index + "') as c from " + table + ") as t where t.c");
     res.append(" @> '{\"");
     res.append(relationModifier.getModifierName()); // TODO: unescape
     res.append("\": \"");
