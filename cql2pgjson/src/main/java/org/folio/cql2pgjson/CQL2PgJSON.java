@@ -649,11 +649,14 @@ public class CQL2PgJSON {
       if (!m.getType().startsWith("@")) {
         continue;
       }
+      final String modifierValue = m.getValue();
+      if (modifierValue == null) {
+        throw new QueryValidationException("CQL: Missing value for relation modifier " + m.getType());
+      }
       final String modifierName = m.getType().substring(1);
       if (modifiers != null) {
         for (org.folio.rest.persist.ddlgen.Modifier rm : modifiers) {
           if (rm.getModifierName().equalsIgnoreCase(modifierName)) {
-            final String modifierValue = m.getValue();
             return arrayNode(index, node, rm, modifierValue, dbIndex);
           }
         }
