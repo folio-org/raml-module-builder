@@ -33,38 +33,39 @@ public class CqlModifiers {
   @SuppressWarnings("squid:MethodCyclomaticComplexity")
   public final void readModifiers(List<Modifier> modifiers) throws CQLFeatureUnsupportedException {
     for (Modifier m : modifiers) {
-      if (!m.getType().startsWith("@")) {
-        switch (m.getType()) {
-          case "ignorecase":
-            setCqlCase(CqlCase.IGNORE_CASE);
-            break;
-          case "respectcase":
-            setCqlCase(CqlCase.RESPECT_CASE);
-            break;
-          case "ignoreaccents":
-            setCqlAccents(CqlAccents.IGNORE_ACCENTS);
-            break;
-          case "respectaccents":
-            setCqlAccents(CqlAccents.RESPECT_ACCENTS);
-            break;
-          case "string":
-            setCqlTermFormat(CqlTermFormat.STRING);
-            break;
-          case "number":
-            setCqlTermFormat(CqlTermFormat.NUMBER);
-            break;
-          case "sort.ascending":
-            setCqlSort(CqlSort.ASCENDING);
-            break;
-          case "sort.descending":
-            setCqlSort(CqlSort.DESCENDING);
-            break;
-          case "masked":
-            setCqlMasking(CqlMasking.MASKED);
-            break;
-          default:
-            throw new CQLFeatureUnsupportedException("CQL: Unsupported modifier " + m.getType());
-        }
+      if (m.getType().startsWith("@")) {
+        continue;
+      }
+      switch (m.getType()) {
+        case "ignorecase":
+          setCqlCase(CqlCase.IGNORE_CASE);
+          break;
+        case "respectcase":
+          setCqlCase(CqlCase.RESPECT_CASE);
+          break;
+        case "ignoreaccents":
+          setCqlAccents(CqlAccents.IGNORE_ACCENTS);
+          break;
+        case "respectaccents":
+          setCqlAccents(CqlAccents.RESPECT_ACCENTS);
+          break;
+        case "string":
+          setCqlTermFormat(CqlTermFormat.STRING);
+          break;
+        case "number":
+          setCqlTermFormat(CqlTermFormat.NUMBER);
+          break;
+        case "sort.ascending":
+          setCqlSort(CqlSort.ASCENDING);
+          break;
+        case "sort.descending":
+          setCqlSort(CqlSort.DESCENDING);
+          break;
+        case "masked":
+          setCqlMasking(CqlMasking.MASKED);
+          break;
+        default:
+          throw new CQLFeatureUnsupportedException("CQL: Unsupported modifier " + m.getType());
       }
     }
   }
