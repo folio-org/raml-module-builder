@@ -173,7 +173,7 @@ Limited cross table searches are supported.  If you desire a join across tables 
   - e.g. someTableName.indexYouWantToSearch = value
 * if no conditions are required and a join is all that is needed use:
   id = someTableName.indexYouWantToSearch 
-
+* currently no other operators are supported.  They will be added at a later date.
 
 
 ## Exceptions
