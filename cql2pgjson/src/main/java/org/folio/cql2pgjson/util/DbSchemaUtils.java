@@ -24,17 +24,23 @@ public class DbSchemaUtils {
    * @param indexName
    * @return
    */
-  public static DbIndex getDbIndex(Schema schema, String tableName, String indexName) {
-
+  public static DbIndex getDbIndex(Schema schema, String tableNameAndField, String indexName) {
     DbIndex dbIndexStatus = new DbIndex();
 
-    if (schema.getTables() != null && !schema.getTables().isEmpty()) {
+    if (tableNameAndField != null && schema.getTables() != null) {
+      // remove .jsonb or similar suffix
+      final String tableName = tableNameAndField.replaceAll("\\.[^.]+$", "");
+
       for (Table table : schema.getTables()) {
         if (table.getTableName().equalsIgnoreCase(tableName)) {
           dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
+          Index fulltextIndex = getDbIndex(indexName, table.getFullTextIndex());
+          if (fulltextIndex != null) {
+            dbIndexStatus.setModifiers(fulltextIndex.getModifiers());
+          }
           dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
           for (List<Index> index : Arrays.asList(table.getIndex(),
-              table.getUniqueIndex(), table.getLikeIndex())) {
+            table.getUniqueIndex(), table.getLikeIndex())) {
             dbIndexStatus.setOther(checkDbIndex(indexName, index));
             if (dbIndexStatus.isOther()) {
               break;
@@ -43,19 +49,22 @@ public class DbSchemaUtils {
         }
       }
     }
-
     return dbIndexStatus;
   }
 
   private static boolean checkDbIndex(String cqlIndex, List<Index> indexes) {
+    return getDbIndex(cqlIndex, indexes) != null;
+  }
+
+  private static Index getDbIndex(String cqlIndex, List<Index> indexes) {
     if (indexes != null) {
       for (Index i : indexes) {
         if (cqlIndex.equals(i.getFieldName())) {
-          return true;
+          return i;
         }
       }
     }
-    return false;
+    return null;
   }
 
 }

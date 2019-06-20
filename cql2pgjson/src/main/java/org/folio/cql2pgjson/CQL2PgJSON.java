@@ -67,7 +67,6 @@ public class CQL2PgJSON {
 
   // leverage RMB and consider to merge cql2pgjson into RMB
   private Schema dbSchema;
-  private Table dbTable;
 
   /**
    * Default index names to be used for cql.serverChoice.
@@ -85,7 +84,6 @@ public class CQL2PgJSON {
    */
   public CQL2PgJSON(String field) throws FieldException {
     doInit(field, null);
-    initDbTable();
   }
 
   /**
@@ -124,7 +122,6 @@ public class CQL2PgJSON {
     if (this.jsonFields.size() == 1) {
       this.jsonField = this.jsonFields.get(0);
     }
-    initDbTable();
   }
 
   /**
@@ -154,10 +151,6 @@ public class CQL2PgJSON {
     return dbSchema;
   }
 
-  public Table getDbTable() {
-    return dbTable;
-  }
-
   public void setDbSchemaPath(String dbSchemaPath) {
     loadDbSchema(dbSchemaPath);
   }
@@ -173,29 +166,6 @@ public class CQL2PgJSON {
       dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
     } catch (IOException|UncheckedIOException ex) {
       logger.log(Level.SEVERE, "No schema.json found: " + ex.getMessage(), ex);
-    }
-  }
-
-  private void initDbTable() {
-    if (dbSchema.getTables() != null) {
-      if (jsonField == null) {
-        logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
-        return;
-      }
-      // Remove the json blob field name, usually ".jsonb", but in tests also
-      // ".user_data" etc.
-      String tname = this.jsonField.replaceAll("\\.[^.]+$", "");
-      for (Table table : dbSchema.getTables()) {
-        if (tname.equalsIgnoreCase(table.getTableName())) {
-          dbTable = table;
-          break;
-        }
-      }
-      if (dbTable == null) {
-        logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): Table {0} NOT FOUND", tname);
-      }
-    } else {
-      logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): No 'tables' section found");
     }
   }
 
@@ -639,6 +609,29 @@ public class CQL2PgJSON {
     }
   }
 
+  private String arrayNode(String index, CQLTermNode node, org.folio.rest.persist.ddlgen.Modifier relationModifier,
+    String modifierValue, DbIndex dbIndex) throws QueryValidationException {
+
+    StringBuilder res = new StringBuilder();
+
+    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+    vals.setIndexText(index2sqlText("t.c", relationModifier.getSubfield()));
+
+    final String table = this.jsonField.split("\\.")[0];
+    final String jsonField = this.jsonField.split("\\.")[1];
+
+    res.append("id in (select t.id from (select id as id, jsonb_array_elements(");
+    res.append(jsonField + "->'" + index + "') as c from " + table + ") as t where t.c");
+    res.append(" @> '{\"");
+    res.append(relationModifier.getModifierName()); // TODO: unescape
+    res.append("\": \"");
+    res.append(modifierValue); // TODO: unescape
+    res.append("\"}' and ");
+    res.append(indexNode(index, node, vals, dbIndex));
+    res.append(")");
+    return res.toString();
+  }
+
   /**
    * Create an SQL expression where index is applied to all matches.
    *
@@ -649,14 +642,35 @@ public class CQL2PgJSON {
    * @throws QueryValidationException
    */
   private String index2sql(String index, CQLTermNode node) throws QueryValidationException {
+    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, this.jsonField, index);
+
+    List<org.folio.rest.persist.ddlgen.Modifier> modifiers = dbIndex.getModifiers();
+    for (Modifier m : node.getRelation().getModifiers()) {
+      if (!m.getType().startsWith("@")) {
+        continue;
+      }
+      final String modifierName = m.getType().substring(1);
+      if (modifiers != null) {
+        for (org.folio.rest.persist.ddlgen.Modifier rm : modifiers) {
+          if (rm.getModifierName().equalsIgnoreCase(modifierName)) {
+            final String modifierValue = m.getValue();
+            return arrayNode(index, node, rm, modifierValue, dbIndex);
+          }
+        }
+      }
+      throw new QueryValidationException("CQL: Unsupported relation modifier " + m.getType());
+    }
+    return indexNode(index, node, vals, dbIndex);
+  }
+
+  private String indexNode(String index, CQLTermNode node, IndexTextAndJsonValues vals,
+    DbIndex dbIndex) throws QueryValidationException {
 
     // special handling of id search (re-use existing code)
     if ("id".equals(index)) {
       return pgId(node);
     }
-
-    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, this.jsonField, index);
 
     CqlModifiers modifiers = new CqlModifiers(node);
     String comparator = node.getRelation().getBase().toLowerCase();
@@ -706,7 +720,7 @@ public class CQL2PgJSON {
    */
   private String queryByFt(boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
 
-    String index = vals.getIndexText();
+    final String index = vals.getIndexText();
 
     if (!hasFtIndex) {
       logger.log(Level.WARNING, "Doing FT search without FT index {0}", index);
@@ -747,30 +761,12 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
     }
-    tsTerm += addRelationModifiers(node.getRelation().getModifiers());
     // "simple" dictionary only does lower_casing, so need f_unaccent
     String sql = "to_tsvector('simple', f_unaccent(" + index + ")) "
       + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))";
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{index, sql});
     return sql;
-  }
-
-  private String addRelationModifiers(List<Modifier> modifiers) {
-    StringBuilder res = new StringBuilder();
-    for (Modifier m : modifiers) {
-      if (m.getType().startsWith("@")) {
-        final String type = m.getType().substring(1);
-        final String value = m.getValue();
-        res.append(" & ");
-        res.append(type);
-        if (value != null) {
-          res.append(" & ");
-          res.append(value);
-        }
-      }
-    }
-    return res.toString();
   }
 
   /**

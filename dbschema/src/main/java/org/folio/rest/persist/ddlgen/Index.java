@@ -1,5 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
+import java.util.List;
+
 /**
  * @author shale
  *
@@ -10,6 +12,7 @@ public class Index extends TableIndexes {
   private String whereClause = null;
   private boolean stringType = true;
   private boolean removeAccents = true;
+  private List<Modifier> modifiers = null;
 
   public boolean isCaseSensitive() {
     return caseSensitive;
@@ -36,4 +39,11 @@ public class Index extends TableIndexes {
     this.removeAccents = removeAccents;
   }
 
+  public List<Modifier> getModifiers() {
+    return modifiers;
+  }
+
+  public void setModifiers(List<Modifier> modifiers) {
+    this.modifiers = modifiers;
+  }
 }
