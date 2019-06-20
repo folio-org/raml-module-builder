@@ -76,7 +76,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       String where = aCql2pgJson.cql2pgJson(cql);
       //sql = "select user_data->'name' from users where " + where;
       sql = "select " + blob + "->'name' from " + tablename + " where " + where;
-      logger.warning("select: CQL --> SQL: " + cql + " --> " + sql);
+      logger.info("select: CQL --> SQL: " + cql + " --> " + sql);
       runSqlFile(sqlFile);
       logger.fine("select: sqlfile done");
       String actualNames = "";
