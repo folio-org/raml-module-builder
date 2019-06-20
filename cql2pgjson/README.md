@@ -162,6 +162,20 @@ Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number
 If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", and ">=" if the actual JSONB type of the stored value is `number`
 (JSONB has no `integer` type).
 
+## Cross index searches
+
+Limited cross table searches are supported.  If you desire a join across tables the following conditions must be met:
+
+* there must be a foreign key from the child field -> parent field.
+* the join desired index must be only 1 table deep
+  - e.g.  table1 -> table2 not table1 -> table2 -> table3
+* precede the index you want to search with the table name in Camel Case.
+  - e.g. someTableName.indexYouWantToSearch = value
+* if no conditions are required and a join is all that is needed use:
+  id = someTableName.indexYouWantToSearch 
+
+
+
 ## Exceptions
 
 All locally produced Exceptions are derived from a single parent so they can be caught collectively

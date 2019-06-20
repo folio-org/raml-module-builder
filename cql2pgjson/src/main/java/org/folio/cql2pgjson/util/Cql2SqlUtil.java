@@ -88,17 +88,17 @@ public final class Cql2SqlUtil {
    * Convert a CQL string to an SQL string. and SQL string constant escapes only
    * the single quote ' by doubling it.
    *
-   * @param s CQL string without leading or trailing double quote
+   * @param cql CQL string without leading or trailing double quote
    * @return SQL string without leading or trailing single quote
    */
-  public static String cql2string(String s) throws QueryValidationException {
-    StringBuilder like = new StringBuilder();
-    boolean backslash = false; // previous character is backslash
-    for (char c : s.toCharArray()) {
+  public static String cql2string(String cql) throws QueryValidationException {
+    StringBuilder s = new StringBuilder();
+    boolean backslash = false; // previous character is escaping backslash
+    for (char c : cql.toCharArray()) {
       switch (c) {
         case '\\':
           if (backslash) {
-            like.append("\\");
+            s.append("\\");
             backslash = false;
             continue;
           }
@@ -107,17 +107,17 @@ public final class Cql2SqlUtil {
         case '?':
         case '*':
           if (backslash) {
-            like.append(c);
+            s.append(c);
           } else {
             throw new QueryValidationException("CQL operator " + c + " unsupported");
           }
           break;
         case '\'':   // a single quote '
           // postgres requires to double a ' inside a ' terminated string.
-          like.append("''");
+          s.append("''");
           break;
         default:
-          like.append(c);
+          s.append(c);
           break;
       }
       backslash = c == '\\';
@@ -125,7 +125,7 @@ public final class Cql2SqlUtil {
     if (backslash) {
       throw new QueryValidationException("Unterminated \\-character");
     }
-    return like.toString();
+    return s.toString();
   }
 
   /**
