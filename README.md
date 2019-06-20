@@ -724,60 +724,6 @@ create table <schema>.<table_name> (
 
 This means that all the fields in the JSON schema (representing the JSON object) **are** the "jsonb" (column) in the Postgres table.
 
-There is one exception to this. Lets take an example of an auditing table which wants to store changes to a specific table. Every row in the audit table will contain the operation, date, and the current content (jsonb) in the table being audited.
-
-For example:
-
-
-id| orig_id | operation | jsonb | creation_date
------------- | -------------  | -------------  | -------------  | -------------  |
- |  |
-12345| 11111 | insert | {json with current data} | 1/1/2010
-67890| 22222 | delete | {json with previous data} | 1/1/2010
-12321| 11111 | update | {json with current data} | 1/1/2010
-
-When querying such a table, you would want to get back all columns, not just the id and the jsonb columns.
-
-To achieve this, the declared JSON schema would need to contain a "jsonb" field.
-For example: JSON schema representing the entire auditing table row:
-
-```json
-{
-  "$schema":"http://json-schema.org/draft-04/schema#",
-  "type":"object",
-  "properties":{
-    "id":{
-      "type":"string"
-    },
-    "orig_id":{
-      "type":"string"
-    },
-    "operation":{
-      "type":"string"
-    },
-    "jsonb":{
-      "type": "object",
-        "properties": {
-          "content": {
-            "id": "contentData",
-            "type": "array",
-            "items": {
-              "type": "object",
-              "$ref" : "config"
-          }
-        }
-      }
-    },
-    "creation_date":{
-      "type":"string"
-    }
-  }
-}
-```
-where the "jsonb" field references a JSON schema that will exist in the "jsonb" column in the table.
-
-The example above refers to querying only. As of now, saving a record will only save the "jsonb" and "id" fields (the above example uses triggers to populate the operation, creation data, and original id).
-
 #### Saving binary data
 
 As indicated, the PostgresClient is jsonb oriented. If there is a need to store data in binary form, this can be done in the following manner (only id based upsert is currently supported):
@@ -1018,36 +964,40 @@ For each **table**:
 1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
 2. `generateId` - No longer supported.  This functionality is not stable in Pgpool-II see https://www.pgpool.net/docs/latest/en/html/restrictions.html.  The solution is to generate a UUID in java in the same manner as https://github.com/folio-org/raml-module-builder/blob/v23.11.0/domain-models-runtime/src/main/java/org/folio/rest/persist/PgUtil.java#L358
 3. `fromModuleVersion` - this field indicates the version in which the table was created / updated in. When a tenant update is requested - only versions older than the indicated version will generate the declared table. This ensures that if a module upgrades from an older version, the needed tables will be generated for it, however, subsequent upgrades from versions equal or later than the version indicated for the table will not re-generate the table.
- - Note that this is enforced for all tables, views, indexes, FK, triggers, etc... - via the `IF NOT EXISTS` sql Postgres statement
+    * Note that this is enforced for all tables, views, indexes, FK, triggers, etc... - via the `IF NOT EXISTS` sql Postgres statement
 4. `mode` - should be used only to indicate `delete`
 5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
 6. `likeIndex` - indicate which fields in the json will be queried using the LIKE  - needed for fields that will be faceted on
- - `fieldName` the field name in the json to create the index for
- - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
- - the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. *Default: false* should not be changed, temporarily all indexes are created with a `lower()` function wrapper. Index will not be used if this is changed (important on large tables)
- -  `removeAccents` - normalize accents or leave accented chars as is. *Default: true* should not be changed, temporarily all indexes are created with a `f_unaccent()` function wrapper. Index will not be used if this is changed (important on large tables)
- - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
- - `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
+    * `fieldName` the field name in the json to create the index for
+    * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
+    * the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. *Default: false* should not be changed, temporarily all indexes are created with a `lower()` function wrapper. Index will not be used if this is changed (important on large tables)
+    *  `removeAccents` - normalize accents or leave accented chars as is. *Default: true* should not be changed, temporarily all indexes are created with a `f_unaccent()` function wrapper. Index will not be used if this is changed (important on large tables)
+    * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+    * `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
 7. `ginIndex` - generate an inverted index on the json using the `gin_trgm_ops` extension. Allows for regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the equality operator (=). See the `likeIndex` for available options (does not support partial indexes - where). removeAccents is set to true and is not case sensitive.
-8. `withAuditing` - create an auditing table with triggers populating the audit table whenever an insert, update, or delete occurs on the table
- - the name of the audit table will be `audit_`{tableName}
- - The `auditingSnippet` section allows some customizations to the auditing function by allowing custom sqls in the declare section and the body (for either insert / update / delete)
-9. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the json and creating a FK constraint)
-10. `uniqueIndex` - create a unique index on a field in the json
- - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
- - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
- - See additional options in the likeIndex section above
-11. `index` - create a btree index on a field in the json
- - the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
- - the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
- - See additional options in the likeIndex section above
-12. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
-13. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
-14. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into jsonb->'id' on each insert and update.
-15. `fullTextIndex` - create a full text index using the tsvector features of postgres. These do their
- - own normalizing, so there is no need to use `caseSensitive` or `removeAccents`. The `tOps`
- - is optional (like for all indexes), and defaults to ADDing the index. `whereClause` and
- - `stringType` work as for `likeIndex` above.
+8. `uniqueIndex` - create a unique index on a field in the json
+    * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
+    * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+    * See additional options in the likeIndex section above
+9. `index` - create a btree index on a field in the json
+    * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
+    * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+    * See additional options in the likeIndex section above
+10. `fullTextIndex` - create a full text index using the tsvector features of postgres. These do their
+own normalizing, so there is no need to use `caseSensitive` or `removeAccents`. The `tOps`
+is optional (like for all indexes), and defaults to ADDing the index. `whereClause` and
+`stringType` work as for `likeIndex` above.
+11. `withAuditing` - create an auditing table with triggers populating the audit table whenever an insert, update, or delete occurs on the table
+    * The name of the audit table will be `audit_`{tableName}.
+    * An entry of the audit table in the "tables" section of schema.json is optional, for example to create indexes.
+    * The `auditingSnippet` section allows some customizations to the auditing function by allowing custom sqls in the declare section and the body (for either insert / update / delete).
+    * The audit table has four fields: `item` contains the original jsonb, `id` contains a new unique id,
+      `operation` contains `I`, `U`, `D` for insert, update, delete, and `createdDate` contains
+      the time when the audit record was created.
+12. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the json and creating a FK constraint)
+13. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
+14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
+15. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into jsonb->'id' on each insert and update.
 16. `pkColumnName` - No longer supported. The name of the primary key column is always `id` and is copied into `jsonb->'id'` in each insert and update. The method PostgresClient.setIdField(String) no longer exists.
 
 The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
