@@ -571,10 +571,10 @@ public class CQL2PgJSON {
       String termString = "";
       CqlModifiers modifiers = new CqlModifiers(node);
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-        termString = "('" + Cql2SqlUtil.cql2string(term, true) + "')::NUMERIC";
+        termString = "('" + Cql2SqlUtil.cql2string(term) + "')::NUMERIC";
         indexString = "(" + whereField + ")::NUMERIC";
       } else {
-        termString = String.format(template, "'" + Cql2SqlUtil.cql2string(term, true) + "'");
+        termString = String.format(template, "'" + Cql2SqlUtil.cql2string(term) + "'");
         indexString = String.format(template, whereField);
       }
       selectString = "Cast ( " + targetField + "as UUID)";
