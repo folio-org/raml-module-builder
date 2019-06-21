@@ -1,5 +1,6 @@
 package org.folio.cql2pgjson.model;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
@@ -14,6 +15,7 @@ public class CqlModifiers {
   private CqlAccents cqlAccents = CqlAccents.IGNORE_ACCENTS;
   private CqlTermFormat cqlTermFormat = CqlTermFormat.STRING;
   private CqlMasking cqlMasking = CqlMasking.MASKED;
+  private List<Modifier> relationModifiers = new LinkedList<>();
 
   public CqlModifiers(CQLTermNode node) throws CQLFeatureUnsupportedException {
     readModifiers(node.getRelation().getModifiers());
@@ -34,6 +36,7 @@ public class CqlModifiers {
   public final void readModifiers(List<Modifier> modifiers) throws CQLFeatureUnsupportedException {
     for (Modifier m : modifiers) {
       if (m.getType().startsWith("@")) {
+        relationModifiers.add(m);
         continue;
       }
       switch (m.getType()) {
@@ -68,6 +71,10 @@ public class CqlModifiers {
           throw new CQLFeatureUnsupportedException("CQL: Unsupported modifier " + m.getType());
       }
     }
+  }
+
+  public List<Modifier> getRelationModifiers() {
+    return relationModifiers;
   }
 
   public CqlSort getCqlSort() {

@@ -919,12 +919,15 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contributors = terry          # a",
     "contributors = \"2b94c631-fca9-4892-a730-03ee529ffe2a\" # a",
     "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2a terry # a",
+    "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2A terry # ", // notice that it's case sensitive
     "contributors =/@contributornametypeid=2b94c631-03ee529ffe2a terry # ",
     "contributors =/@contributornametypeid=\"2b94c631-fca9-4892-a730-03ee529ffe2a\" creator #",
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator a #",
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator b # b",
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator c #",
     "contributors =/@foo=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator c #CQL: Unsupported relation modifier @foo ",
+    "contributors =/@foo=1/@bar=2 c #CQL: Only one @-relation modifier supported ",
+    "contributors =/@foo<1 c #CQL: Unsupported comparison for relation modifier @foo ",
     "identifiers =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a c #CQL: Unsupported relation modifier @contributornametypeid",
     "identifiers =/@contributornametypeid c #CQL: Missing value for relation modifier @contributornametypeid",
     "contributors all \"contributornametypeid\" # a; b",
@@ -937,21 +940,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name = terry                  #",
     "contributors.name = terry     #",
     "contributors.name = terry     #",
-
-    //"lang = [\"en\"]               # b", // disable this till CQL-PG83 is done
-  //"lang = [\"au\"]               # i", //
-  //
-  /*    "                     lang ==/respectAccents []     # a",
-    "cql.allRecords=1 NOT lang <>/respectAccents []     # a; n",
-    "lang =/respectCase/respectAccents en               # b; c; d; f; g; h; i",
-
-    // note that \"en\" also matches case f ["\"en"]
-    "                     lang =/respectCase/respectAccents \\\"en\\\"   # b; f; i",  // without Java quoting: \"en\"
-    "cql.allRecords=1 NOT lang =/respectCase/respectAccents \\\"en\\\"   # a; c; d; e; g; h; n",
-    "lang = \"\"      NOT lang =/respectCase/respectAccents \\\"en\\\"   # a; c; d; e; g; h",
-    "lang = \"\"                                                         # a; b; c; d; e; f; g; h; i",
-    "cql.allRecords=1 NOT lang = \"\"                                    # n",
-   */})
+    })
   public void arrayFT(String testcase) throws IOException, CQL2PgJSONException {
     logger.fine("arrayFT():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(

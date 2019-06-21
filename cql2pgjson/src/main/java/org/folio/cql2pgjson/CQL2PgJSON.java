@@ -765,7 +765,7 @@ public class CQL2PgJSON {
   }
 
   private String arrayNode(String index, CQLTermNode node, org.folio.rest.persist.ddlgen.Modifier relationModifier,
-    String modifierValue, DbIndex dbIndex) throws QueryValidationException {
+    String modifierValue, DbIndex dbIndex, CqlModifiers modifiers) throws QueryValidationException {
 
     StringBuilder res = new StringBuilder();
 
@@ -778,11 +778,12 @@ public class CQL2PgJSON {
     res.append("id in (select t.id from (select id as id, jsonb_array_elements(");
     res.append(field + "->'" + index + "') as c from " + table + ") as t where t.c");
     res.append(" @> '{\"");
+    // pass the name from the schema rather than CQL because case is lost
     res.append(Cql2SqlUtil.cql2string(relationModifier.getModifierName()));
     res.append("\": \"");
     res.append(Cql2SqlUtil.cql2string(modifierValue));
     res.append("\"}' and ");
-    res.append(indexNode(index, node, vals, dbIndex));
+    res.append(indexNode(index, node, vals, dbIndex, modifiers));
     res.append(")");
     return res.toString();
   }
@@ -800,37 +801,40 @@ public class CQL2PgJSON {
     IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbTable, index);
 
-    List<org.folio.rest.persist.ddlgen.Modifier> modifiers = dbIndex.getModifiers();
-    for (Modifier m : node.getRelation().getModifiers()) {
-      if (!m.getType().startsWith("@")) {
-        continue;
-      }
+    CqlModifiers cqlModifiers = new CqlModifiers(node);
+    List<org.folio.rest.persist.ddlgen.Modifier> schemaModifiers = dbIndex.getModifiers();
+    if (cqlModifiers.getRelationModifiers().size() > 1) {
+      throw new QueryValidationException("CQL: Only one @-relation modifier supported");
+    }
+    for (Modifier m : cqlModifiers.getRelationModifiers()) {
       final String modifierValue = m.getValue();
       if (modifierValue == null) {
         throw new QueryValidationException("CQL: Missing value for relation modifier " + m.getType());
       }
+      if (!"=".equals(m.getComparison())) {
+        throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + m.getType());
+      }
       final String modifierName = m.getType().substring(1);
-      if (modifiers != null) {
-        for (org.folio.rest.persist.ddlgen.Modifier rm : modifiers) {
-          if (rm.getModifierName().equalsIgnoreCase(modifierName)) {
-            return arrayNode(index, node, rm, modifierValue, dbIndex);
+      if (schemaModifiers != null) {
+        for (org.folio.rest.persist.ddlgen.Modifier schemaModifier : schemaModifiers) {
+          if (schemaModifier.getModifierName().equalsIgnoreCase(modifierName)) {
+            return arrayNode(index, node, schemaModifier, modifierValue, dbIndex, cqlModifiers);
           }
         }
       }
       throw new QueryValidationException("CQL: Unsupported relation modifier " + m.getType());
     }
-    return indexNode(index, node, vals, dbIndex);
+    return indexNode(index, node, vals, dbIndex, cqlModifiers);
   }
 
   private String indexNode(String index, CQLTermNode node, IndexTextAndJsonValues vals,
-    DbIndex dbIndex) throws QueryValidationException {
+    DbIndex dbIndex, CqlModifiers modifiers) throws QueryValidationException {
 
     // special handling of id search (re-use existing code)
     if ("id".equals(index)) {
       return pgId(node);
     }
 
-    CqlModifiers modifiers = new CqlModifiers(node);
     String comparator = node.getRelation().getBase().toLowerCase();
 
     switch (comparator) {
