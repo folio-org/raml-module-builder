@@ -28,7 +28,13 @@
           "fieldName": "type",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": true
+          "removeAccents": true,
+          "modifiers" : [
+            {
+              "modifierName": "languageId",
+              "subfield": "name"
+            }
+          ]
         }
       ],
       "ginIndex": [
