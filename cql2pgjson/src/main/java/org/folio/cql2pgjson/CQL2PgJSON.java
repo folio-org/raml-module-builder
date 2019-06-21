@@ -425,7 +425,7 @@ public class CQL2PgJSON {
    *
    * @return SQL term
    */
-  private static String index2sqlText(String jsonField, String index) throws QueryValidationException {
+  static String index2sqlText(String jsonField, String index) throws QueryValidationException {
     StringBuilder res = new StringBuilder();
     String[] comp = index.split("\\.");
     res.append(jsonField);
@@ -602,7 +602,7 @@ public class CQL2PgJSON {
     String wrappingStringTemplate = "%s";
     for(Index i : targetTable.getIndex()) {
       if(i.getFieldName().equals(whereField)) {
-        if(i.isRemoveAccents()) { 
+        if(i.isRemoveAccents()) {
           wrappingStringTemplate = "f_unaccent(" +wrappingStringTemplate + ")";
         }
         if(!i.isCaseSensitive()) {

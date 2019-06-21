@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.logging.Logger;
 
-import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -949,7 +948,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     logger.fine("arrayFT(): " + testcase + " OK");
   }
 
-  /* Need to sort out the array stuff first
+  @Ignore("Need to sort out the array stuff first")
   @Test
   @Parameters({
     "lang==en   sortBy name                         # Jo Jane; Ka Keller; Lea Long",
@@ -964,20 +963,21 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void sortFT(String testcase) throws IOException, CQL2PgJSONException {
     logger.fine("sortFT():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
-      "users.user_data", dbSchema, Arrays.asList("name"));
+      "users.user_data", Arrays.asList("name"));
     select(aCql2pgJson, testcase);
     logger.fine("sortFT(): " + testcase + " OK");
     select(testcase);
   }
-*/
+
   /* And/Or/Not tests need to be done with different data, with pgs
   simple truncations. TODO.
    */
-  //
- /* Simple subqueries, on the users and groups. Users point to groups.
-  * Subqueries not enabled (yet)
+
+  /* Simple subqueries, on the users and groups. Users point to groups.
+   *
    */
-  //@Test
+  @Ignore("Subqueries not enabled (yet)")
+  @Test
   @Parameters({
     "name = Long           # Lea Long",
     "groups.name = first   # Ka Keller "
@@ -989,13 +989,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     logger.fine("subFT(): " + testcase + " OK");
   }
 
-  /* More complex subqueries, on instances, holdings, and items.
+  /* TODO: More complex subqueries, on instances, holdings, and items.
    * Note, we query on instances, locations point to instances, items point
    * to locations.
-   * TODO: The subquery stuff is not really enabled yet, except incidentally
-   * inside fulltext indexes.
    */
-  //@Test
+  @Ignore("TODO: The subquery stuff is not really enabled yet, except incidentally inside fulltext indexes.")
+  @Test
   @Parameters({
     "name = first          # first",
     "holdings.callNumber = 10  # noloc",
@@ -1050,4 +1049,22 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     logger.fine("instanceSubFT(): " + testcase + " OK");
   }
 
+  @Parameters({
+    "f,           a,       f->>'a'",
+    "f,           a.b.c.d, f->'a'->'b'->'c'->>'d'",
+    "myJsonField, a.b.c,   myJsonField->'a'->'b'->>'c'"
+  })
+  @Test
+  public void index2sqlText(String jsonField, String index, String expected) throws Exception {
+    assertThat(CQL2PgJSON.index2sqlText(jsonField, index), is(expected));
+  }
+
+  @Parameters({
+    "f,           *",
+    "f,           a.b.c*c",
+  })
+  @Test(expected = QueryValidationException.class)
+  public void index2sqlTextException(String jsonField, String index) throws Exception {
+    CQL2PgJSON.index2sqlText(jsonField, index);
+  }
 }
