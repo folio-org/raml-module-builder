@@ -425,7 +425,7 @@ public class CQL2PgJSON {
    *
    * @return SQL term
    */
-  private static String index2sqlText(String jsonField, String index) {
+  private static String index2sqlText(String jsonField, String index) throws QueryValidationException {
     StringBuilder res = new StringBuilder();
     String[] comp = index.split("\\.");
     res.append(jsonField);
@@ -436,7 +436,7 @@ public class CQL2PgJSON {
         res.append("->>");
       }
       res.append("\'");
-      res.append(comp[j]);
+      res.append(Cql2SqlUtil.cql2string(comp[j]));
       res.append("\'");
     }
     return res.toString();
@@ -778,9 +778,9 @@ public class CQL2PgJSON {
     res.append("id in (select t.id from (select id as id, jsonb_array_elements(");
     res.append(field + "->'" + index + "') as c from " + table + ") as t where t.c");
     res.append(" @> '{\"");
-    res.append(relationModifier.getModifierName()); // TODO: unescape
+    res.append(Cql2SqlUtil.cql2string(relationModifier.getModifierName()));
     res.append("\": \"");
-    res.append(modifierValue); // TODO: unescape
+    res.append(Cql2SqlUtil.cql2string(modifierValue));
     res.append("\"}' and ");
     res.append(indexNode(index, node, vals, dbIndex));
     res.append(")");
