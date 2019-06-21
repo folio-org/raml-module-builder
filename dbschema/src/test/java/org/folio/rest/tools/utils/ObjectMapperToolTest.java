@@ -24,6 +24,5 @@ class ObjectMapperToolTest {
       .getModifiers().get(0).getSubfield(), is("name"));
     assertThat(dbSchema.getTables().get(0).getLikeIndex().get(0)
       .getModifiers().get(0).getModifierName(), is("languageId"));
-
   }
 }
