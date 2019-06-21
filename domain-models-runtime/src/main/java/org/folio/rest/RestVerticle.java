@@ -330,7 +330,7 @@ public class RestVerticle extends AbstractVerticle {
           // default to 8181.
           result -> {
             if (result.failed()) {
-              startFuture.fail(result.cause());
+              startFuture.fail(new RuntimeException("Listening on port " + p, result.cause()));
             } else {
               try {
                 runPostDeployHook( res2 -> {
