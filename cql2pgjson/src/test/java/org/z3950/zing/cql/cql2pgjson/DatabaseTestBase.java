@@ -116,7 +116,7 @@ public class DatabaseTestBase {
     }
 
     // often used local test database
-    urls.add("jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test");
+    urls.add("jdbc:postgresql://127.0.0.1:5432/postgres?currentSchema=public&user=test&password=test");
     // local test database of folio.org CI environment
     urls.add("jdbc:postgresql://127.0.0.1:5433/postgres?currentSchema=public&user=postgres&password=postgres");
     for (String url : urls) {
@@ -201,6 +201,25 @@ public class DatabaseTestBase {
       statement.execute(sqlStatement);
     } catch (SQLException e) {
       throw new SQLRuntimeException(sqlStatement, e);
+    }
+  }
+
+  /**
+   * Run the selectStatement and return the first column of the result.
+   * @param sqlStatement  the SELECT command to run
+   * @return the first column of the result, converted into Strings
+   * @throws SQLRuntimeException on SQLException
+   */
+  static List<String> firstColumn(String selectStatement) {
+    try (Statement statement = conn.createStatement();
+         ResultSet resultSet = statement.executeQuery(selectStatement)) {
+      List<String> array = new ArrayList<>();
+      while (resultSet.next()) {
+        array.add(resultSet.getString(1));
+      }
+      return array;
+    } catch (SQLException e) {
+      throw new SQLRuntimeException(selectStatement, e);
     }
   }
 
@@ -300,8 +319,13 @@ public class DatabaseTestBase {
    */
   static void runSqlFile(String path) {
     String file = ResourceUtil.asString(path);
+    // replace \r and \n inside of $$ and $$ by space
+    String [] chunks = file.split("\\$\\$");
+    for (int i = 1; i < chunks.length; i += 2) {
+      chunks[i] = chunks[i].replaceAll("[\\n\\r]+", " ");
+    }
     // split at semicolon at end of line (removing optional whitespace)
-    String [] statements = file.split(";\\s*[\\n\\r]+\\s*");
+    String [] statements = String.join("$$", chunks).split(";\\s*[\\n\\r]+\\s*");
     for (String sql : statements) {
       runSqlStatement(sql);
     }

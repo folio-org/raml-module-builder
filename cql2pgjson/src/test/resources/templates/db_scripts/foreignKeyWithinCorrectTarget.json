@@ -1,0 +1,20 @@
+{
+  "tables": [
+    {
+      "tableName": "tablea"
+    },
+    {
+      "tableName": "tableb",
+      "foreignKeys": [
+        {
+          "fieldName": "tableaId",
+          "targetTable": "tablec"
+        }
+      ]
+    },
+    {
+      "tableName": "tablec"
+      
+    }
+  ]
+}

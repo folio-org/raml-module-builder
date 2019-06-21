@@ -1,0 +1,12 @@
+{
+  "tables": [
+    {
+      "tableName": "tablea"
+    },
+    {
+      "tableName": "tableb",
+      "foreignKeys": [
+      ]
+    }
+  ]
+}
