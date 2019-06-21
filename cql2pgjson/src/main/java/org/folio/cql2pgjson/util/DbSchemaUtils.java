@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.folio.cql2pgjson.model.DbIndex;
 import org.folio.rest.persist.ddlgen.Index;
-import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.Table;
 
 /**
