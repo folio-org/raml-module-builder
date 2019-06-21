@@ -104,7 +104,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       assertThat(e.toString(), containsString(expectedNames));
     } catch (SQLException e) {
       logger.fine("select: SQL Exception " + e.getMessage());
-      throw new RuntimeException(sql != null ? sql : cql, e);
+      if (expectedNames.isEmpty()) {
+        throw new RuntimeException(sql != null ? sql : cql, e);
+      }
+      assertThat(e.toString(), containsString(expectedNames));
     }
     logger.fine("select: done with " + cql);
   }
@@ -166,7 +169,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "\"field'))@@to_tsquery(('english\"=x #",
+    "\"field'))@@to_tsquery(('english\"=x # tsquery",
     "name=Long                      # Lea Long",
     "address.zip=2791               # Lea Long",
     "\"Lea Long\"                   # Lea Long",
