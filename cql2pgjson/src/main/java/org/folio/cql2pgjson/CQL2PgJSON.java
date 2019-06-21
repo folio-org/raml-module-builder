@@ -802,19 +802,22 @@ public class CQL2PgJSON {
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbTable, index);
 
     CqlModifiers cqlModifiers = new CqlModifiers(node);
-    List<org.folio.rest.persist.ddlgen.Modifier> schemaModifiers = dbIndex.getModifiers();
-    if (cqlModifiers.getRelationModifiers().size() > 1) {
+    List<Modifier> relationModifiers = cqlModifiers.getRelationModifiers();
+    if (relationModifiers.isEmpty()) {
+      return indexNode(index, node, vals, dbIndex, cqlModifiers);
+    } else if (relationModifiers.size() > 1) {
       throw new QueryValidationException("CQL: Only one @-relation modifier supported");
-    }
-    for (Modifier m : cqlModifiers.getRelationModifiers()) {
-      final String modifierValue = m.getValue();
+    } else {
+      Modifier relationModifier = relationModifiers.get(0);
+      final String modifierValue = relationModifier.getValue();
       if (modifierValue == null) {
-        throw new QueryValidationException("CQL: Missing value for relation modifier " + m.getType());
+        throw new QueryValidationException("CQL: Missing value for relation modifier " + relationModifier.getType());
       }
-      if (!"=".equals(m.getComparison())) {
-        throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + m.getType());
+      if (!"=".equals(relationModifier.getComparison())) {
+        throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + relationModifier.getType());
       }
-      final String modifierName = m.getType().substring(1);
+      final String modifierName = relationModifier.getType().substring(1);
+      List<org.folio.rest.persist.ddlgen.Modifier> schemaModifiers = dbIndex.getModifiers();
       if (schemaModifiers != null) {
         for (org.folio.rest.persist.ddlgen.Modifier schemaModifier : schemaModifiers) {
           if (schemaModifier.getModifierName().equalsIgnoreCase(modifierName)) {
@@ -822,9 +825,8 @@ public class CQL2PgJSON {
           }
         }
       }
-      throw new QueryValidationException("CQL: Unsupported relation modifier " + m.getType());
+      throw new QueryValidationException("CQL: Unsupported relation modifier " + relationModifier.getType());
     }
-    return indexNode(index, node, vals, dbIndex, cqlModifiers);
   }
 
   private String indexNode(String index, CQLTermNode node, IndexTextAndJsonValues vals,
