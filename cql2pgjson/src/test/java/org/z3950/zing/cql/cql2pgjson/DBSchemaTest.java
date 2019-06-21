@@ -15,7 +15,7 @@ public class DBSchemaTest {
 
   @Test
   public void makeInstanceWithSpecifiedDBSchemaPath() throws Exception {
-    Path dbSchemaPath = Paths.get(ClassLoader.getSystemResource("test_db_schema.json").toURI());
+    Path dbSchemaPath = Paths.get("./test_db_schema.json");
     if(dbSchemaPath == null) {
       throw new Exception("Can't find path");
     }

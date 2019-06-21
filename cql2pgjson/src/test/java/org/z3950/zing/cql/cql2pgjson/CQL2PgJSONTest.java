@@ -166,6 +166,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
+    "\"field'))@@to_tsquery(('english\"=x #",
     "name=Long                      # Lea Long",
     "address.zip=2791               # Lea Long",
     "\"Lea Long\"                   # Lea Long",
