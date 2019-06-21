@@ -418,8 +418,9 @@ public class CQL2PgJSON {
 
   /**
    * Convert index name to SQL term of type text.
-   * Example result for field=user and index=foo.bar:
-   * user->'foo'->>'bar'
+   * Examples:
+   * <p>index2sqlText("json", "foo") = "json->>'foo'"
+   * <p>index2sqlText("table.json", "foo.bar.baz") = "table.json->'foo'->'bar'->>'baz'"
    * @param jsonField
    * @param index name to convert
    *

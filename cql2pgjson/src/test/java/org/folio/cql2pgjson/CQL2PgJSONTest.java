@@ -1052,7 +1052,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({
     "f,           a,       f->>'a'",
     "f,           a.b.c.d, f->'a'->'b'->'c'->>'d'",
-    "myJsonField, a.b.c,   myJsonField->'a'->'b'->>'c'"
+    "myJsonField, a.b.c,   myJsonField->'a'->'b'->>'c'",
+    "f.g.h,       a.b.c,   f.g.h->'a'->'b'->>'c'",
   })
   @Test
   public void index2sqlText(String jsonField, String index, String expected) throws Exception {
