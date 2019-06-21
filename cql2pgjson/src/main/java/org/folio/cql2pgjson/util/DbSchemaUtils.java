@@ -17,35 +17,27 @@ public class DbSchemaUtils {
   }
 
   /**
-   * For given index name, check if database has matching indexes.
+   * Get index info for some table
    *
-   * @param schema
-   * @param tableName
+   * @param table
    * @param indexName
    * @return
    */
-  public static DbIndex getDbIndex(Schema schema, String tableNameAndField, String indexName) {
+  public static DbIndex getDbIndex(Table table, String indexName) {
     DbIndex dbIndexStatus = new DbIndex();
 
-    if (tableNameAndField != null && schema.getTables() != null) {
-      // remove .jsonb or similar suffix
-      final String tableName = tableNameAndField.replaceAll("\\.[^.]+$", "");
-
-      for (Table table : schema.getTables()) {
-        if (table.getTableName().equalsIgnoreCase(tableName)) {
-          dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
-          Index fulltextIndex = getDbIndex(indexName, table.getFullTextIndex());
-          if (fulltextIndex != null) {
-            dbIndexStatus.setModifiers(fulltextIndex.getModifiers());
-          }
-          dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
-          for (List<Index> index : Arrays.asList(table.getIndex(),
-            table.getUniqueIndex(), table.getLikeIndex())) {
-            dbIndexStatus.setOther(checkDbIndex(indexName, index));
-            if (dbIndexStatus.isOther()) {
-              break;
-            }
-          }
+    if (table != null) {
+      dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
+      Index fulltextIndex = getDbIndex(indexName, table.getFullTextIndex());
+      if (fulltextIndex != null) {
+        dbIndexStatus.setModifiers(fulltextIndex.getModifiers());
+      }
+      dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
+      for (List<Index> index : Arrays.asList(table.getIndex(),
+        table.getUniqueIndex(), table.getLikeIndex())) {
+        dbIndexStatus.setOther(checkDbIndex(indexName, index));
+        if (dbIndexStatus.isOther()) {
+          break;
         }
       }
     }

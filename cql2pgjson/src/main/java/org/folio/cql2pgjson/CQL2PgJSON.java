@@ -798,7 +798,7 @@ public class CQL2PgJSON {
    */
   private String index2sql(String index, CQLTermNode node) throws QueryValidationException {
     IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, this.jsonField, index);
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbTable, index);
 
     List<org.folio.rest.persist.ddlgen.Modifier> modifiers = dbIndex.getModifiers();
     for (Modifier m : node.getRelation().getModifiers()) {
