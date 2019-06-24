@@ -542,7 +542,9 @@ public class CQL2PgJSON {
     String[] termParts = node.getTerm().split("\\.");
 
     String [] foreignTarget = (idxParts.length > termParts.length) ? idxParts : termParts;
-    ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation);
+    boolean indexInTable = findForeignKey(dbTable.getPkColumnName(),correlation, dbTable) == null;
+    ForeignKeys fkey = indexInTable ? findForeignKey(PK_COLUMN_NAME,dbTable, correlation) : findForeignKey(dbTable.getPkColumnName(),correlation, dbTable);
+    Table indexTable = indexInTable ? dbTable : correlation;
 
     if (fkey == null) {
       String msg = "subQuery(): No foreignKey for table " + foreignTarget[0] + " found";
@@ -559,12 +561,12 @@ public class CQL2PgJSON {
 
     boolean isTermConstant = !tableNamePattern.matcher(term).matches();
 
-    String myField = dbTable.getTableName() + ".id";
+    String myField = dbTable.getTableName() + "." + PK_COLUMN_NAME;
     String targetField = index2sqlText(foreignTableJsonb, fkey.getFieldName());
     String whereField = index2sqlText(foreignTableJsonb, foreignTarget[1]);
     String whereClause = "";
     String inKeyword = "";
-    String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], correlation);
+    String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], indexTable);
     String indexString = "";
     String selectString = "";
     if (isTermConstant) {
@@ -612,11 +614,13 @@ public class CQL2PgJSON {
    * @param targetTable  where to search
    * @return the ForeignKeys if found, null otherwise
    */
-  private ForeignKeys findForeignKey(String field, Table targetTable) {
-    String fieldName = dbTable.getTableName() + field;
-    for (ForeignKeys key : targetTable.getForeignKeys()) {
-      if (fieldName.equalsIgnoreCase(key.getFieldName())) {
-        return key;
+  private ForeignKeys findForeignKey(String field, Table targetTable, Table currentTable) {
+    String fieldName = currentTable.getTableName() + field;
+      if(targetTable.getForeignKeys() != null) {
+      for (ForeignKeys key : targetTable.getForeignKeys()) {
+        if (fieldName.equalsIgnoreCase(key.getFieldName())) {
+          return key;
+        }
       }
     }
     return null;
