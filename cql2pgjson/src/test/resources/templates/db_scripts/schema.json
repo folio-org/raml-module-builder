@@ -17,7 +17,7 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "modifiersSubfield": "name"
+          "modifiersSubfield": "modifiers-missing"
         },
         {
           "fieldName": "contributors",
@@ -26,6 +26,13 @@
           "removeAccents": true,
           "modifiersSubfield": "name",
           "modifiers": ["contributorNameTypeId", "lang"]
+        },
+        {
+          "fieldName": "other",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true,
+          "modifiers": ["modifiersSubfield-missing"]
         }
       ],
       "index": [

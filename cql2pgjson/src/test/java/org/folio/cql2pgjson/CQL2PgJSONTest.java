@@ -942,6 +942,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contributors = \"contributorNameTypeId 2b94c631\" #",
     "identifiers = \"value 0552142352\" # a",
     "name = /@foo=bar a #CQL: Unsupported relation modifier @foo", // name has modifiersSubfield in schema, but no modifiers
+    "other= /@foo=bar a #CQL: Unsupported relation modifier @foo", // other has no modifiersSubfield in schema, but modifiers
     "contributors = name           # a; b",
     "name = terry                  #",
     "contributors.name = terry     #",
