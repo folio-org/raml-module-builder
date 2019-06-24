@@ -4,7 +4,8 @@ INSERT INTO users (user_data) VALUES
   "contributors": [
     {
       "contributorNameTypeId": "2b94c631-fca9-4892-a730-03ee529ffe2a",
-      "name": "Pratchett, Terry"
+      "name": "Pratchett, Terry",
+      "lang": "english"
     }
   ],
   "identifiers": [
@@ -36,11 +37,13 @@ INSERT INTO users (user_data) VALUES
   "contributors": [
     {
       "contributorNameTypeId": "2e48e713-17f3-4c13-a9f8-23845bb210aa",
-      "name": "Creator A"
+      "name": "Creator A",
+      "lang": "english"
     },
     {
       "contributorNameTypeId": "e8b311a6-3b21-43f2-a269-dd9310cb2d0a",
-      "name": "Creator B"
+      "name": "Creator B",
+      "lang": "english"
     }
   ],
   "instanceTypeId": "6312d172-f0cf-40f6-b27d-9fa8feaf332f"

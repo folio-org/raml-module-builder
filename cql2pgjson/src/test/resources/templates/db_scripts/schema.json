@@ -23,12 +23,8 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "modifiers" : [
-            {
-              "modifierName": "contributorNameTypeId",
-              "subfield": "name"
-            }
-          ]
+          "modifiersSubfield": "name",
+          "modifiers": ["contributorNameTypeId", "lang"]
         }
       ],
       "index": [

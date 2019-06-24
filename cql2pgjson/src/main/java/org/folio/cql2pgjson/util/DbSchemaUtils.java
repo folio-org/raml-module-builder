@@ -27,10 +27,7 @@ public class DbSchemaUtils {
 
     if (table != null) {
       dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
-      Index fulltextIndex = getDbIndex(indexName, table.getFullTextIndex());
-      if (fulltextIndex != null) {
-        dbIndexStatus.setModifiers(fulltextIndex.getModifiers());
-      }
+      Index fulltextIndex = getIndex(indexName, table.getFullTextIndex());
       dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
       for (List<Index> index : Arrays.asList(table.getIndex(),
         table.getUniqueIndex(), table.getLikeIndex())) {
@@ -44,10 +41,10 @@ public class DbSchemaUtils {
   }
 
   private static boolean checkDbIndex(String cqlIndex, List<Index> indexes) {
-    return getDbIndex(cqlIndex, indexes) != null;
+    return getIndex(cqlIndex, indexes) != null;
   }
 
-  private static Index getDbIndex(String cqlIndex, List<Index> indexes) {
+  public static Index getIndex(String cqlIndex, List<Index> indexes) {
     if (indexes != null) {
       for (Index i : indexes) {
         if (cqlIndex.equals(i.getFieldName())) {
