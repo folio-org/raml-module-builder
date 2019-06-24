@@ -168,7 +168,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "\"field'))@@to_tsquery(('english\"=x # ",
     "name=Long                      # Lea Long",
     "address.zip=2791               # Lea Long",
     "\"Lea Long\"                   # Lea Long",
@@ -1075,5 +1074,16 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test(expected = QueryValidationException.class)
   public void index2sqlTextException(String jsonField, String index) throws Exception {
     CQL2PgJSON.index2sqlText(jsonField, index);
+  }
+
+  /*
+  CQL fields can be quoted and, thus, contain various characters that - if no
+  properly escaped can be used to unquote the JSON path that is generated
+   */
+  @Test
+  @Parameters({
+    "\"field'))@@to_tsquery(('english\"=x # "})
+  public void sqlInjectionInField(String testcase) {
+    select(testcase);
   }
 }
