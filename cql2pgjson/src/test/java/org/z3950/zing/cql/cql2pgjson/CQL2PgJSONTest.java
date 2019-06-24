@@ -6,7 +6,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 import org.z3950.zing.cql.ModifierSet;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -17,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.logging.Logger;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -322,8 +322,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "email==\\\\                    # a",
-    "email==\\\\\\\\                # b",
+    "email==\\\\                    # a",  // 1 backslash, masking: x 2 for CQL, x 2 for Java
+    "email==\\\\\\\\                # b",  // 2 backslashs, masking: x 2 for CQL, x 2 for Java
     "email==\\*                     # c",
     "email==\\*\\*                  # d",
     "email==\\?                     # e",
@@ -334,16 +334,27 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "'         OR address.zip=1     # a",
     "name=='   OR address.zip=1     # a",
     "name==\\  OR address.zip=1     # a",
+    "a                              # a",
     "h                              # h",
-    //"a                              # ", // 'a' is a stop word, tokenized away, when using 'english'
-    //"\\a                            # ",
-    "a                              # a", // but not when using 'simple'
     "\\a                            # a",
     "\\h                            # h"
   })
   public void special(String testcase) {
     select("special.sql", testcase);
-    //select("special.sql", testcase.replace("==", "==/respectCase/respectAccents "));
+  }
+
+  @Test
+  @Parameters({
+    // fulltext (used by =) removes any quote and backslash
+    "email =\"\\\"\"     #  ",   // email ="\""
+    "email==\"\\\"\"     # a",   // email=="\""
+    "email =\"a\\\"b\"   # b",   // email ="a\"b"
+    "email==\"a\\\"b\"   # b",   // email=="a\"b"
+    "email =\"\\\"\\\"   # c",   // email ="\"\\"
+    "email==\"\\\"\\\"   # c",   // email=="\"\\"
+  })
+  public void quotes(String testcase) {
+    select("quotes.sql", testcase);
   }
 
   @Test

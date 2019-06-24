@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.fail;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.Criteria.Limit;
@@ -11,7 +12,6 @@ import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 public class CQLWrapperTest {
   static CQL2PgJSON cql2pgJson;

@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.ParseException;
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 
@@ -13,7 +14,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
 import org.junit.Test;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 public class TestCLI {
 
@@ -28,7 +28,7 @@ public class TestCLI {
   public void setup() throws URISyntaxException {
     exitStatus = 0;
     CQL2PGCLIMain.exit = status -> exitStatus = status;
-    dbSchemaPath = Paths.get(ClassLoader.getSystemResource("dbschema.json").toURI()).toString();
+    dbSchemaPath = Paths.get("./dbschema.json").toString();
   }
 
   private void main(String arguments) {

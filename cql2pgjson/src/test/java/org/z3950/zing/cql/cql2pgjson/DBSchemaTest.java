@@ -7,15 +7,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.rest.persist.ddlgen.Table;
 import org.junit.Test;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 public class DBSchemaTest {
 
   @Test
   public void makeInstanceWithSpecifiedDBSchemaPath() throws Exception {
-    Path dbSchemaPath = Paths.get(ClassLoader.getSystemResource("test_db_schema.json").toURI());
+    Path dbSchemaPath = Paths.get("./test_db_schema.json");
     if(dbSchemaPath == null) {
       throw new Exception("Can't find path");
     }

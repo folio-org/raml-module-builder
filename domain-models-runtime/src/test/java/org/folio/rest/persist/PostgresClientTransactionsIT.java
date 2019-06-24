@@ -1,5 +1,6 @@
 package org.folio.rest.persist;
 
+import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -8,7 +9,6 @@ import org.folio.rest.persist.helpers.SimplePojo;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -157,7 +157,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     c1.startTx( handler -> {
       if(handler.succeeded()){
         Criteria c = new Criteria();
-        c.addField("'name'").setOperation("=").setValue("me");
+        c.addField("'name'").setOperation("=").setVal("me");
         c1.delete(handler, table, new Criterion(c) , reply -> {
             if(reply.succeeded()){
               //make sure record is deleted when querying using this connection

@@ -671,6 +671,18 @@ to indicate "end-of-stream".
 As of RMB 23.12.0 and later, if a HTTP client prematurely closes the upload
 before complete, the handler will be called with `streamed_abort`.
 
+## Implement chunked bulk download
+
+RMB supports bulk downloads of chunks using CQL ordered by primary key id since version 25.
+
+1st CQL query: `cql.allRecords=1 sortBy id`
+2nd CQL query: `id > [last id from 1st CQL query] sortBy id`
+3rd CQL query: `id > [last id from 2nd CQL query] sortBy id`
+…
+
+The chunk size is to be set using the API's limit parameter, for example limit=10000
+for chunks of 10000 records each.
+
 ## PostgreSQL integration
 
 The PostgreSQL connection parameters locations are searched in this order:
@@ -699,7 +711,7 @@ layer.
 
 **Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
 
-**Important Note:** Currently we only support Postgres version 10.
+**Important Note:** Currently we only support Postgres version 10. We cannot use version 11 because of reduced platform support of postgresql-embedded ([postgresql-embedded supported versions](https://github.com/yandex-qatools/postgresql-embedded/commit/15685611972bacd8ba61dd7f11d4dbdcb3ba8dc1), [PostgreSQL Database Download](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)).
 
 The PostgresClient expects tables in the following format:
 
@@ -833,6 +845,8 @@ public class InitConfigService implements PostDeployVerticle {
 ```
 
 ### Foreign keys constraint
+
+Use `foreignKeys` in schema.json of the Tenant API to automatically create the following columns and triggers.
 
 PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB.  Create an additional column with the foreign key constraint and setup a trigger to keep it in sync with the value inside the JSONB.
 

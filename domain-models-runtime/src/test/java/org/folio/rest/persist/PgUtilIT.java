@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+
 import javax.ws.rs.core.Response;
 
 import org.folio.rest.jaxrs.model.User;
@@ -95,10 +96,9 @@ public class PgUtilIT {
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
-    execute(context, "CREATE TABLE " + schema + ".user " +
-        "(id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
-    execute(context, "CREATE TABLE " + schema + ".duplicateid " +
-        "(id UUID, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".user            (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".duplicateid     (id UUID, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".referencinguser (id UUID REFERENCES " + schema + ".user);");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
@@ -257,7 +257,7 @@ public class PgUtilIT {
   public void deleteByInvalidUuid(TestContext testContext) {
     PgUtil.deleteById("user", "invalidid", okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 500, "invalidid"));
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
 
   @Test
@@ -265,6 +265,16 @@ public class PgUtilIT {
     PgUtil.deleteById("otherTable", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 500, "42P01"));
+  }
+
+  @Test
+  public void deleteByIdForeignKeyViolation(TestContext testContext) {
+    String uuid = randomUuid();
+    post(testContext, "Folio", uuid, 201);
+    execute(testContext, "INSERT INTO " + schema + ".referencinguser VALUES ('" + uuid + "')");
+    PgUtil.deleteById("user", uuid, okapiHeaders, vertx.getOrCreateContext(),
+        Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "referencinguser"));
   }
 
   @Test
@@ -299,7 +309,7 @@ public class PgUtilIT {
   public void getByIdInvalidUuid(TestContext testContext) {
     PgUtil.getById("user", User.class, "invalidUuid", okapiHeaders, vertx.getOrCreateContext(),
         Users.GetUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 500, "22P02"));
+        asyncAssertSuccess(testContext, 404, "Invalid UUID format"));
   }
 
   @Test
@@ -368,6 +378,24 @@ public class PgUtilIT {
     PgUtil.post("user", new User().withUsername("Elsa").withId(uuid),
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
         asyncAssertSuccess(testContext, 400, "duplicate key value"));
+  }
+
+  @Test
+  public void postInvalidId(TestContext testContext) {
+    PgUtil.post("user", new User().withUsername("Kiri").withId("someInvalidUuid"),
+        okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
+  }
+
+  @Test
+  public void postResponseWithUser201Method(TestContext testContext) {
+    String uuid = randomUuid();
+    PgUtil.post("user", new User().withUsername("Susi").withId(uuid),
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithUserFor201Method.class,
+        testContext.asyncAssertSuccess(result -> {
+          assertThat(result.getStatus(), is(201));
+          assertGetById(testContext, uuid, "Susi");
+        }));
   }
 
   @Test
@@ -448,7 +476,7 @@ public class PgUtilIT {
     PgUtil.put("user", new User().withUsername("Bö"), "SomeInvalidUuid",
         okapiHeaders, vertx.getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 400, "SomeInvalidUuid"));
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
 
   @Test
@@ -584,6 +612,11 @@ public class PgUtilIT {
     testContext.assertEquals("some runtime exception", future.cause().getCause().getMessage());
   }
 
+  @Test(expected = NoSuchMethodException.class)
+  public void getListSetterMissingSetterMethod() throws Exception {
+    PgUtil.getListSetter(String.class);
+  }
+
   @Test
   public void getSortNodeException() {
     assertThat(PgUtil.getSortNode(null), is(nullValue()));
@@ -634,6 +667,7 @@ public class PgUtilIT {
 
     searchForDataUnoptimizedNo500("username=foo sortBy username/sort.descending", 6, 3, testContext);
   }
+
   @Test
   public void canGetWithOptimizedSql(TestContext testContext) {
     int optimizdSQLSize = 10000;
@@ -752,7 +786,7 @@ public class PgUtilIT {
 
   private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
     Async async = testContext.async();
-    pg.execute("truncate " + schema + ".user", testContext.asyncAssertSuccess(truncated -> {
+    pg.execute("truncate " + schema + ".user CASCADE", testContext.asyncAssertSuccess(truncated -> {
       async.complete();
     }));
     async.await(1000 /* ms */);
@@ -1040,6 +1074,32 @@ public class PgUtilIT {
     public static class HeadersFor201 extends ResponseImpl.HeadersFor201 {
     }
     public static Response respond201WithApplicationJson(Object entity, HeadersFor201 headers) {
+      return ResponseImpl.respond201WithApplicationJson(entity, headers);
+    }
+    public static Response respond204() {
+      return ResponseImpl.respond204();
+    }
+    public static Response respond400WithTextPlain(Object entity) {
+      return ResponseImpl.respond400WithTextPlain(entity);
+    }
+    public static Response respond500WithTextPlain(Object entity) {
+      return ResponseImpl.respond500WithTextPlain(entity);
+    }
+  };
+
+  static class ResponseWithUserFor201Method extends ResponseDelegate {
+    private ResponseWithUserFor201Method(Response response) {
+      super(response);
+    }
+    public static Response respond200WithApplicationJson(User entity) {
+      return ResponseImpl.respond200WithApplicationJson(entity);
+    }
+    public static class HeadersFor201 extends ResponseImpl.HeadersFor201 {
+    }
+    public static HeadersFor201 headersFor201() {
+      return new HeadersFor201();
+    }
+    public static Response respond201WithApplicationJson(User entity, HeadersFor201 headers) {
       return ResponseImpl.respond201WithApplicationJson(entity, headers);
     }
     public static Response respond204() {
