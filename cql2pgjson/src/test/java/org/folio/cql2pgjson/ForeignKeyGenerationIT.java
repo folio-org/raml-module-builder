@@ -1,11 +1,10 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 
 import java.util.List;
 
-import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.junit.AfterClass;
 import org.junit.Before;

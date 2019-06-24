@@ -418,14 +418,15 @@ public class CQL2PgJSON {
 
   /**
    * Convert index name to SQL term of type text.
-   * Example result for field=user and index=foo.bar:
-   * user->'foo'->>'bar'
+   * Examples:
+   * <p>index2sqlText("json", "foo") = "json->>'foo'"
+   * <p>index2sqlText("table.json", "foo.bar.baz") = "table.json->'foo'->'bar'->>'baz'"
    * @param jsonField
    * @param index name to convert
    *
    * @return SQL term
    */
-  private static String index2sqlText(String jsonField, String index) throws QueryValidationException {
+  static String index2sqlText(String jsonField, String index) throws QueryValidationException {
     StringBuilder res = new StringBuilder();
     String[] comp = index.split("\\.");
     res.append(jsonField);
@@ -602,7 +603,7 @@ public class CQL2PgJSON {
     String wrappingStringTemplate = "%s";
     for(Index i : targetTable.getIndex()) {
       if(i.getFieldName().equals(whereField)) {
-        if(i.isRemoveAccents()) { 
+        if(i.isRemoveAccents()) {
           wrappingStringTemplate = "f_unaccent(" +wrappingStringTemplate + ")";
         }
         if(!i.isCaseSensitive()) {
