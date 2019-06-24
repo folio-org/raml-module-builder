@@ -7,6 +7,28 @@
     {
       "tableName": "test_tenantapi2",
       "withAuditing": true
+    },
+    {
+      "tableName": "test_implicit",
+      "withAuditing": true
+    },
+    {
+      "tableName": "audit_test_tenantapi",
+      "index": [
+        {
+          "fieldName": "item.id",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
+      "tableName": "audit_test_tenantapi2",
+      "index": [
+        {
+          "fieldName": "item.id",
+          "tOps": "ADD"
+        }
+      ]
     }
   ]
 }
