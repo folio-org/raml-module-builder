@@ -57,6 +57,12 @@ SET search_path TO public, ${myuniversity}_${mymodule};
       id UUID PRIMARY KEY,
       jsonb JSONB NOT NULL
     );
+    <#if table.withAuditing == true>
+    CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} (
+      id UUID PRIMARY KEY,
+      jsonb JSONB NOT NULL
+    );
+    </#if>
     -- old trigger name
     DROP TRIGGER IF EXISTS set_id_injson_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
     -- current trigger name
@@ -65,6 +71,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
       FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_id_in_jsonb();
   <#else>
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+    DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} CASCADE;
   </#if>
 
   <#if table.mode != "delete">

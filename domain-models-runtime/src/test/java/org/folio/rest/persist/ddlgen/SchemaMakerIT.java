@@ -64,11 +64,13 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertThat("total number of audit entries",
         selectInteger(context, count), is(15));
     assertThat("total number of audit entries for insert",
-        selectInteger(context, count + " WHERE operation='I' AND jsonb->>'foo' IS NULL"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='I' AND jsonb->'item'->>'foo' IS NULL"), is(5));
     assertThat("total number of audit entries for update",
-        selectInteger(context, count + " WHERE operation='U' AND jsonb->>'foo' = 'bar'"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='U' AND jsonb->'item'->>'foo' = 'bar'"), is(5));
     assertThat("total number of audit entries for delete",
-        selectInteger(context, count + " WHERE operation='D' AND jsonb->>'foo' = 'bar'"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='D' AND jsonb->'item'->>'foo' = 'bar'"), is(5));
+    assertThat("number of user2 audit entries",
+        selectInteger(context, count + " WHERE jsonb->'item'->>'id'=md5('user2')::uuid::text"), is(3));
   }
 
   @Test
@@ -78,6 +80,9 @@ public class SchemaMakerIT extends PostgresClientITBase {
     runSchema(context, TenantOperation.CREATE, "schemaWithAudit.json");
     auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi");
     auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi2");
+    // Check that '"withAuditing": true' implicitly creates the table 'audit_test_implicit'
+    // without an explicit entry in the schema.json table list
+    auditedTableCanInsertUpdateDelete(context, schema + ".test_implicit");
   }
 
   private boolean triggerExists(TestContext context, String name) {
