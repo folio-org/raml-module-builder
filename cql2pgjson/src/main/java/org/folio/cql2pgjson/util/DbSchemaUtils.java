@@ -27,7 +27,6 @@ public class DbSchemaUtils {
 
     if (table != null) {
       dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
-      Index fulltextIndex = getIndex(indexName, table.getFullTextIndex());
       dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
       for (List<Index> index : Arrays.asList(table.getIndex(),
         table.getUniqueIndex(), table.getLikeIndex())) {

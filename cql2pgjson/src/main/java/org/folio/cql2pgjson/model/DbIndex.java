@@ -1,7 +1,5 @@
 package org.folio.cql2pgjson.model;
 
-import java.util.List;
-
 public class DbIndex {
 
   private boolean ft;
