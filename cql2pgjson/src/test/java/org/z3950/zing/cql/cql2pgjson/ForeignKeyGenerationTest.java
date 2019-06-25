@@ -36,7 +36,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tabled.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("tablea.jsonb->>'tabledId' IN  ( SELECT Cast ( id as UUID) from tabled WHERE lower(tabled.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
+    assertEquals("Cast ( tablea.jsonb->>'tabledId' as UUID) IN  ( SELECT id from tabled WHERE lower(tabled.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
   }
   @Test
   public void ForeignKeySearchWithLowerConstant() throws FieldException, QueryValidationException, ServerChoiceIndexesException {

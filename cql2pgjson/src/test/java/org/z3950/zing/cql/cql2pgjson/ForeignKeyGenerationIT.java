@@ -51,7 +51,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   }
   @Test
   public void foreignKeySearchParentChild() throws Exception {
-    assertThat(cql("tabled.prefix == a1"), containsInAnyOrder("test1"));
+    assertThat(cql("tabled.prefix == a1"), containsInAnyOrder("test0", "test1"));
   }
   @Test
   public void foreignKeySearch1() throws Exception {
@@ -69,7 +69,10 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   public void foreignKeyFilter1() throws Exception {
     assertThat(cql("id == tableb.tableaId"), containsInAnyOrder("test1", "test2", "test3"));
   }
-
+  @Test
+  public void foreignKeyFilterParentChild() throws Exception {
+    assertThat(cql("id ==  tabled.tabledId"), containsInAnyOrder("test1", "test2", "test3"));
+  }
   @Test
   public void uuidConstant() throws Exception {
     assertThat(cql("tableb.name == 33333333-3333-3333-3333-333333333333"), is(empty()));
