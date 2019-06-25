@@ -1,0 +1,39 @@
+{
+  "tables": [
+    {
+      "tableName": "tablea"
+    },
+    {
+      "tableName": "tableb",
+      "index": [
+        {
+          "fieldName": "prefix",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "otherindex",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": true
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "tableaId",
+          "targetTable": "tablea"
+        }
+      ]
+    },
+    {
+      "tableName": "tablec",
+      "foreignKeys": [
+        {
+          "fieldName": "tablebId",
+          "targetTable": "tableb"
+        }
+      ]
+    }
+  ]
+}
