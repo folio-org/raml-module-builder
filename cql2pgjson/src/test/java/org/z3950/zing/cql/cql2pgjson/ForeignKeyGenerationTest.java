@@ -90,7 +90,14 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson.toSql("id == tableb.prefix").getWhere();
     assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'prefix' as UUID) from tableb)", sql);
   }
-
+  
+  @Test
+  public void ForeignKeyFilterParentChild() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    String sql = cql2pgJson.toSql("id == tabled.tabledId").getWhere();
+    assertEquals("Cast ( tablea.jsonb->>'tabledId' as UUID) IN  ( SELECT id from tabled)", sql);
+  }
   @Test
   public void ForeignKeyFilterWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");

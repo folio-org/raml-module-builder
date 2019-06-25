@@ -584,7 +584,7 @@ public class CQL2PgJSON {
       whereClause = " WHERE " + indexString + " = " + termString;
     } else {
       inKeyword = myField + " IN ";
-      selectString = "Cast ( " + index2sqlText(foreignTableJsonb, foreignTarget[1]) + " as UUID)";
+      selectString = indexInTable ?  PK_COLUMN_NAME : "Cast ( " + index2sqlText(foreignTableJsonb,  foreignTarget[1]) + " as UUID)";
     }
 
     return inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
