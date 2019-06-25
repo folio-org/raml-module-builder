@@ -45,40 +45,43 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     }
   }
 
-  @Test
+  
   public void foreignKeySearch0() throws Exception {
     assertThat(cql("tableb.prefix == x0"), is(empty()));
   }
-
   @Test
+  public void foreignKeySearchParentChild() throws Exception {
+    assertThat(cql("tabled.prefix == a1"), containsInAnyOrder("test1"));
+  }
+  
   public void foreignKeySearch1() throws Exception {
     assertThat(cql("tableb.prefix == x1"), containsInAnyOrder("test1"));
   }
 
-  @Test
+  
   public void foreignKeySearch2() throws Exception {
     // two tableb records match, but they both reference the same tablea record, therefore "test2" should be
     // returned one time only
     assertThat(cql("tableb.prefix == x2"), containsInAnyOrder("test2"));
   }
 
-  @Test
+  
   public void foreignKeyFilter1() throws Exception {
     assertThat(cql("id == tableb.tableaId"), containsInAnyOrder("test1", "test2", "test3"));
   }
 
-  @Test
+  
   public void uuidConstant() throws Exception {
     assertThat(cql("tableb.name == 33333333-3333-3333-3333-333333333333"), is(empty()));
   }
-  @Test
+  
   public void ForeignKeySearchWithInjection1() {
     //check to see if we can execute some arbitrary sql
     assertThat(cql("tableb.prefix == \"x0')));((('DROP tableb\""), containsInAnyOrder("test3") );
     //then check to see if the drop table worked by checking to see if there is anything there
     assertThat(cql("tableb.prefix == \"x0')));((('DROP tableb\"").size() > 0, is(true));
   }
-  @Test
+  
   public void ForeignKeySearchWithInjection2() {
     //this test is to see if I can query more items then intended
     //if the test passes it means it was not successful
