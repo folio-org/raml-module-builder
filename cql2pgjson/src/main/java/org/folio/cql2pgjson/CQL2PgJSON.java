@@ -1001,7 +1001,6 @@ public class CQL2PgJSON {
    * @return
    */
   private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
-  List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     String index = vals.getIndexText();
 
     if (!hasIndex) {
