@@ -542,8 +542,9 @@ public class CQL2PgJSON {
     String[] termParts = node.getTerm().split("\\.");
 
     String [] foreignTarget = (idxParts.length > termParts.length) ? idxParts : termParts;
-    boolean indexInTable = findForeignKey(dbTable.getPkColumnName(),correlation, dbTable) == null;
-    ForeignKeys fkey = indexInTable ? findForeignKey(PK_COLUMN_NAME,dbTable, correlation) : findForeignKey(dbTable.getPkColumnName(),correlation, dbTable);
+    ForeignKeys childParentForeignKey = findForeignKey(dbTable.getPkColumnName(), correlation, dbTable);
+    boolean indexInTable =  childParentForeignKey == null;
+    ForeignKeys fkey = indexInTable ? findForeignKey(PK_COLUMN_NAME, dbTable, correlation) : childParentForeignKey;
     Table indexTable = indexInTable ? dbTable : correlation;
 
     if (fkey == null) {
@@ -561,30 +562,27 @@ public class CQL2PgJSON {
 
     boolean isTermConstant = !tableNamePattern.matcher(term).matches();
 
-    String myField = !indexInTable ?  dbTable.getTableName() + "." + PK_COLUMN_NAME : "Cast ( " + index2sqlText(dbTable.getTableName() + ".jsonb",fkey.getFieldName()) + " as UUID)";
-    String targetField = indexInTable ?  PK_COLUMN_NAME : "Cast ( " + index2sqlText(foreignTableJsonb,  fkey.getFieldName()) + " as UUID)";
-    String whereField = index2sqlText(foreignTableJsonb, foreignTarget[1]);
+    String inKeyword = (!indexInTable ?  dbTable.getTableName() + "." + PK_COLUMN_NAME : "Cast ( " + index2sqlText(dbTable.getTableName() + ".jsonb",fkey.getFieldName()) + " as UUID)") + " IN ";
+    String selectString = indexInTable ?  PK_COLUMN_NAME : "Cast ( " + index2sqlText(foreignTableJsonb,  fkey.getFieldName()) + " as UUID)";
+    String indexSQL = index2sqlText(foreignTableJsonb, foreignTarget[1]);
     String whereClause = "";
-    String inKeyword = "";
+   
     String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], indexTable);
     String indexString = "";
-    String selectString = "";
+    
     if (isTermConstant) {
       String termString = "";
       CqlModifiers modifiers = new CqlModifiers(node);
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
         termString = "('" + Cql2SqlUtil.cql2string(term) + "')::NUMERIC";
-        indexString = "(" + whereField + ")::NUMERIC";
+        indexString = "(" + indexSQL + ")::NUMERIC";
       } else {
         termString = String.format(template, "'" + Cql2SqlUtil.cql2string(term) + "'");
-        indexString = String.format(template, whereField);
+        indexString = String.format(template, indexSQL);
       }
-      selectString =  targetField ;
-      inKeyword = myField + " IN ";
       whereClause = " WHERE " + indexString + " = " + termString;
     } else {
-      inKeyword = myField + " IN ";
-      selectString = indexInTable ?  PK_COLUMN_NAME : "Cast ( " + index2sqlText(foreignTableJsonb,  foreignTarget[1]) + " as UUID)";
+      selectString = indexInTable ?  PK_COLUMN_NAME : "Cast ( " + indexSQL + " as UUID)";
     }
 
     return inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
@@ -616,7 +614,7 @@ public class CQL2PgJSON {
    */
   private ForeignKeys findForeignKey(String field, Table targetTable, Table currentTable) {
     String fieldName = currentTable.getTableName() + field;
-      if(targetTable.getForeignKeys() != null) {
+    if (targetTable.getForeignKeys() != null) {
       for (ForeignKeys key : targetTable.getForeignKeys()) {
         if (fieldName.equalsIgnoreCase(key.getFieldName())) {
           return key;
