@@ -785,9 +785,13 @@ public class CQL2PgJSON {
       if (modifiersSubfield != null) {
         vals.setIndexText(index2sqlText("t.c", modifiersSubfield));
         String indexText = index2sqlJson(this.jsonField, index);
-        res.append("id in (select t.id from (select id as id, jsonb_array_elements(");
-        res.append(indexText + ") as c ) as t where t.c");
-        res.append(" @> '{");
+        res.append(
+          "id in (select t.id"
+          + " from (select id as id, "
+          + "             jsonb_array_elements(" + indexText + ") as c"
+          + "      ) as t"
+          + " where t.c @> '{"
+        );
       }
     }
     int no = 0;
