@@ -154,6 +154,49 @@ To avoid the complicated syntax all ISBN values or all values can be extracted a
         AS x(key text, value text)
       WHERE value IS NOT NULL
 
+### @-relation modifiers for array searches
+
+RMB 26 or later supports array searches with relation modifiers, that
+are particular suited for structures like:
+
+    "property" : [
+      "type1" : "value1",
+      "type2" : "value2",
+      "subfield": {
+        .. "value"
+      }
+    ]
+
+An example of this kind of structure is `contributors ` (property) from
+mod-inventory-storage . `contributorTypeId` is the type of contributor
+(type1).
+
+With CQL you can limit searches to `property1` with regular match in
+`subfield`, with type1=value2 with
+
+    property1 =/@type1=value1 value
+
+Noter that the relation modifier is preceeded with the @-character to
+avoid clash with CQL relation modifiers.
+
+The type1, type2 and subfield must all be defined in schema.json, because
+the JSON schema is not known. And also because relation modifiers are
+unfortunately lower-cased by cqljava. The type1, value1 are exact matches.
+
+IN schema.json, two new properties `subfield` and `modifiers` specifies
+the subfield and the list of modifiers respectively. This can be applied
+to `ginIndex` and `fullTextIndex` . Example if the above is to be
+supported for ginIndex:
+
+    {
+      "fieldName": "property",
+      "tOps": "ADD",
+      "caseSensitive": false,
+      "removeAccents": true,
+      "modifiersSubfield": "subfield",
+      "modifiers": ["type1", "type2"]
+    }
+
 ## Matching and comparing numbers
 
 Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number comparison must result in 10 > 2
