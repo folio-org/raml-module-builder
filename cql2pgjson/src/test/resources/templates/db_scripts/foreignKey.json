@@ -9,11 +9,6 @@
           "caseSensitive": false,
           "removeAccents": false
         }
-      ], "foreignKeys": [
-        {
-          "fieldName": "tabledId",
-          "targetTable": "tabled"
-        }
       ]
     },
     {
