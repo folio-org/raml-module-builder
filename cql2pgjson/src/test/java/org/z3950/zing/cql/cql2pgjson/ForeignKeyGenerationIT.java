@@ -18,7 +18,8 @@ import junitparams.JUnitParamsRunner;
 
 @RunWith(JUnitParamsRunner.class)
 public class ForeignKeyGenerationIT extends DatabaseTestBase {
-  private CQL2PgJSON cql2pgJson;
+  private CQL2PgJSON cql2pgJsonTablea;
+  private CQL2PgJSON cql2pgJsonTableb;
 
   @BeforeClass
   public static void runOnceBeforeClass() throws Exception {
@@ -33,19 +34,28 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
   @Before
   public void before() throws Exception {
-    cql2pgJson = new CQL2PgJSON("tablea.jsonb");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    cql2pgJsonTablea = new CQL2PgJSON("tablea.jsonb");
+    cql2pgJsonTablea.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    cql2pgJsonTableb = new CQL2PgJSON("tableb.jsonb");
+    cql2pgJsonTableb.setDbSchemaPath("templates/db_scripts/foreignKey.json");
   }
 
   private List<String> cql(String cql) {
     try {
-      String sql = cql2pgJson.toSql(cql).toString();
+      String sql = cql2pgJsonTablea.toSql(cql).toString();
       return firstColumn("select jsonb->>'name' from tablea " + sql);
     } catch (QueryValidationException e) {
       throw new RuntimeException(e);
     }
   }
-
+  private List<String> cqlb(String cql) {
+    try {
+      String sql = cql2pgJsonTableb.toSql(cql).toString();
+      return firstColumn("select jsonb->>'prefix' from tableb " + sql);
+    } catch (QueryValidationException e) {
+      throw new RuntimeException(e);
+    }
+  }
   @Test
   public void foreignKeySearch0() throws Exception {
     assertThat(cql("tableb.prefix == x0"), is(empty()));
@@ -53,7 +63,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
   @Test
   public void foreignKeySearchParentChild() throws Exception {
-    assertThat(cql("tabled.prefix == a1"), containsInAnyOrder("test0", "test1"));
+    assertThat(cqlb("tablea.name == test1"), containsInAnyOrder("x1"));
   }
 
   @Test
@@ -75,7 +85,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
   @Test
   public void foreignKeyFilterParentChild() throws Exception {
-    assertThat(cql("id ==  tabled.tabledId"), containsInAnyOrder("test0", "test1","test2", "test3"));
+    assertThat(cqlb("id ==  tablea.tableaId"), containsInAnyOrder("x1", "x2", "x2", "x0')));((('DROP tableb"));
   }
 
   @Test
