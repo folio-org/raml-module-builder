@@ -46,6 +46,12 @@ INSERT INTO users (user_data) VALUES
       "lang": "english"
     }
   ],
+  "contactInformation" : {
+    "phone" : [
+      { "type" : "mobile", "number" : "0912212" },
+      { "type" : "home", "number" : "0912213" }
+    ]
+  },
   "instanceTypeId": "6312d172-f0cf-40f6-b27d-9fa8feaf332f"
  }'),
     ('{"name": "c", "lang": ["en-us"                           ] }'),

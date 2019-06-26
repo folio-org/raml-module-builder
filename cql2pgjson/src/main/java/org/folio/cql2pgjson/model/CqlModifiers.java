@@ -77,6 +77,10 @@ public class CqlModifiers {
     return relationModifiers;
   }
 
+  public void setRelationModifiers(List<Modifier> relationModifiers) {
+    this.relationModifiers = relationModifiers;
+  }
+
   public CqlSort getCqlSort() {
     return cqlSort;
   }

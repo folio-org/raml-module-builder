@@ -940,12 +940,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contributors all \"contributorNametypeid 4892\" # a",
     "contributors = \"contributorNameTypeId 2b94c631\" #",
     "identifiers = \"value 0552142352\" # a",
+    "name ==/@foo=bar a # CQL: Unsupported relation modifier @foo",
     "name = /@foo=bar a #CQL: Unsupported relation modifier @foo", // name has modifiersSubfield in schema, but no modifiers
     "other= /@foo=bar a #CQL: Unsupported relation modifier @foo", // other has no modifiersSubfield in schema, but modifiers
     "contributors = name           # a; b",
     "name = terry                  #",
     "contributors.name = terry     #",
     "contributors.name = terry     #",
+    "contactInformation.phone = 0912212 # b ",
+    "contactInformation.phone == 0912212 #",
+    "contactInformation.phone == /@type=mobile 0912212 # b ",
+    "contactInformation.phone == /@type=home 0912212 # ",
+    "contactInformation.phone == /@type=home 091221? # b",
+    "contactInformation.phone == /@type=home 09122* # b"
     })
   public void arrayFT(String testcase) throws IOException, CQL2PgJSONException {
     logger.fine("arrayFT():" + testcase);

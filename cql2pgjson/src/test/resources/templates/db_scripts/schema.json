@@ -9,6 +9,14 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true
+        },
+        {
+          "fieldName": "contactInformation.phone",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true,
+          "modifiersSubfield": "number",
+          "modifiers": ["type"]
         }
       ],
       "fullTextIndex": [
