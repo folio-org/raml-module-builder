@@ -614,13 +614,15 @@ public class CQL2PgJSON {
    */
   private ForeignKeys findForeignKey(Table currentTable, String field, Table targetTable) {
     String fieldName = currentTable.getTableName() + field;
-    if (targetTable.getForeignKeys() != null) {
-      for (ForeignKeys key : targetTable.getForeignKeys()) {
-        if (fieldName.equalsIgnoreCase(key.getFieldName())) {
-          return key;
-        }
+    if (targetTable.getForeignKeys() == null) {
+      return null;
+    }
+    for (ForeignKeys key : targetTable.getForeignKeys()) {
+      if (fieldName.equalsIgnoreCase(key.getFieldName())) {
+        return key;
       }
     }
+    
     return null;
   }
 
