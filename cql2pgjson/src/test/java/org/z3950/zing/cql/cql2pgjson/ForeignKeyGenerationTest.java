@@ -23,7 +23,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.blah == /number 123452").getWhere();
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId' as UUID) from tableb WHERE (tableb.jsonb->>'blah')::NUMERIC = ('123452')::NUMERIC)", sql);
+    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE (tableb.jsonb->>'blah')::NUMERIC = ('123452')::NUMERIC)", sql);
   }
   
   @Test
@@ -31,7 +31,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId' as UUID) from tableb WHERE lower(tableb.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
+    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE lower(tableb.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
   }
   
   @Test
@@ -39,7 +39,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tabled.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("Cast ( tablea.jsonb->>'tabledId' as UUID) IN  ( SELECT id from tabled WHERE lower(tabled.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
+    assertEquals("(tablea.jsonb->>'tabledId')::UUID IN  ( SELECT id from tabled WHERE lower(tabled.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
   }
   
   @Test
@@ -47,7 +47,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.prefix == x0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId' as UUID) from tableb WHERE lower(tableb.jsonb->>'prefix') = lower('x0'))", sql);
+    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE lower(tableb.jsonb->>'prefix') = lower('x0'))", sql);
   }
   
   @Test
@@ -55,7 +55,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.otherindex == y0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'tableaId' as UUID) from tableb WHERE f_unaccent(tableb.jsonb->>'otherindex') = f_unaccent('y0'))", sql);
+    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE f_unaccent(tableb.jsonb->>'otherindex') = f_unaccent('y0'))", sql);
   }
   
   @Test
@@ -94,7 +94,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("id == tableb.prefix").getWhere();
-    assertEquals("tablea.id IN  ( SELECT Cast ( tableb.jsonb->>'prefix' as UUID) from tableb)", sql);
+    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'prefix')::UUID from tableb)", sql);
   }
   
   @Test
@@ -102,7 +102,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("id == tabled.tabledId").getWhere();
-    assertEquals("Cast ( tablea.jsonb->>'tabledId' as UUID) IN  ( SELECT id from tabled)", sql);
+    assertEquals("(tablea.jsonb->>'tabledId')::UUID IN  ( SELECT id from tabled)", sql);
   }
   
   @Test
