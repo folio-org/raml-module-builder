@@ -542,9 +542,9 @@ public class CQL2PgJSON {
     String[] termParts = node.getTerm().split("\\.");
 
     String [] foreignTarget = (idxParts.length > termParts.length) ? idxParts : termParts;
-    ForeignKeys childParentForeignKey = findForeignKey(dbTable.getPkColumnName(), correlation, dbTable);
+    ForeignKeys childParentForeignKey = findForeignKey(dbTable, dbTable.getPkColumnName(), correlation);
     boolean indexInTable =  childParentForeignKey == null;
-    ForeignKeys fkey = indexInTable ? findForeignKey(PK_COLUMN_NAME, dbTable, correlation) : childParentForeignKey;
+    ForeignKeys fkey = indexInTable ? findForeignKey(correlation, PK_COLUMN_NAME, dbTable) : childParentForeignKey;
     Table indexTable = indexInTable ? dbTable : correlation;
 
     if (fkey == null) {
@@ -612,7 +612,7 @@ public class CQL2PgJSON {
    * @param targetTable  where to search
    * @return the ForeignKeys if found, null otherwise
    */
-  private ForeignKeys findForeignKey(String field, Table targetTable, Table currentTable) {
+  private ForeignKeys findForeignKey(Table currentTable, String field, Table targetTable) {
     String fieldName = currentTable.getTableName() + field;
     if (targetTable.getForeignKeys() != null) {
       for (ForeignKeys key : targetTable.getForeignKeys()) {
