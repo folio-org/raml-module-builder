@@ -36,10 +36,10 @@ public class ForeignKeyGenerationTest  {
   
   @Test
   public void ForeignKeySearchParentChild() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("tabled.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("(tablea.jsonb->>'tabledId')::UUID IN  ( SELECT id from tabled WHERE lower(tabled.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
+    String sql = cql2pgJson.toSql("tablea.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
+    assertEquals("(tableb.jsonb->>'tableaId')::UUID IN  ( SELECT id from tablea WHERE lower(tablea.jsonb->>'prefix') = lower('11111111-1111-1111-1111-111111111111'))", sql);
   }
   
   @Test
@@ -99,10 +99,10 @@ public class ForeignKeyGenerationTest  {
   
   @Test
   public void ForeignKeyFilterParentChild() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb.jsonb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("id == tabled.tabledId").getWhere();
-    assertEquals("(tablea.jsonb->>'tabledId')::UUID IN  ( SELECT id from tabled)", sql);
+    String sql = cql2pgJson.toSql("id == tablea.tableaId").getWhere();
+    assertEquals("(tableb.jsonb->>'tableaId')::UUID IN  ( SELECT id from tablea)", sql);
   }
   
   @Test
