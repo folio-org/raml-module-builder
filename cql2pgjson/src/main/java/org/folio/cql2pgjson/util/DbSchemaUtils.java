@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.folio.cql2pgjson.model.DbIndex;
 import org.folio.rest.persist.ddlgen.Index;
-import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.Table;
 
 /**
@@ -17,49 +16,42 @@ public class DbSchemaUtils {
   }
 
   /**
-   * For given index name, check if database has matching indexes.
+   * Get index info for some table
    *
-   * @param schema
-   * @param indexJson
+   * @param table
+   * @param indexName
    * @return
    */
-  public static DbIndex getDbIndex(Schema schema, String indexJson) {
-
+  public static DbIndex getDbIndex(Table table, String indexName) {
     DbIndex dbIndexStatus = new DbIndex();
 
-    String fieldName = CqlUtils.getFieldNameFromIndexJson(indexJson);
-    String tableName = CqlUtils.getTableNameFromCqlField(fieldName);
-
-    String indexName = CqlUtils.getIndexNameFromIndexJson(indexJson);
-
-    if (schema.getTables() != null && !schema.getTables().isEmpty()) {
-      for (Table table : schema.getTables()) {
-        if (table.getTableName().equalsIgnoreCase(tableName)) {
-          dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
-          dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
-          for (List<Index> index : Arrays.asList(table.getIndex(),
-              table.getUniqueIndex(), table.getLikeIndex())) {
-            dbIndexStatus.setOther(checkDbIndex(indexName, index));
-            if (dbIndexStatus.isOther()) {
-              break;
-            }
-          }
+    if (table != null) {
+      dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
+      dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
+      for (List<Index> index : Arrays.asList(table.getIndex(),
+        table.getUniqueIndex(), table.getLikeIndex())) {
+        dbIndexStatus.setOther(checkDbIndex(indexName, index));
+        if (dbIndexStatus.isOther()) {
+          break;
         }
       }
     }
-
     return dbIndexStatus;
   }
 
   private static boolean checkDbIndex(String cqlIndex, List<Index> indexes) {
-    if (indexes != null && !indexes.isEmpty()) {
+    return getIndex(cqlIndex, indexes) != null;
+  }
+
+  public static Index getIndex(String cqlIndex, List<Index> indexes) {
+    if (indexes != null) {
       for (Index i : indexes) {
-        if (cqlIndex.equals(i.getFieldName()) || cqlIndex.equals(i.getFieldPath())) {
-          return true;
+        if (cqlIndex.equals(i.getFieldName())) {
+          return i;
         }
       }
     }
-    return false;
+    return null;
   }
 
 }
