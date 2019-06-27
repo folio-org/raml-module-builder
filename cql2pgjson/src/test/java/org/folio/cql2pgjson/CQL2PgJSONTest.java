@@ -56,6 +56,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, sqlFile, cql, expectedNames);
   }
 
+  /**
+   * @param expectedNames the semicolon+space separated list of expected names, or -- if there should
+   *          be an exception -- the expected substring of the error message prepended by an exclamation mark.
+   */
   public void select(CQL2PgJSON aCql2pgJson, String sqlFile, String cql, String expectedNames) {
 
     if (! cql.contains(" sortBy ")) {
@@ -89,24 +93,18 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
           actualNames += result.getString(1).replace("\"", "");
         }
       }
-      if (!expectedNames.equals(actualNames)) {
+      if (! expectedNames.equals(actualNames)) {
         logger.fine("select: Test FAILURE on " + cql + "#" + expectedNames);
       }
       logger.fine("select: Got names [" + actualNames + "], expected [" + expectedNames + "]");
       assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
-    } catch (QueryValidationException e) {
-      logger.fine("select: QueryValidationException "
+    } catch (QueryValidationException | SQLException e) {
+      logger.fine("select: " + e.getClass().getSimpleName()
         + " for query " + cql + " : " + e.getMessage());
-      if (expectedNames.isEmpty()) {
+      if (! expectedNames.startsWith("!")) {
         throw new RuntimeException(sql != null ? sql : cql, e);
       }
-      assertThat(e.toString(), containsString(expectedNames));
-    } catch (SQLException e) {
-      logger.fine("select: SQL Exception " + e.getMessage());
-      if (expectedNames.isEmpty()) {
-        throw new RuntimeException(sql != null ? sql : cql, e);
-      }
-      assertThat(e.toString(), containsString(expectedNames));
+      assertThat(e.toString(), containsString(expectedNames.substring(1).trim()));
     }
     logger.fine("select: done with " + cql);
   }
@@ -351,8 +349,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email==\"\\\"\"     # a",   // email=="\""
     "email =\"a\\\"b\"   # b",   // email ="a\"b"
     "email==\"a\\\"b\"   # b",   // email=="a\"b"
-    "email =\"\\\"\\\"   # c",   // email ="\"\\"
-    "email==\"\\\"\\\"   # c",   // email=="\"\\"
+    "email =\"\\\"\\\\\" #  ",   // email ="\"\\"
+    "email==\"\\\"\\\\\" # c",   // email=="\"\\"
   })
   public void quotes(String testcase) {
     select("quotes.sql", testcase);
@@ -798,9 +796,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=11111111-1111-1111-1111-111111111111*  # Jo Jane", // ok to trunc after full match, the UI does
     "id=*                                      # Jo Jane; Ka Keller; Lea Long",
     "id<>*                                     #",
-    "id=*1                                     # only right truncation supported for id",
-    "id=*1*                                    # only right truncation supported for id",
-    "id=11111111*1111-1111-1111-111111111111   # only right truncation supported for id",
+    "id=*1                                     # ! only right truncation supported for id",
+    "id=*1*                                    # ! only right truncation supported for id",
+    "id=11111111*1111-1111-1111-111111111111   # ! only right truncation supported for id",
     "id< 11111111-1111-1111-1111-111111111110  #",
     "id< 11111111-1111-1111-1111-111111111111  #",
     "id< 11111111-1111-1111-1111-111111111112  # Jo Jane",
@@ -813,13 +811,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id>=11111111-1111-1111-1111-111111111110  # Jo Jane; Ka Keller; Lea Long",
     "id>=11111111-1111-1111-1111-111111111111  # Jo Jane; Ka Keller; Lea Long",
     "id>=11111111-1111-1111-1111-111111111112  # Ka Keller; Lea Long",
-    "id>=11111111-1111-111w-1111-111111111112  # Invalid UUID after id comparator >=",
-    "id=/ignoreCase     11111111-1111-1111-1111-111111111111   # Unsupported modifier ignorecase",
-    "id=/respectCase    11111111-1111-1111-1111-111111111111   # Unsupported modifier respectcase",
-    "id=/masked         11111111-1111-1111-1111-111111111111   # Unsupported modifier masked",
-    "id=/regexp         11111111-1111-1111-1111-111111111111   # Unsupported modifier regexp",
-    "id=/respectAccents 11111111-1111-1111-1111-111111111111   # Unsupported modifier respectaccents",
-    "id=/ignoreAccents  11111111-1111-1111-1111-111111111111   # Unsupported modifier ignoreaccents",
+    "id>=11111111-1111-111w-1111-111111111112  # ! Invalid UUID after id comparator >=",
+    "id=/ignoreCase     11111111-1111-1111-1111-111111111111   # ! Unsupported modifier ignorecase",
+    "id=/respectCase    11111111-1111-1111-1111-111111111111   # ! Unsupported modifier respectcase",
+    "id=/masked         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier masked",
+    "id=/regexp         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier regexp",
+    "id=/respectAccents 11111111-1111-1111-1111-111111111111   # ! Unsupported modifier respectaccents",
+    "id=/ignoreAccents  11111111-1111-1111-1111-111111111111   # ! Unsupported modifier ignoreaccents",
   })
   public void pKey(String testcase) {
     select(cql2pgJson, testcase);
@@ -925,24 +923,24 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator c #",
     "contributors all/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator c #",
     "contributors any/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator c # b",
-    "contributors =/@foo=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator c #CQL: Unsupported relation modifier @foo ",
-    "contributors =/@foo=1/@bar=2 c #CQL: Unsupported relation modifier @foo ",
-    "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@bar=1 creator c # CQL: Unsupported relation modifier @bar",
+    "contributors =/@foo=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator c # ! CQL: Unsupported relation modifier @foo ",
+    "contributors =/@foo=1/@bar=2 c # ! CQL: Unsupported relation modifier @foo ",
+    "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@bar=1 creator c # ! CQL: Unsupported relation modifier @bar",
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang=english creator b # b",
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang=danish creator b #",
     "contributors =/@lang=english/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator b # b",
-    "contributors =/@foo<1 c #CQL: Unsupported comparison for relation modifier @foo ",
-    "identifiers =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a c #CQL: Unsupported relation modifier @contributornametypeid",
-    "identifiers =/@contributornametypeid c #CQL: Missing value for relation modifier @contributornametypeid",
+    "contributors =/@foo<1 c # ! CQL: Unsupported comparison for relation modifier @foo ",
+    "identifiers =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a c # ! CQL: Unsupported relation modifier @contributornametypeid",
+    "identifiers =/@contributornametypeid c # ! CQL: Missing value for relation modifier @contributornametypeid",
     "contributors all \"contributornametypeid\" # a; b",
     "contributors all \"contributorNametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a\" # a",
     "contributors all \"contributorNametypeid 2b94c631\" # a",
     "contributors all \"contributorNametypeid 4892\" # a",
     "contributors = \"contributorNameTypeId 2b94c631\" #",
     "identifiers = \"value 0552142352\" # a",
-    "name ==/@foo=bar a # CQL: Unsupported relation modifier @foo",
-    "name = /@foo=bar a #CQL: Unsupported relation modifier @foo", // name has modifiersSubfield in schema, but no modifiers
-    "other= /@foo=bar a #CQL: Unsupported relation modifier @foo", // other has no modifiersSubfield in schema, but modifiers
+    "name ==/@foo=bar a # ! CQL: Unsupported relation modifier @foo",
+    "name = /@foo=bar a # !CQL: Unsupported relation modifier @foo", // name has modifiersSubfield in schema, but no modifiers
+    "other= /@foo=bar a # ! CQL: Unsupported relation modifier @foo", // other has no modifiersSubfield in schema, but modifiers
     "contributors = name           # a; b",
     "name = terry                  #",
     "contributors.name = terry     #",
