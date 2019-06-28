@@ -89,51 +89,5 @@ public class ForeignKeyGenerationTest  {
     assertEquals("lower(f_unaccent(tablea.jsonb->'ardgsdfgdsfg'->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
   }
 
-  @Test
-  public void ForeignKeyFilter() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("id == tableb.prefix").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'prefix')::UUID from tableb)", sql);
-  }
-  
-  @Test
-  public void ForeignKeyFilterParentChild() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb.jsonb");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("id == tablea.tableaId").getWhere();
-    assertEquals("(tableb.jsonb->>'tableaId')::UUID IN  ( SELECT id from tablea)", sql);
-  }
-  
-  @Test
-  public void ForeignKeyFilterWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMissingFK.json");
-
-    thrown.expect(QueryValidationException.class);
-    thrown.expectMessage("No foreignKey");
-    thrown.expectMessage("for table tableb");
-    cql2pgJson.toSql("id == tableb.prefix").getWhere();
-  }
-
-  @Test
-  public void ForeignKeyFilterWithMalformedFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMalformedFK.json");
-
-    thrown.expect(QueryValidationException.class);
-    thrown.expectMessage("Missing target table");
-    thrown.expectMessage("field tableaId");
-    cql2pgJson.toSql("id == tableb.prefix").getWhere();
-  }
-
-  @Test
-  public void ForeignKeyFilterFailureDueToTable() throws FieldException, QueryValidationException, ServerChoiceIndexesException, FieldException, QueryValidationException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.jsonb");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("id == tablex.prefix").getWhere();
-    assertEquals("false /* id == invalid UUID */",sql);
-    sql = cql2pgJson.toSql("prefix == id").getWhere();
-    assertEquals("lower(f_unaccent(tablea.jsonb->>'prefix')) LIKE lower(f_unaccent('id'))",sql);
-  }
+ 
 }

@@ -485,15 +485,10 @@ public class CQL2PgJSON {
     //determine if this table is real by checking in schema
     //determine right here whether this node deals with a foreign term on right or left side
     Table indexTable = checkForForeignLocationOfIndex(node);
-    Table termTable = checkForForeignLocationOfTerm(node);
     if (indexTable != null) {
       //we are doing a foreign key search
       //determine foreign key linking tables
       return subQuery(node.getIndex(), node, indexTable);
-    }
-    if (termTable != null) {
-      //we are doing a foreign key join
-      return subQuery(node.getIndex(), node, termTable);
     }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
@@ -538,17 +533,14 @@ public class CQL2PgJSON {
   }
 
   private String subQuery(String index,CQLTermNode node, Table correlation) throws QueryValidationException {
-    String[] idxParts = index.split("\\.");
-    String[] termParts = node.getTerm().split("\\.");
-
-    String [] foreignTarget = (idxParts.length > termParts.length) ? idxParts : termParts;
+    String [] foreignTarget =  index.split("\\."); 
     ForeignKeys childParentForeignKey = findForeignKey(dbTable, dbTable.getPkColumnName(), correlation);
     boolean indexInTable =  childParentForeignKey == null;
     ForeignKeys fkey = indexInTable ? findForeignKey(correlation, PK_COLUMN_NAME, dbTable) : childParentForeignKey;
     Table indexTable = indexInTable ? dbTable : correlation;
 
     if (fkey == null) {
-      String msg = "subQuery(): No foreignKey for table " + foreignTarget[0] + " found";
+      String msg = "subQuery: No foreignKey for table " + foreignTarget[0] + " found";
       logger.log(Level.SEVERE, msg);
       throw new QueryValidationException(msg);
     }
@@ -560,17 +552,11 @@ public class CQL2PgJSON {
     String foreignTableJsonb = foreignTarget[0] + ".jsonb";
     String term = node.getTerm();
 
-    boolean isTermConstant = !tableNamePattern.matcher(term).matches();
-
-    String inKeyword = (!indexInTable ?  dbTable.getTableName() + "." + PK_COLUMN_NAME : "(" + index2sqlText(dbTable.getTableName() + ".jsonb",fkey.getFieldName()) + ")::UUID") + " IN ";
-    String selectString = indexInTable ?  PK_COLUMN_NAME : "(" + index2sqlText(foreignTableJsonb,  fkey.getFieldName()) + ")::UUID";
     String indexSQL = index2sqlText(foreignTableJsonb, foreignTarget[1]);
-    String whereClause = "";
-   
+
     String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], indexTable);
     String indexString = "";
     
-    if (isTermConstant) {
       String termString = "";
       CqlModifiers modifiers = new CqlModifiers(node);
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
@@ -580,12 +566,13 @@ public class CQL2PgJSON {
         termString = String.format(template, "'" + Cql2SqlUtil.cql2string(term) + "'");
         indexString = String.format(template, indexSQL);
       }
-      whereClause = " WHERE " + indexString + " = " + termString;
-    } else {
-      selectString = indexInTable ?  PK_COLUMN_NAME : "(" + indexSQL + ")::UUID";
-    }
 
-    return inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
+    if(indexInTable) {
+      return "(" + index2sqlText(dbTable.getTableName() + ".jsonb", fkey.getFieldName()) + ")::UUID" + " IN " + " ( SELECT " + PK_COLUMN_NAME + " from " + foreignTarget[0] + " WHERE " + indexString + " = " + termString + ")";
+    } else {
+      return dbTable.getTableName() + "." + PK_COLUMN_NAME + " IN " + " ( SELECT " + "(" + index2sqlText(foreignTableJsonb,  fkey.getFieldName()) + ")::UUID"  + " from " + foreignTarget[0] + " WHERE " + indexString + " = " + termString + ")";
+    }
+    
   }
 
 
