@@ -503,16 +503,6 @@ public class CQL2PgJSON {
     return index2sql(node.getIndex(), node);
   }
 
-  //method to determine if the right side of the node is a foreign term
-  private Table checkForForeignLocationOfTerm(CQLTermNode node) {
-    String[] termParts = node.getTerm().split("\\.");
-    //if the table is not supplied we do not have enough information to proceed, thereby assume it is in current table
-    if(termParts.length <= 1) {
-      return null;
-    }
-    return getForeignTable(termParts[0]);
-  }
-
   //method to determine if the right side of the node is a foreign term and returns the table it is attached to is so
   private Table checkForForeignLocationOfIndex(CQLTermNode node) {
     String[] idxParts = node.getIndex().split("\\.");
