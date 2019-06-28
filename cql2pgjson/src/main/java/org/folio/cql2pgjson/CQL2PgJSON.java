@@ -558,14 +558,21 @@ public class CQL2PgJSON {
       }
 
     if(indexInTable) {
-      return "(" + index2sqlText(dbTable.getTableName() + ".jsonb", fkey.getFieldName()) + ")::UUID" + " IN " + " ( SELECT " + PK_COLUMN_NAME + " from " + foreignTarget[0] + " WHERE " + indexString + " = " + termString + ")";
+      return formatParentChild(foreignTarget, fkey, indexString, termString);
     } else {
-      return dbTable.getTableName() + "." + PK_COLUMN_NAME + " IN " + " ( SELECT " + "(" + index2sqlText(foreignTableJsonb,  fkey.getFieldName()) + ")::UUID"  + " from " + foreignTarget[0] + " WHERE " + indexString + " = " + termString + ")";
+      return formatChildParent(foreignTarget, fkey, foreignTableJsonb, indexString, termString);
     }
     
   }
 
+  private String formatChildParent(String[] foreignTarget, ForeignKeys fkey, String foreignTableJsonb,
+      String indexString, String termString) {
+    return dbTable.getTableName() + "." + PK_COLUMN_NAME + " IN " + " ( SELECT " + "(" + index2sqlText(foreignTableJsonb,  fkey.getFieldName()) + ")::UUID"  + " from " + foreignTarget[0] + " WHERE " + indexString + " = " + termString + ")";
+  }
 
+  private String formatParentChild(String[] foreignTarget, ForeignKeys fkey, String indexString, String termString) {
+    return "(" + index2sqlText(dbTable.getTableName() + ".jsonb", fkey.getFieldName()) + ")::UUID" + " IN " + " ( SELECT " + PK_COLUMN_NAME + " from " + foreignTarget[0] + " WHERE " + indexString + " = " + termString + ")";
+  }
 
   private String getWrapTemplateWithSchemaDetection(String whereField,Table targetTable ) {
     String wrappingStringTemplate = "%s";
