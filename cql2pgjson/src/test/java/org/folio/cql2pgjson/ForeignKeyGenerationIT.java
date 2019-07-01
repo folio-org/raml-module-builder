@@ -1,16 +1,14 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 
 import java.util.List;
 
-import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -76,16 +74,6 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     // two tableb records match, but they both reference the same tablea record, therefore "test2" should be
     // returned one time only
     assertThat(cql("tableb.prefix == x2"), containsInAnyOrder("test2"));
-  }
-
-  @Test
-  public void foreignKeyFilter1() throws Exception {
-    assertThat(cql("id == tableb.tableaId"), containsInAnyOrder("test1", "test2", "test3"));
-  }
-
-  @Test
-  public void foreignKeyFilterParentChild() throws Exception {
-    assertThat(cqlb("id ==  tablea.tableaId"), containsInAnyOrder("x1", "x2", "x2", "x0')));((('DROP tableb"));
   }
 
   @Test

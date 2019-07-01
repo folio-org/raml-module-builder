@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.util;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -9,6 +9,14 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true
+        },
+        {
+          "fieldName": "contactInformation.phone",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true,
+          "modifiersSubfield": "number",
+          "modifiers": ["type"]
         }
       ],
       "fullTextIndex": [
@@ -16,7 +24,23 @@
           "fieldName": "name",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": true
+          "removeAccents": true,
+          "modifiersSubfield": "modifiers-missing"
+        },
+        {
+          "fieldName": "contributors",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true,
+          "modifiersSubfield": "name",
+          "modifiers": ["contributorNameTypeId", "lang"]
+        },
+        {
+          "fieldName": "other",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true,
+          "modifiers": ["modifiersSubfield-missing"]
         }
       ],
       "index": [
