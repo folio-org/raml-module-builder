@@ -64,7 +64,6 @@ public class CQL2PgJSON {
   private static final String PK_COLUMN_NAME = "id";
 
   private final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-  private final Pattern tableNamePattern = Pattern.compile("^[0-9a-zA-Z_]+\\.[0-9a-zA-Z_]+$");
 
   private String jsonField = null;
   private List<String> jsonFields = null;
@@ -319,6 +318,22 @@ public class CQL2PgJSON {
     return "lower(f_unaccent(" + term + "))";
   }
 
+  private static String wrapInLowerUnaccent(String term, boolean lower, boolean unaccent) {
+    if (lower) {
+      if (unaccent) {
+        return "lower(f_unaccent(" + term + "))";
+      } else {
+        return "lower(" + term + ")";
+      }
+    } else {
+      if (unaccent) {
+        return "f_unaccent(" + term + ")";
+      } else {
+        return term;
+      }
+    }
+  }
+
   /**
    * Return $term, lower($term), f_unaccent($term) or lower(f_unaccent($term))
    * according to the cqlModifiers.  If undefined use CqlAccents.IGNORE_ACCENTS
@@ -328,14 +343,20 @@ public class CQL2PgJSON {
    * @return wrapped term
    */
   private static String wrapInLowerUnaccent(String term, CqlModifiers cqlModifiers) {
-    String result = term;
-    if (cqlModifiers.getCqlAccents() != CqlAccents.RESPECT_ACCENTS) {
-      result = "f_unaccent(" + result + ")";
-    }
-    if (cqlModifiers.getCqlCase() != CqlCase.RESPECT_CASE) {
-      result = "lower(" + result + ")";
-    }
-    return result;
+    return wrapInLowerUnaccent(term,
+        cqlModifiers.getCqlCase() != CqlCase.RESPECT_CASE,
+        cqlModifiers.getCqlAccents() != CqlAccents.RESPECT_ACCENTS);
+  }
+
+  /**
+   * Return $term, lower($term), f_unaccent($term) or lower(f_unaccent($term))
+   * according to the modifiers of index.
+   * @param term  the String to wrap
+   * @param index  where to get the modifiers from
+   * @return wrapped term
+   */
+  private static String wrapInLowerUnaccent(String term, Index index) {
+    return wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
   }
 
   private SqlSelect toSql(CQLSortNode node) throws QueryValidationException {
@@ -504,37 +525,22 @@ public class CQL2PgJSON {
     //determine if this table is real by checking in schema
     //determine right here whether this node deals with a foreign term on right or left side
     Table indexTable = checkForForeignLocationOfIndex(node);
-    Table termTable = checkForForeignLocationOfTerm(node);
     if (indexTable != null) {
       //we are doing a foreign key search
       //determine foreign key linking tables
       return subQuery(node.getIndex(), node, indexTable);
-    }
-    if (termTable != null) {
-      //we are doing a foreign key join
-      return subQuery(node.getIndex(), node, termTable);
     }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
         throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
       }
       List<String> sqlPieces = new ArrayList<>();
-      for(String index : serverChoiceIndexes) {
+      for (String index : serverChoiceIndexes) {
         sqlPieces.add(index2sql(index, node));
       }
       return String.join(" OR ", sqlPieces);
     }
     return index2sql(node.getIndex(), node);
-  }
-
-  //method to determine if the right side of the node is a foreign term
-  private Table checkForForeignLocationOfTerm(CQLTermNode node) {
-    String[] termParts = node.getTerm().split("\\.");
-    //if the table is not supplied we do not have enough information to proceed, thereby assume it is in current table
-    if(termParts.length <= 1) {
-      return null;
-    }
-    return getForeignTable(termParts[0]);
   }
 
   //method to determine if the right side of the node is a foreign term and returns the table it is attached to is so
@@ -548,23 +554,27 @@ public class CQL2PgJSON {
   }
 
   private Table getForeignTable(String tableName) {
-    for(Table table : dbSchema.getTables()) {
-      if(table.getTableName().equals(tableName) && !table.getTableName().equals(dbTable.getTableName()) ) {
+    if (dbTable != null && dbTable.getTableName().equals(tableName)) {
+      return null;
+    }
+    for (Table table : dbSchema.getTables()) {
+      if (table.getTableName().equals(tableName)) {
         return table;
       }
     }
     return null;
   }
 
-  private String subQuery(String index,CQLTermNode node, Table correlation) throws QueryValidationException {
-    String[] idxParts = index.split("\\.");
-    String[] termParts = node.getTerm().split("\\.");
-
-    String [] foreignTarget = (idxParts.length > termParts.length) ? idxParts : termParts;
-    ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation);
+  private String subQuery(String index, CQLTermNode node, Table correlation) throws QueryValidationException {
+    String [] foreignTarget = index.split("\\.");
+    ForeignKeys childParentForeignKey = findForeignKey(dbTable, dbTable.getPkColumnName(), correlation);
+    boolean indexInTable =  childParentForeignKey == null;
+    ForeignKeys fkey = indexInTable ? findForeignKey(correlation, PK_COLUMN_NAME, dbTable) : childParentForeignKey;
+    Table indexTable = indexInTable ? dbTable : correlation;
+    Index indexField = findIndex(indexTable, foreignTarget[1]);
 
     if (fkey == null) {
-      String msg = "subQuery(): No foreignKey for table " + foreignTarget[0] + " found";
+      String msg = "subQuery: No foreignKey for table " + foreignTarget[0] + " found";
       logger.log(Level.SEVERE, msg);
       throw new QueryValidationException(msg);
     }
@@ -574,54 +584,53 @@ public class CQL2PgJSON {
       throw new QueryValidationException(msg);
     }
     String foreignTableJsonb = foreignTarget[0] + ".jsonb";
-    String term = node.getTerm();
-
-    boolean isTermConstant = !tableNamePattern.matcher(term).matches();
-
-    String myField = dbTable.getTableName() + ".id";
-    String targetField = index2sqlText(foreignTableJsonb, fkey.getFieldName());
-    String whereField = index2sqlText(foreignTableJsonb, foreignTarget[1]);
-    String whereClause = "";
-    String inKeyword = "";
-    String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], correlation);
-    String indexString = "";
-    String selectString = "";
-    if (isTermConstant) {
-      String termString = "";
-      CqlModifiers modifiers = new CqlModifiers(node);
-      if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-        termString = "('" + Cql2SqlUtil.cql2string(term) + "')::NUMERIC";
-        indexString = "(" + whereField + ")::NUMERIC";
-      } else {
-        termString = String.format(template, "'" + Cql2SqlUtil.cql2string(term) + "'");
-        indexString = String.format(template, whereField);
-      }
-      selectString = "Cast ( " + targetField + "as UUID)";
-      inKeyword = myField + " IN ";
-      whereClause = " WHERE " + indexString + " = " + termString;
+    String indexSQL = index2sqlText(foreignTableJsonb, foreignTarget[1]);
+    String match = foreignKeyMatch(node, indexSQL, indexField);
+    if (indexInTable) {
+      return formatParentChild(foreignTarget[0], fkey, match);
     } else {
-      inKeyword = myField + " IN ";
-      selectString = "Cast ( " + index2sqlText(foreignTableJsonb, foreignTarget[1]) + "as UUID)";
+      return formatChildParent(foreignTarget[0], fkey, foreignTableJsonb, match);
     }
-
-    return inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
   }
 
+  private static String foreignKeyMatch(CQLTermNode node, String indexSQL, Index index) throws QueryValidationException {
+    String term = node.getTerm();
+    CqlModifiers modifiers = new CqlModifiers(node);
+    if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
+      return "(" + indexSQL + ")::NUMERIC = ('" + Cql2SqlUtil.cql2string(term) + "')::NUMERIC";
+    }
+    if (index == null) {
+      return indexSQL + " = " + "'" + Cql2SqlUtil.cql2string(term) + "'";
+    }
 
+    return wrapInLowerUnaccent(indexSQL, index) + " = " + wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2string(term) + "'", index);
+  }
 
-  private String getWrapTemplateWithSchemaDetection(String whereField,Table targetTable ) {
-    String wrappingStringTemplate = "%s";
-    for(Index i : targetTable.getIndex()) {
-      if(i.getFieldName().equals(whereField)) {
-        if(i.isRemoveAccents()) {
-          wrappingStringTemplate = "f_unaccent(" +wrappingStringTemplate + ")";
-        }
-        if(!i.isCaseSensitive()) {
-          wrappingStringTemplate = "lower(" + wrappingStringTemplate + ")" ;
-        }
+  private String formatChildParent(String foreignTableName, ForeignKeys fkey, String foreignTableJsonb,
+      String match) throws QueryValidationException {
+
+    return dbTable.getTableName() + "." + PK_COLUMN_NAME + " IN "
+        + " ( SELECT " + "(" + index2sqlText(foreignTableJsonb, fkey.getFieldName()) + ")::UUID"
+        + " from " + foreignTableName + " WHERE " + match + ")";
+  }
+
+  private String formatParentChild(String foreignTableName, ForeignKeys fkey, String match)
+      throws QueryValidationException {
+
+    return "(" + index2sqlText(dbTable.getTableName() + ".jsonb", fkey.getFieldName()) + ")::UUID" + " IN "
+        + " ( SELECT " + PK_COLUMN_NAME + " from " + foreignTableName + " WHERE " + match + ")";
+  }
+
+  private static Index findIndex(Table table, String fieldName) {
+    if (table == null || table.getIndex() == null) {
+      return null;
+    }
+    for(Index index : table.getIndex()) {
+      if (index.getFieldName().equals(fieldName)) {
+        return index;
       }
     }
-    return wrappingStringTemplate;
+    return null;
   }
 
   /**
@@ -631,13 +640,17 @@ public class CQL2PgJSON {
    * @param targetTable  where to search
    * @return the ForeignKeys if found, null otherwise
    */
-  private ForeignKeys findForeignKey(String field, Table targetTable) {
-    String fieldName = dbTable.getTableName() + field;
+  private static ForeignKeys findForeignKey(Table currentTable, String field, Table targetTable) {
+    String fieldName = currentTable.getTableName() + field;
+    if (targetTable.getForeignKeys() == null) {
+      return null;
+    }
     for (ForeignKeys key : targetTable.getForeignKeys()) {
       if (fieldName.equalsIgnoreCase(key.getFieldName())) {
         return key;
       }
     }
+
     return null;
   }
 
