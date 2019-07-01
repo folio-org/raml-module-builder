@@ -214,8 +214,6 @@ Limited cross table searches are supported.  If you desire a join across tables 
   - e.g.  table1 -> table2 not table1 -> table2 -> table3
 * precede the index you want to search with the table name in Camel Case.
   - e.g. someTableName.indexYouWantToSearch = value
-* if no conditions are required and a join is all that is needed use:
-  id = someTableName.indexYouWantToSearch 
 * currently no other operators are supported.  They will be added at a later date.
 
 
