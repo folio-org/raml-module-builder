@@ -1,7 +1,15 @@
 {
   "tables": [
     {
-      "tableName": "tablea"
+      "tableName": "tablea",
+      "index": [
+        {
+          "fieldName": "prefix",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ]
     },
     {
       "tableName": "tableb",
@@ -34,6 +42,9 @@
           "targetTable": "tableb"
         }
       ]
+    },
+    {
+      "tableName": "tabled"
     }
   ]
 }

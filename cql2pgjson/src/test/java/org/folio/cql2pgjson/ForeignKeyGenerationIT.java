@@ -1,11 +1,10 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 
 import java.util.List;
 
-import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -17,7 +16,8 @@ import junitparams.JUnitParamsRunner;
 
 @RunWith(JUnitParamsRunner.class)
 public class ForeignKeyGenerationIT extends DatabaseTestBase {
-  private CQL2PgJSON cql2pgJson;
+  private CQL2PgJSON cql2pgJsonTablea;
+  private CQL2PgJSON cql2pgJsonTableb;
 
   @BeforeClass
   public static void runOnceBeforeClass() throws Exception {
@@ -32,22 +32,36 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
   @Before
   public void before() throws Exception {
-    cql2pgJson = new CQL2PgJSON("tablea.jsonb");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    cql2pgJsonTablea = new CQL2PgJSON("tablea.jsonb");
+    cql2pgJsonTablea.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    cql2pgJsonTableb = new CQL2PgJSON("tableb.jsonb");
+    cql2pgJsonTableb.setDbSchemaPath("templates/db_scripts/foreignKey.json");
   }
 
   private List<String> cql(String cql) {
     try {
-      String sql = cql2pgJson.toSql(cql).toString();
+      String sql = cql2pgJsonTablea.toSql(cql).toString();
       return firstColumn("select jsonb->>'name' from tablea " + sql);
     } catch (QueryValidationException e) {
       throw new RuntimeException(e);
     }
   }
-
+  private List<String> cqlb(String cql) {
+    try {
+      String sql = cql2pgJsonTableb.toSql(cql).toString();
+      return firstColumn("select jsonb->>'prefix' from tableb " + sql);
+    } catch (QueryValidationException e) {
+      throw new RuntimeException(e);
+    }
+  }
   @Test
   public void foreignKeySearch0() throws Exception {
     assertThat(cql("tableb.prefix == x0"), is(empty()));
+  }
+
+  @Test
+  public void foreignKeySearchParentChild() throws Exception {
+    assertThat(cqlb("tablea.name == test1"), containsInAnyOrder("x1"));
   }
 
   @Test
@@ -63,14 +77,10 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   }
 
   @Test
-  public void foreignKeyFilter1() throws Exception {
-    assertThat(cql("id == tableb.tableaId"), containsInAnyOrder("test1", "test2", "test3"));
-  }
-
-  @Test
   public void uuidConstant() throws Exception {
     assertThat(cql("tableb.name == 33333333-3333-3333-3333-333333333333"), is(empty()));
   }
+
   @Test
   public void ForeignKeySearchWithInjection1() {
     //check to see if we can execute some arbitrary sql
@@ -78,6 +88,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     //then check to see if the drop table worked by checking to see if there is anything there
     assertThat(cql("tableb.prefix == \"x0')));((('DROP tableb\"").size() > 0, is(true));
   }
+
   @Test
   public void ForeignKeySearchWithInjection2() {
     //this test is to see if I can query more items then intended

@@ -19,13 +19,13 @@ public class DbSchemaUtilsTest {
     return index;
   }
 
-  private Schema schema;
+  private Table table;
 
   @Before
   public void setupSchema() {
-    schema = new Schema();
+    Schema schema = new Schema();
 
-    Table table = new Table();
+    table = new Table();
     table.setTableName("users");
 
     table.setFullTextIndex(Arrays.asList(newIndex("name")));
@@ -40,7 +40,7 @@ public class DbSchemaUtilsTest {
 
   @Test
   public void testGetDbIndexForName() {
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users.jsonb->'name'");
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(table, "name");
     assertTrue(dbIndex.isFt());
     assertTrue(dbIndex.isGin());
     assertTrue(dbIndex.isOther());
@@ -48,7 +48,7 @@ public class DbSchemaUtilsTest {
 
   @Test
   public void testGetDbIndexForEmail() {
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users.jsonb->'email'");
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(table, "email");
     assertFalse(dbIndex.isFt());
     assertFalse(dbIndex.isGin());
     assertTrue(dbIndex.isOther());
@@ -56,10 +56,18 @@ public class DbSchemaUtilsTest {
 
   @Test
   public void testGetDbIndexForAddress() {
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(schema, "users.jsonb->'address'");
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(table, "address");
     assertFalse(dbIndex.isFt());
     assertFalse(dbIndex.isGin());
     assertTrue(dbIndex.isOther());
+  }
+
+  @Test
+  public void testGetDbIndexForNullTable() {
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(null, "address");
+    assertFalse(dbIndex.isFt());
+    assertFalse(dbIndex.isGin());
+    assertFalse(dbIndex.isOther());
   }
 
 }
