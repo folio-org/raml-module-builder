@@ -989,13 +989,12 @@ For each **table**:
 own normalizing, so there is no need to use `caseSensitive` or `removeAccents`. The `tOps`
 is optional (like for all indexes), and defaults to ADDing the index. `whereClause` and
 `stringType` work as for `likeIndex` above.
-11. `withAuditing` - create an auditing table with triggers populating the audit table whenever an insert, update, or delete occurs on the table
-    * The name of the audit table will be `audit_`{tableName}.
-    * An entry of the audit table in the "tables" section of schema.json is optional, for example to create indexes.
-    * The `auditingSnippet` section allows some customizations to the auditing function by allowing custom sqls in the declare section and the body (for either insert / update / delete).
-    * The audit table has four fields: `item` contains the original jsonb, `id` contains a new unique id,
-      `operation` contains `I`, `U`, `D` for insert, update, delete, and `createdDate` contains
-      the time when the audit record was created.
+11. `withAuditing` - Creates an auditing table and a trigger that populates the audit table with the history of the table record whenever an insert, update, or delete occurs. `"withAuditing": true` for enabled, `false` or undefined for disabled.
+    * `auditingTableName` The name of the audit table.
+    * `auditingFieldName` The field (JSON property) in the audit record that contains the copy of the original record.
+    * `"withAuditing": true` automatically creates the auditing table; an entry of the audit table in the "tables" section of schema.json is optional, for example to create indexes.
+    * The `auditingSnippet` section allows some customizations to the auditing function with custom sqls in the declare section and the body (for either insert / update / delete).
+    * The audit table jsonb column has three fields: `$auditingFieldName` contains the original record (jsonb from the original table), `id` contains a new unique id, `operation` contains `I`, `U`, `D` for insert, update, delete, and `createdDate` contains the time when the audit record was created.
 12. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the json and creating a FK constraint)
 13. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
 14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table

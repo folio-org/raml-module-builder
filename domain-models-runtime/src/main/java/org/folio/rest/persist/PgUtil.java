@@ -297,6 +297,8 @@ public final class PgUtil {
    * @param clazz  the class of the record type T
    * @param collectionClazz  the class of the collection type C containing records of type T
    * @param cql  the CQL query for filtering and sorting the records
+   * @param offset number of records to skip, use 0 or negative number for not skipping
+   * @param limit maximum number of records to return, use a negative number for no limit
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,

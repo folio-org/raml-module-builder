@@ -41,7 +41,33 @@ public class SchemaMakerTest {
     assertThat(result, containsString("CREATE TABLE IF NOT EXISTS harvard_circ.audit_test_tenantapi"));
     assertThat(result, containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_test_tenantapi_changes() RETURNS TRIGGER"));
     // index for field in audit table
-    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS audit_test_tenantapi_item_id_idx "));
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS audit_test_tenantapi_testTenantapiAudit_id_idx "));
+  }
+
+  @Test
+  public void failsWhenAuditingTableNameIsMissing() throws Exception {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
+        "mod-foo-18.2.3", "mod-foo-18.2.4");
+    String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
+    Schema schema  = ObjectMapperTool.getMapper().readValue(json, Schema.class);
+    schema.getTables().get(0).setAuditingTableName(null);
+    schemaMaker.setSchema(schema);
+
+    thrown.expectMessage("auditingTableName missing");
+    schemaMaker.generateDDL();
+  }
+
+  @Test
+  public void failsWhenAuditingFieldNameIsMissing() throws Exception {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
+        "mod-foo-18.2.3", "mod-foo-18.2.4");
+    String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
+    Schema schema  = ObjectMapperTool.getMapper().readValue(json, Schema.class);
+    schema.getTables().get(0).setAuditingFieldName(null);
+    schemaMaker.setSchema(schema);
+
+    thrown.expectMessage("auditingFieldName missing");
+    schemaMaker.generateDDL();
   }
 
   @Test
