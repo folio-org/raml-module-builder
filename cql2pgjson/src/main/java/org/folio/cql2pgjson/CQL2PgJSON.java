@@ -941,10 +941,10 @@ public class CQL2PgJSON {
 
     // Clean the term. Remove stand-alone ' *', not valid word.
     String term = node.getTerm().replaceAll(" +\\*", "").trim();
-    return queryByFt(indexText, term, comparator, modifiers);
+    return queryByFt(indexText, term, comparator);
   }
 
-  private String queryByFt(String indexText, String term, String comparator, CqlModifiers modifiers) throws QueryValidationException {
+  private String queryByFt(String indexText, String term, String comparator) throws QueryValidationException {
     if (term.equals("*")) {
       return "true";
     }
