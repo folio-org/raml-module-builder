@@ -111,9 +111,7 @@ public class SchemaMaker {
     Map<String, Index> indexMap = new HashMap<>();
 
     if(tables != null){
-      int size = tables.size();
-      for (int i = 0; i < size; i++) {
-        Table t = tables.get(i);
+      for (Table t : tables) {
         if(t.getMode() == null) {
           //the only relevant mode that the templates take into account is delete
           //otherwise update and new will always create if does not exist
@@ -214,6 +212,17 @@ public class SchemaMaker {
             String normalized = normalizeFieldName(u.getFieldName());
             indexMap.put(t.getTableName()+"_"+normalized, u);
             u.setFieldName(normalized);
+          }
+        }
+
+        if (t.isWithAuditing()) {
+          if (t.getAuditingTableName() == null) {
+            throw new IllegalArgumentException(
+                "auditingTableName missing for table " + t.getTableName() + " having \"withAuditing\": true");
+          }
+          if (t.getAuditingFieldName() == null) {
+            throw new IllegalArgumentException(
+                "auditingFieldName missing for table " + t.getTableName() + " having \"withAuditing\": true");
           }
         }
       }

@@ -1,0 +1,18 @@
+{
+  "tables" : [
+    {
+      "tableName" : "bees",
+      "withMetadata" : true,
+      "withAuditing" : true,
+      "auditingTableName" : "bee_history",
+      "auditingFieldName" : "beeHistory"
+    },
+    {
+      "tableName" : "myitems",
+      "withMetadata" : true,
+      "withAuditing" : true,
+      "auditingTableName" : "myitems_audit",
+      "auditingFieldName" : "myitemsAudit"
+    }
+  ]
+}

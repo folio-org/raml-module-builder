@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Bees",
+  "description": "Collection of bee records.",
+  "type": "object",
+  "properties": {
+    "bees": {
+      "description": "bees array",
+      "id": "items",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref" : "bee.json"
+      }
+    },
+    "total_records": {
+      "description": "total records",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "bees",
+    "total_records"
+  ]
+}
