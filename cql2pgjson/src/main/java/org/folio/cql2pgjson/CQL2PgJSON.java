@@ -788,6 +788,21 @@ public class CQL2PgJSON {
     }
   }
 
+  private String lookupModifier(Index schemaIndex, String modifierName) {
+    String foundModifier = null;
+    if (schemaIndex != null) {
+      List<String> schemaModifiers = schemaIndex.getModifiers();
+      if (schemaModifiers != null) {
+        for (String schemaModifier : schemaModifiers) {
+          if (schemaModifier.equalsIgnoreCase(modifierName)) {
+            return schemaModifier;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   private String arrayNode(String index, CQLTermNode node, CqlModifiers modifiers,
     List<Modifier> relationModifiers, Index schemaIndex) throws QueryValidationException {
 
@@ -797,17 +812,7 @@ public class CQL2PgJSON {
     for (Modifier relationModifier : relationModifiers) {
       final String modifierName = relationModifier.getType().substring(1);
       final String modifierValue = relationModifier.getValue();
-      String foundModifier = null;
-      if (schemaIndex != null) {
-        List<String> schemaModifiers = schemaIndex.getModifiers();
-        if (schemaModifiers != null) {
-          for (String schemaModifier : schemaModifiers) {
-            if (schemaModifier.equalsIgnoreCase(modifierName)) {
-              foundModifier = schemaModifier;
-            }
-          }
-        }
-      }
+      String foundModifier = lookupModifier(schemaIndex, modifierName);
       if (foundModifier == null) {
         throw new QueryValidationException("CQL: Unsupported relation modifier "
           + relationModifier.getType());
