@@ -24,6 +24,8 @@ public class Table extends Versioned {
   private List<AddFields> addFields;
   private List<DeleteFields> deleteFields;
   private AuditingSnippet auditingSnippet;
+  private String auditingTableName;
+  private String auditingFieldName;
 
   public String getTableName() {
     return tableName;
@@ -119,6 +121,34 @@ public class Table extends Versioned {
 
   public void setAuditingSnippet(AuditingSnippet auditingSnippet) {
     this.auditingSnippet = auditingSnippet;
+  }
+
+  /**
+   * @return name of the table that contains the audit log
+   */
+  public String getAuditingTableName() {
+    return auditingTableName;
+  }
+
+  /**
+   * @param auditingTableName name of the table that contains the audit log
+   */
+  public void setAuditingTableName(String auditingTableName) {
+    this.auditingTableName = auditingTableName;
+  }
+
+  /**
+   * @return name of the property of the audit JSON that contains the original record
+   */
+  public String getAuditingFieldName() {
+    return auditingFieldName;
+  }
+
+  /**
+   * @param auditingFieldName name of the property of the audit JSON that contains the original record
+   */
+  public void setAuditingFieldName(String auditingFieldName) {
+    this.auditingFieldName = auditingFieldName;
   }
 
   /**

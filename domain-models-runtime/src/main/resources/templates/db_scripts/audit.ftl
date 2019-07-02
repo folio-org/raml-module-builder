@@ -16,10 +16,10 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
     maxid UUID;
     jsonb JSONB;
   BEGIN
-    maxid = (SELECT ${myuniversity}_${mymodule}.max(id) FROM ${myuniversity}_${mymodule}.audit_${table.tableName});
+    maxid = (SELECT ${myuniversity}_${mymodule}.max(id) FROM ${myuniversity}_${mymodule}.${table.auditingTableName});
     IF maxid IS NULL THEN
       -- don't use random, that will be different on each pg-pool replication node
-      seed = md5(concat('${myuniversity}_${mymodule}.audit_${table.tableName}', NEW.jsonb));
+      seed = md5(concat('${myuniversity}_${mymodule}.${table.auditingTableName}', NEW.jsonb));
       -- avoid overflow
       IF (left(seed, 13) = 'ffffffff-ffff') THEN
         seed = overlay(seed placing '00000000-0000' from 1);
@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
     END IF;
     jsonb = jsonb_build_object(
       'id', to_jsonb(maxid::text),
-      'item', CASE WHEN TG_OP = 'DELETE' THEN OLD.jsonb ELSE NEW.jsonb END,
+      '${table.auditingFieldName}', CASE WHEN TG_OP = 'DELETE' THEN OLD.jsonb ELSE NEW.jsonb END,
       'operation', to_jsonb(left(TG_OP, 1)),
       'createdDate', to_jsonb(current_timestamp::text));
     IF (TG_OP = 'DELETE') THEN
@@ -50,7 +50,7 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
         ${table.auditingSnippet.insert.statement}
       </#if>
     END IF;
-    INSERT INTO ${myuniversity}_${mymodule}.audit_${table.tableName} VALUES (maxid, jsonb);
+    INSERT INTO ${myuniversity}_${mymodule}.${table.auditingTableName} VALUES (maxid, jsonb);
     RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
   END;
 $${table.tableName}_audit$ LANGUAGE plpgsql;

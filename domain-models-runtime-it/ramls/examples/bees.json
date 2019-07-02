@@ -1,0 +1,25 @@
+{
+  "bees": [
+    {
+      "id": "ac30db60-a9b4-4366-a570-9bfcda349c37",
+      "name": "Willy",
+      "metadata": {
+        "createdDate" : "2019-06-27T12:01:59.944+0000",
+        "createdByUserId" : "57fb201d-2cc1-4c18-87ff-4cd885bb7036",
+        "updatedDate" : "2019-06-27T11:01:59.944+0000",
+        "updatedByUserId" : "57fb201d-2cc1-4c18-87ff-4cd885bb7036"
+      }
+    },
+    {
+      "id": "bef5a442-8ade-48e1-8299-6f5bf08fc136",
+      "name": "Maya",
+      "metadata": {
+        "createdDate" : "2019-06-27T11:55:00.415+0000",
+        "createdByUserId" : "57fb201d-2cc1-4c18-87ff-4cd885bb7036",
+        "updatedDate" : "2019-06-27T11:55:00.415+0000",
+        "updatedByUserId" : "57fb201d-2cc1-4c18-87ff-4cd885bb7036"
+      }
+    }
+  ],
+  "total_records": 2
+}
