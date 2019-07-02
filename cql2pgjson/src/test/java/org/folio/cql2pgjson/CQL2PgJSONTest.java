@@ -954,6 +954,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang=English creator b # b",
     "contributors any/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang English danish # b",
     "contributors all/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang English danish # ",
+    "contributors =/@name/@lang terry # a",
     "contributors =/@lang=english/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator b # b",
     "contributors =/@lang<1 c # ! CQL: Unsupported comparison for relation modifier @lang ",
     "identifiers =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a c # ! CQL: Unsupported relation modifier @contributornametypeid",

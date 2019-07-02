@@ -33,7 +33,7 @@
           "caseSensitive": false,
           "removeAccents": true,
           "modifiersSubfield": "name",
-          "modifiers": ["contributorNameTypeId", "lang"]
+          "modifiers": ["contributorNameTypeId", "lang", "name"]
         },
         {
           "fieldName": "other",
