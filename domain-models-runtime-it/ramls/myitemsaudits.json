@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Myitems audit",
+  "description": "History of myitem records.",
+  "type": "object",
+  "properties": {
+    "myitemsAudits": {
+      "description": "Array of myitem record history records",
+      "id": "items",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "identifier of this audit record",
+            "type": "string"
+          },
+          "operation": {
+            "description": "operation that triggered this audit: I for insert, U for update, D for delete",
+            "type": "string"
+          },
+          "createdDate": {
+            "description": "timestamp when this audit record was created",
+            "type": "string"
+          },
+          "myitemsAudit": {
+            "description": "Myitem history record",
+            "id": "items",
+            "type": "object",
+            "$ref" : "myitem.json"
+          }
+        }
+      }
+    },
+    "total_records": {
+      "description": "total records",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "myitemsaudits",
+    "total_records"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "myitems": [
+    {
+      "id": "1e8d283a-efac-4068-8ccb-15d1c38ad56f",
+      "name": "Foo",
+      "metadata": {
+        "createdDate" : "2019-06-27T11:55:00.415+0000",
+        "createdByUserId" : "57fb201d-2cc1-4c18-87ff-4cd885bb7036",
+        "updatedDate" : "2019-06-27T11:55:00.415+0000",
+        "updatedByUserId" : "57fb201d-2cc1-4c18-87ff-4cd885bb7036"
+      }
+    },
+    {
+      "id": "83bf71a6-00d9-439a-8c92-0dd736b76234",
+      "name": "Baz",
+      "metadata": {
+        "createdDate" : "2019-06-27T11:56:23.129+0000",
+        "createdByUserId" : "57fb201d-2cc1-4c18-87ff-4cd885bb7036",
+        "updatedDate" : "2019-06-27T11:56:23.129+0000",
+        "updatedByUserId" : "57fb201d-2cc1-4c18-87ff-4cd885bb7036"
+      }
+    }
+  ],
+  "total_records": 2
+}
