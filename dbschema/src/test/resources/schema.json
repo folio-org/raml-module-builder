@@ -29,8 +29,8 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "modifiersSubfield": "name",
-          "modifiers": [ "languageId" ]
+          "arraySubfield": "name",
+          "arrayModifiers": [ "languageId" ]
         }
       ],
       "ginIndex": [

@@ -183,19 +183,32 @@ The type1, type2 and subfield must all be defined in schema.json, because
 the JSON schema is not known. And also because relation modifiers are
 unfortunately lower-cased by cqljava. The type1, value1 are exact matches.
 
-IN schema.json, two new properties `subfield` and `modifiers` specifies
-the subfield and the list of modifiers respectively. This can be applied
-to `ginIndex` and `fullTextIndex` . Example if the above is to be
-supported for ginIndex:
+In schema.json two new properties, `arraySubfield` and `arrayModifiers`,
+specifies the subfield and the list of modifiers respectively.
+This can be applied to `ginIndex` and `fullTextIndex`.
+Example if the above is to be supported for ginIndex:
 
     {
       "fieldName": "property",
       "tOps": "ADD",
       "caseSensitive": false,
       "removeAccents": true,
-      "modifiersSubfield": "subfield",
-      "modifiers": ["type1", "type2"]
+      "arraySubfield": "subfield",
+      "arrayModifiers": ["type1", "type2"]
     }
+
+For the identifiers example we could define things in schema.json with:
+
+    {
+      "fieldName": "identifiers",
+      "tOps": "ADD",
+      "arraySubfield": "value",
+      "arrayModifiers": ["identifierTypeId"]
+    }
+
+This will allow you to perform searches, such as:
+
+    identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
 
 ## Matching and comparing numbers
 

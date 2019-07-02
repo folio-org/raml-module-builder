@@ -974,8 +974,8 @@ For each **table**:
     *  `removeAccents` - normalize accents or leave accented chars as is. *Default: true* should not be changed, temporarily all indexes are created with a `f_unaccent()` function wrapper. Index will not be used if this is changed (important on large tables)
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
     * `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
-    * `modifiers`- specifies relation modifiers supported . This is an array of strings and is omitted if no relation modifiers are supported for the index. The modifiers must exactly match the name of the property in the JSON object within the array.
-    * `modifiersValue` : is the key of the object that is used for full-text search when modifiers are used. This should always be defined when modifiers property is also defined.
+    * `arrayModifiers`- specifies array relation modifiers supported for some index. The modifiers must exactly match the name of the property in the JSON object within the array.
+    * `arraySubfield` : is the key of the object that is used for the primary term when array relation modifiers are in use. This is typically also defined when `arrayModifiers` are also defined.
 7. `ginIndex` - generate an inverted index on the json using the `gin_trgm_ops` extension. Allows for regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the equality operator (=). See the `likeIndex` for available options (does not support partial indexes - where). removeAccents is set to true and is not case sensitive.
 8. `uniqueIndex` - create a unique index on a field in the json
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed

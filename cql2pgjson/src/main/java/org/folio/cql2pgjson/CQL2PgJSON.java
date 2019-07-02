@@ -791,7 +791,7 @@ public class CQL2PgJSON {
   private String lookupModifier(Index schemaIndex, String modifierName) {
     String foundModifier = null;
     if (schemaIndex != null) {
-      List<String> schemaModifiers = schemaIndex.getModifiers();
+      List<String> schemaModifiers = schemaIndex.getArrayModifiers();
       if (schemaModifiers != null) {
         for (String schemaModifier : schemaModifiers) {
           if (schemaModifier.equalsIgnoreCase(modifierName)) {
@@ -839,7 +839,7 @@ public class CQL2PgJSON {
     if (sqlOr.length() > 0) {
       sqlOr.append(")");
     } else {
-      final String modifiersSubfield = schemaIndex.getModifiersSubfield();
+      final String modifiersSubfield = schemaIndex.getArraySubfield();
       if (modifiersSubfield == null) {
         throw new QueryValidationException("CQL: No modifiers subfield defined");
       }

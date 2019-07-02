@@ -12,8 +12,8 @@ public class Index extends TableIndexes {
   private String whereClause = null;
   private boolean stringType = true;
   private boolean removeAccents = true;
-  private List<String> modifiers = null;
-  private String modifiersSubfield = null;
+  private List<String> arrayModifiers = null;
+  private String arraySubfield = null;
 
   public boolean isCaseSensitive() {
     return caseSensitive;
@@ -40,20 +40,20 @@ public class Index extends TableIndexes {
     this.removeAccents = removeAccents;
   }
 
-  public List<String> getModifiers() {
-    return modifiers;
+  public List<String> getArrayModifiers() {
+    return arrayModifiers;
   }
 
-  public void setModifiers(List<String> modifiers) {
-    this.modifiers = modifiers;
+  public void setArrayModifiers(List<String> modifiers) {
+    this.arrayModifiers = modifiers;
   }
 
-  public String getModifiersSubfield() {
-    return modifiersSubfield;
+  public String getArraySubfield() {
+    return arraySubfield;
   }
 
-  public void setModifiersSubfield(String modifiersSubfield) {
-    this.modifiersSubfield = modifiersSubfield;
+  public void setArraySubfield(String modifiersSubfield) {
+    this.arraySubfield = modifiersSubfield;
   }
 
 }
