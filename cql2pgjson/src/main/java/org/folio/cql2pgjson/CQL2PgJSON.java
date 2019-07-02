@@ -794,7 +794,6 @@ public class CQL2PgJSON {
     StringBuilder sqlAnd = new StringBuilder();
     StringBuilder sqlOr = new StringBuilder();
     modifiers.setRelationModifiers(new LinkedList<>()); // avoid recursion
-    int no = 0;
     for (Modifier relationModifier : relationModifiers) {
       final String modifierName = relationModifier.getType().substring(1);
       final String modifierValue = relationModifier.getValue();
@@ -814,7 +813,7 @@ public class CQL2PgJSON {
           + relationModifier.getType());
       }
       if (modifierValue == null) {
-        if (no == 0) {
+        if (sqlOr.length() == 0) {
           sqlOr.append("(");
         } else {
           sqlOr.append(" or ");
@@ -822,7 +821,6 @@ public class CQL2PgJSON {
         IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
         vals.setIndexText(index2sqlText("t.c", foundModifier));
         sqlOr.append(indexNode(index, node, vals, modifiers));
-        no++;
       } else {
         final String comparator = relationModifier.getComparison();
         if (!"=".equals(comparator)) {
@@ -830,10 +828,10 @@ public class CQL2PgJSON {
         }
         sqlAnd.append(" and ");
         sqlAnd.append(queryByFt(index2sqlText("t.c", foundModifier), modifierValue,
-          comparator, modifiers));
+          comparator));
       }
     }
-    if (no > 0) {
+    if (sqlOr.length() > 0) {
       sqlOr.append(")");
     } else {
       final String modifiersSubfield = schemaIndex.getModifiersSubfield();
