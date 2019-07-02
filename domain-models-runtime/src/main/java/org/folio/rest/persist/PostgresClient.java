@@ -456,8 +456,12 @@ public class PostgresClient {
     }
 
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
-
     logPostgresConfig();
+
+    if (isEmbedded()) {
+      startEmbeddedPostgres();
+    }
+
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
   }
 
@@ -3399,13 +3403,15 @@ public class PostgresClient {
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       String locale = "en_US.UTF-8";
-      String OS = System.getProperty("os.name").toLowerCase();
-      if (OS.indexOf("win") >= 0) {
+      String operatingSystem = System.getProperty("os.name").toLowerCase();
+      if (operatingSystem.contains("win")) {
         locale = "american_usa";
       }
       rememberEmbeddedPostgres();
       embeddedPostgres.start("localhost", port, database, username, password,
         Arrays.asList("-E", "UTF-8", "--locale", locale));
+      Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
+
       log.info("embedded postgres started on port " + port);
     } else {
       log.info("embedded postgres is already running...");

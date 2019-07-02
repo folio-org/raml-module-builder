@@ -58,7 +58,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
       jsonb JSONB NOT NULL
     );
     <#if table.withAuditing == true>
-    CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} (
+    CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.auditingTableName} (
       id UUID PRIMARY KEY,
       jsonb JSONB NOT NULL
     );
@@ -71,7 +71,7 @@ SET search_path TO public, ${myuniversity}_${mymodule};
       FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_id_in_jsonb();
   <#else>
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-    DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.audit_${table.tableName} CASCADE;
+    DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.auditingTableName} CASCADE;
   </#if>
 
   <#if table.mode != "delete">

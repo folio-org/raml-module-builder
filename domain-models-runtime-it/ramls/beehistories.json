@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Bees",
+  "description": "History of bee records.",
+  "type": "object",
+  "properties": {
+    "beeHistories": {
+      "description": "Array of bee record history records",
+      "id": "items",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "identifier (UUID) of this history record",
+            "type": "string"
+          },
+          "operation": {
+            "description": "operation that triggered this history entry: I for insert, U for update, D for delete",
+            "type": "string"
+          },
+          "createdDate": {
+            "description": "timestamp when this history record was created",
+            "type": "string"
+          },
+          "beeHistory": {
+            "description": "Bee history record",
+            "id": "items",
+            "type": "object",
+            "$ref" : "bee.json"
+          }
+        }
+      }
+    },
+    "total_records": {
+      "description": "total records",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "beeHistories",
+    "total_records"
+  ]
+}
+

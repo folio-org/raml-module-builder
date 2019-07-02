@@ -52,7 +52,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
     return i.get();
   }
 
-  private void auditedTableCanInsertUpdateDelete(TestContext context, String table) {
+  private void auditedTableCanInsertUpdateDelete(TestContext context, String table, String field) {
     execute(context, "INSERT INTO " + table +
         " SELECT md5(username)::uuid, json_build_object('username', username, 'id', md5(username)::uuid)" +
         " FROM (SELECT 'user' || generate_series(1, 5) AS username) AS subquery");
@@ -64,13 +64,13 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertThat("total number of audit entries",
         selectInteger(context, count), is(15));
     assertThat("total number of audit entries for insert",
-        selectInteger(context, count + " WHERE jsonb->>'operation'='I' AND jsonb->'item'->>'foo' IS NULL"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='I' AND jsonb->'" + field + "'->>'foo' IS NULL"), is(5));
     assertThat("total number of audit entries for update",
-        selectInteger(context, count + " WHERE jsonb->>'operation'='U' AND jsonb->'item'->>'foo' = 'bar'"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='U' AND jsonb->'" + field + "'->>'foo' = 'bar'"), is(5));
     assertThat("total number of audit entries for delete",
-        selectInteger(context, count + " WHERE jsonb->>'operation'='D' AND jsonb->'item'->>'foo' = 'bar'"), is(5));
+        selectInteger(context, count + " WHERE jsonb->>'operation'='D' AND jsonb->'" + field + "'->>'foo' = 'bar'"), is(5));
     assertThat("number of user2 audit entries",
-        selectInteger(context, count + " WHERE jsonb->'item'->>'id'=md5('user2')::uuid::text"), is(3));
+        selectInteger(context, count + " WHERE jsonb->'" + field + "'->>'id' = md5('user2')::uuid::text"), is(3));
   }
 
   @Test
@@ -78,11 +78,11 @@ public class SchemaMakerIT extends PostgresClientITBase {
     // We need to create two different audited tables to check that "CREATE AGGREGATE" in uuid.ftl
     // is called only once per aggregate function.
     runSchema(context, TenantOperation.CREATE, "schemaWithAudit.json");
-    auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi");
-    auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi2");
+    auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi", "testTenantapiAudit");
+    auditedTableCanInsertUpdateDelete(context, schema + ".test_tenantapi2", "testTenantapiAudit2");
     // Check that '"withAuditing": true' implicitly creates the table 'audit_test_implicit'
     // without an explicit entry in the schema.json table list
-    auditedTableCanInsertUpdateDelete(context, schema + ".test_implicit");
+    auditedTableCanInsertUpdateDelete(context, schema + ".test_implicit", "implicitHistory");
   }
 
   private boolean triggerExists(TestContext context, String name) {

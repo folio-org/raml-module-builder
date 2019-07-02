@@ -1,0 +1,32 @@
+{
+  "myitemsAudits": [
+    {
+      "id": "365e8a7b-24aa-4359-86cf-62343a0ba8c9",
+      "operation": "I",
+      "createdDate": "2019-07-01 11:00:56.31237+00",
+      "myitemsAudit": {
+        "id": "ca41adbf-1a89-4ece-bf97-dbc913d1c482",
+        "name": "Foo"
+      }
+    },
+    {
+      "id": "365e8a7b-24aa-4359-86cf-62343a0ba8ca",
+      "operation": "U",
+      "createdDate": "2019-07-01 11:00:56.839316+00",
+      "myitemsAudit": {
+        "id": "ca41adbf-1a89-4ece-bf97-dbc913d1c482",
+        "name": "Bar"
+      }
+    },
+    {
+      "id": "365e8a7b-24aa-4359-86cf-62343a0ba8cb",
+      "operation": "D",
+      "createdDate": "2019-07-01 11:00:56.949925+00",
+      "myitemsAudit": {
+        "id": "ca41adbf-1a89-4ece-bf97-dbc913d1c482",
+        "name": "Bar"
+      }
+    }
+  ],
+  "total_records": 3
+}

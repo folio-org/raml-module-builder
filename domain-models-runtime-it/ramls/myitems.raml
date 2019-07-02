@@ -1,0 +1,57 @@
+#%RAML 1.0
+title: Myitems
+baseUri: http://github.com/org/folio/raml-module-builder/domain-models-runtime-it
+
+documentation:
+  - title: Myitems API
+    content: API used for Integration tests
+
+types:
+  myitem: !include myitem.json
+  myitems: !include myitems.json
+  myitemsaudits: !include myitemsaudits.json
+  errors: !include raml-util/schemas/errors.schema
+
+traits:
+  pageable: !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
+  language: !include raml-util/traits/language.raml
+  validate: !include raml-util/traits/validation.raml
+
+resourceTypes:
+  collection: !include raml-util/rtypes/collection.raml
+  collection-item: !include raml-util/rtypes/item-collection.raml
+  get-only: !include raml-util/rtypes/get-only.raml
+
+/myitems:
+  type:
+    collection:
+      exampleCollection: !include examples/myitems.json
+      exampleItem: !include examples/myitem.json
+      schemaCollection: myitems
+      schemaItem: myitem
+  get:
+    is: [
+      searchable: {description: "", example: "name=Miller"},
+      pageable
+    ]
+    description: Return a list of myitems
+  post:
+    is: [validate]
+    description: Create a myitem
+  /{myitemId}:
+    type:
+      collection-item:
+        exampleItem: !include examples/myitem.json
+        schema: myitem
+/myitemsaudit:
+  type:
+    get-only:
+      exampleCollection: !include examples/myitemsaudits.json
+      schema: myitemsaudits
+  get:
+    is: [
+      pageable,
+      searchable: { description: "Search using CQL",
+                    example: "myitemsaudit.name==\"Foo\""}
+      ]
