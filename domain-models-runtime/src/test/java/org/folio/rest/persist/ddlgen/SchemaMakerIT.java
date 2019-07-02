@@ -38,22 +38,6 @@ public class SchemaMakerIT extends PostgresClientITBase {
     }
   }
 
-  /*
-
-
-          "auditingFieldName": {
-            "description": "name of the property of the audit JSON that contains the original record",
-            "type": "string"
-          },
-          "auditingTableName": {
-            "description": "name of the table that contains the audit log",
-            "type": "string"
-          },
-
-
-
-   */
-
   private int selectInteger(TestContext context, String sql) {
     AtomicInteger i = new AtomicInteger();
 
