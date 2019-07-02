@@ -789,7 +789,6 @@ public class CQL2PgJSON {
   }
 
   private String lookupModifier(Index schemaIndex, String modifierName) {
-    String foundModifier = null;
     if (schemaIndex != null) {
       List<String> schemaModifiers = schemaIndex.getArrayModifiers();
       if (schemaModifiers != null) {
