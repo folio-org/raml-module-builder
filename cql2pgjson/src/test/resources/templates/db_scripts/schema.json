@@ -25,7 +25,7 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "arraySubfield": "modifiers-missing"
+          "arraySubfield": "noArrayModifiers"
         },
         {
           "fieldName": "contributors",
@@ -40,7 +40,7 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "arrayModifiers": ["modifiersSubfield-missing"]
+          "arrayModifiers": ["noArraySubfield"]
         }
       ],
       "index": [

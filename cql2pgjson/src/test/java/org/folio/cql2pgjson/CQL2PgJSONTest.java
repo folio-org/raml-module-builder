@@ -960,8 +960,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "identifiers =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a c # ! CQL: Unsupported relation modifier @contributornametypeid",
     "identifiers =/@contributornametypeid c # ! CQL: Unsupported relation modifier @contributornametypeid",
     "name ==/@foo=bar a # ! CQL: Unsupported relation modifier @foo",
-    "name = /@foo=bar a # ! CQL: Unsupported relation modifier @foo", // name has modifiersSubfield in schema, but no modifiers
-    "other= /@foo=bar a # ! CQL: Unsupported relation modifier @foo", // other has no modifiersSubfield in schema, but modifiers
+    "name = /@foo=bar a # ! CQL: Unsupported relation modifier @foo", // name has arraySubfield in schema, but no arrayModifiers
+    "other= /@noArraySubfield=bar a # ! CQL: No arraySubfield defined for index other",
     "contactInformation.phone == /@type=mobile 0912212 # b ",
     "contactInformation.phone == /@type=home 0912212 # ",
     "contactInformation.phone == /@type=home 091221? # b",

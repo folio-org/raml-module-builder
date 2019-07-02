@@ -840,7 +840,7 @@ public class CQL2PgJSON {
     } else {
       final String modifiersSubfield = schemaIndex.getArraySubfield();
       if (modifiersSubfield == null) {
-        throw new QueryValidationException("CQL: No modifiers subfield defined");
+        throw new QueryValidationException("CQL: No arraySubfield defined for index " + index);
       }
       IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
       vals.setIndexText(index2sqlText("t.c", modifiersSubfield));
