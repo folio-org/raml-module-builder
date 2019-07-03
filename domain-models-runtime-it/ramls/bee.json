@@ -16,7 +16,5 @@
       "$ref": "raml-util/schemas/metadata.schema",
       "readonly" : true
     }
-  },
-  "required": [
-  ]
+  }
 }
