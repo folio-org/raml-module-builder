@@ -1,20 +1,20 @@
 ## 26.0.0 2019-07-03 
 
- * RMB-380 RMB-416 RMB-418 implement new approach for searching
+ * RMB-380 RMB-416 RMB-418 Extension: implement new approach for searching
    array-of-objects fields.
- * RMB-387 Implement child->parent foreign key support for CQLPGJson Parser
- * RMB-391 Implement foreign key support for CQLPGJson Parser (two
- * RMB-397 Regression with $ref paths
- * RMB-400 PgUtil should return 400 (not 500) on invalid UUID id
- * RMB-401 PgUtil.post: Object or POJO type for entity parameter of
-   respond201WithApplicationJson
+ * RMB-387 Extension: Implement child->parent foreign key support for
+   CQLPGJson Parser
+ * RMB-391 Extension: Implement foreign key support for CQLPGJson Parser (two
+   tables, parent-child)
+ * RMB-397 Bug fix: Regression with $ref paths
+ * RMB-400 Bug fix: PgUtil should return 400 (not 500) on invalid UUID id
+ * RMB-401 Bug fix: PgUtil.post: Object or POJO type for entity
+   parameter of respond201WithApplicationJson
    tables, parent->child)
- * RMB-402 audit table jsonb: rename id to origId, add operation and
-   creationDate
- * RMB-414 audit table jsonb, rename item field to be unique
- * RMB-405 PostgresClient.save: Create random UUID if id is missing
- * RMB-409 CQLPG: Expect exception only if prepended by !, fix quotes unit
-   tests
+ * RMB-402 Bug fix and major change: audit table jsonb: rename id to
+   origId, add operation and creationDate.
+ * RMB-414 Bug fix: audit table jsonb, rename item field to be unique
+ * RMB-405 Extension: PostgresClient.save: Create random UUID if id is missing
 
 ## 25.0.0 2019-06-07
 
