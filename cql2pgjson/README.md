@@ -174,19 +174,20 @@ mod-inventory-storage . `contributorTypeId` is the type of contributor
 With CQL you can limit searches to `property1` with regular match in
 `subfield`, with type1=value2 with
 
-    property1 =/@type1=value1 value
+    property =/@type1=value1 value
 
 Noter that the relation modifier is preceeded with the @-character to
 avoid clash with CQL relation modifiers.
 
 The type1, type2 and subfield must all be defined in schema.json, because
 the JSON schema is not known. And also because relation modifiers are
-unfortunately lower-cased by cqljava. The type1, value1 are exact matches.
+unfortunately lower-cased by cqljava. To match value1 against the
+property contents of type1, full-text match is used.
 
 In schema.json two new properties, `arraySubfield` and `arrayModifiers`,
 specifies the subfield and the list of modifiers respectively.
 This can be applied to `ginIndex` and `fullTextIndex`.
-Example if the above is to be supported for ginIndex:
+schema.json example:
 
     {
       "fieldName": "property",
