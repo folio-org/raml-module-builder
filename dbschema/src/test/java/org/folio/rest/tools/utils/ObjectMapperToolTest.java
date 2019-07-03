@@ -21,8 +21,8 @@ class ObjectMapperToolTest {
     Schema dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
     assertThat(dbSchema.getTables().get(0).getTableName(), is("item"));
     assertThat(dbSchema.getTables().get(0).getLikeIndex().get(0)
-      .getModifiersSubfield(), is("name"));
+      .getArraySubfield(), is("name"));
     assertThat(dbSchema.getTables().get(0).getLikeIndex().get(0)
-      .getModifiers().get(0), is("languageId"));
+      .getArrayModifiers().get(0), is("languageId"));
   }
 }

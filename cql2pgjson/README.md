@@ -174,28 +174,59 @@ mod-inventory-storage . `contributorTypeId` is the type of contributor
 With CQL you can limit searches to `property1` with regular match in
 `subfield`, with type1=value2 with
 
-    property1 =/@type1=value1 value
+    property =/@type1=value1 value
 
-Noter that the relation modifier is preceeded with the @-character to
-avoid clash with CQL relation modifiers.
+Observe that the relation modifier is preceeded with the @-character to
+avoid clash with other CQL relation modifiers.
 
 The type1, type2 and subfield must all be defined in schema.json, because
 the JSON schema is not known. And also because relation modifiers are
-unfortunately lower-cased by cqljava. The type1, value1 are exact matches.
+unfortunately lower-cased by cqljava. To match value1 against the
+property contents of type1, full-text match is used.
 
-IN schema.json, two new properties `subfield` and `modifiers` specifies
-the subfield and the list of modifiers respectively. This can be applied
-to `ginIndex` and `fullTextIndex` . Example if the above is to be
-supported for ginIndex:
+Multiple relation modifiers with value are ANDed together. So
+
+    property =/@type1=value1/@type2=value2 value
+
+will only give a hit if both type1 has value1 AND type2 has value2.
+
+It is also possible to specify relation modifiers without value. This
+essentially is a way to override what subfield to search. In this case
+the right hand side term is matched. Multiple relation modifiers
+are OR'ed together. For example:
+
+    property =/@type1 value
+
+And to match any of the sub properties type1, type2, you could use:
+
+    property =/@type1/@type2 value
+
+In schema.json two new properties, `arraySubfield` and `arrayModifiers`,
+specifies the subfield and the list of modifiers respectively.
+This can be applied to `ginIndex` and `fullTextIndex`.
+schema.json example:
 
     {
       "fieldName": "property",
       "tOps": "ADD",
       "caseSensitive": false,
       "removeAccents": true,
-      "modifiersSubfield": "subfield",
-      "modifiers": ["type1", "type2"]
+      "arraySubfield": "subfield",
+      "arrayModifiers": ["type1", "type2"]
     }
+
+For the identifiers example we could define things in schema.json with:
+
+    {
+      "fieldName": "identifiers",
+      "tOps": "ADD",
+      "arraySubfield": "value",
+      "arrayModifiers": ["identifierTypeId"]
+    }
+
+This will allow you to perform searches, such as:
+
+    identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
 
 ## Matching and comparing numbers
 

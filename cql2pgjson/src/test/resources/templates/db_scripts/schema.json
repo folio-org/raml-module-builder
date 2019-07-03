@@ -15,8 +15,8 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "modifiersSubfield": "number",
-          "modifiers": ["type"]
+          "arraySubfield": "number",
+          "arrayModifiers": ["type"]
         }
       ],
       "fullTextIndex": [
@@ -25,22 +25,22 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "modifiersSubfield": "modifiers-missing"
+          "arraySubfield": "noArrayModifiers"
         },
         {
           "fieldName": "contributors",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "modifiersSubfield": "name",
-          "modifiers": ["contributorNameTypeId", "lang"]
+          "arraySubfield": "name",
+          "arrayModifiers": ["contributorNameTypeId", "lang", "name"]
         },
         {
           "fieldName": "other",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true,
-          "modifiers": ["modifiersSubfield-missing"]
+          "arrayModifiers": ["noArraySubfield"]
         }
       ],
       "index": [

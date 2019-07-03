@@ -788,60 +788,70 @@ public class CQL2PgJSON {
     }
   }
 
-  private String arrayNode(String index, CQLTermNode node, CqlModifiers modifiers,
-    List<Modifier> relationModifiers, Index schemaIndex) throws QueryValidationException {
-
-    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    StringBuilder res = new StringBuilder();
+  private String lookupModifier(Index schemaIndex, String modifierName) {
     if (schemaIndex != null) {
-      final String modifiersSubfield = schemaIndex.getModifiersSubfield();
-      if (modifiersSubfield != null) {
-        vals.setIndexText(index2sqlText("t.c", modifiersSubfield));
-        String indexText = index2sqlJson(this.jsonField, index);
-        res.append(
-          "id in (select t.id"
-          + " from (select id as id, "
-          + "             jsonb_array_elements(" + indexText + ") as c"
-          + "      ) as t"
-          + " where t.c @> '{"
-        );
-      }
-    }
-    int no = 0;
-    for (Modifier relationModifier : relationModifiers) {
-      final String modifierName = relationModifier.getType().substring(1);
-      final String modifierValue = relationModifier.getValue();
-      if (modifierValue == null) {
-        throw new QueryValidationException("CQL: Missing value for relation modifier " + relationModifier.getType());
-      }
-      if (!"=".equals(relationModifier.getComparison())) {
-        throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + relationModifier.getType());
-      }
-      boolean found = false;
-      if (schemaIndex != null) {
-        List<String> schemaModifiers = schemaIndex.getModifiers();
-        if (schemaModifiers != null) {
-          for (String schemaModifier : schemaModifiers) {
-            if (schemaModifier.equalsIgnoreCase(modifierName)) {
-              if (no > 0) {
-                res.append(',');
-              }
-              res.append('\"').append(Cql2SqlUtil.cql2string(schemaModifier))
-                .append("\": \"").append(Cql2SqlUtil.cql2string(modifierValue))
-                .append("\"");
-              no++;
-              found = true;
-            }
+      List<String> schemaModifiers = schemaIndex.getArrayModifiers();
+      if (schemaModifiers != null) {
+        for (String schemaModifier : schemaModifiers) {
+          if (schemaModifier.equalsIgnoreCase(modifierName)) {
+            return schemaModifier;
           }
         }
       }
-      if (!found) {
-        throw new QueryValidationException("CQL: Unsupported relation modifier " + relationModifier.getType());
+    }
+    return null;
+  }
+
+  private String arrayNode(String index, CQLTermNode node, CqlModifiers modifiers,
+    List<Modifier> relationModifiers, Index schemaIndex) throws QueryValidationException {
+
+    StringBuilder sqlAnd = new StringBuilder();
+    StringBuilder sqlOr = new StringBuilder();
+    modifiers.setRelationModifiers(new LinkedList<>()); // avoid recursion
+    for (Modifier relationModifier : relationModifiers) {
+      final String modifierName = relationModifier.getType().substring(1);
+      final String modifierValue = relationModifier.getValue();
+      String foundModifier = lookupModifier(schemaIndex, modifierName);
+      if (foundModifier == null) {
+        throw new QueryValidationException("CQL: Unsupported relation modifier "
+          + relationModifier.getType());
+      }
+      if (modifierValue == null) {
+        if (sqlOr.length() == 0) {
+          sqlOr.append("(");
+        } else {
+          sqlOr.append(" or ");
+        }
+        IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+        vals.setIndexText(index2sqlText("t.c", foundModifier));
+        sqlOr.append(indexNode(index, node, vals, modifiers));
+      } else {
+        final String comparator = relationModifier.getComparison();
+        if (!"=".equals(comparator)) {
+          throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + relationModifier.getType());
+        }
+        sqlAnd.append(" and ");
+        sqlAnd.append(queryByFt(index2sqlText("t.c", foundModifier), modifierValue,
+          comparator));
       }
     }
-    modifiers.setRelationModifiers(new LinkedList<>()); // avoid recursion
-    res.append("}' and ").append(indexNode(index, node, vals, modifiers)).append(")");
-    return res.toString();
+    if (sqlOr.length() > 0) {
+      sqlOr.append(")");
+    } else {
+      final String modifiersSubfield = schemaIndex.getArraySubfield();
+      if (modifiersSubfield == null) {
+        throw new QueryValidationException("CQL: No arraySubfield defined for index " + index);
+      }
+      IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+      vals.setIndexText(index2sqlText("t.c", modifiersSubfield));
+      sqlOr.append(indexNode(index, node, vals, modifiers));
+    }
+    String indexText = index2sqlJson(this.jsonField, index);
+    return "id in (select t.id"
+      + " from (select id as id, "
+      + "             jsonb_array_elements(" + indexText + ") as c"
+      + "      ) as t"
+      + " where " + sqlOr.toString() + sqlAnd.toString() + ")";
   }
 
   /**
@@ -935,6 +945,10 @@ public class CQL2PgJSON {
 
     // Clean the term. Remove stand-alone ' *', not valid word.
     String term = node.getTerm().replaceAll(" +\\*", "").trim();
+    return queryByFt(indexText, term, comparator);
+  }
+
+  private String queryByFt(String indexText, String term, String comparator) throws QueryValidationException {
     if (term.equals("*")) {
       return "true";
     }

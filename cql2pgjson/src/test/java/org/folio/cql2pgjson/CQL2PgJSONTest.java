@@ -914,8 +914,31 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "lang = uk                     # d; e",
     "contributors = terry          # a",
     "contributors = \"2b94c631-fca9-4892-a730-03ee529ffe2a\" # a",
+    "contributors all \"contributornametypeid\" # a; b",
+    "contributors all \"contributorNametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a\" # a",
+    "contributors all \"contributorNametypeid 2b94c631\" # a",
+    "contributors all \"contributorNametypeid 4892\" # a",
+    "contributors = \"contributorNameTypeId 2b94c631\" #",
+    "identifiers = \"value 0552142352\" # a",
+    "contributors = name           # a; b",
+    "name = terry                  #",
+    "contributors.name = terry     #",
+    "contributors.name = terry     #",
+    "contactInformation.phone = 0912212 # b ",
+    "contactInformation.phone == 0912212 #"
+    })
+  public void arrayFT(String testcase) throws IOException, CQL2PgJSONException {
+    logger.fine("arrayFT():" + testcase);
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
+      "users.user_data", Arrays.asList("name"));
+    select(aCql2pgJson, "array.sql", testcase);
+    logger.fine("arrayFT(): " + testcase + " OK");
+  }
+
+  @Test
+  @Parameters({
     "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2a terry # a",
-    "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2A terry # ",
+    "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2A terry # a",
     "contributors =/@contributornametypeid=2b94c631-03ee529ffe2a terry # ",
     "contributors =/@contributornametypeid=\"2b94c631-fca9-4892-a730-03ee529ffe2a\" creator #",
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator a #",
@@ -928,36 +951,28 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@bar=1 creator c # ! CQL: Unsupported relation modifier @bar",
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang=english creator b # b",
     "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang=danish creator b #",
+    "contributors =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang=English creator b # b",
+    "contributors any/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang English danish # b",
+    "contributors all/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a/@lang English danish # ",
+    "contributors =/@name/@lang terry # a",
     "contributors =/@lang=english/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a creator b # b",
-    "contributors =/@foo<1 c # ! CQL: Unsupported comparison for relation modifier @foo ",
+    "contributors =/@lang<1 c # ! CQL: Unsupported comparison for relation modifier @lang ",
     "identifiers =/@contributornametypeid=e8b311a6-3b21-43f2-a269-dd9310cb2d0a c # ! CQL: Unsupported relation modifier @contributornametypeid",
-    "identifiers =/@contributornametypeid c # ! CQL: Missing value for relation modifier @contributornametypeid",
-    "contributors all \"contributornametypeid\" # a; b",
-    "contributors all \"contributorNametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a\" # a",
-    "contributors all \"contributorNametypeid 2b94c631\" # a",
-    "contributors all \"contributorNametypeid 4892\" # a",
-    "contributors = \"contributorNameTypeId 2b94c631\" #",
-    "identifiers = \"value 0552142352\" # a",
+    "identifiers =/@contributornametypeid c # ! CQL: Unsupported relation modifier @contributornametypeid",
     "name ==/@foo=bar a # ! CQL: Unsupported relation modifier @foo",
-    "name = /@foo=bar a # !CQL: Unsupported relation modifier @foo", // name has modifiersSubfield in schema, but no modifiers
-    "other= /@foo=bar a # ! CQL: Unsupported relation modifier @foo", // other has no modifiersSubfield in schema, but modifiers
-    "contributors = name           # a; b",
-    "name = terry                  #",
-    "contributors.name = terry     #",
-    "contributors.name = terry     #",
-    "contactInformation.phone = 0912212 # b ",
-    "contactInformation.phone == 0912212 #",
+    "name = /@foo=bar a # ! CQL: Unsupported relation modifier @foo", // name has arraySubfield in schema, but no arrayModifiers
+    "other= /@noArraySubfield=bar a # ! CQL: No arraySubfield defined for index other",
     "contactInformation.phone == /@type=mobile 0912212 # b ",
     "contactInformation.phone == /@type=home 0912212 # ",
     "contactInformation.phone == /@type=home 091221? # b",
     "contactInformation.phone == /@type=home 09122* # b"
     })
-  public void arrayFT(String testcase) throws IOException, CQL2PgJSONException {
-    logger.fine("arrayFT():" + testcase);
+  public void arrayRelationModifiers(String testcase) throws IOException, CQL2PgJSONException {
+    logger.fine("arrayRelationModifiers():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
       "users.user_data", Arrays.asList("name"));
     select(aCql2pgJson, "array.sql", testcase);
-    logger.fine("arrayFT(): " + testcase + " OK");
+    logger.fine("arrayRelationModifiers(): " + testcase + " OK");
   }
 
   @Ignore("Need to sort out the array stuff first")
