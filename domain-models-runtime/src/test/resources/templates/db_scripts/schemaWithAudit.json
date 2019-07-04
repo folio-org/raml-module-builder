@@ -4,13 +4,35 @@
       "tableName": "test_tenantapi",
       "withAuditing": true,
       "auditingTableName": "audit_test_tenantapi",
-      "auditingFieldName": "testTenantapiAudit"
+      "auditingFieldName": "testTenantapiAudit",
+      "auditingSnippet": {
+        "delete": {
+          "statement": "SELECT 1;"
+        },
+        "update": {
+          "statement": "SELECT 2;"
+        },
+        "insert": {
+          "statement": "SELECT 3;"
+        }
+      }
     },
     {
       "tableName": "test_tenantapi2",
       "withAuditing": true,
       "auditingTableName": "audit_test_tenantapi2",
-      "auditingFieldName": "testTenantapiAudit2"
+      "auditingFieldName": "testTenantapiAudit2",
+      "auditingSnippet": {
+        "delete": {
+          "declare": "var1 TEXT;"
+        },
+        "update": {
+          "declare": "var2 TEXT;"
+        },
+        "insert": {
+          "declare": "var3 TEXT;"
+        }
+      }
     },
     {
       "tableName": "test_implicit",

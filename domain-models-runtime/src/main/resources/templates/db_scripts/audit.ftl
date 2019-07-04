@@ -1,16 +1,14 @@
 -- trigger for the audit table to keep a history of the changes made to a record.
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_changes() RETURNS TRIGGER AS $${table.tableName}_audit$
   DECLARE
-  <#if table.auditingSnippet??>
-    <#if table.auditingSnippet.delete??>
+  <#if (table.auditingSnippet.delete.declare)??>
     ${table.auditingSnippet.delete.declare}
-    </#if>
-    <#if table.auditingSnippet.update??>
+  </#if>
+  <#if (table.auditingSnippet.update.declare)??>
     ${table.auditingSnippet.update.declare}
-    </#if>
-    <#if table.auditingSnippet.insert??>
+  </#if>
+  <#if (table.auditingSnippet.insert.declare)??>
     ${table.auditingSnippet.insert.declare}
-    </#if>
   </#if>
     seed TEXT;
     maxid UUID;
@@ -38,15 +36,15 @@ CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.audit_${table.tableName}_
       'operation', to_jsonb(left(TG_OP, 1)),
       'createdDate', to_jsonb(current_timestamp::text));
     IF (TG_OP = 'DELETE') THEN
-      <#if table.auditingSnippet?? && table.auditingSnippet.delete??>
+      <#if (table.auditingSnippet.delete.statement)??>
         ${table.auditingSnippet.delete.statement}
       </#if>
     ELSIF (TG_OP = 'UPDATE') THEN
-      <#if table.auditingSnippet?? && table.auditingSnippet.update??>
+      <#if (table.auditingSnippet.update.statement)??>
         ${table.auditingSnippet.update.statement}
       </#if>
     ELSIF (TG_OP = 'INSERT') THEN
-      <#if table.auditingSnippet?? && table.auditingSnippet.insert??>
+      <#if (table.auditingSnippet.insert.statement)??>
         ${table.auditingSnippet.insert.statement}
       </#if>
     END IF;
