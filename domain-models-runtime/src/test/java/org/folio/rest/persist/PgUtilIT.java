@@ -96,9 +96,9 @@ public class PgUtilIT {
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
-    execute(context, "CREATE TABLE " + schema + ".user            (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".users           (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
     execute(context, "CREATE TABLE " + schema + ".duplicateid     (id UUID, jsonb JSONB NOT NULL);");
-    execute(context, "CREATE TABLE " + schema + ".referencinguser (id UUID REFERENCES " + schema + ".user);");
+    execute(context, "CREATE TABLE " + schema + ".referencinguser (id UUID REFERENCES " + schema + ".users);");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
@@ -195,7 +195,7 @@ public class PgUtilIT {
    */
   private void assertGetById(TestContext testContext, String uuid, String username) {
     Async async = testContext.async();
-    PgUtil.getById("user", User.class, uuid,
+    PgUtil.getById("users", User.class, uuid,
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class, result -> {
           assertStatusAndUser(testContext, result, 200, username, uuid);
           async.complete();
@@ -224,7 +224,7 @@ public class PgUtilIT {
 
   @Test
   public void deleteByNonexistingId(TestContext testContext) {
-    PgUtil.deleteById("user", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.deleteById("users", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 404, "Not found"));
   }
@@ -234,9 +234,9 @@ public class PgUtilIT {
     String uuid = randomUuid();
     post(testContext, "Ronja", uuid, 201);
     assertGetById(testContext, uuid, "Ronja");
-    PgUtil.deleteById("user", uuid, okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.deleteById("users", uuid, okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class, asyncAssertSuccess(testContext, 204, delete ->
-          PgUtil.getById("user", User.class, uuid, okapiHeaders, vertx.getOrCreateContext(),
+          PgUtil.getById("users", User.class, uuid, okapiHeaders, vertx.getOrCreateContext(),
               Users.GetUsersByUserIdResponse.class, asyncAssertSuccess(testContext, 404, ""))
         ));
   }
@@ -255,7 +255,7 @@ public class PgUtilIT {
 
   @Test
   public void deleteByInvalidUuid(TestContext testContext) {
-    PgUtil.deleteById("user", "invalidid", okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.deleteById("users", "invalidid", okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
@@ -272,42 +272,42 @@ public class PgUtilIT {
     String uuid = randomUuid();
     post(testContext, "Folio", uuid, 201);
     execute(testContext, "INSERT INTO " + schema + ".referencinguser VALUES ('" + uuid + "')");
-    PgUtil.deleteById("user", uuid, okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.deleteById("users", uuid, okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 400, "referencinguser"));
   }
 
   @Test
   public void deleteByIdResponseWithout500(TestContext testContext) {
-    PgUtil.deleteById("user", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.deleteById("users", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout500.class,
         asyncAssertFail(testContext, "respond500WithTextPlain"));
   }
 
   @Test
   public void deleteByIdResponseWithout204(TestContext testContext) {
-    PgUtil.deleteById("user", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.deleteById("users", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout204.class,
         asyncAssertSuccess(testContext, 500, "respond204"));
   }
 
   @Test
   public void getResponseWithout500(TestContext testContext) {
-    PgUtil.get("user", User.class, UserdataCollection.class, "username=b", 0, 9,
+    PgUtil.get("users", User.class, UserdataCollection.class, "username=b", 0, 9,
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
         asyncAssertFail(testContext, "respond500WithTextPlain"));
   }
 
   @Test
   public void getResponseWithout400(TestContext testContext) {
-    PgUtil.get("user", User.class, UserdataCollection.class, "username=b", 0, 9,
+    PgUtil.get("users", User.class, UserdataCollection.class, "username=b", 0, 9,
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout400.class,
         asyncAssertFail(testContext, "respond400WithTextPlain"));
   }
 
   @Test
   public void getByIdInvalidUuid(TestContext testContext) {
-    PgUtil.getById("user", User.class, "invalidUuid", okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.getById("users", User.class, "invalidUuid", okapiHeaders, vertx.getOrCreateContext(),
         Users.GetUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 404, "Invalid UUID format"));
   }
@@ -321,21 +321,21 @@ public class PgUtilIT {
 
   @Test
   public void getByIdNotFound(TestContext testContext) {
-    PgUtil.getById("user", User.class, randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.getById("users", User.class, randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         Users.GetUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 404, "Not found"));
   }
 
   @Test
   public void getByIdWithout500(TestContext testContext) {
-    PgUtil.getById("user", User.class, randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.getById("users", User.class, randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout500.class,
         asyncAssertFail(testContext, "respond500WithTextPlain"));
   }
 
   @Test
   public void getByIdWithout200(TestContext testContext) {
-    PgUtil.getById("user", User.class, randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.getById("users", User.class, randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout200.class,
         asyncAssertSuccess(testContext, 500, "respond200WithApplicationJson"));
   }
@@ -349,7 +349,7 @@ public class PgUtilIT {
   private String post(TestContext testContext, String username, String uuid, int httpStatus) {
     Async async = testContext.async();
     String [] returnedUuid = new String [1];
-    PgUtil.post("user", new User().withUsername(username).withId(uuid),
+    PgUtil.post("users", new User().withUsername(username).withId(uuid),
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class, result -> {
           returnedUuid[0] = assertStatusAndUser(testContext, result, httpStatus, username, uuid);
           async.complete();
@@ -375,14 +375,14 @@ public class PgUtilIT {
   public void postDuplicateId(TestContext testContext) {
     String uuid = randomUuid();
     post(testContext, "Anna", uuid, 201);
-    PgUtil.post("user", new User().withUsername("Elsa").withId(uuid),
+    PgUtil.post("users", new User().withUsername("Elsa").withId(uuid),
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
         asyncAssertSuccess(testContext, 400, "duplicate key value"));
   }
 
   @Test
   public void postInvalidId(TestContext testContext) {
-    PgUtil.post("user", new User().withUsername("Kiri").withId("someInvalidUuid"),
+    PgUtil.post("users", new User().withUsername("Kiri").withId("someInvalidUuid"),
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
         asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
@@ -390,7 +390,7 @@ public class PgUtilIT {
   @Test
   public void postResponseWithUser201Method(TestContext testContext) {
     String uuid = randomUuid();
-    PgUtil.post("user", new User().withUsername("Susi").withId(uuid),
+    PgUtil.post("users", new User().withUsername("Susi").withId(uuid),
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithUserFor201Method.class,
         testContext.asyncAssertSuccess(result -> {
           assertThat(result.getStatus(), is(201));
@@ -400,42 +400,42 @@ public class PgUtilIT {
 
   @Test
   public void postResponseWithout500(TestContext testContext) {
-    PgUtil.post("user", "string", okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.post("users", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout500.class,
         asyncAssertFail(testContext, "respond500WithTextPlain"));
   }
 
   @Test
   public void postResponseWithoutHeadersFor201Class(TestContext testContext) {
-    PgUtil.post("user", "string", okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.post("users", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithoutHeadersFor201Class.class,
         asyncAssertSuccess(testContext, 500, "$HeadersFor201"));
   }
 
   @Test
   public void postResponseWithoutHeadersFor201Method(TestContext testContext) {
-    PgUtil.post("user", "string", okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.post("users", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithoutHeadersFor201Method.class,
         asyncAssertSuccess(testContext, 500, ".headersFor201"));
   }
 
   @Test
   public void postResponseWithout201(TestContext testContext) {
-    PgUtil.post("user", "string", okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.post("users", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout201.class,
         asyncAssertSuccess(testContext, 500, "respond201WithApplicationJson"));
   }
 
   @Test
   public void postResponseWithout400(TestContext testContext) {
-    PgUtil.post("user", "string", okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.post("users", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout400.class,
         asyncAssertSuccess(testContext, 500, "respond400WithTextPlain"));
   }
 
   @Test
   public void postException(TestContext testContext) {
-    PgUtil.post("user", "string", okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.post("users", "string", okapiHeaders, vertx.getOrCreateContext(),
         Users.PostUsersResponse.class,
         asyncAssertSuccess(testContext, 500, "java.lang.String.getId"));
   }
@@ -450,12 +450,12 @@ public class PgUtilIT {
   @Test
   public void putNonexistingId(TestContext testContext) {
     String uuid = randomUuid();
-    PgUtil.put("user", new User().withUsername("Rosamunde"), uuid,
+    PgUtil.put("users", new User().withUsername("Rosamunde"), uuid,
         okapiHeaders, vertx.getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 404, put -> {
           // make sure that a record with this uuid really hasn't been inserted
-          PgUtil.getById("user", User.class, uuid, okapiHeaders, vertx.getOrCreateContext(),
+          PgUtil.getById("users", User.class, uuid, okapiHeaders, vertx.getOrCreateContext(),
               Users.GetUsersByUserIdResponse.class,
               asyncAssertSuccess(testContext, 404, "Not found"));
         }));
@@ -465,7 +465,7 @@ public class PgUtilIT {
   public void put(TestContext testContext) {
     String uuid = randomUuid();
     post(testContext, "Pippilotta", uuid, 201);
-    PgUtil.put("user", new User().withUsername("Momo").withId(randomUuid()), uuid,
+    PgUtil.put("users", new User().withUsername("Momo").withId(randomUuid()), uuid,
         okapiHeaders, vertx.getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 204, put -> assertGetById(testContext, uuid, "Momo")));
@@ -473,7 +473,7 @@ public class PgUtilIT {
 
   @Test
   public void putInvalidUuid(TestContext testContext) {
-    PgUtil.put("user", new User().withUsername("Bö"), "SomeInvalidUuid",
+    PgUtil.put("users", new User().withUsername("Bö"), "SomeInvalidUuid",
         okapiHeaders, vertx.getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
@@ -493,7 +493,7 @@ public class PgUtilIT {
 
   @Test
   public void putException(TestContext testContext) {
-    PgUtil.put("user", "string", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.put("users", "string", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 500, "java.lang.String.setId"));
   }
@@ -507,7 +507,7 @@ public class PgUtilIT {
 
   @Test
   public void putResponseWithout500(TestContext testContext) {
-    PgUtil.put("user", new User(), randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.put("users", new User(), randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout500.class,
         asyncAssertFail(testContext, "respond500WithTextPlain"));
   }
@@ -749,7 +749,7 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (4 - i)));
     }
-    searchForDataExpectFailure("username=foo sortBy username^&*%$sort.descending", 6, 3, testContext);
+    searchForDataExpectFailure("username=foo sortBy username&%$sort.descending", 6, 3, testContext);
     exception.expect(NullPointerException.class);
     searchForDataNullHeadersExpectFailure("username=foo sortBy username/sort.descending", 6, 3, testContext);
     searchForDataNoClass("username=foo sortBy username/sort.descending",6, 3, testContext);
@@ -767,7 +767,7 @@ public class PgUtilIT {
 
   @Test
   public void optimizedSQLwithNo500(TestContext testContext) {
-    PgUtil.getWithOptimizedSql("user", User.class, UserdataCollection.class, "title", "username=a sortBy title",
+    PgUtil.getWithOptimizedSql("users", User.class, UserdataCollection.class, "title", "username=a sortBy title",
         0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, response -> {
 
           testContext.assertTrue( response.cause() instanceof NullPointerException);
@@ -786,7 +786,7 @@ public class PgUtilIT {
 
   private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
     Async async = testContext.async();
-    pg.execute("truncate " + schema + ".user CASCADE", testContext.asyncAssertSuccess(truncated -> {
+    pg.execute("truncate " + schema + ".users CASCADE", testContext.asyncAssertSuccess(truncated -> {
       async.complete();
     }));
     async.await(1000 /* ms */);
@@ -804,7 +804,7 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -821,7 +821,7 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseWithout400.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -839,7 +839,7 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.get(
-        "user", User.class, UserdataCollection.class, cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 200) {
             testContext.fail("Expected status 200, got "
@@ -859,7 +859,7 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.get(
-        "user", User.class, Object.class, cql, offset, limit, okapiHeaders,
+        "users", User.class, Object.class, cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -879,7 +879,7 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.get(
-        "user", User.class, UserdataCollection.class, cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 400) {
             testContext.fail("Expected status 400, got "
@@ -899,7 +899,7 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 200) {
             testContext.fail("Expected status 200, got "
@@ -919,7 +919,7 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "user", User.class, Object.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, Object.class, "username", cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -937,7 +937,7 @@ public class PgUtilIT {
     String responseString = new String();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 400) {
             testContext.fail("Expected status 400, got "
@@ -956,7 +956,7 @@ public class PgUtilIT {
     String responseString = new String();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "user", User.class, UserdataCollection.class, "username", cql, offset, limit, null,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, null,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -978,7 +978,7 @@ public class PgUtilIT {
    */
   private void insert(TestContext testContext, PostgresClient pg, String prefix, int n) {
     Async async = testContext.async();
-    String table = schema + ".user ";
+    String table = schema + ".users ";
     String sql = "INSERT INTO " + table +
         " SELECT md5(username)::uuid, json_build_object('username', username, 'id', md5(username)::uuid)" +
         "  FROM (SELECT '" + prefix + " ' || generate_series(1, " + n + ") AS username) AS subquery";
