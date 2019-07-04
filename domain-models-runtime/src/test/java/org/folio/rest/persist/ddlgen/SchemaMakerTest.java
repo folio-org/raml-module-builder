@@ -44,7 +44,7 @@ public class SchemaMakerTest {
     // index for field in audit table
     assertThat(result, containsString("CREATE INDEX IF NOT EXISTS audit_test_tenantapi_testTenantapiAudit_id_idx "));
     // auditingSnippets
-    assertThat(result, allOf(containsString("SELECT 1;"), containsString("SELECT 2;"), containsString("SELECT 3;"),
+    assertThat(result, allOf(containsString("PERFORM 1;"), containsString("PERFORM 2;"), containsString("PERFORM 3;"),
                              containsString("var1 TEXT;"), containsString("var2 TEXT;"), containsString("var3 TEXT;")));
   }
 

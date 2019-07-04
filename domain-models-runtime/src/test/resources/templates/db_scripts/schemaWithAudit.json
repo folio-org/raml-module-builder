@@ -7,13 +7,13 @@
       "auditingFieldName": "testTenantapiAudit",
       "auditingSnippet": {
         "delete": {
-          "statement": "SELECT 1;"
+          "statement": "PERFORM 1;"
         },
         "update": {
-          "statement": "SELECT 2;"
+          "statement": "PERFORM 2;"
         },
         "insert": {
-          "statement": "SELECT 3;"
+          "statement": "PERFORM 3;"
         }
       }
     },
