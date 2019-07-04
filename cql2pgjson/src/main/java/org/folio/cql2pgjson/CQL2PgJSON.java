@@ -554,7 +554,7 @@ public class CQL2PgJSON {
   }
 
   private Table getForeignTable(String tableName) {
-    if (dbTable != null && dbTable.getTableName().equals(tableName)) {
+    if (dbTable == null || dbTable.getTableName().equals(tableName)) {
       return null;
     }
     for (Table table : dbSchema.getTables()) {
