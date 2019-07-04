@@ -1,4 +1,11 @@
-## 26.0.0 2019-07-03 
+## 26.1.0 2019-07-04
+
+ * RMB-419 Fix syntax error at or near "." because table name is reserved word
+ * #460 Bug fix: Reject foreign table processing if current table is unknown
+ * #462 Bug fix: Do auditingSnippet null tests separately for declare and
+   statement
+
+## 26.0.0 2019-07-03
 
  * RMB-380 RMB-416 RMB-418 CQL extension: Implement /@ modifier for searching
    array-of-objects fields.
