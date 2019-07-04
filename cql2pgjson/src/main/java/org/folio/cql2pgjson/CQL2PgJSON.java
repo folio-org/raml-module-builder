@@ -678,7 +678,7 @@ public class CQL2PgJSON {
         case '?':
           throw new QueryValidationException("CQL: single character mask unsupported (?)");
         case '*':
-          if (i == term.length() - 1) {
+          if (i == term.length() - 1 && i > 0) {
             res.append(":*");
             continue;
           } else {
@@ -924,11 +924,6 @@ public class CQL2PgJSON {
    * @throws QueryValidationException
    */
   private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
-    List<Modifier> relationModifiers = modifiers.getRelationModifiers();
-    if (!relationModifiers.isEmpty()) {
-      final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getFullTextIndex());
-      return arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
-    }
     final String indexText = vals.getIndexText();
 
     if (!hasFtIndex) {
@@ -945,7 +940,13 @@ public class CQL2PgJSON {
 
     // Clean the term. Remove stand-alone ' *', not valid word.
     String term = node.getTerm().replaceAll(" +\\*", "").trim();
-    return queryByFt(indexText, term, comparator);
+    String sql = queryByFt(indexText, term, comparator);
+    List<Modifier> relationModifiers = modifiers.getRelationModifiers();
+    if (!relationModifiers.isEmpty()) {
+      final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getFullTextIndex());
+      sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
+    }
+    return sql;
   }
 
   private String queryByFt(String indexText, String term, String comparator) throws QueryValidationException {
