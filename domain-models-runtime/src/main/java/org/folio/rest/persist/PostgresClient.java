@@ -3625,7 +3625,7 @@ public class PostgresClient {
 
    ParsedQuery pq = new ParsedQuery();
 
-   int idx = query.toUpperCase().indexOf(" " + FROM + " ");
+   int idx = query.toUpperCase().indexOf(FROM);
    pq.setCountQuery("SELECT COUNT(" + countOn + ") " + query.substring(idx).trim());
 
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
