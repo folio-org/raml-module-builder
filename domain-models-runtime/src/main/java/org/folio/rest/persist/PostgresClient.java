@@ -111,9 +111,6 @@ public class PostgresClient {
   private static final String    AND    = " AND ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final String    COUNT = "COUNT(%s)";
-  private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
-
   private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
   private static final Pattern   DISTINCT_ON_MATCH_PATTERN = Pattern.compile("(?i)((DISTINCT) (?i)ON \\((.*)\\) ).*(?i)FROM");
 
@@ -1608,7 +1605,8 @@ public class PostgresClient {
           if (!queryHelper.transactionMode) {
             connection.close();
           }
-          log.error(countQuery.cause().getMessage(), countQuery.cause());
+          log.error("query with count: " + countQuery.cause().getMessage()
+            + " - " + queryHelper.countQuery, countQuery.cause());
           replyHandler.handle(Future.failedFuture(countQuery.cause()));
           return;
         }
@@ -1691,7 +1689,8 @@ public class PostgresClient {
       }
       try {
         if (query.failed()) {
-          log.error(query.cause().getMessage(), query.cause());
+          log.error("process query: " + query.cause().getMessage() + " - "
+            + queryHelper.selectQuery, query.cause());
           replyHandler.handle(Future.failedFuture(query.cause()));
         } else {
           replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
@@ -3626,7 +3625,8 @@ public class PostgresClient {
 
    ParsedQuery pq = new ParsedQuery();
 
-   pq.setCountQuery(query.replaceFirst(COLUMN_CONTROL_REGEX, String.format(COUNT, countOn)).trim());
+   int idx = query.toUpperCase().indexOf(" FROM ");
+   pq.setCountQuery("SELECT COUNT(" + countOn + ") " + query.substring(idx).trim());
 
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){
