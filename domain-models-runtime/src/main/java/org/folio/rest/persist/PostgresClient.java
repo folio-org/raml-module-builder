@@ -3648,20 +3648,18 @@ public class PostgresClient {
    return pq;
   }
 
-  private static String escape(String str){
+  private static String escape(String str) {
     StringBuilder sb = new StringBuilder();
-    for (char c : str.toCharArray())
-    {
-        switch(c)
-        {
-            case '(':
-            case ')':
-            case '\\':
-                sb.append('\\');
-                // intended fall-through
-            default:
-                sb.append(c);
-        }
+    for (char c : str.toCharArray()) {
+      switch (c) {
+        case '(':
+        case ')':
+        case '\\':
+          sb.append('\\');
+        // intended fall-through
+        default:
+          sb.append(c);
+      }
     }
     return sb.toString();
   }
