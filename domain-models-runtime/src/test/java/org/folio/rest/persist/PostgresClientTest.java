@@ -609,4 +609,26 @@ public class PostgresClientTest {
     }
   }
 
+  @Test
+  public void parseQueryTest1() {
+    String whereFromCQLtoPG = "id in (select t.id from (select id as id, "
+      + "jsonb_array_elements(instance.jsonb->'contributors') as c) as t "
+      + "where to_tsvector('simple', f_unaccent(t.c->>'name')) @@ to_tsquery('simple', f_unaccent('novik')) "
+      + "and to_tsvector('simple', f_unaccent(t.c->>'contributorNameTypeId')) @@ to_tsquery('simple', f_unaccent('personal')))";
+    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 10 OFFSET 0";
+    String selectClause = "SELECT jsonb,id FROM test_tenant_mod_inventory_storage.instance " + whereClause;
+    ParsedQuery parseQuery = PostgresClient.parseQuery(selectClause);
+    assertThat(parseQuery.getWhereClause().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
+    assertThat(parseQuery.getCountQuery().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
+  }
+
+  @Test
+  public void parseQueryTest2() {
+    String whereFromCQLtoPG = "id = '68b6a052-5e73-4f04-90ab-273694d125bd'";
+    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
+    String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
+    ParsedQuery parseQuery = PostgresClient.parseQuery(selectClause);
+    assertThat(parseQuery.getWhereClause().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
+    assertThat(parseQuery.getCountQuery().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
+  }
 }
