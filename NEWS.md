@@ -1,3 +1,8 @@
+## 26.1.1 2019-07-08
+
+ * RMB-422 Bug fix: invalid SQL for array modifiers
+ * RMB-426 Bug fix: consider also arraySubfield as relation modifier
+
 ## 26.1.0 2019-07-04
 
  * RMB-419 Fix syntax error at or near "." because table name is reserved word
