@@ -798,6 +798,10 @@ public class CQL2PgJSON {
           }
         }
       }
+      String subfield = schemaIndex.getArraySubfield();
+      if (subfield != null && subfield.equalsIgnoreCase(modifierName)) {
+        return subfield;
+      }
     }
     return null;
   }
