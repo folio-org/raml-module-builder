@@ -35,6 +35,20 @@ See the file ["LICENSE"](LICENSE) for more information.
     * [Credentials](#credentials)
     * [Securing DB Configuration file](#securing-db-configuration-file)
     * [Foreign keys constraint](#foreign-keys-constraint)
+* [CQL (Contextual Query Language)](#cql-contextual-query-language)
+    * [CQL2PgJSON: CQL to PostgreSQL JSON converter](#cql2pgjson-cql-to-postgresql-json-converter)
+    * [CQL2PgJSON: Usage](#cql2pgjson-usage)
+    * [CQL2PgJSON: id](#cql2pgjson-id)
+    * [CQL: Relations](#cql-relations)
+    * [CQL: Modifiers](#cql-modifiers)
+    * [CQL: Matching all records](#cql-matching-all-records)
+    * [CQL: Matching undefined or empty values](#cql-matching-undefined-or-empty-values)
+    * [CQL: Matching array elements](#cql-matching-array-elements)
+    * [CQL: @-relation modifiers for array searches](#cql--relation-modifiers-for-array-searches)
+    * [CQL: Matching and comparing numbers](#cql-matching-and-comparing-numbers)
+    * [CQL2PgJSON: Cross index searches](#cql2pgjson-cross-index-searches)
+    * [CQL2PgJSON: Exceptions](#cql2pgjson-exceptions)
+    * [CQL2PgJSON: Unit tests](#cql2pgjson-unit-tests)
 * [Tenant API](#tenant-api)
 * [RAMLs API](#ramls-api)
 * [JSON Schemas API](#json-schemas-api)
@@ -825,9 +839,13 @@ for the performance test.  Doing the foreign key check manually by sending addit
 
 ## CQL (Contextual Query Language)
 
+Further [CQL](https://dev.folio.org/reference/glossary/#cql) information.
+
 ### CQL2PgJSON: CQL to PostgreSQL JSON converter
 
-## Usage
+The source code is at `[./cql2pgjson](cql2pgjson)` and `[./cql2pgjson-cli](cql2pgjson-cli)`
+
+### CQL2PgJSON: Usage
 
 Invoke like this:
 
@@ -868,7 +886,7 @@ field name:
     where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
     where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
 
-## id
+### CQL2PgJSON: id
 
 The UUID field id is not searched in the JSON but in the table's primary key field. PostgreSQL automatically
 creates an index for the primary key.
@@ -879,7 +897,7 @@ creates an index for the primary key.
 
 Modifiers are forbidden.
 
-## Relations
+### CQL: Relations
 
 Only these relations have been implemented yet:
 
@@ -897,7 +915,7 @@ Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
 
-## Modifiers
+### CQL: Modifiers
 
 Functional modifiers: `ignoreCase`, `respectCase` and `ignoreAccents`, `respectAccents`
 are implemented for all characters (ASCII and Unicode). Default is `ignoreCase` and `ignoreAccents`.
@@ -910,7 +928,7 @@ Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 Word begin and word end in JSON is only detected at whitespace and punctuation characters
 from the ASCII charset, not from other Unicode charsets.
 
-## Matching all records
+### CQL: Matching all records
 
 A search matching all records in the target index can be executed with a
 `cql.allRecords=1` query. `cql.allRecords=1` can be used alone or as part of
@@ -923,7 +941,7 @@ a more complex query, for example
    Smith as a word.
 * For performance reasons, searching for `*` in any fulltext field will match all records as well.
 
-## Matching undefined or empty values
+### CQL: Matching undefined or empty values
 
 A relation does not match if the value on the left-hand side is undefined. (but see the fulltext
 `*` case above).
@@ -937,7 +955,7 @@ not defined or if it is defined but doesn't match.
    where name is not defined.
 * `name="" NOT name==""` matches all records where name is defined and not empty.
 
-## Matching array elements
+### CQL: Matching array elements
 
 For matching the elements of an array use these queries (assuming that lang is either an array or not defined, and assuming
 an array element value does not contain double quotes):
@@ -972,7 +990,7 @@ To avoid the complicated syntax all ISBN values or all values can be extracted a
         AS x(key text, value text)
       WHERE value IS NOT NULL
 
-### @-relation modifiers for array searches
+### CQL: @-relation modifiers for array searches
 
 RMB 26 or later supports array searches with relation modifiers, that
 are particular suited for structures like:
@@ -1046,7 +1064,7 @@ This will allow you to perform searches, such as:
 
     identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
 
-## Matching and comparing numbers
+### CQL: Matching and comparing numbers
 
 Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number comparison must result in 10 > 2
 (in contrast to string comparison where "10" < "2").
@@ -1054,7 +1072,7 @@ Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number
 If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", and ">=" if the actual JSONB type of the stored value is `number`
 (JSONB has no `integer` type).
 
-## Cross index searches
+### CQL2PgJSON: Cross index searches
 
 Limited cross table searches are supported.  If you desire a join across tables the following conditions must be met:
 
@@ -1066,7 +1084,7 @@ Limited cross table searches are supported.  If you desire a join across tables 
 * currently no other operators are supported.  They will be added at a later date.
 
 
-## Exceptions
+### CQL2PgJSON: Exceptions
 
 All locally produced Exceptions are derived from a single parent so they can be caught collectively
 or individually. Methods that load a JSON data object model pass in the identity of the model as a
@@ -1080,10 +1098,10 @@ resource file name, and may also throw a native `java.io.IOException`.
       └── QueryValidationException
             └── QueryAmbiguousException
 
-* Further [CQL](https://dev.folio.org/reference/glossary/#cql) information.
+### CQL2PgJSON: Unit tests
 
-* To run the unit tests in your IDE the Unicode input files must have been produced by running maven,
-  in Eclipse you may use "Run as ... Maven Build" for doing so.
+To run the unit tests in your IDE, the Unicode input files must have been produced by running maven.
+In Eclipse you may use "Run as ... Maven Build" for doing so.
 
 ## Tenant API
 
