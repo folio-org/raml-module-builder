@@ -30,6 +30,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
 * [Adding a shutdown hook](#adding-a-shutdown-hook)
 * [Implementing file uploads](#implementing-file-uploads)
+* [Implement chunked bulk download](#implement-chunked-bulk-download)
 * [PostgreSQL integration](#postgresql-integration)
     * [Credentials](#credentials)
     * [Securing DB Configuration file](#securing-db-configuration-file)
