@@ -688,7 +688,7 @@ before complete, the handler will be called with `streamed_abort`.
 
 ## Implement chunked bulk download
 
-RMB supports bulk downloads of chunks using CQL ordered by primary key id since version 25.
+RMB supports bulk downloads of chunks using [CQL](#cql-contextual-query-language) ordered by primary key id since version 25.
 
 1st CQL query: `cql.allRecords=1 sortBy id`
 2nd CQL query: `id > [last id from 1st CQL query] sortBy id`
@@ -1360,7 +1360,7 @@ The x-okapi-tenant header passed in to the API call will be used to get the tena
 The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
 
 #### Important information
-Right now all indexes on string fields in the jsonb should be declared as case in-sensitive and lower cased. This is how the CQL to Postgres converter generates SQL queries , so in order for the indexes generated to be used during query time, the indexes must be declared in a similar manner
+Right now all indexes on string fields in the jsonb should be declared as case in-sensitive and lower cased. This is how the [CQL to Postgres converter](#cql-contextual-query-language) generates SQL queries, so in order for the indexes generated to be used during query time, the indexes must be declared in a similar manner
 ```
   {
     "fieldName": "title",
@@ -1507,7 +1507,8 @@ https://github.com/folio-org/raml/blob/eda76de6db681076212e20c7f988c3913764b9b0/
 
 The RMB can receive parameters of different types. Modules can declare a query parameter and receive it as a string parameter in the generated API functions.
 
-The RMB exposes an easy way to query, using CQL (https://github.com/folio-org/cql2pgjson-java). This enables a seamless integration from the query parameters to a prepared "where" clause to query with.
+The RMB exposes an easy way to query, using [CQL (Contextual Query Language)](#cql-contextual-query-language).
+This enables a seamless integration from the query parameters to a prepared "where" clause to query with.
 
 ```java
 //create object on table.field
