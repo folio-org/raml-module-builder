@@ -843,7 +843,7 @@ Further [CQL](https://dev.folio.org/reference/glossary/#cql) information.
 
 ### CQL2PgJSON: CQL to PostgreSQL JSON converter
 
-The source code is at `[./cql2pgjson](cql2pgjson)` and `[./cql2pgjson-cli](cql2pgjson-cli)`
+The source code is at [./cql2pgjson](cql2pgjson) and [./cql2pgjson-cli](cql2pgjson-cli)
 
 ### CQL2PgJSON: Usage
 
