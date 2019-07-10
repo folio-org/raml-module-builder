@@ -1209,8 +1209,8 @@ The interface has a single GET endpoint with an optional query parameter path.
 Without the path query parameter the response will be an application/json array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
 Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
 `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
-specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify 
-directory in the form of glob expression (e.g. "raml-util/**") 
+specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify
+directory in the form of glob expression (e.g. "raml-util/**")
  For example:
 ```
 <systemProperty>
@@ -1319,7 +1319,7 @@ A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
 
 To customize generation of java classes, add a system property to plugin definition running `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`.
-Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes, 
+Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes,
 incomplete list of available properties:
 - jsonschema2pojo.config.includeHashcodeAndEquals - adds hashCode and equals methods
 - jsonschema2pojo.config.includeToString - adds toString method
@@ -1327,7 +1327,7 @@ incomplete list of available properties:
 
 For more available properties see:
  https://joelittlejohn.github.io/jsonschema2pojo/site/1.0.0/generate-mojo.html
- https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java 
+ https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java
 ## Overriding RAML (traits) / query parameters
 
 A module may require slight changes to existing RAML traits.
