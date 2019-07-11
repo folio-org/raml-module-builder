@@ -844,7 +844,7 @@ public class CQL2PgJSON {
     } else {
       String modifiersSubfield = null;
       if (schemaIndex != null) {
-        schemaIndex.getArraySubfield();
+        modifiersSubfield = schemaIndex.getArraySubfield();
       }
       if (modifiersSubfield == null) {
         throw new QueryValidationException("CQL: No arraySubfield defined for index " + index);
