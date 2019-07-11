@@ -1,3 +1,13 @@
+## 26.2.0 2019-07-11
+
+ * RMB-417 Optimize search for array relation modifiers
+ * RMB-422 Fix Invalid SQL for array modifiers
+ * RMB-426 Consider also arraySubfield as relation modifier (with or
+   without value)
+ * RMB-429 Fix fulltext mismatch WRT accents. Note that this affects
+   schema generation, so tenant data should be re-generated to ensure
+   good performance.
+
 ## 26.1.0 2019-07-04
 
  * RMB-419 Fix syntax error at or near "." because table name is reserved word
