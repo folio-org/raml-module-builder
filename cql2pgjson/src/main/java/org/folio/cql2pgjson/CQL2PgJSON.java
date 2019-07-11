@@ -678,7 +678,7 @@ public class CQL2PgJSON {
         case '?':
           throw new QueryValidationException("CQL: single character mask unsupported (?)");
         case '*':
-          if (i == term.length() - 1 && i > 0) {
+          if (i == term.length() - 1) {
             res.append(":*");
             continue;
           } else {
