@@ -379,22 +379,20 @@ public class SchemaMaker {
         }
         sb.append("'").append(pathParts[j]).append("'");
       }
+      boolean added = false;
       if (index != null && stringType) {
-        boolean isCaseSensitive = index.isCaseSensitive();
-        if (index.isRemoveAccents() || !isCaseSensitive) {
-          if (index.isRemoveAccents()) {
-            sb.insert(0, "f_unaccent(").append(")");
-          }
-          if (!isCaseSensitive) {
-            sb.insert(0, "lower(").append(")");
-          }
-        } else {
-          //need to wrap path expression in () if lower / unaccent isnt
-          //appended to the path
-          sb.insert(0, "(").append(")");
+        if (index.isRemoveAccents()) {
+          sb.insert(0, "f_unaccent(").append(")");
+          added = true;
+        }
+        if (!index.isCaseSensitive()) {
+          sb.insert(0, "lower(").append(")");
+          added = true;
         }
       }
-      else {
+      if (!added) {
+        //need to wrap path expression in () if lower / unaccent isnt
+        //appended to the path
         sb.insert(0, "(").append(")");
       }
       finalClause.append(sb.toString());
