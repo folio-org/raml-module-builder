@@ -261,12 +261,14 @@ public class SchemaMakerTest {
     String ddl = tidy(schemaMaker.generateDDL());
 
     // by default all indexes are wrapped with lower/f_unaccent
-    // except full text index which uses to_tsvector to normalize text token
+    // except full text which only obeys f_unaccent
     assertTrue(ddl.contains("(lower(f_unaccent(jsonb->>'id')))"));
     assertTrue(ddl.contains("(lower(f_unaccent(jsonb->>'name')))"));
     assertTrue(ddl.contains("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
     assertTrue(ddl.contains("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
-    assertTrue(ddl.contains("GIN(to_tsvector('english',(jsonb->>'title')))"));
+    assertTrue(ddl.contains("GIN(to_tsvector('english', f_unaccent(jsonb->>'title')))"));
+    System.out.println(ddl);
+    assertTrue(ddl.contains("GIN(to_tsvector('english',(jsonb->>'author')))"));
   }
 
 }

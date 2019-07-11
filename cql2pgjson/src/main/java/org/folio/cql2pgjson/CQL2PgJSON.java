@@ -836,13 +836,16 @@ public class CQL2PgJSON {
         }
         sqlAnd.append(" and ");
         sqlAnd.append(queryByFt(index2sqlText("t.c", foundModifier), modifierValue,
-          comparator));
+          comparator, schemaIndex));
       }
     }
     if (sqlOr.length() > 0) {
       sqlOr.append(")");
     } else {
-      final String modifiersSubfield = schemaIndex.getArraySubfield();
+      String modifiersSubfield = null;
+      if (schemaIndex != null) {
+        modifiersSubfield = schemaIndex.getArraySubfield();
+      }
       if (modifiersSubfield == null) {
         throw new QueryValidationException("CQL: No arraySubfield defined for index " + index);
       }
@@ -928,11 +931,6 @@ public class CQL2PgJSON {
    * @throws QueryValidationException
    */
   private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
-    List<Modifier> relationModifiers = modifiers.getRelationModifiers();
-    if (!relationModifiers.isEmpty()) {
-      final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getFullTextIndex());
-      return arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
-    }
     final String indexText = vals.getIndexText();
 
     if (!hasFtIndex) {
@@ -949,10 +947,21 @@ public class CQL2PgJSON {
 
     // Clean the term. Remove stand-alone ' *', not valid word.
     String term = node.getTerm().replaceAll(" +\\*", "").trim();
-    return queryByFt(indexText, term, comparator);
+    Index schemaIndex = null;
+    if (this.dbTable != null) {
+      schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getFullTextIndex());
+    }
+    String sql = queryByFt(indexText, term, comparator, schemaIndex);
+    List<Modifier> relationModifiers = modifiers.getRelationModifiers();
+    if (!relationModifiers.isEmpty()) {
+      sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
+    }
+    return sql;
   }
 
-  private String queryByFt(String indexText, String term, String comparator) throws QueryValidationException {
+  private String queryByFt(String indexText, String term, String comparator, Index schemaIndex)
+    throws QueryValidationException {
+
     if (term.equals("*")) {
       return "true";
     }
@@ -978,9 +987,12 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
     }
-    // "simple" dictionary only does lower_casing, so need f_unaccent
-    String sql = "to_tsvector('simple', f_unaccent(" + indexText + ")) "
-      + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))";
+    boolean unaccent = true;
+    if (schemaIndex != null) {
+      unaccent = schemaIndex.isRemoveAccents();
+    }
+    String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, false, unaccent) + ") "
+      + "@@ to_tsquery('simple', " + wrapInLowerUnaccent("'"+ tsTerm + "'", false, unaccent) + ")";
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
     return sql;
