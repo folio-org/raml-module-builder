@@ -30,10 +30,25 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
 * [Adding a shutdown hook](#adding-a-shutdown-hook)
 * [Implementing file uploads](#implementing-file-uploads)
+* [Implement chunked bulk download](#implement-chunked-bulk-download)
 * [PostgreSQL integration](#postgresql-integration)
     * [Credentials](#credentials)
     * [Securing DB Configuration file](#securing-db-configuration-file)
     * [Foreign keys constraint](#foreign-keys-constraint)
+* [CQL (Contextual Query Language)](#cql-contextual-query-language)
+    * [CQL2PgJSON: CQL to PostgreSQL JSON converter](#cql2pgjson-cql-to-postgresql-json-converter)
+    * [CQL2PgJSON: Usage](#cql2pgjson-usage)
+    * [CQL2PgJSON: id](#cql2pgjson-id)
+    * [CQL: Relations](#cql-relations)
+    * [CQL: Modifiers](#cql-modifiers)
+    * [CQL: Matching all records](#cql-matching-all-records)
+    * [CQL: Matching undefined or empty values](#cql-matching-undefined-or-empty-values)
+    * [CQL: Matching array elements](#cql-matching-array-elements)
+    * [CQL: @-relation modifiers for array searches](#cql--relation-modifiers-for-array-searches)
+    * [CQL: Matching and comparing numbers](#cql-matching-and-comparing-numbers)
+    * [CQL2PgJSON: Cross index searches](#cql2pgjson-cross-index-searches)
+    * [CQL2PgJSON: Exceptions](#cql2pgjson-exceptions)
+    * [CQL2PgJSON: Unit tests](#cql2pgjson-unit-tests)
 * [Tenant API](#tenant-api)
 * [RAMLs API](#ramls-api)
 * [JSON Schemas API](#json-schemas-api)
@@ -673,7 +688,7 @@ before complete, the handler will be called with `streamed_abort`.
 
 ## Implement chunked bulk download
 
-RMB supports bulk downloads of chunks using CQL ordered by primary key id since version 25.
+RMB supports bulk downloads of chunks using [CQL](#cql-contextual-query-language) ordered by primary key id since version 25.
 
 1st CQL query: `cql.allRecords=1 sortBy id`
 2nd CQL query: `id > [last id from 1st CQL query] sortBy id`
@@ -822,6 +837,271 @@ The overhead of this trigger and foreign key constraint reduces the number of UP
 https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/rest/persist/ForeignKeyPerformanceIT.java
 for the performance test.  Doing the foreign key check manually by sending additional SELECT queries takes much more time than 10%.
 
+## CQL (Contextual Query Language)
+
+Further [CQL](https://dev.folio.org/reference/glossary/#cql) information.
+
+### CQL2PgJSON: CQL to PostgreSQL JSON converter
+
+The source code is at [./cql2pgjson](cql2pgjson) and [./cql2pgjson-cli](cql2pgjson-cli)
+
+### CQL2PgJSON: Usage
+
+Invoke like this:
+
+    // users.user_data is a JSONB field in the users table.
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
+    String cql = "name=Miller";
+    String where = cql2pgJson.cql2pgJson(cql);
+    String sql = "select * from users where " + where;
+    // select * from users
+    // where CAST(users.user_data->'name' AS text)
+    //       ~ '(^|[[:punct:]]|[[:space:]])Miller($|[[:punct:]]|[[:space:]])'
+
+Or use `toSql(String cql)` to get the `ORDER BY` clause separately:
+
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
+    String cql = "name=Miller";
+    SqlSelect sqlSelect = cql2pgJson.toSql(cql);
+    String sql = "select * from users where " + sqlSelect.getWhere()
+                               + " order by " + sqlSelect.getOrderBy();
+
+
+Setting server choice indexes is possible, the next example searches `name=Miller or email=Miller`:
+
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+    String cql = "Miller";
+    String where = cql2pgJson.cql2pgJson(cql);
+    String sql = "select * from users where " + where;
+
+Searching across multiple JSONB fields works like this. The _first_ json field specified
+in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
+field name:
+
+    // Instantiation
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
+
+    // Query processing
+    where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
+    where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
+    where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
+
+### CQL2PgJSON: id
+
+The UUID field id is not searched in the JSON but in the table's primary key field. PostgreSQL automatically
+creates an index for the primary key.
+
+`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID.
+
+`=`, `==`, and `<>` relations allow `*` for right truncation.
+
+Modifiers are forbidden.
+
+### CQL: Relations
+
+Only these relations have been implemented yet:
+
+* `=` (this is `==` for a number and `adj` for a string.
+       Examples 1: `height = 3.4` Example 2: `title = Potter`)
+* `==` (exact match, for example `barcode == 883746123` or exact substring match `title == "*Harry Potter*"`;
+        numeric fields match any form: 3.4 = 3.400 = 0.34e1)
+* `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
+* `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
+* `adj` (substring phrase match: all words of the query string exist consecutively in that order, there may be any
+          whitespace and punctuation in between, `title adj "Harry Potter"` matches "Harry - . - Potter")
+* `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
+
+Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
+
+Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
+
+### CQL: Modifiers
+
+Functional modifiers: `ignoreCase`, `respectCase` and `ignoreAccents`, `respectAccents`
+are implemented for all characters (ASCII and Unicode). Default is `ignoreCase` and `ignoreAccents`.
+Example for respecting case and accents:
+`groupId==/respectCase/respectAccents 'd0faefc6-68c0-4612-8ee2-8aeaf058349d'`
+
+Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
+`honorWhitespace`, `substring`.
+
+Word begin and word end in JSON is only detected at whitespace and punctuation characters
+from the ASCII charset, not from other Unicode charsets.
+
+### CQL: Matching all records
+
+A search matching all records in the target index can be executed with a
+`cql.allRecords=1` query. `cql.allRecords=1` can be used alone or as part of
+a more complex query, for example
+`cql.allRecords=1 NOT name=Smith sortBy name/sort.ascending`
+
+* `cql.allRecords=1 NOT name=Smith` matches all records where name does not contain Smith
+   as a word or where name is not defined.
+* `name="" NOT name=Smith` matches all records where name is defined but does not contain
+   Smith as a word.
+* For performance reasons, searching for `*` in any fulltext field will match all records as well.
+
+### CQL: Matching undefined or empty values
+
+A relation does not match if the value on the left-hand side is undefined. (but see the fulltext
+`*` case above).
+A negation (using NOT) of a relation matches if the value on the left-hand side is
+not defined or if it is defined but doesn't match.
+
+* `name=""` matches all records where name is defined.
+* `cql.allRecords=1 NOT name=""` matches all records where name is not defined.
+* `name==""` matches all records where name is defined and empty.
+* `cql.allRecords=1 NOT name==""` matches all records where name is defined and not empty or
+   where name is not defined.
+* `name="" NOT name==""` matches all records where name is defined and not empty.
+
+### CQL: Matching array elements
+
+For matching the elements of an array use these queries (assuming that lang is either an array or not defined, and assuming
+an array element value does not contain double quotes):
+* `lang ==/respectAccents []` for matching records where lang is defined and an empty array
+* `cql.allRecords=1 NOT lang <>/respectAccents []` for matching records where lang is not defined or an empty array
+* `lang =/respectCase/respectAccents \"en\"` for matching records where lang is defined and contains the value en
+* `cql.allRecords=1 NOT lang =/respectCase/respectAccents \"en\"` for matching records where lang does not
+  contain the value en (including records where lang is not defined)
+* `lang = "" NOT lang =/respectCase/respectAccents \"en\"` for matching records where lang is defined and
+  and does not contain the value en
+* `lang = ""` for matching records where lang is defined
+* `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
+* `identifiers == "*\"value\": \"6316800312\", \"identifierTypeId\": \"8261054f-be78-422d-bd51-4ed9f33c3422\"*"`
+  (note to use `==` and not `=`) for matching the ISBN 6316800312 using ISBN's identifierTypeId where each element of
+  the identifiers array is a JSON object with the two keys value and identifierTypeId, for example
+
+      "identifiers": [ {
+        "value": "(OCoLC)968777846", "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace"
+      }, {
+        "value": "6316800312", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"
+      } ]
+
+To avoid the complicated syntax all ISBN values or all values can be extracted and used to create a view or an index:
+
+    SELECT COALESCE(jsonb_agg(value), '[]')
+       FROM jsonb_to_recordset(jsonb->'identifiers')
+         AS y(key text, value text)
+       WHERE key='8261054f-be78-422d-bd51-4ed9f33c3422'
+
+    SELECT COALESCE(jsonb_agg(value), '[]')
+      FROM jsonb_to_recordset(jsonb->'identifiers')
+        AS x(key text, value text)
+      WHERE value IS NOT NULL
+
+### CQL: @-relation modifiers for array searches
+
+RMB 26 or later supports array searches with relation modifiers, that
+are particular suited for structures like:
+
+    "property" : [
+      "type1" : "value1",
+      "type2" : "value2",
+      "subfield": {
+        .. "value"
+      }
+    ]
+
+An example of this kind of structure is `contributors ` (property) from
+mod-inventory-storage . `contributorTypeId` is the type of contributor
+(type1).
+
+With CQL you can limit searches to `property1` with regular match in
+`subfield`, with type1=value2 with
+
+    property =/@type1=value1 value
+
+Observe that the relation modifier is preceeded with the @-character to
+avoid clash with other CQL relation modifiers.
+
+The type1, type2 and subfield must all be defined in schema.json, because
+the JSON schema is not known. And also because relation modifiers are
+unfortunately lower-cased by cqljava. To match value1 against the
+property contents of type1, full-text match is used.
+
+Multiple relation modifiers with value are ANDed together. So
+
+    property =/@type1=value1/@type2=value2 value
+
+will only give a hit if both type1 has value1 AND type2 has value2.
+
+It is also possible to specify relation modifiers without value. This
+essentially is a way to override what subfield to search. In this case
+the right hand side term is matched. Multiple relation modifiers
+are OR'ed together. For example:
+
+    property =/@type1 value
+
+And to match any of the sub properties type1, type2, you could use:
+
+    property =/@type1/@type2 value
+
+In schema.json two new properties, `arraySubfield` and `arrayModifiers`,
+specifies the subfield and the list of modifiers respectively.
+This can be applied to `ginIndex` and `fullTextIndex`.
+schema.json example:
+
+    {
+      "fieldName": "property",
+      "tOps": "ADD",
+      "caseSensitive": false,
+      "removeAccents": true,
+      "arraySubfield": "subfield",
+      "arrayModifiers": ["type1", "type2"]
+    }
+
+For the identifiers example we could define things in schema.json with:
+
+    {
+      "fieldName": "identifiers",
+      "tOps": "ADD",
+      "arraySubfield": "value",
+      "arrayModifiers": ["identifierTypeId"]
+    }
+
+This will allow you to perform searches, such as:
+
+    identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
+
+### CQL: Matching and comparing numbers
+
+Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number comparison must result in 10 > 2
+(in contrast to string comparison where "10" < "2").
+
+If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", and ">=" if the actual JSONB type of the stored value is `number`
+(JSONB has no `integer` type).
+
+### CQL2PgJSON: Cross index searches
+
+Limited cross table searches are supported.  If you desire a join across tables the following conditions must be met:
+
+* there must be a foreign key from the child field -> parent field.
+* the join desired index must be only 1 table deep
+  - e.g.  table1 -> table2 not table1 -> table2 -> table3
+* precede the index you want to search with the table name in Camel Case.
+  - e.g. someTableName.indexYouWantToSearch = value
+* currently no other operators are supported.  They will be added at a later date.
+
+
+### CQL2PgJSON: Exceptions
+
+All locally produced Exceptions are derived from a single parent so they can be caught collectively
+or individually. Methods that load a JSON data object model pass in the identity of the model as a
+resource file name, and may also throw a native `java.io.IOException`.
+
+    CQL2PgJSONException
+      ├── FieldException
+      ├── SchemaException
+      ├── ServerChoiceIndexesException
+      ├── CQLFeatureUnsupportedException
+      └── QueryValidationException
+            └── QueryAmbiguousException
+
+### CQL2PgJSON: Unit tests
+
+To run the unit tests in your IDE, the Unicode input files must have been produced by running maven.
+In Eclipse you may use "Run as ... Maven Build" for doing so.
 
 ## Tenant API
 
@@ -1080,7 +1360,7 @@ The x-okapi-tenant header passed in to the API call will be used to get the tena
 The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
 
 #### Important information
-Right now all indexes on string fields in the jsonb should be declared as case in-sensitive and lower cased. This is how the CQL to Postgres converter generates SQL queries , so in order for the indexes generated to be used during query time, the indexes must be declared in a similar manner
+Right now all indexes on string fields in the jsonb should be declared as case in-sensitive and lower cased. This is how the [CQL to Postgres converter](#cql-contextual-query-language) generates SQL queries, so in order for the indexes generated to be used during query time, the indexes must be declared in a similar manner
 ```
   {
     "fieldName": "title",
@@ -1208,8 +1488,8 @@ The interface has a single GET endpoint with an optional query parameter path.
 Without the path query parameter the response will be an application/json array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
 Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
 `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
-specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify 
-directory in the form of glob expression (e.g. "raml-util/**") 
+specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify
+directory in the form of glob expression (e.g. "raml-util/**")
  For example:
 ```
 <systemProperty>
@@ -1227,7 +1507,8 @@ https://github.com/folio-org/raml/blob/eda76de6db681076212e20c7f988c3913764b9b0/
 
 The RMB can receive parameters of different types. Modules can declare a query parameter and receive it as a string parameter in the generated API functions.
 
-The RMB exposes an easy way to query, using CQL (https://github.com/folio-org/cql2pgjson-java). This enables a seamless integration from the query parameters to a prepared "where" clause to query with.
+The RMB exposes an easy way to query, using [CQL (Contextual Query Language)](#cql-contextual-query-language).
+This enables a seamless integration from the query parameters to a prepared "where" clause to query with.
 
 ```java
 //create object on table.field
@@ -1318,7 +1599,7 @@ A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
 
 To customize generation of java classes, add a system property to plugin definition running `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`.
-Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes, 
+Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes,
 incomplete list of available properties:
 - jsonschema2pojo.config.includeHashcodeAndEquals - adds hashCode and equals methods
 - jsonschema2pojo.config.includeToString - adds toString method
@@ -1326,7 +1607,7 @@ incomplete list of available properties:
 
 For more available properties see:
  https://joelittlejohn.github.io/jsonschema2pojo/site/1.0.0/generate-mojo.html
- https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java 
+ https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java
 ## Overriding RAML (traits) / query parameters
 
 A module may require slight changes to existing RAML traits.
