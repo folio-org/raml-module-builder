@@ -24,14 +24,14 @@
           "fieldName": "name",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": true,
+          "removeAccents": false,
           "arraySubfield": "noArrayModifiers"
         },
         {
           "fieldName": "contributors",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": true,
+          "removeAccents": false,
           "arraySubfield": "name",
           "arrayModifiers": ["contributorNameTypeId", "lang"]
         },
@@ -39,7 +39,7 @@
           "fieldName": "other",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": true,
+          "removeAccents": false,
           "arrayModifiers": ["noArraySubfield"]
         }
       ],
