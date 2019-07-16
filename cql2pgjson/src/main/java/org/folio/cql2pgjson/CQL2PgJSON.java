@@ -587,7 +587,6 @@ public class CQL2PgJSON {
       logger.log(Level.SEVERE, msg);
       throw new QueryValidationException(msg);
     }
-    
     String match = foreignKeyMatch(node, indexField, foreignTarget);
     if (indexInTable) {
       return formatParentChild(foreignTarget[0], fkey, match);
