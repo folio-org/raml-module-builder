@@ -1,3 +1,7 @@
+## 26.2.1.2019-07-17
+
+ * RMB-430 Audit table PK (id) unique constraint violation on concurrent queries
+
 ## 26.2.0 2019-07-11
 
  * RMB-417 Optimize search for array relation modifiers
