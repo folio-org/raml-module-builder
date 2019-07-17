@@ -13,6 +13,14 @@
     },
     {
       "tableName": "tableb",
+      "ginIndex" : [
+        {
+          "fieldName": "gprefix",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
       "index": [
         {
           "fieldName": "prefix",
