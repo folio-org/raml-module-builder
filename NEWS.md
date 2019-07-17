@@ -1,4 +1,4 @@
-## 26.2.1.2019-07-17
+## 26.2.1 2019-07-17
 
  * RMB-430 Audit table PK (id) unique constraint violation on concurrent queries
 
