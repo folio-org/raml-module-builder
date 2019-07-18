@@ -596,13 +596,10 @@ public class CQL2PgJSON {
   }
   private String foreignKeyMatch(CQLTermNode node,  Table targetTable,String [] foreignTarget)  throws QueryValidationException {
     String foreignTableJsonb = foreignTarget[0] + ".jsonb";
-    Index index = findIndex(targetTable, foreignTarget[1]);
+    
     IndexTextAndJsonValues vals = getSubQueryIndexTextAndJsonValues( foreignTableJsonb, foreignTarget );
     CqlModifiers cqlModifiers = new CqlModifiers(node);
     String indexField = foreignTarget[1];
-    if(index != null) {
-      indexField = index.getFieldName();
-    }
     return indexNode(indexField,targetTable, node, vals, cqlModifiers);
   }
   private IndexTextAndJsonValues getSubQueryIndexTextAndJsonValues(String foreignTableJsonb,String [] foreignTarget ) throws QueryValidationException {
@@ -653,7 +650,28 @@ public class CQL2PgJSON {
     }
     return null;
   }
-
+  private static Index findGinIndex(Table table, String fieldName) {
+    if (table == null || table.getGinIndex() == null) {
+      return null;
+    }
+    for(Index index : table.getGinIndex()) {
+      if (index.getFieldName().equals(fieldName)) {
+        return index;
+      }
+    }
+    return null;
+  }
+  private static Index findFullTextIndex(Table table, String fieldName) {
+    if (table == null || table.getFullTextIndex()== null) {
+      return null;
+    }
+    for(Index index : table.getFullTextIndex()) {
+      if (index.getFieldName().equals(fieldName)) {
+        return index;
+      }
+    }
+    return null;
+  }
   /**
    * Return the ForeignKeys from targetTable where fieldName refers to field of the
    * current table.

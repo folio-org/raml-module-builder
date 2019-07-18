@@ -13,6 +13,14 @@
     },
     {
       "tableName": "tableb",
+        "fullTextIndex" : [
+        {
+          "fieldName": "ftprefix",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
       "ginIndex" : [
         {
           "fieldName": "gprefix",
