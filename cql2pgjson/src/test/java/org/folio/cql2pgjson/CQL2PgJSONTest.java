@@ -974,7 +974,16 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, "array.sql", testcase);
     logger.fine("arrayRelationModifiers(): " + testcase + " OK");
   }
-
+  @Test
+  @Parameters({
+    "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2a and instance_holding_item_view.ho_jsonb.permanentLocationId=\"fcd64ce1-6995-48f0-840e-89ffa2288371\")) terry # a"
+  })
+  public void arrayRelationModifiersWithView(String testcase) throws IOException, CQL2PgJSONException {
+    logger.fine("arrayRelationModifiers():" + testcase);
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON( Arrays.asList("users.user_data"), true);
+    select(aCql2pgJson, "array.sql", testcase);
+    logger.fine("arrayRelationModifiers(): " + testcase + " OK");
+  }
   @Ignore("Need to sort out the array stuff first")
   @Test
   @Parameters({
