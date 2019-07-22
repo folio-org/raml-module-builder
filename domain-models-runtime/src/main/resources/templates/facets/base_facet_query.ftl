@@ -18,7 +18,7 @@ with facets as (
     FROM facets
     GROUP BY GROUPING SETS (
       <#list facets as facet>
-        ${facet.alias}<#sep>,
+        ${facet.fieldPath}<#sep>,
       </#list>
     )
  )
