@@ -1,3 +1,9 @@
+## 26.2.2 2019-07-22
+
+ * RMB-435 CVE-2019-12814 jackson-databind security vulnerability
+ * RMB-436 Log both CQL and SQL within the missing index line
+ * RMB-430 queries with facet fail
+
 ## 26.2.1 2019-07-17
 
  * RMB-430 Audit table PK (id) unique constraint violation on concurrent queries
