@@ -933,10 +933,6 @@ public class CQL2PgJSON {
   private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
     final String indexText = vals.getIndexText();
 
-    if (!hasFtIndex) {
-      logger.log(Level.WARNING, "Doing FT search without FT index {0}", indexText);
-    }
-
     if (CqlAccents.RESPECT_ACCENTS == modifiers.getCqlAccents()) {
       logger.log(Level.WARNING, "Ignoring /respectAccents modifier for FT search {0}", indexText);
     }
@@ -956,6 +952,12 @@ public class CQL2PgJSON {
     if (!relationModifiers.isEmpty()) {
       sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
     }
+
+    if (!hasFtIndex) {
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
+      logger.log(Level.WARNING, "Doing FT search without FT index for {0}", s);
+    }
+
     return sql;
   }
 
@@ -1018,10 +1020,6 @@ public class CQL2PgJSON {
     }
     String indexText = vals.getIndexText();
 
-    if (!hasGinIndex) {
-      logger.log(Level.WARNING, "Doing LIKE search without GIN index for {0}", indexText);
-    }
-
     String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
     String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     String indexMatch = wrapInLowerUnaccent(indexText) + likeOperator + wrapInLowerUnaccent(like);
@@ -1031,6 +1029,11 @@ public class CQL2PgJSON {
     } else {
       sql = indexMatch + " AND " +
         wrapInLowerUnaccent(indexText, modifiers) + likeOperator + wrapInLowerUnaccent(like, modifiers);
+    }
+
+    if (!hasGinIndex) {
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
+      logger.log(Level.WARNING, "Doing LIKE search without GIN index for {0}", s);
     }
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexText, sql});
@@ -1050,10 +1053,6 @@ public class CQL2PgJSON {
   private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
     String index = vals.getIndexText();
 
-    if (!hasIndex) {
-      logger.log(Level.WARNING, "Doing SQL query without index for {0}", index);
-    }
-
     if (comparator.equals("==")) {
       comparator = "=";
     }
@@ -1063,6 +1062,11 @@ public class CQL2PgJSON {
       term = node.getTerm();
     }
     String sql = index + " " + comparator + term;
+
+    if (!hasIndex) {
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", index, node.toCQL(), sql);
+      logger.log(Level.WARNING, "Doing SQL query without index for {0}", s);
+    }
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
     return sql;
