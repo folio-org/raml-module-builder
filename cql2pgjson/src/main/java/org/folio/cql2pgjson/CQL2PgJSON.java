@@ -970,7 +970,8 @@ public class CQL2PgJSON {
     if (term.equals("")) {
       return indexText + " ~ ''";
     }
-    String[] words = term.split("\\s+");
+    // Removing of " - " is RMB-439 to unblock CIRCSTORE-138
+    String[] words = term.replaceAll(" - ", " ").split("\\s+");
     for (int i = 0; i < words.length; i++) {
       words[i] = ftTerm(words[i]);
     }
