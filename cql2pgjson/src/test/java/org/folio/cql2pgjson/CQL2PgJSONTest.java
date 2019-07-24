@@ -354,7 +354,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void wildcards(String testcase) {
     select(testcase);
   }
-@Ignore()
+
   @Test
   public void masked() throws CQLFeatureUnsupportedException {
     select("name=/masked Lea  # Lea Long");
@@ -364,14 +364,14 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     CqlModifiers cqlModifiers = new CqlModifiers(modifierSet);
     assertThat(cqlModifiers.getCqlMasking(), is(CqlMasking.MASKED));
   }
-@Ignore()
+
   @Test
   public void masking() {
     cql2pgJsonException("email=/unmasked Lea", CQLFeatureUnsupportedException.class, "unmasked");
     cql2pgJsonException("email=/substring Lea", CQLFeatureUnsupportedException.class, "substring");
     cql2pgJsonException("email=/regexp Lea", CQLFeatureUnsupportedException.class, "regexp");
   }
-@Ignore()
+
   @Test
   @Parameters({
     "email==\\\\                    # a",  // 1 backslash, masking: x 2 for CQL, x 2 for Java
@@ -455,7 +455,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select("name==(a or b or c or d or e or f or g or h or j or k or l or m or n or o or p or q or s or t or u or v "
       + "or w or x or y or z or 0 or 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or \"Jo Jane\")  # Jo Jane");
   }
-  
+
   //@Test
   // The fulltext does not support caret anchoring. We do not have enough
   // data in the email field to make a maeningful test. Anyway, the serverchoice
@@ -879,7 +879,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   //
   // Fulltext search tests
   //
-
   @Test
   @Parameters({
     "name=Long                      # Lea Long",
