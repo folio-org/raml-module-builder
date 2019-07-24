@@ -860,12 +860,15 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name = \"Lea *\"               # Lea Long", // Loose '*' should be ignored
     "name = \"*\"                   # Jo Jane; Ka Keller; Lea Long", // special case
     "name = \"Le* Lo*\"             # Lea Long",
-    "name = \" * * \"               # Jo Jane; Ka Keller; Lea Long"
+    "name = \" * * \"               # Jo Jane; Ka Keller; Lea Long",
+    "status = \"Active - Ready\"    # Jo Jane",
+    "status = Inactive              # Ka Keller",
+    "status = \"Active - Not yet\"  # Lea Long"
 })
   public void basicFT(String testcase)
     throws IOException, FieldException, ServerChoiceIndexesException {
     logger.fine("basicFT: " + testcase);
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email", "status"));
     select(aCql2pgJson, testcase);
     logger.fine("basicFT: " + testcase + " OK ");
   }
