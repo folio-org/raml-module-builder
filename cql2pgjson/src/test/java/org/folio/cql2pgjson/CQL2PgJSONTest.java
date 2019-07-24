@@ -988,7 +988,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, "array.sql", testcase);
     logger.fine("arrayFT(): " + testcase + " OK");
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2a terry # a",
@@ -1031,11 +1031,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   
   @Test
   @Parameters({
-    "((contributors =  2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId=\"a708811d-422b-43fd-8fa7-d73f26dee1f9\") # a"
+    "((contributors = /@contributornametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId=\"a708811d-422b-43fd-8fa7-d73f26dee1f9\") # a"
   })
   public void arrayRelationModifiersWithView(String testcase) throws IOException, CQL2PgJSONException {
     logger.fine("arrayRelationModifiers():" + testcase);
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON( Arrays.asList("users_groups_view.ho_jsonb","users.jsonb"), true);
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON( Arrays.asList("users_groups_view.ho_jsonb","users_groups_view.ho_jsonb"),"users.jsonb");
     selectView(aCql2pgJson, "arrayWithView.sql", testcase);
     logger.fine("arrayRelationModifiers(): " + testcase + " OK");
   }

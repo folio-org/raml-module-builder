@@ -139,7 +139,7 @@ public class CQL2PgJSON {
    * @param view a statement of whether this query is used in a view or not.  This is used to determine how to manipulate the 
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    */
-  public CQL2PgJSON(List<String> fields, boolean view) throws FieldException {
+  public CQL2PgJSON(List<String> fields, String view) throws FieldException {
     loadDbSchema(null);
     if (fields == null || fields.isEmpty())
       throw new FieldException( "fields list must not be empty" );
@@ -147,8 +147,8 @@ public class CQL2PgJSON {
     for (String field : fields) {
       this.jsonFields.add(trimNotEmpty(field));
     }
-    if (view) {
-      this.jsonField = this.jsonFields.get(jsonFields.size() -1);
+    if (view!= null) {
+      this.jsonField = view;
     }
     initDbTable();
   }
@@ -829,7 +829,7 @@ public class CQL2PgJSON {
   }
 
   private String arrayNode(String index, CQLTermNode node, CqlModifiers modifiers,
-    List<Modifier> relationModifiers, Index schemaIndex) throws QueryValidationException {
+    List<Modifier> relationModifiers, Index schemaIndex, IndexTextAndJsonValues incomingvals) throws QueryValidationException {
 
     StringBuilder sqlAnd = new StringBuilder();
     StringBuilder sqlOr = new StringBuilder();
@@ -878,7 +878,7 @@ public class CQL2PgJSON {
     String indexText = index2sqlJson(this.jsonField, index);
     return "id in (select t.id"
       + " from (select id as id, "
-      + "             jsonb_array_elements(" + indexText + ") as c"
+      + "             jsonb_array_elements(" + incomingvals.getIndexJson() + ") as c"
       + "      ) as t"
       + " where " + sqlOr.toString() + sqlAnd.toString() + ")";
   }
@@ -976,7 +976,7 @@ public class CQL2PgJSON {
     String sql = queryByFt(indexText, term, comparator, schemaIndex);
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
-      sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
+      sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     }
     return sql;
   }
@@ -1036,7 +1036,7 @@ public class CQL2PgJSON {
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
       final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
-      return arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
+      return arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     }
     String indexText = vals.getIndexText();
 
