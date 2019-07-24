@@ -1,6 +1,6 @@
 DELETE FROM users;
 INSERT INTO users (user_data) VALUES
-    ('{"name": "a", "lang": [ ],
+    ('{"name": "aa", "lang": [ ],
   "contributors": [
     {
       "contributorNameTypeId": "2b94c631-fca9-4892-a730-03ee529ffe2a",

@@ -216,7 +216,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     }
     fail("Exception " + clazz + " expected, but no exception thrown");
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "name=Long                      # Lea Long",
@@ -242,7 +242,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void basic(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "name all \"\"                               # Jo Jane; Ka Keller; Lea Long",
@@ -255,7 +255,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void all(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "name any \"\"                               # Jo Jane; Ka Keller; Lea Long",
@@ -269,7 +269,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void any(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "name adj \"\"                               # Jo Jane; Ka Keller; Lea Long",
@@ -281,7 +281,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void adj(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({ // Can not to left trucn on names, it is fulltext
     "name=ja*                                   # Jo Jane",
@@ -303,19 +303,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void andOrNot(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   /** https://issues.folio.org/browse/DMOD-184 CQL conversion seems to ignore some errors */
   @Test
   public void startsWithOr() {
     cql2pgJsonException("or name=a", QueryValidationException.class);
   }
-  @Ignore()
+
   @Test
   public void prox() {
     cql2pgJsonException("name=Lea prox/unit=word/distance>3 name=Long",
         CQLFeatureUnsupportedException.class, "CQLProxNode");
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "long                           # Lea Long",
@@ -329,7 +329,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void caseInsensitive(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   /* fulltext only supports right truncation
     "*Lea* *Long*                   # Lea Long",
@@ -394,7 +394,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void special(String testcase) {
     select("special.sql", testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     // fulltext (used by =) removes any quote and backslash
@@ -408,7 +408,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void quotes(String testcase) {
     select("quotes.sql", testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     // The = operator is word based. An empty string or string with whitespace only contains no word at all so
@@ -430,7 +430,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void fieldExistsOrEmpty(String testcase) {
     select("existsEmpty.sql", testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "                     lang ==/respectAccents []                      # a",
@@ -447,7 +447,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void array(String testcase) {
     select("array.sql", testcase);
   }
-  @Ignore()
+
   @Test
   // Should not produce a StackOverflowError:
   // https://issues.folio.org/browse/CIRC-119 "Requests API GET /requests does not scale"
@@ -474,7 +474,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void caret(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "address.city= Søvang            # Lea Long",
@@ -503,7 +503,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(testcase.replace("==", "==/ignoreCase/ignoreAccents ")
                    .replace("= ", "= /ignoreCase/ignoreAccents "));
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "address.city= /respectCase Søvang # Lea Long",
@@ -532,7 +532,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void unicodeAccentsNonWindows(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "address.city= /respectAccents Søvang # Lea Long",
@@ -549,7 +549,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void unicodeAccents(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "address.city= /respectCase/respectAccents Søvang # Lea Long",
@@ -568,7 +568,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void unicodeCaseAccents(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "address.city==/respectCase/respectAccents S*      # Jo Jane; Lea Long",
@@ -590,7 +590,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     String sql = cql2pgJson.cql2pgJson(testcase.substring(0, testcase.indexOf('#')));
     assertThat(sql, containsString(" LIKE "));
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "*         sortBy name                           # Jo Jane; Ka Keller; Lea Long",
@@ -612,7 +612,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void sort(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "cql.allRecords=1 sortBy address.zip/sort.ascending/number  name # a; b; c; d; e; f; g; h",
@@ -621,7 +621,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void sortNumber(String testcase) {
     select("special.sql", testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "address.zip</number 1                  #",
@@ -649,7 +649,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void compareNumber(String testcase) throws CQL2PgJSONException {
     select("special.sql", testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "address.city =    1234                 # e; f",
@@ -662,7 +662,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void numberInStringField(String testcase) throws CQL2PgJSONException {
     select("special.sql", testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "name< \"Ka Keller\"  # Jo Jane",
@@ -676,7 +676,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void compareString(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "cql.allRecords=1                             # Jo Jane; Ka Keller; Lea Long",
@@ -688,18 +688,18 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void allRecords(String testcase) {
     select(testcase);
   }
-  @Ignore()
+
   @Test(expected = FieldException.class)
   public void nullField() throws FieldException {
     String s = null;
     new CQL2PgJSON(s);
   }
-  @Ignore()
+
   @Test(expected = FieldException.class)
   public void emptyField() throws FieldException {
     new CQL2PgJSON(" \t \t ");
   }
-  @Ignore()
+
   @Test
   public void noServerChoiceIndexes() throws IOException, CQL2PgJSONException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data", Arrays.asList()),
@@ -707,55 +707,55 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     cql2pgJsonException(new CQL2PgJSON("users.user_data", (List<String>) null),
         "Jane", QueryValidationException.class, "serverChoiceIndex");
   }
-  @Ignore()
+
   @Test
   public void prefixNotImplemented() throws FieldException, RuntimeException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data"),
         "> n = name n=Ka", CQLFeatureUnsupportedException.class, "CQLPrefixNode");
   }
-  @Ignore()
+
   @Test
   public void relationNotImplemented() throws FieldException, RuntimeException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data"),
         "address.zip encloses 12", CQLFeatureUnsupportedException.class, "Relation", "encloses");
   }
-  @Ignore()
+
   @Test(expected = ServerChoiceIndexesException.class)
   public void nullIndex() throws CQL2PgJSONException {
     new CQL2PgJSON("users.user_data", Arrays.asList((String) null));
   }
-  @Ignore()
+
   @Test(expected = ServerChoiceIndexesException.class)
   public void emptyIndex() throws CQL2PgJSONException {
     new CQL2PgJSON("users.user_data", Arrays.asList(" \t \t "));
   }
-  @Ignore()
+
   @Test(expected = ServerChoiceIndexesException.class)
   public void doubleQuoteIndex() throws CQL2PgJSONException {
     new CQL2PgJSON("users.user_data", Arrays.asList("test\"cql"));
   }
-  @Ignore()
+
   @Test(expected = ServerChoiceIndexesException.class)
   public void singleQuoteIndex() throws CQL2PgJSONException {
     new CQL2PgJSON("users.user_data", Arrays.asList("test'cql"));
   }
-  @Ignore()
+
   @Test(expected = FieldException.class)
   public void nullFieldList() throws CQL2PgJSONException {
     new CQL2PgJSON((List<String>) null);
   }
-  @Ignore()
+
   @Test(expected = FieldException.class)
   public void emptyFieldList() throws CQL2PgJSONException {
     new CQL2PgJSON(Arrays.asList());
   }
-  @Ignore()
+
   @Test
   public void singleField() throws CQL2PgJSONException {
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data"), Arrays.asList("name"));
     select(aCql2pgJson, "Long   # Lea Long");
   }
-  @Ignore()
+
   @Test
   public void toSqlSimple() throws QueryValidationException {
     SqlSelect s = cql2pgJson.toSql("cql.allRecords=1");
@@ -763,7 +763,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     assertEquals("", s.getOrderBy());
     assertEquals("WHERE true", s.toString());
   }
-  @Ignore()
+
   @Test
   public void toSql() throws QueryValidationException {
     SqlSelect s = cql2pgJson.toSql("email=Long sortBy name/sort.descending");
@@ -776,7 +776,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     assertTrue(sql.endsWith(" ORDER BY "
       + "lower(f_unaccent(users.user_data->>'name')) DESC"));
   }
-  @Ignore()
+
   @Test
   public void optimizedOR() throws QueryValidationException {
     SqlSelect s = cql2pgJson.toSql("name=* OR email=*");
@@ -788,12 +788,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     s = cql2pgJson.toSql("name=\"\" OR email=\"\"");
     assertEquals("(users.user_data->>'name' ~ '') OR (users.user_data->>'email' ~ '')", s.getWhere());
   }
-  @Ignore()
+
   @Test(expected = QueryValidationException.class)
   public void toSqlException() throws QueryValidationException {
     cql2pgJson.toSql("");
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "id=*,                                        true",
@@ -807,7 +807,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     assertEquals(expectedSql, cql2pgJson.toSql(cql).getWhere());
     assertEquals(expectedSql, cql2pgJson.toSql(cql.replace("=", "==")).getWhere());
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "cql.allRecords=1 sortBy id                               , WHERE true ORDER BY id     ",
@@ -819,7 +819,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     CQL2PgJSON c = new CQL2PgJSON("users.user_data");
     assertEquals(expectedSql, c.toSql(cql).toString());
   }
-  @Ignore()
+
   @Test
   @Parameters({
     "id=11111111-1111-1111-1111-111111111111   # Jo Jane",
@@ -879,7 +879,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   //
   // Fulltext search tests
   //
-  @Ignore()
+
   @Test
   @Parameters({
     "name=Long                      # Lea Long",
@@ -923,7 +923,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, testcase);
     logger.fine("basicFT: " + testcase + " OK ");
   }
-  @Ignore()
+
   @Test
   @Parameters({
     // email works different, no need to test here. See basicFT()
@@ -952,7 +952,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, testcase);
     logger.fine("allFT: " + testcase + " OK ");
   }
-  @Ignore()
+@Ignore()
   @Test
   @Parameters({
     "lang == []                    # a",
@@ -988,7 +988,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, "array.sql", testcase);
     logger.fine("arrayFT(): " + testcase + " OK");
   }
-
+@Ignore()
   @Test
   @Parameters({
     "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2a terry # a",
@@ -1031,7 +1031,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   
   @Test
   @Parameters({
-    "((contributors = /@contributornametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId=\"a708811d-422b-43fd-8fa7-d73f26dee1f9\") # a"
+    "((contributors = /@contributornametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId=\"a708811d-422b-43fd-8fa7-d73f26dee1f9\") # groupa"
   })
   public void arrayRelationModifiersWithView(String testcase) throws IOException, CQL2PgJSONException {
     logger.fine("arrayRelationModifiers():" + testcase);
@@ -1146,7 +1146,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "myJsonField, a.b.c,   myJsonField->'a'->'b'->>'c'",
     "f.g.h,       a.b.c,   f.g.h->'a'->'b'->>'c'",
   })
-  @Ignore()
+
   @Test
   public void index2sqlText(String jsonField, String index, String expected) throws Exception {
     assertThat(CQL2PgJSON.index2sqlText(jsonField, index), is(expected));
@@ -1156,7 +1156,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "f,           *",
     "f,           a.b.c*c",
   })
-  @Ignore()
+
   @Test(expected = QueryValidationException.class)
   public void index2sqlTextException(String jsonField, String index) throws Exception {
     CQL2PgJSON.index2sqlText(jsonField, index);
@@ -1166,7 +1166,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   CQL fields can be quoted and, thus, contain various characters that - if no
   properly escaped can be used to unquote the JSON path that is generated
    */
-  @Ignore()
+
   @Test
   @Parameters({
     "\"field'))@@to_tsquery(('english\"=x # "})
