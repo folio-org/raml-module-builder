@@ -1,3 +1,7 @@
+## 26.2.3 2019-07-24
+
+ * RMB-439 Remove hyphen token for full search to unblock CIRCSTORE-138
+
 ## 26.2.2 2019-07-22
 
  * RMB-435 CVE-2019-12814 jackson-databind security vulnerability
