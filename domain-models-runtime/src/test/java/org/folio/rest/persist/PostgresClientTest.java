@@ -325,7 +325,7 @@ public class PostgresClientTest {
       "      count(*) as count\n" +
       "    FROM facets\n" +
       "    GROUP BY GROUPING SETS (\n" +
-      "        biz    )\n" +
+      "        jsonb->>'biz'    )\n" +
       " )\n" +
       " ,\n" +
       "   lst1 as(\n" +
@@ -389,7 +389,7 @@ public class PostgresClientTest {
       "      count(*) as count\n" +
       "    FROM facets\n" +
       "    GROUP BY GROUPING SETS (\n" +
-      "        biz    )\n" +
+      "        jsonb->>'biz'    )\n" +
       " )\n" +
       " ,\n" +
       "   lst1 as(\n" +
