@@ -951,7 +951,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, testcase);
     logger.fine("allFT: " + testcase + " OK ");
   }
-@Ignore()
+
   @Test
   @Parameters({
     "lang == []                    # a",
@@ -987,7 +987,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, "array.sql", testcase);
     logger.fine("arrayFT(): " + testcase + " OK");
   }
-@Ignore()
+
   @Test
   @Parameters({
     "contributors =/@contributornametypeid=2b94c631-fca9-4892-a730-03ee529ffe2a terry # a",
