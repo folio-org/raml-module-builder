@@ -1,3 +1,8 @@
+## 26.2.4 2019-07-26
+
+ * RMB work for MODINVSTOR-319: array queries with additional clauses may fail
+ * RMB-440 Skip logging GIN index missing if b-tree index can be used
+
 ## 26.2.3 2019-07-24
 
  * RMB-439 Remove hyphen token for full search to unblock CIRCSTORE-138
