@@ -1033,6 +1033,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   
   @Test
   @Parameters({
+    "((contributors = \"foo\") and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # ",
+    "((contributors = 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # groupa",
     "((contributors = /@contributornametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId=\"a708811d-422b-43fd-8fa7-d73f26dee1f9\") # groupa"
   })
   public void arrayRelationModifiersWithView(String testcase) throws IOException, CQL2PgJSONException {
