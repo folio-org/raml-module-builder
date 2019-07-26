@@ -129,7 +129,29 @@ public class CQL2PgJSON {
     }
     initDbTable();
   }
-
+  /**
+   * Create an instance for the specified list of schemas. If only one field name is provided, queries will
+   * default to the handling of single field queries.
+   *
+   * @param fields Field names of the JSON fields, may include schema and table name (e.g. tenant1.user_table.json).
+   *  Must conform to SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
+   *  The first field name on the list will be the default field for terms in queries that don't specify a json field.
+   * @param viewTarget the table that this is actually targetting since views hide the fact of the original table.  This is used to determine how to find indexes and other table specific info thats lost. 
+   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
+   */
+  public CQL2PgJSON(List<String> fields, String viewTarget) throws FieldException {
+    loadDbSchema(null);
+    if (fields == null || fields.isEmpty())
+      throw new FieldException( "fields list must not be empty" );
+    this.jsonFields = new ArrayList<>();
+    for (String field : fields) {
+      this.jsonFields.add(trimNotEmpty(field));
+    }
+    if (viewTarget!= null) {
+      this.jsonField = viewTarget;
+    }
+    initDbTable();
+  }
   /**
    * Create an instance for the specified list of schemas. If only one field name is provided, queries will
    * default to the handling of single field queries.
@@ -489,7 +511,7 @@ public class CQL2PgJSON {
 
   private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
       throws QueryValidationException {
-    if (jsonField == null) {
+    if (jsonFields != null && jsonFields.size() > 1) {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
@@ -807,7 +829,7 @@ public class CQL2PgJSON {
   }
 
   private String arrayNode(String index, CQLTermNode node, CqlModifiers modifiers,
-    List<Modifier> relationModifiers, Index schemaIndex) throws QueryValidationException {
+    List<Modifier> relationModifiers, Index schemaIndex, IndexTextAndJsonValues incomingvals) throws QueryValidationException {
 
     StringBuilder sqlAnd = new StringBuilder();
     StringBuilder sqlOr = new StringBuilder();
@@ -856,7 +878,7 @@ public class CQL2PgJSON {
     String indexText = index2sqlJson(this.jsonField, index);
     return "id in (select t.id"
       + " from (select id as id, "
-      + "             jsonb_array_elements(" + indexText + ") as c"
+      + "             jsonb_array_elements(" + incomingvals.getIndexJson() + ") as c"
       + "      ) as t"
       + " where " + sqlOr.toString() + sqlAnd.toString() + ")";
   }
@@ -950,7 +972,7 @@ public class CQL2PgJSON {
     String sql = queryByFt(indexText, term, comparator, schemaIndex);
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
-      sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
+      sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     }
 
     if (!hasFtIndex) {
@@ -1017,7 +1039,7 @@ public class CQL2PgJSON {
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
       final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
-      return arrayNode(index, node, modifiers, relationModifiers, schemaIndex);
+      return arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     }
     String indexText = vals.getIndexText();
 
