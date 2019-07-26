@@ -926,7 +926,11 @@ public class CQL2PgJSON {
     case "==":
     case "<>":
       if (CqlTermFormat.STRING == modifiers.getCqlTermFormat()) {
-        return queryByLike(index, dbIndex.isGin(), vals, node, comparator, modifiers);
+        boolean hasIndex = dbIndex.isGin();
+        if (!Cql2SqlUtil.hasCqlWildCardd(node.getTerm())) {
+          hasIndex = hasIndex || dbIndex.isOther();
+        }
+        return queryByLike(index, hasIndex, vals, node, comparator, modifiers);
       } else {
         return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
       }
@@ -944,7 +948,7 @@ public class CQL2PgJSON {
   /**
    * Create an SQL expression using Full Text query syntax.
    *
-   * @param hasFtIndex
+   * @param hasIndex
    * @param vals
    * @param node
    * @param comparator
@@ -952,7 +956,7 @@ public class CQL2PgJSON {
    * @return
    * @throws QueryValidationException
    */
-  private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
+  private String queryByFt(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
     final String indexText = vals.getIndexText();
 
     if (CqlAccents.RESPECT_ACCENTS == modifiers.getCqlAccents()) {
@@ -975,9 +979,9 @@ public class CQL2PgJSON {
       sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     }
 
-    if (!hasFtIndex) {
+    if (!hasIndex) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
-      logger.log(Level.WARNING, "Doing FT search without FT index for {0}", s);
+      logger.log(Level.WARNING, "Doing FT search without index for {0}", s);
     }
 
     return sql;
@@ -1026,37 +1030,38 @@ public class CQL2PgJSON {
   /**
    * Create an SQL expression using LIKE query syntax.
    *
-   * @param hasGinIndex
+   * @param hasIndex
    * @param vals
    * @param node
    * @param comparator
    * @param modifiers
    * @return
    */
-  private String queryByLike(String index, boolean hasGinIndex, IndexTextAndJsonValues vals, CQLTermNode node,
+  private String queryByLike(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
     String comparator, CqlModifiers modifiers) throws QueryValidationException {
+
+    String indexText = vals.getIndexText();
+    String sql = null;
 
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
       final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
-      return arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
-    }
-    String indexText = vals.getIndexText();
-
-    String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
-    String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-    String indexMatch = wrapInLowerUnaccent(indexText) + likeOperator + wrapInLowerUnaccent(like);
-    String sql = null;
-    if (modifiers.getCqlAccents() == CqlAccents.IGNORE_ACCENTS && modifiers.getCqlCase() == CqlCase.IGNORE_CASE) {
-      sql = indexMatch;
+      sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     } else {
-      sql = indexMatch + " AND " +
-        wrapInLowerUnaccent(indexText, modifiers) + likeOperator + wrapInLowerUnaccent(like, modifiers);
+      String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
+      String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+      String indexMatch = wrapInLowerUnaccent(indexText) + likeOperator + wrapInLowerUnaccent(like);
+      if (modifiers.getCqlAccents() == CqlAccents.IGNORE_ACCENTS && modifiers.getCqlCase() == CqlCase.IGNORE_CASE) {
+        sql = indexMatch;
+      } else {
+        sql = indexMatch + " AND " +
+          wrapInLowerUnaccent(indexText, modifiers) + likeOperator + wrapInLowerUnaccent(like, modifiers);
+      }
     }
 
-    if (!hasGinIndex) {
+    if (!hasIndex) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
-      logger.log(Level.WARNING, "Doing LIKE search without GIN index for {0}", s);
+      logger.log(Level.WARNING, "Doing LIKE search without index for {0}", s);
     }
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexText, sql});
