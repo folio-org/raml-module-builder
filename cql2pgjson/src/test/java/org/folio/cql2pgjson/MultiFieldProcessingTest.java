@@ -35,6 +35,26 @@ public class MultiFieldProcessingTest {
     assertThat(converter.cql2pgJson("name=v"),
         allOf(containsString("to_tsvector"),
             containsString("field1->>'name'")));
+    
+    String test = null;
+    CQL2PgJSON converter2 = new CQL2PgJSON( Arrays.asList("field1","field2"), test );
+    assertThat(converter2.cql2pgJson("field1.name=v"),
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'")));
+    assertThat(converter2.cql2pgJson("field2.name=v"),
+        allOf(containsString("to_tsvector"),
+            containsString("field2->>'name'")));
+    assertThat(converter2.cql2pgJson("name=v"),
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'")));
+    
+    CQL2PgJSON converter3 = new CQL2PgJSON( Arrays.asList("field1"), test );
+    assertThat(converter3.cql2pgJson("field1.name=v"),
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'")));
+    assertThat(converter3.cql2pgJson("name=v"),
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'")));
   }
 
   @Test

@@ -149,6 +149,8 @@ public class CQL2PgJSON {
     }
     if (viewTarget!= null) {
       this.jsonField = viewTarget;
+    } else if(fields.size() == 1) {
+      jsonField = jsonFields.get(0);
     }
     initDbTable();
   }
