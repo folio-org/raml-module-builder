@@ -661,39 +661,7 @@ public class CQL2PgJSON {
         + " ( SELECT " + PK_COLUMN_NAME + " from " + foreignTableName + " WHERE " + match + ")";
   }
 
-  private static Index findIndex(Table table, String fieldName) {
-    if (table == null || table.getIndex() == null) {
-      return null;
-    }
-    for(Index index : table.getIndex()) {
-      if (index.getFieldName().equals(fieldName)) {
-        return index;
-      }
-    }
-    return null;
-  }
-  private static Index findGinIndex(Table table, String fieldName) {
-    if (table == null || table.getGinIndex() == null) {
-      return null;
-    }
-    for(Index index : table.getGinIndex()) {
-      if (index.getFieldName().equals(fieldName)) {
-        return index;
-      }
-    }
-    return null;
-  }
-  private static Index findFullTextIndex(Table table, String fieldName) {
-    if (table == null || table.getFullTextIndex()== null) {
-      return null;
-    }
-    for(Index index : table.getFullTextIndex()) {
-      if (index.getFieldName().equals(fieldName)) {
-        return index;
-      }
-    }
-    return null;
-  }
+
   /**
    * Return the ForeignKeys from targetTable where fieldName refers to field of the
    * current table.
