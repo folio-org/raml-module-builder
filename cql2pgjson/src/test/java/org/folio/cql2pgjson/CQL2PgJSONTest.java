@@ -57,6 +57,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public static void runOnceAfterClass() {
     closeDatabase();
   }
+  public void selectView(CQL2PgJSON aCql2pgJson, String sqlFile, String testcase) {
+    int hash = testcase.indexOf('#');
+    assertTrue("hash character in testcase", hash >= 0);
+    String cql = testcase.substring(0, hash).trim();
+    String expectedNames = testcase.substring(hash + 1).trim();
+    selectView(aCql2pgJson, sqlFile, cql, expectedNames);
+  }
   public void select(CQL2PgJSON aCql2pgJson, String sqlFile, String testcase) {
     int hash = testcase.indexOf('#');
     assertTrue("hash character in testcase", hash >= 0);
@@ -117,7 +124,53 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     }
     logger.fine("select: done with " + cql);
   }
+  /**
+   * @param expectedNames the semicolon+space separated list of expected names, or -- if there should
+   *          be an exception -- the expected substring of the error message prepended by an exclamation mark.
+   */
+  public void selectView(CQL2PgJSON aCql2pgJson, String sqlFile, String cql, String expectedNames) {
 
+    if (! cql.contains(" sortBy ")) {
+      cql += " sortBy name";
+    }
+    String sql = null;
+    try {
+      String blob = "ho_jsonb";
+      String tablename = "users_groups_view";
+
+      
+      String where = aCql2pgJson.cql2pgJson(cql);
+      //sql = "select user_data->'name' from users where " + where;
+      sql = "select " + blob + "->'name' from " + tablename + " where " + where;
+      logger.info("select: CQL --> SQL: " + cql + " --> " + sql);
+      runSqlFile(sqlFile);
+      logger.fine("select: sqlfile done");
+      String actualNames = "";
+      try ( Statement statement = conn.createStatement();
+            ResultSet result = statement.executeQuery(sql) ) {
+
+        while (result.next()) {
+          if (! actualNames.isEmpty()) {
+            actualNames += "; ";
+          }
+          actualNames += result.getString(1).replace("\"", "");
+        }
+      }
+      if (! expectedNames.equals(actualNames)) {
+        logger.fine("select: Test FAILURE on " + cql + "#" + expectedNames);
+      }
+      logger.fine("select: Got names [" + actualNames + "], expected [" + expectedNames + "]");
+      assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
+    } catch (QueryValidationException | SQLException e) {
+      logger.fine("select: " + e.getClass().getSimpleName()
+        + " for query " + cql + " : " + e.getMessage());
+      if (! expectedNames.startsWith("!")) {
+        throw new RuntimeException(sql != null ? sql : cql, e);
+      }
+      assertThat(e.toString(), containsString(expectedNames.substring(1).trim()));
+    }
+    logger.fine("select: done with " + cql);
+  }
   public void select(String sqlFile, String testcase) {
     select(cql2pgJson, sqlFile, testcase);
   }
@@ -877,12 +930,15 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name = \"Lea *\"               # Lea Long", // Loose '*' should be ignored
     "name = \"*\"                   # Jo Jane; Ka Keller; Lea Long", // special case
     "name = \"Le* Lo*\"             # Lea Long",
-    "name = \" * * \"               # Jo Jane; Ka Keller; Lea Long"
+    "name = \" * * \"               # Jo Jane; Ka Keller; Lea Long",
+    "status = \"Active - Ready\"    # Jo Jane",
+    "status = Inactive              # Ka Keller",
+    "status = \"Active - Not yet\"  # Lea Long"
 })
   public void basicFT(String testcase)
     throws IOException, FieldException, ServerChoiceIndexesException {
     logger.fine("basicFT: " + testcase);
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email", "status"));
     select(aCql2pgJson, testcase);
     logger.fine("basicFT: " + testcase + " OK ");
   }
@@ -991,7 +1047,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, "array.sql", testcase);
     logger.fine("arrayRelationModifiers(): " + testcase + " OK");
   }
-
+  
+  @Test
+  @Parameters({
+    "((contributors = \"foo\") and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # ",
+    "((contributors = 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # groupa",
+    "((contributors = /@contributornametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId=\"a708811d-422b-43fd-8fa7-d73f26dee1f9\") # groupa"
+  })
+  public void arrayRelationModifiersWithView(String testcase) throws IOException, CQL2PgJSONException {
+    logger.fine("arrayRelationModifiers():" + testcase);
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON( Arrays.asList("users_groups_view.ho_jsonb","users_groups_view.ho_jsonb"),"users.jsonb");
+    selectView(aCql2pgJson, "arrayWithView.sql", testcase);
+    logger.fine("arrayRelationModifiers(): " + testcase + " OK");
+  }
   @Ignore("Need to sort out the array stuff first")
   @Test
   @Parameters({
@@ -1099,6 +1167,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "myJsonField, a.b.c,   myJsonField->'a'->'b'->>'c'",
     "f.g.h,       a.b.c,   f.g.h->'a'->'b'->>'c'",
   })
+
   @Test
   public void index2sqlText(String jsonField, String index, String expected) throws Exception {
     assertThat(CQL2PgJSON.index2sqlText(jsonField, index), is(expected));
@@ -1108,6 +1177,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "f,           *",
     "f,           a.b.c*c",
   })
+
   @Test(expected = QueryValidationException.class)
   public void index2sqlTextException(String jsonField, String index) throws Exception {
     CQL2PgJSON.index2sqlText(jsonField, index);
@@ -1117,6 +1187,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   CQL fields can be quoted and, thus, contain various characters that - if no
   properly escaped can be used to unquote the JSON path that is generated
    */
+
   @Test
   @Parameters({
     "\"field'))@@to_tsquery(('english\"=x # "})

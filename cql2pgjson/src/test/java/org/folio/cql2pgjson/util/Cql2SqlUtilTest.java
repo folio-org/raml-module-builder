@@ -193,4 +193,32 @@ public class Cql2SqlUtilTest {
   public void isNotPostgresNumber(String term) {
     assertThat(Cql2SqlUtil.isPostgresNumber(term), is(false));
   }
+
+  @Test
+  @Parameters({
+    "abc?",
+    "abc*",
+    "abc?*",
+    "abc\\\\*",
+    "abc\\\\?",
+    "abc\\\\*\\\\?",
+    "abc\\*\\\\?",
+    "abc\\\\*\\?",
+    "abc\\*\\?*",
+    "abc\\*\\??",
+  })
+  public void hasCqlWildCard(String term) {
+    assertThat(Cql2SqlUtil.hasCqlWildCardd(term), is(true));
+  }
+
+  @Test
+  @Parameters({
+    "abc",
+    "abc\\?",
+    "abc\\*",
+    "abc\\*\\?",
+  })
+  public void hasNoCqlWildCard(String term) {
+    assertThat(Cql2SqlUtil.hasCqlWildCardd(term), is(false));
+  }
 }

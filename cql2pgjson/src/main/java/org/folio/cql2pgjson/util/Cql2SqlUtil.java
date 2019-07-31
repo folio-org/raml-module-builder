@@ -8,6 +8,10 @@ import org.folio.cql2pgjson.exception.QueryValidationException;
  */
 public final class Cql2SqlUtil {
 
+  private static final String ESC_SLASH = Pattern.quote("\\\\");
+  private static final String ESC_STAR = Pattern.quote("\\*");
+  private static final String ESC_QUEST = Pattern.quote("\\?");
+
   /**
    * Postgres number, see spec at
    * <a href="https://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-CONSTANTS-NUMERIC">
@@ -210,5 +214,16 @@ public final class Cql2SqlUtil {
    */
   public static boolean isPostgresNumber(String s) {
     return POSTGRES_NUMBER_REGEXP.matcher(s).matches();
+  }
+
+  /**
+   * Test if term has CQL wildcard characters: * or ?
+   *
+   * @param term
+   * @return
+   */
+  public static boolean hasCqlWildCardd(String term) {
+    String s = ("" + term).replaceAll(ESC_SLASH, "").replaceAll(ESC_STAR, "").replaceAll(ESC_QUEST, "");
+    return s.contains("*") || s.contains("?");
   }
 }

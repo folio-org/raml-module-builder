@@ -965,13 +965,17 @@ public class CQL2PgJSON {
     case "==":
     case "<>":
       if (CqlTermFormat.STRING == modifiers.getCqlTermFormat()) {
+<<<<<<< HEAD
+        return queryByLike(index, dbIndex.isGin(), vals, node, comparator, modifiers, targetTable);
+=======
         boolean hasIndex = dbIndex.isGin();
         if (!Cql2SqlUtil.hasCqlWildCardd(node.getTerm())) {
           hasIndex = hasIndex || dbIndex.isOther();
         }
-        return queryByLike(index, hasIndex, vals, node, comparator, modifiers, targetTable);
+        return queryByLike(index, hasIndex, vals, node, comparator, modifiers);
+>>>>>>> a15d680e40263374b678ab44129be49785721027
       } else {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers, targetTable);
+        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
       }
     case "<" :
     case ">" :
@@ -995,7 +999,11 @@ public class CQL2PgJSON {
    * @return
    * @throws QueryValidationException
    */
+<<<<<<< HEAD
   private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers,Table targetTable) throws QueryValidationException {
+=======
+  private String queryByFt(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
+>>>>>>> a15d680e40263374b678ab44129be49785721027
     final String indexText = vals.getIndexText();
 
     if (CqlAccents.RESPECT_ACCENTS == modifiers.getCqlAccents()) {
@@ -1072,35 +1080,53 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryByLike(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
+<<<<<<< HEAD
+  private String queryByLike(String index, boolean hasGinIndex, IndexTextAndJsonValues vals, CQLTermNode node,
     String comparator, CqlModifiers modifiers, Table targetTable) throws QueryValidationException {
     
+=======
+  private String queryByLike(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
+    String comparator, CqlModifiers modifiers) throws QueryValidationException {
+
     String indexText = vals.getIndexText();
     String sql = null;
 
+>>>>>>> a15d680e40263374b678ab44129be49785721027
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
       final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     } else {
-    Index schemaIndex = null;
-    if(targetTable != null ) {
-      schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
-    }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-    String indexMatch = wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+      String indexMatch = wrapInLowerUnaccent(indexText) + likeOperator + wrapInLowerUnaccent(like);
       if (modifiers.getCqlAccents() == CqlAccents.IGNORE_ACCENTS && modifiers.getCqlCase() == CqlCase.IGNORE_CASE) {
         sql = indexMatch;
       } else {
         sql = indexMatch + " AND " +
-        wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+          wrapInLowerUnaccent(indexText, modifiers) + likeOperator + wrapInLowerUnaccent(like, modifiers);
       }
     }
+<<<<<<< HEAD
+    Index schemaIndex = null;
+    if(targetTable != null ) {
+      schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
+    }
+    String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
+    String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+    String indexMatch = wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+    String sql = null;
+    if (modifiers.getCqlAccents() == CqlAccents.IGNORE_ACCENTS && modifiers.getCqlCase() == CqlCase.IGNORE_CASE) {
+      sql = indexMatch;
+    } else {
+      sql = indexMatch + " AND " +
+        wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+=======
 
     if (!hasIndex) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing LIKE search without index for {0}", s);
+>>>>>>> a15d680e40263374b678ab44129be49785721027
     }
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexText, sql});

@@ -1,3 +1,22 @@
+## 26.2.4 2019-07-26
+
+ * RMB work for MODINVSTOR-319: array queries with additional clauses may fail
+ * RMB-440 Skip logging GIN index missing if b-tree index can be used
+
+## 26.2.3 2019-07-24
+
+ * RMB-439 Remove hyphen token for full search to unblock CIRCSTORE-138
+
+## 26.2.2 2019-07-22
+
+ * RMB-435 CVE-2019-12814 jackson-databind security vulnerability
+ * RMB-436 Log both CQL and SQL within the missing index line
+ * RMB-430 queries with facet fail
+
+## 26.2.1 2019-07-17
+
+ * RMB-430 Audit table PK (id) unique constraint violation on concurrent queries
+
 ## 26.2.0 2019-07-11
 
  * RMB-417 Optimize search for array relation modifiers
