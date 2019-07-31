@@ -633,18 +633,6 @@ public class CQL2PgJSON {
     vals.setIndexText(index2sqlText(foreignTableJsonb, foreignTarget[1]));
     return vals;
   }
-//  private static String foreignKeyMatch(CQLTermNode node, String indexSQL, Index index) throws QueryValidationException {
-//    String term = node.getTerm();
-//    CqlModifiers modifiers = new CqlModifiers(node);
-//    if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-//      return "(" + indexSQL + ")::NUMERIC = ('" + Cql2SqlUtil.cql2string(term) + "')::NUMERIC";
-//    }
-//    if (index == null) {
-//      return indexSQL + " = " + "'" + Cql2SqlUtil.cql2string(term) + "'";
-//    }
-//
-//    return wrapInLowerUnaccent(indexSQL, index) + " = " + wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2string(term) + "'", index);
-//  }
 
   private String formatChildParent(String foreignTableName, ForeignKeys fkey,
       String match) throws QueryValidationException {
