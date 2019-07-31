@@ -48,7 +48,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     cql2pgjsonRespectCase = new CQL2PgJSON("users.user_data", Arrays.asList("name","email"));
     cql2pgjsonRespectCase.setDbSchemaPath("./templates/db_scripts/schemaWithRespectCase.json");
     cql2pgjsonRespectAccents = new CQL2PgJSON("users.user_data", Arrays.asList("name","email"));
-    cql2pgjsonRespectAccents.setDbSchemaPath("./templates/db_scripts/schemaWithRespectCase.json");
+    cql2pgjsonRespectAccents.setDbSchemaPath("./templates/db_scripts/schemaWithRespectAccents.json");
     cql2pgjsonRespectBoth = new CQL2PgJSON("users.user_data", Arrays.asList("name","email"));
     cql2pgjsonRespectBoth.setDbSchemaPath("./templates/db_scripts/schemaWithRespectBoth.json");
   }
@@ -280,10 +280,16 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "\"lEA LoNg\"                   # Lea Long",
     //"name == \"LEA long\"         # Lea Long",
     "name == \"Lea Long\"           # Lea Long",
-    "name ==/respectCase \"LEA long\"           #", // == means exact match, case and everything
   })
   public void caseInsensitive(String testcase) {
     select(testcase);
+  }
+  @Test
+  @Parameters({
+    "name ==/respectCase \"LEA long\"           #", // == means exact match, case and everything
+  })
+  public void caseSensitive(String testcase) {
+    select(cql2pgjsonRespectCase,testcase);
   }
 
   @Test
@@ -544,7 +550,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.city== søvang  #",         // lowercase
   })
   public void like(String testcase) throws QueryValidationException {
-    select(testcase);
+    select(cql2pgjsonRespectBoth,testcase);
     String sql = cql2pgjsonRespectBoth.cql2pgJson(testcase.substring(0, testcase.indexOf('#')));
     assertThat(sql, containsString(" LIKE "));
   }

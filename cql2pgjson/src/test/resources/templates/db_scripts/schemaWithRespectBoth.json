@@ -7,14 +7,14 @@
         {
           "fieldName": "name",
           "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true
+          "caseSensitive": true,
+          "removeAccents": false
         },
         {
           "fieldName": "contactInformation.phone",
           "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true,
+          "caseSensitive": true,
+          "removeAccents": false,
           "arraySubfield": "number",
           "arrayModifiers": ["type"]
         },
@@ -22,7 +22,7 @@
         "fieldName" : "address.city",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": true
+          "removeAccents": false
         }
       ],
       "fullTextIndex": [
@@ -30,19 +30,19 @@
           "fieldName": "name",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": true,
+          "removeAccents": false,
           "arraySubfield": "noArrayModifiers"
         },
         {
         "fieldName" : "address.city",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": true
+          "removeAccents": false
         },
         {
           "fieldName": "contributors",
           "tOps": "ADD",
-          "caseSensitive": false,
+          "caseSensitive": true,
           "removeAccents": false,
           "arraySubfield": "name",
           "arrayModifiers": ["contributorNameTypeId", "lang"]
@@ -50,7 +50,7 @@
         {
           "fieldName": "other",
           "tOps": "ADD",
-          "caseSensitive": false,
+          "caseSensitive": true,
           "removeAccents": false,
           "arrayModifiers": ["noArraySubfield"]
         }
@@ -60,19 +60,19 @@
         "fieldName" : "address.city",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": true
+          "removeAccents": false
         },
         {
           "fieldName": "address.zip",
           "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true
+          "caseSensitive": true,
+          "removeAccents": false
         },
         {
           "fieldName": "lang",
           "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true
+          "caseSensitive": true,
+          "removeAccents": false
         }
       ],
       "foreignKeys": [
@@ -89,8 +89,8 @@
         {
           "fieldName": "name",
           "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true
+          "caseSensitive": true,
+          "removeAccents": false
         }
       ]
     },

@@ -21,8 +21,8 @@
         {
           "fieldName": "address.city",
           "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true
+          "caseSensitive": true,
+          "removeAccents": false
         }
       ],
       "fullTextIndex": [

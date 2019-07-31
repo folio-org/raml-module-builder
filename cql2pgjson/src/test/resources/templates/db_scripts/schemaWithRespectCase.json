@@ -7,7 +7,7 @@
         {
           "fieldName": "name",
           "tOps": "ADD",
-          "caseSensitive": false,
+          "caseSensitive": true,
           "removeAccents": true
         },
         {
@@ -22,7 +22,7 @@
           "fieldName": "address.city",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": false
+          "removeAccents": true
         }
       ],
       "fullTextIndex": [
@@ -30,7 +30,7 @@
           "fieldName": "name",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": false,
+          "removeAccents": true,
           "arraySubfield": "noArrayModifiers"
         },
         {
