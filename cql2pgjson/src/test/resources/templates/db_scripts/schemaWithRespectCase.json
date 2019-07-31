@@ -1,0 +1,148 @@
+{
+  "tables": [
+    {
+      "tableName": "users",
+      "withAuditing": false,
+      "ginIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "contactInformation.phone",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true,
+          "arraySubfield": "number",
+          "arrayModifiers": ["type"]
+        },       
+        {
+          "fieldName": "address.city",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false,
+          "arraySubfield": "noArrayModifiers"
+        },
+        {
+          "fieldName": "address.city",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "contributors",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false,
+          "arraySubfield": "name",
+          "arrayModifiers": ["contributorNameTypeId", "lang"]
+        },
+        {
+          "fieldName": "other",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false,
+          "arrayModifiers": ["noArraySubfield"]
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "address.zip",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "lang",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "group",
+          "targetTable": "groups"
+        }
+      ]
+    },
+    {
+      "tableName": "groups",
+      "withAuditing": false,
+      "fullTextIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ]
+    },
+
+    {
+      "tableName": "instances",
+      "fullTextIndex": [
+        {
+          "fieldName": "name"
+        }
+      ]
+    },
+    {
+      "tableName": "holdings",
+      "fullTextIndex": [
+        {
+          "fieldName": "name"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "permLoc"
+        },
+        {
+          "fieldName": "tempLoc"
+        },
+        {
+          "fieldName": "callNumber"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "instanceId",
+          "targetTable": "instances"
+        }
+      ]
+    },
+    {
+      "tableName": "items",
+      "fullTextIndex": [
+        {
+          "fieldName": "name"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "permLoc"
+        },
+        {
+          "fieldName": "tempLoc"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "holdingsId",
+          "targetTable": "holdings"
+        }
+      ]
+    }
+  ]
+}
