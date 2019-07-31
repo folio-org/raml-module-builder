@@ -331,15 +331,6 @@ public class CQL2PgJSON {
     return new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
-  /**
-   * Return "lower(f_unaccent(" + term + "))".
-   * @param term  String to wrap
-   * @return wrapped term
-   */
-  private static String wrapInLowerUnaccent(String term) {
-    return "lower(f_unaccent(" + term + "))";
-  }
-
   private static String wrapInLowerUnaccent(String term, boolean lower, boolean unaccent) {
     if (lower) {
       if (unaccent) {
