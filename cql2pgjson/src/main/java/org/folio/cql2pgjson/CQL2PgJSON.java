@@ -951,7 +951,7 @@ public class CQL2PgJSON {
     switch (comparator) {
     case "=":
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers, targetTable);
       } else if (CqlAccents.IGNORE_ACCENTS == modifiers.getCqlAccents() &&
           CqlCase.IGNORE_CASE == modifiers.getCqlCase()) {
         return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
@@ -977,7 +977,7 @@ public class CQL2PgJSON {
     case ">" :
     case "<=" :
     case ">=" :
-      return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+      return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers, targetTable);
     default:
       throw new CQLFeatureUnsupportedException("Relation " + comparator
           + " not implemented yet: " + node.toString());
@@ -1018,7 +1018,7 @@ public class CQL2PgJSON {
       sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     }
 
-    if (!hasIndex) {
+    if (!hasFtIndex) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing FT search without index for {0}", s);
     }
@@ -1117,7 +1117,7 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
+  private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers, Table targetTable) {
     String index = vals.getIndexText();
 
     if (comparator.equals("==")) {
