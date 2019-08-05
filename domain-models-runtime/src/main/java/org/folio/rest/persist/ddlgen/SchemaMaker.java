@@ -111,9 +111,7 @@ public class SchemaMaker {
     Map<String, Index> indexMap = new HashMap<>();
 
     if(tables != null){
-      int size = tables.size();
-      for (int i = 0; i < size; i++) {
-        Table t = tables.get(i);
+      for (Table t : tables) {
         if(t.getMode() == null) {
           //the only relevant mode that the templates take into account is delete
           //otherwise update and new will always create if does not exist
@@ -208,12 +206,24 @@ public class SchemaMaker {
         if(ftInd != null){
           for (int j = 0; j < ftInd.size(); j++) {
             Index u = ftInd.get(j);
-            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), true, u, true, true);
+            u.setCaseSensitive(true); // fulltext index does lower on its own
+            String path = convertDotPath2PostgresNotation(null,u.getFieldName(), true, u, true);
             u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres
             String normalized = normalizeFieldName(u.getFieldName());
             indexMap.put(t.getTableName()+"_"+normalized, u);
             u.setFieldName(normalized);
+          }
+        }
+
+        if (t.isWithAuditing()) {
+          if (t.getAuditingTableName() == null) {
+            throw new IllegalArgumentException(
+                "auditingTableName missing for table " + t.getTableName() + " having \"withAuditing\": true");
+          }
+          if (t.getAuditingFieldName() == null) {
+            throw new IllegalArgumentException(
+                "auditingFieldName missing for table " + t.getTableName() + " having \"withAuditing\": true");
           }
         }
       }
@@ -321,23 +331,6 @@ public class SchemaMaker {
   }
 
   /**
-   * A bridge method to {@link #convertDotPath2PostgresNotation(String, String, boolean, Index, boolean, boolean)}
-   * which has an extra parameter <code>isFtIndex<code> to indicate whether given index is full text index.
-   * Default value for parameter <code>isFtIndex</code> is <code>false</code>.
-   *
-   * @param prefix
-   * @param path
-   * @param stringType
-   * @param index
-   * @param isFullText
-   * @return
-   */
-  private static String convertDotPath2PostgresNotation(String prefix,
-      String path, boolean stringType, Index index, boolean isFullText){
-    return convertDotPath2PostgresNotation(prefix, path, stringType, index, isFullText, false);
-  }
-
-  /**
    * Convert JSON dot path to PostgreSQL notation. By default string type index will be
    * wrapped with lower/f_unaccent functions except full text index <code>(isFtIndex = true)</code>.
    * Full text index uses to_tsvector to normalize token, so no need of lower/f_unaccent.
@@ -347,11 +340,10 @@ public class SchemaMaker {
    * @param stringType
    * @param index
    * @param isFullText
-   * @param isFtIndex - is it a full text index?
    * @return
    */
   private static String convertDotPath2PostgresNotation(String prefix,
-    String path, boolean stringType, Index index, boolean isFullText, boolean isFtIndex){
+    String path, boolean stringType, Index index, boolean isFullText){
     //when an index is on multiple columns, this will be defined something like "username,type"
     //so split on command and build a path for each and then combine
     String []requestIndexPath = path.split(",");
@@ -387,23 +379,20 @@ public class SchemaMaker {
         }
         sb.append("'").append(pathParts[j]).append("'");
       }
-      if (index != null && stringType && !isFtIndex) {
-        // fulltext indexes let PG do all unaccent/lowercase stuff
-        if(index.isRemoveAccents() || !index.isCaseSensitive()) {
-          if(index.isRemoveAccents()) {
-            sb.insert(0, "f_unaccent(").append(")");
-          }
-          if(!index.isCaseSensitive()) {
-            sb.insert(0, "lower(").append(")");
-          }
+      boolean added = false;
+      if (index != null && stringType) {
+        if (index.isRemoveAccents()) {
+          sb.insert(0, "f_unaccent(").append(")");
+          added = true;
         }
-        else {
-          //need to wrap path expression in () if lower / unaccent isnt
-          //appended to the path
-          sb.insert(0, "(").append(")");
+        if (!index.isCaseSensitive()) {
+          sb.insert(0, "lower(").append(")");
+          added = true;
         }
       }
-      else {
+      if (!added) {
+        //need to wrap path expression in () if lower / unaccent isnt
+        //appended to the path
         sb.insert(0, "(").append(")");
       }
       finalClause.append(sb.toString());

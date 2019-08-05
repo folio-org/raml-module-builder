@@ -1,0 +1,58 @@
+#%RAML 1.0
+title: Bees
+baseUri: http://github.com/org/folio/raml-module-builder/domain-models-runtime-it
+
+documentation:
+  - title: Bees API
+    content: API used for Integration tests
+
+types:
+  bee: !include bee.json
+  bees: !include bees.json
+  beehistories: !include beehistories.json
+  errors: !include raml-util/schemas/errors.schema
+
+traits:
+  pageable: !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
+  language: !include raml-util/traits/language.raml
+  validate: !include raml-util/traits/validation.raml
+
+resourceTypes:
+  collection: !include raml-util/rtypes/collection.raml
+  collection-item: !include raml-util/rtypes/item-collection.raml
+  get-only: !include raml-util/rtypes/get-only.raml
+
+/bees:
+  /bees:
+    type:
+      collection:
+        exampleCollection: !include examples/bees.json
+        exampleItem: !include examples/bee.json
+        schemaCollection: bees
+        schemaItem: bee
+    get:
+      is: [
+        searchable: {description: "", example: "name=Miller"},
+        pageable
+      ]
+      description: Return a list of bees
+    post:
+      is: [validate]
+      description: Create a bee
+    /{beeId}:
+      type:
+        collection-item:
+          exampleItem: !include examples/bee.json
+          schema: bee
+  /history:
+    type:
+      get-only:
+        exampleCollection: !include examples/beehistories.json
+        schema: beehistories
+    get:
+      is: [
+        pageable,
+        searchable: { description: "Search using CQL",
+                      example: "beeHistory.name==\"Maya\""}
+        ]

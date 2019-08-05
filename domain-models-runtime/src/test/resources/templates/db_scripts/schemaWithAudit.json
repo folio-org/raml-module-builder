@@ -2,21 +2,49 @@
   "tables": [
     {
       "tableName": "test_tenantapi",
-      "withAuditing": true
+      "withAuditing": true,
+      "auditingTableName": "audit_test_tenantapi",
+      "auditingFieldName": "testTenantapiAudit",
+      "auditingSnippet": {
+        "delete": {
+          "statement": "PERFORM 1;"
+        },
+        "update": {
+          "statement": "PERFORM 2;"
+        },
+        "insert": {
+          "statement": "PERFORM 3;"
+        }
+      }
     },
     {
       "tableName": "test_tenantapi2",
-      "withAuditing": true
+      "withAuditing": true,
+      "auditingTableName": "audit_test_tenantapi2",
+      "auditingFieldName": "testTenantapiAudit2",
+      "auditingSnippet": {
+        "delete": {
+          "declare": "var1 TEXT;"
+        },
+        "update": {
+          "declare": "var2 TEXT;"
+        },
+        "insert": {
+          "declare": "var3 TEXT;"
+        }
+      }
     },
     {
       "tableName": "test_implicit",
-      "withAuditing": true
+      "withAuditing": true,
+      "auditingTableName": "audit_test_implicit",
+      "auditingFieldName": "implicitHistory"
     },
     {
       "tableName": "audit_test_tenantapi",
       "index": [
         {
-          "fieldName": "item.id",
+          "fieldName": "testTenantapiAudit.id",
           "tOps": "ADD"
         }
       ]
@@ -25,7 +53,7 @@
       "tableName": "audit_test_tenantapi2",
       "index": [
         {
-          "fieldName": "item.id",
+          "fieldName": "testTenantapiAudit2.id",
           "tOps": "ADD"
         }
       ]

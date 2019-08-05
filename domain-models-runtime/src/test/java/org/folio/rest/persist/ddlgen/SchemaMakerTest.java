@@ -1,5 +1,6 @@
 package org.folio.rest.persist.ddlgen;
 
+import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertFalse;
@@ -41,7 +42,36 @@ public class SchemaMakerTest {
     assertThat(result, containsString("CREATE TABLE IF NOT EXISTS harvard_circ.audit_test_tenantapi"));
     assertThat(result, containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_test_tenantapi_changes() RETURNS TRIGGER"));
     // index for field in audit table
-    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS audit_test_tenantapi_item_id_idx "));
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS audit_test_tenantapi_testTenantapiAudit_id_idx "));
+    // auditingSnippets
+    assertThat(result, allOf(containsString("PERFORM 1;"), containsString("PERFORM 2;"), containsString("PERFORM 3;"),
+                             containsString("var1 TEXT;"), containsString("var2 TEXT;"), containsString("var3 TEXT;")));
+  }
+
+  @Test
+  public void failsWhenAuditingTableNameIsMissing() throws Exception {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
+        "mod-foo-18.2.3", "mod-foo-18.2.4");
+    String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
+    Schema schema  = ObjectMapperTool.getMapper().readValue(json, Schema.class);
+    schema.getTables().get(0).setAuditingTableName(null);
+    schemaMaker.setSchema(schema);
+
+    thrown.expectMessage("auditingTableName missing");
+    schemaMaker.generateDDL();
+  }
+
+  @Test
+  public void failsWhenAuditingFieldNameIsMissing() throws Exception {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
+        "mod-foo-18.2.3", "mod-foo-18.2.4");
+    String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
+    Schema schema  = ObjectMapperTool.getMapper().readValue(json, Schema.class);
+    schema.getTables().get(0).setAuditingFieldName(null);
+    schemaMaker.setSchema(schema);
+
+    thrown.expectMessage("auditingFieldName missing");
+    schemaMaker.generateDDL();
   }
 
   @Test
@@ -231,12 +261,14 @@ public class SchemaMakerTest {
     String ddl = tidy(schemaMaker.generateDDL());
 
     // by default all indexes are wrapped with lower/f_unaccent
-    // except full text index which uses to_tsvector to normalize text token
+    // except full text which only obeys f_unaccent
     assertTrue(ddl.contains("(lower(f_unaccent(jsonb->>'id')))"));
     assertTrue(ddl.contains("(lower(f_unaccent(jsonb->>'name')))"));
     assertTrue(ddl.contains("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
     assertTrue(ddl.contains("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
-    assertTrue(ddl.contains("GIN(to_tsvector('english',(jsonb->>'title')))"));
+    assertTrue(ddl.contains("GIN(to_tsvector('english', f_unaccent(jsonb->>'title')))"));
+    System.out.println(ddl);
+    assertTrue(ddl.contains("GIN(to_tsvector('english',(jsonb->>'author')))"));
   }
 
 }

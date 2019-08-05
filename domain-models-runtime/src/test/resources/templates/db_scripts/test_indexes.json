@@ -34,6 +34,11 @@
         {
           "fieldName": "title",
           "tOps": "ADD"
+        },
+        {
+          "fieldName": "author",
+          "tOps": "ADD",
+          "removeAccents": "false"
         }
       ]
     }

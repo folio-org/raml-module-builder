@@ -3,6 +3,7 @@ package org.folio.cql2pgjson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,6 +39,7 @@ import org.z3950.zing.cql.CQLParseException;
 import org.z3950.zing.cql.CQLParser;
 import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.CQLTermNode;
+import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
 
 /**
@@ -62,7 +64,6 @@ public class CQL2PgJSON {
   private static final String PK_COLUMN_NAME = "id";
 
   private final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-  private final Pattern tableNamePattern = Pattern.compile("^[0-9a-zA-Z_]+\\.[0-9a-zA-Z_]+$");
 
   private String jsonField = null;
   private List<String> jsonFields = null;
@@ -128,7 +129,29 @@ public class CQL2PgJSON {
     }
     initDbTable();
   }
-
+  /**
+   * Create an instance for the specified list of schemas. If only one field name is provided, queries will
+   * default to the handling of single field queries.
+   *
+   * @param fields Field names of the JSON fields, may include schema and table name (e.g. tenant1.user_table.json).
+   *  Must conform to SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
+   *  The first field name on the list will be the default field for terms in queries that don't specify a json field.
+   * @param viewTarget the table that this is actually targetting since views hide the fact of the original table.  This is used to determine how to find indexes and other table specific info thats lost. 
+   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
+   */
+  public CQL2PgJSON(List<String> fields, String viewTarget) throws FieldException {
+    loadDbSchema(null);
+    if (fields == null || fields.isEmpty())
+      throw new FieldException( "fields list must not be empty" );
+    this.jsonFields = new ArrayList<>();
+    for (String field : fields) {
+      this.jsonFields.add(trimNotEmpty(field));
+    }
+    if (viewTarget!= null) {
+      this.jsonField = viewTarget;
+    }
+    initDbTable();
+  }
   /**
    * Create an instance for the specified list of schemas. If only one field name is provided, queries will
    * default to the handling of single field queries.
@@ -154,10 +177,6 @@ public class CQL2PgJSON {
 
   public Schema getDbSchema() {
     return dbSchema;
-  }
-
-  public Table getDbTable() {
-    return dbTable;
   }
 
   public void setDbSchemaPath(String dbSchemaPath) {
@@ -321,6 +340,22 @@ public class CQL2PgJSON {
     return "lower(f_unaccent(" + term + "))";
   }
 
+  private static String wrapInLowerUnaccent(String term, boolean lower, boolean unaccent) {
+    if (lower) {
+      if (unaccent) {
+        return "lower(f_unaccent(" + term + "))";
+      } else {
+        return "lower(" + term + ")";
+      }
+    } else {
+      if (unaccent) {
+        return "f_unaccent(" + term + ")";
+      } else {
+        return term;
+      }
+    }
+  }
+
   /**
    * Return $term, lower($term), f_unaccent($term) or lower(f_unaccent($term))
    * according to the cqlModifiers.  If undefined use CqlAccents.IGNORE_ACCENTS
@@ -330,14 +365,20 @@ public class CQL2PgJSON {
    * @return wrapped term
    */
   private static String wrapInLowerUnaccent(String term, CqlModifiers cqlModifiers) {
-    String result = term;
-    if (cqlModifiers.getCqlAccents() != CqlAccents.RESPECT_ACCENTS) {
-      result = "f_unaccent(" + result + ")";
-    }
-    if (cqlModifiers.getCqlCase() != CqlCase.RESPECT_CASE) {
-      result = "lower(" + result + ")";
-    }
-    return result;
+    return wrapInLowerUnaccent(term,
+        cqlModifiers.getCqlCase() != CqlCase.RESPECT_CASE,
+        cqlModifiers.getCqlAccents() != CqlAccents.RESPECT_ACCENTS);
+  }
+
+  /**
+   * Return $term, lower($term), f_unaccent($term) or lower(f_unaccent($term))
+   * according to the modifiers of index.
+   * @param term  the String to wrap
+   * @param index  where to get the modifiers from
+   * @return wrapped term
+   */
+  private static String wrapInLowerUnaccent(String term, Index index) {
+    return wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
   }
 
   private SqlSelect toSql(CQLSortNode node) throws QueryValidationException {
@@ -421,17 +462,29 @@ public class CQL2PgJSON {
 
   /**
    * Convert index name to SQL term of type text.
-   * Example result for field=user and index=foo.bar:
-   * user->'foo'->>'bar'
+   * Examples:
+   * <p>index2sqlText("json", "foo") = "json->>'foo'"
+   * <p>index2sqlText("table.json", "foo.bar.baz") = "table.json->'foo'->'bar'->>'baz'"
    * @param jsonField
    * @param index name to convert
    *
    * @return SQL term
    */
-  private static String index2sqlText(String jsonField, String index) {
-    String result = jsonField + "->'" + index.replace(".", "'->'") + "'";
-    int lastArrow = result.lastIndexOf("->'");
-    return result.substring(0,  lastArrow) + "->>" + result.substring(lastArrow + 2);
+  static String index2sqlText(String jsonField, String index) throws QueryValidationException {
+    StringBuilder res = new StringBuilder();
+    String[] comp = index.split("\\.");
+    res.append(jsonField);
+    for (int j = 0; j < comp.length; j++) {
+      if (j < comp.length - 1) {
+        res.append("->");
+      } else {
+        res.append("->>");
+      }
+      res.append("\'");
+      res.append(Cql2SqlUtil.cql2string(comp[j]));
+      res.append("\'");
+    }
+    return res.toString();
   }
 
   /**
@@ -443,13 +496,22 @@ public class CQL2PgJSON {
    *
    * @return SQL term
    */
-  private static String index2sqlJson(String jsonField, String index) {
-    return jsonField + "->'" + index.replace(".", "'->'") + "'";
+  private static String index2sqlJson(String jsonField, String index) throws QueryValidationException {
+    StringBuilder res = new StringBuilder();
+    String[] comp = index.split("\\.");
+    res.append(jsonField);
+    for (int j = 0; j < comp.length; j++) {
+      res.append("->");
+      res.append("\'");
+      res.append(Cql2SqlUtil.cql2string(comp[j]));
+      res.append("\'");
+    }
+    return res.toString();
   }
 
   private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
       throws QueryValidationException {
-    if (jsonField == null) {
+    if (jsonFields != null && jsonFields.size() > 1) {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
@@ -485,37 +547,22 @@ public class CQL2PgJSON {
     //determine if this table is real by checking in schema
     //determine right here whether this node deals with a foreign term on right or left side
     Table indexTable = checkForForeignLocationOfIndex(node);
-    Table termTable = checkForForeignLocationOfTerm(node);
     if (indexTable != null) {
       //we are doing a foreign key search
       //determine foreign key linking tables
       return subQuery(node.getIndex(), node, indexTable);
-    }
-    if (termTable != null) {
-      //we are doing a foreign key join
-      return subQuery(node.getIndex(), node, termTable);
     }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
         throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
       }
       List<String> sqlPieces = new ArrayList<>();
-      for(String index : serverChoiceIndexes) {
+      for (String index : serverChoiceIndexes) {
         sqlPieces.add(index2sql(index, node));
       }
       return String.join(" OR ", sqlPieces);
     }
     return index2sql(node.getIndex(), node);
-  }
-
-  //method to determine if the right side of the node is a foreign term
-  private Table checkForForeignLocationOfTerm(CQLTermNode node) {
-    String[] termParts = node.getTerm().split("\\.");
-    //if the table is not supplied we do not have enough information to proceed, thereby assume it is in current table
-    if(termParts.length <= 1) {
-      return null;
-    }
-    return getForeignTable(termParts[0]);
   }
 
   //method to determine if the right side of the node is a foreign term and returns the table it is attached to is so
@@ -529,23 +576,27 @@ public class CQL2PgJSON {
   }
 
   private Table getForeignTable(String tableName) {
-    for(Table table : dbSchema.getTables()) {
-      if(table.getTableName().equals(tableName) && !table.getTableName().equals(dbTable.getTableName()) ) {
+    if (dbTable == null || dbTable.getTableName().equals(tableName)) {
+      return null;
+    }
+    for (Table table : dbSchema.getTables()) {
+      if (table.getTableName().equals(tableName)) {
         return table;
       }
     }
     return null;
   }
 
-  private String subQuery(String index,CQLTermNode node, Table correlation) throws QueryValidationException {
-    String[] idxParts = index.split("\\.");
-    String[] termParts = node.getTerm().split("\\.");
-
-    String [] foreignTarget = (idxParts.length > termParts.length) ? idxParts : termParts;
-    ForeignKeys fkey = findForeignKey(dbTable.getPkColumnName(),correlation);
+  private String subQuery(String index, CQLTermNode node, Table correlation) throws QueryValidationException {
+    String [] foreignTarget = index.split("\\.");
+    ForeignKeys childParentForeignKey = findForeignKey(dbTable, dbTable.getPkColumnName(), correlation);
+    boolean indexInTable =  childParentForeignKey == null;
+    ForeignKeys fkey = indexInTable ? findForeignKey(correlation, PK_COLUMN_NAME, dbTable) : childParentForeignKey;
+    Table indexTable = indexInTable ? dbTable : correlation;
+    Index indexField = findIndex(indexTable, foreignTarget[1]);
 
     if (fkey == null) {
-      String msg = "subQuery(): No foreignKey for table " + foreignTarget[0] + " found";
+      String msg = "subQuery: No foreignKey for table " + foreignTarget[0] + " found";
       logger.log(Level.SEVERE, msg);
       throw new QueryValidationException(msg);
     }
@@ -555,54 +606,53 @@ public class CQL2PgJSON {
       throw new QueryValidationException(msg);
     }
     String foreignTableJsonb = foreignTarget[0] + ".jsonb";
-    String term = node.getTerm();
-
-    boolean isTermConstant = !tableNamePattern.matcher(term).matches();
-
-    String myField = dbTable.getTableName() + ".id";
-    String targetField = index2sqlText(foreignTableJsonb, fkey.getFieldName());
-    String whereField = index2sqlText(foreignTableJsonb, foreignTarget[1]);
-    String whereClause = "";
-    String inKeyword = "";
-    String template = getWrapTemplateWithSchemaDetection(foreignTarget[1], correlation);
-    String indexString = "";
-    String selectString = "";
-    if (isTermConstant) {
-      String termString = "";
-      CqlModifiers modifiers = new CqlModifiers(node);
-      if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-        termString = "('" + Cql2SqlUtil.cql2string(term) + "')::NUMERIC";
-        indexString = "(" + whereField + ")::NUMERIC";
-      } else {
-        termString = String.format(template, "'" + Cql2SqlUtil.cql2string(term) + "'");
-        indexString = String.format(template, whereField);
-      }
-      selectString = "Cast ( " + targetField + "as UUID)";
-      inKeyword = myField + " IN ";
-      whereClause = " WHERE " + indexString + " = " + termString;
+    String indexSQL = index2sqlText(foreignTableJsonb, foreignTarget[1]);
+    String match = foreignKeyMatch(node, indexSQL, indexField);
+    if (indexInTable) {
+      return formatParentChild(foreignTarget[0], fkey, match);
     } else {
-      inKeyword = myField + " IN ";
-      selectString = "Cast ( " + index2sqlText(foreignTableJsonb, foreignTarget[1]) + "as UUID)";
+      return formatChildParent(foreignTarget[0], fkey, foreignTableJsonb, match);
     }
-
-    return inKeyword + " ( SELECT " + selectString + " from " + foreignTarget[0] + whereClause + ")";
   }
 
+  private static String foreignKeyMatch(CQLTermNode node, String indexSQL, Index index) throws QueryValidationException {
+    String term = node.getTerm();
+    CqlModifiers modifiers = new CqlModifiers(node);
+    if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
+      return "(" + indexSQL + ")::NUMERIC = ('" + Cql2SqlUtil.cql2string(term) + "')::NUMERIC";
+    }
+    if (index == null) {
+      return indexSQL + " = " + "'" + Cql2SqlUtil.cql2string(term) + "'";
+    }
 
+    return wrapInLowerUnaccent(indexSQL, index) + " = " + wrapInLowerUnaccent("'" + Cql2SqlUtil.cql2string(term) + "'", index);
+  }
 
-  private String getWrapTemplateWithSchemaDetection(String whereField,Table targetTable ) {
-    String wrappingStringTemplate = "%s";
-    for(Index i : targetTable.getIndex()) {
-      if(i.getFieldName().equals(whereField)) {
-        if(i.isRemoveAccents()) { 
-          wrappingStringTemplate = "f_unaccent(" +wrappingStringTemplate + ")";
-        }
-        if(!i.isCaseSensitive()) {
-          wrappingStringTemplate = "lower(" + wrappingStringTemplate + ")" ;
-        }
+  private String formatChildParent(String foreignTableName, ForeignKeys fkey, String foreignTableJsonb,
+      String match) throws QueryValidationException {
+
+    return dbTable.getTableName() + "." + PK_COLUMN_NAME + " IN "
+        + " ( SELECT " + "(" + index2sqlText(foreignTableJsonb, fkey.getFieldName()) + ")::UUID"
+        + " from " + foreignTableName + " WHERE " + match + ")";
+  }
+
+  private String formatParentChild(String foreignTableName, ForeignKeys fkey, String match)
+      throws QueryValidationException {
+
+    return "(" + index2sqlText(dbTable.getTableName() + ".jsonb", fkey.getFieldName()) + ")::UUID" + " IN "
+        + " ( SELECT " + PK_COLUMN_NAME + " from " + foreignTableName + " WHERE " + match + ")";
+  }
+
+  private static Index findIndex(Table table, String fieldName) {
+    if (table == null || table.getIndex() == null) {
+      return null;
+    }
+    for(Index index : table.getIndex()) {
+      if (index.getFieldName().equals(fieldName)) {
+        return index;
       }
     }
-    return wrappingStringTemplate;
+    return null;
   }
 
   /**
@@ -612,13 +662,17 @@ public class CQL2PgJSON {
    * @param targetTable  where to search
    * @return the ForeignKeys if found, null otherwise
    */
-  private ForeignKeys findForeignKey(String field, Table targetTable) {
-    String fieldName = dbTable.getTableName() + field;
+  private static ForeignKeys findForeignKey(Table currentTable, String field, Table targetTable) {
+    String fieldName = currentTable.getTableName() + field;
+    if (targetTable.getForeignKeys() == null) {
+      return null;
+    }
     for (ForeignKeys key : targetTable.getForeignKeys()) {
       if (fieldName.equalsIgnoreCase(key.getFieldName())) {
         return key;
       }
     }
+
     return null;
   }
 
@@ -756,6 +810,79 @@ public class CQL2PgJSON {
     }
   }
 
+  private String lookupModifier(Index schemaIndex, String modifierName) {
+    if (schemaIndex != null) {
+      List<String> schemaModifiers = schemaIndex.getArrayModifiers();
+      if (schemaModifiers != null) {
+        for (String schemaModifier : schemaModifiers) {
+          if (schemaModifier.equalsIgnoreCase(modifierName)) {
+            return schemaModifier;
+          }
+        }
+      }
+      String subfield = schemaIndex.getArraySubfield();
+      if (subfield != null && subfield.equalsIgnoreCase(modifierName)) {
+        return subfield;
+      }
+    }
+    return null;
+  }
+
+  private String arrayNode(String index, CQLTermNode node, CqlModifiers modifiers,
+    List<Modifier> relationModifiers, Index schemaIndex, IndexTextAndJsonValues incomingvals) throws QueryValidationException {
+
+    StringBuilder sqlAnd = new StringBuilder();
+    StringBuilder sqlOr = new StringBuilder();
+    modifiers.setRelationModifiers(new LinkedList<>()); // avoid recursion
+    for (Modifier relationModifier : relationModifiers) {
+      final String modifierName = relationModifier.getType().substring(1);
+      final String modifierValue = relationModifier.getValue();
+      String foundModifier = lookupModifier(schemaIndex, modifierName);
+      if (foundModifier == null) {
+        throw new QueryValidationException("CQL: Unsupported relation modifier "
+          + relationModifier.getType());
+      }
+      if (modifierValue == null) {
+        if (sqlOr.length() == 0) {
+          sqlOr.append("(");
+        } else {
+          sqlOr.append(" or ");
+        }
+        IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+        vals.setIndexText(index2sqlText("t.c", foundModifier));
+        sqlOr.append(indexNode(index, node, vals, modifiers));
+      } else {
+        final String comparator = relationModifier.getComparison();
+        if (!"=".equals(comparator)) {
+          throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + relationModifier.getType());
+        }
+        sqlAnd.append(" and ");
+        sqlAnd.append(queryByFt(index2sqlText("t.c", foundModifier), modifierValue,
+          comparator, schemaIndex));
+      }
+    }
+    if (sqlOr.length() > 0) {
+      sqlOr.append(")");
+    } else {
+      String modifiersSubfield = null;
+      if (schemaIndex != null) {
+        modifiersSubfield = schemaIndex.getArraySubfield();
+      }
+      if (modifiersSubfield == null) {
+        throw new QueryValidationException("CQL: No arraySubfield defined for index " + index);
+      }
+      IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+      vals.setIndexText(index2sqlText("t.c", modifiersSubfield));
+      sqlOr.append(indexNode(index, node, vals, modifiers));
+    }
+    String indexText = index2sqlJson(this.jsonField, index);
+    return "id in (select t.id"
+      + " from (select id as id, "
+      + "             jsonb_array_elements(" + incomingvals.getIndexJson() + ") as c"
+      + "      ) as t"
+      + " where " + sqlOr.toString() + sqlAnd.toString() + ")";
+  }
+
   /**
    * Create an SQL expression where index is applied to all matches.
    *
@@ -766,16 +893,20 @@ public class CQL2PgJSON {
    * @throws QueryValidationException
    */
   private String index2sql(String index, CQLTermNode node) throws QueryValidationException {
+    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
+    CqlModifiers cqlModifiers = new CqlModifiers(node);
+    return indexNode(index, node, vals, cqlModifiers);
+  }
+
+  private String indexNode(String index, CQLTermNode node, IndexTextAndJsonValues vals,
+    CqlModifiers modifiers) throws QueryValidationException {
 
     // special handling of id search (re-use existing code)
     if ("id".equals(index)) {
       return pgId(node);
     }
 
-    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, vals.getIndexJson());
-
-    CqlModifiers modifiers = new CqlModifiers(node);
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbTable, index);
     String comparator = node.getRelation().getBase().toLowerCase();
 
     switch (comparator) {
@@ -784,18 +915,22 @@ public class CQL2PgJSON {
         return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
       } else if (CqlAccents.IGNORE_ACCENTS == modifiers.getCqlAccents() &&
           CqlCase.IGNORE_CASE == modifiers.getCqlCase()) {
-        return queryByFt(dbIndex.isFt(), vals, node, comparator, modifiers);
+        return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers);
       } else {
-        return queryByLike(dbIndex.isGin(), vals, node, comparator, modifiers);
+        return queryByLike(index, dbIndex.isGin(), vals, node, comparator, modifiers);
       }
     case "adj":
     case "all":
     case "any":
-      return queryByFt(dbIndex.isFt(), vals, node, comparator, modifiers);
+      return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers);
     case "==":
     case "<>":
       if (CqlTermFormat.STRING == modifiers.getCqlTermFormat()) {
-        return queryByLike(dbIndex.isGin(), vals, node, comparator, modifiers);
+        boolean hasIndex = dbIndex.isGin();
+        if (!Cql2SqlUtil.hasCqlWildCardd(node.getTerm())) {
+          hasIndex = hasIndex || dbIndex.isOther();
+        }
+        return queryByLike(index, hasIndex, vals, node, comparator, modifiers);
       } else {
         return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
       }
@@ -813,7 +948,7 @@ public class CQL2PgJSON {
   /**
    * Create an SQL expression using Full Text query syntax.
    *
-   * @param hasFtIndex
+   * @param hasIndex
    * @param vals
    * @param node
    * @param comparator
@@ -821,31 +956,48 @@ public class CQL2PgJSON {
    * @return
    * @throws QueryValidationException
    */
-  private String queryByFt(boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
-
-    String index = vals.getIndexText();
-
-    if (!hasFtIndex) {
-      logger.log(Level.WARNING, "Doing FT search without FT index {0}", index);
-    }
+  private String queryByFt(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
+    final String indexText = vals.getIndexText();
 
     if (CqlAccents.RESPECT_ACCENTS == modifiers.getCqlAccents()) {
-      logger.log(Level.WARNING, "Ignoring /respectAccents modifier for FT search {0}", index);
+      logger.log(Level.WARNING, "Ignoring /respectAccents modifier for FT search {0}", indexText);
     }
 
     if (CqlCase.RESPECT_CASE == modifiers.getCqlCase()) {
-      logger.log(Level.WARNING, "Ignoring /respectCase modifier for FT search {0}", index);
+      logger.log(Level.WARNING, "Ignoring /respectCase modifier for FT search {0}", indexText);
     }
 
     // Clean the term. Remove stand-alone ' *', not valid word.
     String term = node.getTerm().replaceAll(" +\\*", "").trim();
+    Index schemaIndex = null;
+    if (this.dbTable != null) {
+      schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getFullTextIndex());
+    }
+    String sql = queryByFt(indexText, term, comparator, schemaIndex);
+    List<Modifier> relationModifiers = modifiers.getRelationModifiers();
+    if (!relationModifiers.isEmpty()) {
+      sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
+    }
+
+    if (!hasIndex) {
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
+      logger.log(Level.WARNING, "Doing FT search without index for {0}", s);
+    }
+
+    return sql;
+  }
+
+  private String queryByFt(String indexText, String term, String comparator, Index schemaIndex)
+    throws QueryValidationException {
+
     if (term.equals("*")) {
       return "true";
     }
     if (term.equals("")) {
-      return index + " ~ ''";
+      return indexText + " ~ ''";
     }
-    String[] words = term.split("\\s+");
+    // Removing of " - " is RMB-439 to unblock CIRCSTORE-138
+    String[] words = term.replaceAll(" - ", " ").split("\\s+");
     for (int i = 0; i < words.length; i++) {
       words[i] = ftTerm(words[i]);
     }
@@ -864,44 +1016,55 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
     }
-    // "simple" dictionary only does lower_casing, so need f_unaccent
-    String sql = "to_tsvector('simple', f_unaccent(" + index + ")) "
-      + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))";
+    boolean unaccent = true;
+    if (schemaIndex != null) {
+      unaccent = schemaIndex.isRemoveAccents();
+    }
+    String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, false, unaccent) + ") "
+      + "@@ to_tsquery('simple', " + wrapInLowerUnaccent("'"+ tsTerm + "'", false, unaccent) + ")";
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
+    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
     return sql;
   }
 
   /**
    * Create an SQL expression using LIKE query syntax.
    *
-   * @param hasGinIndex
+   * @param hasIndex
    * @param vals
    * @param node
    * @param comparator
    * @param modifiers
    * @return
    */
-  private String queryByLike(boolean hasGinIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
+  private String queryByLike(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
+    String comparator, CqlModifiers modifiers) throws QueryValidationException {
 
-    String index = vals.getIndexText();
-
-    if (!hasGinIndex) {
-      logger.log(Level.WARNING, "Doing LIKE search without GIN index for {0}", index);
-    }
-
-    String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
-    String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-    String indexMatch = wrapInLowerUnaccent(index) + likeOperator + wrapInLowerUnaccent(like);
+    String indexText = vals.getIndexText();
     String sql = null;
-    if (modifiers.getCqlAccents() == CqlAccents.IGNORE_ACCENTS && modifiers.getCqlCase() == CqlCase.IGNORE_CASE) {
-      sql = indexMatch;
+
+    List<Modifier> relationModifiers = modifiers.getRelationModifiers();
+    if (!relationModifiers.isEmpty()) {
+      final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
+      sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     } else {
-      sql = indexMatch + " AND " +
-        wrapInLowerUnaccent(index, modifiers) + likeOperator + wrapInLowerUnaccent(like, modifiers);
+      String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
+      String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+      String indexMatch = wrapInLowerUnaccent(indexText) + likeOperator + wrapInLowerUnaccent(like);
+      if (modifiers.getCqlAccents() == CqlAccents.IGNORE_ACCENTS && modifiers.getCqlCase() == CqlCase.IGNORE_CASE) {
+        sql = indexMatch;
+      } else {
+        sql = indexMatch + " AND " +
+          wrapInLowerUnaccent(indexText, modifiers) + likeOperator + wrapInLowerUnaccent(like, modifiers);
+      }
     }
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
+    if (!hasIndex) {
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
+      logger.log(Level.WARNING, "Doing LIKE search without index for {0}", s);
+    }
+
+    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexText, sql});
     return sql;
   }
 
@@ -916,12 +1079,7 @@ public class CQL2PgJSON {
    * @return
    */
   private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
-
     String index = vals.getIndexText();
-
-    if (!hasIndex) {
-      logger.log(Level.WARNING, "Doing SQL query without index for {0}", index);
-    }
 
     if (comparator.equals("==")) {
       comparator = "=";
@@ -932,6 +1090,11 @@ public class CQL2PgJSON {
       term = node.getTerm();
     }
     String sql = index + " " + comparator + term;
+
+    if (!hasIndex) {
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", index, node.toCQL(), sql);
+      logger.log(Level.WARNING, "Doing SQL query without index for {0}", s);
+    }
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
     return sql;

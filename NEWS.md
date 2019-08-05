@@ -1,3 +1,51 @@
+## 26.2.4 2019-07-26
+
+ * RMB work for MODINVSTOR-319: array queries with additional clauses may fail
+ * RMB-440 Skip logging GIN index missing if b-tree index can be used
+
+## 26.2.3 2019-07-24
+
+ * RMB-439 Remove hyphen token for full search to unblock CIRCSTORE-138
+
+## 26.2.2 2019-07-22
+
+ * RMB-435 CVE-2019-12814 jackson-databind security vulnerability
+ * RMB-436 Log both CQL and SQL within the missing index line
+ * RMB-430 queries with facet fail
+
+## 26.2.1 2019-07-17
+
+ * RMB-430 Audit table PK (id) unique constraint violation on concurrent queries
+
+## 26.2.0 2019-07-11
+
+ * RMB-417 Optimize search for array relation modifiers
+ * RMB-422 Fix Invalid SQL for array modifiers
+ * RMB-426 Consider also arraySubfield as relation modifier (with or
+   without value)
+ * RMB-429 Fix fulltext mismatch WRT accents. Note that this affects
+   schema generation, so tenant data should be re-generated to ensure
+   good performance.
+
+## 26.1.0 2019-07-04
+
+ * RMB-419 Fix syntax error at or near "." because table name is reserved word
+ * #460 Bug fix: Reject foreign table processing if current table is unknown
+ * #462 Bug fix: Do auditingSnippet null tests separately for declare and
+   statement
+
+## 26.0.0 2019-07-03
+
+ * RMB-380 RMB-416 RMB-418 CQL extension: Implement /@ modifier for searching
+   array-of-objects fields.
+ * RMB-387 RMB-391 CQL extension: Implement foreign key joins (two tables).
+ * RMB-397 Bug fix: Regression with $ref paths
+ * RMB-400 Bug fix: PgUtil should return 400 (not 500) on invalid UUID id
+ * RMB-401 Bug fix: PgUtil.post: Object or POJO type for entity
+   parameter of respond201WithApplicationJson
+ * RMB-402 RMB-414: Major change: Restructured audit (history) table
+ * RMB-405 Bug fix: PostgresClient.save: Create random UUID if id is missing
+
 ## 25.0.0 2019-06-07
 
 There are several breaking changes, see [upgrading instructions](doc/upgrading.md#version-25).

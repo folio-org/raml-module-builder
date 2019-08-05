@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Myitems",
+  "description": "Collection of myitem records.",
+  "type": "object",
+  "properties": {
+    "myitems": {
+      "description": "items array",
+      "id": "items",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref" : "myitem.json"
+      }
+    },
+    "total_records": {
+      "description": "total records",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "myitems",
+    "total_records"
+  ]
+}

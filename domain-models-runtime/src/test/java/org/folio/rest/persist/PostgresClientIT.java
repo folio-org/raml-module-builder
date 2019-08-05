@@ -352,6 +352,11 @@ public class PostgresClientIT {
         "id UUID PRIMARY KEY , jsonb JSONB NOT NULL");
   }
 
+  private PostgresClient createFooBinary(TestContext context) {
+    return createTable(context, TENANT, FOO,
+        "id UUID PRIMARY KEY , jsonb TEXT NOT NULL");  // TEXT to store binary data
+  }
+
   private PostgresClient createInvalidJson(TestContext context) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     postgresClient = createTable(context, TENANT, INVALID_JSON,
@@ -670,6 +675,115 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void save3(TestContext context) {
+    postgresClient = createFoo(context);
+    postgresClient.save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      String id = save;
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
+  public void save4returnId(TestContext context) {
+    postgresClient = createFoo(context);
+    postgresClient.save(FOO, xPojo, /* returnId */ true, context.asyncAssertSuccess(save -> {
+      String id = save;
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
+  public void save4doNotReturnId(TestContext context) {
+    createFoo(context).save(FOO, xPojo, /* returnId */ false, context.asyncAssertSuccess(save -> {
+      context.assertEquals("", save);
+    }));
+  }
+
+  @Test
+  public void save4id(TestContext context) {
+    String id = randomUuid();
+    postgresClient = createFoo(context);
+    postgresClient.save(FOO, id, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
+  public void save4idNull(TestContext context) {
+    postgresClient = createFoo(context);
+    postgresClient.save(FOO, /* id */ null, xPojo, context.asyncAssertSuccess(save -> {
+      String id = save;
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
+  public void save5returnId(TestContext context) {
+    String id = randomUuid();
+    createFoo(context).save(FOO, id, xPojo, /* returnId */ true, context.asyncAssertSuccess(save -> {
+      context.assertEquals(id, save);
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
+  public void save5doNotReturnId(TestContext context) {
+    String id = randomUuid();
+    createFoo(context).save(FOO, id, xPojo, /* returnId */ false, context.asyncAssertSuccess(save -> {
+      context.assertEquals("", save);
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
+  public void save6upsert(TestContext context) {
+    String id = randomUuid();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.save(FOO, id, xPojo, /* returnId */ true, /* upsert */ true, context.asyncAssertSuccess(save -> {
+      context.assertEquals(id, save);
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+        postgresClient.save(FOO, id, singleQuotePojo, /* returnId */ true, /* upsert */ true, context.asyncAssertSuccess(update -> {
+          context.assertEquals(id, update);
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get2 -> {
+            context.assertEquals("'", get2.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void save6noUpsert(TestContext context) {
+    String id = randomUuid();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.save(FOO, id, xPojo, /* returnId */ true, /* upsert */ false, context.asyncAssertSuccess(save -> {
+      context.assertEquals(id, save);
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+        postgresClient.save(FOO, id, singleQuotePojo, /* returnId */ true, /* upsert */ false, context.asyncAssertFailure(update -> {
+          context.assertTrue(update.getMessage().contains("duplicate key"), update.getMessage());
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get2 -> {
+            context.assertEquals("x", get2.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
   public void upsertX(TestContext context) {
     createFoo(context)
       .upsert(FOO, randomUuid(), xPojo, context.asyncAssertSuccess());
@@ -679,6 +793,151 @@ public class PostgresClientIT {
   public void upsertSingleQuote(TestContext context) {
     createFoo(context)
       .upsert(FOO, randomUuid(), singleQuotePojo, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void upsert4(TestContext context) {
+    String id = randomUuid();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.upsert(FOO, id, xPojo, context.asyncAssertSuccess(save -> {
+      context.assertEquals(id, save);
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+        postgresClient.upsert(FOO, id, singleQuotePojo, context.asyncAssertSuccess(update -> {
+          context.assertEquals(id, update);
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get2 -> {
+            context.assertEquals("'", get2.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void upsert5(TestContext context) {
+    String id = randomUuid();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.upsert(FOO, id, xPojo, /* convertEntity */ true, context.asyncAssertSuccess(save -> {
+      context.assertEquals(id, save);
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+        postgresClient.upsert(FOO, id, singleQuotePojo, /* convertEntity */ true, context.asyncAssertSuccess(update -> {
+          context.assertEquals(id, update);
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get2 -> {
+            context.assertEquals("'", get2.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  private String base64(byte [] source) {
+    return Base64.getEncoder().encodeToString(source);
+  }
+
+  @Test
+  public void upsert5binary(TestContext context) {
+    String id = randomUuid();
+    byte [] witloof = "witloof".getBytes();
+    byte [] weld = "weld".getBytes();
+    PostgresClient postgresClient = createFooBinary(context);
+    postgresClient.upsert(FOO, id, new JsonArray().add(witloof), /* convertEntity */ false, context.asyncAssertSuccess(save -> {
+      context.assertEquals(id, save);
+      String fullTable = PostgresClient.convertToPsqlStandard(TENANT) + "." + FOO;
+      postgresClient.select("SELECT jsonb FROM " + fullTable, context.asyncAssertSuccess(select -> {
+        context.assertEquals(base64(witloof), select.getRows().get(0).getString("jsonb"), "select");
+        postgresClient.upsert(FOO, id, new JsonArray().add(weld), /* convertEntity */ false, context.asyncAssertSuccess(update -> {
+          context.assertEquals(id, update);
+          postgresClient.select("SELECT jsonb FROM " + fullTable, context.asyncAssertSuccess(select2 -> {
+            context.assertEquals(base64(weld), select2.getRows().get(0).getString("jsonb"), "select2");
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void save7(TestContext context) {
+    String id = randomUuid();
+    PostgresClient postgresClient = createFoo(context);
+    postgresClient.save(FOO, id, xPojo, true, true, true, context.asyncAssertSuccess(save -> {
+      context.assertEquals(id, save);
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+        postgresClient.save(FOO, id, singleQuotePojo, true, true, true, context.asyncAssertSuccess(update -> {
+          context.assertEquals(id, update);
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get2 -> {
+            context.assertEquals("'", get2.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void save7binary(TestContext context) {
+    String id = randomUuid();
+    byte [] apple = "apple".getBytes();
+    byte [] banana = "banana".getBytes();
+    PostgresClient postgresClient = createFooBinary(context);
+    postgresClient.save(FOO, id, new JsonArray().add(apple), true, true, false, context.asyncAssertSuccess(save -> {
+      context.assertEquals(id, save);
+      String fullTable = PostgresClient.convertToPsqlStandard(TENANT) + "." + FOO;
+      postgresClient.select("SELECT jsonb FROM " + fullTable, context.asyncAssertSuccess(select -> {
+        context.assertEquals(base64(apple), select.getRows().get(0).getString("jsonb"), "select");
+        postgresClient.save(FOO, id, new JsonArray().add(banana), true, true, false, context.asyncAssertSuccess(update -> {
+          context.assertEquals(id, update);
+          postgresClient.select("SELECT jsonb FROM " + fullTable, context.asyncAssertSuccess(select2 -> {
+            context.assertEquals(base64(banana), select2.getRows().get(0).getString("jsonb"), "select2");
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void saveTrans4(TestContext context) {
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.save(trans, FOO, xPojo, context.asyncAssertSuccess(save -> {
+        String id = save;
+        postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+            context.assertEquals("x", get.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void saveTrans5(TestContext context) {
+    String id = randomUuid();
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.save(trans, FOO, id, xPojo, context.asyncAssertSuccess(save -> {
+        postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+            context.assertEquals("x", get.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void saveTrans7(TestContext context) {
+    String id = randomUuid();
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.save(trans, FOO, id, xPojo, true, true, context.asyncAssertSuccess(save -> {
+        postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+            context.assertEquals("x", get.getString("key"));
+          }));
+        }));
+      }));
+    }));
   }
 
   @Test

@@ -297,6 +297,8 @@ public final class PgUtil {
    * @param clazz  the class of the record type T
    * @param collectionClazz  the class of the collection type C containing records of type T
    * @param cql  the CQL query for filtering and sorting the records
+   * @param offset number of records to skip, use 0 or negative number for not skipping
+   * @param limit maximum number of records to return, use a negative number for no limit
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
@@ -321,7 +323,7 @@ public final class PgUtil {
     }
 
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON(JSON_COLUMN);
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
@@ -744,7 +746,7 @@ public final class PgUtil {
     }
 
     try {
-      CQL2PgJSON cql2pgJson = new CQL2PgJSON(JSON_COLUMN);
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       String sql = generateOptimizedSql(sortField, preparedCql, offset, limit);

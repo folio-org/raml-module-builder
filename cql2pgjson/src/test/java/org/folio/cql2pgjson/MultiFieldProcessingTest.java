@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -6,7 +6,6 @@ import static org.junit.Assert.assertThat;
 
 import java.util.Arrays;
 
-import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;

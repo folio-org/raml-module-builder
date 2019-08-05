@@ -111,9 +111,6 @@ public class PostgresClient {
   private static final String    AND    = " AND ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final String    COUNT = "COUNT(%s)";
-  private static final String    COLUMN_CONTROL_REGEX = "(?<=(?i)SELECT )(.*)(?= (?i)FROM )";
-
   private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
   private static final Pattern   DISTINCT_ON_MATCH_PATTERN = Pattern.compile("(?i)((DISTINCT) (?i)ON \\((.*)\\) ).*(?i)FROM");
 
@@ -456,8 +453,12 @@ public class PostgresClient {
     }
 
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
-
     logPostgresConfig();
+
+    if (isEmbedded()) {
+      startEmbeddedPostgres();
+    }
+
     client = io.vertx.ext.asyncsql.PostgreSQLClient.createNonShared(vertx, postgreSQLClientConfig);
   }
 
@@ -680,132 +681,136 @@ public class PostgresClient {
   }
 
   /**
-   *
-   * @param table
-   *          - tablename to save to
-   * @param entity
-   *          - this must be a json object
-   * @param replyHandler
-   * @throws Exception
+   * Insert entity into table. Create a new id UUID and return it via replyHandler.
+   * @param table database table (without schema)
+   * @param entity a POJO (plain old java object)
+   * @param replyHandler returns any errors and the result.
    */
   public void save(String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    save(table, null, entity, true, replyHandler);
-  }
-
-  public void save(String table, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) {
-    save(table, null, entity, returnId, replyHandler);
-  }
-
-  public void save(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    save(table, id, entity, true, replyHandler);
-  }
-
-  public void save(String table, String id, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) {
-    save(table, id, entity, returnId, false, replyHandler);
-  }
-
-  public void upsert(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    save(table, id, entity, true, true, replyHandler);
+    client.getConnection(conn -> save(conn, table, /* id */ null, entity,
+        /* returnId */ true, /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
-   * @param convertEntity - should the entity object be passed in as is to the prepared statement,
-   * needed if upserting binary data as base64 where converting it to a json will corrupt the data
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param replyHandler returns any errors and the result.
+   */
+  public void save(String table, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) {
+    client.getConnection(conn -> save(conn, table, /* id */ null, entity,
+        returnId, /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @param replyHandler returns any errors and the result (see returnId).
+   */
+  public void save(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
+    client.getConnection(conn -> save(conn, table, id, entity,
+        /* returnId */ true, /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param replyHandler returns any errors and the result (see returnId).
+   */
+  public void save(String table, String id, Object entity,
+      boolean returnId, Handler<AsyncResult<String>> replyHandler) {
+    client.getConnection(conn -> save(conn, table, id, entity,
+        returnId, /* upsert */ false, /* convertEntity */ true,
+        closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param upsert whether to update if the record with that id already exists (INSERT or UPDATE)
+   * @param replyHandler returns any errors and the result (see returnId).
+   */
+  public void save(String table, String id, Object entity,
+      boolean returnId, boolean upsert, Handler<AsyncResult<String>> replyHandler) {
+    client.getConnection(conn -> save(conn, table, id, entity,
+        returnId, upsert, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Insert entity into table, or update it if it already exists.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @param replyHandler returns any errors and the id of the entity.
+   */
+  public void upsert(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
+    client.getConnection(conn -> save(conn, table, id, entity,
+        /* returnId */ true, /* upsert */ true, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Insert or update.
+   *
+   * <p>Needed if upserting binary data as base64 where converting it to a json will corrupt the data
    * otherwise this function is not needed as the default is true
    * example:
    *     byte[] data = ......;
    *     JsonArray jsonArray = new JsonArray().add(data);
    *     .upsert(TABLE_NAME, id, jsonArray, false, replyHandler -> {
+
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity either a POJO, or a JsonArray containing a byte[] element, see convertEntity
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
+   * @param replyHandler returns any errors and the result (see returnId).
    */
-  public void upsert(String table, String id, Object entity, boolean convertEntity, Handler<AsyncResult<String>> replyHandler) {
-    save(table, id, entity, true, true, false, replyHandler);
-  }
-
-  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, boolean convertEntity, Handler<AsyncResult<String>> replyHandler) {
-
-    long start = System.nanoTime();
-    vertx.runOnContext(v -> {
-      client.getConnection(res -> {
-        if (res.succeeded()) {
-          SQLConnection connection = res.result();
-
-          StringBuilder clientIdField = new StringBuilder("");
-          StringBuilder clientId = new StringBuilder("");
-          if(id != null){
-            clientId.append("'").append(id).append("',");
-            clientIdField.append(ID_FIELD).append(COMMA);
-          }
-          String returning = "";
-          if(returnId){
-            returning = " RETURNING " + ID_FIELD;
-          }
-
-          try {
-            String upsertClause = "";
-            if(upsert){
-              upsertClause = " ON CONFLICT ("+ID_FIELD+") DO UPDATE SET " +
-                DEFAULT_JSONB_FIELD_NAME + " = EXCLUDED."+DEFAULT_JSONB_FIELD_NAME + SPACE;
-            }
-            JsonArray queryArg = new JsonArray();
-            String type = "?::JSON)";
-            if(convertEntity){
-              queryArg.add(pojo2json(entity));
-            }
-            else{
-              queryArg = (JsonArray)entity;
-              type = "?::text)";
-            }
-            /* do not change to updateWithParams as this will not return the generated id in the reply */
-            connection.queryWithParams(INSERT_CLAUSE + schemaName + DOT + table +
-              " (" + clientIdField.toString() + DEFAULT_JSONB_FIELD_NAME +
-              ") VALUES ("+clientId+type + upsertClause + returning,
-              queryArg, query -> {
-                connection.close();
-                if (query.failed()) {
-                  replyHandler.handle(Future.failedFuture(query.cause()));
-                } else {
-                  List<JsonArray> resList = query.result().getResults();
-                  String response = "";
-                  if(!resList.isEmpty()){
-                    response = resList.get(0).getValue(0).toString();
-                  }
-                  replyHandler.handle(Future.succeededFuture(response));
-                }
-                statsTracker(SAVE_STAT_METHOD, table, start);
-              });
-          } catch (Exception e) {
-            if(connection != null){
-              connection.close();
-            }
-            log.error(e.getMessage(), e);
-            replyHandler.handle(Future.failedFuture(e));
-          }
-        } else {
-          log.error(res.cause().getMessage(), res.cause());
-          replyHandler.handle(Future.failedFuture(res.cause()));
-        }
-      });
-    });
-  }
-
-  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, Handler<AsyncResult<String>> replyHandler) {
-    save(table, id, entity, returnId, upsert, true, replyHandler);
+  public void upsert(String table, String id, Object entity, boolean convertEntity,
+      Handler<AsyncResult<String>> replyHandler) {
+    client.getConnection(conn -> save(conn, table, id, entity,
+        /* returnId */ true, /* upsert */ true, /* convertEntity */ convertEntity,
+        closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
-   * Save entity in table. Use the transaction of sqlConnection. Return the
-   * created id via the replyHandler; this is only the same as the id in the
-   * entity if some database trigger syncs them.
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity either a POJO, or a JsonArray containing a byte[] element, see convertEntity
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param upsert whether to update if the record with that id already exists (INSERT or UPDATE)
+   * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
+   * @param replyHandler returns any errors and the result (see returnId).
+   */
+  public void save(String table, String id, Object entity, boolean returnId, boolean upsert, boolean convertEntity,
+      Handler<AsyncResult<String>> replyHandler) {
+    client.getConnection(conn -> save(conn, table, id, entity,
+        returnId, upsert, convertEntity, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Save entity in table using the sqlConnection. Return the
+   * created id via the replyHandler.
    *
    * @param sqlConnection connection with transaction
    * @param table where to insert the entity record
-   * @param entity the record to insert
+   * @param entity the record to insert, a POJO (plain old java object)
    * @param replyHandler where to report success status and the created id
    */
   public void save(AsyncResult<SQLConnection> sqlConnection, String table, Object entity,
     Handler<AsyncResult<String>> replyHandler) {
-
-    save(sqlConnection, table, null, entity, replyHandler);
+    save(sqlConnection, table, /* id */ null, entity,
+        /* returnId */ true, /* upsert */ false, /* convertEntity */ true, replyHandler);
   }
 
   /**
@@ -814,44 +819,80 @@ public class PostgresClient {
    * the id of entity (jsonb field) are different you may need a trigger in the
    * database to sync them.
    *
-   * @param sqlConnection connection with transaction
+   * @param sqlConnection connection (for example with transaction)
    * @param table where to insert the entity record
-   * @param id  the value for the id field (primary key); may be different from the id in entity
-   * (= in the jsonb field). may be null in which case* it is ignored.
-   * @param entity  the record to insert
+   * @param id  the value for the id field (primary key); if null a new random UUID is created for it.
+   * @param entity  the record to insert, a POJO (plain old java object)
    * @param replyHandler  where to report success status and the final id of the id field
    */
   public void save(AsyncResult<SQLConnection> sqlConnection, String table, String id, Object entity,
       Handler<AsyncResult<String>> replyHandler) {
+    save(sqlConnection, table, id, entity,
+        /* returnId */ true, /* upsert */ false, /* convertEntity */ true, replyHandler);
+  }
 
-    long start = System.nanoTime();
+  /**
+   * Save entity in table. Use the transaction of sqlConnection. Return the id
+   * of the id field (primary key) via the replyHandler. If id (primary key) and
+   * the id of entity (jsonb field) are different you may need a trigger in the
+   * database to sync them.
+   *
+   * @param sqlConnection connection (for example with transaction)
+   * @param table where to insert the entity record
+   * @param id  the value for the id field (primary key); if null a new random UUID is created for it.
+   * @param entity  the record to insert, a POJO (plain old java object)
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param upsert whether to update if the record with that id already exists (INSERT or UPDATE)
+   * @param replyHandler  where to report success status and the final id of the id field
+   */
+  public void save(AsyncResult<SQLConnection> sqlConnection, String table, String id, Object entity,
+      boolean returnId, boolean upsert,
+      Handler<AsyncResult<String>> replyHandler) {
+    save(sqlConnection, table, id, entity, returnId, upsert, /* convertEntity */ true, replyHandler);
+  }
 
-    log.debug("save (with connection and id) called on " + table);
+  /**
+   * Save entity in table. Use the transaction of sqlConnection. Return the id
+   * of the id field (primary key) via the replyHandler. If id (primary key) and
+   * the id of entity (jsonb field) are different you may need a trigger in the
+   * database to sync them.
+   *
+   * @param sqlConnection connection (for example with transaction)
+   * @param table where to insert the entity record
+   * @param id  the value for the id field (primary key); if null a new random UUID is created for it.
+   * @param entity  the record to insert, either a POJO or a JsonArray, see convertEntity
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param upsert whether to update if the record with that id already exists (INSERT or UPDATE)
+   * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
+   * @param replyHandler  where to report success status and the final id of the id field
+   */
+  public void save(AsyncResult<SQLConnection> sqlConnection, String table, String id, Object entity,
+      boolean returnId, boolean upsert, boolean convertEntity,
+      Handler<AsyncResult<String>> replyHandler) {
+
+    if (log.isDebugEnabled()) {
+      log.debug("save (with connection and id) called on " + table);
+    }
     try {
       if (sqlConnection.failed()) {
         replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
-      SQLConnection connection = sqlConnection.result();
-      String pojo = pojo2json(entity);
-      JsonArray ar = new JsonArray();
-      String idColumn = "";
-      String idVal = "";
-      if (id != null) {
-        ar.add(id);
-        idColumn = ID_FIELD + ", ";
-        idVal = "?, ";
-      }
-      ar.add(pojo);
-      connection.queryWithParams(INSERT_CLAUSE + schemaName + DOT + table +
-        " (" + idColumn + DEFAULT_JSONB_FIELD_NAME + ") VALUES (" + idVal + "?::JSON) RETURNING " + ID_FIELD,
-        ar, query -> {
+      long start = System.nanoTime();
+      String sql = INSERT_CLAUSE + schemaName + DOT + table
+          + " (id, jsonb) VALUES (?, " + (convertEntity ? "?::JSON" : "?::text") + ")"
+          + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb=EXCLUDED.jsonb" : "")
+          + " RETURNING " + (returnId ? "id" : "''");
+      JsonArray jsonArray = new JsonArray()
+          .add(id == null ? UUID.randomUUID().toString() : id)
+          .add(convertEntity ? pojo2json(entity) : ((JsonArray)entity).getBinary(0));
+      sqlConnection.result().queryWithParams(sql, jsonArray, query -> {
+          statsTracker(SAVE_STAT_METHOD, table, start);
           if (query.failed()) {
             replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
             replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
-          statsTracker(SAVE_STAT_METHOD, table, start);
         });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1564,7 +1605,8 @@ public class PostgresClient {
           if (!queryHelper.transactionMode) {
             connection.close();
           }
-          log.error(countQuery.cause().getMessage(), countQuery.cause());
+          log.error("query with count: " + countQuery.cause().getMessage()
+            + " - " + queryHelper.countQuery, countQuery.cause());
           replyHandler.handle(Future.failedFuture(countQuery.cause()));
           return;
         }
@@ -1647,7 +1689,8 @@ public class PostgresClient {
       }
       try {
         if (query.failed()) {
-          log.error(query.cause().getMessage(), query.cause());
+          log.error("process query: " + query.cause().getMessage() + " - "
+            + queryHelper.selectQuery, query.cause());
           replyHandler.handle(Future.failedFuture(query.cause()));
         } else {
           replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
@@ -3359,13 +3402,15 @@ public class PostgresClient {
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       String locale = "en_US.UTF-8";
-      String OS = System.getProperty("os.name").toLowerCase();
-      if (OS.indexOf("win") >= 0) {
+      String operatingSystem = System.getProperty("os.name").toLowerCase();
+      if (operatingSystem.contains("win")) {
         locale = "american_usa";
       }
       rememberEmbeddedPostgres();
       embeddedPostgres.start("localhost", port, database, username, password,
         Arrays.asList("-E", "UTF-8", "--locale", locale));
+      Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
+
       log.info("embedded postgres started on port " + port);
     } else {
       log.info("embedded postgres is already running...");
@@ -3580,7 +3625,8 @@ public class PostgresClient {
 
    ParsedQuery pq = new ParsedQuery();
 
-   pq.setCountQuery(query.replaceFirst(COLUMN_CONTROL_REGEX, String.format(COUNT, countOn)).trim());
+   int idx = query.toUpperCase().indexOf(FROM);
+   pq.setCountQuery("SELECT COUNT(" + countOn + ") " + query.substring(idx).trim());
 
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){
@@ -3602,20 +3648,18 @@ public class PostgresClient {
    return pq;
   }
 
-  private static String escape(String str){
+  private static String escape(String str) {
     StringBuilder sb = new StringBuilder();
-    for (char c : str.toCharArray())
-    {
-        switch(c)
-        {
-            case '(':
-            case ')':
-            case '\\':
-                sb.append('\\');
-                // intended fall-through
-            default:
-                sb.append(c);
-        }
+    for (char c : str.toCharArray()) {
+      switch (c) {
+        case '(':
+        case ')':
+        case '\\':
+          sb.append('\\');
+        // intended fall-through
+        default:
+          sb.append(c);
+      }
     }
     return sb.toString();
   }

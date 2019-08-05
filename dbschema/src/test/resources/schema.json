@@ -28,7 +28,9 @@
           "fieldName": "type",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": true
+          "removeAccents": true,
+          "arraySubfield": "name",
+          "arrayModifiers": [ "languageId" ]
         }
       ],
       "ginIndex": [
@@ -42,6 +44,7 @@
       "fullTextIndex": [
         {
           "fieldName": "title",
+          "removeAccents": false,
           "tOps": "ADD"
         }
       ]
