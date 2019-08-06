@@ -27,6 +27,9 @@ INSERT INTO users (user_data) VALUES
     },
     {
       "alternativeTitle": "Second alternative title"
+    },
+    {
+      "alternativeTitle": "a; b; 2b94-4982-af-de-20; c"
     }
   ],
   "identifiers": [

@@ -1177,4 +1177,23 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void sqlInjectionInField(String testcase) {
     select(testcase);
   }
+
+  @Test
+  @Parameters({
+    "alternativeTitles = \"\" # b",
+    "alternativeTitles = first # b",
+    "alternativeTitles = 2b94-4982-af-de-20 # b",
+    "alternativeTitles = \"2b94 - 4982-af-de-20\" # ",
+    "alternativeTitles = \"2b94 -4982-af-de-20\" # b",
+    "alternativeTitles = \"2b94-4982-af-de-20\" # b",
+    "alternativeTitles = 2b94-4983-af-de-20 # ",
+    "alternativeTitles = \"a; b; 2b94-4982-af-de-20; c\" # b",
+    "alternativeTitles = \"a;b;2b94-4982-af-de-20;c\" # b",
+    "alternativeTitles = \"a  b  2b94-4982-af-de-20  c\" # b",
+    })
+  public void hyphens(String testcase) throws IOException, CQL2PgJSONException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
+      "users.user_data", Arrays.asList("name"));
+    select(aCql2pgJson, "array.sql", testcase);
+  }
 }

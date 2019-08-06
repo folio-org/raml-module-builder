@@ -1005,7 +1005,15 @@ public class CQL2PgJSON {
     switch (comparator) {
       case "=":
       case "adj":
-        tsTerm = String.join("<->", words);
+        tsTerm = words[0];
+        for (int i = 1; i < words.length; i++) {
+          if (words[i-1].contains("-") || words[i].contains("-")) {
+            tsTerm = tsTerm + " & ";
+          } else {
+            tsTerm = tsTerm + "<->";
+          }
+          tsTerm = tsTerm + words[i];
+        }
         break;
       case "any":
         tsTerm = String.join(" | ", words);
