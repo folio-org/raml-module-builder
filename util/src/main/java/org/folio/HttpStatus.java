@@ -2,6 +2,9 @@ package org.folio;
 
 /**
  * HTTP status codes of FOLIO's APIs.
+ * <p>
+ * See the <a href="https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml">IANA
+ * Hypertext Transfer Protocol (HTTP) Status Code Registry</a>.
  */
 public enum HttpStatus {
   /**
@@ -52,7 +55,15 @@ public enum HttpStatus {
   /**
    * 400, the request has malformed syntax and was rejected. Do not repeat without modifications.
    * <p>
-   * See <a href="https://tools.ietf.org/html/rfc1945#section-9.4">RFC 1945 Section 9.4</a>.
+   * See <a href="https://tools.ietf.org/html/rfc7231#section-6.5.1">RFC 7231 Section 6.5.1</a>.
+   * <p>
+   * FOLIO usually returns 400 with a text/plain response body, examples are the frequently used
+   * <a href="https://github.com/folio-org/raml/blob/raml1.0/rtypes/collection.raml">collection</a>
+   * and
+   * <a href="https://github.com/folio-org/raml/blob/raml1.0/rtypes/item-collection.raml">item-collection</a>
+   * resource types.
+   * <p>
+   * For an application/json response body see {@link #HTTP_VALIDATION_ERROR} (422).
    */
   HTTP_BAD_REQUEST(400),
 
@@ -78,8 +89,18 @@ public enum HttpStatus {
   HTTP_NOT_FOUND(404),
 
   /**
-   * 422, the validation of the request failed.  The body, the URI parameters or the HTTP
+   * 422, the validation of the request failed (unprocessable entity).  The body, the URI parameters or the HTTP
    * headers do not comply with the requirements published with the FOLIO API.
+   * <p>
+   * See <a href="https://tools.ietf.org/html/rfc4918#section-11.2">RFC 4918 Section 11.2</a>.
+   * <p>
+   * FOLIO usually returns 422 with an application/json response body as specified by the
+   * <a href="https://github.com/folio-org/raml/blob/raml1.0/traits/validation.raml">validation</a>
+   * trait with the
+   * <a href="https://github.com/folio-org/raml/blob/raml1.0/schemas/errors.schema">errors</a> and
+   * <a href="https://github.com/folio-org/raml/blob/raml1.0/schemas/error.schema">error</a> schemas.
+   * <p>
+   * For a text/plain response body see {@link #HTTP_BAD_REQUEST} (400).
    */
   HTTP_VALIDATION_ERROR(422),
 
