@@ -529,11 +529,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.city== Sovang # Lea Long",
     "address.city=  Sövang # Lea Long",
     "address.city== Sövang # Lea Long",
-    "address.city=  SØvang #",
+    "address.city=  SØvang # Lea Long",
     "address.city== SØvang #",
-    "address.city=  SOvang #",
+    "address.city=  SOvang # Lea Long",
     "address.city== SOvang #",
-    "address.city=  SÖvang #",
+    "address.city=  SÖvang # Lea Long",
     "address.city== SÖvang #",
   })
   public void unicodeCase(String testcase) {
@@ -554,13 +554,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({
     "address.city=  Søvang # Lea Long",
     "address.city== Søvang # Lea Long",
-    "address.city=  Sovang #",
+    "address.city=  Sovang # Lea Long",
     "address.city== Sovang #",
-    "address.city=  SOvang #",
+    "address.city=  SOvang # Lea Long",
     "address.city== SOvang #",
-    "address.city=  Sövang #",
+    "address.city=  Sövang # Lea Long",
     "address.city== Sövang #",
-    "address.city=  SÖvang #",
+    "address.city=  SÖvang # Lea Long",
     "address.city== SÖvang #",
   })
   public void unicodeAccents(String testcase) {
@@ -571,7 +571,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({
     "address.city= Søvang # Lea Long",
     "address.city== Søvang # Lea Long",
-    "address.city= SØvang #",
+    "address.city= SØvang # Lea Long",
     "address.city== SØvang #",
     "address.city=  Sovang #",
     "address.city== Sovang #",

@@ -37,7 +37,7 @@
           "fieldName": "address.city",
           "tOps": "ADD",
           "caseSensitive": true,
-          "removeAccents": false
+          "removeAccents": true
         },
         {
           "fieldName": "contributors",
