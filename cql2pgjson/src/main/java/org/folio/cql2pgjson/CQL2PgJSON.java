@@ -1021,7 +1021,7 @@ public class CQL2PgJSON {
    */
   private String queryByLike(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
     String comparator, CqlModifiers modifiers, Table targetTable) throws QueryValidationException {
-    
+
     String indexText = vals.getIndexText();
     String sql = null;
 
@@ -1030,18 +1030,19 @@ public class CQL2PgJSON {
       final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
     } else {
-    Index schemaIndex = null;
-    if(targetTable != null ) {
-      schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
-    }
+      Index schemaIndex = null;
+      if (targetTable != null) {
+        schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
+      }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-    String indexMatch = wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+      String indexMatch = wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator
+          + wrapInLowerUnaccent(like, schemaIndex);
       if (modifiers.getCqlAccents() == CqlAccents.IGNORE_ACCENTS && modifiers.getCqlCase() == CqlCase.IGNORE_CASE) {
         sql = indexMatch;
       } else {
-        sql = indexMatch + " AND " +
-        wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+        sql = indexMatch + " AND " + wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator
+            + wrapInLowerUnaccent(like, schemaIndex);
       }
     }
 
