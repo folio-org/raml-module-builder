@@ -620,7 +620,7 @@ public class CQL2PgJSON {
       return multiFieldProcessing(foreignTarget[1]);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    vals.setIndexJson(index2sqlJson(this.jsonField, foreignTarget[1]));
+    vals.setIndexJson(index2sqlJson(foreignTableJsonb, foreignTarget[1]));
     vals.setIndexText(index2sqlText(foreignTableJsonb, foreignTarget[1]));
     return vals;
   }
