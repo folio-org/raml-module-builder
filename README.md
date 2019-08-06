@@ -68,6 +68,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [A Little More on Validation](#a-little-more-on-validation)
 * [Advanced Features](#advanced-features)
 * [Additional Tools](#additional-tools)
+* [JSON Schema migration for module update](#json-schema-migration-for-module-update) 
 * [Some REST examples](#some-rest-examples)
 * [Additional information](#additional-information)
 
@@ -2216,6 +2217,151 @@ RMB will return a response to the client as follows:
 
 RMB will not cross check the raml to see that these statuses have been defined for the endpoint. This is the developer's responsibility.
 
+
+## JSON Schema migration for module update
+
+The module update adds a few requirements to the database migration.
+We no longer need to just adapt the database in the way it’s required by the new version of the module; we also need to do it in a way that the old and the new version of the module can work with the database.
+That means that all migrations (schema changes) need to be backward-compatible to allow to perform a seamless rollback (database backup-restore could be quite expensive operations to perform it frequently) to the previous module’s version in case something goes wrong during the update operation.
+But not all operations, e.g., renaming or removing a property from JSON schema or adding a property with a default value, are backward compatible.
+These operations require a multi-step process that enables us to perform the migration without breaking our system.
+
+A general approach for roll out a new version for RMB based modules (platform-core, platform-complete)
+* Register a module descriptor for the new version of the module using POST /_/proxy/modules
+* Deploy a new version of the module using POST /_/discovery/modules
+* Install the new version of the module for a tenant using POST /_/proxy/tenants/{tenant}/install
+* Check the log of the module for any errors or issues.
+
+For RMB based modules a DB migration will be done automatically based on the content of the schema.json provided within the module. Indeed there are exceptions, but each such case must be considered separately.
+
+
+#### Recommendations for the creation and maintenance of the schema.json file
+* For each table in the “tables” section provide “fromModuleVersion” value even if this table has not been added in this version and already exists in the database. It will eliminate the generation and running of unnecessary SQL statements for the table. You can provide a value for the first production version for example
+    ```
+      {
+        "tableName": "loan_type",
+        "fromModuleVersion": "mod-inventory-storage-1.0.0",
+        ...
+    ```
+
+* In case you need to perform additional actions for a table, use “customSnippetPath” to provide a relative path to a file with custom SQL commands for this specific table. Statements from this file will be run at the very end of the process of updating or changing this table.
+    ```
+    {
+     "tableName": "instance_source_marc",
+     "fromModuleVersion": "mod-inventory-storage-1.0.0",
+     "withMetadata": true,
+     "customSnippetPath": "instanceSourceMarc.sql"
+    }
+    ```
+ 
+* Use “scripts” section to run custom SQLs before table/view creation/updates and/or after all tables/views have been created/updated. You can omit a schema name in your SQL statements because “SET search_path TO public, <your_module_schema>” statement will be executed beforehand.
+
+### How to check schema migration for a new version of a RMB-based module
+
+You can check a version update for the module for two types of deployment
+* Using vagrant box folio/testing - this one is preferable
+* Using folio platform deployed in k8s cluster
+
+#### Steps to reproduce a module’s update
+
+
+1. Build the next version of the module in you vagrant box
+    * Clone your module's repository into vagrant box and checkout appropriate branch 
+    * Check and correct the value for launchDescriptor.dockerImage in ModuleDescriptor.json, because your local docker image will be used, set “dockerPull” to false, for example
+        ```
+        "launchDescriptor": {
+            "dockerImage": "local/${artifactId}:${version}",
+            "dockerArgs": {
+              "HostConfig" : { "PortBindings": { "8081/tcp": [{ "HostPort": "%p" }]} }
+            },
+            "dockerPull" : false,
+        ```
+    * Build and package the module using mvn -DskipTests clean package
+          
+2. Run folio/testing vagrant box in your local environment
+3. Register a new version of the module, to do this run the CURL command from the root folder where you've cloned the module into. Provide a correct value for <okapi-host>
+    ```
+    curl -X POST -D - -w '\n' -H "Content-type: application/json" -d @./target/ModuleDescriptor.json http://<okapi-host>:9130/_/proxy/modules
+    ```  
+4. Check the new version is registered successfully, you should see your version in the result list. Provide a correct value for ```artifactId```
+    ```
+   curl -w '\n' http://<okapi-host>:9130/_/proxy/modules | grep ${artifactId} 
+    ```
+5. Build a Docker image locally - run docker build command from the root folder of the module source. Provide correct values for ```artifactId``` and ```version``` 
+    ```
+   docker build -t local/${artifactId}:${version} ./
+    ```
+6. Deploy the new version to discovery
+    * Run the command below.  Provide correct values for ```artifactId``` and ```version```
+        ```
+      cat > /tmp/mod-deploy.json <<END
+      {
+        "srvcId" : "${artifactId}-${version}",
+        "nodeId" : "10.0.2.15",
+        "descriptor" : {
+          "dockerImage" : "local/${artifactId}:${version}",
+          "dockerPull" : false,
+          "env" : [ {
+            "name" : "DB_MAXPOOLSIZE",
+            "value" : "5"
+          }, {
+            "name" : "DB_USERNAME",
+            "value" : "folio_admin"
+          }, {
+            "name" : "DB_PORT",
+            "value" : "5432"
+          }, {
+            "name" : "JAVA_OPTIONS",
+            "value" : "-Xmx512m"
+          }, {
+            "name" : "DB_HOST",
+            "value" : "10.0.2.15"
+          }, {
+            "name" : "DB_DATABASE",
+            "value" : "okapi_modules"
+          }, {
+            "name" : "DB_PASSWORD",
+            "value" : "folio_admin"
+          } ],
+          "dockerArgs" : {
+            "HostConfig" : {
+              "PortBindings" : {
+                "8081/tcp" : [ {
+                  "HostPort" : "%p"
+                } ]
+              }
+            }
+          }
+        }
+      }
+      END
+        ```
+    * Run the CURL command
+        ```
+        curl -X POST -D - -w '\n' -H "Content-type: application/json" -d @/tmp/mod-deploy.json http://<okapi-host>:9130/_/discovery/modules
+        ```
+7. Update the module’s version for a tenant, fill in an actual value for the ```from``` field and provide correct values for ```artifactId``` and ```version```    
+    *  Run the command below
+        ```
+        cat > /tmp/mod-update.json <<END
+        [
+          {
+            "id": "${artifactId}-${version}",
+            "action": "enable",
+            "from": "<Version of the module enabled for a tenant>"
+          }
+        ]
+        END
+        ```
+    * Run the CURL command
+        ```
+        curl -w '\n' -X POST -d@/tmp/mod-update.json http://<okapi-host>:9130/_/proxy/tenants/diku/install
+        ```
+8. Check the new version is enabled    
+    ```
+    curl -w '\n' http://<okapi-host>:9130/_/proxy/tenants/diku/modules | grep inventory
+   ```
+9. Check the log file and changes in the database schema for your module
 
 
 ## Some REST examples
