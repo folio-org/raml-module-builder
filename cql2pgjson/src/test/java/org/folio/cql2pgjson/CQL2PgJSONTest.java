@@ -571,7 +571,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({
     "address.city= Søvang # Lea Long",
     "address.city== Søvang # Lea Long",
-    "address.city= SØvang # Lea Long",
+    "address.city= SØvang #",
     "address.city== SØvang #",
     "address.city=  Sovang #",
     "address.city== Sovang #",
