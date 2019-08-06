@@ -6,6 +6,7 @@ import org.junit.runner.RunWith;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -84,6 +85,7 @@ public class ForeignKeyGenerationTest  {
     assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE tableb.jsonb->>'otherindex' >='y0')", sql);
   }
 
+  @Ignore
   @Test
   public void ForeignKeySearchWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
@@ -94,6 +96,7 @@ public class ForeignKeyGenerationTest  {
     cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
   }
 
+  @Ignore
   @Test
   public void ForeignKeySearchWithMalformedFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
@@ -121,6 +124,26 @@ public class ForeignKeyGenerationTest  {
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.id == 1").toString();
     assertTrue(sql, sql.contains("'tableb'"));
+  }
+
+  @Test
+  public void testSearchInstanceByItemBarcode() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("instance");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/subquery.json");
+    String sql = cql2pgJson.toSql("item.barcode == 7834324634").toString();
+    String expected = "WHERE instance.id IN  ( SELECT (holdings_record.jsonb->>'instanceId')::UUID from holdings_record WHERE holdings_record.id IN  ( SELECT (item.jsonb->>'holdingsRecordId')::UUID from item WHERE lower(f_unaccent(item.jsonb->>'barcode')) LIKE lower(f_unaccent('7834324634'))))";
+    assertEquals(expected, sql);
+    System.out.println(sql);
+  }
+
+  @Test
+  public void testSearchItemByInstanceTitle() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("item");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/subquery.json");
+    String sql = cql2pgJson.toSql("instance.title = 'Olmsted in Chicago'").toString();
+    String expected = "WHERE (item.jsonb->>'holdingsRecordId')::UUID IN  ( SELECT id from holdings_record WHERE (holdings_record.jsonb->>'instanceId')::UUID IN  ( SELECT id from instance WHERE to_tsvector('simple', lower(f_unaccent(instance.jsonb->>'title'))) @@ to_tsquery('simple', lower(f_unaccent('Olmsted<->in<->Chicago''')))))";
+    assertEquals(expected, sql);
+    System.out.println(sql);
   }
 
 }
