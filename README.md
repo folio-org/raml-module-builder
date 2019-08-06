@@ -1076,13 +1076,39 @@ If the search term is a number then a numeric mode is used for "==", "<>", "<", 
 
 Limited cross table searches are supported.  If you desire a join across tables the following conditions must be met:
 
-* there must be a foreign key from the child field -> parent field.
+* The main table (table1) and the other table to join (table2) must be in a parent->child relation and schema.json must have a foreign key declaration in table2 section of schema.json where a table2 field must match table1.id.
+* No support for child->parent relation from main table table1 field to table2.id
 * the join desired index must be only 1 table deep
   - e.g.  table1 -> table2 not table1 -> table2 -> table3
-* precede the index you want to search with the table name in Camel Case.
+* precede the index you want to search with the table name in Camel Case. There is no change with table1 fields, use them the regular way without table name prefix.  
   - e.g. someTableName.indexYouWantToSearch = value
-* currently no other operators are supported.  They will be added at a later date.
-
+* The table2 fields to be used must have an index declared in schema.json, it must be of type "index", not "likeIndex", "uniqueIndex", "ginIndex", or "fullTextIndex".
+* currently no other operators are supported.  They will be added at a later date. Attention: Using other operators (e.g. <>) will silently use the = operator.
+* Example Schema: 
+{
+  "tables": [
+    {
+      "tableName": "table1"
+    },
+    {
+      "tableName": "table2",
+      "index": [
+        {
+          "fieldName": "fieldYouWantToSearch",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "table1Id",
+          "targetTable": "table1"
+        }
+      ]
+    }
+  ]
+}
 
 ### CQL2PgJSON: Exceptions
 
