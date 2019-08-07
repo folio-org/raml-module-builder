@@ -19,12 +19,12 @@ import org.folio.cql2pgjson.model.CqlCase;
 import org.folio.cql2pgjson.model.CqlModifiers;
 import org.folio.cql2pgjson.model.CqlSort;
 import org.folio.cql2pgjson.model.CqlTermFormat;
+import org.folio.cql2pgjson.model.DbFkInfo;
 import org.folio.cql2pgjson.model.DbIndex;
 import org.folio.cql2pgjson.model.IndexTextAndJsonValues;
 import org.folio.cql2pgjson.model.SqlSelect;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
-import org.folio.rest.persist.ddlgen.ForeignKeys;
 import org.folio.rest.persist.ddlgen.Index;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.Table;
@@ -62,6 +62,8 @@ public class CQL2PgJSON {
 
   /** name of the primary key column */
   private static final String PK_COLUMN_NAME = "id";
+
+  private static final String JSONB_COLUMN_NAME = "jsonb";
 
   private final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
@@ -539,14 +541,24 @@ public class CQL2PgJSON {
     if ("cql.allRecords".equalsIgnoreCase(node.getIndex())) {
       return "true";
     }
-    //determine if this table is real by checking in schema
-    //determine right here whether this node deals with a foreign term on right or left side
-    Table indexTable = checkForForeignLocationOfIndex(node);
-    if (indexTable != null) {
-      //we are doing a foreign key search
-      //determine foreign key linking tables
-      return subQuery(node.getIndex(), node, indexTable);
+
+    // determine if index is in a foreign table
+    if (dbTable != null) {
+      String srcTabName = dbTable.getTableName();
+      String targetTabAlias = node.getIndex().split("\\.")[0];
+      List<DbFkInfo> fks = DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, srcTabName, targetTabAlias);
+      if (!fks.isEmpty()) {
+        // child to parent
+        return pgSubQuery(node, fks, true);
+      } else {
+        // parent to child
+        fks = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, targetTabAlias, srcTabName);
+        if (!fks.isEmpty()) {
+          return pgSubQuery(node, fks, false);
+        }
+      }
     }
+
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
         throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
@@ -560,106 +572,50 @@ public class CQL2PgJSON {
     return index2sql(node.getIndex(), node);
   }
 
-  //method to determine if the right side of the node is a foreign term and returns the table it is attached to is so
-  private Table checkForForeignLocationOfIndex(CQLTermNode node) {
-    String[] idxParts = node.getIndex().split("\\.");
-    //if the table is not supplied we do not have enough information to proceed, thereby assume it is in current table
-    if(idxParts.length <= 1) {
-      return null;
-    }
-    return getForeignTable(idxParts[0]);
-  }
+  private String pgSubQuery(CQLTermNode node, List<DbFkInfo> fks, boolean childToParent) throws QueryValidationException {
+    String currentTableName = dbTable.getTableName();
+    Table targetTable = null;
 
-  private Table getForeignTable(String tableName) {
-    if (dbTable == null || dbTable.getTableName().equals(tableName)) {
-      return null;
-    }
-    for (Table table : dbSchema.getTables()) {
-      if (table.getTableName().equals(tableName)) {
-        return table;
+    StringBuilder sb = new StringBuilder();
+    if (childToParent) {
+      // child to parent
+      targetTable = DbSchemaUtils.getTable(dbSchema, fks.get(fks.size() -1).getTargetTable());
+      for (DbFkInfo fk : fks) {
+        sb.append("(" + index2sqlText(currentTableName + "." + JSONB_COLUMN_NAME, fk.getField()) + ")::UUID IN ");
+        sb.append(" ( SELECT " + PK_COLUMN_NAME + " from " + fk.getTargetTable() + " WHERE ");
+        currentTableName = fk.getTargetTable();
+      }
+   } else {
+      // parent to child
+      targetTable = DbSchemaUtils.getTable(dbSchema, fks.get(0).getTable());
+      for (int i = fks.size() - 1 ; i >= 0; i--) {
+        DbFkInfo fk = fks.get(i);
+        sb.append(currentTableName + "." + PK_COLUMN_NAME + " IN ");
+        sb.append(" ( SELECT " + "(" + index2sqlText(fk.getTable() + "." + JSONB_COLUMN_NAME, fks.get(i).getField()) + ")::UUID");
+        sb.append(" from " + fk.getTable() + " WHERE ");
+        currentTableName = fk.getTable();
       }
     }
-    return null;
+    String [] foreignTarget = node.getIndex().split("\\.", 2);
+    sb.append(indexNodeForForeignTable(node, targetTable, foreignTarget));
+    for (int i = 0; i < fks.size(); i++) {
+      sb.append(")");
+    }
+    return sb.toString();
   }
 
-  private String subQuery(String index, CQLTermNode node, Table correlation) throws QueryValidationException {
-    String [] foreignTarget = index.split("\\.");
-    ForeignKeys childParentForeignKey = findForeignKey(dbTable, dbTable.getPkColumnName(), correlation);
-    boolean indexInTable =  childParentForeignKey == null;
-    ForeignKeys fkey = indexInTable ? findForeignKey(correlation, PK_COLUMN_NAME, dbTable) : childParentForeignKey;
-    Table indexTable = indexInTable ? dbTable : correlation;
+  private String indexNodeForForeignTable(CQLTermNode node, Table targetTable, String[] foreignTarget)
+      throws QueryValidationException {
 
+    String foreignTableJsonb = targetTable.getTableName() + "." + JSONB_COLUMN_NAME;
 
-    if (fkey == null) {
-      String msg = "subQuery: No foreignKey for table " + foreignTarget[0] + " found";
-      logger.log(Level.SEVERE, msg);
-      throw new QueryValidationException(msg);
-    }
-    if (fkey.getTargetTable() == null) {
-      String msg = "subQuery: Missing target table for foreignKey field " + fkey.getFieldName();
-      logger.log(Level.SEVERE, msg);
-      throw new QueryValidationException(msg);
-    }
-    String match = foreignKeyMatch(node, indexTable, foreignTarget);
-    if (indexInTable) {
-      return formatParentChild(foreignTarget[0], fkey, match);
-    } else {
-      return formatChildParent(foreignTarget[0], fkey, match);
-    }
-  }
-  private String foreignKeyMatch(CQLTermNode node,  Table targetTable,String [] foreignTarget)  throws QueryValidationException {
-    String foreignTableJsonb = foreignTarget[0] + ".jsonb";
-
-    IndexTextAndJsonValues vals = getSubQueryIndexTextAndJsonValues( foreignTableJsonb, foreignTarget );
-    CqlModifiers cqlModifiers = new CqlModifiers(node);
-    String indexField = foreignTarget[1];
-    return indexNode(indexField,targetTable, node, vals, cqlModifiers);
-  }
-  private IndexTextAndJsonValues getSubQueryIndexTextAndJsonValues(String foreignTableJsonb,String [] foreignTarget ) throws QueryValidationException {
-    if (jsonField == null) {
-      return multiFieldProcessing(foreignTarget[1]);
-    }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
     vals.setIndexJson(index2sqlJson(foreignTableJsonb, foreignTarget[1]));
     vals.setIndexText(index2sqlText(foreignTableJsonb, foreignTarget[1]));
-    return vals;
-  }
 
-  private String formatChildParent(String foreignTableName, ForeignKeys fkey,
-      String match) throws QueryValidationException {
-
-    return dbTable.getTableName() + "." + PK_COLUMN_NAME + " IN "
-        + " ( SELECT " + "(" + index2sqlText(foreignTableName + ".jsonb", fkey.getFieldName()) + ")::UUID"
-        + " from " + foreignTableName + " WHERE " + match + ")";
-  }
-
-  private String formatParentChild(String foreignTableName, ForeignKeys fkey, String match)
-      throws QueryValidationException {
-
-    return "(" + index2sqlText(dbTable.getTableName() + ".jsonb", fkey.getFieldName()) + ")::UUID" + " IN "
-        + " ( SELECT " + PK_COLUMN_NAME + " from " + foreignTableName + " WHERE " + match + ")";
-  }
-
-
-  /**
-   * Return the ForeignKeys from targetTable where fieldName refers to field of the
-   * current table.
-   * @param field  field to find as foreign key
-   * @param targetTable  where to search
-   * @return the ForeignKeys if found, null otherwise
-   */
-  private static ForeignKeys findForeignKey(Table currentTable, String field, Table targetTable) {
-    String fieldName = currentTable.getTableName() + field;
-    if (targetTable.getForeignKeys() == null) {
-      return null;
-    }
-    for (ForeignKeys key : targetTable.getForeignKeys()) {
-      if (fieldName.equalsIgnoreCase(key.getFieldName())) {
-        return key;
-      }
-    }
-
-    return null;
+    CqlModifiers cqlModifiers = new CqlModifiers(node);
+    String indexField = foreignTarget[1];
+    return indexNode(indexField, targetTable, node, vals, cqlModifiers);
   }
 
   /**
