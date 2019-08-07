@@ -138,7 +138,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       String blob = "ho_jsonb";
       String tablename = "users_groups_view";
 
-      
+
       String where = aCql2pgJson.cql2pgJson(cql);
       //sql = "select user_data->'name' from users where " + where;
       sql = "select " + blob + "->'name' from " + tablename + " where " + where;
@@ -515,8 +515,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void unicode(String testcase) {
     select(testcase);
-    
-    
+
+
     select(testcase.replace("==", "==/ignoreCase/ignoreAccents ")
                    .replace("= ", "= /ignoreCase/ignoreAccents "));
   }
@@ -524,7 +524,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
     "address.city=  Søvang # Lea Long",
-    "address.city== Søvang # Lea Long",    
+    "address.city== Søvang # Lea Long",
     "address.city=  Sovang # Lea Long",
     "address.city== Sovang # Lea Long",
     "address.city=  Sövang # Lea Long",
@@ -548,6 +548,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
  })
   public void unicodeAccentsNonWindows(String testcase) {
     select(cql2pgjsonRespectAccents,testcase);
+    select(cql2pgjsonRespectCase,testcase);
   }
 
   @Test
@@ -569,10 +570,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "address.city= Søvang # Lea Long",
+    "address.city=  Søvang # Lea Long",
     "address.city== Søvang # Lea Long",
-    "address.city= SØvang #",
-    "address.city== SØvang #",
     "address.city=  Sovang #",
     "address.city== Sovang #",
     "address.city=  SOvang #",
@@ -1044,7 +1043,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, "array.sql", testcase);
     logger.fine("arrayRelationModifiers(): " + testcase + " OK");
   }
-  
+
   @Test
   @Parameters({
     "((contributors = \"foo\") and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # ",
