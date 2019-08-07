@@ -210,6 +210,9 @@ public class SchemaMaker {
               throw new IllegalArgumentException("full text index does not support case sensitive: "
                   + t.getTableName() + " " + u.getFieldName());
             }
+            // this suppresses the lower() in the CREATE INDEX.
+            // Cql2PgJson does not use this but reads the schema.json from scratch
+            u.setCaseSensitive(true);
             String path = convertDotPath2PostgresNotation(null,u.getFieldName(), true, u, true);
             u.setFieldPath(path);
             //remove . from path since this is incorrect syntax in postgres
