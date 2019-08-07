@@ -610,9 +610,6 @@ public class CQL2PgJSON {
     String foreignTableJsonb = targetTable.getTableName() + "." + JSONB_COLUMN_NAME;
 
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    if (jsonField == null) {
-      vals = multiFieldProcessing(foreignTarget[1]);
-    }
     vals.setIndexJson(index2sqlJson(foreignTableJsonb, foreignTarget[1]));
     vals.setIndexText(index2sqlText(foreignTableJsonb, foreignTarget[1]));
 
