@@ -1078,6 +1078,8 @@ Limited cross table searches are supported.  If you desire a join across tables 
 * The table2 fields to be used must have an index declared in schema.json, it must be of type "index", not "likeIndex", "uniqueIndex", "ginIndex", or "fullTextIndex".
 * Use table.index = * in order to do a filter query with no condition
 * Example Schema: 
+
+```
 {
   "tables": [
     {
@@ -1102,6 +1104,7 @@ Limited cross table searches are supported.  If you desire a join across tables 
     }
   ]
 }
+```
 
 ### CQL2PgJSON: Exceptions
 
