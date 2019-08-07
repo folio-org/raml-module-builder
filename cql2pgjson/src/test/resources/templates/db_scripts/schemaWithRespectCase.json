@@ -11,14 +11,6 @@
           "removeAccents": true
         },
         {
-          "fieldName": "contactInformation.phone",
-          "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true,
-          "arraySubfield": "number",
-          "arrayModifiers": ["type"]
-        },       
-        {
           "fieldName": "address.city",
           "tOps": "ADD",
           "caseSensitive": true,
@@ -38,41 +30,6 @@
           "tOps": "ADD",
           "caseSensitive": true,
           "removeAccents": true
-        },
-        {
-          "fieldName": "contributors",
-          "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": false,
-          "arraySubfield": "name",
-          "arrayModifiers": ["contributorNameTypeId", "lang"]
-        },
-        {
-          "fieldName": "other",
-          "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": false,
-          "arrayModifiers": ["noArraySubfield"]
-        }
-      ],
-      "index": [
-        {
-          "fieldName": "address.zip",
-          "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true
-        },
-        {
-          "fieldName": "lang",
-          "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true
-        }
-      ],
-      "foreignKeys": [
-        {
-          "fieldName": "group",
-          "targetTable": "groups"
         }
       ]
     }

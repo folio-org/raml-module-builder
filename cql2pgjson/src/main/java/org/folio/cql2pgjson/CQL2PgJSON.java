@@ -898,11 +898,8 @@ public class CQL2PgJSON {
     case "=":
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
         return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
-      } else if (CqlAccents.IGNORE_ACCENTS == modifiers.getCqlAccents() &&
-          CqlCase.IGNORE_CASE == modifiers.getCqlCase()) {
-        return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
       } else {
-        return queryByLike(index, dbIndex.isGin(), vals, node, comparator, modifiers, targetTable);
+        return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
       }
     case "adj":
     case "all":
@@ -959,9 +956,15 @@ public class CQL2PgJSON {
       schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getFullTextIndex());
     }
     String sql = queryByFt(indexText, term, comparator, schemaIndex);
+
+    // array modifier
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
-      sql = sql + " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
+      sql += " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
+    }
+
+    if (schemaIndex != null && schemaIndex.isCaseSensitive()) {
+      throw new CQLFeatureUnsupportedException("full text index does not support case sensitive: " + index);
     }
 
     if (!hasFtIndex) {
