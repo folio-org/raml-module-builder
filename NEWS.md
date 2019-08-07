@@ -1,21 +1,17 @@
-## 26.2.4 2019-07-26
+## 26.3.0 2019-08-07
 
- * RMB work for MODINVSTOR-319: array queries with additional clauses may fail
+ * RMB-443 HttpStatus.java: Explain FOLIO's 400 and 422 status code usage
+ * RMB-442 Fix security vulnerabilities reported in
+   jackson-databind >= 2.0.0, < 2.9.9.2
  * RMB-440 Skip logging GIN index missing if b-tree index can be used
-
-## 26.2.3 2019-07-24
-
- * RMB-439 Remove hyphen token for full search to unblock CIRCSTORE-138
-
-## 26.2.2 2019-07-22
-
- * RMB-435 CVE-2019-12814 jackson-databind security vulnerability
+ * RMB-439 Remove "-" token for full search to unblock CIRCSTORE-138
+ * RMB-437 Fix queries with facet fail
  * RMB-436 Log both CQL and SQL within the missing index line
- * RMB-430 queries with facet fail
-
-## 26.2.1 2019-07-17
-
- * RMB-430 Audit table PK (id) unique constraint violation on concurrent queries
+ * RMB-435 CVE-2019-12814 jackson-databind security vulnerability
+ * RMB-411 Implement poLine.id = * style cql for subquery
+ * RMB-395 Aupport nested sub queries across multiple tables
+ * RMB-430 Audit table PK (id) unique constraint violation on
+   concurrent queries
 
 ## 26.2.0 2019-07-11
 
