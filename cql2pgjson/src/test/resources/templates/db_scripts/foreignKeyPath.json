@@ -13,8 +13,22 @@
          ]
       },
       {
+         "tableName":"b2",
+         "foreignKeys":[
+            {
+               "fieldName":"aId",
+               "targetTable":"a"
+            }
+         ]
+      },
+      {
          "tableName":"c",
          "foreignKeys":[
+            {
+               "fieldName":"b2Id",
+               "targetTable":"b2",
+               "targetTableAlias":"b2Alias"
+            },
             {
                "fieldName":"bId",
                "targetTable":"b",
