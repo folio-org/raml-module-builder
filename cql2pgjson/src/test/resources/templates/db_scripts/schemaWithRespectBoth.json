@@ -1,0 +1,37 @@
+{
+  "tables": [
+    {
+      "tableName": "users",
+      "withAuditing": false,
+      "ginIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "address.city",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "name",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false,
+          "arraySubfield": "noArrayModifiers"
+        },
+        {
+          "fieldName": "address.city",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false
+        }
+      ]
+    }
+  ]
+}

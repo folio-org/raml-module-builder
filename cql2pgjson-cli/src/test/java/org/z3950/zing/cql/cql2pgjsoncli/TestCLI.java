@@ -103,7 +103,7 @@ public class TestCLI {
   @Test
   public void testCLIName() throws Exception {
     testCLI("title=foo",
-        "select * from instance where to_tsvector('simple', f_unaccent(instance.jsonb->>'title')) @@ to_tsquery('simple', f_unaccent('foo'))");
+        "select * from instance where to_tsvector('simple', lower(f_unaccent(instance.jsonb->>'title'))) @@ to_tsquery('simple', lower(f_unaccent('foo')))");
   }
 
   @Test(expected = QueryValidationException.class)

@@ -917,11 +917,6 @@ Use quotes if the search string contains a space, for example `title = "Harry Po
 
 ### CQL: Modifiers
 
-Functional modifiers: `ignoreCase`, `respectCase` and `ignoreAccents`, `respectAccents`
-are implemented for all characters (ASCII and Unicode). Default is `ignoreCase` and `ignoreAccents`.
-Example for respecting case and accents:
-`groupId==/respectCase/respectAccents 'd0faefc6-68c0-4612-8ee2-8aeaf058349d'`
-
 Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 `honorWhitespace`, `substring`.
 
@@ -1076,14 +1071,12 @@ If the search term is a number then a numeric mode is used for "==", "<>", "<", 
 
 Limited cross table searches are supported.  If you desire a join across tables the following conditions must be met:
 
-* The main table (table1) and the other table to join (table2) must be in a parent->child relation and schema.json must have a foreign key declaration in table2 section of schema.json where a table2 field must match table1.id.
-* No support for child->parent relation from main table table1 field to table2.id
-* the join desired index must be only 1 table deep
+* The join desired index must be only 1 table deep
   - e.g.  table1 -> table2 not table1 -> table2 -> table3
 * precede the index you want to search with the table name in Camel Case. There is no change with table1 fields, use them the regular way without table name prefix.  
   - e.g. someTableName.indexYouWantToSearch = value
 * The table2 fields to be used must have an index declared in schema.json, it must be of type "index", not "likeIndex", "uniqueIndex", "ginIndex", or "fullTextIndex".
-* currently no other operators are supported.  They will be added at a later date. Attention: Using other operators (e.g. <>) will silently use the = operator.
+* Use table.index = * in order to do a filter query with no condition
 * Example Schema: 
 {
   "tables": [

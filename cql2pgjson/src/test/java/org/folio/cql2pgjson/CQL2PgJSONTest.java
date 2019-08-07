@@ -34,6 +34,9 @@ import junitparams.Parameters;
 
 @RunWith(JUnitParamsRunner.class)
 public class CQL2PgJSONTest extends DatabaseTestBase {
+  private static  CQL2PgJSON cql2pgjsonRespectCase;
+  private static CQL2PgJSON cql2pgjsonRespectAccents;
+  private static CQL2PgJSON cql2pgjsonRespectBoth;
   private static Logger logger = Logger.getLogger(CQL2PgJSONTest.class.getName());
   private static CQL2PgJSON cql2pgJson;
 
@@ -42,6 +45,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     setupDatabase();
     runSqlFile("users.sql");
     cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+    cql2pgjsonRespectCase = new CQL2PgJSON("users.user_data", Arrays.asList("name","email"));
+    cql2pgjsonRespectCase.setDbSchemaPath("./templates/db_scripts/schemaWithRespectCase.json");
+    cql2pgjsonRespectAccents = new CQL2PgJSON("users.user_data", Arrays.asList("name","email"));
+    cql2pgjsonRespectAccents.setDbSchemaPath("./templates/db_scripts/schemaWithRespectAccents.json");
+    cql2pgjsonRespectBoth = new CQL2PgJSON("users.user_data", Arrays.asList("name","email"));
+    cql2pgjsonRespectBoth.setDbSchemaPath("./templates/db_scripts/schemaWithRespectBoth.json");
   }
 
   @AfterClass
@@ -129,7 +138,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       String blob = "ho_jsonb";
       String tablename = "users_groups_view";
 
-      
+
       String where = aCql2pgJson.cql2pgJson(cql);
       //sql = "select user_data->'name' from users where " + where;
       sql = "select " + blob + "->'name' from " + tablename + " where " + where;
@@ -324,10 +333,16 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "\"lEA LoNg\"                   # Lea Long",
     //"name == \"LEA long\"         # Lea Long",
     "name == \"Lea Long\"           # Lea Long",
-    "name ==/respectCase \"LEA long\"           #", // == means exact match, case and everything
   })
   public void caseInsensitive(String testcase) {
     select(testcase);
+  }
+  @Test
+  @Parameters({
+    "name ==\"LEA long\"           #", // == means exact match, case and everything
+  })
+  public void caseSensitive(String testcase) {
+    select(cql2pgjsonRespectCase,testcase);
   }
 
   @Test
@@ -433,8 +448,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "                     lang ==/respectAccents []                      # a",
-    "cql.allRecords=1 NOT lang <>/respectAccents []                      # a; n",
+    "                     lang == []                      # a",
+    "cql.allRecords=1 NOT lang <> []                      # a; n",
     "lang = en                                # b; c; d; f; g; h; i",
 
     // note that \"en\" also matches case f ["\"en"]
@@ -500,94 +515,88 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void unicode(String testcase) {
     select(testcase);
+
+
     select(testcase.replace("==", "==/ignoreCase/ignoreAccents ")
                    .replace("= ", "= /ignoreCase/ignoreAccents "));
   }
 
   @Test
   @Parameters({
-    "address.city= /respectCase Søvang # Lea Long",
-    "address.city==/respectCase Søvang # Lea Long",
-    "address.city= /respectCase SØvang #",
-    "address.city==/respectCase SØvang #",
-    "address.city= /respectCase Sovang # Lea Long",
-    "address.city==/respectCase Sovang # Lea Long",
-    "address.city= /respectCase SOvang #",
-    "address.city==/respectCase SOvang #",
-    "address.city= /respectCase Sövang # Lea Long",
-    "address.city==/respectCase Sövang # Lea Long",
-    "address.city= /respectCase SÖvang #",
-    "address.city==/respectCase SÖvang #",
+    "address.city== Søvang # Lea Long",
+    "address.city== Sovang # Lea Long",
+    "address.city== Sövang # Lea Long",
+    "address.city== SØvang #",
+    "address.city== SOvang #",
+    "address.city== SÖvang #",
+    // the same using = is a full text search and
+    // full text does not support respect case.
   })
   public void unicodeCase(String testcase) {
-    select(testcase);
+    select(cql2pgjsonRespectCase, testcase);
   }
 
   @Ignore("Needs locale/collation. Currently is C.")
   @Test
   @Parameters({
-    "address.city= /respectAccents SØvang # Lea Long",
-    "address.city==/respectAccents SØvang # Lea Long",
+    "address.city=  SØvang # Lea Long",
+    "address.city== SØvang # Lea Long",
  })
   public void unicodeAccentsNonWindows(String testcase) {
-    select(testcase);
+    select(cql2pgjsonRespectAccents, testcase);
+    select(cql2pgjsonRespectCase, testcase);
   }
 
   @Test
   @Parameters({
-    "address.city= /respectAccents Søvang # Lea Long",
-    "address.city==/respectAccents Søvang # Lea Long",
-    "address.city= /respectAccents Sovang #",
-    "address.city==/respectAccents Sovang #",
-    "address.city= /respectAccents SOvang #",
-    "address.city==/respectAccents SOvang #",
-    "address.city= /respectAccents Sövang #",
-    "address.city==/respectAccents Sövang #",
-    "address.city= /respectAccents SÖvang #",
-    "address.city==/respectAccents SÖvang #",
+    "address.city=  Søvang # Lea Long",
+    "address.city== Søvang # Lea Long",
+    "address.city=  Sovang #",
+    "address.city== Sovang #",
+    "address.city=  SOvang #",
+    "address.city== SOvang #",
+    "address.city=  Sövang #",
+    "address.city== Sövang #",
+    "address.city=  SÖvang #",
+    "address.city== SÖvang #",
   })
   public void unicodeAccents(String testcase) {
-    select(testcase);
+    select(cql2pgjsonRespectAccents, testcase);
   }
 
   @Test
   @Parameters({
-    "address.city= /respectCase/respectAccents Søvang # Lea Long",
-    "address.city==/respectCase/respectAccents Søvang # Lea Long",
-    "address.city= /respectCase/respectAccents SØvang #",
-    "address.city==/respectCase/respectAccents SØvang #",
-    "address.city= /respectCase/respectAccents Sovang #",
-    "address.city==/respectCase/respectAccents Sovang #",
-    "address.city= /respectCase/respectAccents SOvang #",
-    "address.city==/respectCase/respectAccents SOvang #",
-    "address.city= /respectCase/respectAccents Sövang #",
-    "address.city==/respectCase/respectAccents Sövang #",
-    "address.city= /respectCase/respectAccents SÖvang #",
-    "address.city==/respectCase/respectAccents SÖvang #",
+    "address.city== Søvang # Lea Long",
+    "address.city== Sovang #",
+    "address.city== SOvang #",
+    "address.city== Sövang #",
+    "address.city== SÖvang #",
+    // the same using = is a full text search and
+    // full text does not support respect case.
   })
   public void unicodeCaseAccents(String testcase) {
-    select(testcase);
+    select(cql2pgjsonRespectBoth, testcase);
   }
 
   @Test
   @Parameters({
-    "address.city==/respectCase/respectAccents S*      # Jo Jane; Lea Long",
-    "address.city<>/respectCase/respectAccents S*      # Ka Keller",
-    "address.city==/respectCase/respectAccents S*g     # Lea Long",
-    "address.city<>/respectCase/respectAccents S*g     # Jo Jane; Ka Keller",
-    "address.city==/respectCase/respectAccents Sø*     # Lea Long",
-    "address.city==/respectCase/respectAccents Sø*g    # Lea Long",
-    "address.city==/respectCase/respectAccents ?øvang  # Lea Long",
-    "address.city==/respectCase/respectAccents S?vang  # Lea Long",
-    "address.city==/respectCase/respectAccents Søvan?  # Lea Long",
-    "address.city==/respectCase/respectAccents *Søvang # Lea Long",
-    "address.city==/respectCase/respectAccents **v**   # Jo Jane; Lea Long",
-    "address.city==/respectCase/respectAccents **?y?** # Jo Jane",
-    "address.city==/respectCase/respectAccents søvang  #",         // lowercase
+    "address.city== S*      # Jo Jane; Lea Long",
+    "address.city<> S*      # Ka Keller",
+    "address.city== S*g     # Lea Long",
+    "address.city<> S*g     # Jo Jane; Ka Keller",
+    "address.city== Sø*     # Lea Long",
+    "address.city== Sø*g    # Lea Long",
+    "address.city== ?øvang  # Lea Long",
+    "address.city== S?vang  # Lea Long",
+    "address.city== Søvan?  # Lea Long",
+    "address.city== *Søvang # Lea Long",
+    "address.city== **v**   # Jo Jane; Lea Long",
+    "address.city== **?y?** # Jo Jane",
+    "address.city== søvang  #",         // lowercase
   })
   public void like(String testcase) throws QueryValidationException {
-    select(testcase);
-    String sql = cql2pgJson.cql2pgJson(testcase.substring(0, testcase.indexOf('#')));
+    select(cql2pgjsonRespectBoth, testcase);
+    String sql = cql2pgjsonRespectBoth.cql2pgJson(testcase.substring(0, testcase.indexOf('#')));
     assertThat(sql, containsString(" LIKE "));
   }
 
@@ -865,12 +874,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id>=11111111-1111-1111-1111-111111111111  # Jo Jane; Ka Keller; Lea Long",
     "id>=11111111-1111-1111-1111-111111111112  # Ka Keller; Lea Long",
     "id>=11111111-1111-111w-1111-111111111112  # ! Invalid UUID after id comparator >=",
-    "id=/ignoreCase     11111111-1111-1111-1111-111111111111   # ! Unsupported modifier ignorecase",
-    "id=/respectCase    11111111-1111-1111-1111-111111111111   # ! Unsupported modifier respectcase",
     "id=/masked         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier masked",
-    "id=/regexp         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier regexp",
-    "id=/respectAccents 11111111-1111-1111-1111-111111111111   # ! Unsupported modifier respectaccents",
-    "id=/ignoreAccents  11111111-1111-1111-1111-111111111111   # ! Unsupported modifier ignoreaccents",
+    "id=/regexp         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier regexp"
+
   })
   public void pKey(String testcase) {
     select(cql2pgJson, testcase);
@@ -1030,7 +1036,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, "array.sql", testcase);
     logger.fine("arrayRelationModifiers(): " + testcase + " OK");
   }
-  
+
   @Test
   @Parameters({
     "((contributors = \"foo\") and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # ",
