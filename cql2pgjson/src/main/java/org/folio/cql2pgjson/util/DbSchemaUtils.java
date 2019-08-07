@@ -99,7 +99,7 @@ public class DbSchemaUtils {
       boolean useTargetAlias) {
     List<DbFkInfo> list = new ArrayList<>();
     Table srcTab = getTable(dbSchema, srcTabName);
-    if (srcTab.getForeignKeys() == null) {
+    if (srcTab == null || srcTab.getForeignKeys() == null) {
       return list;
     }
     // direct FK

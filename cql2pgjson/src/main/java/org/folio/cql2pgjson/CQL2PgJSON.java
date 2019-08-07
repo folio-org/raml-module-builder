@@ -25,7 +25,6 @@ import org.folio.cql2pgjson.model.IndexTextAndJsonValues;
 import org.folio.cql2pgjson.model.SqlSelect;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
-import org.folio.rest.persist.ddlgen.ForeignKeys;
 import org.folio.rest.persist.ddlgen.Index;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.Table;
@@ -856,7 +855,7 @@ public class CQL2PgJSON {
     switch (comparator) {
     case "=":
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers, targetTable);
+        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
       } else if (CqlAccents.IGNORE_ACCENTS == modifiers.getCqlAccents() &&
           CqlCase.IGNORE_CASE == modifiers.getCqlCase()) {
         return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
@@ -876,13 +875,13 @@ public class CQL2PgJSON {
         }
         return queryByLike(index, hasIndex, vals, node, comparator, modifiers, targetTable);
       } else {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers, targetTable);
+        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
       }
     case "<" :
     case ">" :
     case "<=" :
     case ">=" :
-      return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers, targetTable);
+      return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
     default:
       throw new CQLFeatureUnsupportedException("Relation " + comparator
           + " not implemented yet: " + node.toString());
@@ -1023,7 +1022,7 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers, Table targetTable) {
+  private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
     String index = vals.getIndexText();
 
     if (comparator.equals("==")) {
