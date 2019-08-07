@@ -133,7 +133,6 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson.toSql("item.barcode == 7834324634").toString();
     String expected = "WHERE instance.id IN  ( SELECT (holdings_record.jsonb->>'instanceId')::UUID from holdings_record WHERE holdings_record.id IN  ( SELECT (item.jsonb->>'holdingsRecordId')::UUID from item WHERE lower(f_unaccent(item.jsonb->>'barcode')) LIKE lower(f_unaccent('7834324634'))))";
     assertEquals(expected, sql);
-    System.out.println(sql);
   }
 
   @Test
@@ -143,7 +142,6 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson.toSql("instance.title = 'Olmsted in Chicago'").toString();
     String expected = "WHERE (item.jsonb->>'holdingsRecordId')::UUID IN  ( SELECT id from holdings_record WHERE (holdings_record.jsonb->>'instanceId')::UUID IN  ( SELECT id from instance WHERE to_tsvector('simple', lower(f_unaccent(instance.jsonb->>'title'))) @@ to_tsquery('simple', lower(f_unaccent('Olmsted<->in<->Chicago''')))))";
     assertEquals(expected, sql);
-    System.out.println(sql);
   }
 
 }

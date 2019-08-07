@@ -70,7 +70,7 @@ public class DbSchemaUtils {
    *
    * @param dbSchema
    * @param tableName
-   * @return
+   * @return table; null if not found
    */
   public static Table getTable(Schema dbSchema, String tableName) {
     for (Table table : dbSchema.getTables()) {
@@ -88,7 +88,7 @@ public class DbSchemaUtils {
    * @param srcTabName
    * @param targetTabAlias
    *
-   * @return a list of {@link ForeignKeys}
+   * @return a list of {@link ForeignKeys}; empty if none found
    */
   public static List<DbFkInfo> findForeignKeysFromSourceTableToTargetAlias(Schema dbSchema, String srcTabName,
       String targetTabAlias) {
@@ -135,7 +135,7 @@ public class DbSchemaUtils {
    * @param dbSchema
    * @param srcTabAlias
    * @param targetTabName
-   * @return
+   * @return list; empty if none found
    */
   public static List<DbFkInfo> findForeignKeysFromSourceAliasToTargetTable(Schema dbSchema, String srcTabAlias,
       String targetTabName) {

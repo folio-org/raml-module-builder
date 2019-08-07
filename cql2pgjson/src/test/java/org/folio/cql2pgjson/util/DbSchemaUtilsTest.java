@@ -104,7 +104,6 @@ public class DbSchemaUtilsTest {
 
     // source alias 2
     list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "e2Alias", "b");
-    list.forEach(fk -> System.out.println(fk));
     assertEquals("e", list.get(0).getTable());
     assertEquals("c", list.get(1).getTable());
   }
