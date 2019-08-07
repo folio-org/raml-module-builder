@@ -75,18 +75,17 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     // returned one time only
     assertThat(cql("tableb.prefix == x2"), containsInAnyOrder("test2"));
   }
+
   @Test
   public void foreignKeySearchWild() throws Exception {
-    // two tableb records match, but they both reference the same tablea record, therefore "test2" should be
-    // returned one time only
-    assertThat(cql("tableb.prefix == *"), containsInAnyOrder("test2", "test1", "test3"));
+    assertThat(cql("tableb.prefix == *"), containsInAnyOrder("test1", "test2", "test3"));
   }
+
   @Test
   public void foreignKeySearchWild2() throws Exception {
-    // two tableb records match, but they both reference the same tablea record, therefore "test2" should be
-    // returned one time only
-    assertThat(cql("tableb.prefix = *"), containsInAnyOrder("test2", "test1", "test3"));
+    assertThat(cql("tableb.prefix = *"), containsInAnyOrder("test1", "test2", "test3"));
   }
+
   @Test
   public void uuidConstant() throws Exception {
     assertThat(cql("tableb.name == 33333333-3333-3333-3333-333333333333"), is(empty()));

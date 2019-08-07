@@ -138,7 +138,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       String blob = "ho_jsonb";
       String tablename = "users_groups_view";
 
-      
+
       String where = aCql2pgJson.cql2pgJson(cql);
       //sql = "select user_data->'name' from users where " + where;
       sql = "select " + blob + "->'name' from " + tablename + " where " + where;
@@ -515,29 +515,25 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void unicode(String testcase) {
     select(testcase);
-    
-    
+
+
     select(testcase.replace("==", "==/ignoreCase/ignoreAccents ")
                    .replace("= ", "= /ignoreCase/ignoreAccents "));
   }
 
   @Test
   @Parameters({
-    "address.city=  Søvang # Lea Long",
-    "address.city== Søvang # Lea Long",    
-    "address.city=  Sovang # Lea Long",
+    "address.city== Søvang # Lea Long",
     "address.city== Sovang # Lea Long",
-    "address.city=  Sövang # Lea Long",
     "address.city== Sövang # Lea Long",
-    "address.city=  SØvang # Lea Long",
     "address.city== SØvang #",
-    "address.city=  SOvang # Lea Long",
     "address.city== SOvang #",
-    "address.city=  SÖvang # Lea Long",
     "address.city== SÖvang #",
+    // the same using = is a full text search and
+    // full text does not support respect case.
   })
   public void unicodeCase(String testcase) {
-    select(cql2pgjsonRespectCase,testcase);
+    select(cql2pgjsonRespectCase, testcase);
   }
 
   @Ignore("Needs locale/collation. Currently is C.")
@@ -547,32 +543,14 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.city== SØvang # Lea Long",
  })
   public void unicodeAccentsNonWindows(String testcase) {
-    select(cql2pgjsonRespectAccents,testcase);
+    select(cql2pgjsonRespectAccents, testcase);
+    select(cql2pgjsonRespectCase, testcase);
   }
 
   @Test
   @Parameters({
     "address.city=  Søvang # Lea Long",
     "address.city== Søvang # Lea Long",
-    "address.city=  Sovang # Lea Long",
-    "address.city== Sovang #",
-    "address.city=  SOvang # Lea Long",
-    "address.city== SOvang #",
-    "address.city=  Sövang # Lea Long",
-    "address.city== Sövang #",
-    "address.city=  SÖvang # Lea Long",
-    "address.city== SÖvang #",
-  })
-  public void unicodeAccents(String testcase) {
-    select(cql2pgjsonRespectAccents,testcase);
-  }
-
-  @Test
-  @Parameters({
-    "address.city= Søvang # Lea Long",
-    "address.city== Søvang # Lea Long",
-    "address.city= SØvang #",
-    "address.city== SØvang #",
     "address.city=  Sovang #",
     "address.city== Sovang #",
     "address.city=  SOvang #",
@@ -582,8 +560,22 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.city=  SÖvang #",
     "address.city== SÖvang #",
   })
+  public void unicodeAccents(String testcase) {
+    select(cql2pgjsonRespectAccents, testcase);
+  }
+
+  @Test
+  @Parameters({
+    "address.city== Søvang # Lea Long",
+    "address.city== Sovang #",
+    "address.city== SOvang #",
+    "address.city== Sövang #",
+    "address.city== SÖvang #",
+    // the same using = is a full text search and
+    // full text does not support respect case.
+  })
   public void unicodeCaseAccents(String testcase) {
-    select(cql2pgjsonRespectBoth,testcase);
+    select(cql2pgjsonRespectBoth, testcase);
   }
 
   @Test
@@ -603,7 +595,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.city== søvang  #",         // lowercase
   })
   public void like(String testcase) throws QueryValidationException {
-    select(cql2pgjsonRespectBoth,testcase);
+    select(cql2pgjsonRespectBoth, testcase);
     String sql = cql2pgjsonRespectBoth.cql2pgJson(testcase.substring(0, testcase.indexOf('#')));
     assertThat(sql, containsString(" LIKE "));
   }
@@ -1044,7 +1036,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, "array.sql", testcase);
     logger.fine("arrayRelationModifiers(): " + testcase + " OK");
   }
-  
+
   @Test
   @Parameters({
     "((contributors = \"foo\") and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # ",

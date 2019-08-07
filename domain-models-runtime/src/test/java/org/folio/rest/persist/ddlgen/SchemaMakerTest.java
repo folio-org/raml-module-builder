@@ -5,7 +5,6 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -262,13 +261,12 @@ public class SchemaMakerTest {
 
     // by default all indexes are wrapped with lower/f_unaccent
     // except full text which only obeys f_unaccent
-    assertTrue(ddl.contains("(lower(f_unaccent(jsonb->>'id')))"));
-    assertTrue(ddl.contains("(lower(f_unaccent(jsonb->>'name')))"));
-    assertTrue(ddl.contains("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
-    assertTrue(ddl.contains("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
-    assertTrue(ddl.contains("GIN(to_tsvector('english', f_unaccent(jsonb->>'title')))"));
-    System.out.println(ddl);
-    assertTrue(ddl.contains("GIN(to_tsvector('english',(jsonb->>'author')))"));
+    assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'id')))"));
+    assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'name')))"));
+    assertThat(ddl, containsString("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
+    assertThat(ddl, containsString("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
+    assertThat(ddl, containsString("GIN(to_tsvector('english', f_unaccent(jsonb->>'title')))"));
+    assertThat(ddl, containsString("GIN(to_tsvector('english',(jsonb->>'author')))"));
   }
 
 }
