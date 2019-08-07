@@ -63,6 +63,8 @@ public class CQL2PgJSON {
   /** name of the primary key column */
   private static final String PK_COLUMN_NAME = "id";
 
+  private static final String JSONB_COLUMN_NAME = "jsonb";
+
   private final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
   private String jsonField = null;
@@ -579,7 +581,7 @@ public class CQL2PgJSON {
       // child to parent
       targetTable = DbSchemaUtils.getTable(dbSchema, fks.get(fks.size() -1).getTargetTable());
       for (DbFkInfo fk : fks) {
-        sb.append("(" + index2sqlText(currentTableName + ".jsonb", fk.getField()) + ")::UUID IN ");
+        sb.append("(" + index2sqlText(currentTableName + "." + JSONB_COLUMN_NAME, fk.getField()) + ")::UUID IN ");
         sb.append(" ( SELECT " + PK_COLUMN_NAME + " from " + fk.getTargetTable() + " WHERE ");
         currentTableName = fk.getTargetTable();
       }
@@ -589,7 +591,7 @@ public class CQL2PgJSON {
       for (int i = fks.size() - 1 ; i >= 0; i--) {
         DbFkInfo fk = fks.get(i);
         sb.append(currentTableName + "." + PK_COLUMN_NAME + " IN ");
-        sb.append(" ( SELECT " + "(" + index2sqlText(fk.getTable() + ".jsonb", fks.get(i).getField()) + ")::UUID");
+        sb.append(" ( SELECT " + "(" + index2sqlText(fk.getTable() + "." + JSONB_COLUMN_NAME, fks.get(i).getField()) + ")::UUID");
         sb.append(" from " + fk.getTable() + " WHERE ");
         currentTableName = fk.getTable();
       }
@@ -605,7 +607,7 @@ public class CQL2PgJSON {
   private String indexNodeForForeignTable(CQLTermNode node, Table targetTable, String[] foreignTarget)
       throws QueryValidationException {
 
-    String foreignTableJsonb = targetTable.getTableName() + ".jsonb";
+    String foreignTableJsonb = targetTable.getTableName() + "." + JSONB_COLUMN_NAME;
 
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
     if (jsonField == null) {
