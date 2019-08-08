@@ -257,6 +257,10 @@ public final class Cql2SqlUtil {
         backslash = false;
         break;
       case ' ':
+        if (i>0 && s.charAt(i-1) == ' ') {
+          // skip space if previous character already was a space
+          break;
+        }
         if (star) {
           t.append("'':*')) ");
           star = false;
@@ -267,10 +271,6 @@ public final class Cql2SqlUtil {
         t.append(removeAccents ? " to_tsquery('simple', f_unaccent('''"
                                : " to_tsquery('simple', ('''");
         backslash = false;
-        // skip all following spaces
-        while (i+1 < length && s.charAt(i+1) == ' ') {
-          i++;
-        }
         break;
       case '&':   // replace & so that we can replace all tsquery & by <-> for phrase search
       case '\'':  // replace single quote to avoid single quote masking

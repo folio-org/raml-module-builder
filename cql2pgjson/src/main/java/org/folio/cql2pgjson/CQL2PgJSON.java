@@ -619,62 +619,6 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Normalize a term for FT searching. Escape quotes, masking, etc
-   *
-   * @param term
-   * @return
-   */
-  @SuppressWarnings({
-    "squid:ForLoopCounterChangedCheck",
-    // Yes, we skip the occasional character in the loop by incrementing i
-    "squid:S135"
-  // Yes, we have a few continue statements. Unlike what SQ says,
-  // refactoring the code to avoid that would make it much less
-  // readable.
-  })
-  private static String ftTerm(String term) throws QueryValidationException {
-    StringBuilder res = new StringBuilder();
-    term = term.trim();
-    for (int i = 0; i < term.length(); i++) {
-      // CQL specials
-      char c = term.charAt(i);
-      switch (c) {
-        case '?':
-          throw new QueryValidationException("CQL: single character mask unsupported (?)");
-        case '*':
-          if (i == term.length() - 1) {
-            res.append(":*");
-            continue;
-          } else {
-            throw new QueryValidationException("CQL: only right truncation supported");
-          }
-        case '\\':
-          if (i == term.length() - 1) {
-            continue;
-          }
-          i++;
-          c = term.charAt(i);
-          break;
-        case '^':
-          throw new QueryValidationException("CQL: anchoring unsupported (^)");
-        default:
-        // SQ complains if there is no default case, and if there is an empty statement #!$
-      }
-      if (c == '\'') {
-        if (res.length() > 0) {
-          res.append("''"); // double up single quotes
-        } // but not in the beginning of the term, won't work.
-        continue;
-      }
-      // escape for FT
-      if ("&!|()<>*:\\".indexOf(c) != -1) {
-        res.append("\\");
-      }
-      res.append(c);
-    }
-    return res.toString();
-  }
-  /**
    * Handle a termnode that does a search on the id. We use the primary key
    * column in the query, it is clearly faster, and we use a numerical
    * comparison instead of truncation. That way PG will use the primary key,
@@ -931,7 +875,7 @@ public class CQL2PgJSON {
     return sql;
   }
 
-  private String queryByFt(String indexText, String term, String comparator, Index schemaIndex)
+  String queryByFt(String indexText, String term, String comparator, Index schemaIndex)
     throws QueryValidationException {
 
     if (term.equals("*")) {
@@ -941,7 +885,7 @@ public class CQL2PgJSON {
       return indexText + " ~ ''";
     }
 
-    boolean removeAccents = schemaIndex == null ? true : schemaIndex.isRemoveAccents();
+    boolean removeAccents = schemaIndex == null || schemaIndex.isRemoveAccents();
     StringBuilder tsTerm;
     switch (comparator) {
       case "=":

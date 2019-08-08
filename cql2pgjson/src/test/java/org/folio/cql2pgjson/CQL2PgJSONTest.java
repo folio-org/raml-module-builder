@@ -1070,6 +1070,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(testcase);
   }
 
+  @Test(expected = QueryValidationException.class)
+  public void queryByFtComparatorException() throws QueryValidationException {
+    cql2pgJson.queryByFt("indexText", "name=abc", "unknownComparator", null);
+  }
+
   /* And/Or/Not tests need to be done with different data, with pgs
   simple truncations. TODO.
    */

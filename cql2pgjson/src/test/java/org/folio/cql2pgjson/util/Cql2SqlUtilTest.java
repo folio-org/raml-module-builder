@@ -219,6 +219,10 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     return new String [] {
         "abc",
         "abc*",
+        " abc ",
+        "  abc  ",
+        "   abc   ",
+        "abc  xyz",
         "abc   xyz",
         "a b c",
         "abc def ghi",
