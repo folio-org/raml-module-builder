@@ -25,6 +25,10 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
   @BeforeClass
   public static void runOnceBeforeClass() throws Exception {
     setupDatabase();
+    runSqlStatement("CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
+    runSqlStatement("CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $$ "
+        + "SELECT public.unaccent('public.unaccent', $1); "
+        + "$$ LANGUAGE sql IMMUTABLE;");
   }
 
   @AfterClass
@@ -167,14 +171,14 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     assertThat(Cql2SqlUtil.cql2regexp(cql), is(sql));
   }
 
-  private String toTsvector(String field, boolean removeAccents) {
+  private String selectTsvector(String field, boolean removeAccents) {
     return removeAccents ? "SELECT to_tsvector('simple', f_unaccent('" + field.replace("'", "''") + "')) @@ "
                          : "SELECT to_tsvector('simple', '" + field.replace("'", "''") + "') @@ ";
   }
 
   private void assertCql2tsqueryAnd(String field, String query, boolean removeAccents, String result) {
     try {
-      String sql = toTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryAnd(query, removeAccents);
+      String sql = selectTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryAnd(query, removeAccents);
       assertThat(sql, firstColumn(sql), contains(result));
     } catch (QueryValidationException e) {
       throw new RuntimeException(e);
@@ -183,7 +187,7 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
 
   private void assertCql2tsqueryOr(String field, String query, boolean removeAccents, String result) {
     try {
-      String sql = toTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryOr(query, removeAccents);
+      String sql = selectTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryOr(query, removeAccents);
       assertThat(sql, firstColumn(sql), contains(result));
     } catch (QueryValidationException e) {
       throw new RuntimeException(e);
@@ -192,7 +196,7 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
 
   private void assertCql2tsqueryPhrase(String field, String query, boolean removeAccents, String result) {
     try {
-      String sql = toTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryPhrase(query, removeAccents);
+      String sql = selectTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryPhrase(query, removeAccents);
       assertThat(sql, firstColumn(sql), contains(result));
     } catch (QueryValidationException e) {
       throw new RuntimeException(e);

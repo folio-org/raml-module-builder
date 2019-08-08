@@ -209,7 +209,7 @@ public final class Cql2SqlUtil {
    *
    * @param s CQL string without leading or trailing double quote
    * @param removeAccents whether to wrap all words in f_unaccent().
-   * @param operator "&&" for AND query, "||" for OR query
+   * @param operator "&amp;&amp;" for AND query, "||" for OR query
    * @return SQL term
    * @throws QueryValidationException if s contains an unmasked wildcard question mark
    */
