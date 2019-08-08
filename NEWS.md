@@ -1,3 +1,8 @@
+## 26.3.1 2019-08-08
+
+ * RMB-455 Do not apply lower for full text queries. Fixes regression in
+   26.3.0
+
 ## 26.3.0 2019-08-07
 
  * RMB-443 HttpStatus.java: Explain FOLIO's 400 and 422 status code usage
