@@ -960,7 +960,7 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
     }
-    boolean removeAccents = schemaIndex != null ? schemaIndex.isRemoveAccents() : true;
+    boolean removeAccents = schemaIndex == null || schemaIndex.isRemoveAccents();
     String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, false, removeAccents) + ") "
       + "@@ to_tsquery('simple', " + wrapInLowerUnaccent("'"+ tsTerm + "'", false, removeAccents) + ")";
 
