@@ -960,8 +960,9 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
     }
-    String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, schemaIndex) + ") "
-      + "@@ to_tsquery('simple', " + wrapInLowerUnaccent("'"+ tsTerm + "'", schemaIndex) + ")";
+    boolean removeAccents = schemaIndex == null || schemaIndex.isRemoveAccents();
+    String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, false, removeAccents) + ") "
+      + "@@ to_tsquery('simple', " + wrapInLowerUnaccent("'"+ tsTerm + "'", false, removeAccents) + ")";
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
     return sql;
