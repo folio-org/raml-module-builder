@@ -940,28 +940,25 @@ public class CQL2PgJSON {
     if (term.equals("")) {
       return indexText + " ~ ''";
     }
-    // Removing of " - " is RMB-439 to unblock CIRCSTORE-138
-    String[] words = term.replaceAll(" - ", " ").split("\\s+");
-    for (int i = 0; i < words.length; i++) {
-      words[i] = ftTerm(words[i]);
-    }
-    String tsTerm = "";
+
+    boolean removeAccents = schemaIndex == null ? true : schemaIndex.isRemoveAccents();
+    StringBuilder tsTerm;
     switch (comparator) {
       case "=":
       case "adj":
-        tsTerm = String.join("<->", words);
+        tsTerm = Cql2SqlUtil.cql2tsqueryPhrase(term, removeAccents);
         break;
       case "any":
-        tsTerm = String.join(" | ", words);
+        tsTerm = Cql2SqlUtil.cql2tsqueryOr(term, removeAccents);
         break;
       case "all":
-        tsTerm = String.join(" & ", words);
+        tsTerm = Cql2SqlUtil.cql2tsqueryAnd(term, removeAccents);
         break;
       default:
-        throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
+        throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
     String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, schemaIndex) + ") "
-      + "@@ to_tsquery('simple', " + wrapInLowerUnaccent("'"+ tsTerm + "'", schemaIndex) + ")";
+      + "@@ " + tsTerm;
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
     return sql;

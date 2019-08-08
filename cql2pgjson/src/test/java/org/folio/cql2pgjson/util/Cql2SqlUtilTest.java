@@ -1,5 +1,6 @@
 package org.folio.cql2pgjson.util;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
@@ -7,8 +8,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.folio.cql2pgjson.DatabaseTestBase;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.testing.UtilityClassTester;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -16,7 +20,17 @@ import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
 @RunWith(JUnitParamsRunner.class)
-public class Cql2SqlUtilTest {
+public class Cql2SqlUtilTest extends DatabaseTestBase {
+
+  @BeforeClass
+  public static void runOnceBeforeClass() throws Exception {
+    setupDatabase();
+  }
+
+  @AfterClass
+  public static void runOnceAfterClass() {
+    closeDatabase();
+  }
 
   @Test
   public void isUtilityClass() {
@@ -151,6 +165,208 @@ public class Cql2SqlUtilTest {
   @Parameters(method = "cql2regexpParams")
   public void cql2regexp(String cql, String sql) {
     assertThat(Cql2SqlUtil.cql2regexp(cql), is(sql));
+  }
+
+  private String toTsvector(String field, boolean removeAccents) {
+    return removeAccents ? "SELECT to_tsvector('simple', f_unaccent('" + field.replace("'", "''") + "')) @@ "
+                         : "SELECT to_tsvector('simple', '" + field.replace("'", "''") + "') @@ ";
+  }
+
+  private void assertCql2tsqueryAnd(String field, String query, boolean removeAccents, String result) {
+    try {
+      String sql = toTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryAnd(query, removeAccents);
+      assertThat(sql, firstColumn(sql), contains(result));
+    } catch (QueryValidationException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void assertCql2tsqueryOr(String field, String query, boolean removeAccents, String result) {
+    try {
+      String sql = toTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryOr(query, removeAccents);
+      assertThat(sql, firstColumn(sql), contains(result));
+    } catch (QueryValidationException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void assertCql2tsqueryPhrase(String field, String query, boolean removeAccents, String result) {
+    try {
+      String sql = toTsvector(field, removeAccents) + Cql2SqlUtil.cql2tsqueryPhrase(query, removeAccents);
+      assertThat(sql, firstColumn(sql), contains(result));
+    } catch (QueryValidationException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void assertCql2tsqueryAnd(String field, String query, String result) {
+    assertCql2tsqueryAnd(field, query, false, result);
+  }
+
+  private void assertCql2tsqueryOr(String field, String query, String result) {
+    assertCql2tsqueryOr(field, query, false, result);
+  }
+
+  private void assertCql2tsqueryPhrase(String field, String query, String result) {
+    assertCql2tsqueryPhrase(field, query, false, result);
+  }
+
+  String [] cql2tsqueryParams() {
+    return new String [] {
+        "abc",
+        "abc*",
+        "abc   xyz",
+        "a b c",
+        "abc def ghi",
+        "abc* def* ghi*",  // 'abc':* & 'def':* & 'ghi':*
+                           // minus in words, RMB-438
+        "abc-def",         // 'abc-def' & 'abc' & 'def'
+        "abc--def",        // 'abc' & 'def'
+        "abc---def",       // 'abc' & 'def'
+        "abc-def-ghi",     // 'abc-def-ghi' & 'abc' & 'def' & 'ghi'
+        "abc-def-ghi*",    // 'abc-def-ghi':* & 'abc':* & 'def':* & 'ghi':*
+        "abc-def ghi-jkl", // 'abc-def' & 'abc' & 'def' & 'ghi-jkl' & 'ghi' & 'jkl'
+        "abc - def",       // minus as a word, RMB-439
+        "abc/def",         // 'abc/def'
+        "abc//def",        // 'abc' & '/def'
+        "abc///def",       // 'abc' & '/def'
+        "abc'def",         // single quote masking, RMB-432
+        "abc''def",
+        "abc'''def",
+        "abc\\?def",       // masked ? wildcard
+        "abc\\?\\?def",
+        "abc\\*def",       // masked * wildcard
+        "abc\\*\\*def",
+        "abc<->def"        // quoting of <-> phrase operator
+    };
+  }
+
+  @Test
+  @Parameters(method = "cql2tsqueryParams")
+  public void cql2tsqueryAnd(String term) {
+    assertCql2tsqueryAnd(term, term, "t");
+  }
+
+  @Test
+  @Parameters(method = "cql2tsqueryParams")
+  public void cql2tsqueryOr(String term) {
+    assertCql2tsqueryOr(term, term, "t");
+  }
+
+  @Test
+  @Parameters(method = "cql2tsqueryParams")
+  public void cql2tsqueryPhrase(String term) {
+    assertCql2tsqueryPhrase(term, term, "t");
+  }
+
+  @Test
+  @Parameters({
+    "abc,         abc,         t",
+    "abc xyz,     abc xyz,     t",
+    "abc,         xyz,         f",
+    "abc-xyz,     xyz-abc,     f",
+    "abc-xyz-qqq, abc-xyz,     f",
+    "abc-xyz-qqq, xyz-qqq,     f",
+    "abc-def,     xyz-abc-def, f",
+    "abcdef,      abc*,        t",
+    "abc-def,     abc-de*,     t",
+    "abc-def,     abc-defg*,   f",
+    "abc-def,     ab-def*,     f",
+  })
+  public void cql2tsquery(String field, String query, String result) {
+    assertCql2tsqueryAnd(field, query, result);
+    assertCql2tsqueryOr(field, query, result);
+    assertCql2tsqueryPhrase(field, query, result);
+  }
+
+  @Test
+  @Parameters({
+    "ábc,         âbc",
+    "ábc-xöz,     âbc-xôz",
+  })
+  public void cql2tsqueryAccents(String field, String query) {
+    assertCql2tsqueryAnd(field, query, false, "f");
+    assertCql2tsqueryAnd(field, query, true, "t");
+    assertCql2tsqueryOr(field, query, false, "f");
+    assertCql2tsqueryOr(field, query, true, "t");
+    assertCql2tsqueryPhrase(field, query, false, "f");
+    assertCql2tsqueryPhrase(field, query, true, "t");
+  }
+
+  @Test
+  @Parameters({
+    "abc,         abc xyz,     f",
+    "abc xyz,     abc,         t",
+    "abc xyz qqq, ab* xy* qq*, t",
+    "abc xyz qqq, ab* xz* qq*, f",
+    "abc xyz qqq, ab* xy* qq*, t",
+    "abc xyz qqq, ab* xy  qq*, f",
+  })
+  public void cql2tsqueryAnd(String field, String query, String result) {
+    assertCql2tsqueryAnd(field, query, result);
+  }
+
+  @Test
+  @Parameters({
+    "abc,         abc xyz,     t",
+    "abc xyz,     abc,         t",
+    "xyz abc,     abc,         t",
+    "abc qqq,     ab* xy*,     t",
+    "qqq xyz,     ab* xy*,     t",
+    "abc qqq,     xy* ab*,     t",
+    "qqq xyz,     xy* ab*,     t",
+  })
+  public void cql2tsqueryOr(String field, String query, String result) {
+    assertCql2tsqueryOr(field, query, result);
+  }
+
+  @Test
+  @Parameters({
+    "abc,             abc xyz,         f",
+    "abc xyz,         abc,             t",
+    "xyz abc,         abc,             t",
+    "abc xyz,         ab* xy*,         t",
+    "qqq abc xyz sss, ab* xy*,         t",
+    "qqq abc xyz sss, ab* ss*,         f",
+    "abc-def uvw-xyz, abc-de* uvw-xy*, t",
+    "ab-def uv-xyz,   abc-de* uvw-xy*, f",
+  })
+  public void cql2tsqueryPhrase(String field, String query, String result) {
+    assertCql2tsqueryPhrase(field, query, result);
+  }
+
+  String [] cql2tsqueryExceptionParams() {
+    return new String [] {
+      "?",
+      "? abc",
+      "?abc",
+      "ab?c",
+      "abc?",
+      "abc ?",
+      "*.",
+      "*. abc",
+      "*abc",
+      "ab*c",
+      "abc *."
+    };
+  }
+
+  @Test(expected = QueryValidationException.class)
+  @Parameters(method = "cql2tsqueryExceptionParams")
+  public void cql2tsqueryAndException(String s) throws QueryValidationException {
+    Cql2SqlUtil.cql2tsqueryAnd(s, true);
+  }
+
+  @Test(expected = QueryValidationException.class)
+  @Parameters(method = "cql2tsqueryExceptionParams")
+  public void cql2tsqueryOrException(String s) throws QueryValidationException {
+    Cql2SqlUtil.cql2tsqueryOr(s, true);
+  }
+
+  @Test(expected = QueryValidationException.class)
+  @Parameters(method = "cql2tsqueryExceptionParams")
+  public void cql2tsqueryPhraseException(String s) throws QueryValidationException {
+    Cql2SqlUtil.cql2tsqueryPhrase(s, true);
   }
 
   @Test
