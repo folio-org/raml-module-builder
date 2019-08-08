@@ -55,7 +55,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.ftprefix = x0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE to_tsvector('simple', lower(tableb.jsonb->>'ftprefix')) @@ replace((to_tsquery('simple', ('''x0''')))::text, '&', '<->')::tsquery)", sql);
+    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE to_tsvector('simple', tableb.jsonb->>'ftprefix') @@ replace((to_tsquery('simple', ('''x0''')))::text, '&', '<->')::tsquery)", sql);
   }
 
   @Test
@@ -145,7 +145,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("item");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/subquery.json");
     String sql = cql2pgJson.toSql("instance.title = 'Olmsted in Chicago'").toString();
-    String expected = "WHERE (item.jsonb->>'holdingsRecordId')::UUID IN  ( SELECT id from holdings_record WHERE (holdings_record.jsonb->>'instanceId')::UUID IN  ( SELECT id from instance WHERE to_tsvector('simple', lower(f_unaccent(instance.jsonb->>'title'))) @@ replace((to_tsquery('simple', f_unaccent(''',Olmsted''')) && to_tsquery('simple', f_unaccent('''in''')) && to_tsquery('simple', f_unaccent('''Chicago,''')))::text, '&', '<->')::tsquery))";
+    String expected = "WHERE (item.jsonb->>'holdingsRecordId')::UUID IN  ( SELECT id from holdings_record WHERE (holdings_record.jsonb->>'instanceId')::UUID IN  ( SELECT id from instance WHERE to_tsvector('simple', f_unaccent(instance.jsonb->>'title')) @@ replace((to_tsquery('simple', f_unaccent(''',Olmsted''')) && to_tsquery('simple', f_unaccent('''in''')) && to_tsquery('simple', f_unaccent('''Chicago,''')))::text, '&', '<->')::tsquery))";
     assertEquals(expected, sql);
   }
 

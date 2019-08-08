@@ -901,7 +901,7 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
-    String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, schemaIndex) + ") "
+    String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents) + ") "
       + "@@ " + tsTerm;
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
