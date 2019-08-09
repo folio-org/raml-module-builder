@@ -234,8 +234,6 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
         "abc-def-ghi",     // 'abc-def-ghi' & 'abc' & 'def' & 'ghi'
         "abc-def-ghi*",    // 'abc-def-ghi':* & 'abc':* & 'def':* & 'ghi':*
         "abc-def ghi-jkl", // 'abc-def' & 'abc' & 'def' & 'ghi-jkl' & 'ghi' & 'jkl'
-        "0cc175b9-c0f1-b6a8-31c3-99e269772661",
-        "12345678-9999-0000-1234-012345678901",
         "abc - def",       // minus as a word, RMB-439
         "abc/def",         // 'abc/def'
         "abc//def",        // 'abc' & '/def'
@@ -282,10 +280,15 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     "abc-def,     abc-de*,     t",
     "abc-def,     abc-defg*,   f",
     "abc-def,     ab-def*,     f",
+    "0cc175b9-c0f1-b6a8-31c3-99e269772661, 0cc175b9-c0f1-b6a8-31c3-99e269772661, t",
+    "0cc175b9-c0f1-b6a8-31c3-99e269772661, 0cc175b9-c0f1-31c3-b6a8-99e269772661, f",
+    "0cc175b9-c0f1-b6a8-31c3-99e269772661, 0cc175b9-31c3-b6a8-c0f1-99e269772661, f",
+    "0cc175b9-c0f1-b6a8-31c3-99e269772661, 0cc175b9-31c3-c0f1-b6a8-99e269772661, f",
+    "0cc175b9-c0f1-b6a8-31c3-99e269772661, 0cc175b9-b6a8-c0f1-31c3-99e269772661, f",
+    "0cc175b9-c0f1-b6a8-31c3-99e269772661, 0cc175b9-b6a8-31c3-c0f1-99e269772661, f",
   })
-  public void cql2tsquery(String field, String query, String result) {
+  public void cql2tsqueryAndPhrase(String field, String query, String result) {
     assertCql2tsqueryAnd(field, query, result);
-    assertCql2tsqueryOr(field, query, result);
     assertCql2tsqueryPhrase(field, query, result);
   }
 
@@ -303,44 +306,87 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     assertCql2tsqueryPhrase(field, query, true, "t");
   }
 
+  private String [][] cql2tsqueryAndParams() {
+    // cannot use JUnitParams splitting, it splits at |
+    return new String [][] {
+      { "abc",         "abc xyz",        "f" },
+      { "abc xyz",     "abc",            "t" },
+      { "abc xyz qqq", "ab* xy* qq*",    "t" },
+      { "abc xyz qqq", "ab* xz* qq*",    "f" },
+      { "abc xyz qqq", "ab* xy* qq*",    "t" },
+      { "abc xyz qqq", "ab* xy  qq*",    "f" },
+      { "abc",         "abc|xyz",        "f" },  // check | masking, this is the tsquery OR operator
+      { "xyz",         "abc|xyz",        "f" },
+      { "abc",         "abc||xyz",       "f" },
+      { "abc",         "abc | xyz",      "f" },
+      { "abc",         "abc || xyz",     "f" },
+      { "abc",         "abc<->abc",      "t" },  // check <-> masking, this is the tsquery PHRASE operator
+      { "abc",         "abc<-><->abc",   "t" },
+      { "abc",         "abc <-> abc",    "t" },
+      { "abc",         "abc <-><-> abc", "t" }
+    };
+  }
+
   @Test
-  @Parameters({
-    "abc,         abc xyz,     f",
-    "abc xyz,     abc,         t",
-    "abc xyz qqq, ab* xy* qq*, t",
-    "abc xyz qqq, ab* xz* qq*, f",
-    "abc xyz qqq, ab* xy* qq*, t",
-    "abc xyz qqq, ab* xy  qq*, f",
-  })
+  @Parameters(method = "cql2tsqueryAndParams")
   public void cql2tsqueryAnd(String field, String query, String result) {
     assertCql2tsqueryAnd(field, query, result);
   }
 
   @Test
   @Parameters({
-    "abc,         abc xyz,     t",
-    "abc xyz,     abc,         t",
-    "xyz abc,     abc,         t",
-    "abc qqq,     ab* xy*,     t",
-    "qqq xyz,     ab* xy*,     t",
-    "abc qqq,     xy* ab*,     t",
-    "qqq xyz,     xy* ab*,     t",
+    "abc,         abc,            t",
+    "abc,         xyz,            f",
+    "abc,         abc xyz,        t",
+    "abc,         abc=xyz,        t",
+    "abc xyz,     abc,            t",
+    "xyz abc,     abc,            t",
+    "abc qqq,     ab* xy*,        t",
+    "qqq xyz,     ab* xy*,        t",
+    "abc qqq,     xy* ab*,        t",
+    "qqq xyz,     xy* ab*,        t",
+    "abc,         ac*,            f",
+    "abc,         abc&xyz,        t",  // check & masking, this is the tsquery AND operator
+    "xyz,         abc&xyz,        t",
+    "abc,         abc&&xyz,       t",
+    "abc,         abc & xyz,      t",
+    "abc,         abc && xyz,     t",
+    "abc,         abc<->xyz,      t",  // check <-> masking, this is the tsquery PHRASE operator
+    "xyz,         abc<->xyz,      t",
+    "abc,         abc<-><->xyz,   t",
+    "abc,         abc <-> xyz,    t",
+    "abc,         abc <-><-> xyz, t",
   })
   public void cql2tsqueryOr(String field, String query, String result) {
     assertCql2tsqueryOr(field, query, result);
   }
 
+  private String [][] cql2tsqueryPhraseParams() {
+    // cannot use JUnitParams splitting, it splits at |
+    return new String [][] {
+      { "abc",             "abc xyz",         "f" },
+      { "abc xyz",         "abc",             "t" },
+      { "xyz abc",         "abc",             "t" },
+      { "abc xyz",         "ab* xy*",         "t" },
+      { "qqq abc xyz sss", "ab* xy*",         "t" },
+      { "qqq abc xyz sss", "ab* ss*",         "f" },
+      { "abc-def uvw-xyz", "abc-de* uvw-xy*", "t" },
+      { "ab-def uv-xyz",   "abc-de* uvw-xy*", "f" },
+      { "abc xyz",         "xyz|abc",         "f" },  // check | masking, this is the tsquery OR operator
+      { "abc xyz",         "xyz||abc",        "f" },
+      { "abc xyz",         "xyz | abc",       "f" },
+      { "abc xyz",         "xyz || abc",      "f" },
+      { "abc xyz",         "xyz&abc",         "f" },  // check & masking, this is the tsquery AND operator
+      { "abc xyz",         "xyz&&abc",        "f" },
+      { "abc xyz",         "xyz & abc",       "f" },
+      { "abc xyz",         "xyz && abc",      "f" },
+      { "12345678-9999-0000-1234-012345678901", "12345678-9999-0000-1234-012345678901", "t" },
+      { "12345678-9999-0000-1234-012345678901", "12345678-1234-0000-9999-012345678901", "f" }
+    };
+  }
+
   @Test
-  @Parameters({
-    "abc,             abc xyz,         f",
-    "abc xyz,         abc,             t",
-    "xyz abc,         abc,             t",
-    "abc xyz,         ab* xy*,         t",
-    "qqq abc xyz sss, ab* xy*,         t",
-    "qqq abc xyz sss, ab* ss*,         f",
-    "abc-def uvw-xyz, abc-de* uvw-xy*, t",
-    "ab-def uv-xyz,   abc-de* uvw-xy*, f",
-  })
+  @Parameters(method = "cql2tsqueryPhraseParams")
   public void cql2tsqueryPhrase(String field, String query, String result) {
     assertCql2tsqueryPhrase(field, query, result);
   }

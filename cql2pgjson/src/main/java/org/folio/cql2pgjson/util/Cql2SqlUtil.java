@@ -205,16 +205,15 @@ public final class Cql2SqlUtil {
   }
 
   /**
-   * Convert a CQL string to an SQL tsquery.
+   * Convert a CQL string to an SQL tsquery where each word matches in any order.
    *
    * @param s CQL string without leading or trailing double quote
    * @param removeAccents whether to wrap all words in f_unaccent().
-   * @param operator "&amp;&amp;" for AND query, "||" for OR query
    * @return SQL term
    * @throws QueryValidationException if s contains an unmasked wildcard question mark
    */
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
-  private static StringBuilder cql2tsquery(String s, boolean removeAccents, String operator) throws QueryValidationException {
+  public static StringBuilder cql2tsqueryAnd(String s, boolean removeAccents) throws QueryValidationException {
     // We cannot use plainto_tsquery and phraseto_tsquery because they do not support right truncation.
     // to_tsquery supports right truncation but spaces must be replaced by some operator.
 
@@ -267,9 +266,8 @@ public final class Cql2SqlUtil {
         } else {
           t.append("''')) ");
         }
-        t.append(operator);
-        t.append(removeAccents ? " to_tsquery('simple', f_unaccent('''"
-                               : " to_tsquery('simple', ('''");
+        t.append(removeAccents ? "&& to_tsquery('simple', f_unaccent('''"
+                               : "&& to_tsquery('simple', ('''");
         backslash = false;
         break;
       case '&':   // replace & so that we can replace all tsquery & by <-> for phrase search
@@ -292,18 +290,6 @@ public final class Cql2SqlUtil {
   }
 
   /**
-   * Convert a CQL string to an SQL tsquery where each word matches in any order.
-   *
-   * @param s CQL string without leading or trailing double quote
-   * @param removeAccents whether to wrap all words in f_unaccent().
-   * @return SQL term
-   * @throws QueryValidationException if s contains an unmasked wildcard question mark
-   */
-  public static StringBuilder cql2tsqueryAnd(String s, boolean removeAccents) throws QueryValidationException {
-    return cql2tsquery(s, removeAccents, "&&");
-  }
-
-  /**
    * Convert a CQL string to an SQL tsquery where at least one word matches.
    *
    * @param s CQL string without leading or trailing double quote
@@ -312,7 +298,18 @@ public final class Cql2SqlUtil {
    * @throws QueryValidationException if s contains an unmasked wildcard question mark
    */
   public static StringBuilder cql2tsqueryOr(String s, boolean removeAccents) throws QueryValidationException {
-    return cql2tsquery(s, removeAccents, "||");
+    // implementation idea: Replace the tsquery AND operator & by the tsquery OR operator |
+
+    // to_tsquery('simple', '''abc,xyz''')
+    // = 'abc' & 'xyz'
+
+    // replace(to_tsquery('simple', '''abc,xyz''')::text, '&', '|')::tsquery
+    // =  'abc' | 'xyz'
+
+    StringBuilder t = cql2tsqueryAnd(s, removeAccents);
+    t.insert(0, "replace(");
+    t.append("::text, '&', '|')::tsquery");
+    return t;
   }
 
   /**
