@@ -41,6 +41,7 @@ See the file ["LICENSE"](LICENSE) for more information.
     * [CQL2PgJSON: id](#cql2pgjson-id)
     * [CQL: Relations](#cql-relations)
     * [CQL: Modifiers](#cql-modifiers)
+    * [CQL: Matching full text](#cql-matching-full-text)
     * [CQL: Matching all records](#cql-matching-all-records)
     * [CQL: Matching undefined or empty values](#cql-matching-undefined-or-empty-values)
     * [CQL: Matching array elements](#cql-matching-array-elements)
@@ -923,6 +924,20 @@ Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 Word begin and word end in JSON is only detected at whitespace and punctuation characters
 from the ASCII charset, not from other Unicode charsets.
 
+### CQL: Matching full text
+
+See [PostgreSQL's tsvector full text parser documentation](https://www.postgresql.org/docs/current/textsearch-parsers.html)
+how word splitting works when using a full text index. Some notable consequences:
+
+CQL `field adj "bar"` matches `bar`, `bar-baz`, `foo-bar-baz`.
+
+CQL `field adj "bar baz"` matches `bar baz`, `bar-baz`, `foo-bar-baz`, `foo-bar baz`, `bar-baz-foo`.
+
+CQL `field adj "bar-baz"` matches `bar-baz`, but neither `bar baz` nor `foo-bar-baz` nor `foo-bar baz` nor `bar-baz-foo`.
+
+`foo/bar/baz` is a single word, while `foo//bar//baz`, `foo///bar///baz`, `foo////bar////baz`, etc.
+are split into the three words `foo`, `/bar`, and `/baz` (always reduced to a single slash).
+
 ### CQL: Matching all records
 
 A search matching all records in the target index can be executed with a
@@ -1272,8 +1287,8 @@ For each **table**:
 6. `likeIndex` - indicate which fields in the json will be queried using the LIKE  - needed for fields that will be faceted on
     * `fieldName` the field name in the json to create the index for
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
-    * the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. *Default: false* should not be changed, temporarily all indexes are created with a `lower()` function wrapper. Index will not be used if this is changed (important on large tables)
-    *  `removeAccents` - normalize accents or leave accented chars as is. *Default: true* should not be changed, temporarily all indexes are created with a `f_unaccent()` function wrapper. Index will not be used if this is changed (important on large tables)
+    * the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. Defaults to false.
+    *  `removeAccents` - normalize accents or leave accented chars as is. Defaults to true.
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
     * `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
     * `arrayModifiers`- specifies array relation modifiers supported for some index. The modifiers must exactly match the name of the property in the JSON object within the array.
@@ -1287,10 +1302,11 @@ For each **table**:
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
     * See additional options in the likeIndex section above
-10. `fullTextIndex` - create a full text index using the tsvector features of postgres. These do their
-own normalizing, so there is no need to use `caseSensitive` or `removeAccents`. The `tOps`
-is optional (like for all indexes), and defaults to ADDing the index. `whereClause` and
-`stringType` work as for `likeIndex` above.
+10. `fullTextIndex` - create a full text index using the tsvector features of postgres.
+    * `removeAccents` can be used, the default `caseSensitive: false` cannot be changed because tsvector always converts to lower case.
+    * See [CQL: Matching full text](#cql-matching-full-text) to learn how word splitting works.
+    * The `tOps` is optional (like for all indexes), and defaults to ADDing the index.
+    * `whereClause` and `stringType` work as for `likeIndex` above.
 11. `withAuditing` - Creates an auditing table and a trigger that populates the audit table with the history of the table record whenever an insert, update, or delete occurs. `"withAuditing": true` for enabled, `false` or undefined for disabled.
     * `auditingTableName` The name of the audit table.
     * `auditingFieldName` The field (JSON property) in the audit record that contains the copy of the original record.
