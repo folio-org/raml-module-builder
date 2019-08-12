@@ -1,3 +1,9 @@
+## 26.4.0 2019-08-12
+
+ * RMB-438 contributor search returns no results when name
+   contains "-"
+ * RMB-432 fulltext: word splitting and punctuation removal
+
 ## 26.3.0 2019-08-07
 
  * RMB-443 HttpStatus.java: Explain FOLIO's 400 and 422 status code usage
