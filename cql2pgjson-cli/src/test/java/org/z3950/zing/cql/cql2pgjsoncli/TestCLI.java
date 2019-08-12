@@ -12,6 +12,8 @@ import org.folio.cql2pgjson.exception.QueryValidationException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -102,8 +104,11 @@ public class TestCLI {
 
   @Test
   public void testCLIName() throws Exception {
-    testCLI("title=foo",
-        "select * from instance where to_tsvector('simple', lower(f_unaccent(instance.jsonb->>'title'))) @@ to_tsquery('simple', lower(f_unaccent('foo')))");
+    String cql = "title=foo";
+    String[] args = new String[] { "-t", "instance", cql };
+    String sql = handleOptions(args);
+    assertTrue(sql.contains("instance.jsonb->>'title'"));
+    assertTrue(sql.contains("'foo'"));
   }
 
   @Test(expected = QueryValidationException.class)
