@@ -8,6 +8,7 @@ public class Script extends Versioned {
 
   private String run;
   private String snippet;
+  private String snippetPath;
 
   public String getRun() {
     return run;
@@ -21,5 +22,10 @@ public class Script extends Versioned {
   public void setSnippet(String snippet) {
     this.snippet = snippet;
   }
-
+  public String getSnippetPath() {
+    return snippetPath;
+  }
+  public void setSnippetPath(String snippetPath) {
+    this.snippetPath = snippetPath;
+  }
 }
