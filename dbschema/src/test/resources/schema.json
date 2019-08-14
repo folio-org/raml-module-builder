@@ -4,12 +4,18 @@
       "tableName": "item",
       "withAuditing": true,
       "auditingSnippet": {
-        "insert": { "declare": "-- extra declare for insert",
-                    "statement": "-- extra statement for insert" },
-        "update": { "declare": "-- extra declare for update",
-                    "statement": "-- extra statement for update" },
-        "delete": { "declare": "-- extra declare for delete",
-                    "statement": "-- extra statement for delete" }
+        "insert": {
+          "declare": "-- extra declare for insert",
+          "statement": "-- extra statement for insert"
+        },
+        "update": {
+          "declare": "-- extra declare for update",
+          "statement": "-- extra statement for update"
+        },
+        "delete": {
+          "declare": "-- extra declare for delete",
+          "statement": "-- extra statement for delete"
+        }
       },
       "index": [
         {
@@ -30,7 +36,9 @@
           "caseSensitive": false,
           "removeAccents": true,
           "arraySubfield": "name",
-          "arrayModifiers": [ "languageId" ]
+          "arrayModifiers": [
+            "languageId"
+          ]
         }
       ],
       "ginIndex": [
@@ -48,6 +56,13 @@
           "tOps": "ADD"
         }
       ]
+    }
+  ],
+  "scripts": [
+    {
+      "run": "before",
+      "snippetPath": "script.sql",
+      "fromModuleVersion": "mod-foo-18.2.2"
     }
   ]
 }
