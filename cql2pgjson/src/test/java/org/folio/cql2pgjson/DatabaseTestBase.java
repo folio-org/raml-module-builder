@@ -196,7 +196,7 @@ public class DatabaseTestBase {
    * @param sqlStatement  the SQL command to run
    * @throws RuntimeException on SQLException
    */
-  static void runSqlStatement(String sqlStatement) {
+  public static void runSqlStatement(String sqlStatement) {
     try (Statement statement = conn.createStatement()) {
       statement.execute(sqlStatement);
     } catch (SQLException e) {
@@ -210,7 +210,7 @@ public class DatabaseTestBase {
    * @return the first column of the result, converted into Strings
    * @throws SQLRuntimeException on SQLException
    */
-  static List<String> firstColumn(String selectStatement) {
+  public static List<String> firstColumn(String selectStatement) {
     try (Statement statement = conn.createStatement();
          ResultSet resultSet = statement.executeQuery(selectStatement)) {
       List<String> array = new ArrayList<>();

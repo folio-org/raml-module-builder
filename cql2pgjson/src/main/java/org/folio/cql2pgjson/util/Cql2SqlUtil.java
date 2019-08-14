@@ -205,6 +205,137 @@ public final class Cql2SqlUtil {
   }
 
   /**
+   * Convert a CQL string to an SQL tsquery where each word matches in any order.
+   *
+   * @param s CQL string without leading or trailing double quote
+   * @param removeAccents whether to wrap all words in f_unaccent().
+   * @return SQL term
+   * @throws QueryValidationException if s contains an unmasked wildcard question mark
+   */
+  @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
+  public static StringBuilder cql2tsqueryAnd(String s, boolean removeAccents) throws QueryValidationException {
+    // We cannot use plainto_tsquery and phraseto_tsquery because they do not support right truncation.
+    // to_tsquery supports right truncation but spaces must be replaced by some operator.
+
+    StringBuilder t = new StringBuilder();
+    t.append(removeAccents ? "(to_tsquery('simple', f_unaccent('''"
+                           : "(to_tsquery('simple', ('''");
+    /** whether the previous character is a masking backslash */
+    boolean backslash = false;
+    /** whether the previous character is a wildcard star for right truncation */
+    boolean star = false;
+
+    final int length = s.length();
+    for (int i=0; i<length; i++) {
+      char c = s.charAt(i);
+      switch (c) {
+      case '\\':
+        if (backslash) {
+          t.append("\\\\");
+        }
+        backslash = ! backslash;
+        star = false;
+        break;
+      case '*':
+        if (backslash) {
+          t.append(c);
+          backslash = false;
+        } else {
+          if (i+1 < length && s.charAt(i+1) != ' ') {
+            throw new QueryValidationException(
+                "* right truncation wildcard must be followed by space or end of string, but found " + c);
+          }
+          star = true;
+        }
+        break;
+      case '?':
+        if (! backslash) {
+          throw new QueryValidationException("? wildcard not allowed in full text query string");
+        }
+        t.append(c);
+        backslash = false;
+        break;
+      case ' ':
+        if (i>0 && s.charAt(i-1) == ' ') {
+          // skip space if previous character already was a space
+          break;
+        }
+        if (star) {
+          t.append("'':*')) ");
+          star = false;
+        } else {
+          t.append("''')) ");
+        }
+        t.append(removeAccents ? "&& to_tsquery('simple', f_unaccent('''"
+                               : "&& to_tsquery('simple', ('''");
+        backslash = false;
+        break;
+      case '&':   // replace & so that we can replace all tsquery & by <-> for phrase search
+      case '\'':  // replace single quote to avoid single quote masking
+        t.append(',');
+        backslash = false;
+        break;
+      default:
+        t.append(c);
+        backslash = false;
+        break;
+      }
+    }
+    if (star) {
+      t.append("'':*')))");
+    } else {
+      t.append("''')))");
+    }
+    return t;
+  }
+
+  /**
+   * Convert a CQL string to an SQL tsquery where at least one word matches.
+   *
+   * @param s CQL string without leading or trailing double quote
+   * @param removeAccents whether to wrap all words in f_unaccent().
+   * @return SQL term
+   * @throws QueryValidationException if s contains an unmasked wildcard question mark
+   */
+  public static StringBuilder cql2tsqueryOr(String s, boolean removeAccents) throws QueryValidationException {
+    // implementation idea: Replace the tsquery AND operator & by the tsquery OR operator |
+
+    // to_tsquery('simple', '''abc,xyz''')
+    // = 'abc' & 'xyz'
+
+    // replace(to_tsquery('simple', '''abc,xyz''')::text, '&', '|')::tsquery
+    // =  'abc' | 'xyz'
+
+    StringBuilder t = cql2tsqueryAnd(s, removeAccents);
+    t.insert(0, "replace(");
+    t.append("::text, '&', '|')::tsquery");
+    return t;
+  }
+
+  /**
+   * Convert a CQL string to an SQL tsquery where the words matches consecutively and in that order (phrase search).
+   *
+   * @param s CQL string without leading or trailing double quote
+   * @param removeAccents whether to wrap all words in f_unaccent().
+   * @return SQL term
+   * @throws QueryValidationException if s contains an unmasked wildcard question mark
+   */
+  public static StringBuilder cql2tsqueryPhrase(String s, boolean removeAccents) throws QueryValidationException {
+    // implementation idea: Replace the tsquery AND operator & by the tsquery phrase operator <->
+
+    // to_tsquery('simple', '''Vigneras, Louis-André''')
+    // = 'vigneras' & 'louis-andré' & 'louis' & 'andré'
+
+    // replace(to_tsquery('simple', '''Vigneras, Louis-André''')::text, '&', '<->')::tsquery
+    // =  'vigneras' <-> 'louis-andré' <-> 'louis' <-> 'andré'
+
+    StringBuilder t = cql2tsqueryAnd(s, removeAccents);
+    t.insert(0, "replace(");
+    t.append("::text, '&', '<->')::tsquery");
+    return t;
+  }
+
+  /**
    * Test if s for sure is a syntactically correct SQL number.
    * <p>
    * Postgres also parses 1e but that may change in future.
