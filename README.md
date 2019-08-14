@@ -1069,16 +1069,16 @@ If the search term is a number then a numeric mode is used for "==", "<>", "<", 
 
 ### CQL2PgJSON: Cross table index queries
 
-CQL2PgJSON supports cross table joins via subquery.  This allows arbitrary depth relationships in parent->child and child->parent relationships.  Foreign keys must be uni-directional(parent->child and child->parent).
+CQL2PgJSON supports cross table joins via subquery.  This allows arbitrary depth relationships in parent->child and child->parent relationships.
 
 Example relationship:
-```
+
 table1 -> table2 -> table3
-```
+
 or
-```
+
 table1 <- table2 <- table3
-```
+
 * Start at table 3 and query table 1 or table 1 to query table 3 or anywhere in between.
 * precede the index you want to search with the table name in Camel Case. There is no change with table1 fields, use them the regular way without table name prefix.  
   - e.g. someTableName.indexYouWantToSearch = value
@@ -1109,7 +1109,7 @@ table1 <- table2 <- table3
       ]
     },
     {
-      "tableName": "table2",
+      "tableName": "table3",
       "index": [
         {
           "fieldName": "anotherfieldYouWantToSearch",
@@ -1129,7 +1129,7 @@ table1 <- table2 <- table3
 }
 ```
 ## Cross Table query ambiguity
-There will be some cases where two foreign keys refer to the same table.  This ambiguity has the possibility of leading the join logic down a dead end if the foreign key does not lead to the intended table.  To resolve this there are new properties:
+There will be some cases where two foreign keys refer to the same table. This ambiguity is resolved by these properties:
 	- tableAlias
 	- targetTableAlias
 	This schema example shows the use of two foreign keys both pointing to loan_type and the added properties to resolve the situation:
