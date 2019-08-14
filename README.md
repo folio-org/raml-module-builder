@@ -1009,9 +1009,7 @@ are particular suited for structures like:
       {
         "type1" : "value1",
         "type2" : "value2",
-        "subfield": {
-          .. "value"
-        }
+        "subfield": "value"
       },
       ...
     ]
