@@ -1009,11 +1009,12 @@ RMB 26 or later supports array searches with relation modifiers, that
 are particular suited for structures like:
 
     "property" : [
-      "type1" : "value1",
-      "type2" : "value2",
-      "subfield": {
-        .. "value"
-      }
+      {
+        "type1" : "value1",
+        "type2" : "value2",
+        "subfield": "value"
+      },
+      ...
     ]
 
 An example of this kind of structure is `contributors ` (property) from
