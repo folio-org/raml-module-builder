@@ -426,9 +426,11 @@ public class PostgresClientTest {
   @Test
   public void testProcessQuery() {
     PostgresClient testClient = PostgresClient.testClient();
-    List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb->>'biz'"));
-    }};
+    List<FacetField> facets = new ArrayList<FacetField>() {
+      {
+        add(new FacetField("jsonb->>'biz'"));
+      }
+    };
     QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
     queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 30 OFFSET 1";
 
@@ -437,14 +439,21 @@ public class PostgresClientTest {
     SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
       @Override
       public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
+        // provoke explain query failure
+        if (sql.startsWith("EXPLAIN ")) {
+          handler.handle(Future.failedFuture("explain"));
+          return this;
+        }
         ResultSet rs = getMockTestJsonbPojoResultSet(total);
         handler.handle(Future.succeededFuture(rs));
         return this;
       }
+
       @Override
       public void close(Handler<AsyncResult<Void>> handler) {
         handler.handle(Future.succeededFuture());
       }
+
       @Override
       public void close() {
         // nothing to do

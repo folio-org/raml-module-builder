@@ -96,6 +96,8 @@ public class PostgresClient {
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
+  static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
+
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
 
@@ -157,7 +159,10 @@ public class PostgresClient {
 
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
+
   private static int embeddedPort            = -1;
+
+  private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
@@ -165,6 +170,7 @@ public class PostgresClient {
   private AsyncSQLClient client;
   private final String tenantId;
   private final String schemaName;
+
 
   static {
     REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("LIMIT", Pattern.compile("LIMIT\\s+[\\d]+(?=(([^']*'){2})*[^']*$)", 2)));
@@ -188,6 +194,7 @@ public class PostgresClient {
     this.tenantId = "test";
     this.vertx = null;
     this.schemaName = convertToPsqlStandard(tenantId);
+    explainQueryThreshold = 0;
     log.warn("Instantiating test Postgres client! Only use with tests!");
   }
 
@@ -314,6 +321,10 @@ public class PostgresClient {
       configPath = POSTGRES_LOCALHOST_CONFIG;
     }
     return configPath;
+  }
+
+  static void setExplainQueryThreshold(long ms) {
+    explainQueryThreshold = ms;
   }
 
   /**
@@ -452,6 +463,10 @@ public class PostgresClient {
       AES.setSecretKey(secretKey);
     }
 
+    final String s = System.getenv("RMB_EXPLAIN_QUERY_THRESHOLD");
+    if (s != null) {
+      explainQueryThreshold = Long.parseLong(s);
+    }
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
     logPostgresConfig();
 
@@ -2534,12 +2549,12 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(res.cause()));
         return;
       }
-      long explainQueryThreshold = 0; // TODO must be configurable
-      if (queryTime >= explainQueryThreshold) {
+      if (queryTime >= explainQueryThreshold * 1000000) {
         final String explainQuery = "EXPLAIN ANALYZE " + sql;
         conn.query(explainQuery, explain -> {
           replyHandler.handle(res); // not before, so we have conn if it gets closed
           if (explain.failed()) {
+            log.warn("EXPLAIN ANALYZE QUERY failed threshold=" + explainQueryThreshold);
             log.warn(explainQuery + " failed", explain.cause().getMessage());
             return;
           }
@@ -2549,7 +2564,7 @@ public class PostgresClient {
               e.append("\n" + ar.getString(0));
             }
           }
-          log.info(explainQuery + e.toString());
+          log.warn(explainQuery + e.toString());
         });
       } else {
         replyHandler.handle(res);
