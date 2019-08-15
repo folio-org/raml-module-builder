@@ -194,11 +194,11 @@ public class PostgresClient {
     this.tenantId = "test";
     this.vertx = null;
     this.schemaName = convertToPsqlStandard(tenantId);
-    explainQueryThreshold = 0;
     log.warn("Instantiating test Postgres client! Only use with tests!");
   }
 
   static PostgresClient testClient() {
+    explainQueryThreshold = 0;
     return new PostgresClient();
   }
 
@@ -346,6 +346,10 @@ public class PostgresClient {
         // in connectionPool, but closeClient() has been invoked
         postgresClient.init();
       }
+      final String s = System.getenv("RMB_EXPLAIN_QUERY_THRESHOLD");
+      if (s != null) {
+        explainQueryThreshold = Long.parseLong(s);
+      }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
@@ -463,10 +467,6 @@ public class PostgresClient {
       AES.setSecretKey(secretKey);
     }
 
-    final String s = System.getenv("RMB_EXPLAIN_QUERY_THRESHOLD");
-    if (s != null) {
-      explainQueryThreshold = Long.parseLong(s);
-    }
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
     logPostgresConfig();
 
@@ -2554,7 +2554,6 @@ public class PostgresClient {
         conn.query(explainQuery, explain -> {
           replyHandler.handle(res); // not before, so we have conn if it gets closed
           if (explain.failed()) {
-            log.warn("EXPLAIN ANALYZE QUERY failed threshold=" + explainQueryThreshold);
             log.warn(explainQuery + " failed", explain.cause().getMessage());
             return;
           }
