@@ -57,10 +57,16 @@
           "fieldName": "tablebId",
           "targetTable": "tableb"
         }
+      ],
+      "index": [
+
+        {
+          "fieldName": "cindex",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": true
+        }
       ]
-    },
-    {
-      "tableName": "tabled"
     }
   ]
 }

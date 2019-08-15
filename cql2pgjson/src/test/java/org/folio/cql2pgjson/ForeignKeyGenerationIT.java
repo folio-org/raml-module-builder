@@ -54,6 +54,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
       throw new RuntimeException(e);
     }
   }
+
   @Test
   public void foreignKeySearch0() throws Exception {
     assertThat(cql("tableb.prefix == x0"), is(empty()));
@@ -62,6 +63,20 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   @Test
   public void foreignKeySearchParentChild() throws Exception {
     assertThat(cqlb("tablea.name == test1"), containsInAnyOrder("x1"));
+  }
+
+  @Test
+  public void foreignKeySearchMulti() throws Exception {
+    assertThat(cql("tablec.cindex == z1"), containsInAnyOrder("test1"));
+  }
+  @Test
+  public void foreignKeySearchMulti2() throws Exception {
+    assertThat(cql("tablec.cindex == z2"), containsInAnyOrder("test2"));
+  }
+
+  @Test
+  public void foreignKeySearchMultiWild() throws Exception {
+    assertThat(cql("tablec.cindex == *"), containsInAnyOrder("test1", "test2"));
   }
 
   @Test

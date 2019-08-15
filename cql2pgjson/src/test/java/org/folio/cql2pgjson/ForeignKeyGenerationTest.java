@@ -1,5 +1,6 @@
 package org.folio.cql2pgjson;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 
@@ -81,7 +82,13 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson.toSql("tableb.prefix == *").getWhere();
     assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('%')))", sql);
   }
-
+  @Test
+  public void foreignKeySearchMulti() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    String sql = cql2pgJson.toSql("tablec.cindex == z1").getWhere();
+    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE tableb.id IN  ( SELECT (tablec.jsonb->>'tablebId')::UUID from tablec WHERE lower(f_unaccent(tablec.jsonb->>'cindex')) LIKE lower(f_unaccent('z1'))))",sql);
+  }
   @Test
   public void ForeignKeySearchWithFUnaccent() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
