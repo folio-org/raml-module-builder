@@ -286,7 +286,7 @@ Environment variables with periods/dots in their names are deprecated in RMB bec
 The environment variable `RMB_EXPLAIN_QUERY_THRESHOLD` is not observed by Postgres itself, but
 is a value - in milliseconds - that triggers query execution analysis. If a single query exceeds this
 threshold, it will be analyzed by using `EXPLAIN ANALYZE`. Note that this in turn further adds time
-to the query, so this should only be executed for slow queries that needs further attention.
+to the query, so this should only be executed for slow queries that needs further attention. Like the DB-environment variables this pertains per RMB-module (process).
 
 See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables) section of the Okapi Guide for more information on how to deploy environment variables to RMB modules via Okapi.
 
