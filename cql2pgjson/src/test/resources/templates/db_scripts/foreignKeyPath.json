@@ -9,7 +9,8 @@
             {
                "fieldName":"aId",
                "targetTable":     "a",
-               "targetTableAlias":"a"
+               "targetTableAlias":"a",
+               "tableAlias": "b"
             }
          ]
       },
@@ -19,7 +20,8 @@
             {
                "fieldName":"bId",
                "targetTable":     "b",
-               "targetTableAlias":"bAlias"
+               "targetTableAlias":"bAlias",
+               "tableAlias": "c"
             }
          ]
       },
@@ -29,7 +31,8 @@
             {
                "fieldName":"cId",
                "targetTable":     "c",
-               "targetTableAlias":"c"
+               "targetTableAlias":"c",
+               "tableAlias": "d"
             }
          ]
       },

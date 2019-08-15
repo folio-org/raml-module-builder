@@ -97,13 +97,13 @@ public class DbSchemaUtilsTest {
     assertEquals("c", list.get(2).getTable());
 
     // source alias
-    list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "eAlias", "b");
+    list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "eAlias", "bAlias");
     assertEquals("e", list.get(0).getTable());
     assertEquals("d", list.get(1).getTable());
     assertEquals("c", list.get(2).getTable());
 
     // source alias 2
-    list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "e2Alias", "b");
+    list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "e2Alias", "bAlias");
     assertEquals("e", list.get(0).getTable());
     assertEquals("c", list.get(1).getTable());
   }
