@@ -96,6 +96,7 @@ public class PostgresClient {
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
+  /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
 
   private static final String    ID_FIELD                 = "id";
@@ -162,6 +163,7 @@ public class PostgresClient {
 
   private static int embeddedPort            = -1;
 
+  /** analyze threshold value in milliseconds */
   private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
 
   private final Vertx vertx;
