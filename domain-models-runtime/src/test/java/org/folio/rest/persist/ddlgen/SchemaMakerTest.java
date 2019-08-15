@@ -176,6 +176,35 @@ public class SchemaMakerTest {
         "select * from end;"));
   }
 
+  @Test
+  public void createScriptFromFilePresent() throws IOException, TemplateException {
+
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
+      "mod-foo-18.2.3", "mod-foo-18.2.4");
+
+    String json = ResourceUtil.asString("templates/db_scripts/scriptWithSnippetPath.json");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+
+    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+      "select * from file_start;"));
+  }
+
+  @Test
+  public void createScriptFromFileAndSnippetPresent() throws IOException, TemplateException {
+
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
+      "mod-foo-18.2.3", "mod-foo-18.2.4");
+
+    String json = ResourceUtil.asString("templates/db_scripts/scriptWithSnippetPathAndSnippet.json");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+
+    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+      "select * from start;"));
+
+    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+      "select * from file_start;"));
+  }
+
 
   @Test
   public void delete() throws IOException, TemplateException {
