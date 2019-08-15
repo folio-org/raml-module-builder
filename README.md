@@ -1082,18 +1082,24 @@ Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number
 If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", and ">=" if the actual JSONB type of the stored value is `number`
 (JSONB has no `integer` type).
 
-### CQL2PgJSON: Cross index searches
+### CQL2PgJSON: Cross table index queries
 
-Limited cross table searches are supported.  If you desire a join across tables the following conditions must be met:
+CQL2PgJSON supports cross table joins via subquery.  This allows arbitrary depth relationships in parent->child and child->parent relationships.
 
-* The join desired index must be only 1 table deep
-  - e.g.  table1 -> table2 not table1 -> table2 -> table3
+Example relationship:
+
+table1 -> table2 -> table3
+
+or
+
+table1 <- table2 <- table3
+
+* Start at table 3 and query table 1 or table 1 to query table 3 or anywhere in between.
 * precede the index you want to search with the table name in Camel Case. There is no change with table1 fields, use them the regular way without table name prefix.  
   - e.g. someTableName.indexYouWantToSearch = value
-* The table2 fields to be used must have an index declared in schema.json, it must be of type "index", not "likeIndex", "uniqueIndex", "ginIndex", or "fullTextIndex".
-* Use table.index = * in order to do a filter query with no condition
-* Example Schema: 
-
+* The target table index field must have an index declared in schema.json.
+* Use table.index = * in order to do a cross index query with no condition
+* Example Schema for the above example: 
 ```
 {
   "tables": [
@@ -1116,10 +1122,60 @@ Limited cross table searches are supported.  If you desire a join across tables 
           "targetTable": "table1"
         }
       ]
+    },
+    {
+      "tableName": "table3",
+      "index": [
+        {
+          "fieldName": "anotherfieldYouWantToSearch",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "table2Id",
+          "targetTable": "table2"
+        }
+      ]
     }
   ]
 }
 ```
+## Cross Table query ambiguity
+There will be some cases where two foreign keys refer to the same table. This ambiguity is resolved by these properties:
+	- tableAlias
+	- targetTableAlias
+	This schema example shows the use of two foreign keys both pointing to loan_type and the added properties to resolve the situation:
+```
+    {
+      "tableName": "item",
+      "foreignKeys": [
+        {
+          "fieldName": "permanentLoanTypeId",
+          "tableAlias": "itemWithPermanentLoanType",
+          "targetTable": "loan_type",
+          "targetTableAlias": "loanType",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "temporaryLoanTypeId",
+          "tableAlias": "itemWithTemporaryLoanType",
+          "targetTable": "loan_type",
+          "targetTableAlias": "temporaryLoanType",
+          "tOps": "ADD"
+        }
+      ]
+    }
+```	
+Running CQL loanType.name == "Can circulate" against the item endpoint returns all items where the item's permanentLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".
+
+Running CQL temporaryLoanType.name == "Can circulate" against the item endpoint returns all items where the item's temporaryLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".
+
+Running CQL itemWithPermanentLoanType.status == "In transit" against the loan_type endpoint returns all loan_types where there exists an item that has this loan_type as a permanentLoanType and where the item's status equals "In transit".
+
+Running CQL itemWithTemporaryLoanType.status == "In transit" against the loan_type endpoint returns all loan_types where there exists an item that has this loan_type as a temporaryLoanType and where the item's status equals "In transit".
 
 ### CQL2PgJSON: Exceptions
 
