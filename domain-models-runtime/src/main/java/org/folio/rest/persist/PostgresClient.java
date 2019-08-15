@@ -1672,16 +1672,21 @@ public class PostgresClient {
     SQLConnection connection, QueryHelper queryHelper, Integer total, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) {
-    queryAndAnalyze(connection, queryHelper.selectQuery, statMethod, query -> {
-      if (!queryHelper.transactionMode) {
-        connection.close();
-      }
-      if (query.failed()) {
-        replyHandler.handle(Future.failedFuture(query.cause()));
-        return;
-      }
-      replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
-    });
+    try {
+      queryAndAnalyze(connection, queryHelper.selectQuery, statMethod, query -> {
+        if (!queryHelper.transactionMode) {
+          connection.close();
+        }
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   /**
@@ -2521,38 +2526,33 @@ public class PostgresClient {
 
     long start = System.nanoTime();
     conn.query(sql, res -> {
-      try {
-        long queryTime = (System.nanoTime() - start);
-        StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
-        if (res.failed()) {
-          log.error("queryAndAnalyze: " + res.cause().getMessage() + " - "
-            + sql, res.cause());
-          replyHandler.handle(Future.failedFuture(res.cause()));
-          return;
-        }
-        long explainQueryThreshold = 0; // TODO must be configurable
-        if (queryTime >= explainQueryThreshold) {
-          final String explainQuery = "EXPLAIN ANALYZE " + sql;
-          conn.query(explainQuery, explain -> {
-            replyHandler.handle(res); // not before, so we have conn if it gets closed
-            if (explain.failed()) {
-              log.warn(explainQuery + " failed", explain.cause());
-              return;
+      long queryTime = (System.nanoTime() - start);
+      StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
+      if (res.failed()) {
+        log.error("queryAndAnalyze: " + res.cause().getMessage() + " - "
+          + sql, res.cause());
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      long explainQueryThreshold = 0; // TODO must be configurable
+      if (queryTime >= explainQueryThreshold) {
+        final String explainQuery = "EXPLAIN ANALYZE " + sql;
+        conn.query(explainQuery, explain -> {
+          replyHandler.handle(res); // not before, so we have conn if it gets closed
+          if (explain.failed()) {
+            log.warn(explainQuery + " failed", explain.cause().getMessage());
+            return;
+          }
+          StringBuilder e = new StringBuilder();
+          for (JsonArray ar : explain.result().getResults()) {
+            if (ar.getValue(0) instanceof String) {
+              e.append("\n" + ar.getString(0));
             }
-            StringBuilder e = new StringBuilder();
-            for (JsonArray ar : explain.result().getResults()) {
-              if (ar.getValue(0) instanceof String) {
-                e.append("\n" + ar.getString(0));
-              }
-            }
-            log.warn(explainQuery + e.toString());
-          });
-        } else {
-          replyHandler.handle(res);
-        }
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
+          }
+          log.info(explainQuery + e.toString());
+        });
+      } else {
+        replyHandler.handle(res);
       }
     });
   }
