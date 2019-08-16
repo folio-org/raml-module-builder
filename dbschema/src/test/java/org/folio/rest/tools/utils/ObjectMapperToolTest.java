@@ -28,6 +28,12 @@ class ObjectMapperToolTest {
       .isRemoveAccents(), is(true));
     assertThat(dbSchema.getTables().get(0).getFullTextIndex().get(0)
       .isRemoveAccents(), is(false));
+    assertThat(dbSchema.getScripts().get(0)
+      .getSnippetPath(), is("script.sql"));
+    assertThat(dbSchema.getScripts().get(0)
+      .getRun(), is("before"));
+    assertThat(dbSchema.getScripts().get(0)
+      .getFromModuleVersion(), is("mod-foo-18.2.2"));
 
   }
 }

@@ -27,7 +27,11 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
         <#if mode.name() != "CREATE">
 -- Run script - created in version ${(script.fromModuleVersion)!0}
         </#if>
-        ${script.snippet}
+        <#if script.snippetPath??>
+          <#include script.snippetPath>
+        <#elseif script.snippet??>
+          ${script.snippet}
+        </#if>
       </#if>
     </#if>
   </#list>
@@ -131,7 +135,11 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
         <#if mode.name() != "CREATE">
 -- Run script - created in version ${(script.fromModuleVersion)!0}
         </#if>
-        ${script.snippet}
+        <#if script.snippetPath??>
+          <#include script.snippetPath>
+        <#elseif script.snippet??>
+          ${script.snippet}
+        </#if>
       </#if>
     </#if>
   </#list>

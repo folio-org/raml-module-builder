@@ -1,0 +1,9 @@
+{
+  "scripts": [
+    {
+      "run": "before",
+      "snippetPath": "script.sql",
+      "fromModuleVersion": "mod-foo-18.2.2"
+    }
+  ]
+}

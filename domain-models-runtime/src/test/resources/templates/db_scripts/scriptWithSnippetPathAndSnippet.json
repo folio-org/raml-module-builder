@@ -1,0 +1,14 @@
+{
+  "scripts": [
+    {
+      "run": "before",
+      "snippet": "select * from start; ",
+      "fromModuleVersion": "mod-foo-18.2.2"
+    },
+    {
+      "run": "before",
+      "snippetPath": "script.sql",
+      "fromModuleVersion": "mod-foo-18.2.2"
+    }
+  ]
+}
