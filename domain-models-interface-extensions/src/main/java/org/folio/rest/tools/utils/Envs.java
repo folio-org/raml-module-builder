@@ -35,20 +35,24 @@ public enum Envs {
     } else if (key.equalsIgnoreCase(MAXPOOL)) {
       return MAXPOOL;
     }
-    return key;
+    return key.toLowerCase();
   }
 
   public static JsonObject allDBConfs() {
     JsonObject obj = new JsonObject();
-    env.forEach((key, value) -> {
-      // also accept deprecated keys like "db.host" for "DB_HOST".
-      if (key.startsWith("db.") || key.startsWith("DB_")) {
-        key = toCamelCase(key.substring(3).toLowerCase());
-        if (key.equals(PORT) || key.equals(TIMEOUT) || key.equals(MAXPOOL)) {
+    env.forEach((envKey, value) -> {
+      if (! envKey.startsWith("DB_")) {
+        return;
+      }
+      String key = toCamelCase(envKey.substring(3));
+      if (key.equals(PORT) || key.equals(TIMEOUT) || key.equals(MAXPOOL)) {
+        try {
           obj.put(key, Integer.parseInt(value));
-        } else {
-          obj.put(key, value);
+        } catch (NumberFormatException e) {
+          throw new NumberFormatException(envKey + ": " + e.getMessage());
         }
+      } else {
+        obj.put(key, value);
       }
     });
     return obj;
