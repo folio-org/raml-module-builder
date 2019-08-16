@@ -92,11 +92,10 @@ public class DbSchemaUtils {
    */
   public static List<DbFkInfo> findForeignKeysFromSourceTableToTargetAlias(Schema dbSchema, String srcTabName,
       String targetTabAlias) {
-    return findForeignKeys(dbSchema, srcTabName, targetTabAlias, true);
+    return findForeignKeys(dbSchema, srcTabName, targetTabAlias);
   }
 
-  private static List<DbFkInfo> findForeignKeys(Schema dbSchema, String srcTabName, String targetTabName,
-      boolean useTargetAlias) {
+  private static List<DbFkInfo> findForeignKeys(Schema dbSchema, String srcTabName, String targetTabName) {
     List<DbFkInfo> list = new ArrayList<>();
     Table srcTab = getTable(dbSchema, srcTabName);
     if (srcTab == null || srcTab.getForeignKeys() == null) {
@@ -104,22 +103,21 @@ public class DbSchemaUtils {
     }
     // direct FK
     for (ForeignKeys fk : srcTab.getForeignKeys()) {
-      String targetName = useTargetAlias ? fk.getTargetTableAlias() : fk.getTargetTable();
-      if (targetTabName.equals(targetName)) {
+      if (targetTabName.equals(fk.getTargetTableAlias())) {
         list.add(new DbFkInfo(srcTab.getTableName(), fk.getFieldName(), fk.getTargetTable()));
         return list;
       }
     }
     // find the shortest path
     for (ForeignKeys fk : srcTab.getForeignKeys()) {
-      updateFkList(list, dbSchema, srcTab, fk, targetTabName, useTargetAlias);
+      updateFkList(list, dbSchema, srcTab, fk, targetTabName);
     }
     return list;
   }
 
   private static void updateFkList(List<DbFkInfo> list, Schema dbSchema, Table srcTab, ForeignKeys fk,
-      String targetTabName, boolean useTargetAlias) {
-    List<DbFkInfo> childList = findForeignKeys(dbSchema, fk.getTargetTable(), targetTabName, useTargetAlias);
+      String targetTabName) {
+    List<DbFkInfo> childList = findForeignKeys(dbSchema, fk.getTargetTable(), targetTabName);
     if (!childList.isEmpty()) {
       if (!list.isEmpty() && (list.size() > (childList.size() + 1))) {
         list.clear();
@@ -145,15 +143,14 @@ public class DbSchemaUtils {
         continue;
       }
       for (ForeignKeys fk : table.getForeignKeys()) {
-        String tabAlias = fk.getTableAlias() == null ? table.getTableName() : fk.getTableAlias();
-        if (srcTabAlias.equals(tabAlias)) {
+        if (srcTabAlias.equals(fk.getTableAlias())) {
           // direct FK
           if (targetTabName.equals(fk.getTargetTable())) {
             list.add(new DbFkInfo(table.getTableName(), fk.getFieldName(), fk.getTargetTable()));
             return list;
           } else {
             // find the shortest path
-            updateFkList(list, dbSchema, table, fk, targetTabName, false);
+            updateFkList(list, dbSchema, table, fk, targetTabName);
           }
         }
       }

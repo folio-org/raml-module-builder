@@ -1,0 +1,29 @@
+{
+  "tables": [
+    {
+      "tableName": "instance"
+    },
+    {
+      "tableName": "holdings_record",
+      "foreignKeys": [
+        {
+          "fieldName": "instanceId",
+          "targetTable":      "instance",
+          "targetTableAlias": "instance",
+          "tableAlias": "holdingsRecord"
+        }
+      ]
+    },
+    {
+      "tableName": "item",
+      "foreignKeys": [
+        {
+          "fieldName": "holdingsRecordId",
+          "targetTable":      "holdings_record",
+          "targetTableAlias": "holdingsRecord",
+          "tableAlias": "item"
+        }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
 /**
- * @author shale
- *
+ * A foreign key relation from the current table (= child table) to a target table (=parent table).
  */
 public class ForeignKeys extends Field {
 
@@ -27,31 +26,62 @@ public class ForeignKeys extends Field {
     this.tOps = tOps;
   }
 
+  /**
+   * @return the name ("tableName") of the parent table
+   */
   public String getTargetTable() {
     return targetTable;
   }
 
+  /**
+   * @param targetTable the name ("tableName") of the parent table
+   */
   public void setTargetTable(String targetTable) {
     this.targetTable = targetTable;
   }
 
   /**
-   * Return targetTableAlias. If it is null, fall back to targetTable.
-   *
-   * @return targetTableAlias as a {@link String}
+   * Get the alias name of the parent/target table to be used in CQL queries,
+   * it can differ from the database parent/target table name, for example
+   * targetTable="holdings_records", targetTableAlias="holdingsRecords".
+   * Null indicates that using this child->parent foreign key relation is disabled for CQL queries.
+   * @return the alias name, or null if disabled.
    */
   public String getTargetTableAlias() {
-    return targetTableAlias == null ? targetTable : targetTableAlias;
+    return targetTableAlias;
   }
 
+  /**
+   * Set the alias name of the parent/target table to be used in CQL queries,
+   * it can differ from the database parent/target table name, for example
+   * targetTable="holdings_records", targetTableAlias="holdingsRecords".
+   * Null indicates that using this child->parent foreign key relation is disabled for CQL queries.
+   * @param targetTableAlias the alias name, or null if disabled
+   */
   public void setTargetTableAlias(String targetTableAlias) {
     this.targetTableAlias = targetTableAlias;
   }
 
+  /**
+   * Get the alias name of the current child table to be used in CQL queries to access
+   * it from the parent/target table (access holdings records from instance),
+   * the tableAlias can differ from the database child table name, for example
+   * tableName="holdings_records", tableAlias="holdingsRecords".
+   * Null indicates that using this parent->child foreign key relation is disabled for CQL queries.
+   * @return the alias name, or null if disabled.
+   */
   public String getTableAlias() {
     return tableAlias;
   }
 
+  /**
+   * Set the alias name of the current child table to be used in CQL queries to access
+   * it from the parent/target table (access holdings records from instance),
+   * the tableAlias can differ from the database child table name, for example
+   * tableName="holdings_records", tableAlias="holdingsRecords".
+   * Null indicates that using this parent->child foreign key relation is disabled for CQL queries.
+   * @return the alias name, or null if disabled.
+   */
   public void setTableAlias(String tableAlias) {
     this.tableAlias = tableAlias;
   }

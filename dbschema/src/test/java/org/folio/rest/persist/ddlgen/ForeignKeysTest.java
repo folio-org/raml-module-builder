@@ -8,28 +8,23 @@ class ForeignKeysTest {
 
   @Test
   void testAlias() {
-
     ForeignKeys fk = new ForeignKeys();
     assertNull(fk.getTableAlias());
     assertNull(fk.getTargetTableAlias());
 
-    String expected = "a";
-    fk.setTableAlias(expected);
-    assertEquals(expected, fk.getTableAlias());
+    fk.setTableAlias("a");
+    assertEquals("a", fk.getTableAlias());
 
-    // return target if target alias is null
-    expected = "b";
-    fk.setTargetTable(expected);
-    assertEquals(expected, fk.getTargetTableAlias());
+    fk.setTargetTable("b");
+    assertEquals("b", fk.getTargetTable());
+    assertEquals(null, fk.getTargetTableAlias());
 
-    // return target alias if it is not null
-    expected = "c";
-    fk.setTargetTableAlias(expected);
-    assertEquals(expected, fk.getTargetTableAlias());
+    fk.setTargetTableAlias("c");
+    assertEquals("c", fk.getTargetTableAlias());
 
-    expected = fk.toString();
-    assertTrue(expected.contains("tableAlias=a"));
-    assertTrue(expected.contains("targetTable=b"));
-    assertTrue(expected.contains("targetTableAlias=c"));
+    String result = fk.toString();
+    assertTrue(result.contains("tableAlias=a"));
+    assertTrue(result.contains("targetTable=b"));
+    assertTrue(result.contains("targetTableAlias=c"));
   }
 }
