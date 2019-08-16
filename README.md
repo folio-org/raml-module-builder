@@ -1102,8 +1102,9 @@ The field in the child table points to the primary key `id` field of the parent 
 * Precede the index you want to search with the table name in camelCase, e.g. `instance.title = "bee"`.
 * There is no change with child table fields, use them the regular way without table name prefix.
 * The target table index field must have an index declared in schema.json.
+* For a multi-table join use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
 * Use `= *` to check whether a join record exists, this runs a cross index join with no further restriction, e.g. `instance.id = *`.
-* Example Schema for the above example: 
+* The schema for the above example:
 ```
 {
   "tables": [
@@ -1139,6 +1140,12 @@ The field in the child table points to the primary key `id` field of the parent 
           "targetTableAlias": "holdingsRecord",
           "tableAlias": "item",
           "tOps": "ADD"
+        },
+        {
+          "targetPath": ["holdingsRecordId", "instanceId"],
+          "targetTable":      "instance",
+          "targetTableAlias": "instance",
+          "tableAlias": "item"
         }
       ]
     }
