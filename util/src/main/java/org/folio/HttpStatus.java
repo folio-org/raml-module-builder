@@ -102,7 +102,7 @@ public enum HttpStatus {
    * <p>
    * For a text/plain response body see {@link #HTTP_BAD_REQUEST} (400).
    */
-  HTTP_VALIDATION_ERROR(422),
+  HTTP_UNPROCESSABLE_ENTITY(422),
 
   /**
    * 500, internal server error. The server encountered an unexpected condition which prevented it
