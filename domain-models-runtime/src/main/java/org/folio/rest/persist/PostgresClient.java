@@ -348,7 +348,7 @@ public class PostgresClient {
         // in connectionPool, but closeClient() has been invoked
         postgresClient.init();
       }
-      final String s = System.getenv("RMB_EXPLAIN_QUERY_THRESHOLD");
+      final String s = Envs.getEnv(Envs.RMB_EXPLAIN_QUERY_THRESHOLD);
       if (s != null) {
         explainQueryThreshold = Long.parseLong(s);
       }

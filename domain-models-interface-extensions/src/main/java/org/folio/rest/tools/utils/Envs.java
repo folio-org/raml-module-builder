@@ -12,7 +12,8 @@ public enum Envs {
   DB_DATABASE,
   DB_QUERYTIMEOUT,
   DB_CHARSET,
-  DB_MAXPOOLSIZE;
+  DB_MAXPOOLSIZE,
+  RMB_EXPLAIN_QUERY_THRESHOLD;
 
   private static final String PORT = "port";
   private static final String TIMEOUT = "queryTimeout";

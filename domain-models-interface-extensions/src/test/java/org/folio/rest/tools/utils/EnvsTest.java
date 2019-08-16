@@ -21,6 +21,7 @@ public class EnvsTest {
     map.put("DB_MAXPOOLSIZE", "5");
     // deprecated key db.username for allDBConfs()
     map.put("db.username", "superwoman");
+    map.put("RMB_EXPLAIN_QUERY_THRESHOLD", "100");
     Envs.setEnv(Collections.unmodifiableMap(map));
   }
 
@@ -50,6 +51,11 @@ public class EnvsTest {
   }
 
   @Test
+  public void threshold() {
+    assertEquals("100", Envs.getEnv(Envs.RMB_EXPLAIN_QUERY_THRESHOLD));
+  }
+
+  @Test
   public void allDBConfs() {
     JsonObject json = Envs.allDBConfs();
     assertEquals(4, json.size());
@@ -57,6 +63,7 @@ public class EnvsTest {
     assertEquals(Integer.valueOf(8), json.getValue("queryTimeout"));
     assertEquals(Integer.valueOf(5), json.getValue("maxPoolSize"));
     assertEquals("superwoman", json.getValue("username"));
+    assertNull(json.getValue(Envs.RMB_EXPLAIN_QUERY_THRESHOLD.name()));
   }
 
 }
