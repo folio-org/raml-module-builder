@@ -4,6 +4,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
 import com.google.common.base.Joiner;
 import com.google.common.primitives.Primitives;
@@ -13,7 +14,7 @@ public class UpdateSection {
 
   ArrayList<String> fieldHierarchy = new ArrayList<>();
   Object value;
-
+  private final Pattern fieldPattern = Pattern.compile("[a-zA-Z0-9_]+");
 
   /**
    * set the field to update - the field are listed in the generated objects
@@ -27,6 +28,9 @@ public class UpdateSection {
    * @return
    */
   public UpdateSection addField(String field){
+    if (! fieldPattern.matcher(field).matches()) {
+      throw new IllegalArgumentException("Field name with illegal character: '" + field + "'");
+    }
     fieldHierarchy.add(field);
     return this;
   }

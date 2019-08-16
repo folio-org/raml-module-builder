@@ -1165,17 +1165,13 @@ public class PostgresClient {
       client.getConnection(res -> {
         if (res.succeeded()) {
           SQLConnection connection = res.result();
-          StringBuilder sb = new StringBuilder();
-          if (when != null) {
-            sb.append(when.toString());
-          }
-          StringBuilder returning = new StringBuilder();
-          if (returnUpdatedIdsCount) {
-            returning.append(RETURNING_ID);
-          }
           try {
-            String q = UPDATE + schemaName + DOT + table + SET + DEFAULT_JSONB_FIELD_NAME + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
-                + section.getFieldsString() + ", '" + section.getValue() + "', false) " + sb.toString() + SPACE + returning;
+            String value = section.getValue().replace("'", "''");
+            String where = when == null ? "" : when.toString();
+            String returning = returnUpdatedIdsCount ? RETURNING_ID : "";
+            String q = UPDATE + schemaName + DOT + table + SET + DEFAULT_JSONB_FIELD_NAME
+                + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
+                + section.getFieldsString() + ", '" + value + "', false) " + where + returning;
             log.debug("update query = " + q);
             connection.update(q, query -> {
               connection.close();
