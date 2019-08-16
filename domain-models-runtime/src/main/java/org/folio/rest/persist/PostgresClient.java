@@ -2556,16 +2556,16 @@ public class PostgresClient {
         conn.query(explainQuery, explain -> {
           replyHandler.handle(res); // not before, so we have conn if it gets closed
           if (explain.failed()) {
-            log.warn(explainQuery + " failed", explain.cause().getMessage());
+            log.warn(explainQuery + ": ", explain.cause().getMessage(), explain.cause());
             return;
           }
-          StringBuilder e = new StringBuilder();
+          StringBuilder e = new StringBuilder(explainQuery);
           for (JsonArray ar : explain.result().getResults()) {
             if (ar.getValue(0) instanceof String) {
-              e.append("\n" + ar.getString(0));
+              e.append('\n').append(ar.getString(0));
             }
           }
-          log.warn(explainQuery + e.toString());
+          log.warn(e.toString());
         });
       } else {
         replyHandler.handle(res);
