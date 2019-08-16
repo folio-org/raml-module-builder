@@ -18,6 +18,7 @@ import junitparams.JUnitParamsRunner;
 public class ForeignKeyGenerationIT extends DatabaseTestBase {
   private CQL2PgJSON cql2pgJsonTablea;
   private CQL2PgJSON cql2pgJsonTableb;
+  private CQL2PgJSON cql2pgJsonTablec;
 
   @BeforeClass
   public static void runOnceBeforeClass() throws Exception {
@@ -36,6 +37,8 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     cql2pgJsonTablea.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     cql2pgJsonTableb = new CQL2PgJSON("tableb.jsonb");
     cql2pgJsonTableb.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    cql2pgJsonTablec = new CQL2PgJSON("tablec.jsonb");
+    cql2pgJsonTablec.setDbSchemaPath("templates/db_scripts/foreignKey.json");
   }
 
   private List<String> cql(String cql) {
@@ -54,7 +57,14 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
       throw new RuntimeException(e);
     }
   }
-
+  private List<String> cqlc(String cql) {
+    try {
+      String sql = cql2pgJsonTablec.toSql(cql).toString();
+      return firstColumn("select jsonb->>'cindex' from tablec " + sql);
+    } catch (QueryValidationException e) {
+      throw new RuntimeException(e);
+    }
+  }
   @Test
   public void foreignKeySearch0() throws Exception {
     assertThat(cql("tableb.prefix == x0"), is(empty()));
@@ -69,6 +79,7 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   public void foreignKeySearchMulti() throws Exception {
     assertThat(cql("tablec.cindex == z1"), containsInAnyOrder("test1"));
   }
+
   @Test
   public void foreignKeySearchMulti2() throws Exception {
     assertThat(cql("tablec.cindex == z2"), containsInAnyOrder("test2"));
@@ -77,6 +88,16 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
   @Test
   public void foreignKeySearchMultiWild() throws Exception {
     assertThat(cql("tablec.cindex == *"), containsInAnyOrder("test1", "test2"));
+  }
+
+  @Test
+  public void foreignKeySearchMultiChildParent() throws Exception {
+    assertThat(cqlc("tablea.name == test3"), is(empty()));
+  }
+
+  @Test
+  public void foreignKeySearchMultiWildChildParent() throws Exception {
+    assertThat(cqlc("tablea.name == *"), containsInAnyOrder("z1", "z2", "z3", "z4"));
   }
 
   @Test
