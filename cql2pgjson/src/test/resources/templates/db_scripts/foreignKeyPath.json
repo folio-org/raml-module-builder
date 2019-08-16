@@ -8,7 +8,9 @@
          "foreignKeys":[
             {
                "fieldName":"aId",
-               "targetTable":"a"
+               "targetTable":     "a",
+               "targetTableAlias":"a",
+               "tableAlias": "b"
             }
          ]
       },
@@ -17,8 +19,9 @@
          "foreignKeys":[
             {
                "fieldName":"bId",
-               "targetTable":"b",
-               "targetTableAlias":"bAlias"
+               "targetTable":     "b",
+               "targetTableAlias":"bAlias",
+               "tableAlias": "c"
             }
          ]
       },
@@ -27,7 +30,9 @@
          "foreignKeys":[
             {
                "fieldName":"cId",
-               "targetTable":"c"
+               "targetTable":     "c",
+               "targetTableAlias":"c",
+               "tableAlias": "d"
             }
          ]
       },
@@ -37,12 +42,14 @@
             {
                "fieldName":"dId",
                "tableAlias":"eAlias",
-               "targetTable":"d"
+               "targetTable":     "d",
+               "targetTableAlias":"d"
             },
             {
                "fieldName":"cId",
                "tableAlias":"e2Alias",
-               "targetTable":"c"
+               "targetTable":     "c",
+               "targetTableAlias":"c"
             }
          ]
       },
@@ -51,7 +58,8 @@
          "foreignKeys":[
             {
                "fieldName":"eId",
-               "targetTable":"e"
+               "targetTable":     "e",
+               "targetTableAlias":"e"
             }
          ]
       }

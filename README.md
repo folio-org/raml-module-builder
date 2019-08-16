@@ -47,7 +47,8 @@ See the file ["LICENSE"](LICENSE) for more information.
     * [CQL: Matching array elements](#cql-matching-array-elements)
     * [CQL: @-relation modifiers for array searches](#cql--relation-modifiers-for-array-searches)
     * [CQL: Matching and comparing numbers](#cql-matching-and-comparing-numbers)
-    * [CQL2PgJSON: Cross index searches](#cql2pgjson-cross-index-searches)
+    * [CQL2PgJSON: Foreign key cross table index queries](#cql2pgjson-foreign-key-cross-table-index-queries)
+    * [CQL2PgJSON: Foreign key tableAlias and targetTableAlias](#cql2pgjson-foreign-key-tablealias-and-targettablealias)
     * [CQL2PgJSON: Exceptions](#cql2pgjson-exceptions)
     * [CQL2PgJSON: Unit tests](#cql2pgjson-unit-tests)
 * [Tenant API](#tenant-api)
@@ -810,7 +811,7 @@ public class InitConfigService implements PostDeployVerticle {
 
 Use `foreignKeys` in schema.json of the Tenant API to automatically create the following columns and triggers.
 
-PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB.  Create an additional column with the foreign key constraint and setup a trigger to keep it in sync with the value inside the JSONB.
+PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB therefore an additional column with the foreign key constraint and a trigger to keep it in sync with the value inside the JSONB are created.
 
 Example:
 
@@ -837,6 +838,8 @@ CREATE TRIGGER update_item_references
 The overhead of this trigger and foreign key constraint reduces the number of UPDATE transactions per second on this table by about 10% (when tested against an external stand alone Postgres database).  See
 https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/rest/persist/ForeignKeyPerformanceIT.java
 for the performance test.  Doing the foreign key check manually by sending additional SELECT queries takes much more time than 10%.
+
+See also [foreign key CQL support](#cql2pgjson-foreign-key-cross-table-index-queries).
 
 ## CQL (Contextual Query Language)
 
@@ -1083,72 +1086,76 @@ Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number
 If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", and ">=" if the actual JSONB type of the stored value is `number`
 (JSONB has no `integer` type).
 
-### CQL2PgJSON: Cross table index queries
+### CQL2PgJSON: Foreign key cross table index queries
 
-CQL2PgJSON supports cross table joins via subquery.  This allows arbitrary depth relationships in parent->child and child->parent relationships.
+CQL2PgJSON supports cross table joins via subquery based on foreign keys.
+This allows arbitrary depth relationships in both child-to-parent and parent-to-child direction.
 
-Example relationship:
+Example relationship: item → holdings_record → instance
 
-table1 -> table2 -> table3
+Join conditions of this example:
+* item.holdingsRecordId = holdings_record.id
+* holdings_record.instanceId = instance.id
 
-or
+The field in the child table points to the primary key `id` field of the parent table; the parent table is also called the target table.
 
-table1 <- table2 <- table3
-
-* Start at table 3 and query table 1 or table 1 to query table 3 or anywhere in between.
-* precede the index you want to search with the table name in Camel Case. There is no change with table1 fields, use them the regular way without table name prefix.  
-  - e.g. someTableName.indexYouWantToSearch = value
+* Precede the index you want to search with the table name in camelCase, e.g. `instance.title = "bee"`.
+* There is no change with child table fields, use them the regular way without table name prefix.
 * The target table index field must have an index declared in schema.json.
-* Use table.index = * in order to do a cross index query with no condition
+* Use `= *` to check whether a join record exists, this runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * Example Schema for the above example: 
 ```
 {
   "tables": [
     {
-      "tableName": "table1"
-    },
-    {
-      "tableName": "table2",
+      "tableName": "instance",
       "index": [
         {
-          "fieldName": "fieldYouWantToSearch",
+          "fieldName": "title",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": false
+          "removeAccents": true
         }
       ],
+    },
+    {
+      "tableName": "holdings_record",
       "foreignKeys": [
         {
-          "fieldName": "table1Id",
-          "targetTable": "table1"
+          "fieldName": "instanceId",
+          "targetTable":      "instance",
+          "targetTableAlias": "instance",
+          "tableAlias": "holdingsRecord",
+          "tOps": "ADD"
         }
       ]
     },
     {
-      "tableName": "table3",
-      "index": [
-        {
-          "fieldName": "anotherfieldYouWantToSearch",
-          "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": false
-        }
-      ],
+      "tableName": "item",
       "foreignKeys": [
         {
-          "fieldName": "table2Id",
-          "targetTable": "table2"
+          "fieldName": "holdingsRecordId",
+          "targetTable":      "holdings_record",
+          "targetTableAlias": "holdingsRecord",
+          "tableAlias": "item",
+          "tOps": "ADD"
         }
       ]
     }
   ]
 }
 ```
-## Cross Table query ambiguity
-There will be some cases where two foreign keys refer to the same table. This ambiguity is resolved by these properties:
-	- tableAlias
-	- targetTableAlias
-	This schema example shows the use of two foreign keys both pointing to loan_type and the added properties to resolve the situation:
+
+### Foreign key tableAlias and targetTableAlias
+The property `targetTableAlias` enables that parent table name in CQL queries against the current child table.
+
+The property `tableAlias` enables that child table name in CQL queries against the target/parent table.
+
+If any of these two properties is missing that respective foreign key join syntax is disabled.
+
+The name may be different from the table name (`tableName`, `targetTable`). One use case is to change to camelCase, e.g.
+`"targetTable": "holdings_record"` and `"targetTableAlias": "holdingsRecord"`. Another use case is
+to resolve ambiguity when two foreign keys point to the same target table, example:
 ```
     {
       "tableName": "item",

@@ -76,6 +76,22 @@ public class ForeignKeyGenerationTest  {
   }
 
   @Test
+  public void foreignKeyChildParentDisabled() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec.json");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    String sql = cql2pgJson.toSql("tableb.id = *").getWhere();
+    assertEquals("true", sql);
+  }
+
+  @Test
+  public void foreignKeyParentChildDisabled() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb.json");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    String sql = cql2pgJson.toSql("tablec.id = *").getWhere();
+    assertEquals("true", sql);
+  }
+
+  @Test
   public void ForeignKeySearchLikeStar() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
@@ -141,7 +157,7 @@ public class ForeignKeyGenerationTest  {
   @Test
   public void testSearchInstanceByItemBarcode() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("instance");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/subquery.json");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyInstanceItem.json");
     String sql = cql2pgJson.toSql("item.barcode == 7834324634").toString();
     String expected = "WHERE instance.id IN  ( SELECT (holdings_record.jsonb->>'instanceId')::UUID from holdings_record WHERE holdings_record.id IN  ( SELECT (item.jsonb->>'holdingsRecordId')::UUID from item WHERE lower(f_unaccent(item.jsonb->>'barcode')) LIKE lower(f_unaccent('7834324634'))))";
     assertEquals(expected, sql);
@@ -150,7 +166,7 @@ public class ForeignKeyGenerationTest  {
   @Test
   public void testSearchItemByInstanceTitle() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("item");
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/subquery.json");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyInstanceItem.json");
     String sql = cql2pgJson.toSql("instance.title = 'Olmsted in Chicago'").toString();
     String expected = "WHERE (item.jsonb->>'holdingsRecordId')::UUID IN  ( SELECT id from holdings_record WHERE (holdings_record.jsonb->>'instanceId')::UUID IN  ( SELECT id from instance WHERE to_tsvector('simple', f_unaccent(instance.jsonb->>'title')) @@ replace((to_tsquery('simple', f_unaccent(''',Olmsted''')) && to_tsquery('simple', f_unaccent('''in''')) && to_tsquery('simple', f_unaccent('''Chicago,''')))::text, '&', '<->')::tsquery))";
     assertEquals(expected, sql);

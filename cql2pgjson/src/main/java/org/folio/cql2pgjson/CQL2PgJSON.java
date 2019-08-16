@@ -546,16 +546,17 @@ public class CQL2PgJSON {
     if (dbTable != null) {
       String srcTabName = dbTable.getTableName();
       String targetTabAlias = node.getIndex().split("\\.")[0];
+
+      // child to parent
       List<DbFkInfo> fks = DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, srcTabName, targetTabAlias);
       if (!fks.isEmpty()) {
-        // child to parent
         return pgSubQuery(node, fks, true);
-      } else {
-        // parent to child
-        fks = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, targetTabAlias, srcTabName);
-        if (!fks.isEmpty()) {
-          return pgSubQuery(node, fks, false);
-        }
+      }
+
+      // parent to child
+      fks = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, targetTabAlias, srcTabName);
+      if (!fks.isEmpty()) {
+        return pgSubQuery(node, fks, false);
       }
     }
 
