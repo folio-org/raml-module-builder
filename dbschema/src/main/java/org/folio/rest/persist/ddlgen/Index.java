@@ -14,6 +14,7 @@ public class Index extends TableIndexes {
   private boolean removeAccents = true;
   private List<String> arrayModifiers = null;
   private String arraySubfield = null;
+  private String queryIndexName;
 
   public boolean isCaseSensitive() {
     return caseSensitive;
@@ -54,6 +55,12 @@ public class Index extends TableIndexes {
 
   public void setArraySubfield(String modifiersSubfield) {
     this.arraySubfield = modifiersSubfield;
+  }
+  public String getQueryIndexName() {
+    return queryIndexName;
+  }
+  public void setQueryIndexName(String queryIndexName) {
+    this.queryIndexName = queryIndexName;
   }
 
 }

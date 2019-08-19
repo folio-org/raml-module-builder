@@ -156,6 +156,7 @@ public class SchemaMaker {
               ti.setCaseSensitive(true);
               ti.setRemoveAccents(false);
             }
+            handleCompoundIndex(ti);
             String path = convertDotPath2PostgresNotation(null,ti.getFieldName(), ti.isStringType() , ti, false);
             ti.setFieldPath(path);
             indexMap.put(t.getTableName()+"_"+normalizeFieldName(ti.getFieldName()), ti);
@@ -171,6 +172,7 @@ public class SchemaMaker {
               ti.setCaseSensitive(true);
               ti.setRemoveAccents(false);
             }
+            handleCompoundIndex(ti);
             ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , ti.isStringType(), ti, true));
             ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
@@ -180,6 +182,7 @@ public class SchemaMaker {
         if(gInd != null){
           for (int j = 0; j < gInd.size(); j++) {
             Index ti = gInd.get(j);
+            handleCompoundIndex(ti);
             ti.setFieldPath(convertDotPath2PostgresNotation(null,ti.getFieldName() , true , ti, true));
             ti.setFieldName(normalizeFieldName(ti.getFieldName()));
           }
@@ -193,6 +196,7 @@ public class SchemaMaker {
               u.setCaseSensitive(true);
               u.setRemoveAccents(false);
             }
+            handleCompoundIndex(u);
             String path = convertDotPath2PostgresNotation(null,u.getFieldName(), u.isStringType(), u, false);
             u.setFieldPath(path);
             String normalized = normalizeFieldName(u.getFieldName());
@@ -291,6 +295,16 @@ public class SchemaMaker {
     tableTemplate.process(templateInput, writer);
 
     return writer.toString();
+  }
+
+  private void handleCompoundIndex(Index ti) {
+    if(ti.getQueryIndexName() != null) {
+      String [] splitIndex = ti.getFieldName().split(",");
+      if(splitIndex.length < 2) {
+        throw new IllegalArgumentException("compound index does not contain more then 1 entry" );
+      }
+      ti.setFieldName(splitIndex[0] + "||" + splitIndex[1]);
+    }
   }
 
   private String handleDelete() throws IOException, TemplateException {
