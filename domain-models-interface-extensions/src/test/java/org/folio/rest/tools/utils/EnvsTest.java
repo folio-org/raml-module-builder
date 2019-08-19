@@ -8,20 +8,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import io.vertx.core.json.JsonObject;
 
 public class EnvsTest {
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
+
   @Before
   public void setUp() {
     Map<String, String> map = new HashMap<>();
     map.put("DB_HOST", "example.com");
     map.put("DB_QUERYTIMEOUT", "8");
     map.put("DB_MAXPOOLSIZE", "5");
-    // deprecated key db.username for allDBConfs()
+    // we dropped support for dot form. check that it is ignored
     map.put("db.username", "superwoman");
     map.put("RMB_EXPLAIN_QUERY_THRESHOLD", "100");
+    map.put("DB.USERNAME", "superwoman");
     Envs.setEnv(Collections.unmodifiableMap(map));
   }
 
@@ -58,12 +64,21 @@ public class EnvsTest {
   @Test
   public void allDBConfs() {
     JsonObject json = Envs.allDBConfs();
-    assertEquals(4, json.size());
+    assertEquals(3, json.size());
     assertEquals("example.com", json.getValue("host"));
     assertEquals(Integer.valueOf(8), json.getValue("queryTimeout"));
     assertEquals(Integer.valueOf(5), json.getValue("maxPoolSize"));
-    assertEquals("superwoman", json.getValue("username"));
     assertNull(json.getValue(Envs.RMB_EXPLAIN_QUERY_THRESHOLD.name()));
   }
 
+  @Test
+  public void numberFormatException() {
+    Envs.setEnv(Collections.singletonMap("DB_PORT", "qqq"));
+
+    thrown.expect(NumberFormatException.class);
+    thrown.expectMessage("DB_PORT");
+    thrown.expectMessage("qqq");
+
+    Envs.allDBConfs();
+  }
 }
