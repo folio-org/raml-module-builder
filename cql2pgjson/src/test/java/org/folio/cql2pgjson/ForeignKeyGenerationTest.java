@@ -1,6 +1,5 @@
 package org.folio.cql2pgjson;
 
-import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 
@@ -77,17 +76,23 @@ public class ForeignKeyGenerationTest  {
 
   @Test
   public void foreignKeyChildParentDisabled() throws Exception {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec.json");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled.json");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("tableb.id = *").getWhere();
+    // "targetTableAlias" is disabled for tablec therefore tablec.id = *
+    // looks into the tabled table and checks the tablec field and its id subfield - this is always true;
+    // if it were enabled it would check that a tablec record exists for that id.
+    String sql = cql2pgJson.toSql("tablec.id = *").getWhere();
     assertEquals("true", sql);
   }
 
   @Test
   public void foreignKeyParentChildDisabled() throws Exception {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb.json");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec.json");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("tablec.id = *").getWhere();
+    // "tableAlias" is disabled for tabled therefore tabled.id = *
+    // looks into the tablec table and checks the tabled field and its id subfield - this is always true;
+    // if it were enabled it would check that a tablec record exists for that id.
+    String sql = cql2pgJson.toSql("tabled.id = *").getWhere();
     assertEquals("true", sql);
   }
 

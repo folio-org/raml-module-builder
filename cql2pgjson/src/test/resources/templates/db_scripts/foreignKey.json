@@ -62,6 +62,15 @@
           "tableAlias": "tablec"
         }
       ]
+    },
+    {
+      "tableName": "tabled",
+      "foreignKeys": [
+        {
+          "fieldName": "tablecId",
+          "targetTable": "tablec"
+        }
+      ]
     }
   ]
 }
