@@ -57,12 +57,20 @@
       "foreignKeys": [
         {
           "fieldName": "tablebId",
-          "targetTable": "tableb"
+          "targetTable": "tableb",
+          "targetTableAlias": "tableb",
+          "tableAlias": "tablec"
         }
       ]
     },
     {
-      "tableName": "tabled"
+      "tableName": "tabled",
+      "foreignKeys": [
+        {
+          "fieldName": "tablecId",
+          "targetTable": "tablec"
+        }
+      ]
     }
   ]
 }

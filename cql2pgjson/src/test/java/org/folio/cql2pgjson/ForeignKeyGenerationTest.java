@@ -76,17 +76,23 @@ public class ForeignKeyGenerationTest  {
 
   @Test
   public void foreignKeyChildParentDisabled() throws Exception {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec.json");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled.json");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("tableb.id = *").getWhere();
+    // "targetTableAlias" is disabled for tablec therefore tablec.id = *
+    // looks into the tabled table and checks the tablec field and its id subfield - this is always true;
+    // if it were enabled it would check that a tablec record exists for that id.
+    String sql = cql2pgJson.toSql("tablec.id = *").getWhere();
     assertEquals("true", sql);
   }
 
   @Test
   public void foreignKeyParentChildDisabled() throws Exception {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb.json");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec.json");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
-    String sql = cql2pgJson.toSql("tablec.id = *").getWhere();
+    // "tableAlias" is disabled for tabled therefore tabled.id = *
+    // looks into the tablec table and checks the tabled field and its id subfield - this is always true;
+    // if it were enabled it would check that a tablec record exists for that id.
+    String sql = cql2pgJson.toSql("tabled.id = *").getWhere();
     assertEquals("true", sql);
   }
 
@@ -97,7 +103,13 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson.toSql("tableb.prefix == *").getWhere();
     assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('%')))", sql);
   }
-
+  @Test
+  public void foreignKeySearchMulti() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
+    String sql = cql2pgJson.toSql("tablec.cindex == z1").getWhere();
+    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE tableb.id IN  ( SELECT (tablec.jsonb->>'tablebId')::UUID from tablec WHERE lower(f_unaccent(tablec.jsonb->>'cindex')) LIKE lower(f_unaccent('z1'))))",sql);
+  }
   @Test
   public void ForeignKeySearchWithFUnaccent() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
