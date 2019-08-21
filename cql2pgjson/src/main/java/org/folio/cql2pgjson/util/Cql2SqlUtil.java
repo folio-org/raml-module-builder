@@ -2,6 +2,7 @@ package org.folio.cql2pgjson.util;
 
 import java.util.regex.Pattern;
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.rest.persist.ddlgen.Index;
 
 /**
  * Functions that convert some CQL string the equivalent SQL string.
@@ -356,5 +357,25 @@ public final class Cql2SqlUtil {
   public static boolean hasCqlWildCardd(String term) {
     String s = ("" + term).replaceAll(ESC_SLASH, "").replaceAll(ESC_STAR, "").replaceAll(ESC_QUEST, "");
     return s.contains("*") || s.contains("?");
+  }
+  public static String createIndex(Index ti) {
+    if(ti.getQueryIndexName() != null) {
+      String [] splitIndex = ti.getFieldName().split(",");
+      if(splitIndex.length < 2) {
+        throw new IllegalArgumentException("compound index does not contain more then 1 entry" );
+      }
+      String result = "";
+      for(int i = 0;i < splitIndex.length;i++) {
+        if(i != 0) {
+          result += " || ";
+        }
+        result += splitIndex[i];
+
+      }
+      return result;
+    } else {
+      return ti.getFieldName();
+    }
+
   }
 }

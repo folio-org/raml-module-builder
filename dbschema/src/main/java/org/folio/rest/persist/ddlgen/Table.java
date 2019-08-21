@@ -1,5 +1,6 @@
 package org.folio.rest.persist.ddlgen;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -86,7 +87,22 @@ public class Table extends Versioned {
   public List<Index> getIndex() {
     return index;
   }
-
+  public List<Index> getAllIndex() {
+    List<Index> result = new ArrayList<Index>();
+    if(index != null) {
+      result.addAll(index);
+    }
+    if(uniqueIndex != null) {
+      result.addAll(uniqueIndex);
+    }
+    if(ginIndex != null) {
+      result.addAll(ginIndex);
+    }
+    if(fullTextIndex != null) {
+      result.addAll(fullTextIndex);
+    }
+    return result;
+  }
   public void setIndex(List<Index> index) {
     this.index = index;
   }

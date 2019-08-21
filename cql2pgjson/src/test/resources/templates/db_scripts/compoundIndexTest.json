@@ -1,0 +1,16 @@
+{
+  "tables": [
+    {
+      "tableName": "tablea",
+      "index": [
+        {
+          "fieldName": "prefix,suffix",
+          "queryIndexName": "fullname",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ]
+    }
+  ]
+}

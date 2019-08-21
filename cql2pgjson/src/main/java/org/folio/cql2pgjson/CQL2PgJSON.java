@@ -400,8 +400,12 @@ public class CQL2PgJSON {
         order.append(PK_COLUMN_NAME).append(desc);
         continue;
       }
-
-      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
+      Index schemaIndex = DbSchemaUtils.getIndex(modifierSet.getBase(), dbTable.getAllIndex());
+      if(schemaIndex == null) {
+        schemaIndex = new Index();
+        schemaIndex.setFieldName(modifierSet.getBase());
+      }
+      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(schemaIndex);
 
       // if sort field is marked explicitly as number type
       if (modifiers.getCqlTermFormat() == CqlTermFormat.NUMBER) {
@@ -410,7 +414,7 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
+      order.append(wrapInLowerUnaccent(vals.getIndexText(), schemaIndex)).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
@@ -506,24 +510,38 @@ public class CQL2PgJSON {
     return res.toString();
   }
 
-  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
+  private IndexTextAndJsonValues getIndexTextAndJsonValues(Index index)
       throws QueryValidationException {
     if (jsonFields != null && jsonFields.size() > 1) {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    vals.setIndexJson(index2sqlJson(this.jsonField, index));
-    vals.setIndexText(index2sqlText(this.jsonField, index));
+    if(index != null && index.getQueryIndexName() != null) {
+
+      String [] indexSplit = index.getFieldName().split(",");
+      String combinedString = "";
+      for(int i = 0; i < indexSplit.length;i++) {
+        if(i > 0) {
+          combinedString += "|";
+        }
+        combinedString += index2sqlJson(this.jsonField,indexSplit[i]);
+      }
+      vals.setIndexJson(combinedString);
+      vals.setIndexText(combinedString);
+    } else {
+      vals.setIndexJson(index2sqlJson(this.jsonField, index.getFieldName()));
+      vals.setIndexText(index2sqlText(this.jsonField, index.getFieldName()));
+    }
     return vals;
   }
 
-  private IndexTextAndJsonValues multiFieldProcessing( String index ) throws QueryValidationException {
+  private IndexTextAndJsonValues multiFieldProcessing( Index index ) throws QueryValidationException {
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
 
     // processing for case where index is prefixed with json field name
     for (String f : jsonFields) {
-      if (index.startsWith(f+'.')) {
-        String indexTermWithinField = index.substring(f.length()+1);
+      if (index.getFieldName().startsWith(f+'.')) {
+        String indexTermWithinField = index.getFieldName().substring(f.length()+1);
         vals.setIndexJson(index2sqlJson(f, indexTermWithinField));
         vals.setIndexText(index2sqlText(f, indexTermWithinField));
         return vals;
@@ -532,8 +550,8 @@ public class CQL2PgJSON {
 
     // if no json field name prefix is found, the default field name gets applied.
     String defaultJsonField = this.jsonFields.get(0);
-    vals.setIndexJson(index2sqlJson(defaultJsonField, index));
-    vals.setIndexText(index2sqlText(defaultJsonField, index));
+    vals.setIndexJson(index2sqlJson(defaultJsonField, index.getFieldName()));
+    vals.setIndexText(index2sqlText(defaultJsonField, index.getFieldName()));
     return vals;
   }
 
@@ -615,7 +633,7 @@ public class CQL2PgJSON {
     vals.setIndexText(index2sqlText(foreignTableJsonb, foreignTarget[1]));
 
     CqlModifiers cqlModifiers = new CqlModifiers(node);
-    String indexField = foreignTarget[1];
+    Index indexField = DbSchemaUtils.getIndex(foreignTarget[1], targetTable.getIndex());
     return indexNode(indexField, targetTable, node, vals, cqlModifiers);
   }
 
@@ -715,7 +733,7 @@ public class CQL2PgJSON {
     return null;
   }
 
-  private String arrayNode(String index, CQLTermNode node, CqlModifiers modifiers,
+  private String arrayNode(Index index, CQLTermNode node, CqlModifiers modifiers,
     List<Modifier> relationModifiers, Index schemaIndex, IndexTextAndJsonValues incomingvals) throws QueryValidationException {
 
     StringBuilder sqlAnd = new StringBuilder();
@@ -779,12 +797,20 @@ public class CQL2PgJSON {
    * @throws QueryValidationException
    */
   private String index2sql(String index, CQLTermNode node) throws QueryValidationException {
-    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
+    Index schemaIndex = null;
+    if (this.dbTable != null) {
+      schemaIndex = DbSchemaUtils.getIndex(index, dbTable.getAllIndex());
+    }
+    if(schemaIndex == null) {
+      schemaIndex = new Index();
+      schemaIndex.setFieldName(index);
+    }
+    IndexTextAndJsonValues vals = getIndexTextAndJsonValues( schemaIndex);
     CqlModifiers cqlModifiers = new CqlModifiers(node);
-    return indexNode(index, this.dbTable, node, vals, cqlModifiers);
+    return indexNode(schemaIndex,this.dbTable,  node, vals, cqlModifiers);
   }
 
-  private String indexNode(String index, Table targetTable, CQLTermNode node, IndexTextAndJsonValues vals,
+  private String indexNode(Index index, Table targetTable, CQLTermNode node, IndexTextAndJsonValues vals,
     CqlModifiers modifiers) throws QueryValidationException {
 
     // special handling of id search (re-use existing code)
@@ -792,7 +818,7 @@ public class CQL2PgJSON {
       return pgId(node);
     }
 
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbTable, index);
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbTable, index.getFieldName());
     String comparator = node.getRelation().getBase().toLowerCase();
 
     switch (comparator) {
@@ -839,7 +865,7 @@ public class CQL2PgJSON {
    * @return
    * @throws QueryValidationException
    */
-  private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers,Table targetTable) throws QueryValidationException {
+  private String queryByFt(Index index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers,Table targetTable) throws QueryValidationException {
     final String indexText = vals.getIndexText();
 
     if (CqlAccents.RESPECT_ACCENTS == modifiers.getCqlAccents()) {
@@ -853,15 +879,13 @@ public class CQL2PgJSON {
     // Clean the term. Remove stand-alone ' *', not valid word.
     String term = node.getTerm().replaceAll(" +\\*", "").trim();
     Index schemaIndex = null;
-    if (targetTable != null) {
-      schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getFullTextIndex());
-    }
+
     String sql = queryByFt(indexText, term, comparator, schemaIndex);
 
     // array modifier
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
-      sql += " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
+      sql += " AND " + arrayNode(index, node, modifiers, relationModifiers, index, vals);
     }
 
     if (schemaIndex != null && schemaIndex.isCaseSensitive()) {
@@ -919,7 +943,7 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryByLike(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
+  private String queryByLike(Index index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
     String comparator, CqlModifiers modifiers, Table targetTable) throws QueryValidationException {
 
     String indexText = vals.getIndexText();
@@ -927,17 +951,15 @@ public class CQL2PgJSON {
 
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
-      final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
-      sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
+
+      sql = arrayNode(index, node, modifiers, relationModifiers, index, vals);
     } else {
       Index schemaIndex = null;
-      if (targetTable != null) {
-        schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
-      }
+
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-      sql = wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator
-          + wrapInLowerUnaccent(like, schemaIndex);
+      sql = wrapInLowerUnaccent(indexText, index) + likeOperator
+          + wrapInLowerUnaccent(like, index);
     }
 
     if (!hasIndex) {
