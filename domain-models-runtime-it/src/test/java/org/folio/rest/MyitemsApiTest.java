@@ -2,6 +2,7 @@ package org.folio.rest;
 
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,12 +53,14 @@ public class MyitemsApiTest extends ApiTestBase {
     then()
       .statusCode(201);
 
+    Map<Object,String> metadata1 =
     given(r).
     when().get("/myitems/" + id).
     then().
       statusCode(200).
       body("id", equalTo(id)).
-      body("name", equalTo("Puttgarden"));
+      body("name", equalTo("Puttgarden")).
+    extract().path("metadata");
 
     given(r).body(new JsonObject().put("name", "Putnam").encode()).
     when().put("/myitems/" + id).
@@ -69,7 +72,29 @@ public class MyitemsApiTest extends ApiTestBase {
     then().
       statusCode(200).
       body("id", equalTo(id)).
-      body("name", equalTo("Putnam"));
+      body("name", equalTo("Putnam")).
+      body("metadata.createdDate", is(metadata1.get("createdDate"))).
+      body("metadata.updatedDate", is(greaterThan(metadata1.get("createdDate")))).
+      body("metadata.createdByUserId", is(nullValue())).
+      body("metadata.updatedByUserId", is(nullValue()));
+
+    given(r).
+      header(RestVerticle.OKAPI_USERID_HEADER, "hal").
+      body(new JsonObject().put("name", "Pusta").encode()).
+    when().put("/myitems/" + id).
+    then().
+      statusCode(204);
+
+    given(r).
+    when().get("/myitems/" + id).
+    then().
+      statusCode(200).
+      body("id", equalTo(id)).
+      body("name", equalTo("Pusta")).
+      body("metadata.createdDate", is(metadata1.get("createdDate"))).
+      body("metadata.updatedDate", is(greaterThan(metadata1.get("createdDate")))).
+      body("metadata.createdByUserId", is(nullValue())).
+      body("metadata.updatedByUserId", is("hal"));
   }
 
   @Test
