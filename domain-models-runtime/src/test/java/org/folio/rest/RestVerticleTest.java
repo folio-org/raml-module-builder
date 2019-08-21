@@ -102,8 +102,13 @@ class RestVerticleTest {
     Map<String, String> okapiHeaders = new HashMap<>();
     okapiHeaders.put(RestVerticle.OKAPI_HEADER_TOKEN, EMPTY_TOKEN);
     Book book = new Book();
+    String date1 = new Date().toString();
     RestVerticle.populateMetaData(book, okapiHeaders, null);
-    assertThat(book.getMetadata(), is(nullValue()));
+    String date2 = new Date().toString();
+    assertThat(book.getMetadata().getCreatedByUserId(), is(nullValue()));
+    assertThat(book.getMetadata().getUpdatedByUserId(), is(nullValue()));
+    assertThat(book.getMetadata().getCreatedDate().toString(), is(oneOf(date1, date2)));
+    assertThat(book.getMetadata().getUpdatedDate().toString(), is(oneOf(date1, date2)));
   }
 
   @Test
@@ -111,8 +116,13 @@ class RestVerticleTest {
     Map<String, String> okapiHeaders = new HashMap<>();
     okapiHeaders.put(RestVerticle.OKAPI_HEADER_TOKEN, "malformed");
     Book book = new Book();
+    String date1 = new Date().toString();
     RestVerticle.populateMetaData(book, okapiHeaders, null);
-    assertThat(book.getMetadata(), is(nullValue()));
+    String date2 = new Date().toString();
+    assertThat(book.getMetadata().getCreatedByUserId(), is(nullValue()));
+    assertThat(book.getMetadata().getUpdatedByUserId(), is(nullValue()));
+    assertThat(book.getMetadata().getCreatedDate().toString(), is(oneOf(date1, date2)));
+    assertThat(book.getMetadata().getUpdatedDate().toString(), is(oneOf(date1, date2)));
   }
 
   @Test
@@ -121,5 +131,12 @@ class RestVerticleTest {
     okapiHeaders.put(RestVerticle.OKAPI_HEADER_TOKEN, TOKEN);
     RestVerticle.populateMetaData(new Date(), okapiHeaders, null);
     // assert no exception gets thrown
+  }
+
+  @Test
+  void populateMetadataWithException() {
+    Book book = new Book();
+    RestVerticle.populateMetaData(book, null, null);
+    assertThat(book.getMetadata(), is(nullValue()));
   }
 }
