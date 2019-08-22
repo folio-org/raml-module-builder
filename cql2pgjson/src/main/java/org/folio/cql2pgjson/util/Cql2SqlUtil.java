@@ -358,26 +358,20 @@ public final class Cql2SqlUtil {
     String s = ("" + term).replaceAll(ESC_SLASH, "").replaceAll(ESC_STAR, "").replaceAll(ESC_QUEST, "");
     return s.contains("*") || s.contains("?");
   }
-  public static String createIndex(Index ti) {
-    if(ti.getMultiFieldNames() != null) {
-      String [] splitIndex = ti.getFieldName().split(",");
-      if(splitIndex.length < 2) {
-        throw new IllegalArgumentException("compound index does not contain more then 1 entry" );
-      }
-      String result = "";
-      for(int i = 0;i < splitIndex.length;i++) {
-        if(i != 0) {
-          result += " || ";
-        }
-        result += splitIndex[i];
-
-      }
-      return result;
-    } else if(ti.getSqlExpression() != null) {
-      return ti.getSqlExpression();
-    } else {
-      return ti.getFieldName();
+  public static String createCompoundIndex(Index ti) {
+    String [] splitIndex = ti.getFieldName().split(",");
+    if(splitIndex.length < 2) {
+      throw new IllegalArgumentException("compound index does not contain more then 1 entry" );
     }
+    String result = "";
+    for(int i = 0;i < splitIndex.length;i++) {
+      if(i != 0) {
+        result += " || ";
+      }
+      result += splitIndex[i];
+
+    }
+    return result;
 
   }
 }

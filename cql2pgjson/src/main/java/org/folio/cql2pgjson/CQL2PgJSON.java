@@ -935,8 +935,14 @@ public class CQL2PgJSON {
       }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-      sql = wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator
-          + wrapInLowerUnaccent(like, schemaIndex);
+      if(schemaIndex.getMultiFieldNames() != null) {
+        sql = wrapInLowerUnaccent(Cql2SqlUtil.createCompoundIndex(schemaIndex), schemaIndex);
+      } else if(schemaIndex.getSqlExpression() != null) {
+        sql = schemaIndex.getSqlExpression();
+      } else {
+        sql = wrapInLowerUnaccent(indexText, schemaIndex);
+      }
+      sql = sql +  likeOperator + wrapInLowerUnaccent(like, schemaIndex);
     }
 
     if (!hasIndex) {
