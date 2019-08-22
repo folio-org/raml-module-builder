@@ -14,7 +14,8 @@ public class Index extends TableIndexes {
   private boolean removeAccents = true;
   private List<String> arrayModifiers = null;
   private String arraySubfield = null;
-  private String queryIndexName;
+  private String multiFieldNames;
+  private String sqlExpression;
 
   public boolean isCaseSensitive() {
     return caseSensitive;
@@ -56,11 +57,16 @@ public class Index extends TableIndexes {
   public void setArraySubfield(String modifiersSubfield) {
     this.arraySubfield = modifiersSubfield;
   }
-  public String getQueryIndexName() {
-    return queryIndexName;
+  public String getMultiFieldNames() {
+    return multiFieldNames;
   }
-  public void setQueryIndexName(String queryIndexName) {
-    this.queryIndexName = queryIndexName;
+  public void setMultiFieldNames(String queryIndexName) {
+    this.multiFieldNames = queryIndexName;
   }
-
+  public String getSqlExpression() {
+    return sqlExpression;
+  }
+  public void setSqlExpression(String sqlExpression) {
+    this.sqlExpression = sqlExpression;
+  }
 }

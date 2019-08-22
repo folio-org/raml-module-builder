@@ -359,7 +359,7 @@ public final class Cql2SqlUtil {
     return s.contains("*") || s.contains("?");
   }
   public static String createIndex(Index ti) {
-    if(ti.getQueryIndexName() != null) {
+    if(ti.getMultiFieldNames() != null) {
       String [] splitIndex = ti.getFieldName().split(",");
       if(splitIndex.length < 2) {
         throw new IllegalArgumentException("compound index does not contain more then 1 entry" );
@@ -373,6 +373,8 @@ public final class Cql2SqlUtil {
 
       }
       return result;
+    } else if(ti.getSqlExpression() != null) {
+      return ti.getSqlExpression();
     } else {
       return ti.getFieldName();
     }

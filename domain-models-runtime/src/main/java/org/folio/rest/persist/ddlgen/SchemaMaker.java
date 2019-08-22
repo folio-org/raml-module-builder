@@ -298,7 +298,7 @@ public class SchemaMaker {
   }
 
   private void handleCompoundIndex(Index ti) {
-    if(ti.getQueryIndexName() != null) {
+    if(ti.getMultiFieldNames() != null) {
       String [] splitIndex = ti.getFieldName().split(",");
       if(splitIndex.length < 2) {
         throw new IllegalArgumentException("compound index does not contain more then 1 entry" );

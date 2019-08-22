@@ -57,7 +57,7 @@ public class DbSchemaUtils {
   public static Index getIndex(String cqlIndex, List<Index> indexes) {
     if (indexes != null) {
       for (Index i : indexes) {
-        if (cqlIndex.equals(i.getFieldName()) || cqlIndex.equals(i.getQueryIndexName())) {
+        if (cqlIndex.equals(i.getFieldName())) {
           return i;
         }
       }
