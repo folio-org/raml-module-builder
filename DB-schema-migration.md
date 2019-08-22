@@ -1,12 +1,5 @@
 # DB Schema migration for module update
 
-Copyright (C) 2016-2019 The Open Library Foundation
-
-This software is distributed under the terms of the Apache License, Version 2.0.
-See the file ["LICENSE"](LICENSE) for more information.
-
-
-
 ## Introduction
 
 This documentation includes information about possible strategies regarding DB schema migration that can be used under a module's version update.
