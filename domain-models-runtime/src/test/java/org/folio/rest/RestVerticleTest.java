@@ -84,6 +84,16 @@ class RestVerticleTest {
   }
 
   @Test
+  void populateMetadataNullEntity() {
+    Map<String, String> okapiHeaders = new HashMap<>();
+    okapiHeaders.put(RestVerticle.OKAPI_USERID_HEADER, "Maya");
+    okapiHeaders.put(RestVerticle.OKAPI_HEADER_TOKEN, TOKEN);
+    Book book = null;
+    RestVerticle.populateMetaData(book, okapiHeaders, null);
+    // assert that no Exception is thrown
+  }
+
+  @Test
   void populateMetaDataFromToken() {
     Map<String, String> okapiHeaders = new HashMap<>();
     okapiHeaders.put(RestVerticle.OKAPI_HEADER_TOKEN, TOKEN);
