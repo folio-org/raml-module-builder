@@ -7,10 +7,18 @@ import org.junit.Test;
 public class CompoundIndexTest {
 
   @Test
-  public void compoundIndexTest() throws Exception {
+  public void compoundIndexTestMultiFieldNames() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndexTest.json");
     String sql = cql2pgJson.toSql("fullname == 'John Smith'").toString();
+    String expected = "";
+    assertEquals(expected, sql);
+  }
+  @Test
+  public void compoundIndexTestSQLExpression() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndexTest.json");
+    String sql = cql2pgJson.toSql("address == 'Boston MA'").toString();
     String expected = "";
     assertEquals(expected, sql);
   }
