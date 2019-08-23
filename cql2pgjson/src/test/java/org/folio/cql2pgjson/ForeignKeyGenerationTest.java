@@ -6,7 +6,6 @@ import org.junit.runner.RunWith;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -103,6 +102,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson.toSql("tableb.prefix == *").getWhere();
     assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('%')))", sql);
   }
+
   @Test
   public void foreignKeySearchMulti() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
@@ -110,6 +110,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson.toSql("tablec.cindex == z1").getWhere();
     assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE tableb.id IN  ( SELECT (tablec.jsonb->>'tablebId')::UUID from tablec WHERE lower(f_unaccent(tablec.jsonb->>'cindex')) LIKE lower(f_unaccent('z1'))))",sql);
   }
+
   @Test
   public void ForeignKeySearchWithFUnaccent() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
@@ -118,26 +119,12 @@ public class ForeignKeyGenerationTest  {
     assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE tableb.jsonb->>'otherindex' >='y0')", sql);
   }
 
-  @Ignore
-  @Test
-  public void ForeignKeySearchWithMissingFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
-    cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMissingFK.json");
-
-    thrown.expect(QueryValidationException.class);
-    thrown.expectMessage("No foreignKey for table tableb found");
-    cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-  }
-
-  @Ignore
   @Test
   public void ForeignKeySearchWithMalformedFK() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyMalformedFK.json");
 
-    thrown.expect(QueryValidationException.class);
-    thrown.expectMessage("Missing target table");
-    thrown.expectMessage("field tableaId");
+    thrown.expectMessage("foreignKey not found");
     cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
   }
 

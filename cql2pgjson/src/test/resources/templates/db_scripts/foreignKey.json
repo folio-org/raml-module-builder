@@ -60,6 +60,12 @@
           "targetTable": "tableb",
           "targetTableAlias": "tableb",
           "tableAlias": "tablec"
+        },
+        {
+          "targetPath": ["tablebId", "tableaId"],
+          "targetTable":      "tablea",
+          "targetTableAlias": "tablea",
+          "tableAlias": "tablec"
         }
       ]
     },
