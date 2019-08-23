@@ -1117,7 +1117,7 @@ The field in the child table points to the primary key `id` field of the parent 
           "caseSensitive": false,
           "removeAccents": true
         }
-      ],
+      ]
     },
     {
       "tableName": "holdings_record",
