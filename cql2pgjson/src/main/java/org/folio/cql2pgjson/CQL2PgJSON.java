@@ -901,7 +901,14 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
-    String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents) + ") "
+    if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
+      indexText = wrapInLowerUnaccent(Cql2SqlUtil.createCompoundIndex(schemaIndex),  /* lower */ false, removeAccents);
+    } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
+      indexText = schemaIndex.getSqlExpression();
+    } else {
+      indexText = wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
+    }
+    String sql = "to_tsvector('simple', " + indexText + ") "
       + "@@ " + tsTerm;
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
@@ -935,9 +942,9 @@ public class CQL2PgJSON {
       }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-      if(schemaIndex.getMultiFieldNames() != null) {
+      if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
         sql = wrapInLowerUnaccent(Cql2SqlUtil.createCompoundIndex(schemaIndex), schemaIndex);
-      } else if(schemaIndex.getSqlExpression() != null) {
+      } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
         sql = schemaIndex.getSqlExpression();
       } else {
         sql = wrapInLowerUnaccent(indexText, schemaIndex);
