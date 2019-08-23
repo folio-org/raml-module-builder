@@ -1,7 +1,10 @@
 package org.folio.cql2pgjson.util;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.junit.Assert.*;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -14,9 +17,13 @@ import org.folio.rest.persist.ddlgen.Table;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 public class DbSchemaUtilsTest {
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
 
   private static Index newIndex(String name) {
     Index index = new Index();
@@ -75,37 +82,67 @@ public class DbSchemaUtilsTest {
     assertFalse(dbIndex.isOther());
   }
 
+  private Schema schema(String schemaPath) {
+    try {
+      String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
+      return ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Test
   public void testFindForeignKeys() throws Exception {
     // pathA: f -> e -> d -> c -> b -> a
     // pathB: f -> e -> c -> b -> a
-    String schemaPath = "templates/db_scripts/foreignKeyPath.json";
-    String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
-    Schema dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
+    Schema dbSchema = schema("templates/db_scripts/foreignKeyPath.json");
 
-    // the shorter path
+    // child->parent with targetAlias
     List<DbFkInfo> list = DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, "f", "a");
     assertEquals("f", list.get(0).getTable());
     assertEquals("e", list.get(1).getTable());
     assertEquals("c", list.get(2).getTable());
     assertEquals("b", list.get(3).getTable());
 
-    // target alias
+    // child->parent with targetAlias
     list = DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, "f", "bAlias");
     assertEquals("f", list.get(0).getTable());
     assertEquals("e", list.get(1).getTable());
     assertEquals("c", list.get(2).getTable());
 
-    // source alias
-    list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "eAlias", "bAlias");
+    // parent->child with sourceAlias
+    list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "eAlias", "b");
     assertEquals("e", list.get(0).getTable());
     assertEquals("d", list.get(1).getTable());
     assertEquals("c", list.get(2).getTable());
 
-    // source alias 2
-    list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "e2Alias", "bAlias");
+    // parent->child with sourceAlias
+    list = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, "e2Alias", "b");
     assertEquals("e", list.get(0).getTable());
     assertEquals("c", list.get(1).getTable());
+
+    list = DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, "nonexistingTable", "a");
+    assertThat(list, is(empty()));
+  }
+
+  @Test
+  public void pathTableNotFound() {
+    thrown.expect(IllegalStateException.class);
+    thrown.expectMessage("table not found");
+    thrown.expectMessage("targetPath=[invalidId, invalidId]");
+
+    Schema dbSchema = schema("templates/db_scripts/foreignKeyPath.json");
+    DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, "i", "a");
+  }
+
+  @Test
+  public void pathForeignKeyNotFound() {
+    thrown.expect(IllegalStateException.class);
+    thrown.expectMessage("foreignKey not found");
+    thrown.expectMessage("fieldName=nonexisting");
+
+    Schema dbSchema = schema("templates/db_scripts/foreignKeyPath.json");
+    DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, "i", "b");
   }
 
 }
