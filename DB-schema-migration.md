@@ -62,9 +62,10 @@ The result is ```mod-inventory-storage-1.0.0 > mod-inventory-storage-1.0.0-SNAPS
 ### DoD statement for DB schema migration
 It is proposed that these points should be added to DoD of teams who work with RMB-based modules.
 * Schema.json is changed correctly to reflect new entities 
-* In case there are backward-incompatible changes in JSON schemas in a module (a new property is added with or without a default value, a renamed or removed property, a changed data type for a property) main and compensation DB scripts are provided. Compensation scripts are needed depending on the migration strategy selected for a module.
-    - main scripts - these will be applied during the rollout when a version of the module is updated from an old to a new and must be specified in schema.json.
-    - compensation scripts - these will be used to perform a rollback of data to a previous version of the module in case there are some problems during rollout. These will be run manually for now.
+* Upgrade and downgrade scripts and sample and reference data is updated to match the feature or schema change.
+
+It is likely that for some changes there are no compensation scripts because the change cannot be compensated or the effort for implementing the compensation is too high.
+Therefore the release notes should state for which versions compensations scripts are available and how to run them.
 
 ## Schema migration using  the same DB and schema for a module
 
@@ -124,6 +125,7 @@ The main difference between this strategy and previous one is that a backup of a
 All the use cases for DB changes remain valid and must be taken into consideration except that compensation scripts are not needed in this scenario.
 
 In case of any issues or errors during a module’s update, all we need to do is to restore the schema's backup and  enable the previous version of the module for the tenant.
+But pay attention that all changes done after the migration are lost.
 
 ## Schema migration using DB cloning
 Another option is to clone a DB schema used by a module for a tenant for the next version of the module. At the high-level, the procedure is as follows.
@@ -146,4 +148,4 @@ Another option is to clone a DB schema used by a module for a tenant for the nex
 
 Certainly, all the use cases for DB changes remain valid and must be taken into consideration except that compensation scripts are not needed in this scenario.
 
-In case of any issues or errors during a module’s update, all we need to do is to enable the previous version of the module for the tenant. The only drawback here is that if we find any problems after some time when users have already worked with the new version of the module we also need to provide backward replication of data from the DB schema of the new version to the DB schema of the old one.
+In case of any issues or errors during a module’s update, all we need to do is to enable the previous version of the module for the tenant. But pay attention that all changes done after the migration are lost.
