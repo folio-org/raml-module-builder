@@ -2,6 +2,8 @@ package org.folio.rest.persist.ddlgen;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Collections;
+
 import org.junit.jupiter.api.Test;
 
 class ForeignKeysTest {
@@ -21,6 +23,10 @@ class ForeignKeysTest {
 
     fk.setTargetTableAlias("c");
     assertEquals("c", fk.getTargetTableAlias());
+
+    assertNull(fk.getTargetPath());
+    fk.setTargetPath(Collections.singletonList(null));
+    assertEquals(1, fk.getTargetPath().size());
 
     String result = fk.toString();
     assertTrue(result.contains("tableAlias=a"));

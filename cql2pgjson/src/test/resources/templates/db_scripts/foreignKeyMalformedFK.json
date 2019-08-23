@@ -7,7 +7,9 @@
       "tableName": "tableb",
       "foreignKeys": [
         {
-          "fieldName": "tableaId"
+          "targetPath": ["nonexisting", "nonexisting"],
+          "targetTable": "tablea",
+          "tableAlias": "tableb"
         }
       ]
     }

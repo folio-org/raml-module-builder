@@ -46,10 +46,24 @@
                "targetTableAlias":"d"
             },
             {
+               "targetPath": ["dId", "cId", "bId"],
+               "targetTable": "b",
+               "tableAlias": "eAlias"
+            },
+            {
                "fieldName":"cId",
                "tableAlias":"e2Alias",
                "targetTable":     "c",
                "targetTableAlias":"c"
+            },
+            {
+               "targetTable": "b",
+               "tableAlias": "e2Alias"
+            },
+            {
+               "targetPath": ["cId", "bId"],
+               "targetTable": "b",
+               "tableAlias": "e2Alias"
             }
          ]
       },
@@ -60,6 +74,36 @@
                "fieldName":"eId",
                "targetTable":     "e",
                "targetTableAlias":"e"
+            },
+            {
+               "targetPath": ["eId", "cId", "bId", "aId"],
+               "targetTable":      "a",
+               "targetTableAlias": "a"
+            },
+            {
+               "targetPath": ["eId", "cId", "bId"],
+               "targetTable":      "b",
+               "targetTableAlias": "bAlias"
+            }
+         ]
+      },
+      {
+         "tableName":"i",
+         "foreignKeys":[
+            {
+               "fieldName":"invalidId",
+               "targetTable":     "invalid",
+               "targetTableAlias":"invalid"
+            },
+            {
+               "targetPath": ["invalidId", "invalidId"],
+               "targetTable":      "a",
+               "targetTableAlias": "a"
+            },
+            {
+               "targetPath": ["nonexisting", "nonexisting"],
+               "targetTable":      "b",
+               "targetTableAlias": "b"
             }
          ]
       }
