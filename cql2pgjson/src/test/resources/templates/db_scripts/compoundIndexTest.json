@@ -2,10 +2,22 @@
   "tables": [
     {
       "tableName": "tablea",
+      "ginIndex": [
+        {
+          "fieldName": "fullname",
+          "multiFieldNames": "firstName,lastName",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ]
+    },
+    {
+      "tableName": "tableb",
       "index": [
         {
-          "fieldName": "prefix,suffix",
-          "queryIndexName": "fullname",
+          "fieldName": "address",
+          "sqlExpression": "concat_ws(jsonb->'city', jsonb->'state')",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false

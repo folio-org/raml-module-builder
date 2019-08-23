@@ -69,4 +69,21 @@ public class Index extends TableIndexes {
   public void setSqlExpression(String sqlExpression) {
     this.sqlExpression = sqlExpression;
   }
+  public String createCompoundIndex() {
+    if(this.getMultiFieldNames() == null) {
+      return this.fieldPath;
+    }
+    String [] splitIndex = this.getMultiFieldNames().split(",");
+
+    String result = "concat_ws(";
+    for(int i = 0;i < splitIndex.length;i++) {
+      if(i != 0) {
+        result += " , ";
+      }
+      result += splitIndex[i];
+    }
+    result += ")";
+    return result;
+
+  }
 }
