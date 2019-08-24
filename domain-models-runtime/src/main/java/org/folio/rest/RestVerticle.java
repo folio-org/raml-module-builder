@@ -1583,6 +1583,9 @@ public class RestVerticle extends AbstractVerticle {
    * @return entity.setMetadata(Metadata) method, or null if not found.
    */
   private static Method getSetMetadataMethod(Object entity) {
+    if (entity == null) {
+      return null;
+    }
     // entity.getClass().getMethod("setMetadata", new Class[] { Metadata.class })
     // is 20 times slower than this loop when not found because of throwing the exception
     for (Method method : entity.getClass().getMethods()) {
