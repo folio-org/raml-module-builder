@@ -205,4 +205,9 @@ public class SchemaMakerIT extends PostgresClientITBase {
     executeSuperuser(context, "UPDATE " + table + " SET id='" + uuid2 + "'");
     assertIdJsonb(context, uuid2, uuid2);
   }
+
+  @Test
+  public void foreignKey(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "schemaInstanceItem.json");
+  }
 }
