@@ -54,7 +54,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -542,7 +541,6 @@ public class PostgresClientIT {
     deleteByCriterion(context, "x");
   }
 
-  @Ignore("fails - SQL injection!")
   @Test
   public void deleteByCriterionSingleQuote(TestContext context) throws FieldException {
     deleteByCriterion(context, "'");  // SQL injection?
@@ -667,13 +665,50 @@ public class PostgresClientIT {
       update(FOO, updateSection, (Criterion) null, false, context.asyncAssertFailure());
   }
 
-  @Ignore("fails: unterminated quoted identifier")
   @Test
   public void updateSectionSingleQuote(TestContext context) {
     UpdateSection updateSection = new UpdateSection();
     updateSection.addField("key").setValue("'");
-    createFoo(context)
-      .update(FOO, updateSection, (Criterion) null, false, context.asyncAssertSuccess());
+
+    postgresClient = createFoo(context);
+    postgresClient.save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, updateSection, (Criterion) null, true, context.asyncAssertSuccess(update -> {
+        context.assertEquals(1, update.getUpdated(), "number of records updated");
+        postgresClient.selectSingle("SELECT jsonb->>'key' FROM " + FOO, context.asyncAssertSuccess(select -> {
+          context.assertEquals("'", select.getString(0), "single quote");
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateSectionCriterion(TestContext context) {
+    // update key=z where key='
+    Criterion criterion = new Criterion().addCriterion(new Criteria().addField("'key'").setOperation("=").setVal("'"));
+    UpdateSection updateSection = new UpdateSection();
+    updateSection.addField("key").setValue("z");
+
+    String id = randomUuid();
+    postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(id));
+    postgresClient.update(FOO, updateSection, criterion, false, context.asyncAssertSuccess(update -> {
+      context.assertEquals(1, update.getUpdated(), "number of records updated");
+      String sql = "SELECT jsonb->>'key' FROM " + FOO + " WHERE id='"+id+"'";
+      postgresClient.selectSingle(sql, context.asyncAssertSuccess(select -> {
+        context.assertEquals("z", select.getString(0), "single quote became z");
+      }));
+    }));
+  }
+
+  @Test
+  public void updateSectionException(TestContext context) {
+    createFoo(context).update(FOO, (UpdateSection)null, (Criterion)null, false, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void updateSectionFailure(TestContext context) {
+    UpdateSection updateSection = new UpdateSection();
+    updateSection.addField("key").setValue("x");
+    createFoo(context).update("nonexistingTable", updateSection, (Criterion)null, false, context.asyncAssertFailure());
   }
 
   @Test
