@@ -681,23 +681,23 @@ The RMB will then call the function every time a chunk of data is received.
 This means that a new Object is instantiated by the RMB for each chunk of
 data, and the function of that object is called with the partial data included in a `java.io.InputStream` object.
 
-For each invocation RMB adds header `streamed_id` which will be unique
+For each invocation, RMB adds header `streamed_id` which will be unique
 for the current stream. For the last invocation, header `complete` is supplied
 to indicate "end-of-stream".
 
-As of RMB 23.12.0 and later, if a HTTP client prematurely closes the upload
+As of RMB 23.12.0 and later, if an HTTP client prematurely closes the upload
 before complete, the handler will be called with `streamed_abort`.
 
 ## Implement chunked bulk download
 
-RMB supports bulk downloads of chunks using [CQL](#cql-contextual-query-language) ordered by primary key id since version 25.
+RMB supports bulk downloads of chunks using [CQL](#cql-contextual-query-language) ordered by primary key id (since version 25).
 
-1st CQL query: `cql.allRecords=1 sortBy id`
-2nd CQL query: `id > [last id from 1st CQL query] sortBy id`
-3rd CQL query: `id > [last id from 2nd CQL query] sortBy id`
-…
+* 1st CQL query: `cql.allRecords=1 sortBy id`
+* 2nd CQL query: `id > [last id from 1st CQL query] sortBy id`
+* 3rd CQL query: `id > [last id from 2nd CQL query] sortBy id`
+* ...
 
-The chunk size is to be set using the API's limit parameter, for example limit=10000
+The chunk size is set using the API's limit parameter, for example `limit=10000`
 for chunks of 10000 records each.
 
 ## PostgreSQL integration
@@ -811,7 +811,7 @@ public class InitConfigService implements PostDeployVerticle {
 
 Use `foreignKeys` in schema.json of the Tenant API to automatically create the following columns and triggers.
 
-PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB therefore an additional column with the foreign key constraint and a trigger to keep it in sync with the value inside the JSONB are created.
+PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB. Therefore an additional column with the foreign key constraint, and a trigger to keep it in sync with the value inside the JSONB, are created.
 
 Example:
 
@@ -1100,10 +1100,10 @@ Join conditions of this example:
 The field in the child table points to the primary key `id` field of the parent table; the parent table is also called the target table.
 
 * Precede the index you want to search with the table name in camelCase, e.g. `instance.title = "bee"`.
-* There is no change with child table fields, use them the regular way without table name prefix.
-* The target table index field must have an index declared in schema.json.
+* There is no change with child table fields, use them in the regular way without table name prefix.
+* The target table index field must have an index declared in the schema.json file.
 * For a multi-table join use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
-* Use `= *` to check whether a join record exists, this runs a cross index join with no further restriction, e.g. `instance.id = *`.
+* Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The schema for the above example:
 ```
 {
@@ -1153,12 +1153,13 @@ The field in the child table points to the primary key `id` field of the parent 
 }
 ```
 
-### Foreign key tableAlias and targetTableAlias
+### CQL2PgJSON: Foreign key tableAlias and targetTableAlias
+
 The property `targetTableAlias` enables that parent table name in CQL queries against the current child table.
 
 The property `tableAlias` enables that child table name in CQL queries against the target/parent table.
 
-If any of these two properties is missing that respective foreign key join syntax is disabled.
+If any of these two properties is missing, then that respective foreign key join syntax is disabled.
 
 The name may be different from the table name (`tableName`, `targetTable`). One use case is to change to camelCase, e.g.
 `"targetTable": "holdings_record"` and `"targetTableAlias": "holdingsRecord"`. Another use case is
@@ -1183,14 +1184,14 @@ to resolve ambiguity when two foreign keys point to the same target table, examp
         }
       ]
     }
-```	
-Running CQL loanType.name == "Can circulate" against the item endpoint returns all items where the item's permanentLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".
+```
+Running CQL `loanType.name == "Can circulate"` against the item endpoint returns all items where the item's permanentLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".
 
-Running CQL temporaryLoanType.name == "Can circulate" against the item endpoint returns all items where the item's temporaryLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".
+Running CQL `temporaryLoanType.name == "Can circulate"` against the item endpoint returns all items where the item's temporaryLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".
 
-Running CQL itemWithPermanentLoanType.status == "In transit" against the loan_type endpoint returns all loan_types where there exists an item that has this loan_type as a permanentLoanType and where the item's status equals "In transit".
+Running CQL `itemWithPermanentLoanType.status == "In transit"` against the loan_type endpoint returns all loan_types where there exists an item that has this loan_type as a permanentLoanType and where the item's status equals "In transit".
 
-Running CQL itemWithTemporaryLoanType.status == "In transit" against the loan_type endpoint returns all loan_types where there exists an item that has this loan_type as a temporaryLoanType and where the item's status equals "In transit".
+Running CQL `itemWithTemporaryLoanType.status == "In transit"` against the loan_type endpoint returns all loan_types where there exists an item that has this loan_type as a temporaryLoanType and where the item's status equals "In transit".
 
 ### CQL2PgJSON: Exceptions
 
@@ -1220,10 +1221,10 @@ The RAML defining the API:
    https://github.com/folio-org/raml/blob/raml1.0/ramls/tenant.raml
 
 By default RMB includes an implementation of the Tenant API which assumes Postgres being present. Implementation in
- [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) . You might want to extend/override this because:
+ [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) file. You might want to extend/override this because:
 
 1. You want to not call it at all (your module is not using Postgres).
-2. You want to provide further Tenant control - such as loading reference and/or sample data.
+2. You want to provide further Tenant control, such as loading reference and/or sample data.
 
 #### Extending the Tenant Init
 
@@ -1250,7 +1251,7 @@ public class MyTenantAPI extends TenantAPI {
 
 ```
 
-If you wish to call the Post Tenant API (with Postgres) , just call the corresponding super-class, eg:
+If you wish to call the Post Tenant API (with Postgres) then just call the corresponding super-class, e.g.:
 ```java
 @Override
 public void postTenant(TenantAttributes ta, Map<String, String> headers,
@@ -1258,10 +1259,10 @@ public void postTenant(TenantAttributes ta, Map<String, String> headers,
   super.postTenant(ta, headers, hndlr, cntxt);
 }
 ```
-(not much point in that though - it would be the same as not defining it as all).
+(not much point in that though - it would be the same as not defining it at all).
 
 If you wish to load data for your module, that should be done after the DB has been successfully initialized,
-eg you'll do something like:
+e.g. do something like:
 ```
 public void postTenant(TenantAttributes ta, Map<String, String> headers,
   super.postTenant(ta, headers, res -> {
@@ -1276,7 +1277,7 @@ public void postTenant(TenantAttributes ta, Map<String, String> headers,
 }
 ```
 
-There's no right way to load data, but consider that data load will be both happening for first time tenant
+There is no right way to load data, but consider that data load will be both happening for first time tenant
 usage of the module and during an upgrade process. Your data loading should be idempotent. If files are stored
 as resources and as JSON files, you can use the TenantLoading utility.
 
@@ -1310,8 +1311,8 @@ public void postTenant(TenantAttributes ta, Map<String, String> headers,
 }
 ```
 
-If data is already in resources, fine.. If not, for example, if in root of
-project in project, copy it with maven-resource-plugin. For example, to
+If data is already in resources, then fine. If not, for example, if in root of
+project in project, then copy it with maven-resource-plugin. For example, to
 copy `reference-data` to `ref-data` in resources:
 
 ```xml
@@ -1352,24 +1353,24 @@ For each **table**:
 1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
 2. `generateId` - No longer supported.  This functionality is not stable in Pgpool-II see https://www.pgpool.net/docs/latest/en/html/restrictions.html.  The solution is to generate a UUID in java in the same manner as https://github.com/folio-org/raml-module-builder/blob/v23.11.0/domain-models-runtime/src/main/java/org/folio/rest/persist/PgUtil.java#L358
 3. `fromModuleVersion` - this field indicates the version in which the table was created / updated in. When a tenant update is requested - only versions older than the indicated version will generate the declared table. This ensures that if a module upgrades from an older version, the needed tables will be generated for it, however, subsequent upgrades from versions equal or later than the version indicated for the table will not re-generate the table.
-    * Note that this is enforced for all tables, views, indexes, FK, triggers, etc... - via the `IF NOT EXISTS` sql Postgres statement
+    * Note that this is enforced for all tables, views, indexes, FK, triggers, etc. (via the `IF NOT EXISTS` sql Postgres statement)
 4. `mode` - should be used only to indicate `delete`
 5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
-6. `likeIndex` - indicate which fields in the json will be queried using the LIKE  - needed for fields that will be faceted on
-    * `fieldName` the field name in the json to create the index for
+6. `likeIndex` - indicate which fields in the json will be queried using the `LIKE`. Needed for fields that will be faceted on.
+    * `fieldName` the field name in the json for which to create the index
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. Defaults to false.
     *  `removeAccents` - normalize accents or leave accented chars as is. Defaults to true.
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
     * `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
-    * `arrayModifiers`- specifies array relation modifiers supported for some index. The modifiers must exactly match the name of the property in the JSON object within the array.
-    * `arraySubfield` : is the key of the object that is used for the primary term when array relation modifiers are in use. This is typically also defined when `arrayModifiers` are also defined.
-7. `ginIndex` - generate an inverted index on the json using the `gin_trgm_ops` extension. Allows for regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the equality operator (=). See the `likeIndex` for available options (does not support partial indexes - where). removeAccents is set to true and is not case sensitive.
-8. `uniqueIndex` - create a unique index on a field in the json
+    * `arrayModifiers` - specifies array relation modifiers supported for some index. The modifiers must exactly match the name of the property in the JSON object within the array.
+    * `arraySubfield` - is the key of the object that is used for the primary term when array relation modifiers are in use. This is typically also defined when `arrayModifiers` are also defined.
+7. `ginIndex` - generate an inverted index on the JSON using the `gin_trgm_ops` extension. Allows for regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the equality operator (=). See the `likeIndex` for available options (does not support partial indexes - where). removeAccents is set to true and is not case sensitive.
+8. `uniqueIndex` - create a unique index on a field in the JSON
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
     * See additional options in the likeIndex section above
-9. `index` - create a btree index on a field in the json
+9. `index` - create a btree index on a field in the JSON
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
     * See additional options in the likeIndex section above
@@ -1382,15 +1383,15 @@ For each **table**:
     * `auditingTableName` The name of the audit table.
     * `auditingFieldName` The field (JSON property) in the audit record that contains the copy of the original record.
     * `"withAuditing": true` automatically creates the auditing table; an entry of the audit table in the "tables" section of schema.json is optional, for example to create indexes.
-    * The `auditingSnippet` section allows some customizations to the auditing function with custom sqls in the declare section and the body (for either insert / update / delete).
+    * The `auditingSnippet` section allows some customizations to the auditing function with custom SQL in the declare section and the body (for either insert / update / delete).
     * The audit table jsonb column has three fields: `$auditingFieldName` contains the original record (jsonb from the original table), `id` contains a new unique id, `operation` contains `I`, `U`, `D` for insert, update, delete, and `createdDate` contains the time when the audit record was created.
-12. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the json and creating a FK constraint)
-13. `customSnippetPath` - a relative path to a file with custom sql commands for this specific table
-14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all json entries in the table
-15. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into jsonb->'id' on each insert and update.
+12. `foreignKeys` - adds / removes foreign keys (trigger populating data in a column based on a field in the JSON and creating a FK constraint)
+13. `customSnippetPath` - a relative path to a file with custom SQL commands for this specific table
+14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all JSON entries in the table
+15. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into `jsonb->'id'` on each insert and update.
 16. `pkColumnName` - No longer supported. The name of the primary key column is always `id` and is copied into `jsonb->'id'` in each insert and update. The method PostgresClient.setIdField(String) no longer exists.
 
-The **views** section is a bit more self explanatory as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
+The **views** section is a bit more self explanatory, as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```
   "views": [
     {
@@ -1460,7 +1461,7 @@ The fields in the **script** section include:
 
 1. `run` - either `before` or `after` the tables / views are generated
 2. `snippet` - the SQL to run
-3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.  
+3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.
 4. `fromModuleVersion` - same as `fromModuleVersion` for table
 
 
@@ -1595,7 +1596,7 @@ The JSON Schemas API is a multiple interface which affords RMB modules to expose
 ```
 
 The interface has a single GET endpoint with an optional query parameter path.
-Without the path query parameter the response will be an application/json array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
+Without the path query parameter the response will be an "application/json" array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
 Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
 `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
 specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify
@@ -1644,7 +1645,7 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Metadata
 
-RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed in json's schema declares a reference to the metadata schema. If so, RMB will populate the json with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
+RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed-in JSON's schema declares a reference to the metadata schema. If so, RMB will populate the JSON with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
 
 ## Facet Support
 
@@ -1683,7 +1684,7 @@ NOTE: Creating an index on potential facet fields may be required so that perfor
 
 ## JSON Schema fields
 
-It is possible to indicate that a field in the json is a readonly field when declaring the schema. `"readonly": true`. From example:
+It is possible to indicate that a field in the JSON is a readonly field when declaring the schema. `"readonly": true`. From example:
 ```
     "resultInfo": {
       "$ref": "raml-util/schemas/resultInfo.schema",
@@ -1704,13 +1705,13 @@ for example:
 </systemProperty>
 ```
 
-the `jsonschema.customfield` key can contain multiple json values (delimited by a `;`). Each json indicates a field name + a field value to match against - and a validation annotation to apply. So, getting back to the readonly field, the example above indicates that a field in the json schema that has been tagged with the `readonly` field can not contain data when passed in as part of the request.
+the `jsonschema.customfield` key can contain multiple JSON values (delimited by a `;`). Each JSON indicates a field name + a field value to match against - and a validation annotation to apply. So, getting back to the readonly field, the example above indicates that a field in the JSON schema that has been tagged with the `readonly` field can not contain data when passed in as part of the request.
 A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
 
 To customize generation of java classes, add a system property to plugin definition running `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`.
-Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes,
-incomplete list of available properties:
+Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes.
+Incomplete list of available properties:
 - jsonschema2pojo.config.includeHashcodeAndEquals - adds hashCode and equals methods
 - jsonschema2pojo.config.includeToString - adds toString method
 - jsonschema2pojo.config.serializable - makes classes serializable
@@ -1718,6 +1719,7 @@ incomplete list of available properties:
 For more available properties see:
  https://joelittlejohn.github.io/jsonschema2pojo/site/1.0.0/generate-mojo.html
  https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java
+
 ## Overriding RAML (traits) / query parameters
 
 A module may require slight changes to existing RAML traits.
