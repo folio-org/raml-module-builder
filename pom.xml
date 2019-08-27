@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>26.5.0-SNAPSHOT</version>
+  <version>27.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -75,14 +75,14 @@
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
-        <version>3.5.4</version>
+        <version>3.8.1</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
       <dependency>
         <!-- Security update:
              https://issues.folio.org/browse/FOLIO-1682
-	     https://issues.folio.org/browse/RMB-315
+             https://issues.folio.org/browse/RMB-315
              https://issues.folio.org/browse/RMB-377
              TODO: Remove this jackson-databind dependency when vertx-stack-depchain
              contains jackson-databind >= 2.9.9.2 -->
