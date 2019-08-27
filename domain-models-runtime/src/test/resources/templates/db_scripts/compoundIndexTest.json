@@ -1,0 +1,46 @@
+{
+  "tables": [
+    {
+      "tableName": "tablea",
+      "ginIndex": [
+        {
+          "fieldName": "fullname",
+          "multiFieldNames": "firstName,lastName",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "ftfield",
+           "multiFieldNames": "field1,field2",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ]
+    },
+    {
+      "tableName": "tableb",
+      "ginIndex": [
+        {
+          "fieldName": "address",
+          "sqlExpression": "concat_ws(jsonb->'city', jsonb->'state')",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "ftfield",
+          "sqlExpression": "concat_ws(jsonb->'field1', jsonb->'field2')",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ]
+    }
+  ]
+}
