@@ -293,8 +293,6 @@ public class SchemaMaker {
     return writer.toString();
   }
 
-
-
   private String handleDelete() throws IOException, TemplateException {
     Writer writer = new StringWriter();
     Template tableTemplate = cfg.getTemplate("delete.ftl");
