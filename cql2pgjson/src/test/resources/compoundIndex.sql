@@ -4,16 +4,17 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE tablea (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE TABLE tableb (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE INDEX IF NOT EXISTS tablea_idx_gin ON tablea using gin
-    ((concat_ws(tablea.jsonb->'firstname',tablea.jsonb->'lastname')) gin_trgm_ops);
+    ((concat_ws(' ',tablea.jsonb->'firstname',tablea.jsonb->'lastname')) gin_trgm_ops);
     
 CREATE INDEX IF NOT EXISTS tablea_idx_ft ON tablea using gin
-    ( to_tsvector('simple',concat_ws(tablea.jsonb->'field1',tablea.jsonb->'field2')));
+    ( to_tsvector('simple',concat_ws(' ',tablea.jsonb->'field1',tablea.jsonb->'field2')));
     
 CREATE INDEX IF NOT EXISTS tableb_idx_gin ON tableb using gin
-    ((concat_ws(tableb.jsonb->'city',tableb.jsonb->'state')) gin_trgm_ops);
+    ((concat_ws(' ',tableb.jsonb->'city',tableb.jsonb->'state')) gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS tablea_idx_ft ON tableb using gin
-    ( to_tsvector('simple',concat_ws(tableb.jsonb->'field1',tableb.jsonb->'field2')));
+    ( to_tsvector('simple',concat_ws(' ',tableb.jsonb->'field1',tableb.jsonb->'field2')));
+    
 CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 CREATE OR REPLACE FUNCTION f_unaccent(text)
   RETURNS text AS

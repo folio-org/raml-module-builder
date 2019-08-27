@@ -75,7 +75,7 @@ public class Index extends TableIndexes {
     }
     String [] splitIndex = this.getMultiFieldNames().split(",");
 
-    String result = "concat_ws(";
+    String result = "concat_ws(' ',";
     for(int i = 0;i < splitIndex.length;i++) {
       if(i != 0) {
         result += " , ";
