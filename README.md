@@ -1460,7 +1460,7 @@ The fields in the **script** section include:
 
 1. `run` - either `before` or `after` the tables / views are generated
 2. `snippet` - the SQL to run
-3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.  
+3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.
 4. `fromModuleVersion` - same as `fromModuleVersion` for table
 
 

@@ -24,7 +24,7 @@ For RMB based modules a DB migration will be done automatically based on the con
      "customSnippetPath": "instanceSourceMarc.sql"
     }
     ```
- 
+
 * Use “scripts” section to run custom SQLs before table/view creation/updates and/or after all tables/views have been created/updated. You can omit a schema name in your SQL statements because “SET search_path TO public, <your_module_schema>” statement will be executed beforehand.
 
 ### “fromModuleVersion” notes
@@ -61,7 +61,7 @@ The result is ```mod-inventory-storage-1.0.0 > mod-inventory-storage-1.0.0-SNAPS
 
 ### DoD statement for DB schema migration
 It is proposed that these points should be added to DoD of teams who work with RMB-based modules.
-* Schema.json is changed correctly to reflect new entities 
+* Schema.json is changed correctly to reflect new entities
 * Upgrade and downgrade scripts and sample and reference data is updated to match the feature or schema change.
 
 It is likely that for some changes there are no compensation scripts because the change cannot be compensated or the effort for implementing the compensation is too high.
@@ -132,7 +132,7 @@ Another option is to clone a DB schema used by a module for a tenant for the nex
 1. Prerequisites:
     - A new version of a module is built and an artifact (docker image for this version) is publisher into a repository.
 2. A platform DevOps registers a module descriptor for the new version of the module using POST /_/proxy/modules
-3. A platform DevOps creates a new instance of the database and performs all steps required for initialization (he create users, roles, grants permissions, etc.)  
+3. A platform DevOps creates a new instance of the database and performs all steps required for initialization (he create users, roles, grants permissions, etc.)
 4. A platform DevOps deploys the new version of the module using POST /_/discovery/modules. New credentials for the new DB instance created in the previous step must be provided for the deployment.
 5. A Tenant decides to update the module’s version.
 6. A platform DevOps exports module’s schema from the DB instance used by the “current” version of the module and imports it into the new DB instance created for the new version of the module.
@@ -143,7 +143,7 @@ Another option is to clone a DB schema used by a module for a tenant for the nex
     - It is important to emphasize that during the module’s version update neither old nor new version of the module will be available for the tenant.
 9. The last but the most complex step is to transfer data that was created in the DB schema of the old version during data transfer. Main issues are
     - To determine the dataset that was created after the start of the data transfer process.
-    - If needed, to transform that data to the JSON schemas that are valid for the new version of the module. Indeed, it will require additional effort to find an appropriate solution. For example, we can check for logical replication capabilities in PostgreSQL (https://www.postgresql.org/docs/current/logical-replication.html) or the pglogical extension (https://www.2ndquadrant.com/en/resources/pglogical/pglogical-docs/) 
+    - If needed, to transform that data to the JSON schemas that are valid for the new version of the module. Indeed, it will require additional effort to find an appropriate solution. For example, we can check for logical replication capabilities in PostgreSQL (https://www.postgresql.org/docs/current/logical-replication.html) or the pglogical extension (https://www.2ndquadrant.com/en/resources/pglogical/pglogical-docs/)
     - Certainly, the simplest option here is to perform module's version update at the maintenance period when tenant's users do not work with the platform. It eliminates all these additional tricky actions necessary not to lose data
 
 Certainly, all the use cases for DB changes remain valid and must be taken into consideration except that compensation scripts are not needed in this scenario.
