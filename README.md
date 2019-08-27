@@ -1153,7 +1153,8 @@ The field in the child table points to the primary key `id` field of the parent 
 }
 ```
 
-### Foreign key tableAlias and targetTableAlias
+### CQL2PgJSON: Foreign key tableAlias and targetTableAlias
+
 The property `targetTableAlias` enables that parent table name in CQL queries against the current child table.
 
 The property `tableAlias` enables that child table name in CQL queries against the target/parent table.
