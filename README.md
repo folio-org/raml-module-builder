@@ -1183,7 +1183,7 @@ to resolve ambiguity when two foreign keys point to the same target table, examp
         }
       ]
     }
-```	
+```
 Running CQL loanType.name == "Can circulate" against the item endpoint returns all items where the item's permanentLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".
 
 Running CQL temporaryLoanType.name == "Can circulate" against the item endpoint returns all items where the item's temporaryLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".

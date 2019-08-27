@@ -82,7 +82,7 @@
       <dependency>
         <!-- Security update:
              https://issues.folio.org/browse/FOLIO-1682
-	     https://issues.folio.org/browse/RMB-315
+             https://issues.folio.org/browse/RMB-315
              https://issues.folio.org/browse/RMB-377
              TODO: Remove this jackson-databind dependency when vertx-stack-depchain
              contains jackson-databind >= 2.9.9.2 -->
