@@ -57,7 +57,7 @@ public class CompoundIndexIT extends DatabaseTestBase {
 
   @Test
   public void compoundIndexTestMultiFieldNames2() throws Exception {
-    assertThat( cqlb("ftfield = John Smith"),  containsInAnyOrder("first1"));
+    assertThat( cqlb("ftfield == John Smith"),  containsInAnyOrder("first1"));
   }
 
 }

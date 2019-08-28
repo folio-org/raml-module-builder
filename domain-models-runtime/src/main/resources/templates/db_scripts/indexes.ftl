@@ -41,7 +41,7 @@
     <#list table.ginIndex as indexes>
       <#if indexes.tOps.name() == "ADD">
     CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN
-        ((${indexes.createCompoundIndex()}) gin_trgm_ops)
+        ((${indexes.createCompoundIndex(table.tableName)}) gin_trgm_ops)
     <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
       <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin;

@@ -69,7 +69,7 @@ public class Index extends TableIndexes {
   public void setSqlExpression(String sqlExpression) {
     this.sqlExpression = sqlExpression;
   }
-  public String createCompoundIndex() {
+  public String createCompoundIndex(String tableLoc) {
     if(this.getMultiFieldNames() == null) {
       return this.fieldPath;
     }
@@ -80,7 +80,7 @@ public class Index extends TableIndexes {
       if(i != 0) {
         result += " , ";
       }
-      result += splitIndex[i];
+      result += tableLoc + ".jsonb->>" + splitIndex[i];
     }
     result += ")";
     return result;
