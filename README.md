@@ -2414,6 +2414,8 @@ http://localhost:8080/patrons
 
 ## Additional information
 
+Other [RMB documentation](doc/) (e.g. DB schema migration, Upgrading notes).
+
 Other [modules](https://dev.folio.org/source-code/#server-side).
 
 See project [RMB](https://issues.folio.org/browse/RMB)
