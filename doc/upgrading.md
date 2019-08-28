@@ -3,8 +3,15 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 27](#version-27)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 27
+
+* Update the raml-util subdirectory to the latest raml1.0 commit of https://github.com/folio-org/raml to make metadata.createdByUserId optional:
+    * Hint: `cd raml/raml-util; git fetch; git checkout 69f6074; cd ../..; git commit -m "Update raml-util submodule" raml/raml-util`
+    * Note that pom.xml may revert any submodule update that hasn't been commited!
 
 ## Version 25
 
