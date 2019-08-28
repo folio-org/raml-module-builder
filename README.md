@@ -41,12 +41,12 @@ See the file ["LICENSE"](LICENSE) for more information.
     * [CQL2PgJSON: id](#cql2pgjson-id)
     * [CQL: Relations](#cql-relations)
     * [CQL: Modifiers](#cql-modifiers)
+    * [CQL: Matching, comparing and sorting numbers](#cql-matching-comparing-and-sorting-numbers)
     * [CQL: Matching full text](#cql-matching-full-text)
     * [CQL: Matching all records](#cql-matching-all-records)
     * [CQL: Matching undefined or empty values](#cql-matching-undefined-or-empty-values)
     * [CQL: Matching array elements](#cql-matching-array-elements)
     * [CQL: @-relation modifiers for array searches](#cql--relation-modifiers-for-array-searches)
-    * [CQL: Matching and comparing numbers](#cql-matching-and-comparing-numbers)
     * [CQL2PgJSON: Foreign key cross table index queries](#cql2pgjson-foreign-key-cross-table-index-queries)
     * [CQL2PgJSON: Foreign key tableAlias and targetTableAlias](#cql2pgjson-foreign-key-tablealias-and-targettablealias)
     * [CQL2PgJSON: Exceptions](#cql2pgjson-exceptions)
@@ -905,10 +905,10 @@ Modifiers are forbidden.
 
 Only these relations have been implemented yet:
 
-* `=` (this is `==` for a number and `adj` for a string.
-       Examples 1: `height = 3.4` Example 2: `title = Potter`)
-* `==` (exact match, for example `barcode == 883746123` or exact substring match `title == "*Harry Potter*"`;
-        numeric fields match any form: 3.4 = 3.400 = 0.34e1)
+* `=` (this is `==` for number matching and `adj` for a string matching.
+       Examples 1: `height =/number 3.4` Example 2: `title = Potter`)
+* `==` (exact match, for example `barcode == 883746123` or exact substring match `title == "Harry Potter*"`;
+        `==/number` matches any form: 3.4 = 3.400 = 0.34e1)
 * `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
 * `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
 * `adj` (substring phrase match: all words of the query string exist consecutively in that order, there may be any
@@ -926,6 +926,17 @@ Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 
 Word begin and word end in JSON is only detected at whitespace and punctuation characters
 from the ASCII charset, not from other Unicode charsets.
+
+### CQL: Matching, comparing and sorting numbers
+
+Add the /number modifier to enable number matching, comparing and sorting, for example `age ==/number 18`,
+`age >=/number 21` and `sortBy age/number`.
+
+3.4, 3.400, and 0.34e1 match each other when using `==/number`, and 2 is smaller than 19
+(in contrast to string comparison where "2" > "19").
+
+This requires that the value has been stored as a JSONB number (`{"age": 19}`)
+and not as a JSONB string (`{"age": "19"}`).
 
 ### CQL: Matching full text
 
@@ -1077,14 +1088,6 @@ For the identifiers example we could define things in schema.json with:
 This will allow you to perform searches, such as:
 
     identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
-
-### CQL: Matching and comparing numbers
-
-Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number comparison must result in 10 > 2
-(in contrast to string comparison where "10" < "2").
-
-If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", and ">=" if the actual JSONB type of the stored value is `number`
-(JSONB has no `integer` type).
 
 ### CQL2PgJSON: Foreign key cross table index queries
 
