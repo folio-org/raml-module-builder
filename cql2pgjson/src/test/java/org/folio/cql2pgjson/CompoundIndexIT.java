@@ -37,7 +37,7 @@ public class CompoundIndexIT extends DatabaseTestBase {
   private List<String> cqla(String cql) {
     try {
       String sql = cql2pgJsonTablea.toSql(cql).toString();
-      return firstColumn("select jsonb->>'firstname' from tablea " + sql);
+      return firstColumn("select jsonb->>'firstName' from tablea " + sql);
     } catch (QueryValidationException e) {
       throw new RuntimeException(e);
     }
@@ -45,19 +45,19 @@ public class CompoundIndexIT extends DatabaseTestBase {
   private List<String> cqlb(String cql) {
     try {
       String sql = cql2pgJsonTableb.toSql(cql).toString();
-      return firstColumn("select jsonb->>'city' from tableb " + sql);
+      return firstColumn("select jsonb->>'field1' from tableb " + sql);
     } catch (QueryValidationException e) {
       throw new RuntimeException(e);
     }
   }
   @Test
   public void compoundIndexTestMultiFieldNames() throws Exception {
-    assertThat(cqla("fullname == first1 last1"), containsInAnyOrder("first1"));
+    assertThat(cqla("fullname == Tom Jones"), containsInAnyOrder("Tom"));
   }
 
   @Test
   public void compoundIndexTestMultiFieldNames2() throws Exception {
-    assertThat( cqlb("ftfield == John Smith"),  containsInAnyOrder("first1"));
+    assertThat( cqlb("address == Boston MA"),  containsInAnyOrder("first0"));
   }
 
 }

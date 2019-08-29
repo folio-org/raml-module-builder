@@ -80,7 +80,7 @@ public class Index extends TableIndexes {
       if(i != 0) {
         result += " , ";
       }
-      result += tableLoc + ".jsonb->>" + splitIndex[i];
+      result += tableLoc + ".jsonb->>'" + splitIndex[i] + "'";
     }
     result += ")";
     return result;
