@@ -48,6 +48,29 @@ public class SchemaMakerTest {
   }
 
   @Test
+  public void canCreateCompoundIndex() throws IOException, TemplateException {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
+      "mod-foo-18.2.3", "mod-foo-18.2.4");
+    String json = ResourceUtil.asString("templates/db_scripts/compoundIndexTest.json");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+    String result = schemaMaker.generateDDL();
+
+    assertThat(result, containsString("concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')"));
+
+  }
+
+  @Test
+  public void canCreateSQLExpressionIndex() throws IOException, TemplateException {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
+      "mod-foo-18.2.3", "mod-foo-18.2.4");
+    String json = ResourceUtil.asString("templates/db_scripts/compoundIndexTest.json");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+    String result = schemaMaker.generateDDL();
+
+    assertThat(result, containsString("lower(concat_space_sql(jsonb->>'field1', jsonb->>'field2'))"));
+
+  }
+  @Test
   public void failsWhenAuditingTableNameIsMissing() throws Exception {
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
         "mod-foo-18.2.3", "mod-foo-18.2.4");

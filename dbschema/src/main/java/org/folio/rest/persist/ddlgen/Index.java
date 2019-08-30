@@ -70,20 +70,23 @@ public class Index extends TableIndexes {
     this.sqlExpression = sqlExpression;
   }
   public String createCompoundIndex(String tableLoc) {
-    if(this.getMultiFieldNames() == null) {
+    if(this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
       return this.fieldPath;
-    }
-    String [] splitIndex = this.getMultiFieldNames().split(",");
+    } else if ( this.getSqlExpression() != null) {
+      return this.getSqlExpression();
+    } else {
+      String [] splitIndex = this.getMultiFieldNames().split(",");
 
-    String result = "concat_ws(' ',";
-    for(int i = 0;i < splitIndex.length;i++) {
-      if(i != 0) {
-        result += " , ";
+      String result = "concat_space_sql(";
+      for(int i = 0;i < splitIndex.length;i++) {
+        if(i != 0) {
+          result += " , ";
+        }
+        result += tableLoc + ".jsonb->>'" + splitIndex[i] + "'";
       }
-      result += tableLoc + ".jsonb->>'" + splitIndex[i] + "'";
+      result += ")";
+      return result;
     }
-    result += ")";
-    return result;
 
   }
 }

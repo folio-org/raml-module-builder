@@ -3,7 +3,7 @@
     <#list table.index as indexes>
     <#if indexes.tOps.name() == "ADD">
     CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx ON ${myuniversity}_${mymodule}.${table.tableName}
-    (${indexes.createCompoundIndex()})
+    (${indexes.createCompoundIndex(table.tableName)})
      <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
     <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx;
@@ -16,7 +16,7 @@
     <#list table.uniqueIndex as indexes>
     <#if indexes.tOps.name() == "ADD">
     CREATE UNIQUE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique ON ${myuniversity}_${mymodule}.${table.tableName}
-    ( ${indexes.createCompoundIndex()} )
+    ( ${indexes.createCompoundIndex(table.tableName)} )
      <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
     <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique;
@@ -29,7 +29,7 @@
     <#list table.likeIndex as indexes>
       <#if indexes.tOps.name() == "ADD">
     CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_like ON ${myuniversity}_${mymodule}.${table.tableName}
-    ((${indexes.createCompoundIndex()}) text_pattern_ops)
+    ((${indexes.createCompoundIndex(table.tableName)}) text_pattern_ops)
     <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
     <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_like;
