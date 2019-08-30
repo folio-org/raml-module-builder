@@ -10,8 +10,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 27
 
 * Update the raml-util subdirectory to the latest raml1.0 commit of https://github.com/folio-org/raml to make metadata.createdByUserId optional:
-    * Hint: `cd ramls/raml-util; git fetch; git checkout 69f6074; cd ../..; git commit -m "Update raml-util submodule" ramls/raml-util`
-    * Note that pom.xml may revert any submodule update that hasn't been commited!
+    * Hint: `cd ramls/raml-util; git fetch; git checkout 69f6074; cd ../..; git add ramls/raml-util`
+    * Note that pom.xml may revert any submodule update that hasn't been staged or committed!
+      (See [notes](https://dev.folio.org/guides/developer-setup/#update-git-submodules).)
 
 ## Version 25
 
