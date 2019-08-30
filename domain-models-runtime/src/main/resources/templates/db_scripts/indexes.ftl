@@ -53,7 +53,7 @@
     <#list table.fullTextIndex as indexes>
       <#if indexes.tOps.name() == "ADD">
      CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_ft ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN
-        ( to_tsvector('${ft_defaultDictionary}', ${indexes.fieldPath}) );
+        ( to_tsvector('${ft_defaultDictionary}', ${indexes.createCompoundIndex(table.tableName)}) );
       <#else>
      DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_ft;
       </#if>
