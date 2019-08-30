@@ -110,3 +110,8 @@ BEGIN
   RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+
+create or replace function concat_space_sql(VARIADIC text[])
+RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); 
+$$ LANGUAGE SQL IMMUTABLE;

@@ -205,4 +205,10 @@ public class SchemaMakerIT extends PostgresClientITBase {
     executeSuperuser(context, "UPDATE " + table + " SET id='" + uuid2 + "'");
     assertIdJsonb(context, uuid2, uuid2);
   }
+
+  @Test
+  public void canCreateCompoundIndexes(TestContext context) throws Exception {
+    runSchema(context, TenantOperation.CREATE, "compoundIndexTest.json");
+
+  }
 }
