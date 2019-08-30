@@ -2,6 +2,7 @@ package org.folio.cql2pgjson.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.folio.cql2pgjson.model.DbFkInfo;
@@ -82,6 +83,20 @@ public class DbSchemaUtils {
   }
 
   /**
+   * Return DbFkInfo for the foreign key entry of table for the given fieldName.
+   * Throws IllegalStateException if not found.
+   */
+  private static DbFkInfo getForeignKey(Table table, String fieldName) {
+    for (ForeignKeys fk : table.getForeignKeys()) {
+      if (fieldName.equals(fk.getFieldName())) {
+        return new DbFkInfo(table.getTableName(), fieldName, fk.getTargetTable());
+      }
+    }
+    throw new IllegalStateException("foreignKey not found for table=" + table.getTableName()
+      + ", fieldName=" + fieldName);
+  }
+
+  /**
    * Find a list of {@link ForeignKeys} from source table to target table alias
    *
    * @param dbSchema
@@ -92,67 +107,84 @@ public class DbSchemaUtils {
    */
   public static List<DbFkInfo> findForeignKeysFromSourceTableToTargetAlias(Schema dbSchema, String srcTabName,
       String targetTabAlias) {
-    return findForeignKeys(dbSchema, srcTabName, targetTabAlias);
-  }
 
-  private static List<DbFkInfo> findForeignKeys(Schema dbSchema, String srcTabName, String targetTabName) {
-    List<DbFkInfo> list = new ArrayList<>();
     Table srcTab = getTable(dbSchema, srcTabName);
     if (srcTab == null || srcTab.getForeignKeys() == null) {
-      return list;
+      return Collections.emptyList();
     }
-    // direct FK
-    for (ForeignKeys fk : srcTab.getForeignKeys()) {
-      if (targetTabName.equals(fk.getTargetTableAlias())) {
-        list.add(new DbFkInfo(srcTab.getTableName(), fk.getFieldName(), fk.getTargetTable()));
-        return list;
-      }
-    }
-    // find the shortest path
-    for (ForeignKeys fk : srcTab.getForeignKeys()) {
-      updateFkList(list, dbSchema, srcTab, fk, targetTabName);
-    }
-    return list;
-  }
 
-  private static void updateFkList(List<DbFkInfo> list, Schema dbSchema, Table srcTab, ForeignKeys fk,
-      String targetTabName) {
-    List<DbFkInfo> childList = findForeignKeys(dbSchema, fk.getTargetTable(), targetTabName);
-    if (!childList.isEmpty()) {
-      if (!list.isEmpty() && (list.size() > (childList.size() + 1))) {
-        list.clear();
+    for (ForeignKeys fk : srcTab.getForeignKeys()) {
+      if (targetTabAlias.equals(fk.getTargetTableAlias())) {
+        return findForeignKeys(dbSchema, srcTab, fk);
       }
-      list.add(new DbFkInfo(srcTab.getTableName(), fk.getFieldName(), fk.getTargetTable()));
-      list.addAll(childList);
     }
+    return Collections.emptyList();
   }
 
   /**
-   * Find a list of {@link ForeignKeys} from source table alias and target table.
+   * Find a list of {@link ForeignKeys} from source table alias to target table.
+   *
+   * Examples:
+   *
+   * srcTabAlias=holdingsRecord and targetTabName=item return
+   * [(table=item, field=holdingsRecordId, targetTable=holdings_record)].
+   *
+   * srcTabAlias=instance and targetTabName=item return
+   * [(table=item, field=holdingsRecordId, targetTable=holdings_record),
+   * (table=holdings_record, field=instanceId, targetTable=instance)].
+   *
    *
    * @param dbSchema
-   * @param srcTabAlias
-   * @param targetTabName
+   * @param sourceTableAlias
+   * @param targetTable
    * @return list; empty if none found
    */
-  public static List<DbFkInfo> findForeignKeysFromSourceAliasToTargetTable(Schema dbSchema, String srcTabAlias,
-      String targetTabName) {
-    List<DbFkInfo> list = new ArrayList<>();
+  public static List<DbFkInfo> findForeignKeysFromSourceAliasToTargetTable(Schema dbSchema, String sourceTableAlias,
+      String targetTable) {
+
     for (Table table : dbSchema.getTables()) {
       if (table.getForeignKeys() == null) {
         continue;
       }
       for (ForeignKeys fk : table.getForeignKeys()) {
-        if (srcTabAlias.equals(fk.getTableAlias())) {
-          // direct FK
-          if (targetTabName.equals(fk.getTargetTable())) {
-            list.add(new DbFkInfo(table.getTableName(), fk.getFieldName(), fk.getTargetTable()));
-            return list;
-          } else {
-            // find the shortest path
-            updateFkList(list, dbSchema, table, fk, targetTabName);
-          }
+        if (! sourceTableAlias.equals(fk.getTableAlias()) ||
+            ! targetTable.equals(fk.getTargetTable())       ) {
+          continue;
         }
+        List<DbFkInfo> list = findForeignKeys(dbSchema, table, fk);
+        if (! list.isEmpty()) {
+          return list;
+        }
+      }
+    }
+    return Collections.emptyList();
+  }
+
+  /**
+   * Find foreign keys info about foreignKeys via its "fieldName" or "targetPath" property.
+   */
+  private static List<DbFkInfo> findForeignKeys(Schema dbSchema, Table table, ForeignKeys foreignKeys) {
+    // join one table with a second table only?
+    if (foreignKeys.getFieldName() != null) {
+      List<DbFkInfo> list = new ArrayList<>();
+      list.add(new DbFkInfo(table.getTableName(), foreignKeys.getFieldName(), foreignKeys.getTargetTable()));
+      return list;
+    }
+
+    // join with several tables using a path?
+    List<String> targetPath = foreignKeys.getTargetPath();
+    if (targetPath == null || targetPath.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<DbFkInfo> list = new ArrayList<>();
+    for (String fieldName : targetPath) {
+      DbFkInfo dbFkInfo = getForeignKey(table, fieldName);
+      list.add(dbFkInfo);
+      table = getTable(dbSchema, dbFkInfo.getTargetTable());
+      if (table == null) {
+        throw new IllegalStateException(
+            "table not found for tableName=" + dbFkInfo.getTargetTable() + ", targetPath=" + targetPath);
       }
     }
     return list;

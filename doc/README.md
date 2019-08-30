@@ -4,3 +4,5 @@
 
 * [Upgrading notes](upgrading.md) for versions v20+
 
+* [DB Schema migration for module update](../DB-schema-migration.md)
+

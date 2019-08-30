@@ -1579,44 +1579,65 @@ public class RestVerticle extends AbstractVerticle {
     return new Object[]{Boolean.valueOf(ret), content};
   }
 
+  /**
+   * @return entity.setMetadata(Metadata) method, or null if not found.
+   */
+  private static Method getSetMetadataMethod(Object entity) {
+    if (entity == null) {
+      return null;
+    }
+    // entity.getClass().getMethod("setMetadata", new Class[] { Metadata.class })
+    // is 20 times slower than this loop when not found because of throwing the exception
+    for (Method method : entity.getClass().getMethods()) {
+      if (method.getName().equals("setMetadata") &&
+          method.getParameterCount() == 1 &&
+          method.getParameters()[0].getType().equals(Metadata.class)) {
+        return method;
+      }
+    }
+    return null;
+  }
+
+  private static String userIdFromToken(String token) {
+    try {
+      String[] split = token.split("\\.");
+      //the split array contains the 3 parts of the token - the body is the middle part
+      String json = JwtUtils.getJson(split[1]);
+      JsonObject j = new JsonObject(json);
+      return j.getString("user_id");
+    } catch (Exception e) {
+      log.warn("Invalid " + OKAPI_HEADER_TOKEN + ": " + token, e);
+      return null;
+    }
+  }
+
   static void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path) {
     //try to populate meta data section of the passed in json (converted to pojo already as this stage)
     //will only succeed if the pojo (json schema) has a reference to the metaData schema.
-    //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema
-    //the created date and by fields are stored in the db in separate columns on insert trigger so that even if
-    //we overwrite them here, the correct value will be set in the db level via a trigger on update
-    String json;
+    //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema.
+    // The createdDate and createdByUserId fields are stored in the db in separate columns on insert trigger so that even if
+    // we overwrite them here, the correct value will be reset via a database trigger on update.
+    String userId = "";
+    String token = "";
     try {
-      String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
-      String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
+      Method setMetadata = getSetMetadataMethod(entity);
+      if (setMetadata == null) {
+        return;
+      }
+      userId = okapiHeaders.get(OKAPI_USERID_HEADER);
+      token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
       if (userId == null && token != null) {
-        String[] split = token.split("\\.");
-        //the split array contains the 3 parts of the token - the body is the middle part
-        json = JwtUtils.getJson(split[1]);
-        JsonObject j = new JsonObject(json);
-        userId = j.getString("user_id");
+        userId = userIdFromToken(token);
       }
-      if(userId != null){
-        Metadata md = new Metadata();
-        md.setUpdatedDate(new Date());
-        md.setCreatedDate(new Date());
-        md.setCreatedByUserId(userId);
-        md.setUpdatedByUserId(userId);
-        try{
-          /* if a metadata section is passed in by client, we cannot assume it is correct.
-           * entity.getClass().getMethod("getMetaData",
-          new Class[] { }).invoke(entity);*/
-          entity.getClass().getMethod("setMetadata",
-            new Class[] { Metadata.class }).invoke(entity,  md);
-        }
-        catch(Exception e){
-          //do nothing - if this is thrown then the setMetaData() failed, assume pojo
-          // (aka) json schema - didnt include a reference to it.
-          log.debug(e.getMessage(), e);
-        }
-      }
+      Metadata md = new Metadata();
+      md.setUpdatedDate(new Date());
+      md.setCreatedDate(md.getUpdatedDate());
+      md.setCreatedByUserId(userId);
+      md.setUpdatedByUserId(userId);
+      setMetadata.invoke(entity,  md);
     } catch (Exception e) {
-      log.warn("Problem parsing " + OKAPI_HEADER_TOKEN + " header, for path " + path + " - " + e.getMessage());
+      log.warn("path = " + path + ", " + OKAPI_HEADER_TOKEN + " = " + token
+          + ", userId = " + userId + ": " + e.getMessage(), e);
     }
   }
 
