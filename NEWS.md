@@ -1,3 +1,17 @@
+## 27.0.0 2019-08-26
+
+Breaking changes:
+ * RMB-451 add "targetPath" to disambiguate multi-table joins
+ * RMB-452 make tableAlias and targetTableAlias explicit properties
+ * RMB-318 Database config: Drop deprecated dot (db.port) variables, use underscore (DB_PORT)
+ * RMB-460 Add 'snippetPath' to 'scripts' in schema.json
+ * RMB-445 rename HttpStatus.HTTP_VALIDATION_ERROR to HttpStatus.HTTP_UNPROCESSABLE_ENTITY for 422
+
+Bug fixes, new features:
+ * RMB-200 Single quote SQL Injection in PostgresClient.update(table, updateSection, ...)
+ * RMB-459 Populate metadata for reference data/sample data
+ * RMB-460 Add 'snippetPath' to 'scripts' in schema.json
+
 ## 26.4.0 2019-08-12
 
  * RMB-438 contributor search returns no results when name
