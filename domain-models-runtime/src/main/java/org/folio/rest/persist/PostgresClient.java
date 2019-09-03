@@ -348,10 +348,6 @@ public class PostgresClient {
         // in connectionPool, but closeClient() has been invoked
         postgresClient.init();
       }
-      final String s = Envs.getEnv(Envs.RMB_EXPLAIN_QUERY_THRESHOLD);
-      if (s != null) {
-        explainQueryThreshold = Long.parseLong(s);
-      }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
@@ -492,6 +488,11 @@ public class PostgresClient {
       throws Exception {
     // static function for easy unit testing
     JsonObject config = environmentVariables;
+
+    Object v = config.remove(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name());
+    if (v instanceof Long) {
+      PostgresClient.setExplainQueryThreshold((Long) v);
+    }
     if (config.size() > 0) {
       log.info("DB config read from environment variables");
     } else {

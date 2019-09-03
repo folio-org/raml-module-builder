@@ -280,11 +280,11 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_QUERYTIMEOUT
  - DB_CHARSET
  - DB_MAXPOOLSIZE
- - RMB_EXPLAIN_QUERY_THRESHOLD
+ - DB_EXPLAIN_QUERY_THRESHOLD
 
 Environment variables with periods/dots in their names are deprecated in RMB because a period is [not POSIX compliant](http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html) and therefore some shells, notably, the BusyBox /bin/sh included in Alpine Linux, strip them (reference: [warning in OpenJDK docs](https://hub.docker.com/_/openjdk/)).
 
-The environment variable `RMB_EXPLAIN_QUERY_THRESHOLD` is not observed by
+The environment variable `DB_EXPLAIN_QUERY_THRESHOLD` is not observed by
 Postgres itself, but is a value - in milliseconds - that triggers query
 execution analysis. If a single query exceeds this threshold, it will be
 analyzed by using `EXPLAIN ANALYZE`. Note that this in turn further adds
@@ -292,7 +292,7 @@ time to the query, so this should only be executed for slow queries that
 needs further attention. The enalysis can effectively be turned off by setting
 it to a high value (eg 300000 ~ 5 minutes). Like the DB-environment
 variables this pertains per RMB-module (process). The default
-value of `RMB_EXPLAIN_QUERY_THRESHOLD` is 1000 (1 second).
+value of `DB_EXPLAIN_QUERY_THRESHOLD` is 1000 (1 second).
 
 The EXPLAIN ANALYZE - is only performed for PostgresClient.get,
 PostgresClient.select and PostgresClient.join. Not for methods such

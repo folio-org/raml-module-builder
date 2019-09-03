@@ -26,7 +26,7 @@ public class EnvsTest {
     map.put("DB_MAXPOOLSIZE", "5");
     // we dropped support for dot form. check that it is ignored
     map.put("db.username", "superwoman");
-    map.put("RMB_EXPLAIN_QUERY_THRESHOLD", "100");
+    map.put("DB_EXPLAIN_QUERY_THRESHOLD", "100");
     map.put("DB.USERNAME", "superwoman");
     Envs.setEnv(Collections.unmodifiableMap(map));
   }
@@ -58,17 +58,17 @@ public class EnvsTest {
 
   @Test
   public void threshold() {
-    assertEquals("100", Envs.getEnv(Envs.RMB_EXPLAIN_QUERY_THRESHOLD));
+    assertEquals("100", Envs.getEnv(Envs.DB_EXPLAIN_QUERY_THRESHOLD));
   }
 
   @Test
   public void allDBConfs() {
     JsonObject json = Envs.allDBConfs();
-    assertEquals(3, json.size());
+    assertEquals(4, json.size());
     assertEquals("example.com", json.getValue("host"));
     assertEquals(Integer.valueOf(8), json.getValue("queryTimeout"));
     assertEquals(Integer.valueOf(5), json.getValue("maxPoolSize"));
-    assertNull(json.getValue(Envs.RMB_EXPLAIN_QUERY_THRESHOLD.name()));
+    assertEquals(Long.valueOf(100), json.getValue(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name()));
   }
 
   @Test
