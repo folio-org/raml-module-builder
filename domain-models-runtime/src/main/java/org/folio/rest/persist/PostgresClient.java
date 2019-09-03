@@ -2562,9 +2562,7 @@ public class PostgresClient {
           }
           StringBuilder e = new StringBuilder(explainQuery);
           for (JsonArray ar : explain.result().getResults()) {
-            if (ar.getValue(0) instanceof String) {
-              e.append('\n').append(ar.getString(0));
-            }
+            e.append('\n').append(ar.getString(0));
           }
           log.warn(e.toString());
         });
