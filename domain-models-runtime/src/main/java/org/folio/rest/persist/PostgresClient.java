@@ -329,6 +329,10 @@ public class PostgresClient {
     explainQueryThreshold = ms;
   }
 
+  static Long getExplainQueryThreshold() {
+    return explainQueryThreshold;
+  }
+
   /**
    * Instance for the tenantId from connectionPool or created and
    * added to connectionPool.

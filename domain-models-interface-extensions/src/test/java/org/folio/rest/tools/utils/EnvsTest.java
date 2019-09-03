@@ -81,4 +81,16 @@ public class EnvsTest {
 
     Envs.allDBConfs();
   }
+
+  @Test
+  public void explainThresholdException() {
+    Envs.setEnv(Collections.singletonMap("DB_EXPLAIN_QUERY_THRESHOLD", "qqq"));
+
+    thrown.expect(NumberFormatException.class);
+    thrown.expectMessage("DB_EXPLAIN_QUERY_THRESHOLD");
+    thrown.expectMessage("qqq");
+
+    Envs.allDBConfs();
+  }
+
 }

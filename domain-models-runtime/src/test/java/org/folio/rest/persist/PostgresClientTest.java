@@ -131,13 +131,17 @@ public class PostgresClientTest {
 
   @Test
   public void configEnvironmentPlusFile() throws Exception {
+    Long previous = PostgresClient.getExplainQueryThreshold();
     JsonObject env = new JsonObject()
+        .put("DB_EXPLAIN_QUERY_THRESHOLD", 1200L)
         .put("host", "example.com")
         .put("port", 9876);
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "aSchemaName", env);
     assertThat(config.getString("host"), is("example.com"));
     assertThat(config.getInteger("port"), is(9876));
     assertThat(config.getString("username"), is("aSchemaName"));
+    assertThat(PostgresClient.getExplainQueryThreshold(), is(1200L));
+    PostgresClient.setExplainQueryThreshold(previous);
   }
 
   @Test
