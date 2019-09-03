@@ -422,6 +422,13 @@ The [mod-notify](https://github.com/folio-org/mod-notify) is an exemplar.
 
 Remove the temporary copy of the "ramls" directory from Step 1, and replace with your own.
 
+The end-points that share the same first path segment must go into the same .raml file
+because the first path segment determines the name of the resource .java interface, for example
+`/foo/bar` and `/foo/baz` should go into foo.raml, and foo.raml will generate
+`org/folio/rest/jaxrs/resource/Foo.java`. However, you may
+(overrule the convention for the resource interface name)[https://github.com/mulesoft-labs/raml-for-jax-rs/issues/111]
+by implementing a GeneratorExtension.
+
 Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files
 as the "raml-util" directory inside your "ramls" directory:
 ```
@@ -430,8 +437,15 @@ git submodule add https://github.com/folio-org/raml ramls/raml-util
 The "raml1.0" branch is the current and default branch.
 
 Create JSON schemas indicating the objects exposed by the module.
+
 Use the `description` field alongside the `type` field to explain the content and
 usage and to add documentation.
+
+Use `"javaType": "org.folio.rest.jaxrs.model.MyEntity"` to change the name of the
+generated Java type.
+
+See (jsonschema2pojo Reference)[https://github.com/joelittlejohn/jsonschema2pojo/wiki/Reference]
+for JSON schema details.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
 `target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
