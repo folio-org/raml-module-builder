@@ -55,11 +55,9 @@ public class SchemaMakerTest {
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
 
     String result = schemaMaker.getSchema().getTables().get(0).getFullTextIndex().get(0).createCompoundIndex("tablea");
-    assertThat(result,containsString("fail"));
-    result = schemaMaker.getSchema().getTables().get(0).getIndex().get(0).createCompoundIndex("tablea");
-    assertThat(result,containsString("fail"));
+    assertThat(result,containsString("concat_space_sql(tablea.jsonb->>'field1' , tablea.jsonb->>'field2')"));
     result = schemaMaker.getSchema().getTables().get(0).getGinIndex().get(0).createCompoundIndex("tablea");
-    assertThat(result,containsString("fail"));
+    assertThat(result,containsString("concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')"));
   }
 
   @Test
@@ -68,12 +66,10 @@ public class SchemaMakerTest {
         "mod-foo-18.2.3", "mod-foo-18.2.4");
     String json = ResourceUtil.asString("templates/db_scripts/compoundIndex.json");
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-    String result = schemaMaker.getSchema().getTables().get(0).getIndex().get(0).createCompoundIndex("tablea");
-    assertThat(result,containsString("fail"));
-    result = schemaMaker.getSchema().getTables().get(0).getIndex().get(1).createCompoundIndex("tablea");
-    assertThat(result,containsString("fail"));
-    result = schemaMaker.getSchema().getTables().get(0).getIndex().get(2).createCompoundIndex("tablea");
-    assertThat(result,containsString("fail"));
+    String result = schemaMaker.getSchema().getTables().get(1).getGinIndex().get(0).createCompoundIndex("tableb");
+    assertThat(result,containsString("lower(concat_space_sql(jsonb->>'city', jsonb->>'state'))"));
+    result = schemaMaker.getSchema().getTables().get(1).getFullTextIndex().get(0).createCompoundIndex("tableb");
+    assertThat(result,containsString("lower(concat_space_sql(jsonb->>'field1', jsonb->>'field2'))"));
   }
   @Test
   public void canCreateCompoundIndex() throws IOException, TemplateException {
