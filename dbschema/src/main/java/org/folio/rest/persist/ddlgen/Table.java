@@ -1,6 +1,5 @@
 package org.folio.rest.persist.ddlgen;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**

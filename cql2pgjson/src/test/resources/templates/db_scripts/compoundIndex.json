@@ -14,7 +14,7 @@
       "fullTextIndex": [
         {
           "fieldName": "ftfield",
-           "multiFieldNames": "field1,field2",
+          "multiFieldNames": "field1,field2",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false

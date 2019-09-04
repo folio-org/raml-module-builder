@@ -29,9 +29,9 @@ public class CompoundIndexIT extends DatabaseTestBase {
   @Before
   public void runSetup() throws Exception {
     cql2pgJsonTablea = new CQL2PgJSON("tablea.jsonb");
-    cql2pgJsonTablea.setDbSchemaPath("templates/db_scripts/compoundIndexTest.json");
+    cql2pgJsonTablea.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     cql2pgJsonTableb = new CQL2PgJSON("tableb.jsonb");
-    cql2pgJsonTableb.setDbSchemaPath("templates/db_scripts/compoundIndexTest.json");
+    cql2pgJsonTableb.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
 
   }
   private List<String> cqla(String cql) {

@@ -208,7 +208,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
 
   @Test
   public void canCreateCompoundIndexes(TestContext context) throws Exception {
-    runSchema(context, TenantOperation.CREATE, "compoundIndexTest.json");
+    runSchema(context, TenantOperation.CREATE, "compoundIndex.json");
 
   }
 }

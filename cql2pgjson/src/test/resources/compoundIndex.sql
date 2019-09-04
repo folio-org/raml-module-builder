@@ -48,11 +48,9 @@ INSERT INTO tablea (jsonb) VALUES
 ('{"id": "A2222222-2222-2222-2222-222222222222", "firstName": "Lucy", "lastName": "Williams","field1": "first2", "field2": "last2"}'),
 ('{"id": "A3333333-3333-3333-3333-333333333333", "firstName": "Anne", "lastName": "Davis","field1": "first3", "field2": "last3"}'),
 ('{"id": "A4444444-4444-4444-4444-444444444444", "firstName": "Mary", "lastName": "Miller","field1": "first4", "field2": "last4"}');
-INSERT INTO tablea (jsonb) VALUES (jsonb_build_object('id', md5('a' || generate_series(1, 2000)::text)));
 
 INSERT INTO tableb (jsonb) VALUES
 ('{"id": "B1111111-1111-1111-1111-111111111111", "city": "Boston", "state": "MA","field1": "first0", "field2": "last0" }'),
 ('{"id": "B2222222-2222-2222-2222-222222222222", "city": "Chicago", "state": "IL","field1": "first1", "field2": "last1"}'),
 ('{"id": "B3333333-3333-3333-3333-333333333333", "city": "San Francisco", "state": "CA","field1": "first2", "field2": "last2"}'),
 ('{"id": "B4444444-4444-4444-4444-444444444444",  "city": "Austin", "state": "TX","field1": "first3", "field2": "last3"}');
-INSERT INTO tableb (jsonb) VALUES (jsonb_build_object('id', md5('b' || generate_series(1, 2000)::text)));

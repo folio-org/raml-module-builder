@@ -2,7 +2,6 @@ package org.folio.cql2pgjson.util;
 
 import java.util.regex.Pattern;
 import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.rest.persist.ddlgen.Index;
 
 /**
  * Functions that convert some CQL string the equivalent SQL string.
