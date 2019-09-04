@@ -902,7 +902,7 @@ public class CQL2PgJSON {
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
     if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-      indexText = wrapInLowerUnaccent(schemaIndex.createCompoundIndex(""),  /* lower */ false, removeAccents);
+      indexText = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(""),  /* lower */ false, removeAccents);
     } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
       indexText = schemaIndex.getSqlExpression();
     } else {
@@ -943,7 +943,7 @@ public class CQL2PgJSON {
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-        sql = wrapInLowerUnaccent(schemaIndex.createCompoundIndex(targetTable.getTableName()), schemaIndex);
+        sql = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targetTable.getTableName()), schemaIndex);
       } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
         sql = schemaIndex.getSqlExpression();
       } else {

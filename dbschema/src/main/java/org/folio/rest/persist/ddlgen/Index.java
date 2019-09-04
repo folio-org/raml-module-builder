@@ -69,7 +69,7 @@ public class Index extends TableIndexes {
   public void setSqlExpression(String sqlExpression) {
     this.sqlExpression = sqlExpression;
   }
-  public String createCompoundIndex(String tableLoc) {
+  public String getFinalSqlExpression(String tableLoc) {
     if(this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
       return this.fieldPath;
     } else if ( this.getSqlExpression() != null) {
