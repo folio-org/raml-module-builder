@@ -8,11 +8,49 @@
       "auditingFieldName" : "beeHistory"
     },
     {
+      "tableName": "instance",
+      "index": [
+        {
+          "fieldName": "title",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ]
+    },
+    {
+      "tableName": "holdings_record",
+      "foreignKeys": [
+        {
+          "fieldName": "instanceId",
+          "targetTable":      "instance",
+          "targetTableAlias": "instance",
+          "tableAlias": "holdingsRecord",
+          "tOps": "ADD"
+        }
+      ]
+    },
+    {
       "tableName" : "myitems",
       "withMetadata" : true,
       "withAuditing" : true,
       "auditingTableName" : "myitems_audit",
-      "auditingFieldName" : "myitemsAudit"
+      "auditingFieldName" : "myitemsAudit",
+      "foreignKeys": [
+        {
+          "fieldName": "holdingsRecordId",
+          "targetTable":      "holdings_record",
+          "targetTableAlias": "holdingsRecord",
+          "tableAlias": "myitems",
+          "tOps": "ADD"
+        },
+        {
+          "targetPath": ["holdingsRecordId", "instanceId"],
+          "targetTable":      "instance",
+          "targetTableAlias": "instance",
+          "tableAlias": "myitems"
+        }
+      ]
     }
   ]
 }

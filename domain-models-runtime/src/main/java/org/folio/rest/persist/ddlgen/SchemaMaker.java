@@ -138,11 +138,13 @@ public class SchemaMaker {
 
         List<ForeignKeys> fKeys = t.getForeignKeys();
         if(fKeys != null){
-          for (int j = 0; j < fKeys.size(); j++) {
+          for (ForeignKeys f : fKeys) {
+            if (f.getFieldName() == null) {  // e.g. "targetPath"
+              continue;
+            }
             //NOTE , FK are created on fields without the lowercasing / unaccenting
             //meaning, there needs to be an index created without lowercasing / unaccenting
             //otherwise no index will be used
-            ForeignKeys f = fKeys.get(j);
             f.setFieldPath(convertDotPath2PostgresNotation("NEW",f.getFieldName(), true , null, false));
             f.setFieldName(normalizeFieldName(f.getFieldName()));
           }

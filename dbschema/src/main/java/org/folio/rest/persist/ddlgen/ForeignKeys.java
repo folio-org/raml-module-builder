@@ -1,5 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
+import java.util.List;
+
 /**
  * A foreign key relation from the current table (= child table) to a target table (=parent table).
  */
@@ -8,6 +10,7 @@ public class ForeignKeys extends Field {
   private String targetTable;
   private String targetTableAlias;
   private String tableAlias;
+  private List<String> targetPath;
 
   public ForeignKeys() {
     super();
@@ -86,10 +89,29 @@ public class ForeignKeys extends Field {
     this.tableAlias = tableAlias;
   }
 
+  /**
+   * Get the list of fieldNames for a join of more than two tables.
+   * @return list of fieldNames, null if this is a two table join using fieldName.
+   */
+  public List<String> getTargetPath() {
+    return targetPath;
+  }
+
+  /**
+   * Set the list of fieldNames for a join of more than two tables.
+   * @return list of fieldNames, or null if this is a two table join using fieldName.
+   */
+  public void setTargetPath(List<String> targetPath) {
+    this.targetPath = targetPath;
+  }
+
   @Override
   public String toString() {
-    return "ForeignKeys [tableAlias=" + tableAlias + ", targetTable=" + targetTable + ", targetTableAlias="
-        + targetTableAlias + "]";
+    return "ForeignKeys [tableAlias=" + tableAlias + ", targetTable=" + targetTable
+        + ", targetTableAlias=" + targetTableAlias
+        + ", fieldName=" + fieldName
+        + (targetPath == null ? "" : "targetPath=" + targetPath)
+        + "]";
   }
 
 }

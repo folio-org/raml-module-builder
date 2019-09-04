@@ -1,14 +1,15 @@
 
   <#-- Create / Drop foreign keys -->
   <#if table.foreignKeys??>
-    ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}
-    <#list table.foreignKeys as key>
+    <#list table.foreignKeys?filter(key -> key.fieldName??) as key>
       <#if key.tOps.name() == "ADD">
-        ADD COLUMN IF NOT EXISTS ${key.fieldName} UUID REFERENCES ${myuniversity}_${mymodule}.${key.targetTable}<#sep>,
+        ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}
+          ADD COLUMN IF NOT EXISTS ${key.fieldName} UUID REFERENCES ${myuniversity}_${mymodule}.${key.targetTable};
       <#else>
-        DROP COLUMN IF EXISTS ${key.fieldName} CASCADE;
+        ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}
+          DROP COLUMN IF EXISTS ${key.fieldName} CASCADE;
       </#if>
-    </#list>;
+    </#list>
   </#if>
 
   <#-- Create / Drop foreign keys function which pulls data from json into the created foreign key columns -->
@@ -17,7 +18,7 @@
     CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.update_${table.tableName}_references()
     RETURNS TRIGGER AS $$
     BEGIN
-      <#list table.foreignKeys as key>
+      <#list table.foreignKeys?filter(key -> key.fieldName??) as key>
       NEW.${key.fieldName} = ${key.fieldPath};
       </#list>
       RETURN NEW;

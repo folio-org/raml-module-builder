@@ -26,10 +26,10 @@ import org.junit.runner.RunWith;
 public class APITests {
   private final int portCodex = 9230;
   private Vertx vertx;
-  
+
   private static Logger logger = LoggerFactory.getLogger("x");
   private final Header tenantHeader = new Header("X-Okapi-Tenant", "testlib");
-  
+
   private void setupMux(TestContext context) {
     JsonObject conf = new JsonObject();
     conf.put("http.port", portCodex);
@@ -37,22 +37,22 @@ public class APITests {
       .setConfig(conf);
     vertx.deployVerticle(RestVerticle.class.getName(), opt, context.asyncAssertSuccess());
   }
-  
-  
+
+
   @Before
   public void setUp(TestContext context) {
     vertx = Vertx.vertx();
     RestAssured.port = portCodex;
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-  
+
     setupMux(context);
   }
-  
+
   @After
   public void tearDown(TestContext context) {
     vertx.close(context.asyncAssertSuccess());
   }
-  
+
   @Test
   public void testBadContentType(TestContext context) {
     RestAssured.given()
@@ -111,7 +111,7 @@ public class APITests {
       .then()
         .contentType("text/plain")
         .statusCode(400);
-  } 
+  }
 
   @Test
   public void testChunkedUpload(TestContext context) {
