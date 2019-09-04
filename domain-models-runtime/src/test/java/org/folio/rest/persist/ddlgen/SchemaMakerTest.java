@@ -71,6 +71,7 @@ public class SchemaMakerTest {
     result = schemaMaker.getSchema().getTables().get(1).getFullTextIndex().get(0).getFinalSqlExpression("tableb");
     assertThat(result,containsString("lower(concat_space_sql(jsonb->>'field1', jsonb->>'field2'))"));
   }
+
   @Test
   public void canCreateCompoundIndex() throws IOException, TemplateException {
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
