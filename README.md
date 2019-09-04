@@ -407,6 +407,13 @@ The [mod-notify](https://github.com/folio-org/mod-notify) is an exemplar.
 
 Remove the temporary copy of the "ramls" directory from Step 1, and replace with your own.
 
+The end-points that share the same first path segment must go into the same .raml file
+because the first path segment determines the name of the resource .java interface, for example
+`/foo/bar` and `/foo/baz` should go into foo.raml, and foo.raml will generate
+`org/folio/rest/jaxrs/resource/Foo.java`. However, you may
+(overrule the convention for the resource interface name)[https://github.com/mulesoft-labs/raml-for-jax-rs/issues/111]
+by implementing a GeneratorExtension.
+
 Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files
 as the "raml-util" directory inside your "ramls" directory:
 ```
@@ -415,8 +422,15 @@ git submodule add https://github.com/folio-org/raml ramls/raml-util
 The "raml1.0" branch is the current and default branch.
 
 Create JSON schemas indicating the objects exposed by the module.
+
 Use the `description` field alongside the `type` field to explain the content and
 usage and to add documentation.
+
+Use `"javaType": "org.folio.rest.jaxrs.model.MyEntity"` to change the name of the
+generated Java type.
+
+See (jsonschema2pojo Reference)[https://github.com/joelittlejohn/jsonschema2pojo/wiki/Reference]
+for JSON schema details.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
 `target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
@@ -1368,7 +1382,7 @@ For each **table**:
     * `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
     * `arrayModifiers` - specifies array relation modifiers supported for some index. The modifiers must exactly match the name of the property in the JSON object within the array.
     * `arraySubfield` - is the key of the object that is used for the primary term when array relation modifiers are in use. This is typically also defined when `arrayModifiers` are also defined.
-7. `ginIndex` - generate an inverted index on the JSON using the `gin_trgm_ops` extension. Allows for regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the equality operator (=). See the `likeIndex` for available options (except that partial indexes are not supported, i.e. using `whereClause`). The `removeAccents` is set to true and is not case sensitive.
+7. `ginIndex` - generate an inverted index on the JSON using the `gin_trgm_ops` extension. Allows for left and right truncation LIKE queries and regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the full field match (SQL `=` operator and CQL `==` operator without wildcards). See the `likeIndex` for available options.
 8. `uniqueIndex` - create a unique index on a field in the JSON
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
