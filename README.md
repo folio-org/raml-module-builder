@@ -1120,10 +1120,10 @@ CQL2PGjson allows generating and querying indexes that contain multiple columns.
 		"fieldName": "address",
 		"multiFieldNames": "city,state",
 	```
-these 2 examples are equivelent and would be queried by using the fieldname such as:
+these 2 examples are equivalent and would be queried by using the fieldName such as:
 
 ```
-address = "Boston MA"
+address = Boston MA
 ```
 
 These fields are optional but mutually exclusive, you only need one of them.
