@@ -400,7 +400,6 @@ public class CQL2PgJSON {
         order.append(PK_COLUMN_NAME).append(desc);
         continue;
       }
-
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
 
       // if sort field is marked explicitly as number type
@@ -517,7 +516,7 @@ public class CQL2PgJSON {
     return vals;
   }
 
-  private IndexTextAndJsonValues multiFieldProcessing( String index ) throws QueryValidationException {
+  private IndexTextAndJsonValues multiFieldProcessing(String index ) throws QueryValidationException {
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
 
     // processing for case where index is prefixed with json field name
@@ -902,7 +901,14 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
-    String sql = "to_tsvector('simple', " + wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents) + ") "
+    if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
+      indexText = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(""),  /* lower */ false, removeAccents);
+    } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
+      indexText = schemaIndex.getSqlExpression();
+    } else {
+      indexText = wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
+    }
+    String sql = "to_tsvector('simple', " + indexText + ") "
       + "@@ " + tsTerm;
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
@@ -936,8 +942,14 @@ public class CQL2PgJSON {
       }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-      sql = wrapInLowerUnaccent(indexText, schemaIndex) + likeOperator
-          + wrapInLowerUnaccent(like, schemaIndex);
+      if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
+        sql = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targetTable.getTableName()), schemaIndex);
+      } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
+        sql = schemaIndex.getSqlExpression();
+      } else {
+        sql = wrapInLowerUnaccent(indexText, schemaIndex);
+      }
+      sql = sql +  likeOperator + wrapInLowerUnaccent(like, schemaIndex);
     }
 
     if (!hasIndex) {
