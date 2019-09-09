@@ -24,9 +24,9 @@ public class EnvsTest {
     map.put("DB_HOST", "example.com");
     map.put("DB_QUERYTIMEOUT", "8");
     map.put("DB_MAXPOOLSIZE", "5");
+    map.put("DB_EXPLAIN_QUERY_THRESHOLD", "100");
     // we dropped support for dot form. check that it is ignored
     map.put("db.username", "superwoman");
-    map.put("DB_EXPLAIN_QUERY_THRESHOLD", "100");
     map.put("DB.USERNAME", "superwoman");
     Envs.setEnv(Collections.unmodifiableMap(map));
   }
