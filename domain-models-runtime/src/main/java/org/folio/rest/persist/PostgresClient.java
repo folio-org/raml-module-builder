@@ -493,10 +493,6 @@ public class PostgresClient {
     // static function for easy unit testing
     JsonObject config = environmentVariables;
 
-    Object v = config.remove(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name());
-    if (v instanceof Long) {
-      PostgresClient.setExplainQueryThreshold((Long) v);
-    }
     if (config.size() > 0) {
       log.info("DB config read from environment variables");
     } else {
@@ -517,6 +513,10 @@ public class PostgresClient {
       config.put(HOST, DEFAULT_IP);
       config.put(PORT, EMBEDDED_POSTGRES_PORT);
       config.put(DATABASE, "postgres");
+    }
+    Object v = config.remove(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name());
+    if (v instanceof Long) {
+      PostgresClient.setExplainQueryThreshold((Long) v);
     }
     if (tenantId.equals(DEFAULT_SCHEMA)) {
       config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
