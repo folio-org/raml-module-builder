@@ -1117,6 +1117,32 @@ For the identifiers example we could define things in schema.json with:
 This will allow you to perform searches, such as:
 
     identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
+	
+### CQL2PgJSON: Multi Field Index
+
+CQL2PGjson allows generating and querying indexes that contain multiple columns. The index json object now has support for the following properties:
+* sqlExpression
+	Allows the user to explicitly define the expression they wish to use in the index
+	```
+        "fieldName": "address",
+        "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",	
+	```
+	
+* multiFieldNames
+	This is a comma seperated list of json fields that are to be concatenated together via concat_ws with a space character. 
+	example:
+	```
+		"fieldName": "address",
+		"multiFieldNames": "city,state",
+	```
+these 2 examples are equivalent and would be queried by using the fieldName such as:
+
+```
+address = Boston MA
+```
+
+These fields are optional but mutually exclusive, you only need one of them.
+
 
 ### CQL2PgJSON: Foreign key cross table index queries
 

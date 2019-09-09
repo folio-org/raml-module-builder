@@ -14,6 +14,8 @@ public class Index extends TableIndexes {
   private boolean removeAccents = true;
   private List<String> arrayModifiers = null;
   private String arraySubfield = null;
+  private String multiFieldNames;
+  private String sqlExpression;
 
   public boolean isCaseSensitive() {
     return caseSensitive;
@@ -55,5 +57,36 @@ public class Index extends TableIndexes {
   public void setArraySubfield(String modifiersSubfield) {
     this.arraySubfield = modifiersSubfield;
   }
+  public String getMultiFieldNames() {
+    return multiFieldNames;
+  }
+  public void setMultiFieldNames(String queryIndexName) {
+    this.multiFieldNames = queryIndexName;
+  }
+  public String getSqlExpression() {
+    return sqlExpression;
+  }
+  public void setSqlExpression(String sqlExpression) {
+    this.sqlExpression = sqlExpression;
+  }
+  public String getFinalSqlExpression(String tableLoc) {
+    if(this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
+      return this.fieldPath;
+    } else if ( this.getSqlExpression() != null) {
+      return this.getSqlExpression();
+    } else {
+      String [] splitIndex = this.getMultiFieldNames().split(",");
 
+      String result = "concat_space_sql(";
+      for(int i = 0;i < splitIndex.length;i++) {
+        if(i != 0) {
+          result += " , ";
+        }
+        result += tableLoc + ".jsonb->>'" + splitIndex[i] + "'";
+      }
+      result += ")";
+      return result;
+    }
+
+  }
 }

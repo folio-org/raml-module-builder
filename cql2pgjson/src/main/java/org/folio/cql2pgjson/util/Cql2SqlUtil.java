@@ -357,4 +357,5 @@ public final class Cql2SqlUtil {
     String s = ("" + term).replaceAll(ESC_SLASH, "").replaceAll(ESC_STAR, "").replaceAll(ESC_QUEST, "");
     return s.contains("*") || s.contains("?");
   }
+
 }
