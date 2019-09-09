@@ -6,6 +6,8 @@ import org.apache.commons.lang3.StringUtils;
  * Container for the WHERE, ORDER BY, LIMIT and OFFSET clause of a SQL SELECT query.
  */
 public class SqlSelect {
+  private final String select;
+  private final String from;
   private final String where;
   private final String orderBy;
 
@@ -15,6 +17,15 @@ public class SqlSelect {
    * @param orderBy  the ORDER BY clause without "ORDER BY" keyword
    */
   public SqlSelect(String where, String orderBy) {
+    this.select = "";
+    this.from = "";
+    this.where = StringUtils.defaultString(where);
+    this.orderBy = StringUtils.defaultString(orderBy);
+  }
+
+  public SqlSelect(String select, String from, String where, String orderBy) {
+    this.select = StringUtils.defaultString(select);
+    this.from = StringUtils.defaultString(from);
     this.where = StringUtils.defaultString(where);
     this.orderBy = StringUtils.defaultString(orderBy);
   }
@@ -34,20 +45,23 @@ public class SqlSelect {
   }
 
   /**
-   * Concatenation of getWhere() and getOrderBy() and including "WHERE" and "ORDER BY" keywords if needed.
+   * Construct the full SQL.
    */
   @Override
   public String toString() {
     StringBuilder b = new StringBuilder();
+    if (! select.isEmpty()) {
+      b.append("SELECT ").append(select);
+    }
+    if (! from.isEmpty()) {
+      b.append(" FROM ").append(from);
+    }
     if (! where.isEmpty()) {
-      b.append("WHERE ").append(where);
+      b.append(" WHERE ").append(where);
     }
     if (! orderBy.isEmpty()) {
-      if (b.length() > 0) {
-        b.append(' ');
-      }
-      b.append("ORDER BY ").append(orderBy);
+      b.append(" ORDER BY ").append(orderBy);
     }
-    return b.toString();
+    return b.toString().trim();
   }
 }

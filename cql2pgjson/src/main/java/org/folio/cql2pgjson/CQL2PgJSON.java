@@ -74,6 +74,11 @@ public class CQL2PgJSON {
   private Schema dbSchema;
   private Table dbTable;
 
+  // should we use join or default subquery
+  private boolean useJoin = false;
+  private List<DbFkInfo> childToParent = new ArrayList<>();
+  private List<DbFkInfo> parentToChild = new ArrayList<>();
+
   /**
    * Default index names to be used for cql.serverChoice.
    * May be empty, but not null. Must not contain null, names must not contain double quote or single quote.
@@ -380,7 +385,6 @@ public class CQL2PgJSON {
 
   private SqlSelect toSql(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
-    String where = pg(node.getSubtree());
 
     boolean firstIndex = true;
     for (ModifierSet modifierSet : node.getSortIndexes()) {
@@ -402,6 +406,32 @@ public class CQL2PgJSON {
       }
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
 
+      // detect possible sort by foreign table field
+      if (dbTable != null) {
+        String index = modifierSet.getBase();
+        String srcTabName = dbTable.getTableName();
+        String targetTabAlias = index.split("\\.")[0];
+        String targetTabName = null;
+        List<DbFkInfo> fks = DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, srcTabName, targetTabAlias);
+        if (!fks.isEmpty()) {
+          // child to parent
+          targetTabName = fks.get(fks.size() - 1).getTargetTable();
+          updateDbFkInfo(fks, true);
+        } else {
+          // parent to child
+          fks = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, targetTabAlias, srcTabName);
+          if (!fks.isEmpty()) {
+            targetTabName = fks.get(0).getTable();
+            updateDbFkInfo(fks, false);
+          }
+        }
+        if (targetTabName != null) {
+          vals = getIndexTextAndJsonValues(targetTabName + ".jsonb", index.substring(index.indexOf(".") + 1));
+          // use join when querying multiple tables
+          this.useJoin = true;
+        }
+      }
+
       // if sort field is marked explicitly as number type
       if (modifiers.getCqlTermFormat() == CqlTermFormat.NUMBER) {
         order.append(vals.getIndexJson()).append(desc);
@@ -411,7 +441,34 @@ public class CQL2PgJSON {
       // We assume that a CREATE INDEX for this has been installed.
       order.append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
     }
-    return new SqlSelect(where, order.toString());
+
+    String where = pg(node.getSubtree());
+
+    String select = null;
+    StringBuilder from = new StringBuilder();
+    if (!childToParent.isEmpty()) {
+      select = dbTable.getTableName();
+      from.append(childToParent.get(0).getTable());
+      for (DbFkInfo fk : childToParent) {
+        String t1 = fk.getTable();
+        String f1 = fk.getField();
+        String t2 = fk.getTargetTable();
+        from.append(String.format(" LEFT OUTER JOIN %s ON (%s.jsonb->>'%s')::UUID = %s.id", t2, t1, f1, t2));
+      }
+    } else if (!parentToChild.isEmpty()) {
+      select = dbTable.getTableName();
+      int n = parentToChild.size() - 1;
+      from.append(parentToChild.get(n).getTargetTable());
+      for (int i = n; i >= 0; i--) {
+        DbFkInfo fk = parentToChild.get(i);
+        String t1 = fk.getTargetTable();
+        String f2 = fk.getField();
+        String t2 = fk.getTable();
+        from.append(String.format(" LEFT OUTER JOIN %s ON (%s.jsonb->>'%s')::UUID = %s.id", t2, t2, f2, t1));
+      }
+    }
+
+    return new SqlSelect(select, from.toString(), where, order.toString());
   }
 
   private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
@@ -505,6 +562,14 @@ public class CQL2PgJSON {
     return res.toString();
   }
 
+  private IndexTextAndJsonValues getIndexTextAndJsonValues(String jsonField, String index)
+      throws QueryValidationException {
+    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+    vals.setIndexJson(index2sqlJson(jsonField, index));
+    vals.setIndexText(index2sqlText(jsonField, index));
+    return vals;
+  }
+
   private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
       throws QueryValidationException {
     if (jsonFields != null && jsonFields.size() > 1) {
@@ -549,12 +614,14 @@ public class CQL2PgJSON {
       // child to parent
       List<DbFkInfo> fks = DbSchemaUtils.findForeignKeysFromSourceTableToTargetAlias(dbSchema, srcTabName, targetTabAlias);
       if (!fks.isEmpty()) {
+        updateDbFkInfo(fks, true);
         return pgSubQuery(node, fks, true);
       }
 
       // parent to child
       fks = DbSchemaUtils.findForeignKeysFromSourceAliasToTargetTable(dbSchema, targetTabAlias, srcTabName);
       if (!fks.isEmpty()) {
+        updateDbFkInfo(fks, false);
         return pgSubQuery(node, fks, false);
       }
     }
@@ -570,6 +637,14 @@ public class CQL2PgJSON {
       return String.join(" OR ", sqlPieces);
     }
     return index2sql(node.getIndex(), node);
+  }
+
+  private void updateDbFkInfo(List<DbFkInfo> dbFkInfo, boolean childToParent) {
+    List<DbFkInfo> fks = childToParent ? this.childToParent : this.parentToChild;
+    if (dbFkInfo.size() > fks.size()) {
+      fks.clear();
+      fks.addAll(dbFkInfo);
+    }
   }
 
   private String pgSubQuery(CQLTermNode node, List<DbFkInfo> fks, boolean childToParent) throws QueryValidationException {
@@ -601,6 +676,12 @@ public class CQL2PgJSON {
     for (int i = 0; i < fks.size(); i++) {
       sb.append(")");
     }
+
+    // if use join, no need of subQeury
+    if (useJoin) {
+      return indexNodeForForeignTable(node, targetTable, foreignTarget);
+    }
+
     return sb.toString();
   }
 
