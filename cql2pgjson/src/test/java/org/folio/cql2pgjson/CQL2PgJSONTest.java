@@ -72,14 +72,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     rejectLower = false;
   }
 
-  public void selectView(CQL2PgJSON aCql2pgJson, String sqlFile, String testcase) {
-    int hash = testcase.indexOf('#');
-    assertTrue("hash character in testcase", hash >= 0);
-    String cql = testcase.substring(0, hash).trim();
-    String expectedNames = testcase.substring(hash + 1).trim();
-    selectView(aCql2pgJson, sqlFile, cql, expectedNames);
-  }
-
   public void select(CQL2PgJSON aCql2pgJson, String sqlFile, String testcase) {
     int hash = testcase.indexOf('#');
     assertTrue("hash character in testcase", hash >= 0);
@@ -142,53 +134,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     }
     logger.fine("select: done with " + cql);
   }
-  /**
-   * @param expectedNames the semicolon+space separated list of expected names, or -- if there should
-   *          be an exception -- the expected substring of the error message prepended by an exclamation mark.
-   */
-  public void selectView(CQL2PgJSON aCql2pgJson, String sqlFile, String cql, String expectedNames) {
 
-    if (! cql.contains(" sortBy ")) {
-      cql += " sortBy name";
-    }
-    String sql = null;
-    try {
-      String blob = "ho_jsonb";
-      String tablename = "users_groups_view";
-      SqlSelect sqlSelect = aCql2pgJson.toSql(cql);
-      if (rejectLower) {
-        assertThat(sqlSelect.getWhere().toLowerCase(Locale.ROOT), not(containsString("lower")));
-      }
-      sql = "select " + blob + "->'name' from " + tablename + " " + sqlSelect;
-      logger.info("select: CQL --> SQL: " + cql + " --> " + sql);
-      runSqlFile(sqlFile);
-      logger.fine("select: sqlfile done");
-      String actualNames = "";
-      try ( Statement statement = conn.createStatement();
-            ResultSet result = statement.executeQuery(sql) ) {
-
-        while (result.next()) {
-          if (! actualNames.isEmpty()) {
-            actualNames += "; ";
-          }
-          actualNames += result.getString(1).replace("\"", "");
-        }
-      }
-      if (! expectedNames.equals(actualNames)) {
-        logger.fine("select: Test FAILURE on " + cql + "#" + expectedNames);
-      }
-      logger.fine("select: Got names [" + actualNames + "], expected [" + expectedNames + "]");
-      assertEquals("CQL: " + cql + ", SQL: " + sql, expectedNames, actualNames);
-    } catch (QueryValidationException | SQLException e) {
-      logger.fine("select: " + e.getClass().getSimpleName()
-        + " for query " + cql + " : " + e.getMessage());
-      if (! expectedNames.startsWith("!")) {
-        throw new RuntimeException(sql != null ? sql : cql, e);
-      }
-      assertThat(e.toString(), containsString(expectedNames.substring(1).trim()));
-    }
-    logger.fine("select: done with " + cql);
-  }
   public void select(String sqlFile, String testcase) {
     select(cql2pgJson, sqlFile, testcase);
   }
@@ -1058,18 +1004,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     logger.fine("arrayRelationModifiers(): " + testcase + " OK");
   }
 
-  @Test
-  @Parameters({
-    "((contributors = \"foo\") and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # ",
-    "((contributors = 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId = a708811d-422b-43fd-8fa7-d73f26dee1f9) # groupa",
-    "((contributors = /@contributornametypeid 2b94c631-fca9-4892-a730-03ee529ffe2a) and users_groups_view.ho_jsonb.personId=\"a708811d-422b-43fd-8fa7-d73f26dee1f9\") # groupa"
-  })
-  public void arrayRelationModifiersWithView(String testcase) throws IOException, CQL2PgJSONException {
-    logger.fine("arrayRelationModifiers():" + testcase);
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON( Arrays.asList("users_groups_view.ho_jsonb","users_groups_view.ho_jsonb"),"users.jsonb");
-    selectView(aCql2pgJson, "arrayWithView.sql", testcase);
-    logger.fine("arrayRelationModifiers(): " + testcase + " OK");
-  }
   @Ignore("Need to sort out the array stuff first")
   @Test
   @Parameters({
