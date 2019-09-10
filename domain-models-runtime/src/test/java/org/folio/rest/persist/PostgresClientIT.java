@@ -99,6 +99,7 @@ public class PostgresClientIT {
       PostgresClient.setIsEmbedded(true);
       PostgresClient.getInstance(vertx).startEmbeddedPostgres();
     }
+    PostgresClient.setExplainQueryThreshold(0);
 
     // fail the complete test class if the connection to postgres doesn't work
     PostgresClient.getInstance(vertx).execute("SELECT 1", context.asyncAssertSuccess());
@@ -107,6 +108,7 @@ public class PostgresClientIT {
   @AfterClass
   public static void tearDownClass(TestContext context) {
     PostgresClient.stopEmbeddedPostgres();
+    PostgresClient.setExplainQueryThreshold(PostgresClient.EXPLAIN_QUERY_THRESHOLD_DEFAULT);
     if (vertx != null) {
       vertx.close(context.asyncAssertSuccess());
       vertx = null;

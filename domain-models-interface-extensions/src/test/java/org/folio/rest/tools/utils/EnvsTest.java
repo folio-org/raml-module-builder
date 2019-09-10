@@ -24,6 +24,7 @@ public class EnvsTest {
     map.put("DB_HOST", "example.com");
     map.put("DB_QUERYTIMEOUT", "8");
     map.put("DB_MAXPOOLSIZE", "5");
+    map.put("DB_EXPLAIN_QUERY_THRESHOLD", "100");
     // we dropped support for dot form. check that it is ignored
     map.put("db.username", "superwoman");
     map.put("DB.USERNAME", "superwoman");
@@ -56,12 +57,18 @@ public class EnvsTest {
   }
 
   @Test
+  public void threshold() {
+    assertEquals("100", Envs.getEnv(Envs.DB_EXPLAIN_QUERY_THRESHOLD));
+  }
+
+  @Test
   public void allDBConfs() {
     JsonObject json = Envs.allDBConfs();
-    assertEquals(3, json.size());
+    assertEquals(4, json.size());
     assertEquals("example.com", json.getValue("host"));
     assertEquals(Integer.valueOf(8), json.getValue("queryTimeout"));
     assertEquals(Integer.valueOf(5), json.getValue("maxPoolSize"));
+    assertEquals(Long.valueOf(100), json.getValue(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name()));
   }
 
   @Test
@@ -74,4 +81,16 @@ public class EnvsTest {
 
     Envs.allDBConfs();
   }
+
+  @Test
+  public void explainThresholdException() {
+    Envs.setEnv(Collections.singletonMap("DB_EXPLAIN_QUERY_THRESHOLD", "qqq"));
+
+    thrown.expect(NumberFormatException.class);
+    thrown.expectMessage("DB_EXPLAIN_QUERY_THRESHOLD");
+    thrown.expectMessage("qqq");
+
+    Envs.allDBConfs();
+  }
+
 }

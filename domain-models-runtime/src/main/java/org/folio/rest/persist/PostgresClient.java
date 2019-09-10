@@ -96,6 +96,9 @@ public class PostgresClient {
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
+  /** default analyze threshold value in milliseconds */
+  static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
+
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
 
@@ -157,7 +160,11 @@ public class PostgresClient {
 
   private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
+
   private static int embeddedPort            = -1;
+
+  /** analyze threshold value in milliseconds */
+  private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
@@ -165,6 +172,7 @@ public class PostgresClient {
   private AsyncSQLClient client;
   private final String tenantId;
   private final String schemaName;
+
 
   static {
     REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("LIMIT", Pattern.compile("LIMIT\\s+[\\d]+(?=(([^']*'){2})*[^']*$)", 2)));
@@ -192,6 +200,7 @@ public class PostgresClient {
   }
 
   static PostgresClient testClient() {
+    explainQueryThreshold = 0;
     return new PostgresClient();
   }
 
@@ -314,6 +323,14 @@ public class PostgresClient {
       configPath = POSTGRES_LOCALHOST_CONFIG;
     }
     return configPath;
+  }
+
+  static void setExplainQueryThreshold(long ms) {
+    explainQueryThreshold = ms;
+  }
+
+  static Long getExplainQueryThreshold() {
+    return explainQueryThreshold;
   }
 
   /**
@@ -475,6 +492,7 @@ public class PostgresClient {
       throws Exception {
     // static function for easy unit testing
     JsonObject config = environmentVariables;
+
     if (config.size() > 0) {
       log.info("DB config read from environment variables");
     } else {
@@ -495,6 +513,10 @@ public class PostgresClient {
       config.put(HOST, DEFAULT_IP);
       config.put(PORT, EMBEDDED_POSTGRES_PORT);
       config.put(DATABASE, "postgres");
+    }
+    Object v = config.remove(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name());
+    if (v instanceof Long) {
+      PostgresClient.setExplainQueryThreshold((Long) v);
     }
     if (tenantId.equals(DEFAULT_SCHEMA)) {
       config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
@@ -1664,41 +1686,25 @@ public class PostgresClient {
     }
   }
 
-  /**
-   *
-   * @param connection
-   * @param queryHelper
-   * @param total
-   * @param statMethod
-   * @param resultSetMapper
-   * @param replyHandler
-   */
   <T> void processQuery(
     SQLConnection connection, QueryHelper queryHelper, Integer total, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) {
-    long start = System.nanoTime();
-    log.debug("Attempting query: " + queryHelper.selectQuery);
-    connection.query(queryHelper.selectQuery, query -> {
-      if (!queryHelper.transactionMode) {
-        connection.close();
-      }
-      try {
-        if (query.failed()) {
-          log.error("process query: " + query.cause().getMessage() + " - "
-            + queryHelper.selectQuery, query.cause());
-          replyHandler.handle(Future.failedFuture(query.cause()));
-        } else {
-          replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
+    try {
+      queryAndAnalyze(connection, queryHelper.selectQuery, statMethod, query -> {
+        if (!queryHelper.transactionMode) {
+          connection.close();
         }
-        long queryTime = (System.nanoTime() - start);
-        StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
-        log.debug("timer: get " + queryHelper.selectQuery + " (ns) " + queryTime);
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
-      }
-    });
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   /**
@@ -2533,6 +2539,39 @@ public class PostgresClient {
     client.getConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
+  static void queryAndAnalyze(SQLConnection conn, String sql, String statMethod,
+    Handler<AsyncResult<ResultSet>> replyHandler) {
+
+    long start = System.nanoTime();
+    conn.query(sql, res -> {
+      long queryTime = (System.nanoTime() - start);
+      StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
+      if (res.failed()) {
+        log.error("queryAndAnalyze: " + res.cause().getMessage() + " - "
+          + sql, res.cause());
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      if (queryTime >= explainQueryThreshold * 1000000) {
+        final String explainQuery = "EXPLAIN ANALYZE " + sql;
+        conn.query(explainQuery, explain -> {
+          replyHandler.handle(res); // not before, so we have conn if it gets closed
+          if (explain.failed()) {
+            log.warn(explainQuery + ": ", explain.cause().getMessage(), explain.cause());
+            return;
+          }
+          StringBuilder e = new StringBuilder(explainQuery);
+          for (JsonArray ar : explain.result().getResults()) {
+            e.append('\n').append(ar.getString(0));
+          }
+          log.warn(e.toString());
+        });
+      } else {
+        replyHandler.handle(res);
+      }
+    });
+  }
+
   /**
    * Run a select query.
    *
@@ -2550,7 +2589,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      conn.result().query(sql, replyHandler);
+      queryAndAnalyze(conn.result(), sql, GET_STAT_METHOD, replyHandler);
     } catch (Exception e) {
       log.error("select sql: " + e.getMessage() + " - " + sql, e);
       replyHandler.handle(Future.failedFuture(e));

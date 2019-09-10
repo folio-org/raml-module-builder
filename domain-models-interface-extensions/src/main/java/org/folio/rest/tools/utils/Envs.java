@@ -12,7 +12,8 @@ public enum Envs {
   DB_DATABASE,
   DB_QUERYTIMEOUT,
   DB_CHARSET,
-  DB_MAXPOOLSIZE;
+  DB_MAXPOOLSIZE,
+  DB_EXPLAIN_QUERY_THRESHOLD;
 
   private static final String PORT = "port";
   private static final String TIMEOUT = "queryTimeout";
@@ -42,6 +43,14 @@ public enum Envs {
     JsonObject obj = new JsonObject();
     env.forEach((envKey, value) -> {
       if (! envKey.startsWith("DB_")) {
+        return;
+      }
+      if (envKey.equals(DB_EXPLAIN_QUERY_THRESHOLD.name())) {
+        try {
+          obj.put(envKey, Long.parseLong(value));
+        } catch (NumberFormatException e) {
+          throw new NumberFormatException(envKey + ": " + e.getMessage());
+        }
         return;
       }
       String key = toCamelCase(envKey.substring(3));

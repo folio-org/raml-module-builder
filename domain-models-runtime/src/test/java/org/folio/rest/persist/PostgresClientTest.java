@@ -131,13 +131,17 @@ public class PostgresClientTest {
 
   @Test
   public void configEnvironmentPlusFile() throws Exception {
+    Long previous = PostgresClient.getExplainQueryThreshold();
     JsonObject env = new JsonObject()
+        .put("DB_EXPLAIN_QUERY_THRESHOLD", 1200L)
         .put("host", "example.com")
         .put("port", 9876);
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "aSchemaName", env);
     assertThat(config.getString("host"), is("example.com"));
     assertThat(config.getInteger("port"), is(9876));
     assertThat(config.getString("username"), is("aSchemaName"));
+    assertThat(PostgresClient.getExplainQueryThreshold(), is(1200L));
+    PostgresClient.setExplainQueryThreshold(previous);
   }
 
   @Test
@@ -426,9 +430,11 @@ public class PostgresClientTest {
   @Test
   public void testProcessQuery() {
     PostgresClient testClient = PostgresClient.testClient();
-    List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb->>'biz'"));
-    }};
+    List<FacetField> facets = new ArrayList<FacetField>() {
+      {
+        add(new FacetField("jsonb->>'biz'"));
+      }
+    };
     QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
     queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 30 OFFSET 1";
 
@@ -437,14 +443,21 @@ public class PostgresClientTest {
     SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
       @Override
       public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
+        // provoke explain query failure
+        if (sql.startsWith("EXPLAIN ")) {
+          handler.handle(Future.failedFuture("explain"));
+          return this;
+        }
         ResultSet rs = getMockTestJsonbPojoResultSet(total);
         handler.handle(Future.succeededFuture(rs));
         return this;
       }
+
       @Override
       public void close(Handler<AsyncResult<Void>> handler) {
         handler.handle(Future.succeededFuture());
       }
+
       @Override
       public void close() {
         // nothing to do
@@ -460,6 +473,53 @@ public class PostgresClientTest {
       }
     );
 
+  }
+
+  @Test
+  public void testProcessQueryFails() {
+    PostgresClient testClient = PostgresClient.testClient();
+    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", null);
+    queryHelper.selectQuery = "SELECT foo";
+
+    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
+      @Override
+      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
+        handler.handle(Future.failedFuture("Bad query"));
+        return this;
+      }
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+
+    testClient.processQuery(connection, queryHelper, 30, "get",
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      reply -> {
+        assertThat(reply.failed(), is(true));
+        assertThat(reply.cause().getMessage(), is("Bad query"));
+      }
+    );
+  }
+
+  @Test
+  public void testProcessQueryException() {
+    PostgresClient testClient = PostgresClient.testClient();
+    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", null);
+    queryHelper.selectQuery = "SELECT foo";
+
+    SQLConnection connection = null;
+    testClient.processQuery(connection, queryHelper, 30, "get",
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      reply -> {
+        assertThat(reply.failed(), is(true));
+        assertThat(reply.cause() instanceof NullPointerException, is(true));
+      }
+    );
   }
 
   private ResultSet getMockTestPojoResultSet(int total) {
