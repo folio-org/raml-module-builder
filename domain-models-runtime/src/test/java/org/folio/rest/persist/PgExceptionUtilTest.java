@@ -94,7 +94,7 @@ public class PgExceptionUtilTest {
    * @return GenericDatabaseException with ErrorMessage with the key value pairs listed in arguments, for example
    *   {@code genericDatabaseException('C', sqlstate, 'D', detail, 'M', message)}
    */
-  private static GenericDatabaseException genericDatabaseException(Object ... arguments) {
+  static GenericDatabaseException genericDatabaseException(Object ... arguments) {
     Map<Object, String> map = new HashMap<>();
     for (int i=0; i<arguments.length; i+=2) {
       map.put((Character) arguments[i], (String) arguments[i+1]);
