@@ -132,23 +132,5 @@
         }
       ]
     }
-  ],
-  "views": [
-    {
-      "viewName": "users_groups_view",
-      "join": [
-        {
-          "table": {
-            "tableName": "user",
-            "joinOnField": "groupId"
-          },
-          "joinTable": {
-            "tableName": "group",
-            "joinOnField": "id",
-            "jsonFieldAlias": "ug_jsonb"
-          }
-        }
-      ]
-    }
   ]
 }
