@@ -25,6 +25,7 @@ import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.folio.cql2pgjson.model.CqlMasking;
 import org.folio.cql2pgjson.model.CqlModifiers;
 import org.folio.cql2pgjson.model.SqlSelect;
+import org.folio.rest.persist.ddlgen.Table;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -1094,7 +1095,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test(expected = QueryValidationException.class)
   public void queryByFtComparatorException() throws QueryValidationException {
-    cql2pgJson.queryByFt("indexText", "name=abc", "unknownComparator", null);
+    Table setup = new Table();
+    setup.setTableName("test");
+    cql2pgJson.queryByFt("indexText", "name=abc", "unknownComparator", null, setup);
   }
 
   /* And/Or/Not tests need to be done with different data, with pgs
