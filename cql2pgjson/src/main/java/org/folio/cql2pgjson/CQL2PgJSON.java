@@ -131,29 +131,7 @@ public class CQL2PgJSON {
     }
     initDbTable();
   }
-  /**
-   * Create an instance for the specified list of schemas. If only one field name is provided, queries will
-   * default to the handling of single field queries.
-   *
-   * @param fields Field names of the JSON fields, may include schema and table name (e.g. tenant1.user_table.json).
-   *  Must conform to SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
-   *  The first field name on the list will be the default field for terms in queries that don't specify a json field.
-   * @param viewTarget the table that this is actually targetting since views hide the fact of the original table.  This is used to determine how to find indexes and other table specific info thats lost.
-   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
-   */
-  public CQL2PgJSON(List<String> fields, String viewTarget) throws FieldException {
-    loadDbSchema(null);
-    if (fields == null || fields.isEmpty())
-      throw new FieldException( "fields list must not be empty" );
-    this.jsonFields = new ArrayList<>();
-    for (String field : fields) {
-      this.jsonFields.add(trimNotEmpty(field));
-    }
-    if (viewTarget!= null) {
-      this.jsonField = viewTarget;
-    }
-    initDbTable();
-  }
+
   /**
    * Create an instance for the specified list of schemas. If only one field name is provided, queries will
    * default to the handling of single field queries.
