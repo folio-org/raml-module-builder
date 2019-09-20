@@ -3,9 +3,14 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 27.1](#version-27-1)
 * [Version 27](#version-27)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 27.1
+
+* Remove all foreign keys fields and the primary key field `id` from the all index sections of schema.json. These btree indexes are created automatically.
 
 ## Version 27
 
