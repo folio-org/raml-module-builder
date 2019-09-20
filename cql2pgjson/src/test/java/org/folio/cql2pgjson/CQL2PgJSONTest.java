@@ -570,6 +570,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "*         sortBy id                             # Jo Jane; Ka Keller; Lea Long",
     "*         sortBy id/sort.ascending              # Jo Jane; Ka Keller; Lea Long",
     "*         sortBy id/sort.descending             # Lea Long; Ka Keller; Jo Jane",
+    "*         sortBy groupId                        # Jo Jane; Ka Keller; Lea Long",
+    "*         sortBy groupId/sort.ascending         # Jo Jane; Ka Keller; Lea Long",
+    "*         sortBy groupId/sort.descending        # Lea Long; Ka Keller; Jo Jane",
     "*         sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
     "*         sortBy name/sort.ascending/string     # Jo Jane; Ka Keller; Lea Long",
     "*         sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
@@ -794,6 +797,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "cql.allRecords=1 sortBy id/number                        , WHERE true ORDER BY id     ",
     "cql.allRecords=1 sortBy id/sort.descending               , WHERE true ORDER BY id DESC",
     "cql.allRecords=1 sortBy id/sort.descending age/number id , WHERE true ORDER BY id DESC\\, users.user_data->'age'\\, id",
+    "cql.allRecords=1 sortBy groupId                          , WHERE true ORDER BY groupId",
   })
   public void idColumnSort(String cql, String expectedSql) throws CQL2PgJSONException {
     CQL2PgJSON c = new CQL2PgJSON("users.user_data");

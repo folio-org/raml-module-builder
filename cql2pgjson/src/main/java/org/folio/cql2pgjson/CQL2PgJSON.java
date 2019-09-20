@@ -378,11 +378,14 @@ public class CQL2PgJSON {
         desc = " DESC";
       }  // ASC not needed, it's Postgres' default
 
-      if (modifierSet.getBase().equals("id")) {
-        order.append(PK_COLUMN_NAME).append(desc);
+      String field = modifierSet.getBase();
+      DbIndex dbIndex = dbIndexMap.computeIfAbsent(field, f -> DbSchemaUtils.getDbIndex(dbTable, f));
+      if (dbIndex.isForeignKey() || "id".equals(field)) {
+        order.append(field).append(desc);
         continue;
       }
-      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
+
+      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(field);
 
       // if sort field is marked explicitly as number type
       if (modifiers.getCqlTermFormat() == CqlTermFormat.NUMBER) {
