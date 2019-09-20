@@ -21,6 +21,16 @@ public class DbSchemaUtils {
   }
 
   /**
+   * @return an immutable empty List if list is null, otherwise list.
+   */
+  private static <T> List<T> emptyIfNull(List<T> list) {
+    if (list == null) {
+      return Collections.emptyList();
+    }
+    return list;
+  }
+
+  /**
    * Get index info for some table
    *
    * @param table
@@ -30,17 +40,27 @@ public class DbSchemaUtils {
   public static DbIndex getDbIndex(Table table, String indexName) {
     DbIndex dbIndexStatus = new DbIndex();
 
-    if (table != null) {
-      dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
-      dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
-      for (List<Index> index : Arrays.asList(table.getIndex(),
-        table.getUniqueIndex(), table.getLikeIndex())) {
-        dbIndexStatus.setOther(checkDbIndex(indexName, index));
-        if (dbIndexStatus.isOther()) {
-          break;
-        }
+    if (table == null) {
+      return dbIndexStatus;
+    }
+    dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
+    dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
+    for (List<Index> index : Arrays.asList(table.getIndex(),
+      table.getUniqueIndex(), table.getLikeIndex())) {
+      dbIndexStatus.setOther(checkDbIndex(indexName, index));
+      if (dbIndexStatus.isOther()) {
+        break;
       }
     }
+
+    dbIndexStatus.setForeignKey(false);
+    for (ForeignKeys foreignKeys : emptyIfNull(table.getForeignKeys())) {
+      if (indexName.equals(foreignKeys.getFieldName())) {
+        dbIndexStatus.setForeignKey(true);
+        break;
+      }
+    }
+
     return dbIndexStatus;
   }
 

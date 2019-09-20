@@ -38,10 +38,10 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [CQL (Contextual Query Language)](#cql-contextual-query-language)
     * [CQL2PgJSON: CQL to PostgreSQL JSON converter](#cql2pgjson-cql-to-postgresql-json-converter)
     * [CQL2PgJSON: Usage](#cql2pgjson-usage)
-    * [CQL2PgJSON: id](#cql2pgjson-id)
     * [CQL: Relations](#cql-relations)
     * [CQL: Modifiers](#cql-modifiers)
     * [CQL: Matching, comparing and sorting numbers](#cql-matching-comparing-and-sorting-numbers)
+    * [CQL: Matching id and foreign key fields](#cql-matching-id-and-foreign-key-fields)
     * [CQL: Matching full text](#cql-matching-full-text)
     * [CQL: Matching all records](#cql-matching-all-records)
     * [CQL: Matching undefined or empty values](#cql-matching-undefined-or-empty-values)
@@ -838,11 +838,11 @@ public class InitConfigService implements PostDeployVerticle {
 
 ### Foreign keys constraint
 
-Use `foreignKeys` in schema.json of the Tenant API to automatically create the following columns and triggers.
+An `foreignKeys` entry in schema.json of the Tenant API automatically creates the following columns, triggers and indexes for the foreign key.
 
-PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB. Therefore an additional column with the foreign key constraint, and a trigger to keep it in sync with the value inside the JSONB, are created.
+This additional column is needed because PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB.
 
-Example:
+Example, similar to the SQL produced by an `foreignKeys` entry:
 
 ```sql
 CREATE TABLE item (
@@ -862,7 +862,11 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_item_references
   BEFORE INSERT OR UPDATE ON item
   FOR EACH ROW EXECUTE PROCEDURE update_item_references();
+CREATE INDEX IF NOT EXISTS ON item (permanentLoanTypeId);
+CREATE INDEX IF NOT EXISTS ON item (temporaryLoanTypeId);
 ```
+
+CQL2PgJSON automatically uses this extracted column and its index whenever the foreign key is used.
 
 The overhead of this trigger and foreign key constraint reduces the number of UPDATE transactions per second on this table by about 10% (when tested against an external stand alone Postgres database).  See
 https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/java/org/folio/rest/persist/ForeignKeyPerformanceIT.java
@@ -919,17 +923,6 @@ field name:
     where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
     where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
 
-### CQL2PgJSON: id
-
-The UUID field id is not searched in the JSON but in the table's primary key field. PostgreSQL automatically
-creates an index for the primary key.
-
-`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID.
-
-`=`, `==`, and `<>` relations allow `*` for right truncation.
-
-Modifiers are forbidden.
-
 ### CQL: Relations
 
 Only these relations have been implemented yet:
@@ -966,6 +959,18 @@ Add the /number modifier to enable number matching, comparing and sorting, for e
 
 This requires that the value has been stored as a JSONB number (`{"age": 19}`)
 and not as a JSONB string (`{"age": "19"}`).
+
+### CQL: Matching id and foreign key fields
+
+The id field and any foreign key field is a UUID field and is not searched in the JSONB but in an
+extracted proper database table field. An index is automatically created for such a field,
+do not add an index entry in schema.json.
+
+`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID.
+
+`=`, `==`, and `<>` relations allow `*` for right truncation.
+
+Modifiers are forbidden.
 
 ### CQL: Matching full text
 
@@ -1159,7 +1164,8 @@ The field in the child table points to the primary key `id` field of the parent 
 
 * Precede the index you want to search with the table name in camelCase, e.g. `instance.title = "bee"`.
 * There is no change with child table fields, use them in the regular way without table name prefix.
-* The target table index field must have an index declared in the schema.json file.
+* The `foreignKey` entry in schema.json automatically creates an index on the foreign key field.
+* For fast queries declare an index on any other searched field like `title` in the schema.json file.
 * For a multi-table join use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The schema for the above example:
@@ -1423,6 +1429,7 @@ For each **table**:
     * `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
     * `arrayModifiers` - specifies array relation modifiers supported for some index. The modifiers must exactly match the name of the property in the JSON object within the array.
     * `arraySubfield` - is the key of the object that is used for the primary term when array relation modifiers are in use. This is typically also defined when `arrayModifiers` are also defined.
+    * Do not manually add an index for an `id` field or a foreign key field, they get indexed automatically.
 7. `ginIndex` - generate an inverted index on the JSON using the `gin_trgm_ops` extension. Allows for left and right truncation LIKE queries and regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the full field match (SQL `=` operator and CQL `==` operator without wildcards). See the `likeIndex` for available options.
 8. `uniqueIndex` - create a unique index on a field in the JSON
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed

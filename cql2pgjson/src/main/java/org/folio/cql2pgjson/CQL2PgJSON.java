@@ -3,8 +3,10 @@ package org.folio.cql2pgjson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -73,6 +75,8 @@ public class CQL2PgJSON {
   // leverage RMB and consider to merge cql2pgjson into RMB
   private Schema dbSchema;
   private Table dbTable;
+  /** Maps an index name to its DbIndex information */
+  private Map<String,DbIndex> dbIndexMap = new HashMap<>();
 
   /**
    * Default index names to be used for cql.serverChoice.
@@ -170,7 +174,7 @@ public class CQL2PgJSON {
         schemaPath = "templates/db_scripts/schema.json";
       }
       String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
-      logger.log(Level.INFO, "loadDbSchema: Loaded " + schemaPath + " OK");
+      logger.log(Level.INFO, "loadDbSchema: Loaded {0} OK", schemaPath);
       dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found", ex);
@@ -559,8 +563,8 @@ public class CQL2PgJSON {
       // child to parent
       targetTable = DbSchemaUtils.getTable(dbSchema, fks.get(fks.size() -1).getTargetTable());
       for (DbFkInfo fk : fks) {
-        sb.append("(" + index2sqlText(currentTableName + "." + JSONB_COLUMN_NAME, fk.getField()) + ")::UUID IN ");
-        sb.append(" ( SELECT " + PK_COLUMN_NAME + " from " + fk.getTargetTable() + " WHERE ");
+        sb.append(currentTableName).append('.').append(fk.getField())
+          .append(" IN  ( SELECT id FROM ").append(fk.getTargetTable()).append(" WHERE ");
         currentTableName = fk.getTargetTable();
       }
    } else {
@@ -568,16 +572,15 @@ public class CQL2PgJSON {
       targetTable = DbSchemaUtils.getTable(dbSchema, fks.get(0).getTable());
       for (int i = fks.size() - 1 ; i >= 0; i--) {
         DbFkInfo fk = fks.get(i);
-        sb.append(currentTableName + "." + PK_COLUMN_NAME + " IN ");
-        sb.append(" ( SELECT " + "(" + index2sqlText(fk.getTable() + "." + JSONB_COLUMN_NAME, fks.get(i).getField()) + ")::UUID");
-        sb.append(" from " + fk.getTable() + " WHERE ");
+        sb.append(currentTableName).append(".id IN  ( SELECT ").append(fks.get(i).getField())
+          .append(" FROM ").append(fk.getTable()).append(" WHERE ");
         currentTableName = fk.getTable();
       }
     }
     String [] foreignTarget = node.getIndex().split("\\.", 2);
     sb.append(indexNodeForForeignTable(node, targetTable, foreignTarget));
     for (int i = 0; i < fks.size(); i++) {
-      sb.append(")");
+      sb.append(')');
     }
     return sb.toString();
   }
@@ -597,17 +600,16 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Handle a termnode that does a search on the id. We use the primary key
-   * column in the query, it is clearly faster, and we use a numerical
-   * comparison instead of truncation. That way PG will use the primary key,
-   * which is pretty much faster. Assumes that the UUID has already been
-   * validated to be in the right format.
+   * Search a UUID field that we've extracted from the jsonb into a proper UUID
+   * database table column. This is either the primary key id or a foreign key.
+   * There always exists an index. Using BETWEEN lo AND hi with UUIDs is faster
+   * than a string comparison with truncation.
    *
-   * @param node
+   * @param node the CQL to convert into SQL
    * @return SQL where clause component for this term
-   * @throws QueryValidationException
+   * @throws QueryValidationException on invalid UUID format or invalid operator
    */
-  private String pgId(CQLTermNode node) throws QueryValidationException {
+  private String pgId(CQLTermNode node, String columnName) throws QueryValidationException {
     String comparator = StringUtils.defaultString(node.getRelation().getBase());
     if (!node.getRelation().getModifiers().isEmpty()) {
       throw new QueryValidationException("CQL: Unsupported modifier "
@@ -621,9 +623,10 @@ public class CQL2PgJSON {
     case ">=":
     case "<=":
       if (!uuidPattern.matcher(term).matches()) {
-        throw new QueryValidationException("CQL: Invalid UUID after id comparator " + comparator + ": " + term);
+        throw new QueryValidationException(
+            "CQL: Invalid UUID after '" + columnName + comparator + "': " + term);
       }
-      return PK_COLUMN_NAME + comparator + "'" + term + "'";
+      return columnName + comparator + "'" + term + "'";
     case "==":
     case "=":
       comparator = "=";
@@ -632,14 +635,16 @@ public class CQL2PgJSON {
       equals = false;
       break;
     default:
-      throw new QueryValidationException("CQL: Unsupported operator '" + comparator + "' "
-          + "id only supports '=', '==', and '<>' (possibly with right truncation)");
+      throw new QueryValidationException("CQL: Unsupported operator '" + comparator + "', "
+          + "UUID " + columnName + " only supports '=', '==', and '<>' (possibly with right truncation)");
     }
 
-    if (term.equals("") || term.equals("*")) {
-      // squid:S1774 The ternary operator should not be used
+    if (StringUtils.isEmpty(term)) {
+      term = "*";
+    }
+    if ("*".equals(term) && "id".equals(columnName)) {
       return equals ? "true" : "false";  // no need to check
-      // not even for "", since id is a mandatory field, so
+      // since id is a mandatory field, so
       // "all that have id" is the same as "all records"
     }
 
@@ -647,12 +652,12 @@ public class CQL2PgJSON {
       if (!uuidPattern.matcher(term).matches()) {
         // avoid SQL injection, don't put term into comment
         return equals
-            ? "false /* id == invalid UUID */"
-            : "true /* id <> invalid UUID */";
+            ? "false /* " + columnName + " == invalid UUID */"
+            : "true /* "  + columnName + " <> invalid UUID */";
       }
-      return PK_COLUMN_NAME + comparator + "'" + term + "'";
+      return columnName + comparator + "'" + term + "'";
     }
-    String truncTerm = term.replaceFirst("\\*$", ""); // remove trailing '*'
+    String truncTerm = term.replaceFirst("\\*+$", ""); // remove trailing '*'
     if (truncTerm.contains("*")) { // any remaining '*' is an error
       throw new QueryValidationException("CQL: only right truncation supported for id:  " + term);
     }
@@ -662,16 +667,11 @@ public class CQL2PgJSON {
       .replace(0, truncTerm.length(), truncTerm).toString();
     if (!uuidPattern.matcher(lo).matches() || !uuidPattern.matcher(hi).matches()) {
       // avoid SQL injection, don't put term into comment
-      return equals ? "false /* id == invalid UUID */"
-                    : "true /* id <> invalid UUID */";
+      return equals ? "false /* " + columnName + " == invalid UUID */"
+                    : "true /* "  + columnName + " <> invalid UUID */";
     }
-    if (equals) {
-      return "(" + PK_COLUMN_NAME + ">='" + lo + "'"
-        + " and " + PK_COLUMN_NAME + "<='" + hi + "')";
-    } else {
-      return "(" + PK_COLUMN_NAME + "<'" + lo + "'"
-          + " or " + PK_COLUMN_NAME + ">'" + hi + "')";
-    }
+    return equals ? "(" + columnName +     " BETWEEN '" + lo + "' AND '" + hi + "')"
+                  : "(" + columnName + " NOT BETWEEN '" + lo + "' AND '" + hi + "')";
   }
 
   private String lookupModifier(Index schemaIndex, String modifierName) {
@@ -764,12 +764,17 @@ public class CQL2PgJSON {
   private String indexNode(String index, Table targetTable, CQLTermNode node, IndexTextAndJsonValues vals,
     CqlModifiers modifiers) throws QueryValidationException {
 
-    // special handling of id search (re-use existing code)
+    // primary key
     if ("id".equals(index)) {
-      return pgId(node);
+      return pgId(node, index);
     }
 
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbTable, index);
+    DbIndex dbIndex = dbIndexMap.computeIfAbsent(index, i -> DbSchemaUtils.getDbIndex(dbTable, i));
+
+    if (dbIndex.isForeignKey()) {
+      return pgId(node, index);
+    }
+
     String comparator = node.getRelation().getBase().toLowerCase();
 
     switch (comparator) {

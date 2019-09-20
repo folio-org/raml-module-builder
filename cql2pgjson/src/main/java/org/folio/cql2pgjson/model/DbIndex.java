@@ -5,6 +5,7 @@ public class DbIndex {
   private boolean ft;
   private boolean gin;
   private boolean other;
+  private boolean foreignKey;
 
   public boolean isFt() {
     return ft;
@@ -30,4 +31,11 @@ public class DbIndex {
     this.other = other;
   }
 
+  public boolean isForeignKey() {
+    return foreignKey;
+  }
+
+  public void setForeignKey(boolean foreinKey) {
+    this.foreignKey = foreinKey;
+  }
 }

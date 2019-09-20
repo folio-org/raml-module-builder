@@ -769,14 +769,21 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "id=*,                                        true",
-    "id=\"11111111-1111-1111-1111-111111111111\",  id='11111111-1111-1111-1111-111111111111'",
-    "id=\"2*\",                                  (id>='20000000-0000-0000-0000-000000000000' and "
-                                               + "id<='2fffffff-ffff-ffff-ffff-ffffffffffff')",
-    "id=\"22222222*\",                           (id>='22222222-0000-0000-0000-000000000000' and "
-                                               + "id<='22222222-ffff-ffff-ffff-ffffffffffff')",
+    "id=*,                                       true",
+    "id=\"\",                                    true",
+    "groupId=*,                                  (groupId BETWEEN '00000000-0000-0000-0000-000000000000' "
+                                                           + "AND 'ffffffff-ffff-ffff-ffff-ffffffffffff')",
+    "groupId=\"\",                               (groupId BETWEEN '00000000-0000-0000-0000-000000000000' "
+                                                           + "AND 'ffffffff-ffff-ffff-ffff-ffffffffffff')",
+    "id=\"11111111-1111-1111-1111-111111111111\",              id='11111111-1111-1111-1111-111111111111'",
+    "id=\"2*\",                                       (id BETWEEN '20000000-0000-0000-0000-000000000000' "
+                                                           + "AND '2fffffff-ffff-ffff-ffff-ffffffffffff')",
+    "id=\"22222222*\",                                (id BETWEEN '22222222-0000-0000-0000-000000000000' "
+                                                           + "AND '22222222-ffff-ffff-ffff-ffffffffffff')",
+    "groupId=\"22222222*\",                      (groupId BETWEEN '22222222-0000-0000-0000-000000000000' "
+                                                           + "AND '22222222-ffff-ffff-ffff-ffffffffffff')",
   })
-  public void pkColumnRelation(String cql, String expectedSql) throws QueryValidationException {
+  public void idColumnRelation(String cql, String expectedSql) throws QueryValidationException {
     assertEquals(expectedSql, cql2pgJson.toSql(cql).getWhere());
     assertEquals(expectedSql, cql2pgJson.toSql(cql.replace("=", "==")).getWhere());
   }
@@ -788,7 +795,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "cql.allRecords=1 sortBy id/sort.descending               , WHERE true ORDER BY id DESC",
     "cql.allRecords=1 sortBy id/sort.descending age/number id , WHERE true ORDER BY id DESC\\, users.user_data->'age'\\, id",
   })
-  public void pkColumnSort(String cql, String expectedSql) throws CQL2PgJSONException {
+  public void idColumnSort(String cql, String expectedSql) throws CQL2PgJSONException {
     CQL2PgJSON c = new CQL2PgJSON("users.user_data");
     assertEquals(expectedSql, c.toSql(cql).toString());
   }
@@ -814,6 +821,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=\"\"                                   # Jo Jane; Ka Keller; Lea Long",
     "id<>\"\"                                  #",
     "id=1*                                     # Jo Jane",
+    "id=1**                                    # Jo Jane",
+    "id=1***                                   # Jo Jane",
     "id=1z*                                    #",
     "id<>2ä*                                   # Jo Jane; Ka Keller; Lea Long",  // a umlaut
     "id<>1*                                    # Ka Keller; Lea Long",
@@ -837,12 +846,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id>=11111111-1111-1111-1111-111111111110  # Jo Jane; Ka Keller; Lea Long",
     "id>=11111111-1111-1111-1111-111111111111  # Jo Jane; Ka Keller; Lea Long",
     "id>=11111111-1111-1111-1111-111111111112  # Ka Keller; Lea Long",
-    "id>=11111111-1111-111w-1111-111111111112  # ! Invalid UUID after id comparator >=",
+    "id>=11111111-1111-111w-1111-111111111112  # ! Invalid UUID after 'id>='",
     "id=/masked         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier masked",
-    "id=/regexp         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier regexp"
-
+    "id=/regexp         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier regexp",
+    "groupId=           77777777-7777-7777-7777-777777777777   # Jo Jane",
+    "groupId<>          77777777-7777-7777-7777-777777777777   # Ka Keller; Lea Long",
   })
-  public void pKey(String testcase) {
+  public void idMatch(String testcase) {
     select(cql2pgJson, testcase);
   }
 
