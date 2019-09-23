@@ -59,5 +59,13 @@ public class CompoundIndexIT extends DatabaseTestBase {
   public void compoundIndexTestMultiFieldNames2() throws Exception {
     assertThat( cqlb("address == Boston MA"),  containsInAnyOrder("first0"));
   }
+  @Test
+  public void compoundIndexTestMultiFieldNames3() throws Exception {
+    assertThat(cqla("ftfield = first0 last0"), containsInAnyOrder("Mike"));
+  }
 
+  @Test
+  public void compoundIndexTestMultiFieldNames4() throws Exception {
+    assertThat( cqlb("ftfield = first1 last1"),  containsInAnyOrder("first1"));
+  }
 }
