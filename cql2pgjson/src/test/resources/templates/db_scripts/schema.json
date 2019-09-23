@@ -59,7 +59,7 @@
       ],
       "foreignKeys": [
         {
-          "fieldName": "group",
+          "fieldName": "groupId",
           "targetTable": "groups"
         }
       ]
