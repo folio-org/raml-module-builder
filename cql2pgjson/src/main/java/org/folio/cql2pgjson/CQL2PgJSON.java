@@ -696,7 +696,7 @@ public class CQL2PgJSON {
   }
 
   private String arrayNode(String index, CQLTermNode node, CqlModifiers modifiers,
-    List<Modifier> relationModifiers, Index schemaIndex, IndexTextAndJsonValues incomingvals) throws QueryValidationException {
+    List<Modifier> relationModifiers, Index schemaIndex, IndexTextAndJsonValues incomingvals, Table targetTable) throws QueryValidationException {
 
     StringBuilder sqlAnd = new StringBuilder();
     StringBuilder sqlOr = new StringBuilder();
@@ -725,7 +725,7 @@ public class CQL2PgJSON {
         }
         sqlAnd.append(" and ");
         sqlAnd.append(queryByFt(index2sqlText("t.c", foundModifier), modifierValue,
-          comparator, schemaIndex));
+          comparator, schemaIndex, targetTable));
       }
     }
     if (sqlOr.length() > 0) {
@@ -824,7 +824,8 @@ public class CQL2PgJSON {
    * @return
    * @throws QueryValidationException
    */
-  private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers,Table targetTable) throws QueryValidationException {
+  private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator,
+      CqlModifiers modifiers,Table targetTable) throws QueryValidationException {
     final String indexText = vals.getIndexText();
 
     if (CqlAccents.RESPECT_ACCENTS == modifiers.getCqlAccents()) {
@@ -841,12 +842,12 @@ public class CQL2PgJSON {
     if (targetTable != null) {
       schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getFullTextIndex());
     }
-    String sql = queryByFt(indexText, term, comparator, schemaIndex);
+    String sql = queryByFt(indexText, term, comparator, schemaIndex, targetTable);
 
     // array modifier
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
-      sql += " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
+      sql += " AND " + arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     }
 
     if (schemaIndex != null && schemaIndex.isCaseSensitive()) {
@@ -861,7 +862,7 @@ public class CQL2PgJSON {
     return sql;
   }
 
-  String queryByFt(String indexText, String term, String comparator, Index schemaIndex)
+  String queryByFt(String indexText, String term, String comparator, Index schemaIndex, Table targettable)
     throws QueryValidationException {
 
     if (term.equals("*")) {
@@ -888,7 +889,7 @@ public class CQL2PgJSON {
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
     if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-      indexText = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(""),  /* lower */ false, removeAccents);
+      indexText = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targettable.getTableName()),  /* lower */ false, removeAccents);
     } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
       indexText = schemaIndex.getSqlExpression();
     } else {
@@ -920,7 +921,7 @@ public class CQL2PgJSON {
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
       final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
-      sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals);
+      sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
       Index schemaIndex = null;
       if (targetTable != null) {
