@@ -62,9 +62,6 @@ public class CQL2PgJSON {
    */
   private static Logger logger = Logger.getLogger(CQL2PgJSON.class.getName());
 
-  /** name of the primary key column */
-  private static final String PK_COLUMN_NAME = "id";
-
   private static final String JSONB_COLUMN_NAME = "jsonb";
 
   private final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
@@ -660,7 +657,10 @@ public class CQL2PgJSON {
       }
       return columnName + comparator + "'" + term + "'";
     }
-    String truncTerm = term.replaceFirst("\\*+$", ""); // remove trailing '*'
+    String truncTerm = term;
+    while (truncTerm.endsWith("*")) {  // remove trailing stars
+      truncTerm = truncTerm.substring(0, truncTerm.length() - 1);
+    }
     if (truncTerm.contains("*")) { // any remaining '*' is an error
       throw new QueryValidationException("CQL: only right truncation supported for id:  " + term);
     }
