@@ -1,3 +1,15 @@
+## 27.1.0 2019-09-24
+
+See also [27.1 upgrading instructions](doc/upgrading.md#version-27-1).
+* RMB-444 Documentation: Name of generated .java files (resource, model)
+* RMB-385 add 'queryIndexName' to schema.json and allow compound indexes
+* RMB-421 422 JSON error message for PgUtil
+* RMB-457 option to enable: analyze explain queries
+* RMB-466 drop CQL2PgJSON view constructor
+* RMB-464 Upgrade to Vert.x 3.8.1
+* RMB-468 Foreign key field index
+* RMB-477 jackson-databind 2.9.10 fix CVE-2019-16335, CVE-2019-14540
+
 ## 27.0.0 2019-08-26
 
 Breaking changes:
