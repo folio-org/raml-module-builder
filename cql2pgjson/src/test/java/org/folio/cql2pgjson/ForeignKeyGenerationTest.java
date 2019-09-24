@@ -22,15 +22,16 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.blah == /number 123452").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE (tableb.jsonb->>'blah')::numeric =123452)", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE (tableb.jsonb->>'blah')::numeric =123452)", sql);
   }
 
   @Test
-  public void ForeignKeySearch() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
+  public void ForeignKeySearchChildParent() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')))", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
+        + "WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')))", sql);
   }
 
   @Test
@@ -38,7 +39,8 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tablea.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("(tableb.jsonb->>'tableaId')::UUID IN  ( SELECT id from tablea WHERE lower(f_unaccent(tablea.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')))", sql);
+    assertEquals("tableb.tableaId IN  ( SELECT id FROM tablea "
+        + "WHERE lower(f_unaccent(tablea.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')))", sql);
   }
 
   @Test
@@ -46,7 +48,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.gprefix == x0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE lower(tableb.jsonb->>'gprefix') LIKE lower('x0'))", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE lower(tableb.jsonb->>'gprefix') LIKE lower('x0'))", sql);
   }
 
   @Test
@@ -54,7 +56,8 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.ftprefix = x0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE to_tsvector('simple', tableb.jsonb->>'ftprefix') @@ replace((to_tsquery('simple', ('''x0''')))::text, '&', '<->')::tsquery)", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
+        + "WHERE to_tsvector('simple', tableb.jsonb->>'ftprefix') @@ replace((to_tsquery('simple', ('''x0''')))::text, '&', '<->')::tsquery)", sql);
   }
 
   @Test
@@ -62,7 +65,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.prefix = *").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE true)", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE true)", sql);
   }
 
   @Test
@@ -70,7 +73,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tablea.prefix = *").getWhere();
-    assertEquals("(tableb.jsonb->>'tableaId')::UUID IN  ( SELECT id from tablea WHERE true)", sql);
+    assertEquals("tableb.tableaId IN  ( SELECT id FROM tablea WHERE true)", sql);
   }
 
   @Test
@@ -100,7 +103,8 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.prefix == *").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('%')))", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
+        + "WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('%')))", sql);
   }
 
   @Test
@@ -108,7 +112,9 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tablec.cindex == z1").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE tableb.id IN  ( SELECT (tablec.jsonb->>'tablebId')::UUID from tablec WHERE lower(f_unaccent(tablec.jsonb->>'cindex')) LIKE lower(f_unaccent('z1'))))",sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
+        + "WHERE tableb.id IN  ( SELECT tablebId FROM tablec "
+        + "WHERE lower(f_unaccent(tablec.jsonb->>'cindex')) LIKE lower(f_unaccent('z1'))))",sql);
   }
 
   @Test
@@ -116,7 +122,7 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea.json" );
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKey.json");
     String sql = cql2pgJson.toSql("tableb.otherindex >= y0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT (tableb.jsonb->>'tableaId')::UUID from tableb WHERE tableb.jsonb->>'otherindex' >='y0')", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE tableb.jsonb->>'otherindex' >='y0')", sql);
   }
 
   @Test
@@ -151,7 +157,9 @@ public class ForeignKeyGenerationTest  {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("instance");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyInstanceItem.json");
     String sql = cql2pgJson.toSql("item.barcode == 7834324634").toString();
-    String expected = "WHERE instance.id IN  ( SELECT (holdings_record.jsonb->>'instanceId')::UUID from holdings_record WHERE holdings_record.id IN  ( SELECT (item.jsonb->>'holdingsRecordId')::UUID from item WHERE lower(f_unaccent(item.jsonb->>'barcode')) LIKE lower(f_unaccent('7834324634'))))";
+    String expected = "WHERE instance.id IN  ( SELECT instanceId FROM holdings_record "
+        + "WHERE holdings_record.id IN  ( SELECT holdingsRecordId FROM item "
+        + "WHERE lower(f_unaccent(item.jsonb->>'barcode')) LIKE lower(f_unaccent('7834324634'))))";
     assertEquals(expected, sql);
   }
 
@@ -159,8 +167,10 @@ public class ForeignKeyGenerationTest  {
   public void testSearchItemByInstanceTitle() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("item");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/foreignKeyInstanceItem.json");
-    String sql = cql2pgJson.toSql("instance.title = 'Olmsted in Chicago'").toString();
-    String expected = "WHERE (item.jsonb->>'holdingsRecordId')::UUID IN  ( SELECT id from holdings_record WHERE (holdings_record.jsonb->>'instanceId')::UUID IN  ( SELECT id from instance WHERE to_tsvector('simple', f_unaccent(instance.jsonb->>'title')) @@ replace((to_tsquery('simple', f_unaccent(''',Olmsted''')) && to_tsquery('simple', f_unaccent('''in''')) && to_tsquery('simple', f_unaccent('''Chicago,''')))::text, '&', '<->')::tsquery))";
+    String sql = cql2pgJson.toSql("instance.title = Olmsted").toString();
+    String expected = "WHERE item.holdingsRecordId IN  ( SELECT id FROM holdings_record "
+        + "WHERE holdings_record.instanceId IN  ( SELECT id FROM instance "
+        + "WHERE to_tsvector('simple', f_unaccent(instance.jsonb->>'title')) @@ replace((to_tsquery('simple', f_unaccent('''Olmsted''')))::text, '&', '<->')::tsquery))";
     assertEquals(expected, sql);
   }
 

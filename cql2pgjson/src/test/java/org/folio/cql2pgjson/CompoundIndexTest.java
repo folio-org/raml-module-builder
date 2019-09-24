@@ -20,7 +20,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("ftfield = John Smith").toString();
-    String expected = "WHERE to_tsvector('simple', concat_space_sql(.jsonb->>'field1' , .jsonb->>'field2')) @@ replace((to_tsquery('simple', ('''John''')) && to_tsquery('simple', ('''Smith''')))::text, '&', '<->')::tsquery";
+    String expected = "WHERE to_tsvector('simple', concat_space_sql(tablea.jsonb->>'field1' , tablea.jsonb->>'field2')) @@ replace((to_tsquery('simple', ('''John''')) && to_tsquery('simple', ('''Smith''')))::text, '&', '<->')::tsquery";
     assertEquals(expected, sql);
   }
 
