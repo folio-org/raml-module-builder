@@ -1,10 +1,13 @@
 package org.folio.rest.persist;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.io.IOException;
 
 import javax.ws.rs.core.Response;
@@ -12,11 +15,13 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.util.UuidUtil;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -26,7 +31,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
-
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -48,6 +52,7 @@ public final class PgUtil {
   private static final String RESPOND_204                       = "respond204";
   private static final String RESPOND_400_WITH_TEXT_PLAIN       = "respond400WithTextPlain";
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
+  private static final String RESPOND_422_WITH_APPLICATION_JSON = "respond422WithApplicationJson";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
   private static final String INVALID_UUID = "Invalid UUID format of id, should be "
@@ -57,6 +62,49 @@ public final class PgUtil {
   private static final String JSON_COLUMN = "jsonb";
   /** mapper between JSON and Java instance (POJO) */
   private static final ObjectMapper OBJECT_MAPPER = ObjectMapperTool.getMapper();
+  /**
+   * Assume this String:
+   * <p>
+   * <code>Key (((jsonb -> 'x'::text) ->> 'barcode'::text))=(=() already exists.</code>
+   * <p>
+   * The pattern will match and return these substrings:
+   * <p>
+   * 1 = <code>((jsonb -> 'x'::text) ->> 'barcode'::text)</code>
+   * <p>
+   * 2 = <code>=(</code>
+   */
+  private static final Pattern KEY_ALREADY_EXISTS_PATTERN = Pattern.compile(
+      "^Key \\(([^=]+)\\)=\\((.*)\\) already exists.$");
+  /**
+   * Assume this String:
+   * <p>
+   * <code>Key (userid)=(82666c63-ef00-4ca6-afb5-e069bac767fa) is not present in table "users".</code>
+   * <p>
+   * The pattern will match and return these substrings:
+   * <p>
+   * 1 = <code>userid</code>
+   * <p>
+   * 2 = <code>82666c63-ef00-4ca6-afb5-e069bac767fa</code>
+   * <p>
+   * 3 = <code>users</code>
+   */
+  private static final Pattern KEY_NOT_PRESENT_PATTERN = Pattern.compile(
+      "^Key \\(([^=]+)\\)=\\((.*)\\) is not present in table \"(.*)\".$");
+  /**
+   * Assume this String:
+   * <p>
+   * <code>Key (id)=(64f55fa2-50f4-40e5-978a-bbad17dc644d) is still referenced from table "referencing".</code>
+   * <p>
+   * The pattern will match and return these substrings:
+   * <p>
+   * 1 = <code>id</code>
+   * <p>
+   * 2 = <code>64f55fa2-50f4-40e5-978a-bbad17dc644d</code>
+   * <p>
+   * 3 = <code>referencing</code>
+   */
+  private static final Pattern KEY_STILL_REFERENCED_PATTERN = Pattern.compile(
+      "^Key \\(([^=]+)\\)=\\((.*)\\) is still referenced from table \"(.*)\".$");
   /** Number of records to read from the sort index in getWithOptimizedSql and generateOptimizedSql method */
   private static int optimizedSqlSize = 10000;
 
@@ -152,22 +200,6 @@ public final class PgUtil {
   }
 
   /**
-   * Return a Response using valueMethod and a PgExceptionUtil message of throwable. If that is null
-   * use failResponseMethod of throwable.getMessage().
-   * @param throwable  where to get the text from
-   * @param valueMethod  how to report the PgException
-   * @param failResponseMethod  how to report other Exceptions/Throwables
-   */
-  static Future<Response> response(Throwable throwable, Method valueMethod, Method failResponseMethod) {
-    String message = PgExceptionUtil.badRequestMessage(throwable);
-    if (message != null) {
-      return response(message,                valueMethod,        failResponseMethod);
-    } else {
-      return response(throwable.getMessage(), failResponseMethod, failResponseMethod);
-    }
-  }
-
-  /**
    * Return a Response using responseMethod() wrapped in a succeeded future.
    *
    * <p>On exception create a Response using failResponseMethod(String exceptionMessage)
@@ -188,6 +220,147 @@ public final class PgUtil {
       }
       Response response = (Response) responseMethod.invoke(null);
       return Future.succeededFuture(response);
+    } catch (Exception e) {
+      return response(e, failResponseMethod);
+    }
+  }
+
+  static Future<Response> respond422(Method response422Method, String key, String value, String message) {
+    try {
+      Errors errors = ValidationHelper.createValidationErrorMessage(key, value, message);
+      Response response = (Response) response422Method.invoke(null, errors);
+      return Future.succeededFuture(response);
+    } catch (IllegalAccessException | InvocationTargetException e) {
+      throw new IllegalArgumentException(e);
+    }
+  }
+
+  /**
+   * Return the <code>respond422WithApplicationJson(Errors entity)</code> method.
+   * @param clazz class to search in
+   * @return the found method, or null if not found
+   */
+  static Method respond422method(Class<? extends ResponseDelegate> clazz) {
+    // this loop is 20 times faster than getMethod(...) if the method doesn't exist
+    // because it avoids the Exception that getMethod(...) throws.
+    for (Method method : clazz.getMethods()) {
+      if (method.getName().equals(RESPOND_422_WITH_APPLICATION_JSON)
+          && method.getParameterCount() == 1
+          && method.getParameters()[0].getType().equals(Errors.class)) {
+        return method;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Create a Response about the invalid uuid. Use clazz' respond422WithApplicationJson(Errors)
+   * if exists, otherwise use valueMethod.
+   * On exception create a Response using failResponseMethod(String exceptionMessage).
+   * If that also throws an exception create a failed future.
+   *
+   * <p>All exceptions are caught and reported via the returned Future.
+   */
+  static Future<Response> responseInvalidUuid(String field, String uuid,
+      Class<? extends ResponseDelegate> clazz, Method valueMethod, Method failResponseMethod) {
+
+    try {
+      Method respond422 = respond422method(clazz);
+      if (respond422 == null) {
+        return response(INVALID_UUID, valueMethod, failResponseMethod);
+      }
+      return respond422(respond422, field, uuid, INVALID_UUID);
+    } catch (Exception e) {
+      return response(e, failResponseMethod);
+    }
+  }
+
+  static Future<Response> responseForeignKeyViolation(String table, String id, PgExceptionFacade pgException,
+      Method response422method, Method valueMethod, Method failResponseMethod) {
+    try {
+      String detail = pgException.getDetail();
+      Matcher matcher = KEY_NOT_PRESENT_PATTERN.matcher(detail);
+      if (matcher.find()) {
+        String field = matcher.group(1);
+        String value = matcher.group(2);
+        String refTable = matcher.group(3);
+        String message = "Cannot set " + table + "." + field + " = " + value
+            + " because it does not exist in " + refTable + ".id.";
+        if (response422method == null) {
+          return response(message, valueMethod, failResponseMethod);
+        }
+        return respond422(response422method, table + "." + field, value, message);
+      }
+
+      matcher = KEY_STILL_REFERENCED_PATTERN.matcher(detail);
+      if (matcher.find()) {
+        String field = matcher.group(1);
+        String value = matcher.group(2);
+        String refTable = matcher.group(3);
+        String message = "Cannot delete " + table + "." + field + " = " + value
+            + " because id is still referenced from table " + refTable + ".";
+        if (response422method == null) {
+          return response(message, valueMethod, failResponseMethod);
+        }
+        return respond422(response422method, table + "." + field, value, message);
+      }
+
+      String message = pgException.getMessage() + " " + detail;
+      if (response422method == null) {
+        return response(message, valueMethod, failResponseMethod);
+      }
+      return respond422(response422method, table, id, message);
+    } catch (Exception e) {
+      return response(e, failResponseMethod);
+    }
+  }
+
+  static Future<Response> responseUniqueViolation(String table, String id, PgExceptionFacade pgException,
+      Method response422method, Method valueMethod, Method failResponseMethod) {
+    try {
+      String detail = pgException.getDetail();
+      Matcher matcher = KEY_ALREADY_EXISTS_PATTERN.matcher(detail);
+      if (! matcher.find()) {
+        detail = pgException.getMessage() + " " + detail;
+        if (response422method == null) {
+          return response(detail, valueMethod, failResponseMethod);
+        }
+        return respond422(response422method, table, id, detail);
+      }
+      String key = matcher.group(1);
+      String value = matcher.group(2);
+      String message = key + " value already exists in table " + table + ": " + value;
+      if (response422method == null) {
+        return response(message, valueMethod, failResponseMethod);
+      }
+      return respond422(response422method, key, value, message);
+    } catch (Exception e) {
+      return response(e, failResponseMethod);
+    }
+  }
+
+  /**
+   * Create a Response about the cause. Use clazz' respond422WithApplicationJson(Errors)
+   * if exists, otherwise use valueMethod.
+   * On exception create a Response using failResponseMethod(String exceptionMessage).
+   * If that also throws an exception create a failed future.
+   *
+   * <p>All exceptions are caught and reported via the returned Future.
+   */
+  static Future<Response> response(String table, String id, Throwable cause,
+      Class<? extends ResponseDelegate> clazz, Method valueMethod, Method failResponseMethod) {
+
+    try {
+      PgExceptionFacade pgException = new PgExceptionFacade(cause);
+      if (pgException.isForeignKeyViolation()) {
+        return responseForeignKeyViolation(table, id, pgException,
+            respond422method(clazz), valueMethod, failResponseMethod);
+      }
+      if (pgException.isUniqueViolation()) {
+        return responseUniqueViolation(table, id, pgException,
+            respond422method(clazz), valueMethod, failResponseMethod);
+      }
+      return response(cause.getMessage(), failResponseMethod, failResponseMethod);
     } catch (Exception e) {
       return response(e, failResponseMethod);
     }
@@ -226,19 +399,13 @@ public final class PgUtil {
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
       if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(response(INVALID_UUID, respond400, respond500));
+        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
         return;
       }
       PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
       postgresClient.delete(table, id, reply -> {
         if (reply.failed()) {
-          if (PgExceptionUtil.isForeignKeyViolation(reply.cause())) {
-            String message = "Cannot delete record " + id + " in table " + table +
-                ", it is still in use in table " + PgExceptionUtil.get(reply.cause(), 't');
-            asyncResultHandler.handle(response(message, respond400, respond500));
-            return;
-          }
-          asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
+          asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
         int deleted = reply.result().getUpdated();
@@ -407,7 +574,7 @@ public final class PgUtil {
       Method respond200 = responseDelegateClass.getMethod(RESPOND_200_WITH_APPLICATION_JSON, clazz);
       Method respond404 = responseDelegateClass.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
       if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(response(INVALID_UUID, respond404, respond500));
+        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, responseDelegateClass, respond404, respond500));
         return;
       }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
@@ -526,16 +693,15 @@ public final class PgUtil {
 
     try {
       Method headersFor201Method = clazz.getMethod("headersFor201");
-      String headersFor201ClassName = clazz.getName() + "$HeadersFor201";
       Class<?> headersFor201Class = null;
-      for (Class<?> declaredClass : clazz.getDeclaredClasses()) {
-        if (declaredClass.getName().equals(headersFor201ClassName)) {
+      for (Class<?> declaredClass : clazz.getClasses()) {
+        if (declaredClass.getName().endsWith("$HeadersFor201")) {
           headersFor201Class = declaredClass;
           break;
         }
       }
       if (headersFor201Class == null) {
-        throw new ClassNotFoundException(headersFor201ClassName + " not found in " + clazz.getCanonicalName());
+        throw new ClassNotFoundException("Class HeadersFor201 not found in " + clazz.getCanonicalName());
       }
       Method withLocation = headersFor201Class.getMethod("withLocation", String.class);
       Method respond201 = getResponse201Method(clazz, entity.getClass(), headersFor201Class);
@@ -543,13 +709,13 @@ public final class PgUtil {
 
       String id = initId(entity);
       if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(response(INVALID_UUID, respond400, respond500));
+        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
         return;
       }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.save(table, id, entity, reply -> {
         if (reply.failed()) {
-          asyncResultHandler.handle(response(reply.cause(), respond400, respond500));
+          asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
         asyncResultHandler.handle(response(entity, reply.result(), headersFor201Method, withLocation,
@@ -596,14 +762,14 @@ public final class PgUtil {
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
       if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(response(INVALID_UUID, respond400, respond500));
+        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
         return;
       }
       setId(entity, id);
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.update(table, entity, id, reply -> {
         if (reply.failed()) {
-          asyncResultHandler.handle(response(reply.cause(), respond400, respond500));
+          asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
         int updated = reply.result().getUpdated();

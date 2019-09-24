@@ -1,5 +1,10 @@
 package org.folio.rest.persist;
 
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -8,6 +13,8 @@ import java.util.UUID;
 
 import javax.ws.rs.core.Response;
 
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.jaxrs.model.UserdataCollection;
 import org.folio.rest.jaxrs.model.Users;
@@ -21,12 +28,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
-
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
-import static org.junit.Assert.assertThat;
-import static org.hamcrest.CoreMatchers.*;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -35,6 +39,7 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import junit.framework.AssertionFailedError;
 
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
@@ -95,22 +100,32 @@ public class PgUtilIT {
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD 'testtenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
-    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
-    execute(context, "CREATE TABLE " + schema + ".users           (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
-    execute(context, "CREATE TABLE " + schema + ".duplicateid     (id UUID, jsonb JSONB NOT NULL);");
-    execute(context, "CREATE TABLE " + schema + ".referencinguser (id UUID REFERENCES " + schema + ".users);");
+    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ "
+                     + "SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
+    execute(context, "CREATE TABLE " + schema + ".users       (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".duplicateid (id UUID, jsonb JSONB NOT NULL);");
+    execute(context, "CREATE TABLE " + schema + ".referencing (id UUID PRIMARY KEY, jsonb jsonb, "
+                                                               + "userid UUID REFERENCES " + schema + ".users);");
+    execute(context, "CREATE FUNCTION " + schema + ".userid() RETURNS TRIGGER AS "
+                     + "$$ BEGIN NEW.userid = NEW.jsonb->>'userId'; RETURN NEW; END; $$ language 'plpgsql';");
+    execute(context, "CREATE TRIGGER userid BEFORE INSERT OR UPDATE ON " + schema + ".referencing "
+                     + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".userid();");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
   private static void execute(TestContext context, String sql) {
+    StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
     Async async = context.async();
     PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
       if (reply.failed()) {
-        context.fail(reply.cause());
+        Throwable throwable = new AssertionFailedError(reply.cause().getMessage() + ": " + sql);
+        throwable.setStackTrace(stackTrace);
+        context.fail(throwable);
       }
+
       async.complete();
     });
-    async.await();
+    async.awaitSuccess();
   }
 
   private static void executeIgnore(TestContext context, String sql) {
@@ -118,7 +133,7 @@ public class PgUtilIT {
     PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
       async.complete();
     });
-    async.await();
+    async.awaitSuccess();
   }
 
   private static String randomUuid() {
@@ -149,16 +164,23 @@ public class PgUtilIT {
   /**
    * Return a handler that asserts that the result is successful and the response has
    * the expected status, and then passes the handler to nextHandler. An Async of testContext
-   * is created that completes after nextHandler has been executed.
+   * is created that completes after nextHandler has been executed. Any Throwable thrown by
+   * nextHandler fails testContext, for example an assertThat failure.
    */
   private Handler<AsyncResult<Response>> asyncAssertSuccess(TestContext testContext, int httpStatus,
       Handler<AsyncResult<Response>> nextHandler) {
 
     Async async = testContext.async();
     return newHandler -> {
-      testContext.assertTrue(newHandler.succeeded(), "handler.succeeded()");
+      if (newHandler.failed()) {
+        testContext.fail(newHandler.cause());
+      }
       testContext.assertEquals(httpStatus, newHandler.result().getStatus(), "http status");
-      nextHandler.handle(newHandler);
+      try {
+        nextHandler.handle(newHandler);
+      } catch (Throwable e) {
+        testContext.fail(e);
+      }
       async.complete();
     };
   }
@@ -222,6 +244,17 @@ public class PgUtilIT {
     UtilityClassTester.assertUtilityClass(PgUtil.class);
   }
 
+  @Test(expected = IllegalArgumentException.class)
+  public void respond422IllegalArgumentException() throws Throwable {
+    class C {
+      @SuppressWarnings("unused")
+      private void privateMethod(Errors entity) {
+      }
+    }
+    Method method = C.class.getDeclaredMethod("privateMethod", Errors.class);
+    PgUtil.respond422(method, "foo", "bar", "baz");
+  }
+
   @Test
   public void deleteByNonexistingId(TestContext testContext) {
     PgUtil.deleteById("users", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
@@ -261,20 +294,65 @@ public class PgUtilIT {
   }
 
   @Test
+  public void deleteByInvalidUuid422(TestContext testContext) {
+    PgUtil.deleteById("users", "invalidid", okapiHeaders, vertx.getOrCreateContext(),
+        ResponseWith422.class,
+        asyncAssertSuccess(testContext, 422, response -> {
+          Errors errors = (Errors) response.result().getEntity();
+          assertThat(errors.getErrors(), hasSize(1));
+          Error error = errors.getErrors().get(0);
+          assertThat(error.getMessage(), containsString("Invalid UUID"));
+          assertThat(error.getParameters(), hasSize(1));
+          assertThat(error.getParameters().get(0).getKey(), is("users.id"));
+          assertThat(error.getParameters().get(0).getValue(), is("invalidid"));
+        }));
+  }
+
+  @Test
   public void deleteByIdNonexistingTable(TestContext testContext) {
     PgUtil.deleteById("otherTable", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 500, "42P01"));
   }
 
+  private void insertReferencing(TestContext testContext, String id, String userId) {
+    Async async = testContext.async();
+    PgUtil.post("referencing", new Referencing(id, userId), okapiHeaders, vertx.getOrCreateContext(),
+        ResponseImpl.class, asyncAssertSuccess(testContext, 201, post -> {
+          async.complete();
+    }));
+    async.awaitSuccess(5000 /* ms */);
+  }
+
   @Test
-  public void deleteByIdForeignKeyViolation(TestContext testContext) {
-    String uuid = randomUuid();
-    post(testContext, "Folio", uuid, 201);
-    execute(testContext, "INSERT INTO " + schema + ".referencinguser VALUES ('" + uuid + "')");
-    PgUtil.deleteById("users", uuid, okapiHeaders, vertx.getOrCreateContext(),
+  public void deleteByIdForeignKeyViolation400(TestContext testContext) {
+    String userId = randomUuid();
+    String refId = randomUuid();
+    post(testContext, "Folio", userId, 201);
+    insertReferencing(testContext, refId, userId);
+    PgUtil.deleteById("users", userId, okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 400, "referencinguser"));
+        asyncAssertSuccess(testContext, 400, "is still referenced from table referencing"));
+  }
+
+  @Test
+  public void deleteByIdForeignKeyViolation422(TestContext testContext) {
+    String userId = randomUuid();
+    String refId = randomUuid();
+    post(testContext, "Folio", userId, 201);
+    insertReferencing(testContext, refId, userId);
+    PgUtil.deleteById("users", userId, okapiHeaders, vertx.getOrCreateContext(),
+        ResponseWith422.class,
+        asyncAssertSuccess(testContext, 422, response -> {
+          Errors errors = (Errors) response.result().getEntity();
+          assertThat(errors.getErrors(), hasSize(1));
+          Error error = errors.getErrors().get(0);
+          assertThat(error.getMessage(), containsString(
+              "Cannot delete users.id = " + userId + " because id is still referenced from table referencing"));
+          assertThat(error.getParameters(), hasSize(1));
+          assertThat(error.getParameters().get(0).getKey(), is("users.id"));
+          assertThat(error.getParameters().get(0).getValue(), is(userId));
+        }));
   }
 
   @Test
@@ -354,7 +432,7 @@ public class PgUtilIT {
           returnedUuid[0] = assertStatusAndUser(testContext, result, httpStatus, username, uuid);
           async.complete();
         });
-    async.await();
+    async.awaitSuccess();
     return returnedUuid[0];
   }
 
@@ -372,12 +450,29 @@ public class PgUtilIT {
   }
 
   @Test
-  public void postDuplicateId(TestContext testContext) {
+  public void postDuplicateId400(TestContext testContext) {
     String uuid = randomUuid();
     post(testContext, "Anna", uuid, 201);
     PgUtil.post("users", new User().withUsername("Elsa").withId(uuid),
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
-        asyncAssertSuccess(testContext, 400, "duplicate key value"));
+        asyncAssertSuccess(testContext, 400, "id value already exists in table users: " + uuid));
+  }
+
+  @Test
+  public void postDuplicateId422(TestContext testContext) {
+    String uuid = randomUuid();
+    post(testContext, "Snow-White", uuid, 201);
+    PgUtil.post("users", new User().withUsername("Rose-Red").withId(uuid),
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWith422.class,
+        asyncAssertSuccess(testContext, 422, response -> {
+          Errors errors = (Errors) response.result().getEntity();
+          assertThat(errors.getErrors(), hasSize(1));
+          Error error = errors.getErrors().get(0);
+          assertThat(error.getMessage(), containsString("id value already exists in table users: " + uuid));
+          assertThat(error.getParameters(), hasSize(1));
+          assertThat(error.getParameters().get(0).getKey(), is("id"));
+          assertThat(error.getParameters().get(0).getValue(), is(uuid));
+        }));
   }
 
   @Test
@@ -409,7 +504,7 @@ public class PgUtilIT {
   public void postResponseWithoutHeadersFor201Class(TestContext testContext) {
     PgUtil.post("users", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithoutHeadersFor201Class.class,
-        asyncAssertSuccess(testContext, 500, "$HeadersFor201"));
+        asyncAssertSuccess(testContext, 500, "HeadersFor201"));
   }
 
   @Test
@@ -492,6 +587,39 @@ public class PgUtilIT {
   }
 
   @Test
+  public void putForeignKeyViolation400(TestContext testContext) {
+    String user1 = randomUuid();
+    String user2 = randomUuid();
+    String refId = randomUuid();
+    post(testContext, "Folio", user1, 201);
+    insertReferencing(testContext, refId, user1);
+    PgUtil.put("referencing", new Referencing(refId, user2), refId, okapiHeaders, vertx.getOrCreateContext(),
+        ResponseImpl.class,
+        asyncAssertSuccess(testContext, 400, "referencing"));
+  }
+
+  @Test
+  public void putForeignKeyViolation422(TestContext testContext) {
+    String user1 = randomUuid();
+    String user2 = randomUuid();
+    String refId = randomUuid();
+    post(testContext, "Folio", user1, 201);
+    insertReferencing(testContext, refId, user1);
+    PgUtil.put("referencing", new Referencing(refId, user2), refId, okapiHeaders, vertx.getOrCreateContext(),
+        ResponseWith422.class,
+        asyncAssertSuccess(testContext, 422, response -> {
+          Errors errors = (Errors) response.result().getEntity();
+          assertThat(errors.getErrors(), hasSize(1));
+          Error error = errors.getErrors().get(0);
+          assertThat(error.getMessage(), containsString(
+              "Cannot set referencing.userid = " + user2 + " because it does not exist in users.id."));
+          assertThat(error.getParameters(), hasSize(1));
+          assertThat(error.getParameters().get(0).getKey(), is("referencing.userid"));
+          assertThat(error.getParameters().get(0).getValue(), is(user2));
+        }));
+  }
+
+  @Test
   public void putException(TestContext testContext) {
     PgUtil.put("users", "string", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         Users.PutUsersByUserIdResponse.class,
@@ -520,24 +648,24 @@ public class PgUtilIT {
   @Test
   public void responseLocation4Nulls(TestContext testContext) {
     Future<Response> future = PgUtil.response(new User(), "localhost", null, null, null, null);
-    testContext.assertTrue(future.failed());
-    testContext.assertTrue(future.cause() instanceof NullPointerException);
+    assertTrue(future.failed());
+    assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
   }
 
   @Test
   public void responseLocation3Nulls(TestContext testContext) throws Exception {
     Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
     Future<Response> future = PgUtil.response(new User(), "localhost", null, null, null, respond500);
-    testContext.assertTrue(future.succeeded());
-    testContext.assertEquals(500, future.result().getStatus());
+    assertTrue(future.succeeded());
+    assertThat(future.result().getStatus(), is(500));
   }
 
   @Test
   public void responseValueWithNullsFailResponseMethod(TestContext testContext) throws Exception {
     Method respond200 = ResponseImpl.class.getMethod("respond200WithApplicationJson", User.class);
     Future<Response> future = PgUtil.response(new User(), respond200, null);
-    testContext.assertTrue(future.failed());
-    testContext.assertTrue(future.cause() instanceof NullPointerException);
+    assertTrue(future.failed());
+    assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
   }
 
   public static void exceptionMethod() {
@@ -553,43 +681,43 @@ public class PgUtilIT {
     Method exceptionMethod = PgUtilIT.class.getMethod("exceptionMethod", Object.class);
     Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
     Future<Response> future = PgUtil.response(new User(), exceptionMethod, respond500);
-    testContext.assertTrue(future.succeeded());
+    assertTrue(future.succeeded());
     Response response = future.result();
-    testContext.assertEquals(500, response.getStatus());
-    testContext.assertEquals("some runtime exception", response.getEntity());
+    assertThat(response.getStatus(), is(500));
+    assertThat(response.getEntity(), is("some runtime exception"));
   }
 
   @Test
   public void responseValueWithExceptionInFailResponseMethod(TestContext testContext) throws Exception {
     Method exceptionMethod = PgUtilIT.class.getMethod("exceptionMethod", Object.class);
     Future<Response> future = PgUtil.response(new User(), exceptionMethod, exceptionMethod);
-    testContext.assertTrue(future.failed());
-    testContext.assertEquals("some runtime exception", future.cause().getCause().getMessage());
+    assertTrue(future.failed());
+    assertThat(future.cause().getCause().getMessage(), is("some runtime exception"));
   }
 
   @Test
   public void response2Nulls(TestContext testContext) throws Exception {
     Future<Response> future = PgUtil.response(null, null);
-    testContext.assertTrue(future.failed());
-    testContext.assertTrue(future.cause() instanceof NullPointerException);
+    assertTrue(future.failed());
+    assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
   }
 
   @Test
   public void response204Null(TestContext testContext) throws Exception {
     Method respond204 = ResponseImpl.class.getMethod("respond204");
     Future<Response> future = PgUtil.response(respond204, null);
-    testContext.assertTrue(future.failed());
-    testContext.assertTrue(future.cause() instanceof NullPointerException);
+    assertTrue(future.failed());
+    assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
   }
 
   @Test
   public void responseNull500(TestContext testContext) throws Exception {
     Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
     Future<Response> future = PgUtil.response(null, respond500);
-    testContext.assertTrue(future.succeeded());
+    assertTrue(future.succeeded());
     Response response = future.result();
-    testContext.assertEquals(500, response.getStatus());
-    testContext.assertEquals("responseMethod must not be null", response.getEntity());
+    assertThat(response.getStatus(), is(500));
+    assertThat(response.getEntity(), is("responseMethod must not be null"));
   }
 
   @Test
@@ -597,10 +725,10 @@ public class PgUtilIT {
     Method exceptionMethod = PgUtilIT.class.getMethod("exceptionMethod");
     Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
     Future<Response> future = PgUtil.response(exceptionMethod, respond500);
-    testContext.assertTrue(future.succeeded());
+    assertTrue(future.succeeded());
     Response response = future.result();
-    testContext.assertEquals(500, response.getStatus());
-    testContext.assertEquals("some runtime exception", response.getEntity());
+    assertThat(response.getStatus(), is(500));
+    assertThat(response.getEntity(), is("some runtime exception"));
   }
 
   @Test
@@ -608,8 +736,88 @@ public class PgUtilIT {
     Method exceptionMethod = PgUtilIT.class.getMethod("exceptionMethod");
     Method exceptionMethod2 = PgUtilIT.class.getMethod("exceptionMethod", Object.class);
     Future<Response> future = PgUtil.response(exceptionMethod, exceptionMethod2);
-    testContext.assertTrue(future.failed());
-    testContext.assertEquals("some runtime exception", future.cause().getCause().getMessage());
+    assertTrue(future.failed());
+    assertThat(future.cause().getCause().getMessage(), is("some runtime exception"));
+  }
+
+  @Test
+  public void response6WithException(TestContext testContext) {
+    Future<Response> future = PgUtil.response((String)null, (String)null, (Throwable)null, null, null, null);
+    assertTrue(future.failed());
+    assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
+  }
+
+  @Test
+  public void responseInvalidUuidNull(TestContext testContext) {
+    Future<Response> future = PgUtil.responseInvalidUuid(null, null, null, null, null);
+    assertTrue(future.failed());
+    assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
+  }
+
+  @Test
+  public void responseForeignKeyViolationException(TestContext testContext) {
+    Future<Response> future = PgUtil.responseForeignKeyViolation(null, null, null, null, null, null);
+    assertTrue(future.failed());
+    assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
+  }
+
+  @Test
+  public void responseForeignKeyViolationNoMatch400(TestContext testContext) throws Exception {
+    Exception genericDatabaseException = PgExceptionUtilTest.genericDatabaseException('D', "barMessage");
+    PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
+    Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
+    Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
+    Future<Response> future = PgUtil.responseForeignKeyViolation("mytable", "myid", exception, null, respond400, respond500);
+    assertTrue(future.succeeded());
+    assertThat(future.result().getStatus(), is(400));
+    assertThat(future.result().getEntity().toString(), containsString("barMessage"));
+  }
+
+  @Test
+  public void responseForeignKeyViolationNoMatch422(TestContext testContext) throws Exception {
+    Exception genericDatabaseException = PgExceptionUtilTest.genericDatabaseException('D', "bazMessage");
+    PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
+    Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
+    Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
+    Method respond422 = PgUtil.respond422method(ResponseWith422.class);
+    Future<Response> future = PgUtil.responseForeignKeyViolation("mytable", "myid", exception, respond422, respond400, respond500);
+    assertTrue(future.succeeded());
+    assertThat(future.result().getStatus(), is(422));
+    Errors errors = (Errors) future.result().getEntity();
+    assertThat(errors.getErrors().get(0).getMessage(), containsString("bazMessage"));
+  }
+
+  @Test
+  public void responseUniqueViolationException(TestContext testContext) {
+    Future<Response> future = PgUtil.responseUniqueViolation(null, null, null, null, null, null);
+    assertTrue(future.failed());
+    assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
+  }
+
+  @Test
+  public void responseUniqueViolationNoMatch400(TestContext testContext) throws Exception {
+    Exception genericDatabaseException = PgExceptionUtilTest.genericDatabaseException('D', "fooMessage");
+    PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
+    Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
+    Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
+    Future<Response> future = PgUtil.responseUniqueViolation("mytable", "myid", exception, null, respond400, respond500);
+    assertTrue(future.succeeded());
+    assertThat(future.result().getStatus(), is(400));
+    assertThat(future.result().getEntity().toString(), containsString("fooMessage"));
+  }
+
+  @Test
+  public void responseUniqueViolationNoMatch422(TestContext testContext) throws Exception {
+    Exception genericDatabaseException = PgExceptionUtilTest.genericDatabaseException('D', "fooMessage");
+    PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
+    Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
+    Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
+    Method respond422 = PgUtil.respond422method(ResponseWith422.class);
+    Future<Response> future = PgUtil.responseUniqueViolation("mytable", "myid", exception, respond422, respond400, respond500);
+    assertTrue(future.succeeded());
+    assertThat(future.result().getStatus(), is(422));
+    Errors errors = (Errors) future.result().getEntity();
+    assertThat(errors.getErrors().get(0).getMessage(), containsString("fooMessage"));
   }
 
   @Test(expected = NoSuchMethodException.class)
@@ -670,8 +878,6 @@ public class PgUtilIT {
 
   @Test
   public void canGetWithOptimizedSql(TestContext testContext) {
-    int optimizdSQLSize = 10000;
-    int n = optimizdSQLSize / 2;
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
 
     setUpUserDBForTest(testContext, pg);
@@ -755,7 +961,6 @@ public class PgUtilIT {
     searchForDataNoClass("username=foo sortBy username/sort.descending",6, 3, testContext);
   }
 
-  @SuppressWarnings("deprecation")
   @Test
   public void getWithOptimizedSqlCanFailDueToResponse(TestContext testContext) {
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
@@ -789,7 +994,7 @@ public class PgUtilIT {
     pg.execute("truncate " + schema + ".users CASCADE", testContext.asyncAssertSuccess(truncated -> {
       async.complete();
     }));
-    async.await(1000 /* ms */);
+    async.awaitSuccess(1000 /* ms */);
 
     int optimizdSQLSize = 10000;
     int n = optimizdSQLSize / 2;
@@ -814,7 +1019,7 @@ public class PgUtilIT {
           }
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataWithNo400(String cql, int offset, int limit, TestContext testContext) {
@@ -832,7 +1037,7 @@ public class PgUtilIT {
 
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimized(String cql, int offset, int limit, TestContext testContext) {
@@ -852,7 +1057,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimizedNoClass(String cql, int offset, int limit, TestContext testContext) {
@@ -872,7 +1077,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimizedNo500(String cql, int offset, int limit, TestContext testContext) {
@@ -892,7 +1097,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
@@ -912,7 +1117,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataNoClass(String cql, int offset, int limit, TestContext testContext) {
@@ -930,7 +1135,7 @@ public class PgUtilIT {
 
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return userdataCollection;
   }
   private String searchForDataExpectFailure(String cql, int offset, int limit, TestContext testContext) {
@@ -949,7 +1154,7 @@ public class PgUtilIT {
           responseString.concat(c);
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return responseString;
   }
   private String searchForDataNullHeadersExpectFailure(String cql, int offset, int limit, TestContext testContext) {
@@ -968,7 +1173,7 @@ public class PgUtilIT {
           responseString.concat(c);
           async.complete();
     }));
-    async.await(5000 /* ms */);
+    async.awaitSuccess(5000 /* ms */);
     return responseString;
   }
 
@@ -986,7 +1191,7 @@ public class PgUtilIT {
         testContext.assertEquals(n, updated.getUpdated());
         async.complete();
       }));
-    async.await(10000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
   }
 
   static class ResponseImpl extends ResponseDelegate {
@@ -1040,6 +1245,17 @@ public class PgUtilIT {
       return plain(500, entity);
     }
   };
+
+  static class ResponseWith422 extends ResponseImpl {
+    private ResponseWith422(Response response) {
+      super(response);
+    }
+    public static Response respond422WithApplicationJson(Errors entity) {
+      Response.ResponseBuilder responseBuilder = Response.status(422).header("Content-Type", "application/json");
+      responseBuilder.entity(entity);
+      return new ResponseImpl(responseBuilder.build(), entity);
+    }
+  }
 
   static class ResponseWithout200 extends ResponseDelegate {
     private ResponseWithout200(Response response) {
@@ -1225,4 +1441,28 @@ public class PgUtilIT {
       return ResponseImpl.respond400WithTextPlain(entity);
     }
   };
+
+  /**
+   * Record of the table "referencing". referencing.userId is a foreign key to users.id.
+   */
+  public class Referencing {
+    public String id;
+    public String userId;
+    public Referencing(String id, String userId) {
+      this.id = id;
+      this.userId = userId;
+    }
+    public String getId() {
+      return id;
+    }
+    public void setId(String id) {
+      this.id = id;
+    }
+    public String getUserId() {
+      return userId;
+    }
+    public void setUserId(String userId) {
+      this.userId = userId;
+    }
+  }
 }

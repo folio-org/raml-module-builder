@@ -9,9 +9,9 @@ import scala.collection.JavaConverters;
 
 public final class PgExceptionUtil {
   // https://www.postgresql.org/docs/current/static/errcodes-appendix.html
-  private static final String FOREIGN_KEY_VIOLATION = "23503";
-  private static final String UNIQUE_VIOLATION = "23505";
-  private static final String INVALID_TEXT_REPRESENTATION = "22P02";
+  static final String FOREIGN_KEY_VIOLATION = "23503";
+  static final String UNIQUE_VIOLATION = "23505";
+  static final String INVALID_TEXT_REPRESENTATION = "22P02";
 
   private PgExceptionUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
