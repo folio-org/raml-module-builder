@@ -1,6 +1,6 @@
 ## 27.1.0 2019-09-24
 
-See also [27.1 upgrading instructions](doc/upgrading.md#version-27-1).
+See also [27.1 upgrading instructions](doc/upgrading.md#version-271).
 * RMB-444 Documentation: Name of generated .java files (resource, model)
 * RMB-385 add 'queryIndexName' to schema.json and allow compound indexes
 * RMB-421 422 JSON error message for PgUtil
