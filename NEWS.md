@@ -1,3 +1,6 @@
+## 23.12.1 2019-09-25
+ * RMB-478 Fix RMB echoes all headers
+
 ## 23.12.0 2019-04-05
 
  * RMB-350 PgUtilIT not tested
