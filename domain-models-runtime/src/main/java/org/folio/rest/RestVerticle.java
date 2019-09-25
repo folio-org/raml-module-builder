@@ -783,21 +783,6 @@ public class RestVerticle extends AbstractVerticle {
 
       copyHeadersJoin(result.getStringHeaders(), response.headers());
 
-      //response.headers().add(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
-      //forward all headers except content-type that was passed in by the client
-      //since this may cause problems when for example application/octet-stream is
-      //sent as part of an upload. passing this back will confuse clients as they
-      //will think they are getting back a stream of data which may not be the case
-      rc.request().headers().remove("Content-type");
-      //remove transfer-encoding from the request header in case the response has no content
-      //since the request headers are appended to the response headers the transfer-encoding
-      //should not be forwarded in cases of no content
-      if(statusCode == 204){
-        rc.request().headers().remove("transfer-encoding");
-      }
-
-      mergeIntoResponseHeadersDistinct(response.headers(), rc.request().headers());
-
       entity = result.getEntity();
 
       /* entity is of type OutStream - and will be written as a string */
@@ -855,16 +840,6 @@ public class RestVerticle extends AbstractVerticle {
             e.getMessage() + ": " + entry.getKey() + " - " + jointValue, e);
       }
     }
-  }
-
-  private void mergeIntoResponseHeadersDistinct(MultiMap responseHeaders, MultiMap requestHeaders){
-    Consumer<Map.Entry<String,String>> consumer = entry -> {
-      String headerName = entry.getKey().toLowerCase();
-      if(!responseHeaders.contains(headerName)){
-        responseHeaders.add(headerName, entry.getValue());
-      }
-    };
-    requestHeaders.forEach(consumer);
   }
 
   private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, boolean[] isValid) {
