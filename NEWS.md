@@ -1,3 +1,7 @@
+## 25.0.2 2019-09-25
+
+ * RMB-478 Fix RMB echoes all headers
+
 ## 25.0.1 2019-06-11
 
  * RMB-397 Fix regression with $ref paths
