@@ -64,4 +64,16 @@ public class BeesApiTest extends ApiTestBase {
           "beeHistories.findAll { it.operation == \"U\" }.beeHistory.name", hasItems("Maya"),
           "beeHistories.findAll { it.operation == \"D\" }.beeHistory.name", hasItems("Maya"));
   }
+
+  @Test
+  void ensureHeadersNotEchoed() {
+    given(r).
+    header("X-foo", "bar").
+    header("User-Agent", "browser").
+    when().get("/bees/history").
+    then().log().body().
+      statusCode(200)
+      .header("X-foo", is(nullValue()))
+      .header("User-Agent", is(nullValue()));
+  }
 }
