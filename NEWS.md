@@ -1,3 +1,7 @@
+## 27.1.1 2019-09-25
+ * RMB-479 Fix mvn install leaves embedded postgres running
+ * RMB-478 Fix RMB echoes all headers
+
 ## 27.1.0 2019-09-24
 
 See also [27.1 upgrading instructions](doc/upgrading.md#version-27-1).
