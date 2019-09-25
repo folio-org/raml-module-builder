@@ -23,7 +23,7 @@ public class CompoundIndexIT extends DatabaseTestBase {
 
   @AfterClass
   static public void destroyDatabase() {
-
+    closeDatabase();
   }
 
   @Before
