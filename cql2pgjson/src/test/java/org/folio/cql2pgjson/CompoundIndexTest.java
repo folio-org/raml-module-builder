@@ -62,7 +62,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tabledftindex = Boston MA").toString();
-    String expected = "WHERE to_tsvector('simple', concat_space_sql(tabled.jsonb->'proxy'->'personal'->>'firstName' , tabled.jsonb->'proxy'->'personal'->>'lastName')) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
+    String expected = "WHERE to_tsvector('simple', concat_space_sql(tabled.jsonb->'proxy'->'personal'->>'city' , tabled.jsonb->'proxy'->'personal'->>'state')) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
     assertEquals(expected, sql);
   }
   @Test
@@ -70,7 +70,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tabledginindex == Boston MA").toString();
-    String expected = "WHERE lower(concat_space_sql(tabled.jsonb->'proxy'->'personal'->>'firstName' , tabled.jsonb->'proxy'->'personal'->>'lastName')) LIKE lower('Boston MA')";
+    String expected = "WHERE lower(concat_space_sql(tabled.jsonb->'proxy'->'personal'->>'city' , tabled.jsonb->'proxy'->'personal'->>'state')) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
 }
