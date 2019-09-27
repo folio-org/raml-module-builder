@@ -84,9 +84,6 @@ public class Index extends TableIndexes {
         }
         String [] rawExpandedTerm = splitIndex[i].split("\\.");
         String expandedTerm = "";
-        if(rawExpandedTerm.length == 0) {
-          expandedTerm = "->>'" + splitIndex[i] + "'";
-        }
 
         for(int j = 0; j < rawExpandedTerm.length; j++) {
           String arrowToken = "->";
