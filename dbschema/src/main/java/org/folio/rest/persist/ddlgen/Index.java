@@ -75,14 +75,27 @@ public class Index extends TableIndexes {
     } else if ( this.getSqlExpression() != null) {
       return this.getSqlExpression();
     } else {
-      String [] splitIndex = this.getMultiFieldNames().split(",");
+      String [] splitIndex = this.getMultiFieldNames().split(" *, *");
 
       String result = "concat_space_sql(";
       for(int i = 0;i < splitIndex.length;i++) {
         if(i != 0) {
           result += " , ";
         }
-        result += tableLoc + ".jsonb->>'" + splitIndex[i] + "'";
+        String [] rawExpandedTerm = splitIndex[i].split("\\.");
+        String expandedTerm = "";
+        if(rawExpandedTerm.length == 0) {
+          expandedTerm = "->>'" + splitIndex[i] + "'";
+        }
+
+        for(int j = 0; j < rawExpandedTerm.length; j++) {
+          String arrowToken = "->";
+          if(j == rawExpandedTerm.length - 1) {
+            arrowToken = "->>";
+          }
+          expandedTerm += (arrowToken + "'" + rawExpandedTerm[j] + "'");
+        }
+        result += tableLoc + ".jsonb" +  expandedTerm;
       }
       result += ")";
       return result;
