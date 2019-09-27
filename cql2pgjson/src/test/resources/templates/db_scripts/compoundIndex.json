@@ -68,7 +68,7 @@
       "ginIndex": [
         {
           "fieldName": "tabledginindex",
-          "multiFieldNames": "proxy.personal.firstName,proxy.personal.lastName",
+          "multiFieldNames": "proxy.personal.city,proxy.personal.state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
@@ -77,7 +77,7 @@
       "fullTextIndex": [
         {
           "fieldName": "tabledftindex",
-          "multiFieldNames": "proxy.personal.firstName,proxy.personal.lastName",
+          "multiFieldNames": "proxy.personal.city,proxy.personal.state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
