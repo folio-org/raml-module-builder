@@ -3,7 +3,6 @@ DROP TABLE IF EXISTS tableb cascade;
 DROP TABLE IF EXISTS tablec cascade;
 DROP TABLE IF EXISTS tabled cascade;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE tablea (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE TABLE tableb (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE TABLE tablec (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
@@ -84,11 +83,13 @@ INSERT INTO tableb (jsonb) VALUES
 ('{"id": "B2222222-2222-2222-2222-222222222222", "city": "Chicago", "state": "IL","field1": "first1", "field2": "last1"}'),
 ('{"id": "B3333333-3333-3333-3333-333333333333", "city": "San Francisco", "state": "CA","field1": "first2", "field2": "last2"}'),
 ('{"id": "B4444444-4444-4444-4444-444444444444",  "city": "Austin", "state": "TX","field1": "first3", "field2": "last3"}');
+
 INSERT INTO tablec (jsonb) VALUES
 ('{"id": "C1111111-1111-1111-1111-111111111111", "user": "12", "firstName": "Mike", "lastName": "Smith" }'),
 ('{"id": "C2222222-2222-2222-2222-222222222222", "user": "23", "firstName": "Tom", "lastName": "Jones"}'),
 ('{"id": "C3333333-3333-3333-3333-333333333333", "user": "34", "firstName": "Lucy", "lastName": "Williams"}'),
 ('{"id": "C4444444-4444-4444-4444-444444444444", "user": "45", "firstName": "Mary", "lastName": "Miller"}');
+
 INSERT INTO tabled (jsonb) VALUES
 ('{"id": "D1111111-1111-1111-1111-111111111111","user": "Mike", "proxy": { "personal" :{ "city": "Boston", "state": "MA"} } }'),
 ('{"id": "D2222222-2222-2222-2222-222222222222","user": "Bob", "proxy": { "personal" : { "city": "Chicago", "state": "IL"} } } '),
