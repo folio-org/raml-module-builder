@@ -38,6 +38,7 @@ public class CompoundIndexIT extends DatabaseTestBase {
     cql2pgJsonTabled = new CQL2PgJSON("tabled.jsonb");
     cql2pgJsonTabled.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
   }
+
   private List<String> cqla(String cql) {
     try {
       String sql = cql2pgJsonTablea.toSql(cql).toString();
@@ -46,6 +47,7 @@ public class CompoundIndexIT extends DatabaseTestBase {
       throw new RuntimeException(e);
     }
   }
+
   private List<String> cqlb(String cql) {
     try {
       String sql = cql2pgJsonTableb.toSql(cql).toString();
@@ -54,6 +56,7 @@ public class CompoundIndexIT extends DatabaseTestBase {
       throw new RuntimeException(e);
     }
   }
+
   private List<String> cqlc(String cql) {
     try {
       String sql = cql2pgJsonTablec.toSql(cql).toString();
@@ -62,6 +65,7 @@ public class CompoundIndexIT extends DatabaseTestBase {
       throw new RuntimeException(e);
     }
   }
+
   private List<String> cqld(String cql) {
     try {
       String sql = cql2pgJsonTabled.toSql(cql).toString();
@@ -70,38 +74,43 @@ public class CompoundIndexIT extends DatabaseTestBase {
       throw new RuntimeException(e);
     }
   }
-//  @Test
-//  public void compoundIndexTestMultiFieldNames() throws Exception {
-//    assertThat(cqla("fullname == Tom Jones"), containsInAnyOrder("Tom"));
-//  }
-//
-//  @Test
-//  public void compoundIndexTestMultiFieldNames2() throws Exception {
-//    assertThat( cqlb("address == Boston MA"),  containsInAnyOrder("first0"));
-//  }
-//  @Test
-//  public void compoundIndexTestMultiFieldNames3() throws Exception {
-//    assertThat(cqla("ftfield = first0 last0"), containsInAnyOrder("Mike"));
-//  }
-//
-//  @Test
-//  public void compoundIndexTestMultiFieldNames4() throws Exception {
-//    assertThat( cqlb("ftfield = first1 last1"),  containsInAnyOrder("first1"));
-//  }
+
   @Test
-  public void compoundIndexTestMultiFieldNames5() throws Exception {
+  public void multiFieldNamesGIN() throws Exception {
+    assertThat(cqla("fullname == Tom Jones"), containsInAnyOrder("Tom"));
+  }
+
+  @Test
+  public void sqlExpressionGIN() throws Exception {
+    assertThat( cqlb("address == Boston MA"),  containsInAnyOrder("first0"));
+  }
+  @Test
+  public void multiFieldNamesFT() throws Exception {
+    assertThat(cqla("ftfield = first0 last0"), containsInAnyOrder("Mike"));
+  }
+
+  @Test
+  public void sqlExpressionFT() throws Exception {
+    assertThat( cqlb("ftfield = first1 last1"),  containsInAnyOrder("first1"));
+  }
+
+  @Test
+  public void multiFieldNamesSpacesGIN() throws Exception {
     assertThat( cqlc("tablecginindex == Mike Smith"),  containsInAnyOrder("12"));
   }
+
   @Test
-  public void compoundIndexTestMultiFieldNames6() throws Exception {
+  public void multiFieldNamesSpacesFT() throws Exception {
     assertThat( cqlc("tablecftindex = Tom Jones"),  containsInAnyOrder("23"));
   }
+
   @Test
-  public void compoundIndexTestMultiFieldNames7() throws Exception {
+  public void multiFieldNamesMultipartindexpathGIN() throws Exception {
     assertThat( cqld("tabledginindex == Austin TX"),  containsInAnyOrder("Charles"));
   }
+
   @Test
-  public void compoundIndexTestMultiFieldNames8() throws Exception {
+  public void multiFieldNamesMultipartindexpathFT() throws Exception {
     assertThat( cqld("tabledftindex = Chicago IL"),  containsInAnyOrder("Bob"));
   }
 }
