@@ -21,8 +21,8 @@ class IndexTest {
   void tesIndexExpressionDotsInPath() {
     Index idx = new Index();
     idx.setFieldName("testIdx");
-    idx.setMultiFieldNames("blah.blah2.field1,blah.blah2.field2,blah.blah2.field3");
-    assertEquals("concat_space_sql(test_table.jsonb->'blah'->'blah2'->>'field1' , test_table.jsonb->'blah'->'blah2'->>'field2' , test_table.jsonb->'blah'->'blah2'->>'field3')",idx.getFinalSqlExpression("test_table"));
+    idx.setMultiFieldNames("blah.blah2.field1,blah.blah2.field2");
+    assertEquals("concat_space_sql(test_table.jsonb->'blah'->'blah2'->>'field1' , test_table.jsonb->'blah'->'blah2'->>'field2')",idx.getFinalSqlExpression("test_table"));
 
   }
 
