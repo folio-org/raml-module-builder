@@ -79,6 +79,11 @@ public class Index extends TableIndexes {
 
       StringBuilder result = new StringBuilder("concat_space_sql(");
       for(int i = 0;i < splitIndex.length;i++) {
+        if(splitIndex[i].contains("[*]")) {
+
+
+
+        }
         if(i != 0) {
           result .append(" , ");
         }
@@ -94,6 +99,7 @@ public class Index extends TableIndexes {
         }
         result.append(tableLoc).append(".jsonb").append(expandedTerm);
       }
+
       result.append(")");
       return result.toString();
     }
