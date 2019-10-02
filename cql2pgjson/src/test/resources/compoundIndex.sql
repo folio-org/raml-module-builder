@@ -29,13 +29,13 @@ CREATE TRIGGER update_tablea_references BEFORE INSERT OR UPDATE ON tablea
   FOR EACH ROW EXECUTE PROCEDURE update_id();
 
 CREATE TRIGGER update_tableb_references BEFORE INSERT OR UPDATE ON tableb
-  FOR EACH ROW EXECUTE PROCEDURE update_id();   
+  FOR EACH ROW EXECUTE PROCEDURE update_id();
 
 CREATE TRIGGER update_tablec_references BEFORE INSERT OR UPDATE ON tablec
   FOR EACH ROW EXECUTE PROCEDURE update_id();
 
 CREATE TRIGGER update_tabled_references BEFORE INSERT OR UPDATE ON tabled
-  FOR EACH ROW EXECUTE PROCEDURE update_id();    
+  FOR EACH ROW EXECUTE PROCEDURE update_id();
 INSERT INTO tablea (jsonb) VALUES
 ('{"id": "A0000000-0000-0000-0000-000000000000", "firstName": "Mike", "lastName": "Smith","field1": "first0", "field2": "last0"}'),
 ('{"id": "A1111111-1111-1111-1111-111111111111", "firstName": "Tom", "lastName": "Jones","field1": "first1", "field2": "last1"}'),
