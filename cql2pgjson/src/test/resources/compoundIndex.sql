@@ -41,36 +41,22 @@ CREATE INDEX IF NOT EXISTS tabled_idx_gin ON tabled using gin
 CREATE INDEX IF NOT EXISTS tabled_idx_ft ON tabled using gin
     ( to_tsvector('simple',concat_space_sql(tabled.jsonb->>'field1',tabled.jsonb->>'field2')));
     
-CREATE OR REPLACE FUNCTION update_tablea_references() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION update_id() RETURNS TRIGGER AS $$
 BEGIN
   NEW.id       = NEW.jsonb->>'id';
   RETURN NEW;
 END; $$ language 'plpgsql';
 CREATE TRIGGER update_tablea_references BEFORE INSERT OR UPDATE ON tablea
-  FOR EACH ROW EXECUTE PROCEDURE update_tablea_references();
+  FOR EACH ROW EXECUTE PROCEDURE update_id();
 
-CREATE OR REPLACE FUNCTION update_tableb_references() RETURNS TRIGGER AS $$
-BEGIN
-  NEW.id       = NEW.jsonb->>'id';
-  RETURN NEW;
-END; $$ language 'plpgsql';
 CREATE TRIGGER update_tableb_references BEFORE INSERT OR UPDATE ON tableb
-  FOR EACH ROW EXECUTE PROCEDURE update_tableb_references();   
- CREATE OR REPLACE FUNCTION update_tablec_references() RETURNS TRIGGER AS $$
-BEGIN
-  NEW.id       = NEW.jsonb->>'id';
-  RETURN NEW;
-END; $$ language 'plpgsql';
-CREATE TRIGGER update_tablec_references BEFORE INSERT OR UPDATE ON tablec
-  FOR EACH ROW EXECUTE PROCEDURE update_tablec_references();
+  FOR EACH ROW EXECUTE PROCEDURE update_id();   
 
-CREATE OR REPLACE FUNCTION update_tabled_references() RETURNS TRIGGER AS $$
-BEGIN
-  NEW.id       = NEW.jsonb->>'id';
-  RETURN NEW;
-END; $$ language 'plpgsql';
+CREATE TRIGGER update_tablec_references BEFORE INSERT OR UPDATE ON tablec
+  FOR EACH ROW EXECUTE PROCEDURE update_id();
+
 CREATE TRIGGER update_tabled_references BEFORE INSERT OR UPDATE ON tabled
-  FOR EACH ROW EXECUTE PROCEDURE update_tabled_references();    
+  FOR EACH ROW EXECUTE PROCEDURE update_id();    
 INSERT INTO tablea (jsonb) VALUES
 ('{"id": "A0000000-0000-0000-0000-000000000000", "firstName": "Mike", "lastName": "Smith","field1": "first0", "field2": "last0"}'),
 ('{"id": "A1111111-1111-1111-1111-111111111111", "firstName": "Tom", "lastName": "Jones","field1": "first1", "field2": "last1"}'),
