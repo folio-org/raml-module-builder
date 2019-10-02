@@ -18,28 +18,7 @@ $func$  LANGUAGE sql IMMUTABLE;
 create or replace function concat_space_sql(VARIADIC text[])
 RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE INDEX IF NOT EXISTS tablea_idx_gin ON tablea using gin
-    ((concat_space_sql(tablea.jsonb->>'firstName',tablea.jsonb->>'lastName')) gin_trgm_ops);
-    
-CREATE INDEX IF NOT EXISTS tablea_idx_ft ON tablea using gin
-    ( to_tsvector('simple',concat_space_sql(tablea.jsonb->>'field1',tablea.jsonb->>'field2')));
-    
-CREATE INDEX IF NOT EXISTS tableb_idx_gin ON tableb using gin
-    ((concat_space_sql(tableb.jsonb->>'city',tableb.jsonb->>'state')) gin_trgm_ops);
 
-CREATE INDEX IF NOT EXISTS tablea_idx_ft ON tableb using gin
-    ( to_tsvector('simple',concat_space_sql(tableb.jsonb->>'field1',tableb.jsonb->>'field2')));
-CREATE INDEX IF NOT EXISTS tablec_idx_gin ON tablec using gin
-    ((concat_space_sql(tablec.jsonb->>'firstName',tablec.jsonb->>'lastName')) gin_trgm_ops);
-    
-CREATE INDEX IF NOT EXISTS tablec_idx_ft ON tablec using gin
-    ( to_tsvector('simple',concat_space_sql(tablec.jsonb->>'field1',tablec.jsonb->>'field2')));
-    
-CREATE INDEX IF NOT EXISTS tabled_idx_gin ON tabled using gin
-    ((concat_space_sql(tabled.jsonb->>'city',tabled.jsonb->>'state')) gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS tabled_idx_ft ON tabled using gin
-    ( to_tsvector('simple',concat_space_sql(tabled.jsonb->>'field1',tabled.jsonb->>'field2')));
     
 CREATE OR REPLACE FUNCTION update_id() RETURNS TRIGGER AS $$
 BEGIN
