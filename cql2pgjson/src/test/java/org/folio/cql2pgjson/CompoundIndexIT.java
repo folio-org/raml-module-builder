@@ -77,36 +77,36 @@ public class CompoundIndexIT extends DatabaseTestBase {
 
   @Test
   public void multiFieldNamesGIN() throws Exception {
-    assertThat(cqla("fullname == Tom Jones"), containsInAnyOrder("Tom"));
+    assertThat(cqla("fullname == \"Tom Jones\""), containsInAnyOrder("Tom"));
   }
 
   @Test
   public void sqlExpressionGIN() throws Exception {
-    assertThat( cqlb("address == Boston MA"),  containsInAnyOrder("first0"));
+    assertThat( cqlb("address == \"Boston MA\""),  containsInAnyOrder("first0"));
   }
   @Test
   public void multiFieldNamesFT() throws Exception {
-    assertThat(cqla("ftfield = first0 last0"), containsInAnyOrder("Mike"));
+    assertThat(cqla("ftfield = \"first0 last0\""), containsInAnyOrder("Mike"));
   }
 
   @Test
   public void sqlExpressionFT() throws Exception {
-    assertThat( cqlb("ftfield = first1 last1"),  containsInAnyOrder("first1"));
+    assertThat( cqlb("ftfield = \"first1 last1\""),  containsInAnyOrder("first1"));
   }
 
   @Test
   public void multiFieldNamesSpacesGIN() throws Exception {
-    assertThat( cqlc("tablecginindex == Mike Smith"),  containsInAnyOrder("12"));
+    assertThat( cqlc("tablecginindex == \"Mike Smith\""),  containsInAnyOrder("12"));
   }
 
   @Test
   public void multiFieldNamesSpacesFT() throws Exception {
-    assertThat( cqlc("tablecftindex = Tom Jones"),  containsInAnyOrder("23"));
+    assertThat( cqlc("tablecftindex = \"Tom Jones\""),  containsInAnyOrder("23"));
   }
 
   @Test
   public void multiFieldNamesMultipartindexpathGIN() throws Exception {
-    assertThat( cqld("tabledginindex == Austin TX"),  containsInAnyOrder("Charles"));
+    assertThat( cqld("tabledginindex == \"Austin TX\""),  containsInAnyOrder("Charles"));
   }
 
   @Test
