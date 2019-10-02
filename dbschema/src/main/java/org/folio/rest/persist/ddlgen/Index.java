@@ -83,20 +83,24 @@ public class Index extends TableIndexes {
           result .append(" , ");
         }
         String [] rawExpandedTerm = splitIndex[i].split("\\.");
-        StringBuilder expandedTerm = new StringBuilder();
-
-        for(int j = 0; j < rawExpandedTerm.length; j++) {
-          String arrowToken = "->";
-          if(j == rawExpandedTerm.length - 1) {
-            arrowToken = "->>";
-          }
-          expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j]).append("'");
-        }
+        StringBuilder expandedTerm = formatExpandedTerm(rawExpandedTerm);
         result.append(tableLoc).append(".jsonb").append(expandedTerm);
       }
       result.append(")");
       return result.toString();
     }
 
+  }
+  private StringBuilder formatExpandedTerm(String[] rawExpandedTerm) {
+    StringBuilder expandedTerm = new StringBuilder();
+
+    for(int j = 0; j < rawExpandedTerm.length; j++) {
+      String arrowToken = "->";
+      if(j == rawExpandedTerm.length - 1) {
+        arrowToken = "->>";
+      }
+      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j]).append("'");
+    }
+    return expandedTerm;
   }
 }
