@@ -1,8 +1,4 @@
 {
-  "fullText": {
-    "defaultDictionary": "simple"
-  },
-
   "tables": [
     {
       "tableName": "loan_type",

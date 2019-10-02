@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -11,13 +12,11 @@ import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.resource.Tenant;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.ddlgen.FullText;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -43,11 +42,8 @@ public class TenantAPI implements Tenant {
 
   private static final String      UPGRADE_FROM_VERSION     = "module_from";
   private static final String      UPGRADE_TO_VERSION       = "module_to";
-  private static final String      CONTENT_LANGUAGE         = "x-okapi-language";
 
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
-  private final Messages            messages          = Messages.getInstance();
-
 
   @Validate
   @Override
@@ -207,7 +203,6 @@ public class TenantAPI implements Tenant {
 
     context.runOnContext(v -> {
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
-      String ftLanguage = getLanguage4FT(headers.get(CONTENT_LANGUAGE));
       log.info("sending... postTenant for " + tenantId);
       try {
         //body is optional so that the TenantAttributes
@@ -246,19 +241,9 @@ public class TenantAPI implements Tenant {
 
               SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
 
-              String tableInputStr = null;
-              if(tableInput != null){
-                tableInputStr = IOUtils.toString(tableInput, "UTF8");
-                Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
-                if(ftLanguage != null) {
-                  //FT default language was passed in for the tenant, override the default language in the
-                  //schema.json
-                  FullText ft = new FullText();
-                  ft.setDefaultDictionary(ftLanguage);
-                  schema.setFullText(ft);
-                }
-                sMaker.setSchema(schema);
-              }
+              String tableInputStr = IOUtils.toString(tableInput, StandardCharsets.UTF_8);
+              Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+              sMaker.setSchema(schema);
 
               String sqlFile = sMaker.generateDDL();
               log.debug("GENERATED SCHEMA " + sqlFile);

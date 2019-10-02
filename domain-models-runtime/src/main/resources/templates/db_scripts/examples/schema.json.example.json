@@ -1,7 +1,4 @@
 {
-  "fullText": {
-    "defaultDictionary": "english"
-  },
   "scripts": [
     {
       "run": "before",
