@@ -111,7 +111,20 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-
 create or replace function concat_space_sql(VARIADIC text[])
 RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); 
+$$ LANGUAGE SQL IMMUTABLE;
+
+create or replace function concat_array_object_values(JSON text)
+RETURNS text AS 
+DECLARE
+  result text
+$func$
+BEGIN
+  FOR i IN SELECT * FROM json_array_elements(omgjson)
+  LOOP
+    RAISE NOTICE 'output from space %', i->>'type';
+  END LOOP;
+  RETURN RESULT;
+END; 
 $$ LANGUAGE SQL IMMUTABLE;
