@@ -42,7 +42,7 @@ public class CompoundIndexTest {
     assertEquals(expected, sql);
   }
   @Test
-  public void compoundIndexMultiFieldnames3() throws Exception {
+  public void multiFieldnamesSpacesFT() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tablecftindex = \"Boston MA\"").toString();
@@ -50,7 +50,7 @@ public class CompoundIndexTest {
     assertEquals(expected, sql);
   }
   @Test
-  public void compoundIndexMultiFieldnames4() throws Exception {
+  public void multiFieldnamesSpacesGIN() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tablecginindex == \"Boston MA\"").toString();
@@ -58,7 +58,7 @@ public class CompoundIndexTest {
     assertEquals(expected, sql);
   }
   @Test
-  public void compoundIndexMultiFieldnames5() throws Exception {
+  public void multiFieldnamesMultipartFT() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tabledftindex = \"Boston MA\"").toString();
@@ -66,7 +66,7 @@ public class CompoundIndexTest {
     assertEquals(expected, sql);
   }
   @Test
-  public void compoundIndexMultiFieldnames6() throws Exception {
+  public void multiFieldnamesMultipartGIN() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tabledginindex == \"Boston MA\"").toString();
