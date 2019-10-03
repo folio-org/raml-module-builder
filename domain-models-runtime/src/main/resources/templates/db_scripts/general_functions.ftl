@@ -115,15 +115,15 @@ create or replace function concat_space_sql(VARIADIC text[])
 RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); 
 $$ LANGUAGE SQL IMMUTABLE;
 
-create or replace function concat_array_object_values(JSON text)
+create or replace function concat_array_object_values(input text, field text)
 RETURNS text AS 
 DECLARE
   result text
 $func$
 BEGIN
-  FOR i IN SELECT * FROM json_array_elements(omgjson)
+  FOR i IN SELECT * FROM json_array_elements(array_to_json($1))
   LOOP
-    RAISE NOTICE 'output from space %', i->>'type';
+    concat_ws(', ',result, i->>'$2');
   END LOOP;
   RETURN RESULT;
 END; 
