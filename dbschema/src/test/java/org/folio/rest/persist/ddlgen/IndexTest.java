@@ -22,8 +22,8 @@ class IndexTest {
     Index idx = new Index();
     idx.setFieldPath("testIdx");
     idx.setFieldName("testIdx");
-    idx.setSqlExpression("concat_space_sql(test_table.jsonb->'blah'->'blah2'->>'field1' , test_table.jsonb->'blah'->'blah2'->>'field2' , test_table.jsonb->'blah'->'blah2'->>'field3')");
-    assertEquals("concat_space_sql(test_table.jsonb->'blah'->'blah2'->>'field1' , test_table.jsonb->'blah'->'blah2'->>'field2' , test_table.jsonb->'blah'->'blah2'->>'field3')",idx.getFinalSqlExpression("test_table"));
+    idx.setSqlExpression("concat_space_sql()");
+    assertEquals("concat_space_sql()",idx.getFinalSqlExpression("test_table"));
   }
 
   void tesIndexExpressionDotsInPath() {
