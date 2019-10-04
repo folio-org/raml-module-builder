@@ -268,7 +268,7 @@ public class TenantLoadingTest {
 
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
-    putStatus = 422;
+    putStatus = 403;
     tl.perform(tenantAttributes, headers, vertx, res -> {
       context.assertTrue(res.failed());
       async.complete();
@@ -288,8 +288,8 @@ public class TenantLoadingTest {
 
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
-    tl.withAcceptStatus(422);
-    putStatus = 422;
+    tl.withAcceptStatus(403);
+    putStatus = 403;
     tl.perform(tenantAttributes, headers, vertx, res -> {
       context.assertTrue(res.succeeded());
       async.complete();

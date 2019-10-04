@@ -94,7 +94,6 @@ public class TenantLoading {
   private static final Logger log = LoggerFactory.getLogger(TenantLoading.class);
   private static final String RETURNED_STATUS = " returned status ";
   private static final String FAILED_STR = " failed ";
-  private static final String POST_STR = "POST ";
 
   private enum Strategy {
     CONTENT, // Id in JSON content PUT/POST
@@ -202,44 +201,49 @@ public class TenantLoading {
   private static String getId(LoadingEntry loadingEntry, URL url, String content,
     Future<Void> f) {
 
-    String id = null;
-    switch (loadingEntry.strategy) {
-      case BASENAME:
-        int base = url.getPath().lastIndexOf(File.separator);
-        int suf = url.getPath().lastIndexOf('.');
-        if (base == -1) {
-          f.handle(Future.failedFuture("No basename for " + url.toString()));
-          return null;
-        }
-        if (suf > base) {
-          id = url.getPath().substring(base, suf);
-        } else {
-          id = url.getPath().substring(base);
-        }
-        break;
-      case CONTENT:
-        JsonObject jsonObject = new JsonObject(content);
-        id = jsonObject.getString(loadingEntry.idProperty);
-        if (id == null) {
-          log.warn("Missing property "
-            + loadingEntry.idProperty + " for url=" + url.toString());
+    try {
+      String id = null;
+      switch (loadingEntry.strategy) {
+        case BASENAME:
+          int base = url.getPath().lastIndexOf(File.separator);
+          int suf = url.getPath().lastIndexOf('.');
+          if (base == -1) {
+            f.handle(Future.failedFuture("No basename for " + url.toString()));
+            return null;
+          }
+          if (suf > base) {
+            id = url.getPath().substring(base, suf);
+          } else {
+            id = url.getPath().substring(base);
+          }
+          break;
+        case CONTENT:
+          JsonObject jsonObject = new JsonObject(content);
+          id = jsonObject.getString(loadingEntry.idProperty);
+          if (id == null) {
+            log.warn("Missing property "
+              + loadingEntry.idProperty + " for url=" + url.toString());
 
-          f.handle(Future.failedFuture("Missing property "
-            + loadingEntry.idProperty + " for url=" + url.toString()));
-          return null;
-        }
-        try {
-          id = URLEncoder.encode(id, StandardCharsets.UTF_8.name());
-        } catch (UnsupportedEncodingException ex) {
-          f.handle(Future.failedFuture("Encoding of " + id + FAILED_STR));
-          return null;
-        }
-        break;
-      case RAW_PUT:
-      case RAW_POST:
-        break;
+            f.handle(Future.failedFuture("Missing property "
+              + loadingEntry.idProperty + " for url=" + url.toString()));
+            return null;
+          }
+          try {
+            id = URLEncoder.encode(id, StandardCharsets.UTF_8.name());
+          } catch (UnsupportedEncodingException ex) {
+            f.handle(Future.failedFuture("Encoding of " + id + FAILED_STR));
+            return null;
+          }
+          break;
+        case RAW_PUT:
+        case RAW_POST:
+          break;
+      }
+      return id;
+    } catch (Exception ex) {
+      f.handle(Future.failedFuture("exception: " + ex.getLocalizedMessage()));
+      return null;
     }
-    return id;
   }
 
   private static void loadURL(Map<String, String> headers, URL url,
@@ -247,76 +251,95 @@ public class TenantLoading {
     Future<Void> f) {
 
     log.info("loadURL url=" + url.toString());
-    String content;
     try {
-      InputStream stream = url.openStream();
-      content = IOUtils.toString(stream, StandardCharsets.UTF_8);
-      stream.close();
-      if (loadingEntry.contentFilter != null) {
-        content = loadingEntry.contentFilter.apply(content);
+      String content;
+      try {
+        InputStream stream = url.openStream();
+        content = IOUtils.toString(stream, StandardCharsets.UTF_8);
+        stream.close();
+        if (loadingEntry.contentFilter != null) {
+          content = loadingEntry.contentFilter.apply(content);
+        }
+      } catch (IOException ex) {
+        f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
+        return;
       }
-    } catch (IOException ex) {
-      f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
-      return;
-    }
-    final String fContent = content;
-    String id = getId(loadingEntry, url, content, f);
-    if (f.isComplete()) {
-      return;
-    }
-    StringBuilder putUri = new StringBuilder();
-    HttpMethod method1;
-    if (loadingEntry.strategy == Strategy.RAW_POST) {
-      method1 = HttpMethod.POST;
-    } else {
-      method1 = HttpMethod.PUT;
-    }
-    if (id == null) {
-      putUri.append(endPointUrl);
-    } else {
-      if (endPointUrl.contains("%d")) {
-        putUri.append(endPointUrl.replaceAll("%d", id));
+      final String fContent = content;
+      String id = getId(loadingEntry, url, content, f);
+      if (f.isComplete()) {
+        return;
+      }
+      StringBuilder putUri = new StringBuilder();
+      HttpMethod method1;
+      if (loadingEntry.strategy == Strategy.RAW_POST) {
+        method1 = HttpMethod.POST;
       } else {
-        putUri.append(endPointUrl + "/" + id);
+        method1 = HttpMethod.PUT;
       }
-    }
-    HttpClientRequest reqPut = httpClient.requestAbs(method1, putUri.toString(), resPut -> {
-      if (loadingEntry.strategy != Strategy.RAW_PUT
-        && loadingEntry.strategy != Strategy.RAW_POST
-        && (resPut.statusCode() == 404 || resPut.statusCode() == 400)) {
-        HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost -> {
-          if (resPost.statusCode() == 201) {
+      if (id == null) {
+        putUri.append(endPointUrl);
+      } else {
+        if (endPointUrl.contains("%d")) {
+          putUri.append(endPointUrl.replaceAll("%d", id));
+        } else {
+          putUri.append(endPointUrl + "/" + id);
+        }
+      }
+      log.info(method1.name() + " " + putUri.toString());
+      HttpClientRequest reqPut = httpClient.requestAbs(method1, putUri.toString(), resPut -> {
+        resPut.endHandler(e -> {
+          if (loadingEntry.strategy != Strategy.RAW_PUT
+            && loadingEntry.strategy != Strategy.RAW_POST
+            && (resPut.statusCode() == 404 || resPut.statusCode() == 400 || resPut.statusCode() == 422)) {
+            HttpClientRequest reqPost = httpClient.postAbs(endPointUrl, resPost -> {
+              if (resPost.statusCode() == 201) {
+                f.handle(Future.succeededFuture());
+              } else {
+                log.error(method1.name() + " " + endPointUrl + RETURNED_STATUS + resPost.statusCode());
+                f.handle(Future.failedFuture(method1.name() + " " + endPointUrl
+                  + RETURNED_STATUS + resPost.statusCode()));
+              }
+            });
+            reqPost.exceptionHandler(ex -> {
+              log.error(method1.name() + " " + endPointUrl + ": " + ex.getMessage());
+              if (!f.isComplete()) {
+                f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
+                  + ": " + ex.getMessage()));
+              }
+            });
+            endWithXHeaders(reqPost, headers, fContent);
+          } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
+            || resPut.statusCode() == 204 || loadingEntry.statusAccept.contains(resPut.statusCode())) {
+            log.info("Accepting " + resPut.statusCode());
             f.handle(Future.succeededFuture());
           } else {
-            f.handle(Future.failedFuture(POST_STR + endPointUrl
-              + RETURNED_STATUS + resPost.statusCode()));
-          }
-        });
-        reqPost.exceptionHandler(ex -> {
-          if (!f.isComplete()) {
+            log.error(method1.name() + " " + putUri.toString() + RETURNED_STATUS + resPut.statusCode());
             f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
-              + ": " + ex.getMessage()));
+              + RETURNED_STATUS + resPut.statusCode()));
           }
-          log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
         });
-        endWithXHeaders(reqPost, headers, fContent);
-      } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
-        || resPut.statusCode() == 204 || loadingEntry.statusAccept.contains(resPut.statusCode())) {
-        f.handle(Future.succeededFuture());
-      } else {
-        log.warn(method1.name() + " " + putUri.toString() + RETURNED_STATUS + resPut.statusCode());
-        f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
-          + RETURNED_STATUS + resPut.statusCode()));
-      }
-    });
-    reqPut.exceptionHandler(ex -> {
-      if (!f.isComplete()) {
-        f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
-          + ": " + ex.getMessage()));
-      }
-      log.warn(method1.name() + " " + putUri.toString() + ": " + ex.getMessage());
-    });
-    endWithXHeaders(reqPut, headers, content);
+        resPut.exceptionHandler(ex -> {
+          if (!f.isComplete()) {
+            log.error(method1.name() + " " + putUri.toString() + ": " + ex.getMessage());
+            if (!f.isComplete()) {
+              f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
+                + ": " + ex.getMessage()));
+            }
+          }
+        });
+      });
+      reqPut.exceptionHandler(ex -> {
+        log.error(method1.name() + " " + putUri.toString() + ": " + ex.getMessage());
+        if (!f.isComplete()) {
+          f.handle(Future.failedFuture(method1.name() + " " + putUri.toString()
+            + ": " + ex.getMessage()));
+        }
+      });
+      endWithXHeaders(reqPut, headers, content);
+    } catch (Exception ex) {
+      log.error(ex.getLocalizedMessage(), ex);
+      f.handle(Future.failedFuture("exception: " + ex.getLocalizedMessage()));
+    }
   }
 
   private static void loadData(String okapiUrl, Map<String, String> headers,
@@ -335,18 +358,43 @@ public class TenantLoading {
       if (urls.isEmpty()) {
         log.info("loadData getURLsFromClassPathDir returns empty list");
       }
-      for (URL url : urls) {
-        Future<Void> f = Future.future();
-        futures.add(f);
-        loadURL(headers, url, httpClient, loadingEntry, endPointUrl, f);
-      }
-      CompositeFuture.all(futures).setHandler(x -> {
-        if (x.failed()) {
-          res.handle(Future.failedFuture(x.cause().getLocalizedMessage()));
-        } else {
-          res.handle(Future.succeededFuture(urls.size()));
+      boolean useCompose = true;
+      Future<Void> future = Future.succeededFuture();
+      if (useCompose) {
+        for (URL url : urls) {
+          future = future.compose(x -> {
+            Future n = Future.future();
+            loadURL(headers, url, httpClient, loadingEntry, endPointUrl, n);
+            return n;
+          });
         }
-      });
+        log.info("loadData wait with compose");
+        future.setHandler(x -> {
+          if (x.failed()) {
+            log.info("loadData returned failure");
+            res.handle(Future.failedFuture(x.cause().getLocalizedMessage()));
+          } else {
+            log.info("loadData returned success");
+            res.handle(Future.succeededFuture(urls.size()));
+          }
+        });
+      } else {
+        for (URL url : urls) {
+          Future<Void> f = Future.future();
+          futures.add(f);
+          loadURL(headers, url, httpClient, loadingEntry, endPointUrl, f);
+        }
+        log.info("loadData wait with compositeFuture");
+        CompositeFuture.all(futures).setHandler(x -> {
+          if (x.failed()) {
+            log.info("loadData returned failure");
+            res.handle(Future.failedFuture(x.cause().getLocalizedMessage()));
+          } else {
+            log.info("loadData returned success");
+            res.handle(Future.succeededFuture(urls.size()));
+          }
+        });
+      }
     } catch (URISyntaxException ex) {
       res.handle(Future.failedFuture("URISyntaxException for path " + filePath + " ex=" + ex.getLocalizedMessage()));
     } catch (IOException ex) {
