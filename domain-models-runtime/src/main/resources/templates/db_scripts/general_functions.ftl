@@ -115,16 +115,17 @@ create or replace function concat_space_sql(VARIADIC text[])
 RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); 
 $$ LANGUAGE SQL IMMUTABLE;
 
-create or replace function concat_array_object_values(input text, field text)
-RETURNS text AS 
+create or replace function concat_array_object_values(jsonb_data text, field text) RETURNS text AS $$
 DECLARE
-  result text
-$func$
+
+  res text;
+  i jsonb;
 BEGIN
-  FOR i IN SELECT * FROM json_array_elements(array_to_json($1))
-  LOOP
-    concat_ws(', ',result, i->>'$2');
+  
+  FOR i IN SELECT * FROM json_array_elements(($1)::json)
+   LOOP
+    res =  concat_ws(', ',res, i->$2);
   END LOOP;
-  RETURN RESULT;
+  RETURN res;
 END; 
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE;
