@@ -110,7 +110,7 @@ public class Index extends TableIndexes {
 
       if(idx > -1) {
 
-        expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j].substring(0,idx)).append("',").append(rawExpandedTerm[j+1]);
+        expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j].substring(0,idx)).append("',").append("'").append(rawExpandedTerm[j+1]).append("'");
         wasArrayIndex = true;
         break;
       } else {
