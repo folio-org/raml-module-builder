@@ -29,10 +29,17 @@ public class StatsTracker {
    * time = single operation time in nanoseconds
    */
   public static void addStatElement(String type, long time){
-    if(!registeredStatRequesters.contains(type)){
-      METRICS.register(type, new Histogram(new SlidingTimeWindowReservoir(60,
-        TimeUnit.SECONDS)));
-      registeredStatRequesters.add(type);
+    // unsynchronized but fast check
+    if (!registeredStatRequesters.contains(type)) {
+      // prevent race condition - registering the same type twice will throw an exception
+      synchronized(registeredStatRequesters) {
+        // synchronized check
+        if (!registeredStatRequesters.contains(type)) {
+          METRICS.register(type, new Histogram(new SlidingTimeWindowReservoir(60,
+            TimeUnit.SECONDS)));
+          registeredStatRequesters.add(type);
+        }
+      }
     }
     METRICS.histogram(type).update(time/1000000);
   }
