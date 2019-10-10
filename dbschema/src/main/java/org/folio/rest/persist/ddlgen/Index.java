@@ -69,6 +69,7 @@ public class Index extends TableIndexes {
   public void setSqlExpression(String sqlExpression) {
     this.sqlExpression = sqlExpression;
   }
+
   public String getFinalSqlExpression(String tableLoc) {
     if(this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
       return this.fieldPath;
@@ -83,24 +84,45 @@ public class Index extends TableIndexes {
           result .append(" , ");
         }
         String [] rawExpandedTerm = splitIndex[i].split("\\.");
-        StringBuilder expandedTerm = formatExpandedTerm(rawExpandedTerm);
-        result.append(tableLoc).append(".jsonb").append(expandedTerm);
+        StringBuilder expandedTerm = formatExpandedTerm(tableLoc + ".jsonb",rawExpandedTerm);
+        result.append(expandedTerm);
       }
       result.append(")");
       return result.toString();
     }
 
   }
-  private StringBuilder formatExpandedTerm(String[] rawExpandedTerm) {
-    StringBuilder expandedTerm = new StringBuilder();
 
+  private StringBuilder formatExpandedTerm(String table, String[] rawExpandedTerm) {
+    StringBuilder expandedTerm = new StringBuilder();
+    StringBuilder result = new StringBuilder();
+    boolean wasArrayIndex = false;
+    expandedTerm.append(table);
     for(int j = 0; j < rawExpandedTerm.length; j++) {
+
+      final String indexSyntax = "[*]";
+      int idx = rawExpandedTerm[j].indexOf(indexSyntax);
+      int endOffset = idx > -1 ? -2 : -1;
       String arrowToken = "->";
-      if(j == rawExpandedTerm.length - 1) {
+      if(j == rawExpandedTerm.length + endOffset) {
         arrowToken = "->>";
       }
-      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j]).append("'");
+
+      if(idx > -1) {
+
+        expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j].substring(0,idx)).append("',").append(rawExpandedTerm[j+1]);
+        wasArrayIndex = true;
+        break;
+      } else {
+        expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j]).append("'");
+      }
+
     }
-    return expandedTerm;
+    if(wasArrayIndex) {
+      result.append("concat_array_object_values(").append(expandedTerm).append(")");
+    } else {
+      result.append(expandedTerm);
+    }
+    return result;
   }
 }
