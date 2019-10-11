@@ -41,6 +41,7 @@ public class CompoundIndexTest {
     String expected = "WHERE to_tsvector('simple', lower(concat_space_sql(jsonb->>'field1', jsonb->>'field2'))) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
     assertEquals(expected, sql);
   }
+
   @Test
   public void multiFieldnamesSpacesFT() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec");
@@ -49,6 +50,7 @@ public class CompoundIndexTest {
     String expected = "WHERE to_tsvector('simple', concat_space_sql(tablec.jsonb->>'firstName' , tablec.jsonb->>'lastName')) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
     assertEquals(expected, sql);
   }
+
   @Test
   public void multiFieldnamesSpacesGIN() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec");
@@ -57,12 +59,48 @@ public class CompoundIndexTest {
     String expected = "WHERE lower(concat_space_sql(tablec.jsonb->>'firstName' , tablec.jsonb->>'lastName')) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
+
   @Test
   public void multiFieldnamesMultipartFT() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tabledftindex = \"Boston MA\"").toString();
     String expected = "WHERE to_tsvector('simple', concat_space_sql(tabled.jsonb->'proxy'->'personal'->>'city' , tabled.jsonb->'proxy'->'personal'->>'state')) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
+    assertEquals(expected, sql);
+  }
+
+  @Test
+  public void multiFieldnamesFTStar() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
+    String sql = cql2pgJson.toSql("ftfieldstar = \"Boston MA\"").toString();
+    String expected = "WHERE to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->>'field1','city') , concat_array_object_values(tablea.jsonb->>'field2','state'))) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
+    assertEquals(expected, sql);
+  }
+
+  @Test
+  public void multiFieldnamesFTDotStar() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
+    String sql = cql2pgJson.toSql("ftfielddotstar = \"Boston MA\"").toString();
+    String expected = "WHERE to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->>'info','city') , concat_array_object_values(tablea.jsonb->'field2'->>'info','state'))) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
+    assertEquals(expected, sql);
+  }
+
+  @Test
+  public void multiFieldnamesGINStar() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
+    String sql = cql2pgJson.toSql("ginfieldstar == \"Boston MA\"").toString();
+    String expected = "WHERE lower(concat_space_sql(concat_array_object_values(tablea.jsonb->>'field1','city') , concat_array_object_values(tablea.jsonb->>'field2','state'))) LIKE lower('Boston MA')";
+    assertEquals(expected, sql);
+  }
+  @Test
+  public void multiFieldnamesGINDotStar() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
+    String sql = cql2pgJson.toSql("ginfielddotstar == \"Boston MA\"").toString();
+    String expected = "WHERE lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->>'info','city') , concat_array_object_values(tablea.jsonb->'field2'->>'info','state'))) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
   @Test

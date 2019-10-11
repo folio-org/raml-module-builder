@@ -12,14 +12,14 @@
         },
         {
           "fieldName": "ginfieldstar",
-          "multiFieldNames": "field1[*].name,field2[*].city",
+          "multiFieldNames": "field1[*].city,field2[*].state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
         },
         {
           "fieldName": "ginfielddotstar",
-          "multiFieldNames": "field1.info[*].name,field2.info[*].city",
+          "multiFieldNames": "field1.info[*].city,field2.info[*].state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
@@ -35,14 +35,14 @@
         },
         {
           "fieldName": "ftfieldstar",
-          "multiFieldNames": "field1[*].name,field2[*].city",
+          "multiFieldNames": "field1[*].city,field2[*].state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
         },
         {
           "fieldName": "ftfielddotstar",
-          "multiFieldNames": "field1.info[*].name,field2.info[*].city",
+          "multiFieldNames": "field1.info[*].city,field2.info[*].state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
