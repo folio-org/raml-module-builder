@@ -741,6 +741,18 @@ public class PostgresClient {
   /**
    * Insert entity into table.
    * @param table database table (without schema)
+   * @param id primary key for the record
+   * @param entity a POJO (plain old java object)
+   * @param replyHandler returns any errors and the updated entity.
+   */
+  <T> void saveAndReturn(String table, String id, T entity, Handler<AsyncResult<T>> replyHandler) {
+    client.getConnection(conn -> saveAndReturn(conn, table, id, entity,
+        /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
    * @param id primary key for the record, or null if one should be created
    * @param entity a POJO (plain old java object)
    * @param returnId true to return the id of the inserted record, false to return an empty string
@@ -914,6 +926,57 @@ public class PostgresClient {
             replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
             replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
+          }
+        });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Save entity in table and return the updated version (after database trigger for example).
+   *
+   * @param sqlConnection connection (for example with transaction)
+   * @param table where to insert the entity record
+   * @param id  the value for the id field (primary key)
+   * @param entity  the record to insert, either a POJO or a JsonArray, see convertEntity
+   * @param upsert whether to update if the record with that id already exists (INSERT or UPDATE)
+   * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
+   * @param replyHandler  where to report success status and the updated entity
+   */
+  private <T> void saveAndReturn(AsyncResult<SQLConnection> sqlConnection, String table, String id, T entity,
+      boolean upsert, boolean convertEntity, Handler<AsyncResult<T>> replyHandler) {
+
+    if (log.isDebugEnabled()) {
+      log.debug("save (with connection and id) called on " + table);
+    }
+    try {
+      if (sqlConnection.failed()) {
+        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
+        return;
+      }
+      long start = System.nanoTime();
+      String sql = INSERT_CLAUSE + schemaName + DOT + table
+          + " (id, jsonb) VALUES (?, " + (convertEntity ? "?::JSON" : "?::text") + ")"
+          + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb=EXCLUDED.jsonb" : "")
+          + " RETURNING jsonb";
+      JsonArray jsonArray = new JsonArray()
+          .add(id == null ? UUID.randomUUID().toString() : id)
+          .add(convertEntity ? pojo2json(entity) : ((JsonArray)entity).getBinary(0));
+      sqlConnection.result().queryWithParams(sql, jsonArray, query -> {
+          statsTracker(SAVE_STAT_METHOD, table, start);
+          if (query.failed()) {
+            replyHandler.handle(Future.failedFuture(query.cause()));
+          } else {
+            try {
+              @SuppressWarnings("unchecked")
+              T rs = (T) mapper.readValue(query.result().getResults().get(0).getValue(0).toString(), entity.getClass());
+              replyHandler.handle(Future.succeededFuture(rs));
+            } catch (Exception e) {
+              log.error(e.getMessage(), e);
+              replyHandler.handle(Future.failedFuture(e));
+            }
           }
         });
     } catch (Exception e) {
