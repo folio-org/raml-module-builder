@@ -745,9 +745,8 @@ public class PostgresClient {
    * @param entity a POJO (plain old java object)
    * @param replyHandler returns any errors and the updated entity.
    */
-  <T> void saveAndReturn(String table, String id, T entity, Handler<AsyncResult<T>> replyHandler) {
-    client.getConnection(conn -> saveAndReturn(conn, table, id, entity,
-        /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+  <T> void saveAndReturnUpdatedEntity(String table, String id, T entity, Handler<AsyncResult<T>> replyHandler) {
+    client.getConnection(conn -> saveAndReturnUpdatedEntity(conn, table, id, entity, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
@@ -945,25 +944,21 @@ public class PostgresClient {
    * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
    * @param replyHandler  where to report success status and the updated entity
    */
-  private <T> void saveAndReturn(AsyncResult<SQLConnection> sqlConnection, String table, String id, T entity,
-      boolean upsert, boolean convertEntity, Handler<AsyncResult<T>> replyHandler) {
+  private <T> void saveAndReturnUpdatedEntity(AsyncResult<SQLConnection> sqlConnection, String table, String id, T entity,
+      Handler<AsyncResult<T>> replyHandler) {
 
-    if (log.isDebugEnabled()) {
-      log.debug("save (with connection and id) called on " + table);
+    log.debug("save (with connection and id) called on " + table);
+
+    if (sqlConnection.failed()) {
+      replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
+      return;
     }
+
     try {
-      if (sqlConnection.failed()) {
-        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
-        return;
-      }
       long start = System.nanoTime();
       String sql = INSERT_CLAUSE + schemaName + DOT + table
-          + " (id, jsonb) VALUES (?, " + (convertEntity ? "?::JSON" : "?::text") + ")"
-          + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb=EXCLUDED.jsonb" : "")
-          + " RETURNING jsonb";
-      JsonArray jsonArray = new JsonArray()
-          .add(id == null ? UUID.randomUUID().toString() : id)
-          .add(convertEntity ? pojo2json(entity) : ((JsonArray)entity).getBinary(0));
+          + " (id, jsonb) VALUES (?, ?::JSON) RETURNING jsonb";
+      JsonArray jsonArray = new JsonArray().add(id).add(pojo2json(entity));
       sqlConnection.result().queryWithParams(sql, jsonArray, query -> {
           statsTracker(SAVE_STAT_METHOD, table, start);
           if (query.failed()) {
@@ -974,7 +969,6 @@ public class PostgresClient {
               T rs = (T) mapper.readValue(query.result().getResults().get(0).getValue(0).toString(), entity.getClass());
               replyHandler.handle(Future.succeededFuture(rs));
             } catch (Exception e) {
-              log.error(e.getMessage(), e);
               replyHandler.handle(Future.failedFuture(e));
             }
           }

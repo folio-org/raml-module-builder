@@ -713,7 +713,7 @@ public final class PgUtil {
         return;
       }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
-      postgresClient.saveAndReturn(table, id, entity, reply -> {
+      postgresClient.saveAndReturnUpdatedEntity(table, id, entity, reply -> {
         if (reply.failed()) {
           asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;

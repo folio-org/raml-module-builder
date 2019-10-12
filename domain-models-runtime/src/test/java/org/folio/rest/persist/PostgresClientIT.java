@@ -1135,6 +1135,30 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveAndReturnUpdatedEntityNullConnection(TestContext context) {
+    String uuid = randomUuid();
+    postgresClientNullConnection().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveAndReturnUpdatedEntityGetConnectionFails(TestContext context) {
+    String uuid = randomUuid();
+    postgresClientGetConnectionFails().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveAndReturnUpdatedEntityQueryFails(TestContext context) {
+    String uuid = randomUuid();
+    postgresClientQueryFails().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveAndReturnUpdatedEntityQueryReturnNullResultSet(TestContext context) {
+    String uuid = randomUuid();
+    postgresClientQueryReturnNullResultSet().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
   public void saveTransIdNull(TestContext context) {
     String id = randomUuid();
     postgresClient = createFoo(context);
@@ -1519,6 +1543,62 @@ public class PostgresClientIT {
       public SQLConnection updateWithParams(String sql, JsonArray params,
           Handler<AsyncResult<UpdateResult>> resultHandler) {
         resultHandler.handle(Future.failedFuture("postgresClientQueryFails"));
+        return null;
+      }
+
+      @Override
+      public SQLConnection queryWithParams(String sql, JsonArray params,
+          Handler<AsyncResult<ResultSet>> resultHandler) {
+        resultHandler.handle(Future.failedFuture("postgresClientQueryFails"));
+        return null;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+    AsyncSQLClient client = new AsyncSQLClient() {
+      @Override
+      public SQLClient getConnection(Handler<AsyncResult<SQLConnection>> handler) {
+        handler.handle(Future.succeededFuture(sqlConnection));
+        return this;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.succeededFuture());
+      }
+
+      @Override
+      public void close() {
+        // nothing to do
+      }
+    };
+    try {
+      setRootLevel(Level.FATAL);
+      PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
+      postgresClient.setClient(client);
+      return postgresClient;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * @return a PostgresClient where invoking SQLConnection::queryWithParams will return null ResultSet
+   */
+  private PostgresClient postgresClientQueryReturnNullResultSet() {
+    SQLConnection sqlConnection = new PostgreSQLConnectionImpl(null, null, null) {
+      @Override
+      public SQLConnection queryWithParams(String sql, JsonArray params,
+          Handler<AsyncResult<ResultSet>> resultHandler) {
+        resultHandler.handle(Future.succeededFuture(null));
         return null;
       }
 
