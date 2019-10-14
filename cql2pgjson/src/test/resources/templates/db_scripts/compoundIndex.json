@@ -41,6 +41,48 @@
           "removeAccents": false
         }
       ]
+    }, 
+    {
+      "tableName": "tablec",
+      "ginIndex": [
+        {
+          "fieldName": "tablecginindex",
+          "multiFieldNames": "firstName , lastName",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "tablecftindex",
+          "multiFieldNames": "firstName , lastName",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ]
+    }, 
+    {
+      "tableName": "tabled",
+      "ginIndex": [
+        {
+          "fieldName": "tabledginindex",
+          "multiFieldNames": "proxy.personal.city,proxy.personal.state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "tabledftindex",
+          "multiFieldNames": "proxy.personal.city,proxy.personal.state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ]
     }
   ]
 }

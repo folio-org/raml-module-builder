@@ -11,6 +11,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 27.1
 
 * Remove all foreign keys fields and the primary key field `id` from the all index sections of schema.json. These btree indexes are created automatically.
+* Upgrade to Vert.x 3.8.1 (same as RMB)
 
 ## Version 27
 
