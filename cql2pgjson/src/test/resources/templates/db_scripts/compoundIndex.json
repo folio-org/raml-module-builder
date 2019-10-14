@@ -19,7 +19,7 @@
         },
         {
           "fieldName": "ginfielddotstar",
-          "multiFieldNames": "field1.info[*].city,field2.info[*].state",
+          "multiFieldNames": "field3.info[*].city,field3.info[*].state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
@@ -42,7 +42,7 @@
         },
         {
           "fieldName": "ftfielddotstar",
-          "multiFieldNames": "field1.info[*].city,field2.info[*].state",
+          "multiFieldNames": "field3.info[*].city,field3.info[*].state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false

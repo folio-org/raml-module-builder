@@ -113,4 +113,14 @@ public class CompoundIndexIT extends DatabaseTestBase {
   public void multiFieldNamesMultipartindexpathFT() throws Exception {
     assertThat( cqld("tabledftindex = \"Chicago IL\""),  containsInAnyOrder("Bob"));
   }
+
+  @Test
+  public void multiFieldNamesDotStarGIN() throws Exception {
+    assertThat( cqla("ginfielddotstar == \"Boston\""),  containsInAnyOrder("Mike","Tom"));
+  }
+
+  @Test
+  public void multiFieldNamesDotStarFT() throws Exception {
+    assertThat( cqla("ftfielddotstar = \"PA\""),  containsInAnyOrder("Mary", "Mike"));
+  }
 }
