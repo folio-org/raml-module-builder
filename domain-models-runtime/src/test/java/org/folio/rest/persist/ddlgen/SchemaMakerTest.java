@@ -342,8 +342,8 @@ public class SchemaMakerTest {
     assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'name')))"));
     assertThat(ddl, containsString("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
     assertThat(ddl, containsString("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
-    assertThat(ddl, containsString("GIN(to_tsvector('english', f_unaccent(jsonb->>'title')))"));
-    assertThat(ddl, containsString("GIN(to_tsvector('english',(jsonb->>'author')))"));
+    assertThat(ddl, containsString("GIN(to_tsvector('simple', f_unaccent(jsonb->>'title')))"));
+    assertThat(ddl, containsString("GIN(to_tsvector('simple',(jsonb->>'author')))"));
   }
 
 }
