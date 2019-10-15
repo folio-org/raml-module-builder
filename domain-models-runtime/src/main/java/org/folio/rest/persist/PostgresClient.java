@@ -959,22 +959,22 @@ public class PostgresClient {
           + " (id, jsonb) VALUES (?, ?::JSONB) RETURNING jsonb";
       JsonArray jsonArray = new JsonArray().add(id).add(pojo2json(entity));
       sqlConnection.result().queryWithParams(sql, jsonArray, query -> {
-          statsTracker(SAVE_STAT_METHOD, table, start);
-          if (query.failed()) {
-            log.error(query.cause().getMessage(), query.cause());
-            replyHandler.handle(Future.failedFuture(query.cause()));
-            return;
-          }
-          try {
-            String updatedEntityString = query.result().getResults().get(0).getValue(0).toString();
-            @SuppressWarnings("unchecked")
-            T updatedEntity = (T) mapper.readValue(updatedEntityString, entity.getClass());
-            replyHandler.handle(Future.succeededFuture(updatedEntity));
-          } catch (Exception e) {
-            log.error(e.getCause().getMessage(), e.getCause());
-            replyHandler.handle(Future.failedFuture(e));
-          }
-        });
+        statsTracker(SAVE_STAT_METHOD, table, start);
+        if (query.failed()) {
+          log.error(query.cause().getMessage(), query.cause());
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        try {
+          String updatedEntityString = query.result().getResults().get(0).getValue(0).toString();
+          @SuppressWarnings("unchecked")
+          T updatedEntity = (T) mapper.readValue(updatedEntityString, entity.getClass());
+          replyHandler.handle(Future.succeededFuture(updatedEntity));
+        } catch (Exception e) {
+          log.error(e.getMessage(), e);
+          replyHandler.handle(Future.failedFuture(e));
+        }
+      });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));

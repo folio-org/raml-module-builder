@@ -1153,9 +1153,9 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void saveAndReturnUpdatedEntityQueryReturnNullResultSet(TestContext context) {
+  public void saveAndReturnUpdatedEntityQueryReturnBadResults(TestContext context) {
     String uuid = randomUuid();
-    postgresClientQueryReturnNullResultSet().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
+    postgresClientQueryReturnBadResults().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
   }
 
   @Test
@@ -1593,12 +1593,15 @@ public class PostgresClientIT {
   /**
    * @return a PostgresClient where invoking SQLConnection::queryWithParams will return null ResultSet
    */
-  private PostgresClient postgresClientQueryReturnNullResultSet() {
+  private PostgresClient postgresClientQueryReturnBadResults() {
     SQLConnection sqlConnection = new PostgreSQLConnectionImpl(null, null, null) {
       @Override
       public SQLConnection queryWithParams(String sql, JsonArray params,
           Handler<AsyncResult<ResultSet>> resultHandler) {
-        resultHandler.handle(Future.succeededFuture(null));
+        ResultSet resultSet = new ResultSet();
+        resultSet.setResults(new ArrayList<JsonArray>());
+        resultSet.getResults().add(new JsonArray().add(new JsonObject().put("dummy", "dummy")));
+        resultHandler.handle(Future.succeededFuture(resultSet));
         return null;
       }
 
