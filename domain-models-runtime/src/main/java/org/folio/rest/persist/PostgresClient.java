@@ -739,11 +739,11 @@ public class PostgresClient {
   }
 
   /**
-   * Insert entity into table.
+   * Insert entity into table and return the updated entity.
    * @param table database table (without schema)
    * @param id primary key for the record
    * @param entity a POJO (plain old java object)
-   * @param replyHandler returns any errors and the updated entity.
+   * @param replyHandler returns any errors and the entity after applying any database INSERT triggers
    */
   <T> void saveAndReturnUpdatedEntity(String table, String id, T entity, Handler<AsyncResult<T>> replyHandler) {
     client.getConnection(conn -> saveAndReturnUpdatedEntity(conn, table, id, entity, closeAndHandleResult(conn, replyHandler)));
@@ -934,15 +934,13 @@ public class PostgresClient {
   }
 
   /**
-   * Save entity in table and return the updated version (after database trigger for example).
+   * Save entity in table and return the updated entity.
    *
    * @param sqlConnection connection (for example with transaction)
    * @param table where to insert the entity record
    * @param id  the value for the id field (primary key)
-   * @param entity  the record to insert, either a POJO or a JsonArray, see convertEntity
-   * @param upsert whether to update if the record with that id already exists (INSERT or UPDATE)
-   * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
-   * @param replyHandler  where to report success status and the updated entity
+   * @param entity  the record to insert, a POJO
+   * @param replyHandler  where to report success status and the entity after applying any database INSERT triggers
    */
   private <T> void saveAndReturnUpdatedEntity(AsyncResult<SQLConnection> sqlConnection, String table, String id, T entity,
       Handler<AsyncResult<T>> replyHandler) {
@@ -950,6 +948,7 @@ public class PostgresClient {
     log.debug("save (with connection and id) called on " + table);
 
     if (sqlConnection.failed()) {
+      log.error(sqlConnection.cause().getMessage(), sqlConnection.cause());
       replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
       return;
     }
@@ -957,20 +956,23 @@ public class PostgresClient {
     try {
       long start = System.nanoTime();
       String sql = INSERT_CLAUSE + schemaName + DOT + table
-          + " (id, jsonb) VALUES (?, ?::JSON) RETURNING jsonb";
+          + " (id, jsonb) VALUES (?, ?::JSONB) RETURNING jsonb";
       JsonArray jsonArray = new JsonArray().add(id).add(pojo2json(entity));
       sqlConnection.result().queryWithParams(sql, jsonArray, query -> {
           statsTracker(SAVE_STAT_METHOD, table, start);
           if (query.failed()) {
+            log.error(query.cause().getMessage(), query.cause());
             replyHandler.handle(Future.failedFuture(query.cause()));
-          } else {
-            try {
-              @SuppressWarnings("unchecked")
-              T rs = (T) mapper.readValue(query.result().getResults().get(0).getValue(0).toString(), entity.getClass());
-              replyHandler.handle(Future.succeededFuture(rs));
-            } catch (Exception e) {
-              replyHandler.handle(Future.failedFuture(e));
-            }
+            return;
+          }
+          try {
+            String updatedEntityString = query.result().getResults().get(0).getValue(0).toString();
+            @SuppressWarnings("unchecked")
+            T updatedEntity = (T) mapper.readValue(updatedEntityString, entity.getClass());
+            replyHandler.handle(Future.succeededFuture(updatedEntity));
+          } catch (Exception e) {
+            log.error(e.getCause().getMessage(), e.getCause());
+            replyHandler.handle(Future.failedFuture(e));
           }
         });
     } catch (Exception e) {

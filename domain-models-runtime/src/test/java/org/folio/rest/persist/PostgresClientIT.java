@@ -1528,8 +1528,8 @@ public class PostgresClientIT {
   }
 
   /**
-   * @return a PostgresClient where invoking SQLConnection::update or SQLConnection::updateWithParams
-   * will report a failure via the resultHandler.
+   * @return a PostgresClient where invoking SQLConnection::update, SQLConnection::updateWithParams or
+   * SQLConnection::queryWithParams will report a failure via the resultHandler.
    */
   private PostgresClient postgresClientQueryFails() {
     SQLConnection sqlConnection = new PostgreSQLConnectionImpl(null, null, null) {
