@@ -938,7 +938,7 @@ public class PostgresClient {
    *
    * @param sqlConnection connection (for example with transaction)
    * @param table where to insert the entity record
-   * @param id  the value for the id field (primary key)
+   * @param id  the value for the id field (primary key); if null a new random UUID is created for it.
    * @param entity  the record to insert, a POJO
    * @param replyHandler  where to report success status and the entity after applying any database INSERT triggers
    */
@@ -957,7 +957,9 @@ public class PostgresClient {
       long start = System.nanoTime();
       String sql = INSERT_CLAUSE + schemaName + DOT + table
           + " (id, jsonb) VALUES (?, ?::JSONB) RETURNING jsonb";
-      JsonArray jsonArray = new JsonArray().add(id).add(pojo2json(entity));
+      JsonArray jsonArray = new JsonArray()
+          .add(id == null ? UUID.randomUUID().toString() : id)
+          .add(pojo2json(entity));
       sqlConnection.result().queryWithParams(sql, jsonArray, query -> {
         statsTracker(SAVE_STAT_METHOD, table, start);
         if (query.failed()) {

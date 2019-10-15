@@ -1135,6 +1135,11 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveAndReturnUpdatedEntityWithNullId(TestContext context) {
+    createFoo(context).saveAndReturnUpdatedEntity(FOO, null, xPojo, context.asyncAssertSuccess());
+  }
+
+  @Test
   public void saveAndReturnUpdatedEntityNullConnection(TestContext context) {
     String uuid = randomUuid();
     postgresClientNullConnection().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
@@ -1550,7 +1555,7 @@ public class PostgresClientIT {
       public SQLConnection queryWithParams(String sql, JsonArray params,
           Handler<AsyncResult<ResultSet>> resultHandler) {
         resultHandler.handle(Future.failedFuture("postgresClientQueryFails"));
-        return null;
+        return this;
       }
 
       @Override
@@ -1602,7 +1607,7 @@ public class PostgresClientIT {
         resultSet.setResults(new ArrayList<JsonArray>());
         resultSet.getResults().add(new JsonArray().add(new JsonObject().put("dummy", "dummy")));
         resultHandler.handle(Future.succeededFuture(resultSet));
-        return null;
+        return this;
       }
 
       @Override
