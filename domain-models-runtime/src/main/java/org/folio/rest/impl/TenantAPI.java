@@ -1,7 +1,7 @@
 package org.folio.rest.impl;
 
 import java.io.InputStream;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
@@ -11,13 +11,11 @@ import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.resource.Tenant;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.ddlgen.FullText;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -26,7 +24,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -40,14 +37,7 @@ public class TenantAPI implements Tenant {
   public static final String       TABLE_JSON = "templates/db_scripts/schema.json";
   public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
 
-
-  private static final String      UPGRADE_FROM_VERSION     = "module_from";
-  private static final String      UPGRADE_TO_VERSION       = "module_to";
-  private static final String      CONTENT_LANGUAGE         = "x-okapi-language";
-
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
-  private final Messages            messages          = Messages.getInstance();
-
 
   @Validate
   @Override
@@ -207,7 +197,6 @@ public class TenantAPI implements Tenant {
 
     context.runOnContext(v -> {
       String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
-      String ftLanguage = getLanguage4FT(headers.get(CONTENT_LANGUAGE));
       log.info("sending... postTenant for " + tenantId);
       try {
         //body is optional so that the TenantAttributes
@@ -246,19 +235,9 @@ public class TenantAPI implements Tenant {
 
               SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
 
-              String tableInputStr = null;
-              if(tableInput != null){
-                tableInputStr = IOUtils.toString(tableInput, "UTF8");
-                Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
-                if(ftLanguage != null) {
-                  //FT default language was passed in for the tenant, override the default language in the
-                  //schema.json
-                  FullText ft = new FullText();
-                  ft.setDefaultDictionary(ftLanguage);
-                  schema.setFullText(ft);
-                }
-                sMaker.setSchema(schema);
-              }
+              String tableInputStr = IOUtils.toString(tableInput, StandardCharsets.UTF_8);
+              Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+              sMaker.setSchema(schema);
 
               String sqlFile = sMaker.generateDDL();
               log.debug("GENERATED SCHEMA " + sqlFile);
@@ -313,80 +292,4 @@ public class TenantAPI implements Tenant {
       }
     });
   }
-
-  /**
-   * @param string
-   * @return
-   */
-  private String getLanguage4FT(String language) {
-    if(language == null){
-      return null;
-    }
-    if(language.startsWith("en")){
-      return "english";
-    }
-    else if(language.startsWith("da")){
-      return "danish";
-    }
-    else if(language.startsWith("fi")){
-      return "finnish";
-    }
-    else if(language.startsWith("ru")){
-      return "russian";
-    }
-    else if(language.startsWith("ro")){
-      return "romanian";
-    }
-    else if(language.startsWith("no")){
-      return "norwegian";
-    }
-    else if(language.startsWith("it")){
-      return "italian";
-    }
-    else if(language.startsWith("hu")){
-      return "hungarian";
-    }
-    else if(language.startsWith("de")){
-      return "german";
-    }
-    else if(language.startsWith("fr")){
-      return "french";
-    }
-    else if(language.startsWith("pt") || language.startsWith("por")){
-      return "portuguese";
-    }
-    else if(language.startsWith("es") || language.startsWith("spa")){
-      return "spanish";
-    }
-    else if(language.startsWith("tr") || language.startsWith("tur")){
-      return "turkish";
-    }
-    else if(language.startsWith("sv") || language.startsWith("swe")){
-      return "swedish";
-    }
-    return "english";
-  }
-
-  /**
-   * @param jar
-   * @return
-   */
-  private void validateJson(JsonObject jar) throws Exception {
-    //System.out.println("jobj =................................. " + jar);
-    if(!jar.containsKey(UPGRADE_FROM_VERSION)){
-      throw new Exception(UPGRADE_FROM_VERSION + " entry does not exist in post tenant request body");
-    }
-  }
-
-  private void toMap(TenantAttributes jar, List<String> placeHolders, List<String> values){
-    try {
-      placeHolders.add(UPGRADE_FROM_VERSION);
-      placeHolders.add(UPGRADE_TO_VERSION);
-      values.add(jar.getModuleFrom());
-      values.add(jar.getModuleTo());
-    } catch (Exception e) {
-      log.warn("Unable to parse body", e);
-    }
-  }
-
 }
