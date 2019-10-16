@@ -1135,8 +1135,29 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveAndReturnUpdatedEntity(TestContext context) {
+    postgresClient = createFoo(context);
+    String uuid1 = randomUuid();
+    postgresClient.saveAndReturnUpdatedEntity(FOO, uuid1, xPojo, context.asyncAssertSuccess(updated -> {
+      context.assertEquals("x", updated.key);
+      postgresClient.getById(FOO, uuid1, context.asyncAssertSuccess(get -> {
+        context.assertEquals("x", get.getString("key"));
+      }));
+    }));
+    String uuid2 = randomUuid();
+    postgresClient.saveAndReturnUpdatedEntity(FOO, uuid2, singleQuotePojo, context.asyncAssertSuccess(updated -> {
+      context.assertEquals("'", updated.key);
+      postgresClient.getById(FOO, uuid2, context.asyncAssertSuccess(get -> {
+        context.assertEquals("'", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
   public void saveAndReturnUpdatedEntityWithNullId(TestContext context) {
-    createFoo(context).saveAndReturnUpdatedEntity(FOO, null, xPojo, context.asyncAssertSuccess());
+    createFoo(context).saveAndReturnUpdatedEntity(FOO, null, xPojo, context.asyncAssertSuccess(updated -> {
+      context.assertEquals("x", updated.key);
+    }));
   }
 
   @Test
