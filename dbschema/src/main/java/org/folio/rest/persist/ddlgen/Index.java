@@ -105,7 +105,7 @@ public class Index extends TableIndexes {
       int endOffset = idx > -1 ? -2 : -1;
       String arrowToken = "->";
       if(j == rawExpandedTerm.length + endOffset) {
-        arrowToken = "->>";
+        arrowToken = "->";
       }
 
       if(idx > -1) {
