@@ -23,7 +23,7 @@ class IndexTest {
     idx.setFieldPath("testIdx");
     idx.setFieldName("testIdx");
     idx.setMultiFieldNames("field1[*].test,field2[*].name,field3.blah.blah2[*].foo");
-    assertEquals("concat_space_sql(concat_array_object_values(test_table.jsonb->>'field1','test') , concat_array_object_values(test_table.jsonb->>'field2','name') , concat_array_object_values(test_table.jsonb->'field3'->'blah'->>'blah2','foo'))",idx.getFinalSqlExpression("test_table"));
+    assertEquals("concat_space_sql(concat_array_object_values(test_table.jsonb->'field1','test') , concat_array_object_values(test_table.jsonb->'field2','name') , concat_array_object_values(test_table.jsonb->'field3'->'blah'->>'blah2','foo'))",idx.getFinalSqlExpression("test_table"));
 
   }
   @Test
