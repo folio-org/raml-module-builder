@@ -92,7 +92,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("ginfieldstar == \"Boston MA\"").toString();
-    String expected = "WHERE lower(concat_space_sql(concat_array_object_values(tablea.jsonb->>'field1','city') , concat_array_object_values(tablea.jsonb->>'field2','state'))) LIKE lower('Boston MA')";
+    String expected = "WHERE lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','city') , concat_array_object_values(tablea.jsonb->'field2','state'))) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
   @Test
@@ -100,7 +100,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("ginfielddotstar == \"Boston MA\"").toString();
-    String expected = "WHERE lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field3'->>'info','city') , concat_array_object_values(tablea.jsonb->'field3'->>'info','state'))) LIKE lower('Boston MA')";
+    String expected = "WHERE lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field3'->'info','city') , concat_array_object_values(tablea.jsonb->'field3'->>'info','state'))) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
   @Test
@@ -108,7 +108,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tabledginindex == \"Boston MA\"").toString();
-    String expected = "WHERE lower(concat_space_sql(tabled.jsonb->'proxy'->'personal'->>'city' , tabled.jsonb->'proxy'->'personal'->>'state')) LIKE lower('Boston MA')";
+    String expected = "WHERE lower(concat_space_sql(tabled.jsonb->'proxy'->'personal'->'city' , tabled.jsonb->'proxy'->'personal'->'state')) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
 }

@@ -85,8 +85,8 @@ public class SchemaMakerTest {
 
     assertThat(result,containsString("((concat_space_sql(concat_array_object_values(tablea.jsonb->>'user','firstName') , concat_array_object_values(tablea.jsonb->>'user','lastName'))) gin_trgm_ops)"));
     assertThat(result,containsString("((concat_space_sql(concat_array_object_values(tablea.jsonb->'user'->>'info','firstName') , concat_array_object_values(tablea.jsonb->'user'->>'info','lastName'))) gin_trgm_ops)"));
-    assertThat(result,containsString("( to_tsvector('english', concat_space_sql(concat_array_object_values(tablea.jsonb->>'field1','firstName') , concat_array_object_values(tablea.jsonb->>'field2','lastName'))) )"));
-    assertThat(result,containsString("( to_tsvector('english', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->>'info','firstName') , concat_array_object_values(tablea.jsonb->'field2'->>'info','lastName'))) )"));
+    assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','firstName') , concat_array_object_values(tablea.jsonb->'field2','lastName'))) )"));
+    assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->'info','firstName') , concat_array_object_values(tablea.jsonb->'field2'->'info','lastName'))) )"));
   }
 
   @Test
