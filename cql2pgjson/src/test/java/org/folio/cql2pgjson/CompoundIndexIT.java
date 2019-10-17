@@ -6,6 +6,7 @@ import static org.junit.Assert.assertThat;
 import java.util.List;
 
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.hamcrest.collection.IsEmptyCollection;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -116,7 +117,7 @@ public class CompoundIndexIT extends DatabaseTestBase {
 
   @Test
   public void multiFieldNamesDotStarGIN() throws Exception {
-    assertThat( cqla("ginfielddotstar == \"Boston\""),  containsInAnyOrder("Mike","Tom"));
+    assertThat( cqla("ginfielddotstar == \"Boston\""),  IsEmptyCollection.empty());
   }
 
   @Test
