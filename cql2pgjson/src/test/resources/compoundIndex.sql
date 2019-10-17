@@ -18,20 +18,9 @@ $func$  LANGUAGE sql IMMUTABLE;
 create or replace function concat_space_sql(VARIADIC text[])
 RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); $$ LANGUAGE SQL IMMUTABLE;
 
-create or replace function concat_array_object_values(jsonb_data text, field text) RETURNS text AS $$
-DECLARE
-
-  res text;
-  i jsonb;
-BEGIN
-  
-  FOR i IN SELECT * FROM json_array_elements(($1)::json)
-   LOOP
-    res =  concat_ws(', ',res, i->$2);
-  END LOOP;
-  RETURN res;
-END; 
-$$ LANGUAGE plpgsql IMMUTABLE;
+create or replace function concat_array_object_values(jsonb_data jsonb, field text) RETURNS text AS $$
+  SELECT string_agg(value->>$2, ' ') FROM jsonb_array_elements($1);
+$$ LANGUAGE sql IMMUTABLE;
     
 CREATE OR REPLACE FUNCTION update_id() RETURNS TRIGGER AS $$
 BEGIN
