@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response;
 
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Referencing;
 import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.jaxrs.model.UserdataCollection;
 import org.folio.rest.jaxrs.model.Users;
@@ -93,6 +94,7 @@ public class PgUtilIT {
     ownEmbeddedPostgres = true;
   }
 
+  private static final String DUMMY_VAL = "dummy value set by trigger";
   private static void createUserTable(TestContext context) {
     execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
     execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
@@ -110,6 +112,10 @@ public class PgUtilIT {
                      + "$$ BEGIN NEW.userid = NEW.jsonb->>'userId'; RETURN NEW; END; $$ language 'plpgsql';");
     execute(context, "CREATE TRIGGER userid BEFORE INSERT OR UPDATE ON " + schema + ".referencing "
                      + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".userid();");
+    execute(context, "CREATE FUNCTION " + schema + ".dummy() RETURNS TRIGGER AS "
+                     + "$$ BEGIN NEW.jsonb = NEW.jsonb || '{\"dummy\" : \"" + DUMMY_VAL + "\"}'; RETURN NEW; END; $$ language 'plpgsql';");
+    execute(context, "CREATE TRIGGER idusername BEFORE INSERT OR UPDATE ON " + schema + ".users "
+                     + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".dummy();");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
   }
 
@@ -317,7 +323,7 @@ public class PgUtilIT {
 
   private void insertReferencing(TestContext testContext, String id, String userId) {
     Async async = testContext.async();
-    PgUtil.post("referencing", new Referencing(id, userId), okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.post("referencing", new Referencing().withId(id).withUserId(userId), okapiHeaders, vertx.getOrCreateContext(),
         ResponseImpl.class, asyncAssertSuccess(testContext, 201, post -> {
           async.complete();
     }));
@@ -494,6 +500,17 @@ public class PgUtilIT {
   }
 
   @Test
+  public void postResponseWithUser201MethodAndTrigger(TestContext testContext) {
+    String uuid = randomUuid();
+    PgUtil.post("users", new User().withUsername("dummy").withId(uuid),
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithUserFor201Method.class,
+        testContext.asyncAssertSuccess(result -> {
+          assertThat(result.getStatus(), is(201));
+          assertThat(((User)result.getEntity()).getDummy(), is(DUMMY_VAL));
+        }));
+  }
+
+  @Test
   public void postResponseWithout500(TestContext testContext) {
     PgUtil.post("users", "string", okapiHeaders, vertx.getOrCreateContext(),
         ResponseWithout500.class,
@@ -593,7 +610,7 @@ public class PgUtilIT {
     String refId = randomUuid();
     post(testContext, "Folio", user1, 201);
     insertReferencing(testContext, refId, user1);
-    PgUtil.put("referencing", new Referencing(refId, user2), refId, okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.put("referencing", new Referencing().withId(refId).withUserId(user2), refId, okapiHeaders, vertx.getOrCreateContext(),
         ResponseImpl.class,
         asyncAssertSuccess(testContext, 400, "referencing"));
   }
@@ -605,7 +622,7 @@ public class PgUtilIT {
     String refId = randomUuid();
     post(testContext, "Folio", user1, 201);
     insertReferencing(testContext, refId, user1);
-    PgUtil.put("referencing", new Referencing(refId, user2), refId, okapiHeaders, vertx.getOrCreateContext(),
+    PgUtil.put("referencing", new Referencing().withId(refId).withUserId(user2), refId, okapiHeaders, vertx.getOrCreateContext(),
         ResponseWith422.class,
         asyncAssertSuccess(testContext, 422, response -> {
           Errors errors = (Errors) response.result().getEntity();
@@ -1439,30 +1456,6 @@ public class PgUtilIT {
     }
     public static Response respond400WithTextPlain(Object entity) {
       return ResponseImpl.respond400WithTextPlain(entity);
-    }
-  };
-
-  /**
-   * Record of the table "referencing". referencing.userId is a foreign key to users.id.
-   */
-  public class Referencing {
-    public String id;
-    public String userId;
-    public Referencing(String id, String userId) {
-      this.id = id;
-      this.userId = userId;
-    }
-    public String getId() {
-      return id;
-    }
-    public void setId(String id) {
-      this.id = id;
-    }
-    public String getUserId() {
-      return userId;
-    }
-    public void setUserId(String userId) {
-      this.userId = userId;
     }
   }
 }
