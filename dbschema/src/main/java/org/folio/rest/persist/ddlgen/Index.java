@@ -105,11 +105,11 @@ public class Index extends TableIndexes {
       int endOffset = idx > -1 ? -2 : -1;
       String arrowToken = "->";
       if(j == rawExpandedTerm.length + endOffset) {
-        arrowToken = "->";
+        arrowToken = "->>";
       }
 
       if(idx > -1) {
-
+        arrowToken = "->";
         expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j].substring(0,idx)).append("',").append("'").append(rawExpandedTerm[j+1]).append("'");
         wasArrayIndex = true;
         break;
