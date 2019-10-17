@@ -120,7 +120,13 @@ public class CompoundIndexIT extends DatabaseTestBase {
   }
 
   @Test
-  public void multiFieldNamesDotStarFT() throws Exception {
-    assertThat( cqla("ftfielddotstar = \"PA\""),  containsInAnyOrder("Mary", "Mike"));
+  public void multiFieldNamesDotStarFTAll() throws Exception {
+    assertThat( cqla("ftfielddotstar all \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike"));
   }
+
+  @Test
+  public void multiFieldNamesDotStarFTAny() throws Exception {
+    assertThat( cqla("ftfielddotstar any \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike", "Mary"));
+  }
+
 }
