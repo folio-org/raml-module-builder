@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({
     "username",
     "id",
+    "dummy"
 })
 public class User {
 
@@ -37,6 +38,15 @@ public class User {
     @JsonPropertyDescription("A globally unique (UUID) identifier for the user")
     @NotNull
     private String id;
+
+    /**
+     * A dummy field to be set by testing trigger
+     *
+     */
+    @JsonProperty("dummy")
+    @JsonPropertyDescription("A dummy field to be set by testing trigger")
+    private String dummy;
+
 
     /**
      * A unique name belonging to a user. Typically used for login
@@ -85,4 +95,13 @@ public class User {
         this.id = id;
         return this;
     }
+
+    public String getDummy() {
+      return dummy;
+    }
+
+    public void setDummy(String dummy) {
+      this.dummy = dummy;
+    }
+
 }

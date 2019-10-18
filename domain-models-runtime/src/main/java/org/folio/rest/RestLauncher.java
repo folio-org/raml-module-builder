@@ -27,7 +27,8 @@ public class RestLauncher extends Launcher {
     System.out.println("starting rest verticle service..........");
     options.setBlockedThreadCheckInterval(1500000);
     options.setWarningExceptionTime(1500000);
-    options.setMetricsOptions(new DropwizardMetricsOptions().setEnabled(true).addMonitoredHttpServerUri(
+    boolean enabled = options.getMetricsOptions().isEnabled();
+    options.setMetricsOptions(new DropwizardMetricsOptions().setEnabled(enabled).addMonitoredHttpServerUri(
         new Match().setValue("/.*").setType(MatchType.REGEX)));
   }
 

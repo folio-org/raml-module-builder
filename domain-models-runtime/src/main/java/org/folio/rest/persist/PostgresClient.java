@@ -739,6 +739,17 @@ public class PostgresClient {
   }
 
   /**
+   * Insert entity into table and return the updated entity.
+   * @param table database table (without schema)
+   * @param id primary key for the record
+   * @param entity a POJO (plain old java object)
+   * @param replyHandler returns any errors and the entity after applying any database INSERT triggers
+   */
+  <T> void saveAndReturnUpdatedEntity(String table, String id, T entity, Handler<AsyncResult<T>> replyHandler) {
+    client.getConnection(conn -> saveAndReturnUpdatedEntity(conn, table, id, entity, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
    * Insert entity into table.
    * @param table database table (without schema)
    * @param id primary key for the record, or null if one should be created
@@ -916,6 +927,56 @@ public class PostgresClient {
             replyHandler.handle(Future.succeededFuture(query.result().getResults().get(0).getValue(0).toString()));
           }
         });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Save entity in table and return the updated entity.
+   *
+   * @param sqlConnection connection (for example with transaction)
+   * @param table where to insert the entity record
+   * @param id  the value for the id field (primary key); if null a new random UUID is created for it.
+   * @param entity  the record to insert, a POJO
+   * @param replyHandler  where to report success status and the entity after applying any database INSERT triggers
+   */
+  private <T> void saveAndReturnUpdatedEntity(AsyncResult<SQLConnection> sqlConnection, String table, String id, T entity,
+      Handler<AsyncResult<T>> replyHandler) {
+
+    log.debug("save (with connection and id) called on " + table);
+
+    if (sqlConnection.failed()) {
+      log.error(sqlConnection.cause().getMessage(), sqlConnection.cause());
+      replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
+      return;
+    }
+
+    try {
+      long start = System.nanoTime();
+      String sql = INSERT_CLAUSE + schemaName + DOT + table
+          + " (id, jsonb) VALUES (?, ?::JSONB) RETURNING jsonb";
+      JsonArray jsonArray = new JsonArray()
+          .add(id == null ? UUID.randomUUID().toString() : id)
+          .add(pojo2json(entity));
+      sqlConnection.result().queryWithParams(sql, jsonArray, query -> {
+        statsTracker(SAVE_STAT_METHOD, table, start);
+        if (query.failed()) {
+          log.error(query.cause().getMessage(), query.cause());
+          replyHandler.handle(Future.failedFuture(query.cause()));
+          return;
+        }
+        try {
+          String updatedEntityString = query.result().getResults().get(0).getValue(0).toString();
+          @SuppressWarnings("unchecked")
+          T updatedEntity = (T) mapper.readValue(updatedEntityString, entity.getClass());
+          replyHandler.handle(Future.succeededFuture(updatedEntity));
+        } catch (Exception e) {
+          log.error(e.getMessage(), e);
+          replyHandler.handle(Future.failedFuture(e));
+        }
+      });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
