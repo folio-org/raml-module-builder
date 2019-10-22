@@ -141,7 +141,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-mysql-postgresql-client</artifactId>
-      <version>3.5.1-FOLIO.1</version><!--$NO-MVN-MAN-VER$-->
+      <version>3.8.2-FOLIO-2</version><!--$NO-MVN-MAN-VER$-->
     </dependency>
     <dependency>
       <groupId>xerces</groupId>
