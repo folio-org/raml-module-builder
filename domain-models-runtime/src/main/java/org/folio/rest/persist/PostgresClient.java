@@ -97,7 +97,7 @@ public class PostgresClient {
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
   /** default analyze threshold value in milliseconds */
-  static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
+  static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 0;
 
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
@@ -920,7 +920,7 @@ public class PostgresClient {
           .add(id == null ? UUID.randomUUID().toString() : id)
           .add(convertEntity ? pojo2json(entity) : ((JsonArray)entity).getBinary(0));
       sqlConnection.result().queryWithParams(sql, jsonArray, query -> {
-          statsTracker(SAVE_STAT_METHOD, table, start);
+          // statsTracker(SAVE_STAT_METHOD, table, start);
           if (query.failed()) {
             replyHandler.handle(Future.failedFuture(query.cause()));
           } else {
@@ -1677,7 +1677,7 @@ public class PostgresClient {
 
     prepareCountQuery(queryHelper);
 
-    log.debug("Attempting count query: " + queryHelper.countQuery);
+    log.info("Attempting count query: " + queryHelper.countQuery);
     connection.querySingle(queryHelper.countQuery, countQuery -> {
       try {
         if (countQuery.failed()) {
@@ -1694,8 +1694,9 @@ public class PostgresClient {
 
         long countQueryTime = (System.nanoTime() - start);
         StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
-        log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
+        log.info("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
 
+        log.info("total=" + total + " offset=" + queryHelper.offset);
         if (total <= queryHelper.offset) {
           if (!queryHelper.transactionMode) {
             connection.close();
@@ -3479,7 +3480,8 @@ public class PostgresClient {
   }
 
   private static void rememberEmbeddedPostgres() {
-     embeddedPostgres = new EmbeddedPostgres(Version.Main.V10);
+    log.info("new EmbeddedPostgres");
+    embeddedPostgres = new EmbeddedPostgres(Version.Main.V10);
   }
 
   /**
@@ -3507,9 +3509,9 @@ public class PostgresClient {
         Arrays.asList("-E", "UTF-8", "--locale", locale));
       Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
 
-      log.info("embedded postgres started on port " + port);
+      log.info("PostgresClient version .. embedded postgres started on port " + port);
     } else {
-      log.info("embedded postgres is already running...");
+      log.info("PostgresClient embedded postgres is already running...");
     }
   }
 
