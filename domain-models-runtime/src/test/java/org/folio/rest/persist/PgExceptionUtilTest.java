@@ -12,13 +12,9 @@ import java.util.Map;
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.Test;
 
-import com.github.mauricio.async.db.exceptions.DatabaseException;
-import com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage;
-
-import scala.Predef;
-import scala.Tuple2;
-import scala.collection.JavaConverters;
+import com.github.jasync.sql.db.exceptions.DatabaseException;
+import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
+import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
 
 public class PgExceptionUtilTest {
   @Test
@@ -39,7 +35,7 @@ public class PgExceptionUtilTest {
   @Test
   public void noField() {
     @SuppressWarnings("unchecked")
-    ErrorMessage m = new ErrorMessage(scalaMap(Collections.EMPTY_MAP));
+    ErrorMessage m = new ErrorMessage(Collections.EMPTY_MAP);
     assertThat(PgExceptionUtil.badRequestMessage(new GenericDatabaseException(m)), is(nullValue()));
   }
 
@@ -84,22 +80,15 @@ public class PgExceptionUtilTest {
   }
 
   /**
-   * @return javaMap as an immutable scala map
-   */
-  private static scala.collection.immutable.Map<Object, String> scalaMap(Map<Object, String> javaMap) {
-    return JavaConverters.mapAsScalaMapConverter(javaMap).asScala().toMap(Predef.<Tuple2<Object, String>>conforms());
-  }
-
-  /**
    * @return GenericDatabaseException with ErrorMessage with the key value pairs listed in arguments, for example
    *   {@code genericDatabaseException('C', sqlstate, 'D', detail, 'M', message)}
    */
   static GenericDatabaseException genericDatabaseException(Object ... arguments) {
-    Map<Object, String> map = new HashMap<>();
+    Map<Character, String> map = new HashMap<>();
     for (int i=0; i<arguments.length; i+=2) {
       map.put((Character) arguments[i], (String) arguments[i+1]);
     }
-    return new GenericDatabaseException(new ErrorMessage(scalaMap(map)));
+    return new GenericDatabaseException(new ErrorMessage(map));
   }
 
   private void assertString(String sqlstate, String detail, String message, String expected) {
