@@ -1,3 +1,22 @@
+## 27.1.2 2019-10-23
+
+* RMB-485: RMB modules leak PostgreSQLConnection objects
+* RMB-476: PgUtil.post: Return after-trigger value (INSERT ... RETURNING jsonb)
+* RMB-482: Dropwizard metrics disabling
+* RMB-427: StatsTracker not being synchronized can fail PostgresClient operations when run in parallel
+* RMB-469: "multiFieldNames": "firstName , lastName" fails on spaces around the comma
+* RMB-470: "multiFieldNames" fail on nested fields (subfields) like proxy.personal.firstName
+* RMB-462: fullText / defaultDictionary not used in queries
+
+## 27.1.1 2019-09-25
+
+* RMB-479 mvn install leaves embedded postgres running
+* RMB-478 RMB echoes all headers
+
+## 25.0.2 2019-09-25
+
+* RMB-478 RMB echoes all headers
+
 ## 27.1.0 2019-09-24
 
 See also [27.1 upgrading instructions](doc/upgrading.md#version-271).
