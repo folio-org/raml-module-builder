@@ -3,18 +3,16 @@ package org.folio.rest.persist;
 import java.util.Collections;
 import java.util.Map;
 
-import com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage;
-
-import scala.collection.JavaConverters;
+import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
+import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
 
 /**
  * Easy access to
- * {@link com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException}
+ * {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException}
  * fields.
  */
 public class PgExceptionFacade {
-  private final Map<Object,String> fields;
+  private final Map<Character,String> fields;
 
   /**
    * @param throwable a GenericDatabaseException; any other Throwable is handled gracefully
@@ -25,15 +23,15 @@ public class PgExceptionFacade {
       return;
     }
 
-    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).errorMessage();
-    fields = JavaConverters.mapAsJavaMapConverter(errorMessage.fields()).asJava();
+    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).getErrorMessage();
+    fields = errorMessage.getFields();
   }
 
   /**
    * @return the fields of the underlying GenericDatabaseException, or an empty map if the throwable
    * isn't a GenericDatabaseException.
    */
-  public Map<Object,String> getFields() {
+  public Map<Character,String> getFields() {
     return fields;
   }
 
