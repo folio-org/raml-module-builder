@@ -45,7 +45,7 @@ public class ValidationHelper {
 
     if(error != null){
       Response r = null;
-      Map<Object,String> errorMessageMap = PgExceptionUtil.getBadRequestFields(error);
+      Map<Character,String> errorMessageMap = PgExceptionUtil.getBadRequestFields(error);
       if(errorMessageMap != null){
         //db error
         String desc = errorMessageMap.getOrDefault('D', "");
