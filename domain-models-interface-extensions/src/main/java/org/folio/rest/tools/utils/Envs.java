@@ -13,11 +13,13 @@ public enum Envs {
   DB_QUERYTIMEOUT,
   DB_CHARSET,
   DB_MAXPOOLSIZE,
+  DB_CONNECTION_RELEASE_DELAY,
   DB_EXPLAIN_QUERY_THRESHOLD;
 
   private static final String PORT = "port";
   private static final String TIMEOUT = "queryTimeout";
   private static final String MAXPOOL = "maxPoolSize";
+  private static final String CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
 
   private static Map<String, String> env = System.getenv();
 
@@ -35,6 +37,8 @@ public enum Envs {
       return TIMEOUT;
     } else if (key.equalsIgnoreCase(MAXPOOL)) {
       return MAXPOOL;
+    } else if (key.equalsIgnoreCase(CONNECTION_RELEASE_DELAY)) {
+      return CONNECTION_RELEASE_DELAY;
     }
     return key.toLowerCase();
   }

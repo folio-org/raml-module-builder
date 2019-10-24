@@ -115,6 +115,7 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(6000));
     assertThat(config.getString("username"), is("username"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -127,6 +128,7 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(port));
     assertThat(config.getString("username"), is("barschema"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -135,11 +137,13 @@ public class PostgresClientTest {
     JsonObject env = new JsonObject()
         .put("DB_EXPLAIN_QUERY_THRESHOLD", 1200L)
         .put("host", "example.com")
-        .put("port", 9876);
+        .put("port", 9876)
+        .put("connectionReleaseDelay", 90000);
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "aSchemaName", env);
     assertThat(config.getString("host"), is("example.com"));
     assertThat(config.getInteger("port"), is(9876));
     assertThat(config.getString("username"), is("aSchemaName"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(90000));
     assertThat(PostgresClient.getExplainQueryThreshold(), is(1200L));
     PostgresClient.setExplainQueryThreshold(previous);
   }
@@ -152,6 +156,7 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("localhost"));
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("postgres"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(30000));
   }
 
   @Test
@@ -162,6 +167,7 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("localhost"));
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("mySchemaName"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(30000));
   }
 
   @Test

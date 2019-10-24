@@ -102,6 +102,9 @@ public class PostgresClient {
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
 
+  private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
+  /** default release delay in milliseconds; after this time an idle database connection is closed */
+  private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
@@ -530,6 +533,9 @@ public class PostgresClient {
       //passed in port as well. useful when multiple modules start up an embedded postgres
       //in a single server.
       config.put(PORT, embeddedPort);
+    }
+    if (! config.containsKey(CONNECTION_RELEASE_DELAY)) {
+      config.put(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
     }
     return config;
   }
