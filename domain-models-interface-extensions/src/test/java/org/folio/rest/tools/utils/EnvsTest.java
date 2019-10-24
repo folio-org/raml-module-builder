@@ -24,6 +24,7 @@ public class EnvsTest {
     map.put("DB_HOST", "example.com");
     map.put("DB_QUERYTIMEOUT", "8");
     map.put("DB_MAXPOOLSIZE", "5");
+    map.put("DB_CONNECTION_RELEASE_DELAY", "12345");
     map.put("DB_EXPLAIN_QUERY_THRESHOLD", "100");
     // we dropped support for dot form. check that it is ignored
     map.put("db.username", "superwoman");
@@ -52,6 +53,11 @@ public class EnvsTest {
   }
 
   @Test
+  public void connectionReleaseDelay() {
+    assertEquals("12345", Envs.getEnv(Envs.DB_CONNECTION_RELEASE_DELAY));
+  }
+
+  @Test
   public void database() {
     assertNull(Envs.getEnv(Envs.DB_DATABASE));
   }
@@ -64,7 +70,7 @@ public class EnvsTest {
   @Test
   public void allDBConfs() {
     JsonObject json = Envs.allDBConfs();
-    assertEquals(4, json.size());
+    assertEquals(5, json.size());
     assertEquals("example.com", json.getValue("host"));
     assertEquals(Integer.valueOf(8), json.getValue("queryTimeout"));
     assertEquals(Integer.valueOf(5), json.getValue("maxPoolSize"));
