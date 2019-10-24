@@ -3,10 +3,25 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 28](#version-28)
 * [Version 27.1](#version-271)
 * [Version 27](#version-27)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 28
+
+* RMB-485 changed the postgresql driver . Namespace prefix change
+   `com.github.mauricio.async.db.postgresql` to
+   `com.github.jasync.sql.db.postgresql`.
+
+    * `org.folio.rest.persist.PgExceptionFacade.getFields` returns
+      `Map<Character.String>` rather than `Map<Object,String>`
+
+    * `org.folio.rest.persist.PgExceptionUtil.getBadRequestFields` returns
+      `Map<Character,String>` rather than `Map<Object,String>`
+
+* RMB-462 removed suport for `fullText` property in `schema.json`.
 
 ## Version 27.1
 
