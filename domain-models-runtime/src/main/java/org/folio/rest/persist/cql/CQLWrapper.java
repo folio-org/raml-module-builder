@@ -155,7 +155,9 @@ public class CQLWrapper {
     appendWhere(sb, query, field);
     for (WrapTheWrapper wrap : addedWrappers) {
       if (sb.length() > 0) {
-        sb.append(' ').append(wrap.operator).append(' ');
+        // (q1) operator q2 .. left-associative
+        sb.insert(0, '(');
+        sb.append(") ").append(wrap.operator).append(' ');
       }
       appendWhere(sb, wrap.wrapper.getQuery(), wrap.wrapper.getField());
     }
