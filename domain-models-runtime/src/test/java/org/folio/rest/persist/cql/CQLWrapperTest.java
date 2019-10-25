@@ -111,6 +111,14 @@ public class CQLWrapperTest {
   }
 
   @Test
+  public void wrapWithSorting() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper(cql2pgJson, "author = abc sortby title");
+    CQLWrapper wrapper2 = new CQLWrapper(cql2pgJson, "year = 1990 sortby date");
+    wrapper.addWrapper(wrapper2);
+    assertThat(wrapper.toString(), stringContainsInOrder("WHERE", "author", "abc", "year", "1990", "ORDER BY", "title"));
+  }
+
+  @Test
   public void sortBy() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1 sortBy name");
     assertThat(wrapper.toString(), stringContainsInOrder(" WHERE true ORDER BY ", "name"));
