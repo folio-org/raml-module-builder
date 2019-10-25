@@ -123,12 +123,12 @@ public class CQLWrapper {
    * @param field field the query is based on
    * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
    */
-  private void append(StringBuilder sb, String query, CQL2PgJSON field) {
-    if(query == null || field == null) {
+  private void appendWhere(StringBuilder sb, String query, CQL2PgJSON field) {
+    if (query == null || field == null) {
       return;
     }
     try {
-      sb.append(field.cql2pgJson(query));
+      sb.append(field.toSql(query).getWhere());
     } catch (QueryValidationException e) {
       throw new CQLQueryValidationException(e);
     }
@@ -150,6 +150,45 @@ public class CQLWrapper {
     sb.append(text);
   }
 
+  public String getWhere() {
+    StringBuilder sb = new StringBuilder();
+    appendWhere(sb, query, field);
+    for (WrapTheWrapper wrap : addedWrappers) {
+      if (sb.length() > 0) {
+        sb.append(' ').append(wrap.operator).append(' ');
+      }
+      appendWhere(sb, wrap.wrapper.getQuery(), wrap.wrapper.getField());
+    }
+    return sb.toString();
+  }
+
+  public String getWhereFull() {
+    String s = getWhere();
+    if (!s.isEmpty()) {
+      return " WHERE " + s;
+    }
+    return "";
+  }
+
+  public String getOrderBy() {
+    if (query == null || field == null) {
+      return "";
+    }
+    try {
+      return field.toSql(query).getOrderBy();
+    } catch (QueryValidationException e) {
+      throw new CQLQueryValidationException(e);
+    }
+  }
+
+  public String getOrderByFull() {
+    String s = getOrderBy();
+    if (!s.isEmpty()) {
+      return "ORDER BY " + s;
+    }
+    return "";
+  }
+
   /**
    * @return a space followed by the SQL clauses of WHERE, OFFSET and LIMIT
    * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
@@ -157,16 +196,8 @@ public class CQLWrapper {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    append(sb, query, field);
-    for (WrapTheWrapper wrap : addedWrappers) {
-      if (sb.length() > 0) {
-        sb.append(' ').append(wrap.operator).append(' ');
-      }
-      append(sb, wrap.wrapper.getQuery(), wrap.wrapper.getField());
-    }
-    if (sb.length() > 0) {
-      sb.insert(0, " WHERE ");
-    }
+    sb.append(getWhereFull());
+    spaceAppend(sb, getOrderByFull());
     spaceAppend(sb, limit.toString());
     spaceAppend(sb, offset.toString());
     String sql = sb.toString();

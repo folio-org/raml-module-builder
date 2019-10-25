@@ -1430,13 +1430,13 @@ public class PostgresClient {
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
       boolean returnCount, boolean returnIdField, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null, replyHandler);
+    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null /* facets */, replyHandler);
   }
 
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
       boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, null, replyHandler);
+    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, null /*distinctOn*/, replyHandler);
   }
 
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
@@ -1444,7 +1444,7 @@ public class PostgresClient {
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     client.getConnection(conn
-      -> doGet(conn, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn,
+      -> doGetObsolete(conn, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn,
         closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -1472,6 +1472,35 @@ public class PostgresClient {
     }
   }
 
+  /* low-level SQL getter, based on CQLWrapper.. Does not handle facets yet */
+  /* this function should eventually replace doGetObsolete */
+  private <T> void doGetWrapper(
+    AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
+    String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField, boolean setId,
+    List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
+  ) {
+
+    if (conn.failed()) {
+      log.error(conn.cause().getMessage(), conn.cause());
+      replyHandler.handle(Future.failedFuture(conn.cause()));
+      return;
+    }
+    SQLConnection connection = conn.result();
+    try {
+      QueryHelper queryHelper = buildQueryHelper(true, table, fieldName, wrapper, returnIdField, facets, distinctOn);
+      if (returnCount) {
+        processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
+          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
+      } else {
+        processQuery(connection, queryHelper, null, GET_STAT_METHOD,
+          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
+      }
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
   /**
    *
    * @param connection
@@ -1486,7 +1515,7 @@ public class PostgresClient {
    * @param facets
    * @param replyHandler
    */
-  private <T> void doGet(
+  private <T> void doGetObsolete(
     AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
     String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
     List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
@@ -1503,7 +1532,7 @@ public class PostgresClient {
         QueryHelper queryHelper = buildSelectQueryHelper(true, table, fieldName, where, returnIdField, facets, distinctOn);
 
         if (returnCount) {
-          processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
+          processQueryWithCountObsolete(connection, queryHelper, GET_STAT_METHOD,
             totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
         } else {
           processQuery(connection, queryHelper, null, GET_STAT_METHOD,
@@ -1634,6 +1663,36 @@ public class PostgresClient {
     return new JsonObject(rowMap);
   }
 
+  /* should eventually resplce buildSelectQueryHelper */
+  QueryHelper buildQueryHelper(
+    boolean transactionMode, String table, String fieldName,
+    CQLWrapper wrapper, boolean returnIdField, List<FacetField> facets, String distinctOn
+  ) {
+    String addIdField = "";
+    if (returnIdField) {
+      addIdField = COMMA + ID_FIELD;
+    }
+
+    if (!"null".equals(fieldName) && fieldName.contains("*")) {
+      // if we are requesting all fields (*) , then dont add the id field to the select
+      // this will return two id columns which will create ambiguity in facet queries
+      addIdField = "";
+    }
+
+    QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
+
+    String countOn = "*";
+    String distinctOnClause = "";
+    if (distinctOn != null && !distinctOn.isEmpty()) {
+      distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOn);
+      countOn = distinctOn;
+    }
+
+    queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + wrapper.toString();
+    queryHelper.countQuery = SELECT + " COUNT(" + countOn + ") " + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereFull();
+    return queryHelper;
+  }
+
   QueryHelper buildSelectQueryHelper(
     boolean transactionMode, String table, String fieldName,
     String where, boolean returnIdField, List<FacetField> facets, String distinctOn
@@ -1669,28 +1728,37 @@ public class PostgresClient {
    * @param resultSetMapper
    * @param replyHandler
    */
-  <T> void processQueryWithCount(
+  <T> void processQueryWithCountObsolete(
     SQLConnection connection, QueryHelper queryHelper, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) throws IOException, TemplateException {
     long start = System.nanoTime();
 
     prepareCountQuery(queryHelper);
+    processQueryWithCount(connection, queryHelper, statMethod,
+      resultSetMapper, replyHandler);
+  }
+
+  private <T> void processQueryWithCount(
+    SQLConnection connection, QueryHelper queryHelper, String statMethod,
+    Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
+  ) throws IOException, TemplateException {
+    long start = System.nanoTime();
 
     log.debug("Attempting count query: " + queryHelper.countQuery);
-    connection.querySingle(queryHelper.countQuery, countQuery -> {
+    connection.querySingle(queryHelper.countQuery, countQueryResult -> {
       try {
-        if (countQuery.failed()) {
+        if (countQueryResult.failed()) {
           if (!queryHelper.transactionMode) {
             connection.close();
           }
-          log.error("query with count: " + countQuery.cause().getMessage()
-            + " - " + queryHelper.countQuery, countQuery.cause());
-          replyHandler.handle(Future.failedFuture(countQuery.cause()));
+          log.error("query with count: " + countQueryResult.cause().getMessage()
+            + " - " + queryHelper.countQuery, countQueryResult.cause());
+          replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
           return;
         }
 
-        int total = countQuery.result().getInteger(0);
+        int total = countQueryResult.result().getInteger(0);
 
         long countQueryTime = (System.nanoTime() - start);
         StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
@@ -1804,7 +1872,7 @@ public class PostgresClient {
   //@Timer
   public <T> void get(String table, T entity, boolean returnCount,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table,  entity, returnCount, true, replyHandler);
+    get(table, entity, returnCount, true /*returnIdField*/, replyHandler);
   }
 
   public <T> void get(String table, T entity, boolean returnCount, boolean returnIdField,
@@ -1870,27 +1938,33 @@ public class PostgresClient {
    */
   public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, filter, returnCount, true, replyHandler);
+    get(table, clazz, filter, returnCount, true /*setId*/, replyHandler);
   }
 
   public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
       boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, fields, filter, returnCount, setId, null, replyHandler);
+    get(table, clazz, fields, filter, returnCount, setId, null /*facets*/, replyHandler);
   }
 
   public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
-      boolean returnCount, boolean setId, List<FacetField> facets,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    String where = "";
-    try {
+    boolean returnCount, boolean setId, List<FacetField> facets,
+    Handler<AsyncResult<Results<T>>> replyHandler) {
+
+    String fieldsStr = Arrays.toString(fields);
+    String fieldName = fieldsStr.substring(1, fieldsStr.length() - 1);
+    String distinctOn = null;
+    boolean returnIdField = true;
+    if (filter != null && facets == null || facets.isEmpty()) {
+      client.getConnection(conn
+        -> doGetWrapper(conn, table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn,
+          closeAndHandleResult(conn, replyHandler)));
+    } else {
+      String where = "";
       if (filter != null) {
         where = filter.toString();
       }
-      String fieldsStr = Arrays.toString(fields);
-      get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, facets, replyHandler);
-    } catch (Exception e) {
-      replyHandler.handle(Future.failedFuture(e));
+      get(table, clazz, fieldName, where, returnCount, true, setId, facets, replyHandler);
     }
   }
 
@@ -1920,9 +1994,10 @@ public class PostgresClient {
     get(table, clazz, fields, filter, returnCount, true, replyHandler);
   }
 
+  /* PGUTIL USED VERSION */
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, true, replyHandler);
+    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, true /*setId*/, replyHandler);
   }
 
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount, boolean setId,
@@ -1978,7 +2053,7 @@ public class PostgresClient {
       get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
         returnCount, true, setId, facets, replyHandler);
     } else {
-      doGet(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
+      doGetObsolete(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
         fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, null, replyHandler);
     }
   }
@@ -2268,7 +2343,7 @@ public class PostgresClient {
           queryHelper.selectQuery = SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter;
           queryHelper.countQuery = parseQuery(queryHelper.selectQuery).getCountQuery();
 
-          processQueryWithCount(connection, queryHelper, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
+          processQueryWithCountObsolete(connection, queryHelper, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
         } catch (Exception e) {
           if (connection != null) {
             connection.close();

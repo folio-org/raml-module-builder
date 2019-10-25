@@ -277,7 +277,7 @@ public class PostgresClientTest {
       }
     };
 
-    testClient.processQueryWithCount(connection, queryHelper, "get",
+    testClient.processQueryWithCountObsolete(connection, queryHelper, "get",
       totaledResults -> {
         assertThat(totaledResults.total, is(total));
         return testClient.processResults(totaledResults.set, totaledResults.total, TestPojo.class, false);
