@@ -5,7 +5,6 @@ import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
-
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -27,6 +26,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
 import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
@@ -670,25 +670,56 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void parseQueryTest1() {
+  public void parseQueryWithDoubleAt() {
     String whereFromCQLtoPG = "id in (select t.id from (select id as id, "
       + "jsonb_array_elements(instance.jsonb->'contributors') as c) as t "
       + "where to_tsvector('simple', f_unaccent(t.c->>'name')) @@ to_tsquery('simple', f_unaccent('novik')) "
       + "and to_tsvector('simple', f_unaccent(t.c->>'contributorNameTypeId')) @@ to_tsquery('simple', f_unaccent('personal')))";
     String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 10 OFFSET 0";
     String selectClause = "SELECT jsonb,id FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    ParsedQuery parseQuery = PostgresClient.parseQuery(selectClause);
-    assertThat(parseQuery.getWhereClause().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
-    assertThat(parseQuery.getCountQuery().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
+    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
   }
 
   @Test
-  public void parseQueryTest2() {
+  public void parsQueryWithDoubleColon() {
+    String where = "tsvector @@ replace(to_tsquery('simple', '''foo''')::text, '&', '<->')::tsquery";
+    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
+  }
+
+  @Test
+  public void parseQueryWithUuid() {
     String whereFromCQLtoPG = "id = '68b6a052-5e73-4f04-90ab-273694d125bd'";
     String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
     String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    ParsedQuery parseQuery = PostgresClient.parseQuery(selectClause);
-    assertThat(parseQuery.getWhereClause().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
-    assertThat(parseQuery.getCountQuery().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
+    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
+  }
+
+  @Test
+  public void parseQueryWithIsTrueIsNotTrue() {
+    String whereFromCQLtoPG = "foo IS TRUE OR baz IS NOT TRUE OR baz IS TRUE OR bug IS NOT TRUE";
+    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
+    String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
+    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
+  }
+
+  /**
+   * Assert that parsQuery(String) returns a result where both .getWhereClause() and .getCountQuery()
+   * contain where, and assert that parsing doesn't cause an exception (that is logged as an error but ignored).
+   * @param select
+   * @param where
+   */
+  public void parseQueryWithoutErrorLogging(String select, String where) {
+    Logger oldLogger = PostgresClient.log;
+    PostgresClient.log = new Logger(oldLogger.getDelegate()) {
+      @Override
+      public void error(Object message, Throwable e) {
+        // no not ignore this exception but fail the test.
+        throw new RuntimeException(message == null ? null : message.toString(), e);
+      }
+    };
+    ParsedQuery parsedQuery = PostgresClient.parseQuery(select);
+    assertThat(parsedQuery.getWhereClause().toLowerCase(), containsString(where.toLowerCase()));
+    assertThat(parsedQuery.getCountQuery() .toLowerCase(), containsString(where.toLowerCase()));
+    PostgresClient.log = oldLogger;
   }
 }
