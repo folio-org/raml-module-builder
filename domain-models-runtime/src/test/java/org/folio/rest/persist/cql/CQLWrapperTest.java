@@ -9,7 +9,6 @@ import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.Criteria.Limit;
 import org.folio.rest.persist.Criteria.Offset;
-import org.folio.rest.persist.cql.CQLWrapper;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -108,7 +107,7 @@ public class CQLWrapperTest {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1");
     wrapper.addWrapper(wrapper);
     wrapper.addWrapper(wrapper, "or");
-    assertThat(wrapper.toString(), is(" WHERE true and true or true"));
+    assertThat(wrapper.toString(), is(" WHERE ((true) and true) or true"));
   }
 
   @Test
