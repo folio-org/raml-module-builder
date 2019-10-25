@@ -83,6 +83,7 @@ public class PostgresClientTest {
    }
  }
 
+  private Logger oldLogger;
   private String oldConfigFilePath;
   private boolean oldIsEmbedded;
   private int oldEmbeddedPort;
@@ -681,8 +682,26 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void parsQueryWithDoubleColon() {
+  public void parseQueryWithDoubleColon() {
     String where = "tsvector @@ replace(to_tsquery('simple', '''foo''')::text, '&', '<->')::tsquery";
+    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
+  }
+
+  @Test
+  public void parseQueryWithDoubleAnd() {
+    String where = "to_tsvector() @@ (to_tsquery('''cool''') && to_tsquery('''water'''))";
+    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
+  }
+
+  @Test
+  public void parseQueryWithDoublePipe() {
+    String where = "to_tsvector() @@ (to_tsquery('''cool''') || to_tsquery('''water'''))";
+    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
+  }
+
+  @Test
+  public void parseQueryWithDoubleArrow() {
+    String where = "to_tsvector() @@ (to_tsquery('''cool''') <-> to_tsquery('''water'''))";
     parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
   }
 
@@ -709,7 +728,6 @@ public class PostgresClientTest {
    * @param where
    */
   public void parseQueryWithoutErrorLogging(String select, String where) {
-    Logger oldLogger = PostgresClient.log;
     PostgresClient.log = new Logger(oldLogger.getDelegate()) {
       @Override
       public void error(Object message, Throwable e) {
@@ -720,6 +738,15 @@ public class PostgresClientTest {
     ParsedQuery parsedQuery = PostgresClient.parseQuery(select);
     assertThat(parsedQuery.getWhereClause().toLowerCase(), containsString(where.toLowerCase()));
     assertThat(parsedQuery.getCountQuery() .toLowerCase(), containsString(where.toLowerCase()));
+  }
+
+  @Before
+  public void saveLogger() {
+    oldLogger = PostgresClient.log;
+  }
+
+  @After
+  public void restoreLogger() {
     PostgresClient.log = oldLogger;
   }
 }

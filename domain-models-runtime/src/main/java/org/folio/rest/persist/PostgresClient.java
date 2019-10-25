@@ -149,6 +149,10 @@ public class PostgresClient {
   private static final String    IS_TRUE_REPLACEMENT      = " AND \\(\\(\\(TRUE\\)\\)\\)";
   private static final String    DOUBLE_AT                = " @@ ";
   private static final String    DOUBLE_AT_REPLACEMENT    = " = \\(\\(\\(DOUBLE_AT_REPLACEMENT\\)\\)\\) \\+ ";
+  private static final String    DOUBLE_AND               = " && ";
+  private static final String    DOUBLE_AND_REPLACEMENT   = " \\+ \\(\\(\\(DOUBLE_AND_REPLACEMENT\\)\\)\\) \\+ ";
+  private static final String    DOUBLE_ARROW             = " <-> ";
+  private static final String    DOUBLE_ARROW_REPLACEMENT = " \\+ \\(\\(\\(DOUBLE_ARROW_REPLACEMENT\\)\\)\\) \\+ ";
   private static final String    DOUBLE_COLON             = "::";
   private static final String    DOUBLE_COLON_REPLACEMENT = " \\+ \\(\\(\\(''\\)\\)\\) \\+ ";
 
@@ -3636,6 +3640,8 @@ public class PostgresClient {
         .replaceAll(NOT_TRUE, NOT_TRUE_REPLACEMENT)
         .replaceAll(IS_TRUE, IS_TRUE_REPLACEMENT)
         .replaceAll(DOUBLE_AT, DOUBLE_AT_REPLACEMENT)
+        .replaceAll(DOUBLE_AND, DOUBLE_AND_REPLACEMENT)
+        .replaceAll(DOUBLE_ARROW, DOUBLE_ARROW_REPLACEMENT)
         .replaceAll(DOUBLE_COLON, DOUBLE_COLON_REPLACEMENT);
   }
 
@@ -3644,6 +3650,8 @@ public class PostgresClient {
         .replaceAll(NOT_TRUE_REPLACEMENT, NOT_TRUE)
         .replaceAll(IS_TRUE_REPLACEMENT, IS_TRUE)
         .replaceAll(DOUBLE_AT_REPLACEMENT, DOUBLE_AT)
+        .replaceAll(DOUBLE_AND_REPLACEMENT, DOUBLE_AND)
+        .replaceAll(DOUBLE_ARROW_REPLACEMENT, DOUBLE_ARROW)
         .replaceAll(DOUBLE_COLON_REPLACEMENT, DOUBLE_COLON);
   }
 
