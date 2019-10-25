@@ -96,6 +96,8 @@ public class PostgresClient {
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
+  static Logger log = LoggerFactory.getLogger(PostgresClient.class);
+
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
 
@@ -144,6 +146,19 @@ public class PostgresClient {
 
   private static final String    COUNT_FIELD = "count";
 
+  private static final String    NOT_TRUE                 = " IS NOT TRUE";
+  private static final String    NOT_TRUE_REPLACEMENT     = " AND \\(\\(\\(FALSE\\)\\)\\)";
+  private static final String    IS_TRUE                  = " IS TRUE";
+  private static final String    IS_TRUE_REPLACEMENT      = " AND \\(\\(\\(TRUE\\)\\)\\)";
+  private static final String    DOUBLE_AT                = " @@ ";
+  private static final String    DOUBLE_AT_REPLACEMENT    = " = \\(\\(\\(DOUBLE_AT_REPLACEMENT\\)\\)\\) \\+ ";
+  private static final String    DOUBLE_AND               = " && ";
+  private static final String    DOUBLE_AND_REPLACEMENT   = " \\+ \\(\\(\\(DOUBLE_AND_REPLACEMENT\\)\\)\\) \\+ ";
+  private static final String    DOUBLE_ARROW             = " <-> ";
+  private static final String    DOUBLE_ARROW_REPLACEMENT = " \\+ \\(\\(\\(DOUBLE_ARROW_REPLACEMENT\\)\\)\\) \\+ ";
+  private static final String    DOUBLE_COLON             = "::";
+  private static final String    DOUBLE_COLON_REPLACEMENT = " \\+ \\(\\(\\(''\\)\\)\\) \\+ ";
+
   private static EmbeddedPostgres embeddedPostgres;
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
@@ -161,9 +176,6 @@ public class PostgresClient {
 
   private static final List<Map.Entry<String,Pattern>> REMOVE_FROM_COUNT_ESTIMATE= new java.util.ArrayList<>();
 
-  private static final Logger log = LoggerFactory.getLogger(PostgresClient.class);
-
-
   private static int embeddedPort            = -1;
 
   /** analyze threshold value in milliseconds */
@@ -175,7 +187,6 @@ public class PostgresClient {
   private AsyncSQLClient client;
   private final String tenantId;
   private final String schemaName;
-
 
   static {
     REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("LIMIT", Pattern.compile("LIMIT\\s+[\\d]+(?=(([^']*'){2})*[^']*$)", 2)));
@@ -3626,6 +3637,31 @@ public class PostgresClient {
   }
 
   /**
+   * FIXME: TEMPORARY HACK SINCE PARSER CANT HANDLE "IS TRUE", "IS NOT TRUE" and "@@".
+   * We replace it with same magic parsable value and afterwards undo the replacement.
+   * This is buggy as if this appears for some strange reason outside a where clause this will fail
+   */
+  private static String fixSqlSyntax(String sql) {
+    return sql
+        .replaceAll(NOT_TRUE, NOT_TRUE_REPLACEMENT)
+        .replaceAll(IS_TRUE, IS_TRUE_REPLACEMENT)
+        .replaceAll(DOUBLE_AT, DOUBLE_AT_REPLACEMENT)
+        .replaceAll(DOUBLE_AND, DOUBLE_AND_REPLACEMENT)
+        .replaceAll(DOUBLE_ARROW, DOUBLE_ARROW_REPLACEMENT)
+        .replaceAll(DOUBLE_COLON, DOUBLE_COLON_REPLACEMENT);
+  }
+
+  private static String undoFixSqlSyntax(String fixedSql) {
+    return fixedSql
+        .replaceAll(NOT_TRUE_REPLACEMENT, NOT_TRUE)
+        .replaceAll(IS_TRUE_REPLACEMENT, IS_TRUE)
+        .replaceAll(DOUBLE_AT_REPLACEMENT, DOUBLE_AT)
+        .replaceAll(DOUBLE_AND_REPLACEMENT, DOUBLE_AND)
+        .replaceAll(DOUBLE_ARROW_REPLACEMENT, DOUBLE_ARROW)
+        .replaceAll(DOUBLE_COLON_REPLACEMENT, DOUBLE_COLON);
+  }
+
+  /**
    * returns ParsedQuery with:
    * 1. Original query stripped of the order by, limit and offset clauses (if they existed in the query)
    * 2. Original query stripped of the limit and offset clauses (if they existed in the query)
@@ -3638,10 +3674,6 @@ public class PostgresClient {
    */
   static ParsedQuery parseQuery(String query) {
     log.debug("parseQuery " + query);
-    String notTrue = " IS NOT TRUE";
-    String notTrueReplacement = " AND \\(\\(\\(FALSE\\)\\)\\)";
-    String isTrue = " IS TRUE";
-    String isTrueReplacement = " AND \\(\\(\\(TRUE\\)\\)\\)";
 
     String countOn = "*";
     List<OrderByElement> orderBy = null;
@@ -3652,10 +3684,8 @@ public class PostgresClient {
     String queryWithoutLimitOffset = "";
     try {
       try {
-        //TEMPORARY HACK SINCE PARSER CANT HANDLE "IS NOT TRUE" , so replace it with IS NOT NULL
-        //parse, and then below return the "IS NOT TRUE" - this is buggy as if this appears for some
-        //strange reason outside a where clause this will fail
-        query = query.replaceAll(notTrue, notTrueReplacement).replaceAll(isTrue, isTrueReplacement);
+        // FIXME: temporary hack, see fixSqlSyntax(String)
+        query = fixSqlSyntax(query);
         net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
         Select selectStatement = (Select) statement;
 
@@ -3671,8 +3701,8 @@ public class PostgresClient {
         log.error(e.getMessage(), e);
       }
 
-      //TEMPORARY HACK - see above - back to original query after parsing completes
-      query = query.replaceAll(notTrueReplacement, notTrue).replaceAll(isTrueReplacement, isTrue);
+      // FIXME: temporary hack, see fixSqlSyntax(String)
+      query = undoFixSqlSyntax(query);
       int startOfLimit = NaiveSQLParse.getLastStartPos(query, "limit");
       if(limit != null){
         String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
@@ -3732,9 +3762,8 @@ public class PostgresClient {
 
    pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
    if(where != null){
-     //TEMPORARY HACK see above
-     pq.setWhereClause( where.toString().replaceAll(notTrueReplacement, notTrue)
-       .replaceAll(isTrueReplacement, isTrue) );
+     // FIXME: temporary hack, see fixSqlSyntax(String)
+     pq.setWhereClause(undoFixSqlSyntax(where.toString()));
    }
    if(orderBy != null){
      pq.setOrderByClause( orderBy.toString() );
