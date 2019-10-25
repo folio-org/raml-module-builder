@@ -280,7 +280,7 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_QUERYTIMEOUT
  - DB_CHARSET
  - DB_MAXPOOLSIZE
- - DB_CONNECTION_RELEASE_DELAY
+ - DB_CONNECTIONRELEASEDELAY
  - DB_EXPLAIN_QUERY_THRESHOLD
 
 The first five are mandatory, the others are optional.
@@ -289,7 +289,7 @@ Environment variables with periods/dots in their names are deprecated in RMB bec
 
 See the [Vert.x Async PostgreSQL Client Configuration documentation](https://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration) for the details.
 
-The environment variable `DB_CONNECTION_RELEASE_DELAY` sets the delay in milliseconds after which an idle connection is closed. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
+The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
 
 The environment variable `DB_EXPLAIN_QUERY_THRESHOLD` is not observed by
 Postgres itself, but is a value - in milliseconds - that triggers query
