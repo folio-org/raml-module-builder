@@ -13,11 +13,8 @@ public enum Envs {
   DB_QUERYTIMEOUT,
   DB_CHARSET,
   DB_MAXPOOLSIZE,
+  DB_CONNECTIONRELEASEDELAY,
   DB_EXPLAIN_QUERY_THRESHOLD;
-
-  private static final String PORT = "port";
-  private static final String TIMEOUT = "queryTimeout";
-  private static final String MAXPOOL = "maxPoolSize";
 
   private static Map<String, String> env = System.getenv();
 
@@ -29,40 +26,50 @@ public enum Envs {
     return env.get(key.name());
   }
 
-  private static String toCamelCase(String key) {
-    // two strings need camelCasing
-    if (key.equalsIgnoreCase(TIMEOUT)) {
-      return TIMEOUT;
-    } else if (key.equalsIgnoreCase(MAXPOOL)) {
-      return MAXPOOL;
+  private static String configKey(Envs envs) {
+    switch (envs) {
+    case DB_QUERYTIMEOUT:            return "queryTimeout";
+    case DB_MAXPOOLSIZE:             return "maxPoolSize";
+    case DB_CONNECTIONRELEASEDELAY:  return "connectionReleaseDelay";
+    case DB_EXPLAIN_QUERY_THRESHOLD: return envs.name();
+    default:                         return envs.name().substring(3).toLowerCase();
     }
-    return key.toLowerCase();
+  }
+
+  private static Object configValue(Envs envs, String value) {
+    try {
+      switch (envs) {
+      case DB_PORT:
+      case DB_QUERYTIMEOUT:
+      case DB_MAXPOOLSIZE:
+      case DB_CONNECTIONRELEASEDELAY:
+        return Integer.parseInt(value);
+      case DB_EXPLAIN_QUERY_THRESHOLD:
+        return Long.parseLong(value);
+      default:
+        return value;
+      }
+    } catch (NumberFormatException e) {
+      throw new NumberFormatException(envs.name() + ": " + e.getMessage());
+    }
   }
 
   public static JsonObject allDBConfs() {
     JsonObject obj = new JsonObject();
-    env.forEach((envKey, value) -> {
-      if (! envKey.startsWith("DB_")) {
+    env.forEach((envKeyString, value) -> {
+      if (! envKeyString.startsWith("DB_")) {
         return;
       }
-      if (envKey.equals(DB_EXPLAIN_QUERY_THRESHOLD.name())) {
-        try {
-          obj.put(envKey, Long.parseLong(value));
-        } catch (NumberFormatException e) {
-          throw new NumberFormatException(envKey + ": " + e.getMessage());
-        }
+      Envs envKey;
+      try {
+        envKey = Envs.valueOf(envKeyString);
+      } catch (IllegalArgumentException e) {
+        // skip unknown DB_ keys, for example DB_RUNNER_PORT.
         return;
       }
-      String key = toCamelCase(envKey.substring(3));
-      if (key.equals(PORT) || key.equals(TIMEOUT) || key.equals(MAXPOOL)) {
-        try {
-          obj.put(key, Integer.parseInt(value));
-        } catch (NumberFormatException e) {
-          throw new NumberFormatException(envKey + ": " + e.getMessage());
-        }
-      } else {
-        obj.put(key, value);
-      }
+      String configKey = configKey(envKey);
+      Object configValue = configValue(envKey, value);
+      obj.put(configKey, configValue);
     });
     return obj;
   }

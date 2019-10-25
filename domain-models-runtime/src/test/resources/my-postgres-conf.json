@@ -3,5 +3,6 @@
 "port": 5433,
 "username": "postgres",
 "password": "postgres",
-"database": "postgres"
+"database": "postgres",
+"connectionReleaseDelay": 30000
 }
