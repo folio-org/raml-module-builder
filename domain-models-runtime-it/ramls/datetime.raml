@@ -1,0 +1,24 @@
+#%RAML 1.0
+title: Date and Time
+baseUri: http://github.com/org/folio/raml-module-builder/domain-models-runtime-it
+
+documentation:
+  - title: Date and Time API
+    content: API used for Integration tests
+
+/datetime:
+  get:
+    queryParameters:
+      startDate:
+        type: datetime
+        example: 2018-11-25T22:00:00.0+00:00
+      endDate:
+        type: datetime
+        example: 2018-11-26T16:17:18Z
+      requestedDate:
+        type: date-only
+        example: 2018-11-20
+    responses:
+      200:
+        body:
+          text/plain:
