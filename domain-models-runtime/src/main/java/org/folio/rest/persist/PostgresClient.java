@@ -1684,12 +1684,12 @@ public class PostgresClient {
     String countOn = "*";
     String distinctOnClause = "";
     if (distinctOn != null && !distinctOn.isEmpty()) {
-      distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOn);
-      countOn = distinctOn;
+      distinctOnClause = String.format("DISTINCT ON(%s) ", distinctOn);
+      countOn = String.format("DISTINCT(%s) ", distinctOn);
     }
 
     queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + wrapper.toString();
-    queryHelper.countQuery = SELECT + " COUNT(" + countOn + ") " + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereFull();
+    queryHelper.countQuery = SELECT + "COUNT(" + countOn + ") " + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereFull();
     return queryHelper;
   }
 
@@ -1951,11 +1951,25 @@ public class PostgresClient {
     boolean returnCount, boolean setId, List<FacetField> facets,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    String fieldsStr = Arrays.toString(fields);
-    String fieldName = fieldsStr.substring(1, fieldsStr.length() - 1);
     String distinctOn = null;
     boolean returnIdField = true;
-    if (filter != null && facets == null || facets.isEmpty()) {
+    get(table, clazz, fields, filter, returnCount, returnIdField, setId, distinctOn, facets, replyHandler);
+  }
+
+  <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
+    boolean returnCount, boolean returnIdField, boolean setId, String distinctOn, List<FacetField> facets,
+    Handler<AsyncResult<Results<T>>> replyHandler) {
+
+    String fieldsStr = Arrays.toString(fields);
+    String fieldName = fieldsStr.substring(1, fieldsStr.length() - 1);
+    get(table, clazz, fieldName, filter, returnCount, returnIdField, setId, distinctOn, facets, replyHandler);
+  }
+
+  <T> void get(String table, Class<T> clazz, String fieldName, CQLWrapper filter,
+    boolean returnCount, boolean returnIdField, boolean setId, String distinctOn, List<FacetField> facets,
+    Handler<AsyncResult<Results<T>>> replyHandler) {
+
+    if (filter != null && (facets == null || facets.isEmpty())) {
       client.getConnection(conn
         -> doGetWrapper(conn, table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn,
           closeAndHandleResult(conn, replyHandler)));
@@ -1964,7 +1978,7 @@ public class PostgresClient {
       if (filter != null) {
         where = filter.toString();
       }
-      get(table, clazz, fieldName, where, returnCount, true, setId, facets, replyHandler);
+      get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
     }
   }
 
