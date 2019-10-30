@@ -2,10 +2,8 @@ package org.folio.rest.persist;
 
 import java.util.Map;
 
-import com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage;
-
-import scala.collection.JavaConverters;
+import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
+import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
 
 public final class PgExceptionUtil {
   // https://www.postgresql.org/docs/current/static/errcodes-appendix.html
@@ -19,16 +17,16 @@ public final class PgExceptionUtil {
 
   /**
    * Return the value for key in the
-   * {@link com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage ErrorMessage} map of the
-   * {@link com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}.
+   * {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage} map of the
+   * {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}.
    * @param throwable a Throwable or null
-   * @param key the {@link com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage ErrorMessage} key
+   * @param key the {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage} key
    * @return the value if throwable is a
-   *   {@link com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
+   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
    *   and the key exists, null otherwise.
    */
   public static String get(Throwable throwable, Character key) {
-    Map<Object,String> fields = getBadRequestFields(throwable);
+    Map<Character,String> fields = getBadRequestFields(throwable);
     if (fields == null) {
       return null;
     }
@@ -39,9 +37,9 @@ public final class PgExceptionUtil {
    * Check for foreign key violation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
+   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
    *   containing an
-   *   {@link com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
    *   that reports a foreign key violation, false otherwise.
    */
   public static boolean isForeignKeyViolation(Throwable throwable) {
@@ -52,9 +50,9 @@ public final class PgExceptionUtil {
    * Check for unique violation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
+   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
    *   containing an
-   *   {@link com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
    *   that reports a unique violation, false otherwise.
    */
   public static boolean isUniqueViolation(Throwable throwable) {
@@ -65,9 +63,9 @@ public final class PgExceptionUtil {
    * Check for invalid text representation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
+   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
    *   containing an
-   *   {@link com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
    *   that reports an invalid text representation, false otherwise.
    */
   public static boolean isInvalidTextRepresentation(Throwable throwable) {
@@ -87,8 +85,8 @@ public final class PgExceptionUtil {
       return null;
     }
 
-    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).errorMessage();
-    Map<Object,String> fields = JavaConverters.mapAsJavaMapConverter(errorMessage.fields()).asJava();
+    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).getErrorMessage();
+    Map<Character,String> fields = errorMessage.getFields();
     String sqlstate = fields.get('C');
     if (sqlstate == null) {
       return null;
@@ -111,12 +109,12 @@ public final class PgExceptionUtil {
     }
   }
 
-  public static Map<Object,String> getBadRequestFields(Throwable throwable) {
+  public static Map<Character,String> getBadRequestFields(Throwable throwable) {
     if (!(throwable instanceof GenericDatabaseException)) {
       return null;
     }
 
-    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).errorMessage();
-    return JavaConverters.mapAsJavaMapConverter(errorMessage.fields()).asJava();
+    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).getErrorMessage();
+    return errorMessage.getFields();
   }
 }
