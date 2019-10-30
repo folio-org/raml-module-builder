@@ -83,14 +83,17 @@ public class Index extends TableIndexes {
         if(i != 0) {
           result .append(" , ");
         }
-        String [] rawExpandedTerm = splitIndex[i].split("\\.");
-        StringBuilder expandedTerm = formatExpandedTerm(tableLoc + ".jsonb",rawExpandedTerm);
-        result.append(expandedTerm);
+        appendExpandedTerm(tableLoc, splitIndex[i], result);
       }
       result.append(")");
       return result.toString();
     }
 
+  }
+  private void appendExpandedTerm(String tableLoc, String  currentTerm, StringBuilder result) {
+    String [] rawExpandedTerm = currentTerm.split("\\.");
+    StringBuilder expandedTerm = formatExpandedTerm(tableLoc + ".jsonb",rawExpandedTerm);
+    result.append(expandedTerm);
   }
 
   private StringBuilder formatExpandedTerm(String table, String[] rawExpandedTerm) {
@@ -100,21 +103,14 @@ public class Index extends TableIndexes {
     expandedTerm.append(table);
     for(int j = 0; j < rawExpandedTerm.length; j++) {
 
-      final String indexSyntax = "[*]";
-      int idx = rawExpandedTerm[j].indexOf(indexSyntax);
-      int endOffset = idx > -1 ? -2 : -1;
-      String arrowToken = "->";
-      if(j == rawExpandedTerm.length + endOffset) {
-        arrowToken = "->>";
-      }
 
-      if(idx > -1) {
-        arrowToken = "->";
-        expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j].substring(0,idx)).append("',").append("'").append(rawExpandedTerm[j+1]).append("'");
-        wasArrayIndex = true;
+
+      int idx = rawExpandedTerm[j].indexOf("[*]");
+      if(rawExpandedTerm[j].indexOf("[*]") > -1) {
+        wasArrayIndex = appendExpandedArrayTerm(rawExpandedTerm, expandedTerm, j, idx);
         break;
       } else {
-        expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j]).append("'");
+        wasArrayIndex = appendExpandedSimpleTerm(rawExpandedTerm, expandedTerm, j, idx);
       }
 
     }
@@ -124,5 +120,20 @@ public class Index extends TableIndexes {
       result.append(expandedTerm);
     }
     return result;
+  }
+  private boolean appendExpandedSimpleTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx, int tokenIdx) {
+    String arrowToken = "->";
+    int endOffset = tokenIdx > -1 ? -2 : -1;
+    if(currentTermIdx == rawExpandedTerm.length + endOffset) {
+      arrowToken = "->>";
+    }
+    expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx]).append("'");
+    return false;
+  }
+  private boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
+      int tokenIdx) {
+    String arrowToken = "->";
+    expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");
+    return true;
   }
 }
