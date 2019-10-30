@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
 import org.folio.rest.persist.Criteria.Offset;
 
@@ -14,6 +15,7 @@ public class CQLWrapper {
 
   private static final Logger log = LoggerFactory.getLogger(CQLWrapper.class);
   CQL2PgJSON field;
+  Criterion criterion;
   String query;
   private Limit  limit = new Limit();
   private Offset offset = new Offset();
@@ -21,6 +23,13 @@ public class CQLWrapper {
 
   public CQLWrapper() {
     super();
+  }
+
+  public CQLWrapper(Criterion criterion) {
+    super();
+    this.criterion = criterion;
+    this.limit = criterion.getLimit();
+    this.offset = criterion.getOffset();
   }
 
   public CQLWrapper(CQL2PgJSON field, String query) {
@@ -124,13 +133,15 @@ public class CQLWrapper {
    * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
    */
   private void appendWhere(StringBuilder sb, String query, CQL2PgJSON field) {
-    if (query == null || field == null) {
-      return;
+    if (criterion != null) {
+      sb.append(criterion.getWhere());
     }
-    try {
-      sb.append(field.toSql(query).getWhere());
-    } catch (QueryValidationException e) {
-      throw new CQLQueryValidationException(e);
+    if (field != null && query != null) {
+      try {
+        sb.append(field.toSql(query).getWhere());
+      } catch (QueryValidationException e) {
+        throw new CQLQueryValidationException(e);
+      }
     }
   }
 
@@ -179,9 +190,9 @@ public class CQLWrapper {
   }
 
   /**
-   * @return sort by query excluding SORT BY prefix or empty string if no sorting
+   * @return sort by criteria excluding SORT BY prefix or empty string if no sorting
    */
-  public String getOrderBy() {
+  private String getOrderBy() {
     if (query == null || field == null) {
       return "";
     }
@@ -193,9 +204,12 @@ public class CQLWrapper {
   }
 
   /**
-   * @return sort by query including SORT BY prefix or empty string if no sorting
+   * @return sort by criteria including SORT BY prefix or empty string if no sorting
    */
-  public String getOrderByFull() {
+  private String getOrderByFull() {
+    if (criterion != null) {
+      return criterion.getOrderByFull();
+    }
     String s = getOrderBy();
     if (s.isEmpty()) {
       return "";

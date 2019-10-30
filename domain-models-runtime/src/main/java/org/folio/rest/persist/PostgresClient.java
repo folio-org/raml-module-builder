@@ -1444,18 +1444,21 @@ public class PostgresClient {
     }
   }
 
+  @Deprecated
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
       boolean returnCount, boolean returnIdField, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null /* facets */, replyHandler);
   }
 
+  @Deprecated
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
       boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, null /*distinctOn*/, replyHandler);
   }
 
+  @Deprecated
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
     boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
     Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -1924,7 +1927,6 @@ public class PostgresClient {
    * @param entity  contains the fields to use for the query
    * @param replyHandler  the result contains the entities found
    */
-  //@Timer
   public <T> void get(String table, T entity, boolean returnCount,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, entity, returnCount, true /*returnIdField*/, replyHandler);
@@ -2008,20 +2010,20 @@ public class PostgresClient {
 
     String distinctOn = null;
     boolean returnIdField = true;
-    get(table, clazz, fields, filter, returnCount, returnIdField, setId, distinctOn, facets, replyHandler);
+    get(table, clazz, fields, filter, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
   }
 
   <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
-    boolean returnCount, boolean returnIdField, boolean setId, String distinctOn, List<FacetField> facets,
+    boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     String fieldsStr = Arrays.toString(fields);
     String fieldName = fieldsStr.substring(1, fieldsStr.length() - 1);
-    get(table, clazz, fieldName, filter, returnCount, returnIdField, setId, distinctOn, facets, replyHandler);
+    get(table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
   }
 
   <T> void get(String table, Class<T> clazz, String fieldName, CQLWrapper filter,
-    boolean returnCount, boolean returnIdField, boolean setId, String distinctOn, List<FacetField> facets,
+    boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     client.getConnection(conn
@@ -2029,6 +2031,7 @@ public class PostgresClient {
         closeAndHandleResult(conn, replyHandler)));
   }
 
+  @Deprecated
   public <T> void get(String table, Class<T> clazz, String[] fields, String filter,
       boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2040,6 +2043,7 @@ public class PostgresClient {
     get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
   }
 
+  @Deprecated
   public <T> void get(String table, Class<T> clazz, String filter,
       boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2101,21 +2105,13 @@ public class PostgresClient {
   public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    StringBuilder sb = new StringBuilder();
-    StringBuilder fromClauseFromCriteria = new StringBuilder();
-    if (filter != null) {
-      sb.append(filter.toString());
-      fromClauseFromCriteria.append(filter.from2String());
-      if (fromClauseFromCriteria.length() > 0) {
-        fromClauseFromCriteria.insert(0, COMMA);
-      }
-    }
+    CQLWrapper cqlWrapper = new CQLWrapper(filter);
     if (conn == null) {
-      get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
-        returnCount, true, setId, facets, replyHandler);
+      get(table, clazz, DEFAULT_JSONB_FIELD_NAME, cqlWrapper, returnCount,
+        false, setId, facets, null, replyHandler);
     } else {
-      doGet(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
-        fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, null, replyHandler);
+      doGetWrapper(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME, cqlWrapper, returnCount,
+        false, setId, facets, null, replyHandler);
     }
   }
 

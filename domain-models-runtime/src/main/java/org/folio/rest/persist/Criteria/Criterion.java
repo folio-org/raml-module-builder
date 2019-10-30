@@ -148,9 +148,25 @@ public class Criterion {
     return this;
   }
 
+  public Limit getLimit() {
+    return limit;
+  }
+
   public Criterion setOffset(Offset offset) {
     this.offset = offset;
     return this;
+  }
+
+  public Offset getOffset() {
+    return offset;
+  }
+
+  public String getWhere() {
+    return snippet;
+  }
+
+  public String getOrderByFull() {
+    return order.toString();
   }
 
   @Override
@@ -231,6 +247,7 @@ public class Criterion {
     return cc;
   }
 
+  @Deprecated
   public String selects2String() {
     StringBuilder sb = new StringBuilder();
 
@@ -252,6 +269,7 @@ public class Criterion {
     return sb.toString();
   }
 
+  @Deprecated
   public String from2String() {
     StringBuilder sb = new StringBuilder();
 
