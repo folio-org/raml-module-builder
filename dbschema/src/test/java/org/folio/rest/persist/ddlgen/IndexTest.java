@@ -22,9 +22,8 @@ class IndexTest {
   }
   @ParameterizedTest
   @CsvSource({
-    "a    , ->>'a'",
-    "a[*].b  , ->'a'->>'b'",
-    "a.b[*].c, ->'a'->'b'->>'c'",
+    "a[*]  , concat_array_object_values(table.jsonb->'a')",
+    "b[*], concat_array_object_values(table.jsonb->'b')",
   })
   void appendExpandedArrayTerm(String term, String expectedSql) {
     StringBuilder result = new StringBuilder();
