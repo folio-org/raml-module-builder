@@ -1461,7 +1461,7 @@ public class PostgresClient {
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     client.getConnection(conn
-      -> doGetObsolete(conn, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn,
+      -> doGet(conn, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn,
         closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -1532,7 +1532,7 @@ public class PostgresClient {
    * @param facets
    * @param replyHandler
    */
-  private <T> void doGetObsolete(
+  private <T> void doGet(
     AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
     String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
     List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
@@ -2114,7 +2114,7 @@ public class PostgresClient {
       get(table, clazz, DEFAULT_JSONB_FIELD_NAME, fromClauseFromCriteria.toString() + sb.toString(),
         returnCount, true, setId, facets, replyHandler);
     } else {
-      doGetObsolete(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
+      doGet(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME,
         fromClauseFromCriteria.toString() + sb.toString(), returnCount, true, setId, facets, null, replyHandler);
     }
   }
