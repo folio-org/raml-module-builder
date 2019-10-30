@@ -90,29 +90,25 @@ public class Index extends TableIndexes {
     }
 
   }
-  private void appendExpandedTerm(String tableLoc, String  currentTerm, StringBuilder result) {
+  public static void appendExpandedTerm(String tableLoc, String  currentTerm, StringBuilder result) {
     String [] rawExpandedTerm = currentTerm.split("\\.");
     StringBuilder expandedTerm = formatExpandedTerm(tableLoc + ".jsonb",rawExpandedTerm);
     result.append(expandedTerm);
   }
 
-  private StringBuilder formatExpandedTerm(String table, String[] rawExpandedTerm) {
+  public static StringBuilder formatExpandedTerm(String table, String[] rawExpandedTerm) {
     StringBuilder expandedTerm = new StringBuilder();
     StringBuilder result = new StringBuilder();
     boolean wasArrayIndex = false;
     expandedTerm.append(table);
     for(int j = 0; j < rawExpandedTerm.length; j++) {
-
-
-
       int idx = rawExpandedTerm[j].indexOf("[*]");
-      if(rawExpandedTerm[j].indexOf("[*]") > -1) {
+      if(idx > -1) {
         wasArrayIndex = appendExpandedArrayTerm(rawExpandedTerm, expandedTerm, j, idx);
         break;
       } else {
         wasArrayIndex = appendExpandedSimpleTerm(rawExpandedTerm, expandedTerm, j, idx);
       }
-
     }
     if(wasArrayIndex) {
       result.append("concat_array_object_values(").append(expandedTerm).append(")");
@@ -121,7 +117,7 @@ public class Index extends TableIndexes {
     }
     return result;
   }
-  private boolean appendExpandedSimpleTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx, int tokenIdx) {
+  private static  boolean appendExpandedSimpleTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx, int tokenIdx) {
     String arrowToken = "->";
     int endOffset = tokenIdx > -1 ? -2 : -1;
     if(currentTermIdx == rawExpandedTerm.length + endOffset) {
@@ -130,7 +126,7 @@ public class Index extends TableIndexes {
     expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx]).append("'");
     return false;
   }
-  private boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
+  private static boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
       int tokenIdx) {
     String arrowToken = "->";
     expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");

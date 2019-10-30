@@ -4,8 +4,22 @@ import static org.junit.jupiter.api.Assertions.*;
 
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class IndexTest {
+
+  @ParameterizedTest
+  @CsvSource({
+    "a    , ->>a",
+    "a.b  , ->'a'->>'b'",
+    "a.b.c, ->'a'->'b'->>'c'",
+  })
+  void appendExpandedSimpleTerm(String term, String expectedSql) {
+    StringBuilder result = new StringBuilder();
+    Index.appendExpandedTerm( "table", term,result);
+    assertEquals(result.toString(), "table.jsonb" + expectedSql);
+  }
 
   @Test
   void multiFieldNames() {
