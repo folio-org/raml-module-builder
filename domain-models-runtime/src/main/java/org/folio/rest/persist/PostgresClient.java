@@ -1003,50 +1003,86 @@ public class PostgresClient {
   /**
    * Insert the entities into table using a single INSERT statement.
    * @param table  destination table to insert into
-   * @param entities  each array element is a String with the content for the JSONB field of table
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @param replyHandler  result, containing the id field for each inserted element of entities
    */
   public void saveBatch(String table, JsonArray entities, Handler<AsyncResult<ResultSet>> replyHandler) {
-    saveBatch(table, entities, DEFAULT_JSONB_FIELD_NAME, replyHandler);
+    client.getConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
   }
 
-  public void saveBatch(String table, JsonArray entities, String column,
-    Handler<AsyncResult<ResultSet>> replyHandler) {
-
-    client.getConnection(conn -> saveBatch(conn, table, entities, column, closeAndHandleResult(conn, replyHandler)));
-  }
-
+  /**
+   * Insert the entities into table using a single INSERT statement.
+   * @param sqlConnection  the connection to run on, may be on a transaction
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
+   * @param replyHandler  result, containing the id field for each inserted element of entities
+   */
   public void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
-    JsonArray entities, String column, Handler<AsyncResult<ResultSet>> replyHandler) {
-
-    long start = System.nanoTime();
-    if (entities == null || entities.isEmpty()) {
-      // return empty result
-      ResultSet resultSet = new ResultSet(
-        Collections.singletonList(ID_FIELD), Collections.emptyList(), null);
-      replyHandler.handle(Future.succeededFuture(resultSet));
-      return;
-    }
-    log.info("starting: saveBatch size=" + entities.size());
-    StringBuilder sql = new StringBuilder()
-      .append(INSERT_CLAUSE)
-      .append(schemaName).append(DOT).append(table)
-      .append(" (").append("id ,").append(column).append(") VALUES ('").append(UUID.randomUUID().toString()).append("',?)");
-    for (int i = 1; i < entities.size(); i++) {
-
-      sql.append(",('").append(UUID.randomUUID().toString()).append("',?)");
-    }
-    sql.append(RETURNING_ID);
+      JsonArray entities, Handler<AsyncResult<ResultSet>> replyHandler) {
 
     try {
+      if (entities == null || entities.isEmpty()) {
+        saveBatchInternal(sqlConnection, table, entities, replyHandler);
+        return;
+      }
+      JsonArray idEntityPairs = new JsonArray();
+      for (int i = 0; i < entities.size(); i++) {
+        String json = entities.getString(i);
+        JsonObject jsonObject = new JsonObject(json);
+        String id = jsonObject.getString("id");
+        if (id == null) {
+          id = UUID.randomUUID().toString();
+        }
+        idEntityPairs.add(id).add(json);
+      }
+      saveBatchInternal(sqlConnection, table, idEntityPairs, replyHandler);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  /**
+   * Insert the entities into table using a single INSERT statement.
+   * @param sqlConnection  the connection to run on, may be on a transaction
+   * @param table  destination table to insert into
+   * @param idEntityPairs  for each enity the array contains two strings: the id as a string and the entity as a JSON string.
+   * @param replyHandler  result, containing the id field for each inserted entity
+   */
+  private void saveBatchInternal(AsyncResult<SQLConnection> sqlConnection, String table,
+      JsonArray idEntityPairs, Handler<AsyncResult<ResultSet>> replyHandler) {
+
+    try {
+      long start = System.nanoTime();
+      if (idEntityPairs == null || idEntityPairs.isEmpty()) {
+        // return empty result
+        ResultSet resultSet = new ResultSet(
+            Collections.singletonList(ID_FIELD), Collections.emptyList(), null);
+        replyHandler.handle(Future.succeededFuture(resultSet));
+        return;
+      }
+
+      log.info("starting: saveBatch size=" + idEntityPairs.size());
+      StringBuilder sql = new StringBuilder()
+          .append(INSERT_CLAUSE)
+          .append(schemaName).append(DOT).append(table)
+          .append(" (id, jsonb) VALUES ");
+      for (int i = 0; i < idEntityPairs.size(); i += 2) {
+        if (i > 0) {
+          sql.append(',');
+        }
+        sql.append("(?,?)");
+      }
+      sql.append(RETURNING_ID);
+
       if (sqlConnection.failed()) {
         replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
       SQLConnection connection = sqlConnection.result();
-      connection.queryWithParams(sql.toString(), entities, queryRes -> {
+      connection.queryWithParams(sql.toString(), idEntityPairs, queryRes -> {
         if (queryRes.failed()) {
-          log.error("saveBatch size=" + entities.size()
+          log.error("saveBatch size=" + idEntityPairs.size()
             + SPACE
             + queryRes.cause().getMessage(),
             queryRes.cause());
@@ -1054,7 +1090,7 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(queryRes.cause()));
           return;
         }
-        log.info("success: saveBatch size=" + entities.size());
+        log.info("success: saveBatch size=" + idEntityPairs.size());
         statsTracker("saveBatch", table, start);
         replyHandler.handle(Future.succeededFuture(queryRes.result()));
       });
@@ -1066,29 +1102,49 @@ public class PostgresClient {
 
   /***
    * Save a list of POJOs.
-   * POJOs are converted to json and saved in a single sql call. The generated IDs of the
-   * inserted records are returned in the ResultSet.
+   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * A random id is generated if POJO's id is null.
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
    * @param replyHandler result, containing the id field for each inserted POJO
    */
   public <T> void saveBatch(String table, List<T> entities,
-    Handler<AsyncResult<ResultSet>> replyHandler) {
+      Handler<AsyncResult<ResultSet>> replyHandler) {
 
     client.getConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
   }
 
+  /***
+   * Save a list of POJOs.
+   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * A random id is generated if POJO's id is null.
+   * @param sqlConnection  the connection to run on, may be on a transaction
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @param replyHandler result, containing the id field for each inserted POJO
+   */
   public <T> void saveBatch(AsyncResult<SQLConnection> sqlConnection, String table,
-    List<T> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
+      List<T> entities, Handler<AsyncResult<ResultSet>> replyHandler) {
 
     try {
-      JsonArray jsonArray = new JsonArray();
-      for (Object entity : entities) {
-        String json = pojo2json(entity);
-        jsonArray.add(json);
+      if (entities == null || entities.isEmpty()) {
+        saveBatchInternal(sqlConnection, table, null, replyHandler);
+        return;
       }
-      saveBatch(sqlConnection, table, jsonArray, DEFAULT_JSONB_FIELD_NAME, replyHandler);
+      JsonArray idEntityPairs = new JsonArray();
+      // We must use reflection, the POJOs don't have a interface/superclass in common.
+      Method getIdMethod = entities.get(0).getClass().getDeclaredMethod("getId");
+      for (Object entity : entities) {
+        Object id = getIdMethod.invoke(entity);
+        if (id == null) {
+          id = UUID.randomUUID();
+        }
+        String json = pojo2json(entity);
+        idEntityPairs.add(id.toString()).add(json);
+      }
+      saveBatchInternal(sqlConnection, table, idEntityPairs, replyHandler);
     } catch (Exception e) {
+      log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
   }
