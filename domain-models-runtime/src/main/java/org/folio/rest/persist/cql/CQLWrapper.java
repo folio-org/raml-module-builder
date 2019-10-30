@@ -150,6 +150,9 @@ public class CQLWrapper {
     sb.append(text);
   }
 
+  /**
+   * @return where clause excluding WHERE prefix or empty string if for no where
+   */
   public String getWhere() {
     StringBuilder sb = new StringBuilder();
     appendWhere(sb, query, field);
@@ -164,14 +167,20 @@ public class CQLWrapper {
     return sb.toString();
   }
 
+  /**
+   * @return where clause including WHERE prefix or empty string if for no where
+   */
   public String getWhereFull() {
     String s = getWhere();
-    if (!s.isEmpty()) {
-      return " WHERE " + s;
+    if (s.isEmpty()) {
+      return "";
     }
-    return "";
+    return "WHERE " + s;
   }
 
+  /**
+   * @return sort by query excluding SORT BY prefix or empty string if no sorting
+   */
   public String getOrderBy() {
     if (query == null || field == null) {
       return "";
@@ -183,14 +192,20 @@ public class CQLWrapper {
     }
   }
 
+  /**
+   * @return sort by query including SORT BY prefix or empty string if no sorting
+   */
   public String getOrderByFull() {
     String s = getOrderBy();
-    if (!s.isEmpty()) {
-      return "ORDER BY " + s;
+    if (s.isEmpty()) {
+      return "";
     }
-    return "";
+    return "ORDER BY " + s;
   }
 
+  /**
+   * @return query including SQL clauses of WHERE, ORDER BY
+   */
   public String getWithoutLimOff() {
     StringBuilder sb = new StringBuilder(getWhereFull());
     spaceAppend(sb, getOrderByFull());
@@ -198,8 +213,7 @@ public class CQLWrapper {
   }
 
   /**
-   * @return a space followed by the SQL clauses of WHERE, OFFSET and LIMIT
-   * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
+   * @return full query including SQL clauses of WHERE, ORDER BY, OFFSET and LIMIT.
    */
   @Override
   public String toString() {

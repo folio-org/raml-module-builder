@@ -23,13 +23,13 @@ public class CQLWrapperTest {
   @Test
   public void returnsWhere() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("name=miller");
-    assertThat(wrapper.toString(), startsWith(" WHERE "));
+    assertThat(wrapper.toString(), startsWith("WHERE "));
   }
 
   @Test
   public void allRecords() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1");
-    assertThat(wrapper.toString(), is(" WHERE true"));
+    assertThat(wrapper.toString(), is("WHERE true"));
   }
 
   @Test(expected = IllegalStateException.class)
@@ -107,7 +107,7 @@ public class CQLWrapperTest {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1");
     wrapper.addWrapper(wrapper);
     wrapper.addWrapper(wrapper, "or");
-    assertThat(wrapper.toString(), is(" WHERE ((true) and true) or true"));
+    assertThat(wrapper.toString(), is("WHERE ((true) and true) or true"));
   }
 
   @Test
@@ -121,7 +121,7 @@ public class CQLWrapperTest {
   @Test
   public void sortBy() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1 sortBy name");
-    assertThat(wrapper.toString(), stringContainsInOrder(" WHERE true ORDER BY ", "name"));
+    assertThat(wrapper.toString(), stringContainsInOrder("WHERE true ORDER BY ", "name"));
   }
 
   @Test
