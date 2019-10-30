@@ -1680,11 +1680,16 @@ public class PostgresClient {
     return new JsonObject(rowMap);
   }
 
-  /* should eventually resplce buildSelectQueryHelper */
+  /* should eventually resplace buildSelectQueryHelper */
   QueryHelper buildQueryHelper(
-    boolean transactionMode, String table, String fieldName,
-    CQLWrapper wrapper, boolean returnIdField, List<FacetField> facets, String distinctOn
-  ) {
+    boolean transactionMode, String table, String fieldName, CQLWrapper wrapper,
+    boolean returnIdField, List<FacetField> facets,
+    String distinctOn) throws IOException, TemplateException {
+
+    if (wrapper == null) {
+      wrapper = new CQLWrapper();
+    }
+
     String addIdField = "";
     if (returnIdField) {
       addIdField = COMMA + ID_FIELD;
@@ -1702,11 +1707,45 @@ public class PostgresClient {
     String distinctOnClause = "";
     if (distinctOn != null && !distinctOn.isEmpty()) {
       distinctOnClause = String.format("DISTINCT ON(%s) ", distinctOn);
-      countOn = String.format("DISTINCT(%s) ", distinctOn);
+      countOn = String.format("DISTINCT(%s)", distinctOn);
     }
 
-    queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + wrapper.toString();
-    queryHelper.countQuery = SELECT + "COUNT(" + countOn + ") " + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereFull();
+    queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField
+      + FROM + schemaName + DOT + table + SPACE + wrapper.toString();
+    queryHelper.countQuery = SELECT + "COUNT(" + countOn + ") "
+      + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereFull();
+
+    ParsedQuery pq = new ParsedQuery();
+    pq.setCountQuery(queryHelper.countQuery);
+    if (!wrapper.getWhere().isEmpty()) {
+      pq.setWhereClause(wrapper.getWhere());
+    }
+    if (!wrapper.getLimit().toString().isEmpty()) {
+      pq.setLimitClause(wrapper.getLimit().toString());
+    }
+    if (!wrapper.getOffset().toString().isEmpty()) {
+      pq.setOffsetClause(wrapper.getOffset().toString());
+    }
+    pq.setQueryWithoutLimOff(SELECT + distinctOnClause + fieldName + addIdField
+      + FROM + schemaName + DOT + table + SPACE + wrapper.getWithoutLimOff());
+
+    String offsetClause = null;
+    if (queryHelper.facets != null && !queryHelper.facets.isEmpty() && queryHelper.table != null) {
+      FacetManager facetManager = buildFacetManager(queryHelper.table, pq, queryHelper.facets);
+      // this method call invokes freemarker templating
+      queryHelper.selectQuery = facetManager.generateFacetQuery();
+      queryHelper.countQuery = facetManager.getCountQuery();
+
+      offsetClause = facetManager.getOffsetClause();
+    } else {
+      offsetClause = pq.getOffsetClause();
+    }
+    if (offsetClause != null) {
+      Matcher matcher = OFFSET_MATCH_PATTERN.matcher(offsetClause);
+      if (matcher.find()) {
+        queryHelper.offset = Integer.parseInt(matcher.group(1));
+      }
+    }
     return queryHelper;
   }
 
@@ -1749,7 +1788,6 @@ public class PostgresClient {
     SQLConnection connection, QueryHelper queryHelper, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) throws IOException, TemplateException {
-    long start = System.nanoTime();
 
     prepareCountQuery(queryHelper);
     processQueryWithCount(connection, queryHelper, statMethod,
@@ -1986,17 +2024,9 @@ public class PostgresClient {
     boolean returnCount, boolean returnIdField, boolean setId, String distinctOn, List<FacetField> facets,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    if (filter != null && (facets == null || facets.isEmpty())) {
-      client.getConnection(conn
-        -> doGetWrapper(conn, table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn,
-          closeAndHandleResult(conn, replyHandler)));
-    } else {
-      String where = "";
-      if (filter != null) {
-        where = filter.toString();
-      }
-      get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
-    }
+    client.getConnection(conn
+      -> doGetWrapper(conn, table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn,
+        closeAndHandleResult(conn, replyHandler)));
   }
 
   public <T> void get(String table, Class<T> clazz, String[] fields, String filter,

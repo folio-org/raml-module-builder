@@ -191,15 +191,19 @@ public class CQLWrapper {
     return "";
   }
 
+  public String getWithoutLimOff() {
+    StringBuilder sb = new StringBuilder(getWhereFull());
+    spaceAppend(sb, getOrderByFull());
+    return sb.toString();
+  }
+
   /**
    * @return a space followed by the SQL clauses of WHERE, OFFSET and LIMIT
    * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
    */
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append(getWhereFull());
-    spaceAppend(sb, getOrderByFull());
+    StringBuilder sb = new StringBuilder(getWithoutLimOff());
     spaceAppend(sb, limit.toString());
     spaceAppend(sb, offset.toString());
     String sql = sb.toString();
