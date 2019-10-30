@@ -11,7 +11,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 28
 
-* RMB-485 changed the postgresql driver . Namespace prefix change
+* [RMB-485](https://issues.folio.org/browse/RMB-485) changed the postgresql driver. Namespace prefix change
    `com.github.mauricio.async.db.postgresql` to
    `com.github.jasync.sql.db.postgresql`.
 
@@ -21,7 +21,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     * `org.folio.rest.persist.PgExceptionUtil.getBadRequestFields` returns
       `Map<Character,String>` rather than `Map<Object,String>`
 
-* RMB-462 removed suport for `fullText` property in `schema.json`.
+* [RMB-462](https://issues.folio.org/browse/RMB-462) removed support for `fullText defaultDictionary` property (`simple`, `english`, `german`, etc.) in `schema.json`.
 
 ## Version 27.1
 
