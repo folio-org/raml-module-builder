@@ -11,7 +11,7 @@ class IndexTest {
 
   @ParameterizedTest
   @CsvSource({
-    "a    , ->>a",
+    "a    , ->>'a'",
     "a.b  , ->'a'->>'b'",
     "a.b.c, ->'a'->'b'->>'c'",
   })
@@ -20,7 +20,17 @@ class IndexTest {
     Index.appendExpandedTerm( "table", term,result);
     assertEquals(result.toString(), "table.jsonb" + expectedSql);
   }
-
+  @ParameterizedTest
+  @CsvSource({
+    "a    , ->>'a'",
+    "a[*].b  , ->'a'->>'b'",
+    "a.b[*].c, ->'a'->'b'->>'c'",
+  })
+  void appendExpandedArrayTerm(String term, String expectedSql) {
+    StringBuilder result = new StringBuilder();
+    Index.appendExpandedTerm( "table", term,result);
+    assertEquals(result.toString(), "table.jsonb" + expectedSql);
+  }
   @Test
   void multiFieldNames() {
     Index idx = new Index();
