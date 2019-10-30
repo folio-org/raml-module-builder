@@ -104,11 +104,10 @@ public class Index extends TableIndexes {
     for(int j = 0; j < rawExpandedTerm.length; j++) {
       int idx = rawExpandedTerm[j].indexOf("[*]");
       if(idx > -1) {
-        expandedTerm = appendExpandedArrayTerm(rawExpandedTerm, expandedTerm, j, idx);
+        wasArrayIndex = appendExpandedArrayTerm(rawExpandedTerm, expandedTerm, j, idx);
         break;
       } else {
-        expandedTerm = appendExpandedSimpleTerm(rawExpandedTerm, expandedTerm, j, idx);
-        wasArrayIndex = false;
+        wasArrayIndex = appendExpandedSimpleTerm(rawExpandedTerm, expandedTerm, j, idx);
       }
     }
     if(wasArrayIndex) {
@@ -118,19 +117,19 @@ public class Index extends TableIndexes {
     }
     return result;
   }
-  private static StringBuilder appendExpandedSimpleTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx, int tokenIdx) {
+  private static  boolean appendExpandedSimpleTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx, int tokenIdx) {
     String arrowToken = "->";
     int endOffset = tokenIdx > -1 ? -2 : -1;
     if(currentTermIdx == rawExpandedTerm.length + endOffset) {
       arrowToken = "->>";
     }
     expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx]).append("'");
-    return expandedTerm;
+    return false;
   }
-  private static StringBuilder appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
+  private static boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
       int tokenIdx) {
     String arrowToken = "->";
     expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");
-    return expandedTerm;
+    return true;
   }
 }
