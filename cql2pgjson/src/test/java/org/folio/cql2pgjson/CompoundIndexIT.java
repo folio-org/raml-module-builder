@@ -6,6 +6,7 @@ import static org.junit.Assert.assertThat;
 import java.util.List;
 
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.hamcrest.collection.IsEmptyCollection;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -113,4 +114,20 @@ public class CompoundIndexIT extends DatabaseTestBase {
   public void multiFieldNamesMultipartindexpathFT() throws Exception {
     assertThat( cqld("tabledftindex = \"Chicago IL\""),  containsInAnyOrder("Bob"));
   }
+
+  @Test
+  public void multiFieldNamesDotStarGIN() throws Exception {
+    assertThat( cqla("ginfielddotstar == \"Boston\""),  IsEmptyCollection.empty());
+  }
+
+  @Test
+  public void multiFieldNamesDotStarFTAll() throws Exception {
+    assertThat( cqla("ftfielddotstar all \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike"));
+  }
+
+  @Test
+  public void multiFieldNamesDotStarFTAny() throws Exception {
+    assertThat( cqla("ftfielddotstar any \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike", "Mary"));
+  }
+
 }

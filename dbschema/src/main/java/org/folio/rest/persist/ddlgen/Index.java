@@ -69,6 +69,7 @@ public class Index extends TableIndexes {
   public void setSqlExpression(String sqlExpression) {
     this.sqlExpression = sqlExpression;
   }
+
   public String getFinalSqlExpression(String tableLoc) {
     if(this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
       return this.fieldPath;
@@ -82,25 +83,53 @@ public class Index extends TableIndexes {
         if(i != 0) {
           result .append(" , ");
         }
-        String [] rawExpandedTerm = splitIndex[i].split("\\.");
-        StringBuilder expandedTerm = formatExpandedTerm(rawExpandedTerm);
-        result.append(tableLoc).append(".jsonb").append(expandedTerm);
+        appendExpandedTerm(tableLoc, splitIndex[i], result);
       }
       result.append(")");
       return result.toString();
     }
 
   }
-  private StringBuilder formatExpandedTerm(String[] rawExpandedTerm) {
-    StringBuilder expandedTerm = new StringBuilder();
+  public static void appendExpandedTerm(String tableLoc, String  currentTerm, StringBuilder result) {
+    String [] rawExpandedTerm = currentTerm.split("\\.");
+    StringBuilder expandedTerm = formatExpandedTerm(tableLoc + ".jsonb",rawExpandedTerm);
+    result.append(expandedTerm);
+  }
 
+  public static StringBuilder formatExpandedTerm(String table, String[] rawExpandedTerm) {
+    StringBuilder expandedTerm = new StringBuilder();
+    StringBuilder result = new StringBuilder();
+    boolean wasArrayIndex = false;
+    expandedTerm.append(table);
     for(int j = 0; j < rawExpandedTerm.length; j++) {
-      String arrowToken = "->";
-      if(j == rawExpandedTerm.length - 1) {
-        arrowToken = "->>";
+      int idx = rawExpandedTerm[j].indexOf("[*]");
+      if(idx > -1) {
+        wasArrayIndex = appendExpandedArrayTerm(rawExpandedTerm, expandedTerm, j, idx);
+        break;
+      } else {
+        wasArrayIndex = appendExpandedSimpleTerm(rawExpandedTerm, expandedTerm, j, idx);
       }
-      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[j]).append("'");
     }
-    return expandedTerm;
+    if(wasArrayIndex) {
+      result.append("concat_array_object_values(").append(expandedTerm).append(")");
+    } else {
+      result.append(expandedTerm);
+    }
+    return result;
+  }
+  private static  boolean appendExpandedSimpleTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx, int tokenIdx) {
+    String arrowToken = "->";
+    int endOffset = tokenIdx > -1 ? -2 : -1;
+    if(currentTermIdx == rawExpandedTerm.length + endOffset) {
+      arrowToken = "->>";
+    }
+    expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx]).append("'");
+    return false;
+  }
+  private static boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
+      int tokenIdx) {
+    String arrowToken = "->";
+    expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");
+    return true;
   }
 }

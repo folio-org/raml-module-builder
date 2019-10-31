@@ -9,12 +9,40 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
+        },
+        {
+          "fieldName": "ginfieldstar",
+          "multiFieldNames": "field1[*].city,field2[*].state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ginfielddotstar",
+          "multiFieldNames": "field3.info[*].city,field3.info[*].state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
         }
       ],
       "fullTextIndex": [
         {
           "fieldName": "ftfield",
           "multiFieldNames": "field1,field2",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ftfieldstar",
+          "multiFieldNames": "field1[*].city,field2[*].state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ftfielddotstar",
+          "multiFieldNames": "field3.info[*].city,field3.info[*].state",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
