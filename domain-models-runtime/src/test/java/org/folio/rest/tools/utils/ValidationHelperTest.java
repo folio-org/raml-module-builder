@@ -7,15 +7,12 @@ import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.mauricio.async.db.postgresql.messages.backend.ErrorMessage;
+import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
+import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import scala.Predef;
-import scala.Tuple2;
-import scala.collection.JavaConverters;
 
 /**
  * @author shale
@@ -122,15 +119,11 @@ public class ValidationHelperTest {
 
 
   private ErrorMessage createErrorMessage(String sqlstate, String detail, String message){
-      Map<Object, String> javaMap = new HashMap<>();
+      Map<Character, String> javaMap = new HashMap<>();
       javaMap.put('C', sqlstate);
       javaMap.put('D', detail);
       javaMap.put('M', message);
-      ErrorMessage errorMessage = new ErrorMessage(scalaMap(javaMap));
+      ErrorMessage errorMessage = new ErrorMessage(javaMap);
       return errorMessage;
-  }
-
-  private scala.collection.immutable.Map<Object, String> scalaMap(Map<Object, String> javaMap) {
-    return JavaConverters.mapAsScalaMapConverter(javaMap).asScala().toMap(Predef.<Tuple2<Object, String>>conforms());
   }
 }

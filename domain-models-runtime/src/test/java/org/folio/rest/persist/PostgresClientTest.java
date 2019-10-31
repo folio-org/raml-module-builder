@@ -5,7 +5,6 @@ import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
-
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -27,6 +26,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
 import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
@@ -83,6 +83,7 @@ public class PostgresClientTest {
    }
  }
 
+  private Logger oldLogger;
   private String oldConfigFilePath;
   private boolean oldIsEmbedded;
   private int oldEmbeddedPort;
@@ -115,6 +116,7 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(6000));
     assertThat(config.getString("username"), is("username"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -127,6 +129,7 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(port));
     assertThat(config.getString("username"), is("barschema"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -135,11 +138,13 @@ public class PostgresClientTest {
     JsonObject env = new JsonObject()
         .put("DB_EXPLAIN_QUERY_THRESHOLD", 1200L)
         .put("host", "example.com")
-        .put("port", 9876);
+        .put("port", 9876)
+        .put("connectionReleaseDelay", 90000);
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "aSchemaName", env);
     assertThat(config.getString("host"), is("example.com"));
     assertThat(config.getInteger("port"), is(9876));
     assertThat(config.getString("username"), is("aSchemaName"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(90000));
     assertThat(PostgresClient.getExplainQueryThreshold(), is(1200L));
     PostgresClient.setExplainQueryThreshold(previous);
   }
@@ -152,6 +157,7 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("localhost"));
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("postgres"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(30000));
   }
 
   @Test
@@ -162,6 +168,7 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("localhost"));
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("mySchemaName"));
+    assertThat(config.getInteger("connectionReleaseDelay"), is(30000));
   }
 
   @Test
@@ -670,25 +677,82 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void parseQueryTest1() {
+  public void parseQueryWithDoubleAt() {
     String whereFromCQLtoPG = "id in (select t.id from (select id as id, "
       + "jsonb_array_elements(instance.jsonb->'contributors') as c) as t "
       + "where to_tsvector('simple', f_unaccent(t.c->>'name')) @@ to_tsquery('simple', f_unaccent('novik')) "
       + "and to_tsvector('simple', f_unaccent(t.c->>'contributorNameTypeId')) @@ to_tsquery('simple', f_unaccent('personal')))";
     String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 10 OFFSET 0";
     String selectClause = "SELECT jsonb,id FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    ParsedQuery parseQuery = PostgresClient.parseQuery(selectClause);
-    assertThat(parseQuery.getWhereClause().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
-    assertThat(parseQuery.getCountQuery().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
+    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
   }
 
   @Test
-  public void parseQueryTest2() {
+  public void parseQueryWithDoubleColon() {
+    String where = "tsvector @@ replace(to_tsquery('simple', '''foo''')::text, '&', '<->')::tsquery";
+    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
+  }
+
+  @Test
+  public void parseQueryWithDoubleAnd() {
+    String where = "to_tsvector() @@ (to_tsquery('''cool''') && to_tsquery('''water'''))";
+    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
+  }
+
+  @Test
+  public void parseQueryWithDoublePipe() {
+    String where = "to_tsvector() @@ (to_tsquery('''cool''') || to_tsquery('''water'''))";
+    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
+  }
+
+  @Test
+  public void parseQueryWithDoubleArrow() {
+    String where = "to_tsvector() @@ (to_tsquery('''cool''') <-> to_tsquery('''water'''))";
+    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
+  }
+
+  @Test
+  public void parseQueryWithUuid() {
     String whereFromCQLtoPG = "id = '68b6a052-5e73-4f04-90ab-273694d125bd'";
     String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
     String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    ParsedQuery parseQuery = PostgresClient.parseQuery(selectClause);
-    assertThat(parseQuery.getWhereClause().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
-    assertThat(parseQuery.getCountQuery().toLowerCase(), containsString(whereFromCQLtoPG.toLowerCase()));
+    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
+  }
+
+  @Test
+  public void parseQueryWithIsTrueIsNotTrue() {
+    String whereFromCQLtoPG = "foo IS TRUE OR baz IS NOT TRUE OR baz IS TRUE OR bug IS NOT TRUE";
+    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
+    String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
+    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
+  }
+
+  /**
+   * Assert that parsQuery(String) returns a result where both .getWhereClause() and .getCountQuery()
+   * contain where, and assert that parsing doesn't cause an exception (that is logged as an error but ignored).
+   * @param select
+   * @param where
+   */
+  public void parseQueryWithoutErrorLogging(String select, String where) {
+    PostgresClient.log = new Logger(oldLogger.getDelegate()) {
+      @Override
+      public void error(Object message, Throwable e) {
+        // no not ignore this exception but fail the test.
+        throw new RuntimeException(message == null ? null : message.toString(), e);
+      }
+    };
+    ParsedQuery parsedQuery = PostgresClient.parseQuery(select);
+    assertThat(parsedQuery.getWhereClause().toLowerCase(), containsString(where.toLowerCase()));
+    assertThat(parsedQuery.getCountQuery() .toLowerCase(), containsString(where.toLowerCase()));
+  }
+
+  @Before
+  public void saveLogger() {
+    oldLogger = PostgresClient.log;
+  }
+
+  @After
+  public void restoreLogger() {
+    PostgresClient.log = oldLogger;
   }
 }

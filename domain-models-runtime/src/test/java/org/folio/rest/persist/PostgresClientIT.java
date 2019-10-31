@@ -440,12 +440,20 @@ public class PostgresClientIT {
 */
 
   public static class StringPojo {
+    public String id;
     public String key;
     public StringPojo() {
       // required by ObjectMapper.readValue for JSON to POJO conversion
     }
     public StringPojo(String key) {
       this.key = key;
+    }
+    public StringPojo(String key, String id) {
+      this.key = key;
+      this.id = id;
+    }
+    public String getId() {
+      return id;
     }
   }
 
@@ -979,12 +987,18 @@ public class PostgresClientIT {
 
   @Test
   public void saveBatchX(TestContext context) {
-    List<Object> list = Collections.singletonList(xPojo);
+    String id1 = randomUuid();
+    List<StringPojo> list = new ArrayList<>();
+    list.add(xPojo);
+    list.add(new StringPojo("v", id1));
     postgresClient = createFoo(context);
     postgresClient.saveBatch(FOO, list, context.asyncAssertSuccess(save -> {
-      String id = save.getResults().get(0).getString(0);
-      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+      String id0 = save.getResults().get(0).getString(0);
+      postgresClient.getById(FOO, id0, context.asyncAssertSuccess(get -> {
         context.assertEquals("x", get.getString("key"));
+      }));
+      postgresClient.getById(FOO, id1, context.asyncAssertSuccess(get -> {
+        context.assertEquals("v", get.getString("key"));
       }));
     }));
   }
@@ -1012,17 +1026,37 @@ public class PostgresClientIT {
     list.add(context);
     postgresClient = createFoo(context);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.saveBatch(trans, FOO, list, context.asyncAssertFailure(save -> {
-        // postgresClient.endTx(trans, context.asyncAssertSuccess());
-      }));
+      postgresClient.saveBatch(trans, FOO, list, context.asyncAssertFailure());
+      // the failure automatically rolls back the transaction
     }));
   }
 
   @Test
   public void saveBatchNullConnection(TestContext context) {
-    log.fatal("saveBatchNullConnection started");
     List<Object> list = Collections.singletonList(xPojo);
     postgresClientNullConnection().saveBatch(FOO, list, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveBatchNullList(TestContext context) {
+    createFoo(context).saveBatch(FOO, (List<Object>)null, context.asyncAssertSuccess(save -> {
+      context.assertEquals(0, save.getNumRows());
+    }));
+  }
+
+  @Test
+  public void saveBatchEmptyList(TestContext context) {
+    List<Object> list = Collections.emptyList();
+    createFoo(context).saveBatch(FOO, list, context.asyncAssertSuccess(save -> {
+      context.assertEquals(0, save.getNumRows());
+    }));
+  }
+
+  @Test
+  public void saveBatchNullEntity(TestContext context) {
+    List<Object> list = new ArrayList<>();
+    list.add(null);
+    createFoo(context).saveBatch(FOO, list, context.asyncAssertFailure());
   }
 
   @Test
@@ -1033,12 +1067,18 @@ public class PostgresClientIT {
 
   @Test
   public void saveBatchJson(TestContext context) {
+    String id = randomUuid();
     JsonArray array = new JsonArray()
         .add("{ \"x\" : \"a\" }")
-        .add("{ \"y\" : \"'\" }");
+        .add("{ \"y\" : \"z\", \"id\": \"" + id + "\" }")
+        .add("{ \"z\" : \"'\" }");
     createFoo(context).saveBatch(FOO, array, context.asyncAssertSuccess(res -> {
-      context.assertEquals(2, res.getRows().size());
+      context.assertEquals(3, res.getRows().size());
       context.assertEquals("id", res.getColumnNames().get(0));
+      context.assertEquals(id, res.getRows().get(1).getValue("id"));
+      postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+        context.assertEquals("z", get.getString("y"));
+      }));
     }));
   }
 
@@ -1048,6 +1088,27 @@ public class PostgresClientIT {
         .add("{ \"x\" : \"a\" }")
         .add("{ \"y\" : \"'\" }");
     createFoo(context).saveBatch(BAR, array, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveBatchJsonNullArray(TestContext context) {
+    createFoo(context).saveBatch(BAR, (JsonArray)null, context.asyncAssertSuccess(save -> {
+      context.assertEquals(0, save.getNumRows());
+    }));
+  }
+
+  @Test
+  public void saveBatchJsonEmptyArray(TestContext context) {
+    createFoo(context).saveBatch(FOO, new JsonArray(), context.asyncAssertSuccess(save -> {
+      context.assertEquals(0, save.getNumRows());
+    }));
+  }
+
+  @Test
+  public void saveBatchJsonNullEntity(TestContext context) {
+    JsonArray array = new JsonArray();
+    array.add((String) null);
+    createFoo(context).saveBatch(FOO, array, context.asyncAssertFailure());
   }
 
   @Test
