@@ -21,10 +21,10 @@ class IndexTest {
     assertEquals("table.jsonb" + expectedSql,result.toString());
   }
   @ParameterizedTest
-  @CsvSource({
-    "a[*].b,\"concat_array_object_values(table.jsonb->'a','b')\"",
-    "a.b[*].c,\"concat_array_object_values(table.jsonb->'a'->'b','c')\"",
-  })
+  @CsvSource(value = {
+    "a[*].b|concat_array_object_values(table.jsonb->'a','b')",
+    "a.b[*].c|concat_array_object_values(table.jsonb->'a'->'b','c')"
+  }, delimiter = '|')
   void appendExpandedArrayTerm(String term, String expectedSql) {
     StringBuilder result = new StringBuilder();
     Index.appendExpandedTerm( "table", term,result);
