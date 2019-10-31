@@ -174,8 +174,6 @@ public class PostgresClient {
 
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
 
-  private static final List<Map.Entry<String,Pattern>> REMOVE_FROM_COUNT_ESTIMATE= new java.util.ArrayList<>();
-
   private static int embeddedPort            = -1;
 
   /** analyze threshold value in milliseconds */
@@ -187,12 +185,6 @@ public class PostgresClient {
   private AsyncSQLClient client;
   private final String tenantId;
   private final String schemaName;
-
-  static {
-    REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("LIMIT", Pattern.compile("LIMIT\\s+[\\d]+(?=(([^']*'){2})*[^']*$)", 2)));
-    REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("OFFSET", Pattern.compile("OFFSET\\s+[\\d]+(?=(([^']*'){2})*[^']*$)", 2)));
-    REMOVE_FROM_COUNT_ESTIMATE.add(new SimpleEntry<>("ORDER BY", Pattern.compile("ORDER BY(([^']*'){2})*\\s+(desc|asc|)", 2)));
-  }
 
   protected PostgresClient(Vertx vertx, String tenantId) throws Exception {
     this.tenantId = tenantId;
