@@ -261,7 +261,7 @@ public class CQL2PgJSON {
    * @return SQL WHERE clause, without leading "WHERE ", may contain "ORDER BY" clause
    * @throws QueryValidationException  when parsing or validating cql fails
    *
-   * @Deprecated use toSql instead
+   * @deprecated use toSql instead
    */
   @Deprecated
   public String cql2pgJson(String cql) throws QueryValidationException {

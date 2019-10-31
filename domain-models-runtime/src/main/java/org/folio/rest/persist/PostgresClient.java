@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1902,8 +1901,7 @@ public class PostgresClient {
 
   private <T> void processQueryWithCount(
     SQLConnection connection, QueryHelper queryHelper, String statMethod,
-    Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
-  ) throws IOException, TemplateException {
+    Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
     long start = System.nanoTime();
 
     log.debug("Attempting count query: " + queryHelper.countQuery);
