@@ -28,7 +28,7 @@ class IndexTest {
   void appendExpandedArrayTerm(String term, String expectedSql) {
     StringBuilder result = new StringBuilder();
     Index.appendExpandedTerm( "table", term,result);
-    assertEquals( result.toString() + "1",result.toString());
+    assertEquals( expectedSql,result.toString());
   }
   @Test
   void multiFieldNames() {
