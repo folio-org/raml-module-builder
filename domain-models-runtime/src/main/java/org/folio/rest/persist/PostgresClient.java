@@ -1990,21 +1990,7 @@ public class PostgresClient {
 
   public <T> void get(String table, T entity, boolean returnCount, boolean returnIdField,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    boolean setId = true;
-    if(returnIdField == false){
-      //if no id fields then cannot setId from external column into json object
-      setId = false;
-    }
-    String pojo = null;
-    try {
-      pojo = pojo2json(entity);
-    } catch (Exception e) {
-      replyHandler.handle(Future.failedFuture(e));
-      return;
-    }
-    Class<T> clazz = (Class<T>) entity.getClass();
-    get(table, clazz, DEFAULT_JSONB_FIELD_NAME, WHERE + DEFAULT_JSONB_FIELD_NAME
-      + "@>'" + pojo + "' ", returnCount, returnIdField, setId, replyHandler);
+    get(table, entity, new String[]{DEFAULT_JSONB_FIELD_NAME}, returnCount, returnIdField, replyHandler);
   }
 
   public <T> void get(String table, T entity, String[] fields, boolean returnCount, boolean returnIdField,
@@ -2013,31 +1999,25 @@ public class PostgresClient {
   }
 
   public <T> void get(String table, T entity, String[] fields, boolean returnCount,
-      boolean returnIdField, int offset, int limit,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
+    boolean returnIdField, int offset, int limit,
+    Handler<AsyncResult<Results<T>>> replyHandler) {
+
+    Criterion criterion = new Criterion();
+    if (offset != -1) {
+      criterion.setOffset(new Offset(offset));
+    }
+    if (limit != -1) {
+      criterion.setLimit(new Limit(limit));
+    }
     boolean setId = true;
-    if(returnIdField == false){
+    if (returnIdField == false) {
       //if no id fields then cannot setId from extrnal column into json object
       setId = false;
     }
-    StringBuilder sb = new StringBuilder();
-    if(offset != -1){
-      sb.append(SPACE).append(new Offset(offset).toString()).append(SPACE);
-    }
-    if(limit != -1){
-      sb.append(SPACE).append(new Limit(limit).toString()).append(SPACE);
-    }
-    String pojo = null;
-    try {
-      pojo = pojo2json(entity);
-    } catch (Exception e) {
-      replyHandler.handle(Future.failedFuture(e));
-      return;
-    }
     String fieldsStr = Arrays.toString(fields);
     Class<T> clazz = (Class<T>) entity.getClass();
-    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), WHERE + DEFAULT_JSONB_FIELD_NAME
-      + "@>'" + pojo + "' "+sb.toString(), returnCount, returnIdField, setId, replyHandler);
+    get(null, table, clazz, fieldsStr.substring(1, fieldsStr.length() - 1),
+      criterion, returnCount, returnIdField, setId, null, replyHandler);
   }
 
   /**
@@ -2137,7 +2117,8 @@ public class PostgresClient {
     get(table, clazz, filter, returnCount, setId, null, replyHandler);
   }
 
-  public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+  public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter,
+    boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(conn, table, clazz, filter, returnCount, setId, null, replyHandler);
   }
@@ -2158,16 +2139,25 @@ public class PostgresClient {
     get(null, table, clazz, filter, returnCount, setId, facets, replyHandler);
   }
 
-  public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+  public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
+    Criterion filter, boolean returnCount, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
+
+    get(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME, filter, returnCount,
+      false, setId, facets, replyHandler);
+  }
+
+  <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
+    String fieldName, Criterion filter, boolean returnCount, boolean returnIdField,
+    boolean setId, List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     CQLWrapper cqlWrapper = new CQLWrapper(filter);
     if (conn == null) {
-      get(table, clazz, DEFAULT_JSONB_FIELD_NAME, cqlWrapper, returnCount,
-        false, setId, facets, null, replyHandler);
+      get(table, clazz, fieldName, cqlWrapper, returnCount,
+        returnIdField, setId, facets, null, replyHandler);
     } else {
-      doGetWrapper(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME, cqlWrapper, returnCount,
-        false, setId, facets, null, replyHandler);
+      doGetWrapper(conn, table, clazz, fieldName, cqlWrapper, returnCount,
+        returnIdField, setId, facets, null, replyHandler);
     }
   }
 

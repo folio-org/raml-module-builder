@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -2285,12 +2286,20 @@ public class PostgresClientIT {
       });
     async.awaitSuccess();
 
-    String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
+    String whereClause = "WHERE jsonb->>'order_format' = 'Other'";
     Async async2 = context.async();
     postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, false, false,
       false, null, distinctOn, handler -> {
         ResultInfo resultInfo = handler.result().getResultInfo();
         context.assertEquals(1, resultInfo.getTotalRecords());
+        try {
+          List<Object> objs = handler.result().getResults();
+          ObjectMapper mapper = new ObjectMapper();
+          context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
+            new JsonObject(mapper.writeValueAsString(objs.get(0))).getString("id"));
+        } catch (Exception ex) {
+          context.fail(ex);
+        }
         async2.complete();
       });
     async2.awaitSuccess();
@@ -2323,10 +2332,22 @@ public class PostgresClientIT {
     Async async2 = context.async();
     postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, true, false,
       false, facets, distinctOn, handler -> {
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(1, resultInfo.getTotalRecords());
-        List<Facet> retFacets = resultInfo.getFacets();
-        context.assertEquals(1, retFacets.size());
+        try {
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(1, resultInfo.getTotalRecords());
+          List<Object> objs = handler.result().getResults();
+          ObjectMapper mapper = new ObjectMapper();
+          context.assertEquals("{\"count\":1}", mapper.writeValueAsString(objs.get(0)));
+          context.assertEquals("{\"facetValues\":[{\"count\":1,\"value\":\"First edition\"}],\"type\":\"edition\"}",
+            mapper.writeValueAsString(objs.get(1)));
+          context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
+            new JsonObject(mapper.writeValueAsString(objs.get(2))).getString("id"));
+
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(1, retFacets.size());
+        } catch (Exception ex) {
+          context.fail(ex);
+        }
         async2.complete();
       });
     async2.awaitSuccess();
@@ -2339,7 +2360,7 @@ public class PostgresClientIT {
 
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
     {
-      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson,
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, 
         "cql.allRecords="); // syntax error
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
@@ -2462,6 +2483,49 @@ public class PostgresClientIT {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(4, resultInfo.getTotalRecords());
+          try {
+            List<Object> objs = handler.result().getResults();
+            context.assertEquals(4, objs.size());
+          } catch (Exception ex) {
+            context.fail(ex);
+          }
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(0, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
+    {
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, new String[]{"*"},
+        true, true, 2, 1, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(6, resultInfo.getTotalRecords());
+          try {
+            List<Class<Object>> objs = handler.result().getResults();
+            context.assertEquals(1, objs.size());
+          } catch (Exception ex) {
+            context.fail(ex);
+          }
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(0, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
+    {
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, true, true, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(6, resultInfo.getTotalRecords());
+          try {
+            List<Class<Object>> objs = handler.result().getResults();
+            context.assertEquals(6, objs.size());
+          } catch (Exception ex) {
+            context.fail(ex);
+          }
           List<Facet> retFacets = resultInfo.getFacets();
           context.assertEquals(0, retFacets.size());
           async.complete();
@@ -2516,10 +2580,22 @@ public class PostgresClientIT {
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
         cqlWrapper, true, true, false, facets, distinctOn, handler -> {
           context.assertTrue(handler.succeeded());
-          ResultInfo resultInfo = handler.result().getResultInfo();
-          context.assertEquals(1, resultInfo.getTotalRecords());
-          List<Facet> retFacets = resultInfo.getFacets();
-          context.assertEquals(1, retFacets.size());
+
+          try {
+            ResultInfo resultInfo = handler.result().getResultInfo();
+            context.assertEquals(1, resultInfo.getTotalRecords());
+            List<Object> objs = handler.result().getResults();
+            ObjectMapper mapper = new ObjectMapper();
+            context.assertEquals("{\"count\":1}", mapper.writeValueAsString(objs.get(0)));
+            context.assertEquals("{\"facetValues\":[{\"count\":1,\"value\":\"First edition\"}],\"type\":\"edition\"}",
+              mapper.writeValueAsString(objs.get(1)));
+            context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
+              new JsonObject(mapper.writeValueAsString(objs.get(2))).getString("id"));
+            List<Facet> retFacets = resultInfo.getFacets();
+            context.assertEquals(1, retFacets.size());
+          } catch (Exception ex) {
+            context.fail(ex);
+          }
           async.complete();
         });
       async.awaitSuccess();
