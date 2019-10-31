@@ -1,33 +1,41 @@
+## 28.0.0 2019-10-30
+
+ * RMB-433 Fix saveBatch must not overwrite existing id
+ * RMB-492 Remove unnecessary JSQLParserException error log if query
+ * RMB-493 Fix CQLWrapper.addWrapper not left associative as it should be
+   was parsed successfully
+ * RMB-496 connectionReleaseDelay: Use 1 minute as default, add config
+
 ## 27.1.2 2019-10-23
 
-* RMB-485: RMB modules leak PostgreSQLConnection objects
-* RMB-476: PgUtil.post: Return after-trigger value (INSERT ... RETURNING jsonb)
-* RMB-482: Dropwizard metrics disabling
-* RMB-427: StatsTracker not being synchronized can fail PostgresClient operations when run in parallel
-* RMB-469: "multiFieldNames": "firstName , lastName" fails on spaces around the comma
-* RMB-470: "multiFieldNames" fail on nested fields (subfields) like proxy.personal.firstName
-* RMB-462: fullText / defaultDictionary not used in queries
+ * RMB-485: RMB modules leak PostgreSQLConnection objects
+ * RMB-476: PgUtil.post: Return after-trigger value (INSERT ... RETURNING jsonb)
+ * RMB-482: Dropwizard metrics disabling
+ * RMB-427: StatsTracker not being synchronized can fail PostgresClient operations when run in parallel
+ * RMB-469: "multiFieldNames": "firstName , lastName" fails on spaces around the comma
+ * RMB-470: "multiFieldNames" fail on nested fields (subfields) like proxy.personal.firstName
+ * RMB-462: fullText / defaultDictionary not used in queries
 
 ## 27.1.1 2019-09-25
 
-* RMB-479 mvn install leaves embedded postgres running
-* RMB-478 RMB echoes all headers
+ * RMB-479 mvn install leaves embedded postgres running
+ * RMB-478 RMB echoes all headers
 
 ## 25.0.2 2019-09-25
 
-* RMB-478 RMB echoes all headers
+ * RMB-478 RMB echoes all headers
 
 ## 27.1.0 2019-09-24
 
 See also [27.1 upgrading instructions](doc/upgrading.md#version-271).
-* RMB-444 Documentation: Name of generated .java files (resource, model)
-* RMB-385 add 'queryIndexName' to schema.json and allow compound indexes
-* RMB-421 422 JSON error message for PgUtil
-* RMB-457 option to enable: analyze explain queries
-* RMB-466 drop CQL2PgJSON view constructor
-* RMB-464 Upgrade to Vert.x 3.8.1
-* RMB-468 Foreign key field index
-* RMB-477 jackson-databind 2.9.10 fix CVE-2019-16335, CVE-2019-14540
+ * RMB-444 Documentation: Name of generated .java files (resource, model)
+ * RMB-385 add 'queryIndexName' to schema.json and allow compound indexes
+ * RMB-421 422 JSON error message for PgUtil
+ * RMB-457 option to enable: analyze explain queries
+ * RMB-466 drop CQL2PgJSON view constructor
+ * RMB-464 Upgrade to Vert.x 3.8.1
+ * RMB-468 Foreign key field index
+ * RMB-477 jackson-databind 2.9.10 fix CVE-2019-16335, CVE-2019-14540
 
 ## 27.0.0 2019-08-26
 
