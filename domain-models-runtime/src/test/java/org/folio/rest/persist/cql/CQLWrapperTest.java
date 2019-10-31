@@ -51,6 +51,18 @@ public class CQLWrapperTest {
   }
 
   @Test
+  public void invalidCQLsortby() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("name=miller sortby");
+    try {
+      wrapper.getOrderBy();
+      fail("exception expected");
+    }
+    catch (CQLQueryValidationException e) {
+      assertThat(e.getMessage(), allOf(containsString("ParseException"), containsString("no sort keys")));
+    }
+  }
+
+  @Test
   public void emptyCqlQueryValidationException() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("");
     try {
@@ -116,6 +128,22 @@ public class CQLWrapperTest {
     CQLWrapper wrapper2 = new CQLWrapper(cql2pgJson, "year = 1990 sortby date");
     wrapper.addWrapper(wrapper2);
     assertThat(wrapper.toString(), stringContainsInOrder("WHERE", "author", "abc", "year", "1990", "ORDER BY", "title"));
+  }
+
+  @Test
+  public void wrapWithEmpty() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson);
+    CQLWrapper wrapper2 = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+    wrapper.addWrapper(wrapper2);
+    assertThat(wrapper.toString(), is("WHERE true"));
+  }
+
+  @Test
+  public void wrapWithEmpty2() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper();
+    CQLWrapper wrapper2 = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+    wrapper.addWrapper(wrapper2);
+    assertThat(wrapper.toString(), is("WHERE true"));
   }
 
   @Test

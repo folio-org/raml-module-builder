@@ -152,7 +152,7 @@ public class CQLWrapper {
    * @param text what to append
    */
   private void spaceAppend(StringBuilder sb, String text) {
-    if (text == null || text.isEmpty()) {
+    if (text.isEmpty()) {
       return;
     }
     if (sb.length() > 0) {
@@ -192,7 +192,7 @@ public class CQLWrapper {
   /**
    * @return sort by criteria excluding SORT BY prefix or empty string if no sorting
    */
-  private String getOrderBy() {
+  String getOrderBy() {
     if (query == null || field == null) {
       return "";
     }
