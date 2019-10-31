@@ -247,6 +247,10 @@ public class Criterion {
     return cc;
   }
 
+  /**
+   * @return SELECT clause - without SELECT - possibly empty string
+   * @deprecated not used by RMB itself anymore and should not be publicly used
+   */
   @Deprecated
   public String selects2String() {
     StringBuilder sb = new StringBuilder();
@@ -269,6 +273,10 @@ public class Criterion {
     return sb.toString();
   }
 
+  /**
+   * @return as clause for SELECT of empty string if none
+   * @deprecated not used by RMB itself anymore and should not be publicly used
+   */
   @Deprecated
   public String from2String() {
     StringBuilder sb = new StringBuilder();

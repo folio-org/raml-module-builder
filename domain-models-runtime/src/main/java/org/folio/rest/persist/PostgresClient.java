@@ -1500,6 +1500,19 @@ public class PostgresClient {
     }
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnCount
+   * @param returnIdField
+   * @param setId
+   * @param replyHandler
+   * @deprecated use get with CQLWrapper or Criterion instead
+   */
   @Deprecated
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
       boolean returnCount, boolean returnIdField, boolean setId,
@@ -1507,6 +1520,20 @@ public class PostgresClient {
     get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null /* facets */, replyHandler);
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnCount
+   * @param returnIdField
+   * @param setId
+   * @param facets
+   * @param replyHandler
+   * @deprecated use get with CQLWrapper or Criterion instead
+   */
   @Deprecated
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
       boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
@@ -1514,6 +1541,21 @@ public class PostgresClient {
     get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, null /*distinctOn*/, replyHandler);
   }
 
+/**
+ *
+ * @param <T>
+ * @param table
+ * @param clazz
+ * @param fieldName
+ * @param where
+ * @param returnCount
+ * @param returnIdField
+ * @param setId
+ * @param facets
+ * @param distinctOn
+ * @param replyHandler
+ * @deprecated use get with CQLWrapper or Criterion instead
+ */
   @Deprecated
   public <T> void get(String table, Class<T> clazz, String fieldName, String where,
     boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
@@ -1548,8 +1590,21 @@ public class PostgresClient {
     }
   }
 
-  /* low-level SQL getter, based on CQLWrapper.. Does not handle facets yet */
-  /* this function should eventually replace doGetObsolete */
+  /**
+   * low-level getter based on CQLWrapper
+   * @param <T>
+   * @param conn
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param wrapper
+   * @param returnCount
+   * @param returnIdField
+   * @param setId
+   * @param facets
+   * @param distinctOn
+   * @param replyHandler
+   */
   private <T> void doGetWrapper(
     AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
     String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField, boolean setId,
@@ -2067,6 +2122,18 @@ public class PostgresClient {
         closeAndHandleResult(conn, replyHandler)));
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fields
+   * @param filter
+   * @param returnCount
+   * @param setId
+   * @param replyHandler
+   * @deprecated use get with CQLWrapper or Criterion instead
+   */
   @Deprecated
   public <T> void get(String table, Class<T> clazz, String[] fields, String filter,
       boolean returnCount, boolean setId,
@@ -2079,6 +2146,17 @@ public class PostgresClient {
     get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param filter
+   * @param returnCount
+   * @param setId
+   * @param replyHandler
+   * @deprecated use get with CQLWrapper or Criterion instead
+   */
   @Deprecated
   public <T> void get(String table, Class<T> clazz, String filter,
       boolean returnCount, boolean setId,
