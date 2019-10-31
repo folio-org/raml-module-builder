@@ -1815,7 +1815,7 @@ public class PostgresClientIT {
 
   @Test
   public void executeTrans(TestContext context) {
-    Async async = context.async();
+    Async async1 = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
     postgresClient.startTx(trans -> {
@@ -1824,30 +1824,32 @@ public class PostgresClientIT {
         assertSuccess(context, res);
         postgresClient.rollbackTx(trans, rollback -> {
           assertSuccess(context, rollback);
-          async.complete();
+          async1.complete();
         });
       });
     });
-    async.awaitSuccess(5000);
+    async1.awaitSuccess(5000);
 
+    Async async2 = context.async();
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
       postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(0) + "'", res -> {
         assertSuccess(context, res);
         postgresClient.endTx(trans, end -> {
           assertSuccess(context, end);
-          async.complete();
+          async2.complete();
         });
       });
     });
-    async.awaitSuccess(5000);
+    async2.awaitSuccess(5000);
 
+    Async async3 = context.async();
     postgresClient.getById(FOO, ids, res -> {
       assertSuccess(context, res);
       context.assertEquals(1, res.result().size());
-      async.complete();
+      async3.complete();
     });
-    async.awaitSuccess(5000);
+    async3.awaitSuccess(5000);
 
     postgresClient.closeClient(context.asyncAssertSuccess());
   }
@@ -2259,6 +2261,7 @@ public class PostgresClientIT {
     }};
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
       facets,"jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
         context.assertEquals(2, objectCount.get());
@@ -2282,62 +2285,70 @@ public class PostgresClientIT {
       });
     async.awaitSuccess();
 
-    String whereClause = "WHERE jsonb->>'order_format' = 'Other'";
+    String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
+    Async async2 = context.async();
     postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, false, false,
       false, null, distinctOn, handler -> {
         ResultInfo resultInfo = handler.result().getResultInfo();
         context.assertEquals(1, resultInfo.getTotalRecords());
-        async.complete();
+        async2.complete();
       });
-    async.awaitSuccess();
+    async2.awaitSuccess();
   }
 
   @Test
-  public void getDistinctOnWithFacets(TestContext context) throws IOException, FieldException {
+  public void getDistinctOnWithFacets(TestContext context) throws IOException, FieldException  {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
-    List<FacetField> facets = new ArrayList<FacetField>() {
-      {
-        add(new FacetField("jsonb->>'edition'"));
-      }
-    };
+    List<FacetField> facets = new ArrayList<FacetField>() {{
+      add(new FacetField("jsonb->>'edition'"));
+    }};
     String distinctOn = "jsonb->>'order_format'";
     //with facets and return count
-    Async async = context.async();
+    Async async1 = context.async();
     postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", true, false,
       false, facets, distinctOn, handler -> {
         ResultInfo resultInfo = handler.result().getResultInfo();
         context.assertEquals(4, resultInfo.getTotalRecords());
         List<Facet> retFacets = resultInfo.getFacets();
         context.assertEquals(1, retFacets.size());
-        async.complete();
+        async1.complete();
       });
-    async.awaitSuccess();
+    async1.awaitSuccess();
 
-    String whereClause = "WHERE jsonb->>'order_format' = 'Other'";
+    String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
 
     //with facets and where clause RMB-355
+    Async async2 = context.async();
     postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, true, false,
       false, facets, distinctOn, handler -> {
         ResultInfo resultInfo = handler.result().getResultInfo();
         context.assertEquals(1, resultInfo.getTotalRecords());
         List<Facet> retFacets = resultInfo.getFacets();
         context.assertEquals(1, retFacets.size());
-        async.complete();
+        async2.complete();
       });
-    async.awaitSuccess();
+    async2.awaitSuccess();
   }
 
   @Test
   public void getCQLWrapperFailure(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON(MOCK_POLINES_TABLE + ".jsonb");
-    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson,
-      "cql.allRecords="); // syntax error
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-      cqlWrapper, true, true, false, null, null, context.asyncAssertFailure());
+
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson,
+        "cql.allRecords="); // syntax error
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapper, true, true, false, null, null/*facets*/, handler -> {
+          context.assertTrue(handler.failed());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
   }
 
   @Test
@@ -2345,93 +2356,118 @@ public class PostgresClientIT {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON(MOCK_POLINES_TABLE + ".jsonb");
-
-    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-      cqlWrapper, false, true, false, null, null/*facets*/, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(6, resultInfo.getTotalRecords());
-        context.asyncAssertSuccess();
-      });
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapper, false, true, false, null, null/*facets*/, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(6, resultInfo.getTotalRecords());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
   }
 
   @Test
   public void getCQLWrapperJsonbField(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON(MOCK_POLINES_TABLE + ".jsonb");
     List<FacetField> facets = null;
-
-    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
-    Async async = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb",
-      cqlWrapper, true, true, false, facets, null, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(6, resultInfo.getTotalRecords());
-        async.complete();
-      });
-    async.awaitSuccess();
-
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON(MOCK_POLINES_TABLE + ".jsonb");
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb",
+        cqlWrapper, true, true, false, facets, null, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(6, resultInfo.getTotalRecords());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
     String distinctOn = "jsonb->>'order_format'";
-    cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb",
-      cqlWrapper, true, true, false, facets, distinctOn, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(4, resultInfo.getTotalRecords());
-        async.complete();
-      });
-    async.awaitSuccess();
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb",
+        cqlWrapper, true, true, false, facets, distinctOn, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(4, resultInfo.getTotalRecords());
+          async.complete();
+        }
+      );
+      async.awaitSuccess();
+    }
   }
 
   @Test
   public void getCQLWrapperNoFacets(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON(MOCK_POLINES_TABLE + ".jsonb");
     List<FacetField> facets = null;
-    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
-    Async async = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-      cqlWrapper, true, true, false, facets, null, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(6, resultInfo.getTotalRecords());
-        List<Facet> retFacets = resultInfo.getFacets();
-        context.assertEquals(0, retFacets.size());
-        async.complete();
-      });
-    async.awaitSuccess();
-
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapper, true, true, false, facets, null, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(6, resultInfo.getTotalRecords());
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(0, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
     String distinctOn = "jsonb->>'order_format'";
-    cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-      cqlWrapper, true, true, false, facets, distinctOn, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(4, resultInfo.getTotalRecords());
-        List<Facet> retFacets = resultInfo.getFacets();
-        context.assertEquals(0, retFacets.size());
-        async.complete();
-      });
-    async.awaitSuccess();
-
-    cqlWrapper = null;
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-      cqlWrapper, true, true, false, facets, distinctOn, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(4, resultInfo.getTotalRecords());
-        List<Facet> retFacets = resultInfo.getFacets();
-        context.assertEquals(0, retFacets.size());
-        async.complete();
-      });
-    async.awaitSuccess();
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapper, true, true, false, facets, distinctOn, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(4, resultInfo.getTotalRecords());
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(0, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
+    {
+      Async async = context.async();
+      CQLWrapper cqlWrapperNull = null;
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapperNull, true, true, false, facets, null, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(6, resultInfo.getTotalRecords());
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(0, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
+    {
+      Async async = context.async();
+      CQLWrapper cqlWrapperNull = null;
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapperNull, true, true, false, facets, distinctOn, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(4, resultInfo.getTotalRecords());
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(0, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
   }
 
   @Test
@@ -2439,49 +2475,55 @@ public class PostgresClientIT {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON(MOCK_POLINES_TABLE + ".jsonb");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
     List<FacetField> facets = new ArrayList<FacetField>() {
       {
         add(new FacetField("jsonb->>'edition'"));
       }
     };
-    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
-    Async async = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-      cqlWrapper, true, true, false, facets, null, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(6, resultInfo.getTotalRecords());
-        List<Facet> retFacets = resultInfo.getFacets();
-        context.assertEquals(1, retFacets.size());
-        async.complete();
-      });
-    async.awaitSuccess();
-
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapper, true, true, false, facets, null, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(6, resultInfo.getTotalRecords());
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(1, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
     String distinctOn = "jsonb->>'order_format'";
-    cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-      cqlWrapper, true, true, false, facets, distinctOn, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(4, resultInfo.getTotalRecords());
-        List<Facet> retFacets = resultInfo.getFacets();
-        context.assertEquals(1, retFacets.size());
-        async.complete();
-      });
-    async.awaitSuccess();
-
-    cqlWrapper = new CQLWrapper(cql2pgJson, "order_format==Other");
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-      cqlWrapper, true, true, false, facets, distinctOn, handler -> {
-        context.assertTrue(handler.succeeded());
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(1, resultInfo.getTotalRecords());
-        List<Facet> retFacets = resultInfo.getFacets();
-        context.assertEquals(1, retFacets.size());
-        async.complete();
-      });
-    async.awaitSuccess();
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapper, true, true, false, facets, distinctOn, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(4, resultInfo.getTotalRecords());
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(1, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "order_format==Other");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapper, true, true, false, facets, distinctOn, handler -> {
+          context.assertTrue(handler.succeeded());
+          ResultInfo resultInfo = handler.result().getResultInfo();
+          context.assertEquals(1, resultInfo.getTotalRecords());
+          List<Facet> retFacets = resultInfo.getFacets();
+          context.assertEquals(1, retFacets.size());
+          async.complete();
+        });
+      async.awaitSuccess();
+    }
   }
 
   @Test(expected = Exception.class)
