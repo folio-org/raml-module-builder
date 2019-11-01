@@ -87,7 +87,7 @@ public class CQLWrapper {
     return this;
   }
 
-  public String getQuery() {
+  private String getQuery() {
     if (whereClause != null) {
       return whereClause;
     }
@@ -97,7 +97,7 @@ public class CQLWrapper {
     return query; // CQL query
   }
 
-  public String getType() {
+  private String getType() {
     if (whereClause != null) {
       return "WHERE";
     }
@@ -273,7 +273,7 @@ public class CQLWrapper {
     spaceAppend(sb, offset.toString());
     String sql = sb.toString();
     if (log.isInfoEnabled()) {
-      log.info("CQL >>> SQL: " + this.query + " >>>" + sql);
+      log.info(getType() + " >>> SQL: " + getQuery() + " >>>" + sql);
     }
     return sql;
   }

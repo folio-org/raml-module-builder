@@ -1784,9 +1784,6 @@ public class PostgresClient {
         queryHelper.offset = Integer.parseInt(matcher.group(1));
       }
     }
-    if (log.isInfoEnabled()) {
-      log.info(wrapper.getType() + " >>> SQL: " + wrapper.getQuery() + ">>>" + queryHelper.selectQuery);
-    }
     return queryHelper;
   }
 
