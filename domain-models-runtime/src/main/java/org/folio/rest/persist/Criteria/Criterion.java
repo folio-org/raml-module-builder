@@ -161,11 +161,17 @@ public class Criterion {
     return offset;
   }
 
+  /**
+   * @return WHERE operand without WHERE prefix
+   */
   public String getWhere() {
     return snippet;
   }
 
-  public String getOrderByFull() {
+  /**
+   * @return order by clause including ORDER BY; empty for no sorting
+   */
+  public String getOrderBy() {
     return order.toString();
   }
 

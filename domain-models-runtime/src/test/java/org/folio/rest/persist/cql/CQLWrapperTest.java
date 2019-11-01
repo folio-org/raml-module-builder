@@ -32,6 +32,12 @@ public class CQLWrapperTest {
     assertThat(wrapper.toString(), is("WHERE true"));
   }
 
+  @Test
+  public void setWhereClause() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper().setWhereClause("WHERE false");
+    assertThat(wrapper.toString(), is("WHERE false"));
+  }
+
   @Test(expected = IllegalStateException.class)
   public void invalidCQL() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("or name=miller");
@@ -54,7 +60,7 @@ public class CQLWrapperTest {
   public void invalidCQLsortby() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("name=miller sortby");
     try {
-      wrapper.getOrderBy();
+      wrapper.getOrderByOp();
       fail("exception expected");
     }
     catch (CQLQueryValidationException e) {

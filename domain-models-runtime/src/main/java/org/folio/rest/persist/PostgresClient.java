@@ -36,7 +36,6 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.facets.ParsedQuery;
-import org.folio.rest.persist.helpers.JoinBy;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.PomReader;
@@ -45,7 +44,6 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
-import org.folio.rest.tools.utils.NaiveSQLParse;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
@@ -74,11 +72,6 @@ import io.vertx.ext.sql.UpdateResult;
 import java.util.Optional;
 import java.util.UUID;
 
-import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.statement.select.OrderByElement;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.statement.select.Select;
 import org.folio.rest.tools.utils.NetworkUtils;
 
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
@@ -119,7 +112,6 @@ public class PostgresClient {
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
   private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
-  private static final Pattern   DISTINCT_ON_MATCH_PATTERN = Pattern.compile("(?i)((DISTINCT) (?i)ON \\((.*)\\) ).*(?i)FROM");
 
   private static final String    _PASSWORD = "password"; //NOSONAR
   private static final String    _USERNAME = "username";
@@ -144,19 +136,6 @@ public class PostgresClient {
   private static final String    SEMI_COLON = ";";
 
   private static final String    COUNT_FIELD = "count";
-
-  private static final String    NOT_TRUE                 = " IS NOT TRUE";
-  private static final String    NOT_TRUE_REPLACEMENT     = " AND \\(\\(\\(FALSE\\)\\)\\)";
-  private static final String    IS_TRUE                  = " IS TRUE";
-  private static final String    IS_TRUE_REPLACEMENT      = " AND \\(\\(\\(TRUE\\)\\)\\)";
-  private static final String    DOUBLE_AT                = " @@ ";
-  private static final String    DOUBLE_AT_REPLACEMENT    = " = \\(\\(\\(DOUBLE_AT_REPLACEMENT\\)\\)\\) \\+ ";
-  private static final String    DOUBLE_AND               = " && ";
-  private static final String    DOUBLE_AND_REPLACEMENT   = " \\+ \\(\\(\\(DOUBLE_AND_REPLACEMENT\\)\\)\\) \\+ ";
-  private static final String    DOUBLE_ARROW             = " <-> ";
-  private static final String    DOUBLE_ARROW_REPLACEMENT = " \\+ \\(\\(\\(DOUBLE_ARROW_REPLACEMENT\\)\\)\\) \\+ ";
-  private static final String    DOUBLE_COLON             = "::";
-  private static final String    DOUBLE_COLON_REPLACEMENT = " \\+ \\(\\(\\(''\\)\\)\\) \\+ ";
 
   private static EmbeddedPostgres embeddedPostgres;
   private static boolean         embeddedMode             = false;
@@ -1552,8 +1531,9 @@ public class PostgresClient {
     boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
+    CQLWrapper wrapper = new CQLWrapper().setWhereClause(where);
     client.getConnection(conn
-      -> doGet(conn, table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, distinctOn,
+      -> doGet(conn, table, clazz, fieldName, wrapper, returnCount, returnIdField, setId, facets, distinctOn,
         closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -1596,7 +1576,7 @@ public class PostgresClient {
    * @param distinctOn
    * @param replyHandler
    */
-  private <T> void doGetWrapper(
+  private <T> void doGet(
     AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
     String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField, boolean setId,
     List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
@@ -1621,50 +1601,6 @@ public class PostgresClient {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
-  }
-
-  /**
-   *
-   * @param connection
-   * @param transactionMode
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnCount
-   * @param returnIdField
-   * @param setId
-   * @param facets
-   * @param replyHandler
-   */
-  private <T> void doGet(
-    AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
-    String fieldName, String where, boolean returnCount, boolean returnIdField, boolean setId,
-    List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
-  ) {
-
-    if (conn.failed()) {
-      log.error(conn.cause().getMessage(), conn.cause());
-      replyHandler.handle(Future.failedFuture(conn.cause()));
-      return;
-    }
-    SQLConnection connection = conn.result();
-    vertx.runOnContext(v -> {
-      try {
-        QueryHelper queryHelper = buildSelectQueryHelper(true, table, fieldName, where, returnIdField, facets, distinctOn);
-
-        if (returnCount) {
-          processQueryWithCountObsolete(connection, queryHelper, GET_STAT_METHOD,
-            totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
-        } else {
-          processQuery(connection, queryHelper, null, GET_STAT_METHOD,
-            totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
-        }
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
-      }
-    });
   }
 
   public <T> void streamGet(
@@ -1785,7 +1721,6 @@ public class PostgresClient {
     return new JsonObject(rowMap);
   }
 
-  /* should eventually resplace buildSelectQueryHelper */
   QueryHelper buildQueryHelper(
     boolean transactionMode, String table, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, List<FacetField> facets,
@@ -1818,12 +1753,12 @@ public class PostgresClient {
     queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField
       + FROM + schemaName + DOT + table + SPACE + wrapper.toString();
     queryHelper.countQuery = SELECT + "COUNT(" + countOn + ") "
-      + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereFull();
+      + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereClause();
 
     ParsedQuery pq = new ParsedQuery();
     pq.setCountQuery(queryHelper.countQuery);
-    if (!wrapper.getWhere().isEmpty()) {
-      pq.setWhereClause(wrapper.getWhere());
+    if (!wrapper.getWhereClause().isEmpty()) {
+      pq.setWhereClause(wrapper.getWhereClause());
     }
     if (!wrapper.getLimit().toString().isEmpty()) {
       pq.setLimitClause(wrapper.getLimit().toString());
@@ -1850,6 +1785,9 @@ public class PostgresClient {
       if (matcher.find()) {
         queryHelper.offset = Integer.parseInt(matcher.group(1));
       }
+    }
+    if (log.isInfoEnabled()) {
+      log.info(wrapper.getType() + " >>> SQL: " + wrapper.getQuery() + ">>>" + queryHelper.selectQuery);
     }
     return queryHelper;
   }
@@ -1881,25 +1819,7 @@ public class PostgresClient {
     return queryHelper;
   }
 
-  /**
-   *
-   * @param connection
-   * @param queryHelper
-   * @param statMethod
-   * @param resultSetMapper
-   * @param replyHandler
-   */
-  <T> void processQueryWithCountObsolete(
-    SQLConnection connection, QueryHelper queryHelper, String statMethod,
-    Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
-  ) throws IOException, TemplateException {
-
-    prepareCountQuery(queryHelper);
-    processQueryWithCount(connection, queryHelper, statMethod,
-      resultSetMapper, replyHandler);
-  }
-
-  private <T> void processQueryWithCount(
+  <T> void processQueryWithCount(
     SQLConnection connection, QueryHelper queryHelper, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
     long start = System.nanoTime();
@@ -1944,36 +1864,6 @@ public class PostgresClient {
     });
 }
 
-  /**
-   *
-   * @param queryHelper
-   */
-  void prepareCountQuery(QueryHelper queryHelper) throws IOException, TemplateException {
-    String offsetClause = null;
-
-    ParsedQuery parsedQuery = parseQuery(queryHelper.selectQuery);
-
-    queryHelper.countQuery = parsedQuery.getCountQuery();
-
-    if (queryHelper.facets != null && !queryHelper.facets.isEmpty() && queryHelper.table != null) {
-      FacetManager facetManager = buildFacetManager(queryHelper.table, parsedQuery, queryHelper.facets);
-      // this method call invokes freemarker templating
-      queryHelper.selectQuery = facetManager.generateFacetQuery();
-      queryHelper.countQuery = facetManager.getCountQuery();
-
-      offsetClause = facetManager.getOffsetClause();
-    } else {
-      offsetClause = parsedQuery.getOffsetClause();
-    }
-
-    if (offsetClause != null) {
-      Matcher matcher = OFFSET_MATCH_PATTERN.matcher(offsetClause);
-      if (matcher.find()) {
-          queryHelper.offset = Integer.parseInt(matcher.group(1));
-      }
-    }
-  }
-
   <T> void processQuery(
     SQLConnection connection, QueryHelper queryHelper, Integer total, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
@@ -2006,7 +1896,7 @@ public class PostgresClient {
   private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets) {
     FacetManager fm = new FacetManager(schemaName + DOT + tableName);
     if (parsedQuery.getWhereClause() != null) {
-      fm.setWhere(" where " + parsedQuery.getWhereClause());
+      fm.setWhere(" " + parsedQuery.getWhereClause());
     }
     fm.setSupportFacets(facets);
     fm.setIdField(ID_FIELD);
@@ -2108,7 +1998,7 @@ public class PostgresClient {
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     client.getConnection(conn
-      -> doGetWrapper(conn, table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn,
+      -> doGet(conn, table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn,
         closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -2224,7 +2114,7 @@ public class PostgresClient {
       get(table, clazz, fieldName, cqlWrapper, returnCount,
         returnIdField, setId, facets, null, replyHandler);
     } else {
-      doGetWrapper(conn, table, clazz, fieldName, cqlWrapper, returnCount,
+      doGet(conn, table, clazz, fieldName, cqlWrapper, returnCount,
         returnIdField, setId, facets, null, replyHandler);
     }
   }
@@ -2403,183 +2293,6 @@ public class PostgresClient {
   public <T> void getById(String table, JsonArray ids, Class<T> clazz,
       Handler<AsyncResult<Map<String,T>>> replyHandler) {
     getById(table, ids, json -> mapper.readValue(json, clazz), replyHandler);
-  }
-
-  /**
-   * run simple join queries between two tables
-   *
-   * for example, to generate the following query:
-   * SELECT  c1.* , c2.* FROM univeristy.config_data c1
-   *  INNER JOIN univeristy.config_data c2 ON ((c1.jsonb->>'code') = (c2.jsonb->'scope'->>'library_id'))
-   *    WHERE (c2.jsonb->>'default')::boolean IS TRUE  AND (c2.jsonb->>'default')::boolean IS TRUE
-   *
-   * Create a criteria representing a join column for each of the tables
-   * Create two JoinBy objects containing the:
-   *   1. The table to join from and to,
-   *   2. An alias for the tables,
-   *   3. The Fields to return
-   *   4. The column to join on (using the criteria object)
-   *
-   * @param  JoinBy jb1= new JoinBy("config_data","c1",
-   *   new Criteria().addField("'code'"), new String[]{"count(c1._id)"});
-   *
-   * @param  JoinBy jb2= new JoinBy("config_data","c2",
-   *   new Criteria().addField("'scope'").addField("'library_id'"),  new String[]{"avg(length(c2.description))"});
-   *
-   * Passing "*" to the fields to return may be used as well (or a list of aliased column names)
-   *
-   * JoinBy jb1= new JoinBy("config_data","c1",
-   *  new Criteria().addField("'code'"), new String[]{"*"});
-   *
-   * @param operation what operation to use when comparing the two columns. For example:
-   * setting this to equals would yeild something like:
-   *
-   * ((c1.jsonb->>'code') = (c2.jsonb->'scope'->>'library_id'))
-   *
-   * @param joinType - for example: INNER JOIN, LEFT JOIN,
-   * some prepared COnsts can be found: JoinBy.RIGHT_JOIN
-   *
-   * @param cr criterion to use to further filter results per table. can be used to also sort results
-   * new Criterion().setOrder(new Order("c2._id", ORDER.DESC))
-   * But can be used to create a more complex where clause if needed
-   *
-   * For example:
-   * GroupedCriterias gc = new GroupedCriterias();
-   *  gc.addCriteria(new Criteria().setAlias("c2").addField("'default'")
-   *    .setOperation(Criteria.OP_IS_TRUE));
-   *  gc.addCriteria(new Criteria().setAlias("c2").addField("'enabled'")
-   *    .setOperation(Criteria.OP_IS_TRUE) , "OR");
-   *  gc.setGroupOp("AND");
-   *
-   *  NOTE that to use sorting with a combination of functions - group by is needed - not currently implemented
-   *
-   *  Criterion cr =
-   *      new Criterion().addGroupOfCriterias(gc).addGroupOfCriterias(gc1).setOrder(new Order("c1._id", ORDER.DESC));
-   *
-   */
-  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
-      Class<T> returnedClass, boolean setId,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-
-    Function<TotaledResults, Results<T>> resultSetMapper =
-        totaledResults -> processResults(totaledResults.set, totaledResults.total, returnedClass, setId);
-    join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
-  }
-
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
-      Handler<AsyncResult<ResultSet>> replyHandler) {
-
-    Function<TotaledResults, ResultSet> resultSetMapper = totaledResults -> totaledResults.set;
-    join(from, to, operation, joinType, cr, resultSetMapper, replyHandler);
-  }
-
-  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType, String cr,
-      Function<TotaledResults, T> resultSetMapper,
-      Handler<AsyncResult<T>> replyHandler) {
-
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        try {
-          StringBuffer joinon = new StringBuffer();
-          StringBuffer tables = new StringBuffer();
-          StringBuffer selectFields = new StringBuffer();
-
-          String filter = "";
-          if (cr != null) {
-            filter = cr;
-          }
-
-          String selectFromTable = from.getSelectFields();
-          String selectToTable = to.getSelectFields();
-          boolean addComma = false;
-          if (selectFromTable != null && selectFromTable.length() > 0) {
-            selectFields.append(from.getSelectFields());
-            addComma = true;
-          }
-          if (selectToTable != null && selectToTable.length() > 0) {
-            if (addComma) {
-              selectFields.append(COMMA);
-            }
-            selectFields.append(to.getSelectFields());
-          }
-
-          tables.append(schemaName + DOT + from.getTableName() + SPACE + from.getAlias() + SPACE);
-
-          joinon.append(joinType + SPACE + schemaName + DOT + to.getTableName() + SPACE + to.getAlias() + SPACE);
-
-          Criterion jcr = new Criterion().addCriterion(from.getJoinColumn(), operation, to.getJoinColumn(), AND);
-
-          QueryHelper queryHelper = new QueryHelper(false, null, null);
-          queryHelper.selectQuery = SELECT + selectFields.toString() + FROM + tables.toString() + joinon.toString() + jcr + filter;
-          queryHelper.countQuery = parseQuery(queryHelper.selectQuery).getCountQuery();
-
-          processQueryWithCountObsolete(connection, queryHelper, JOIN_STAT_METHOD, resultSetMapper, replyHandler);
-        } catch (Exception e) {
-          if (connection != null) {
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      } else {
-        log.error(res.cause().getMessage(), res.cause());
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
-  }
-
-  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType, String cr, Class<T> returnedClass,
-      Handler<AsyncResult<Results<T>>> replyHandler){
-    join(from, to, operation, joinType, cr, returnedClass, true, replyHandler);
-  }
-
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, Criterion cr,
-      Handler<AsyncResult<ResultSet>> replyHandler){
-    String filter = "";
-    if(cr != null){
-      filter = cr.toString();
-    }
-    join(from, to, operation, joinType, filter, replyHandler);
-  }
-
-  public void join(JoinBy from, JoinBy to, String operation, String joinType, CQLWrapper cr,
-      Handler<AsyncResult<ResultSet>> replyHandler){
-    String filter = "";
-    if(cr != null){
-      filter = cr.toString();
-    }
-    join(from, to, operation, joinType, filter, replyHandler);
-  }
-
-  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType,
-      Class<T> returnedClazz, CQLWrapper cr,
-      Handler<AsyncResult<Results<T>>> replyHandler){
-    String filter = "";
-    if(cr != null){
-      filter = cr.toString();
-    }
-    join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
-  }
-
-  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType,
-      Class<T> returnedClazz, CQLWrapper cr, boolean setId,
-      Handler<AsyncResult<Results<T>>> replyHandler){
-    String filter = "";
-    if(cr != null){
-      filter = cr.toString();
-    }
-    join(from, to, operation, joinType, filter, returnedClazz, setId, replyHandler);
-  }
-
-  public <T> void join(JoinBy from, JoinBy to, String operation, String joinType,
-      Class<T> returnedClazz, String where,
-      Handler<AsyncResult<Results<T>>> replyHandler){
-    String filter = "";
-    if(where != null){
-      filter = where;
-    }
-    join(from, to, operation, joinType, filter, returnedClazz, true, replyHandler);
   }
 
   static class ResultsHelper<T> {
@@ -3863,165 +3576,6 @@ public class PostgresClient {
    */
   String getSchemaName() {
     return schemaName;
-  }
-
-  /**
-   * FIXME: TEMPORARY HACK SINCE PARSER CANT HANDLE "IS TRUE", "IS NOT TRUE" and "@@".
-   * We replace it with same magic parsable value and afterwards undo the replacement.
-   * This is buggy as if this appears for some strange reason outside a where clause this will fail
-   */
-  private static String fixSqlSyntax(String sql) {
-    return sql
-        .replaceAll(NOT_TRUE, NOT_TRUE_REPLACEMENT)
-        .replaceAll(IS_TRUE, IS_TRUE_REPLACEMENT)
-        .replaceAll(DOUBLE_AT, DOUBLE_AT_REPLACEMENT)
-        .replaceAll(DOUBLE_AND, DOUBLE_AND_REPLACEMENT)
-        .replaceAll(DOUBLE_ARROW, DOUBLE_ARROW_REPLACEMENT)
-        .replaceAll(DOUBLE_COLON, DOUBLE_COLON_REPLACEMENT);
-  }
-
-  private static String undoFixSqlSyntax(String fixedSql) {
-    return fixedSql
-        .replaceAll(NOT_TRUE_REPLACEMENT, NOT_TRUE)
-        .replaceAll(IS_TRUE_REPLACEMENT, IS_TRUE)
-        .replaceAll(DOUBLE_AT_REPLACEMENT, DOUBLE_AT)
-        .replaceAll(DOUBLE_AND_REPLACEMENT, DOUBLE_AND)
-        .replaceAll(DOUBLE_ARROW_REPLACEMENT, DOUBLE_ARROW)
-        .replaceAll(DOUBLE_COLON_REPLACEMENT, DOUBLE_COLON);
-  }
-
-  /**
-   * returns ParsedQuery with:
-   * 1. Original query stripped of the order by, limit and offset clauses (if they existed in the query)
-   * 2. Original query stripped of the limit and offset clauses (if they existed in the query)
-   * 3. where clause part of query (included in the stripped query)
-   * 4. original order by clause that was removed (or null)
-   * 5. original limit clause that was removed (or null)
-   * 6. original offset clause that was removed (or null)
-   * @param query
-   * @return
-   */
-  static ParsedQuery parseQuery(String query) {
-    log.debug("parseQuery " + query);
-
-    String countOn = "*";
-    List<OrderByElement> orderBy = null;
-    net.sf.jsqlparser.statement.select.Limit limit = null;
-    Expression where = null;
-    net.sf.jsqlparser.statement.select.Offset offset = null;
-    long start = System.nanoTime();
-    String queryWithoutLimitOffset = "";
-    try {
-      try {
-        // FIXME: temporary hack, see fixSqlSyntax(String)
-        query = fixSqlSyntax(query);
-        net.sf.jsqlparser.statement.Statement statement = CCJSqlParserUtil.parse(query);
-        Select selectStatement = (Select) statement;
-
-        Matcher distinctOnMatcher = DISTINCT_ON_MATCH_PATTERN.matcher(query);
-        if(distinctOnMatcher.find() && distinctOnMatcher.groupCount() >= 3) {
-          countOn = String.format("%s (%s)", distinctOnMatcher.group(2), distinctOnMatcher.group(3));
-        }
-        orderBy = ((PlainSelect) selectStatement.getSelectBody()).getOrderByElements();
-        limit = ((PlainSelect) selectStatement.getSelectBody()).getLimit();
-        offset = ((PlainSelect) selectStatement.getSelectBody()).getOffset();
-        where = ((PlainSelect) selectStatement.getSelectBody()).getWhere();
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-      }
-
-      // FIXME: temporary hack, see fixSqlSyntax(String)
-      query = undoFixSqlSyntax(query);
-      int startOfLimit = NaiveSQLParse.getLastStartPos(query, "limit");
-      if(limit != null){
-        String suffix = Pattern.compile(limit.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
-        query = query.substring(0, startOfLimit) + suffix;
-      }
-      else if(startOfLimit != -1){
-        //offset returns null if it was placed before the limit although postgres does allow this
-        //we are here if offset appears in the query and not within quotes
-        query = query.substring(0, startOfLimit) +
-        Pattern.compile("limit\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfLimit)).replaceFirst("");
-      }
-
-      int startOfOffset = NaiveSQLParse.getLastStartPos(query, "offset");
-      if(offset != null){
-        String suffix = Pattern.compile(offset.toString().trim(), Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
-        query = query.substring(0, startOfOffset) + suffix;
-      }
-      else if(startOfOffset != -1){
-        //offset returns null if it was placed before the limit although postgres does allow this
-        //we are here if offset appears in the query and not within quotes
-        query = query.substring(0, startOfOffset) +
-        Pattern.compile("offset\\s+[\\d]+", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOffset)).replaceFirst("");
-      }
-
-      queryWithoutLimitOffset = query;
-
-      //in the rare case where the order by clause somehow appears in the where clause
-      int startOfOrderBy = NaiveSQLParse.getLastStartPos(query, "order by");
-      if(orderBy != null){
-        StringBuilder sb = new StringBuilder("order by[ ]+");
-        int size = orderBy.size();
-        for (int i = 0; i < size; i++) {
-          sb.append(orderBy.get(i).toString().replaceAll(SPACE, "[ ]+"));
-          if(i<size-1){
-            sb.append(",?[ ]+");
-          }
-        }
-        String regex = escape(sb.toString().trim());
-        query = query.substring(0, startOfOrderBy) +
-            Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
-      }
-      else if(startOfOrderBy != -1){
-        //offset returns null if it was placed before the limit although postgres does allow this
-        //we are here if offset appears in the query and not within quotes
-        query = query.substring(0, startOfOrderBy) +
-        Pattern.compile("order by.*", Pattern.CASE_INSENSITIVE).matcher(query.substring(startOfOrderBy)).replaceFirst("");
-      }
-   }
-   catch(Exception e){
-     log.error(e.getMessage(), e);
-   }
-
-   ParsedQuery pq = new ParsedQuery();
-
-   int idx = query.toUpperCase().indexOf(FROM);
-   pq.setCountQuery("SELECT COUNT(" + countOn + ") " + query.substring(idx).trim());
-
-   pq.setQueryWithoutLimOff(queryWithoutLimitOffset);
-   if(where != null){
-     // FIXME: temporary hack, see fixSqlSyntax(String)
-     pq.setWhereClause(undoFixSqlSyntax(where.toString()));
-   }
-   if(orderBy != null){
-     pq.setOrderByClause( orderBy.toString() );
-   }
-   if(limit != null){
-     pq.setLimitClause( limit.toString() );
-   }
-   if(offset != null){
-     pq.setOffsetClause( offset.toString() );
-   }
-   long end = System.nanoTime();
-   log.debug("Parse query for count_estimate function (ns) " + (end-start));
-   return pq;
-  }
-
-  private static String escape(String str) {
-    StringBuilder sb = new StringBuilder();
-    for (char c : str.toCharArray()) {
-      switch (c) {
-        case '(':
-        case ')':
-        case '\\':
-          sb.append('\\');
-        // intended fall-through
-        default:
-          sb.append(c);
-      }
-    }
-    return sb.toString();
   }
 
 }

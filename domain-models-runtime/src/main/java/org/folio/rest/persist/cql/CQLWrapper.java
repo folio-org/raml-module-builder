@@ -17,6 +17,7 @@ public class CQLWrapper {
   CQL2PgJSON field;
   Criterion criterion;
   String query;
+  String whereClause;
   private Limit  limit = new Limit();
   private Offset offset = new Offset();
   private List<WrapTheWrapper> addedWrappers = new ArrayList<>();
@@ -85,9 +86,30 @@ public class CQLWrapper {
     this.field = field;
     return this;
   }
+
   public String getQuery() {
-    return query;
+    if (whereClause != null) {
+      return whereClause;
+    }
+    if (criterion != null) {
+      return criterion.toString();
+    }
+    return query; // CQL query
   }
+
+  public String getType() {
+    if (whereClause != null) {
+      return "WHERE";
+    }
+    if (criterion != null) {
+      return "CRITERION";
+    }
+    if (field != null) {
+      return "CQL";
+    }
+    return "NONE";
+  }
+
   public CQLWrapper setQuery(String query) {
     this.query = query;
     return this;
@@ -164,7 +186,7 @@ public class CQLWrapper {
   /**
    * @return where clause excluding WHERE prefix or empty string if for no where
    */
-  public String getWhere() {
+  private String getWhereOp() {
     StringBuilder sb = new StringBuilder();
     appendWhere(sb, query, field);
     for (WrapTheWrapper wrap : addedWrappers) {
@@ -181,18 +203,33 @@ public class CQLWrapper {
   /**
    * @return where clause including WHERE prefix or empty string if for no where
    */
-  public String getWhereFull() {
-    String s = getWhere();
+  public String getWhereClause() {
+    if (whereClause != null) {
+      return whereClause;
+    }
+    String s = getWhereOp();
     if (s.isEmpty()) {
       return "";
     }
     return "WHERE " + s;
   }
 
+  
+  /**
+   * This function sets a raw WHERE clause - should not include limits, offset, or order
+   * It should not be used. Construct with CQL2PgJSON or Criterion instead
+   * @param whereClause including WHERE prefix
+   * @return itself (fluent)
+   */
+  public CQLWrapper setWhereClause(String whereClause) {
+    this.whereClause = whereClause;
+    return this;
+  }
+
   /**
    * @return sort by criteria excluding SORT BY prefix or empty string if no sorting
    */
-  String getOrderBy() {
+  String getOrderByOp() {
     if (query == null || field == null) {
       return "";
     }
@@ -206,11 +243,11 @@ public class CQLWrapper {
   /**
    * @return sort by criteria including SORT BY prefix or empty string if no sorting
    */
-  private String getOrderByFull() {
+  private String getOrderByClause() {
     if (criterion != null) {
-      return criterion.getOrderByFull();
+      return criterion.getOrderBy();
     }
-    String s = getOrderBy();
+    String s = getOrderByOp();
     if (s.isEmpty()) {
       return "";
     }
@@ -221,8 +258,8 @@ public class CQLWrapper {
    * @return query including SQL clauses of WHERE, ORDER BY
    */
   public String getWithoutLimOff() {
-    StringBuilder sb = new StringBuilder(getWhereFull());
-    spaceAppend(sb, getOrderByFull());
+    StringBuilder sb = new StringBuilder(getWhereClause());
+    spaceAppend(sb, getOrderByClause());
     return sb.toString();
   }
 
