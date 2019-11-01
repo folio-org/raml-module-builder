@@ -111,7 +111,10 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-
 create or replace function concat_space_sql(VARIADIC text[])
 RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); 
 $$ LANGUAGE SQL IMMUTABLE;
+
+create or replace function concat_array_object_values(jsonb_data jsonb, field text) RETURNS text AS $$
+  SELECT string_agg(value->>$2, ' ') FROM jsonb_array_elements($1);
+$$ LANGUAGE sql IMMUTABLE;
