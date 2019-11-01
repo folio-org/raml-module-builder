@@ -990,6 +990,10 @@ CQL `field adj "bar baz"` matches `bar baz`, `bar-baz`, `foo-bar-baz`, `foo-bar 
 
 CQL `field adj "bar-baz"` matches `bar-baz`, but neither `bar baz` nor `foo-bar-baz` nor `foo-bar baz` nor `bar-baz-foo`.
 
+CQL `field adj "123 456"` matches `123 456`, but not `123-456`.
+
+CQL `field adj "123-456"` matches `123-456`, but not `123 456`.
+
 `foo/bar/baz` is a single word, while `foo//bar//baz`, `foo///bar///baz`, `foo////bar////baz`, etc.
 are split into the three words `foo`, `/bar`, and `/baz` (always reduced to a single slash).
 

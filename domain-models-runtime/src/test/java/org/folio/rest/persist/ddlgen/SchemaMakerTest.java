@@ -82,6 +82,11 @@ public class SchemaMakerTest {
 
     assertThat(result,containsString("CREATE INDEX IF NOT EXISTS tablea_ftfield_idx_ft"));
     assertThat(result, containsString("concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')"));
+
+    assertThat(result,containsString("((concat_space_sql(concat_array_object_values(tablea.jsonb->'user','firstName') , concat_array_object_values(tablea.jsonb->'user','lastName'))) gin_trgm_ops)"));
+    assertThat(result,containsString("((concat_space_sql(concat_array_object_values(tablea.jsonb->'user'->'info','firstName') , concat_array_object_values(tablea.jsonb->'user'->'info','lastName'))) gin_trgm_ops)"));
+    assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','firstName') , concat_array_object_values(tablea.jsonb->'field2','lastName'))) )"));
+    assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->'info','firstName') , concat_array_object_values(tablea.jsonb->'field2'->'info','lastName'))) )"));
   }
 
   @Test

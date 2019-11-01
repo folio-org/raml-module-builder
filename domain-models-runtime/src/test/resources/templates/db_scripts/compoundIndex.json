@@ -9,12 +9,40 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
+        }, 
+        {
+          "fieldName": "fullnamestar",
+          "multiFieldNames": "user[*].firstName,user[*].lastName",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "fullnamedotstar",
+          "multiFieldNames": "user.info[*].firstName,user.info[*].lastName",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
         }
       ],
       "fullTextIndex": [
         {
           "fieldName": "ftfield",
            "multiFieldNames": "field1,field2",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+         {
+          "fieldName": "ftfieldstar",
+          "multiFieldNames": "field1[*].firstName,field2[*].lastName",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ftfielddotstar",
+          "multiFieldNames": "field1.info[*].firstName,field2.info[*].lastName",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
