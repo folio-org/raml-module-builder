@@ -277,20 +277,6 @@ public class Criteria {
     return this;
   }
 
-  public boolean isJoinON() {
-    return joinON;
-  }
-
-  /**
-   * if set to true, this criteria is being used to create a criteria to compare
-   * to another criteria to join on in this generate an ON instead of a WHERE
-   *
-   */
-  public Criteria setJoinON(boolean joinON) {
-    this.joinON = joinON;
-    return this;
-  }
-
   public From getFrom() {
     return from;
   }
