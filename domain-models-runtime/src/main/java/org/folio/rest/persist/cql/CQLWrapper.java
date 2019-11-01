@@ -87,7 +87,7 @@ public class CQLWrapper {
     return this;
   }
 
-  private String getQuery() {
+  public String getQuery() {
     if (whereClause != null) {
       return whereClause;
     }
@@ -97,7 +97,7 @@ public class CQLWrapper {
     return query; // CQL query
   }
 
-  private String getType() {
+  public String getType() {
     if (whereClause != null) {
       return "WHERE";
     }
