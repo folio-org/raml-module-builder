@@ -3,11 +3,18 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 29](#version-29)
 * [Version 28](#version-28)
 * [Version 27.1](#version-271)
 * [Version 27](#version-27)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 29
+
+* RMB-497 removed PostgresClient.join methods . It also deprecaated all
+  PostgresClient.get methods taking where-clause strings. Module users should
+  use Criterion or CQLWrapper instead to construct queries.
 
 ## Version 28
 
