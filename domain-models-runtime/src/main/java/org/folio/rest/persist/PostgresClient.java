@@ -108,7 +108,6 @@ public class PostgresClient {
   private static final String    FROM   = " FROM ";
   private static final String    SET    = " SET ";
   private static final String    WHERE  = " WHERE ";
-  private static final String    AND    = " AND ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
   private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
@@ -127,7 +126,6 @@ public class PostgresClient {
   private static final String    SAVE_STAT_METHOD = "save";
   private static final String    UPDATE_STAT_METHOD = "update";
   private static final String    DELETE_STAT_METHOD = "delete";
-  private static final String    JOIN_STAT_METHOD = "join";
   private static final String    PROCESS_RESULTS_STAT_METHOD = "processResults";
 
   private static final String    SPACE = " ";
