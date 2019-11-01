@@ -28,7 +28,6 @@ public class Criterion {
   private Order                     order            = new Order();
   private Limit                     limit            = new Limit();
   private Offset                    offset           = new Offset();
-  private boolean                   isJoinCriterion  = false;
 
   public Criterion() {
 
@@ -120,9 +119,6 @@ public class Criterion {
       }
       if (a.select != null) {
         selects.put(a.select.snippet, a.select);
-      }
-      if(a.isJoinON()){
-        this.isJoinCriterion = true;
       }
     }
   }
@@ -252,7 +248,7 @@ public class Criterion {
    * @deprecated not used by RMB itself anymore and should not be publicly used
    */
   @Deprecated
-  public String selects2String() {
+  public String selects2String1() {
     StringBuilder sb = new StringBuilder();
 
     Set<Map.Entry<String, Select>> entries = selects.entrySet();
@@ -278,7 +274,7 @@ public class Criterion {
    * @deprecated not used by RMB itself anymore and should not be publicly used
    */
   @Deprecated
-  public String from2String() {
+  public String from2String1() {
     StringBuilder sb = new StringBuilder();
 
     Set<Map.Entry<String, From>> entries = froms.entrySet();
