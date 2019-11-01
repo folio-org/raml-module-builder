@@ -18,7 +18,9 @@ $func$  LANGUAGE sql IMMUTABLE;
 create or replace function concat_space_sql(VARIADIC text[])
 RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); $$ LANGUAGE SQL IMMUTABLE;
 
-
+create or replace function concat_array_object_values(jsonb_data jsonb, field text) RETURNS text AS $$
+  SELECT string_agg(value->>$2, ' ') FROM jsonb_array_elements($1);
+$$ LANGUAGE sql IMMUTABLE;
     
 CREATE OR REPLACE FUNCTION update_id() RETURNS TRIGGER AS $$
 BEGIN
@@ -37,11 +39,11 @@ CREATE TRIGGER update_tablec_references BEFORE INSERT OR UPDATE ON tablec
 CREATE TRIGGER update_tabled_references BEFORE INSERT OR UPDATE ON tabled
   FOR EACH ROW EXECUTE PROCEDURE update_id();
 INSERT INTO tablea (jsonb) VALUES
-('{"id": "A0000000-0000-0000-0000-000000000000", "firstName": "Mike", "lastName": "Smith","field1": "first0", "field2": "last0"}'),
-('{"id": "A1111111-1111-1111-1111-111111111111", "firstName": "Tom", "lastName": "Jones","field1": "first1", "field2": "last1"}'),
-('{"id": "A2222222-2222-2222-2222-222222222222", "firstName": "Lucy", "lastName": "Williams","field1": "first2", "field2": "last2"}'),
-('{"id": "A3333333-3333-3333-3333-333333333333", "firstName": "Anne", "lastName": "Davis","field1": "first3", "field2": "last3"}'),
-('{"id": "A4444444-4444-4444-4444-444444444444", "firstName": "Mary", "lastName": "Miller","field1": "first4", "field2": "last4"}');
+('{"id": "A0000000-0000-0000-0000-000000000000", "firstName": "Mike", "lastName": "Smith","field1": "first0", "field2": "last0", "field3" : { "info" :[{"city":"Boston","state": "MA"},{"city":"Philadelphia","state": "PA"}]}}'),
+('{"id": "A1111111-1111-1111-1111-111111111111", "firstName": "Tom", "lastName": "Jones","field1": "first1", "field2": "last1","field3" :{ "info" :[{"city":"Tampa","state": "FL"},{"city":"Boston","state": "MA"}]}}'),
+('{"id": "A2222222-2222-2222-2222-222222222222", "firstName": "Lucy", "lastName": "Williams","field1": "first2", "field2": "last2","field3" :{ "info" :[{"city":"Tampa","state": "FL"},{"city":"Philadelphia","state": "PA"}]}}'),
+('{"id": "A3333333-3333-3333-3333-333333333333", "firstName": "Anne", "lastName": "Davis","field1": "first3", "field2": "last3", "field3" :{ "info" :[{"city":"Glendale","state": "AZ"},{"city":"Raleigh","state": "NC"}]}}'),
+('{"id": "A4444444-4444-4444-4444-444444444444", "firstName": "Mary", "lastName": "Miller","field1": "first4", "field2": "last4" ,"field3" :{ "info" :[{"city":"Pittsburgh","state": "PA"},{"city":"Los Angeles","state": "CA"}]}}');
 
 INSERT INTO tableb (jsonb) VALUES
 ('{"id": "B1111111-1111-1111-1111-111111111111", "city": "Boston", "state": "MA","field1": "first0", "field2": "last0" }'),
