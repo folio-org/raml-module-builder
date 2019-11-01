@@ -28,7 +28,6 @@ public class Criterion {
   private Order                     order            = new Order();
   private Limit                     limit            = new Limit();
   private Offset                    offset           = new Offset();
-  private boolean                   whereClauseAdded = false;
   private boolean                   isJoinCriterion  = false;
 
   public Criterion() {
@@ -177,15 +176,10 @@ public class Criterion {
 
   @Override
   public String toString() {
-    if (!whereClauseAdded && snippet.length() > 0) {
-      String where = " WHERE ";
-      if(isJoinCriterion){
-        where = " ON ";
-      }
-      snippet = where + snippet;
-      whereClauseAdded = true;
+    if (snippet.isEmpty()) {
+      return "";
     }
-    return snippet + " " + order.toString() + " " + offset.toString() + " " + limit.toString();
+    return "WHERE " + snippet + " " + order.toString() + " " + offset.toString() + " " + limit.toString();
   }
 
   /**
