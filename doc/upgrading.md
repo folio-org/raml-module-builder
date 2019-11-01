@@ -12,9 +12,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 29
 
-* RMB-497 removed PostgresClient.join methods . It also deprecaated all
-  PostgresClient.get methods taking where-clause strings. Module users should
-  use Criterion or CQLWrapper instead to construct queries.
+* RMB-497 removed PostgresClient.join methods. It also deprecates all
+  PostgresClient.get methods taking where-clause strings. Module users
+  should use Criterion or CQLWrapper instead to construct queries.
+  Remove Criterion.selects2String, Criterion.from2String .
+  Remove Criteria.setJoinON, Criteria.isJoinON .
 
 ## Version 28
 
