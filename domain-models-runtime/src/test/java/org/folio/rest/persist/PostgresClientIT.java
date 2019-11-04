@@ -1,5 +1,6 @@
 package org.folio.rest.persist;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertThat;
@@ -44,6 +45,7 @@ import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
+import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
@@ -153,8 +155,8 @@ public class PostgresClientIT {
 
   /**
    * Similar to context.asyncAssertSuccess(resultHandler) but the type of the resultHandler
-   * is Handler<AsyncResult<SQLConnection>> and not Handler<SQLConnection>.
-   * Usage: postgresClient.startTx(asyncAssertTx(context, trans ->
+   * is {@code Handler<AsyncResult<SQLConnection>>} and not {@code Handler<SQLConnection>}.
+   * Usage: {@code postgresClient.startTx(asyncAssertTx(context, trans ->}
    */
   private Handler<AsyncResult<SQLConnection>> asyncAssertTx(
       TestContext context, Handler<AsyncResult<SQLConnection>> resultHandler) {
@@ -2360,7 +2362,7 @@ public class PostgresClientIT {
 
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
     {
-      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, 
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson,
         "cql.allRecords="); // syntax error
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
@@ -2600,6 +2602,22 @@ public class PostgresClientIT {
         });
       async.awaitSuccess();
     }
+  }
+
+  @Test
+  public void processQueryWithCountSqlFailure(TestContext context) {
+    postgresClient = postgresClient();
+    postgresClient.startTx(context.asyncAssertSuccess(conn -> {
+      QueryHelper queryHelper = new QueryHelper(false, "table", null);
+      queryHelper.selectQuery = "'";
+      queryHelper.countQuery = "'";
+      postgresClient.processQueryWithCount(conn, queryHelper, "statMethod", null,
+          context.asyncAssertFailure(fail -> {
+            assertThat(fail.getMessage(), containsString("unterminated quoted string"));
+            // the sql error caused a rollback and ended the transaction, therefore this commit must fail.
+            postgresClient.endTx(Future.succeededFuture(conn), context.asyncAssertFailure());
+          }));
+    }));
   }
 
   @Test(expected = Exception.class)
