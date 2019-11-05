@@ -23,18 +23,15 @@ public class CQLWrapper {
   private List<WrapTheWrapper> addedWrappers = new ArrayList<>();
 
   public CQLWrapper() {
-    super();
   }
 
   public CQLWrapper(Criterion criterion) {
-    super();
     this.criterion = criterion;
     this.limit = criterion.getLimit();
     this.offset = criterion.getOffset();
   }
 
   public CQLWrapper(CQL2PgJSON field, String query) {
-    super();
     this.field = field;
     this.query = query;
   }
@@ -87,6 +84,11 @@ public class CQLWrapper {
     return this;
   }
 
+  /**
+   * Returns input query for the wrapped query. Form is depending on
+   * input query type {@link CQLWrapper#getType()}
+   * @return input query
+   */
   public String getQuery() {
     if (whereClause != null) {
       return whereClause;
@@ -97,7 +99,14 @@ public class CQLWrapper {
     return query; // CQL query
   }
 
-  public String getType() {
+  /**
+   * @return type of query that is wrapped. {@code "WHERE"} {@link CQLWrapper#setWhereClause(java.lang.String) };
+   * {@code "CRITERION"} {@link CQLWrapper#CQLWrapper(org.folio.rest.persist.Criteria.Criterion) };
+   * {@code "CQL"} for wrap of CQL
+   * {@link CQLWrapper#CQLWrapper(org.folio.cql2pgjson.CQL2PgJSON, java.lang.String) } ;
+   * {@code "NONE"} for no query wrapped.
+   */
+  private String getType() {
     if (whereClause != null) {
       return "WHERE";
     }
@@ -110,6 +119,13 @@ public class CQLWrapper {
     return "NONE";
   }
 
+  /**
+   * Sets CQL query (should be used with {@link CQLWrapper#setField(org.folio.cql2pgjson.CQL2PgJSON)}
+   * Or this constructor can be used to specify both:
+   * {@link CQLWrapper#CQLWrapper(org.folio.cql2pgjson.CQL2PgJSON, java.lang.String)
+   * @param query CQL query
+   * @return wrapper itself
+   */
   public CQLWrapper setQuery(String query) {
     this.query = query;
     return this;
