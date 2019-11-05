@@ -36,7 +36,18 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 27.1
 
 * Remove all foreign keys fields and the primary key field `id` from the all index sections of schema.json. These btree indexes are created automatically.
-* Upgrade to Vert.x 3.8.1 (same as RMB)
+* Breaking change due to [upgrading to Vert.x 3.8.1](https://github.com/vert-x3/wiki/wiki/3.8.0-Deprecations-and-breaking-changes#blocking-tasks)
+    * old: `vertx.executeBlocking(future  -> …, result -> …);`
+    * new: `vertx.executeBlocking(promise -> …, result -> …);`
+    * old: `vertx.executeBlocking((Future <String> future ) -> …, result -> …);`
+    * new: `vertx.executeBlocking((Promise<String> promise) -> …, result -> …);`
+* Deprecation changes due to [upgrading to Vert.x 3.8.1](https://github.com/vert-x3/wiki/wiki/3.8.0-Deprecations-and-breaking-changes#future-creation-and-completion)
+    * old: `Future <String> fut     = Future.future();   … return fut;`
+    * new: `Promise<String> promise = Promise.promise(); … return promise.future();`
+    * old: AbstractVerticle `start(Future <Void> fut)`
+    * new: AbstractVerticle `start(Promise<Void> fut)`
+    * old: `future.compose(res -> …, anotherFuture);`
+    * new: `future.compose(res -> { …; return anotherFuture; });`
 
 ## Version 27
 
