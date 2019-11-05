@@ -17,6 +17,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   should use Criterion or CQLWrapper instead to construct queries.
   Remove Criterion.selects2String, Criterion.from2String .
   Remove Criteria.setJoinON, Criteria.isJoinON .
+  CQLWrapper.toString no longer returns leading blank/space
 
 ## Version 28
 
