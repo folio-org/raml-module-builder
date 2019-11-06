@@ -83,6 +83,13 @@ public class CQLWrapperTest {
   }
 
   @Test
+  public void constructor4Nothing() {
+    CQLWrapper cqlWrapper = new CQLWrapper();
+    assertThat(cqlWrapper.toString(), is(""));
+    assertThat(cqlWrapper.getQuery(), is(nullValue()));
+  }
+
+  @Test
   public void constructor4LimitNoOffset() throws FieldException {
     assertThat(new CQLWrapper(cql2pgJson, "cql.allRecords=1", 5, -1).toString(),
         allOf(containsString("LIMIT 5"), not(containsString("OFFSET"))));
@@ -128,6 +135,7 @@ public class CQLWrapperTest {
     wrapper.addWrapper(wrapper);
     wrapper.addWrapper(wrapper, "or");
     assertThat(wrapper.toString(), is("WHERE ((true) and true) or true"));
+    assertThat(wrapper.getField(), is(cql2pgJson));
   }
 
   @Test
@@ -181,6 +189,10 @@ public class CQLWrapperTest {
     assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
     assertThat(wrapperCriterion.toString(), is("WHERE (jsonb->>id) = '42'"));
     assertThat(wrapperWhere.toString(), is("where false"));
+
+    assertThat(wrapperCql.getQuery(), is("cql.allRecords=1 sortBy name"));
+    assertThat(wrapperCriterion.getQuery().trim(), is("WHERE (jsonb->>id) = '42'"));
+    assertThat(wrapperWhere.getQuery(), is("where false"));
 
     wrapperCql.addWrapper(wrapperNone);
     assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));

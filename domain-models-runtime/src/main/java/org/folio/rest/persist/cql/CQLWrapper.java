@@ -23,6 +23,7 @@ public class CQLWrapper {
   private List<WrapTheWrapper> addedWrappers = new ArrayList<>();
 
   public CQLWrapper() {
+    // nothing to do
   }
 
   public CQLWrapper(Criterion criterion) {
@@ -79,6 +80,7 @@ public class CQLWrapper {
   public CQL2PgJSON getField() {
     return field;
   }
+
   public CQLWrapper setField(CQL2PgJSON field) {
     this.field = field;
     return this;
@@ -229,7 +231,7 @@ public class CQLWrapper {
     return "WHERE " + s;
   }
 
-  
+
   /**
    * This function sets a raw WHERE clause - should not include limits, offset, or order
    * It should not be used. Construct with CQL2PgJSON or Criterion instead
