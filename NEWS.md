@@ -1,3 +1,10 @@
+## 28.1.0 2019-11-06
+
+ * RMB-504 Jackson-* version 2.10.0, fixes jackson-databind security
+ * RMB-474 Support 'field[*].subfield' syntax in multiFieldNames
+ * Mention Vert.x 3.8 Future/Premise changes in upgrading.md
+ * Fix upgrading wording for fullText defaultDictionary
+
 ## 28.0.0 2019-10-30
 
  * RMB-433 Fix saveBatch must not overwrite existing id
