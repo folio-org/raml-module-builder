@@ -106,14 +106,14 @@ public class CQLWrapper {
    * {@link CQLWrapper#CQLWrapper(org.folio.cql2pgjson.CQL2PgJSON, java.lang.String) } ;
    * {@code "NONE"} for no query wrapped.
    */
-  private String getType() {
+  String getType() {
     if (whereClause != null) {
       return "WHERE";
     }
     if (criterion != null) {
       return "CRITERION";
     }
-    if (field != null) {
+    if (field != null && query != null) {
       return "CQL";
     }
     return "NONE";
@@ -156,31 +156,26 @@ public class CQLWrapper {
    * @return
    */
   public CQLWrapper addWrapper(CQLWrapper wrapper, String operator){
-    if(wrapper.query != null && wrapper.field != null){
-      addedWrappers.add(new WrapTheWrapper(wrapper, operator));
-    }
+    addedWrappers.add(new WrapTheWrapper(wrapper, operator));
     return this;
   }
 
   /**
-   * Append field.cql2pgJson(query) to sb.
-   *
-   * @param sb where to append
-   * @param query CQL query
-   * @param field field the query is based on
-   * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
+   * Get where clause (without WHERE prefix) for Criterion/CQL cases
+   * @return clause or empty string if none
    */
-  private void appendWhere(StringBuilder sb, String query, CQL2PgJSON field) {
+  private String getWhereThis() {
     if (criterion != null) {
-      sb.append(criterion.getWhere());
+      return criterion.getWhere();
     }
     if (field != null && query != null) {
       try {
-        sb.append(field.toSql(query).getWhere());
+        return field.toSql(query).getWhere();
       } catch (QueryValidationException e) {
         throw new CQLQueryValidationException(e);
       }
     }
+    return "";
   }
 
   /**
@@ -204,14 +199,18 @@ public class CQLWrapper {
    */
   private String getWhereOp() {
     StringBuilder sb = new StringBuilder();
-    appendWhere(sb, query, field);
+    sb.append(getWhereThis());
     for (WrapTheWrapper wrap : addedWrappers) {
-      if (sb.length() > 0) {
-        // (q1) operator q2 .. left-associative
-        sb.insert(0, '(');
-        sb.append(") ").append(wrap.operator).append(' ');
+      String a = wrap.wrapper.getWhereThis();
+      if (!a.isEmpty()) {
+        if (sb.length() > 0) {
+          sb.insert(0, '(');
+          sb.append(") ");
+          sb.append(wrap.operator);
+          sb.append(' ');
+        }
+        sb.append(a);
       }
-      appendWhere(sb, wrap.wrapper.getQuery(), wrap.wrapper.getField());
     }
     return sb.toString();
   }
@@ -245,7 +244,7 @@ public class CQLWrapper {
   /**
    * @return sort by criteria excluding SORT BY prefix or empty string if no sorting
    */
-  String getOrderByOp() {
+  private String getOrderByOp() {
     if (query == null || field == null) {
       return "";
     }
@@ -259,7 +258,7 @@ public class CQLWrapper {
   /**
    * @return sort by criteria including SORT BY prefix or empty string if no sorting
    */
-  private String getOrderByClause() {
+  String getOrderByClause() {
     if (criterion != null) {
       return criterion.getOrderBy();
     }

@@ -7,6 +7,8 @@ import static org.junit.Assert.fail;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.rest.persist.Criteria.Criteria;
+import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
 import org.folio.rest.persist.Criteria.Offset;
 import org.junit.BeforeClass;
@@ -60,7 +62,7 @@ public class CQLWrapperTest {
   public void invalidCQLsortby() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("name=miller sortby");
     try {
-      wrapper.getOrderByOp();
+      wrapper.getOrderByClause();
       fail("exception expected");
     }
     catch (CQLQueryValidationException e) {
@@ -161,5 +163,30 @@ public class CQLWrapperTest {
   @Test
   public void empty() throws FieldException {
     assertThat(new CQLWrapper().setField(cql2pgJson).setQuery(null).toString(), is(""));
+  }
+
+  @Test
+  public void combo() throws FieldException {
+    CQLWrapper wrapperCql = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1 sortBy name");
+    Criterion criterion = new Criterion().addCriterion(new Criteria().addField("id").setOperation("=").setVal("42"));
+    CQLWrapper wrapperCriterion = new CQLWrapper(criterion);
+    CQLWrapper wrapperWhere = new CQLWrapper().setWhereClause("where false");
+    CQLWrapper wrapperNone = new CQLWrapper();
+
+    assertThat(wrapperCql.getType(), is("CQL"));
+    assertThat(wrapperCriterion.getType(), is("CRITERION"));
+    assertThat(wrapperWhere.getType(), is("WHERE"));
+    assertThat(wrapperNone.getType(), is("NONE"));
+
+    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
+    assertThat(wrapperCriterion.toString(), is("WHERE (jsonb->>id) = '42'"));
+    assertThat(wrapperWhere.toString(), is("where false"));
+
+    wrapperCql.addWrapper(wrapperNone);
+    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
+    wrapperCql.addWrapper(wrapperCriterion);
+    assertThat(wrapperCql.toString(), is("WHERE (true) and (jsonb->>id) = '42' ORDER BY lower(f_unaccent(field->>'name'))"));
+    wrapperCriterion.addWrapper(wrapperCql, "or");
+    assertThat(wrapperCriterion.toString(), is("WHERE ((jsonb->>id) = '42') or true"));
   }
 }
