@@ -59,7 +59,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 26
 
-* Restructured audit (history) table, see [README.md](../README.md#the-post-tenant-api) for details.
+* The audit (history) table changed to a new incompatible schema, new audit configuration options are required in schema.json. See [README.md](../README.md#the-post-tenant-api) for details.
 
 ## Version 25
 
