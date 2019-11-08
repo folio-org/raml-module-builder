@@ -972,7 +972,7 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (4 - i)));
     }
-    searchForDataExpectFailure("username=foo sortBy username&%$sort.descending", 6, 3, testContext);
+    searchForData("username=foo sortBy username&%$sort.descending", 6, 3, testContext);
     exception.expect(NullPointerException.class);
     searchForDataNullHeadersExpectFailure("username=foo sortBy username/sort.descending", 6, 3, testContext);
     searchForDataNoClass("username=foo sortBy username/sort.descending",6, 3, testContext);

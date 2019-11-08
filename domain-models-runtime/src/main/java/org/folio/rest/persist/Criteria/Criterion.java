@@ -28,8 +28,6 @@ public class Criterion {
   private Order                     order            = new Order();
   private Limit                     limit            = new Limit();
   private Offset                    offset           = new Offset();
-  private boolean                   whereClauseAdded = false;
-  private boolean                   isJoinCriterion  = false;
 
   public Criterion() {
 
@@ -122,9 +120,6 @@ public class Criterion {
       if (a.select != null) {
         selects.put(a.select.snippet, a.select);
       }
-      if(a.isJoinON()){
-        this.isJoinCriterion = true;
-      }
     }
   }
 
@@ -148,22 +143,39 @@ public class Criterion {
     return this;
   }
 
+  public Limit getLimit() {
+    return limit;
+  }
+
   public Criterion setOffset(Offset offset) {
     this.offset = offset;
     return this;
   }
 
+  public Offset getOffset() {
+    return offset;
+  }
+
+  /**
+   * @return WHERE operand without WHERE prefix
+   */
+  public String getWhere() {
+    return snippet;
+  }
+
+  /**
+   * @return order by clause including ORDER BY; empty for no sorting
+   */
+  public String getOrderBy() {
+    return order.toString();
+  }
+
   @Override
   public String toString() {
-    if (!whereClauseAdded && snippet.length() > 0) {
-      String where = " WHERE ";
-      if(isJoinCriterion){
-        where = " ON ";
-      }
-      snippet = where + snippet;
-      whereClauseAdded = true;
+    if (snippet.isEmpty()) {
+      return "";
     }
-    return snippet + " " + order.toString() + " " + offset.toString() + " " + limit.toString();
+    return "WHERE " + snippet + " " + order.toString() + " " + offset.toString() + " " + limit.toString();
   }
 
   /**
@@ -229,47 +241,5 @@ public class Criterion {
       cc.addCriterion(c[0]);
     }
     return cc;
-  }
-
-  public String selects2String() {
-    StringBuilder sb = new StringBuilder();
-
-    Set<Map.Entry<String, Select>> entries = selects.entrySet();
-    Iterator<Entry<String, Select>> entry = entries.iterator();
-    int count = 0;
-    int size = selects.size();
-    while (entry.hasNext()) {
-      Map.Entry<String, Select> entry2 = entry.next();
-      Select select = entry2.getValue();
-      sb.append(select.snippet).append(" ");
-      if (select.asValue != null) {
-        sb.append(" AS ").append(select.asValue).append(" ");
-      }
-      if (++count < size) {
-        sb.append(", ");
-      }
-    }
-    return sb.toString();
-  }
-
-  public String from2String() {
-    StringBuilder sb = new StringBuilder();
-
-    Set<Map.Entry<String, From>> entries = froms.entrySet();
-    Iterator<Entry<String, From>> entry = entries.iterator();
-    int count = 0;
-    int size = froms.size();
-    while (entry.hasNext()) {
-      Map.Entry<String, From> entry2 = entry.next();
-      From from = entry2.getValue();
-      sb.append(from.snippet).append(" ");
-      if (from.asValue != null) {
-        sb.append(" AS ").append(from.asValue).append(" ");
-      }
-      if (++count < size) {
-        sb.append(", ");
-      }
-    }
-    return sb.toString();
   }
 }
