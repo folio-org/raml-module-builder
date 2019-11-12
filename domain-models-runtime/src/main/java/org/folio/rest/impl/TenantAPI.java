@@ -161,7 +161,7 @@ public class TenantAPI implements Tenant {
       try {
 
         String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-        log.info("sending... postTenant for " + tenantId);
+        log.info("sending... getTenant for " + tenantId);
 
         tenantExists(context, tenantId, res -> {
           boolean exists = false;
@@ -233,8 +233,10 @@ public class TenantAPI implements Tenant {
               String newVersion = null;
               if (tenantExists) {
                 op = TenantOperation.UPDATE;
-                previousVersion = entity.getModuleFrom();
-                newVersion = entity.getModuleTo();
+                if (entity != null) {
+                  previousVersion = entity.getModuleFrom();
+                  newVersion = entity.getModuleTo();
+                }
               }
 
               SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);

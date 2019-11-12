@@ -100,14 +100,17 @@ public class TenantAPIIT {
   }
 
   public void tenantPost(TestContext context) {
+    tenantPost(context, null);
+  }
+
+  public void tenantPost(TestContext context, TenantAttributes tenantAttributes) {
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
       try {
-        TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAPI.postTenant(tenantAttributes, okapiHeaders, h -> {
           tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
-            context.assertTrue(bool, "tenant exists during post");
+            context.assertTrue(bool, "tenant exists after post");
             async.complete();
           }));
         }, Vertx.currentContext());
@@ -116,6 +119,24 @@ public class TenantAPIIT {
       }
     });
     async.awaitSuccess();
+  }
+
+  public boolean tenantGet(TestContext context) {
+    boolean [] result = new boolean [1];
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      try {
+        TenantAPI tenantAPI = new TenantAPI();
+        tenantAPI.getTenant(okapiHeaders, context.asyncAssertSuccess(response -> {
+          result[0] = "true".equals(response.getEntity());
+          async.complete();
+        }), Vertx.currentContext());
+      } catch (Exception e) {
+        context.fail(e);
+      }
+    });
+    async.awaitSuccess();
+    return result[0];
   }
 
   /**
@@ -294,10 +315,14 @@ public class TenantAPIIT {
   @Test
   public void multi(TestContext context) {
     tenantDelete(context);  // make sure tenant does not exist
+    assertThat(tenantGet(context), is(false));
     tenantPost(context);    // create tenant
+    assertThat(tenantGet(context), is(true));
     tenantPost(context);    // create tenant when tenant already exists
+    tenantPost(context, new TenantAttributes());
     testMetadata(context);
     tenantDelete(context);  // delete existing tenant
+    assertThat(tenantGet(context), is(false));
     tenantDelete(context);  // delete non existing tenant
   }
 
