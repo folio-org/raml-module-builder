@@ -13,6 +13,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 29
 
+* RMB-510 Tenant POST /_/tenant must include a body. Older versions of RMB
+  made a special case for zero length body in which case the JSON content
+  was not decoded.
 * RMB-497 removed PostgresClient.join methods. It also deprecates all
   PostgresClient.get methods taking where-clause strings. Module users
   should use Criterion or CQLWrapper instead to construct queries.
