@@ -67,6 +67,7 @@ public class ApiTestBase {
     // create tenant (schema, tables, ...)
     r.header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
       contentType(ContentType.JSON).
+    body("{\"module_to\":\"mod-api-1.0.0\"}").
     when().post("/_/tenant").
     then().statusCode(201);
   }
