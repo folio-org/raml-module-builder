@@ -7,6 +7,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 28](#version-28)
 * [Version 27.1](#version-271)
 * [Version 27](#version-27)
+* [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
@@ -55,6 +56,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     * Hint: `cd ramls/raml-util; git fetch; git checkout 69f6074; cd ../..; git add ramls/raml-util`
     * Note that pom.xml may revert any submodule update that hasn't been staged or committed!
       (See [notes](https://dev.folio.org/guides/developer-setup/#update-git-submodules).)
+
+## Version 26
+
+* The audit (history) table changed to a new incompatible schema, new audit configuration options are required in schema.json. See [README.md](../README.md#the-post-tenant-api) for details.
 
 ## Version 25
 
