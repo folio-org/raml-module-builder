@@ -101,7 +101,8 @@ public class Index extends TableIndexes {
     StringBuilder result = new StringBuilder();
     boolean wasArrayIndex = false;
     expandedTerm.append(table);
-    for(int j = 0; j < rawExpandedTerm.length; j++) {
+    int j;
+    for(j = 0; j < rawExpandedTerm.length; j++) {
       int idx = rawExpandedTerm[j].indexOf("[*]");
       if(idx > -1) {
         wasArrayIndex = appendExpandedArrayTerm(rawExpandedTerm, expandedTerm, j, idx);
@@ -111,7 +112,11 @@ public class Index extends TableIndexes {
       }
     }
     if(wasArrayIndex) {
-      result.append("concat_array_object_values(").append(expandedTerm).append(")");
+      if(j == rawExpandedTerm.length ) {
+        result.append("concat_array_object(").append(expandedTerm).append(")");
+      } else {
+        result.append("concat_array_object_values(").append(expandedTerm).append(")");
+      }
     } else {
       result.append(expandedTerm);
     }
@@ -129,7 +134,11 @@ public class Index extends TableIndexes {
   private static boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
       int tokenIdx) {
     String arrowToken = "->";
-    expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");
+    if(currentTermIdx == rawExpandedTerm.length) {
+      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx));
+    } else {
+      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");
+    }
     return true;
   }
 }
