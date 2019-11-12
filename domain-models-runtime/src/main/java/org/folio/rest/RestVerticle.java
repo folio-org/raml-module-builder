@@ -1302,7 +1302,8 @@ public class RestVerticle extends AbstractVerticle {
               if (!isValid) {
                 endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp), validRequest);
                 return;
-              } else if (isValid && !field2validate.isEmpty()) {
+              }
+              if (!field2validate.isEmpty()) {
                 //valid request for the field to validate request made
                 AsyncResponseResult arr = new AsyncResponseResult();
                 ResponseImpl ri = new ResponseImpl();
