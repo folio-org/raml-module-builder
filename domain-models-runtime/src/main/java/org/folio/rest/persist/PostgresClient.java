@@ -1652,7 +1652,7 @@ public class PostgresClient {
 
     vertx.runOnContext(v1 -> {
       try {
-        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets, distinctOn);
+        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, distinctOn);
 
         connection.queryStream(queryHelper.selectQuery, stream -> {
           if (stream.succeeded()) {
@@ -1769,7 +1769,7 @@ public class PostgresClient {
 
   QueryHelper buildSelectQueryHelper(
     boolean transactionMode, String table, String fieldName,
-    String where, boolean returnIdField, List<FacetField> facets, String distinctOn
+    String where, boolean returnIdField, String distinctOn
   ) {
     String addIdField = "";
     if (returnIdField) {
