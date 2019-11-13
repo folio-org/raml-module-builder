@@ -9,6 +9,7 @@ import java.util.Random;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
 
 public class TenantApiTest extends ApiTestBase {
   private Random random = new Random();
@@ -48,6 +49,8 @@ public class TenantApiTest extends ApiTestBase {
     given(r).
       header("x-okapi-tenant", randomTenant()).
       header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
+      contentType(ContentType.JSON).
+      body("{\"module_to\":\"mod-api-1.0.0\"}").
     when().post("/_/tenant").
     then().
       statusCode(201).
@@ -62,6 +65,8 @@ public class TenantApiTest extends ApiTestBase {
       header("x-okapi-tenant", randomTenant()).
       header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
       header("X-Okapi-Request-Id", "1").
+      contentType(ContentType.JSON).
+      body("{\"module_to\":\"mod-api-1.0.0\"}").
     when().post("/_/tenant").
     then().
       statusCode(201).
