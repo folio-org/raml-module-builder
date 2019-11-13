@@ -109,8 +109,6 @@ public class PostgresClient {
   private static final String    WHERE  = " WHERE ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
-
   private static final String    _PASSWORD = "password"; //NOSONAR
   private static final String    _USERNAME = "username";
   private static final String    HOST      = "host";
@@ -1757,12 +1755,14 @@ public class PostgresClient {
       // this method call invokes freemarker templating
       queryHelper.selectQuery = facetManager.generateFacetQuery();
     }
-    String offsetClause = wrapper.getOffset().toString();
-    if (!offsetClause.isEmpty()) {
-      Matcher matcher = OFFSET_MATCH_PATTERN.matcher(offsetClause);
-      if (matcher.find()) {
-        queryHelper.offset = Integer.parseInt(matcher.group(1));
-      }
+    if (distinctOnClause.equals("*")) { // only estimate on non distinct cases
+      queryHelper.countQuery = SELECT + "count_estimate_smart('"
+        + org.apache.commons.lang.StringEscapeUtils.escapeSql(queryHelper.countQuery)
+        + "')";
+    }
+    int offset = wrapper.getOffset().get();
+    if (offset != -1) {
+      queryHelper.offset = offset;
     }
     return queryHelper;
   }
