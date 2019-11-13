@@ -63,7 +63,7 @@ import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.rulez.Rules;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.rule.FactHandle;
-import org.slf4j.MDC;
+import org.apache.log4j.MDC;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
