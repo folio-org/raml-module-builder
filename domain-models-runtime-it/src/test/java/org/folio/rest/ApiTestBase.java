@@ -25,7 +25,9 @@ import io.vertx.core.json.JsonObject;
 
 public class ApiTestBase {
   static Vertx vertx;
-  /** default request header with tenant */
+  /** default request header with "x-okapi-tenant: testlib" and "Content-type: application/json"
+   *  and ErrorLoggingFilter (logs to System.out).
+   */
   static RequestSpecification r;
   private static final CompletableFuture<String> deploymentFuture = new CompletableFuture<String>();
 
@@ -57,16 +59,18 @@ public class ApiTestBase {
       throw new RuntimeException(e);
     }
 
-    r = given().filter(new ErrorLoggingFilter()).header("x-okapi-tenant", "testlib");
+    r = given().
+        filter(new ErrorLoggingFilter()).
+        header("x-okapi-tenant", "testlib").
+        contentType(ContentType.JSON);
 
     // delete tenant (schema, tables, ...) if it exists from previous tests, ignore errors.
-    r.contentType(ContentType.JSON).
+    given(r).
     when().delete("/_/tenant").
     then();
 
     // create tenant (schema, tables, ...)
-    r.header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
-      contentType(ContentType.JSON).
+    given(r).header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
     when().post("/_/tenant").
     then().statusCode(201);
   }
