@@ -2608,7 +2608,7 @@ public class PostgresClientIT {
   public void processQueryWithCountSqlFailure(TestContext context) {
     postgresClient = postgresClient();
     postgresClient.startTx(context.asyncAssertSuccess(conn -> {
-      QueryHelper queryHelper = new QueryHelper(false, "table", null);
+      QueryHelper queryHelper = new QueryHelper(false, "table");
       queryHelper.selectQuery = "'";
       queryHelper.countQuery = "'";
       postgresClient.processQueryWithCount(conn, queryHelper, "statMethod", null,

@@ -35,7 +35,6 @@ import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
-import org.folio.rest.persist.facets.ParsedQuery;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.PomReader;
@@ -1542,10 +1541,9 @@ public class PostgresClient {
     String selectQuery;
     String countQuery;
     int offset;
-    public QueryHelper(boolean transactionMode, String table, List<FacetField> facets) {
+    public QueryHelper(boolean transactionMode, String table) {
       this.transactionMode = transactionMode;
       this.table = table;
-      this.facets = facets;
       this.offset = 0;
     }
   }
@@ -1739,7 +1737,7 @@ public class PostgresClient {
       addIdField = "";
     }
 
-    QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
+    QueryHelper queryHelper = new QueryHelper(transactionMode, table);
 
     String countOn = "*";
     String distinctOnClause = "";
@@ -1747,38 +1745,20 @@ public class PostgresClient {
       distinctOnClause = String.format("DISTINCT ON(%s) ", distinctOn);
       countOn = String.format("DISTINCT(%s)", distinctOn);
     }
-
     queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField
       + FROM + schemaName + DOT + table + SPACE + wrapper.toString();
-    queryHelper.countQuery = SELECT + "COUNT(" + countOn + ") "
+    queryHelper.countQuery = SELECT + "COUNT(" + countOn + ")"
       + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereClause();
+    String mainQuery = SELECT + distinctOnClause + fieldName + addIdField
+      + FROM + schemaName + DOT + table + SPACE + wrapper.getWithoutLimOff();
 
-    ParsedQuery pq = new ParsedQuery();
-    pq.setCountQuery(queryHelper.countQuery);
-    if (!wrapper.getWhereClause().isEmpty()) {
-      pq.setWhereClause(wrapper.getWhereClause());
-    }
-    if (!wrapper.getLimit().toString().isEmpty()) {
-      pq.setLimitClause(wrapper.getLimit().toString());
-    }
-    if (!wrapper.getOffset().toString().isEmpty()) {
-      pq.setOffsetClause(wrapper.getOffset().toString());
-    }
-    pq.setQueryWithoutLimOff(SELECT + distinctOnClause + fieldName + addIdField
-      + FROM + schemaName + DOT + table + SPACE + wrapper.getWithoutLimOff());
-
-    String offsetClause = null;
-    if (queryHelper.facets != null && !queryHelper.facets.isEmpty() && queryHelper.table != null) {
-      FacetManager facetManager = buildFacetManager(queryHelper.table, pq, queryHelper.facets);
+    if (facets != null && !facets.isEmpty() && queryHelper.table != null) {
+      FacetManager facetManager = buildFacetManager(wrapper, queryHelper, mainQuery, facets);
       // this method call invokes freemarker templating
       queryHelper.selectQuery = facetManager.generateFacetQuery();
-      queryHelper.countQuery = facetManager.getCountQuery();
-
-      offsetClause = facetManager.getOffsetClause();
-    } else {
-      offsetClause = pq.getOffsetClause();
     }
-    if (offsetClause != null) {
+    String offsetClause = wrapper.getOffset().toString();
+    if (!offsetClause.isEmpty()) {
       Matcher matcher = OFFSET_MATCH_PATTERN.matcher(offsetClause);
       if (matcher.find()) {
         queryHelper.offset = Integer.parseInt(matcher.group(1));
@@ -1802,7 +1782,7 @@ public class PostgresClient {
       addIdField = "";
     }
 
-    QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
+    QueryHelper queryHelper = new QueryHelper(transactionMode, table);
 
     String distinctOnClause = "";
     if (distinctOn != null && !distinctOn.isEmpty()) {
@@ -1888,18 +1868,20 @@ public class PostgresClient {
    * @param facets
    * @return
    */
-  private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets) {
-    FacetManager fm = new FacetManager(schemaName + DOT + tableName);
-    if (parsedQuery.getWhereClause() != null) {
-      fm.setWhere(" " + parsedQuery.getWhereClause());
+  private FacetManager buildFacetManager(CQLWrapper wrapper, QueryHelper queryHelper,
+    String mainQuery, List<FacetField> facets) {
+
+    FacetManager fm = new FacetManager(schemaName + DOT + queryHelper.table);
+    if (wrapper.getWhereClause().isEmpty()) {
+      fm.setWhere(" " + wrapper.getWhereClause());
     }
     fm.setSupportFacets(facets);
     fm.setIdField(ID_FIELD);
-    fm.setLimitClause(parsedQuery.getLimitClause());
-    fm.setOffsetClause(parsedQuery.getOffsetClause());
-    fm.setMainQuery(parsedQuery.getQueryWithoutLimOff());
+    fm.setLimitClause(wrapper.getLimit().toString());
+    fm.setOffsetClause(wrapper.getOffset().toString());
+    fm.setMainQuery(mainQuery);
     fm.setSchema(schemaName);
-    fm.setCountQuery(parsedQuery.getCountQuery());
+    fm.setCountQuery(queryHelper.countQuery);
     return fm;
   }
 
