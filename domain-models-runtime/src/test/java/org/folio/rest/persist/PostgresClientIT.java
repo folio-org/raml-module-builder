@@ -37,10 +37,6 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.jaxrs.model.Facet;
@@ -76,8 +72,6 @@ public class PostgresClientIT {
   static private final String MOCK_POLINES_TABLE = "mock_po_lines";
   static private Vertx vertx = null;
 
-  /** Log4j2 logging level */
-  private Level oldRootLevel;
   private PostgresClient postgresClient;
 
   @Rule
@@ -118,21 +112,8 @@ public class PostgresClientIT {
     }
   }
 
-  private Level getRootLevel() {
-    LoggerContext loggerContext = LoggerContext.getContext(false);
-    LoggerConfig loggerConfig = loggerContext.getConfiguration().getRootLogger();
-    return loggerConfig.getLevel();
-  }
-
-  private void setRootLevel(Level newRootLevel) {
-    Configurator.setRootLevel(newRootLevel);
-  }
-
   @Before
   public void setUp() {
-    oldRootLevel = getRootLevel();
-    setRootLevel(Level.ERROR);
-
     postgresClient = null;
   }
 
@@ -142,13 +123,10 @@ public class PostgresClientIT {
       postgresClient.closeClient(context.asyncAssertSuccess());
       postgresClient = null;
     }
-
-    setRootLevel(oldRootLevel);
   }
 
-  private <T> void assertSuccess(TestContext context, AsyncResult<T> result) {
+  private static <T> void assertSuccess(TestContext context, AsyncResult<T> result) {
     if (result.failed()) {
-      setRootLevel(Level.DEBUG);
       context.fail(result.cause());
     }
   }
@@ -158,13 +136,12 @@ public class PostgresClientIT {
    * is {@code Handler<AsyncResult<SQLConnection>>} and not {@code Handler<SQLConnection>}.
    * Usage: {@code postgresClient.startTx(asyncAssertTx(context, trans ->}
    */
-  private Handler<AsyncResult<SQLConnection>> asyncAssertTx(
+  private static Handler<AsyncResult<SQLConnection>> asyncAssertTx(
       TestContext context, Handler<AsyncResult<SQLConnection>> resultHandler) {
 
     Async async = context.async();
     return trans -> {
       if (trans.failed()) {
-        setRootLevel(Level.DEBUG);
         context.fail(trans.cause());
       }
       resultHandler.handle(trans);
@@ -291,9 +268,6 @@ public class PostgresClientIT {
     PostgresClient c = PostgresClient.getInstance(vertx);
     c.getClient().update(sql, reply -> {
       c.closeClient(close -> {
-        if (reply.failed() || close.failed()) {
-          setRootLevel(Level.DEBUG);
-        }
         assertSuccess(context, reply);
         assertSuccess(context, close);
         async.complete();
@@ -304,12 +278,9 @@ public class PostgresClientIT {
 
   private void executeIgnore(TestContext context, String sql) {
     Async async = context.async();
-    Level oldLevel = getRootLevel();
-    setRootLevel(Level.FATAL);
     PostgresClient c = PostgresClient.getInstance(vertx);
     c.getClient().update(sql, reply -> {
       c.closeClient(close -> {
-        setRootLevel(oldLevel);
         assertSuccess(context, close);
         async.complete();
       });
@@ -321,7 +292,6 @@ public class PostgresClientIT {
     try {
       postgresClient = PostgresClient.getInstance(vertx, tenant);
     } catch (Throwable e) {
-      setRootLevel(Level.DEBUG);
       throw e;
     }
     return postgresClient;
@@ -343,7 +313,9 @@ public class PostgresClientIT {
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
     execute(context, "CREATE TABLE " + schema + "." + table + " (" + tableDefinition + ");");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
-    return postgresClient(tenant);
+    PostgresClient postgresClient = postgresClient(tenant);
+    loadFuncs(context, postgresClient);
+    return postgresClient;
   }
 
   /** create table a (i INTEGER) */
@@ -1182,7 +1154,6 @@ public class PostgresClientIT {
   public void saveTransNull(TestContext context) {
     postgresClient = createFoo(context);
     AsyncResult<SQLConnection> trans = null;
-    setRootLevel(Level.FATAL);
     postgresClient.save(trans, FOO, xPojo, context.asyncAssertFailure());
   }
 
@@ -1253,7 +1224,6 @@ public class PostgresClientIT {
     String id = randomUuid();
     postgresClient = createFoo(context);
     AsyncResult<SQLConnection> trans = null;
-    setRootLevel(Level.FATAL);
     postgresClient.save(trans, FOO, id, xPojo, context.asyncAssertFailure());
   }
 
@@ -1522,7 +1492,6 @@ public class PostgresClientIT {
       }
     };
     try {
-      setRootLevel(Level.FATAL);
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setClient(client);
       return postgresClient;
@@ -1554,7 +1523,6 @@ public class PostgresClientIT {
       }
     };
     try {
-      setRootLevel(Level.FATAL);
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setClient(client);
       return postgresClient;
@@ -1608,7 +1576,6 @@ public class PostgresClientIT {
       }
     };
     try {
-      setRootLevel(Level.FATAL);
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setClient(client);
       return postgresClient;
@@ -1671,7 +1638,6 @@ public class PostgresClientIT {
       }
     };
     try {
-      setRootLevel(Level.FATAL);
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setClient(client);
       return postgresClient;
@@ -1723,7 +1689,6 @@ public class PostgresClientIT {
       }
     };
     try {
-      setRootLevel(Level.FATAL);
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setClient(client);
       return postgresClient;
@@ -1872,7 +1837,6 @@ public class PostgresClientIT {
 
   @Test
   public void executeTransNullConnection(TestContext context) throws Exception {
-    setRootLevel(Level.FATAL);
     postgresClient().execute(null, "SELECT 1", context.asyncAssertFailure());
   }
 
@@ -1934,7 +1898,6 @@ public class PostgresClientIT {
     Async async = context.async();
     postgresClient = postgresClient();
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      setRootLevel(Level.FATAL);
       postgresClient.execute(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure(execute -> {
         postgresClient.rollbackTx(trans, rollback -> async.complete());
       }));
@@ -1983,7 +1946,6 @@ public class PostgresClientIT {
 
   @Test
   public void executeListTransNull(TestContext context) throws Exception {
-    setRootLevel(Level.FATAL);
     postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
@@ -2643,27 +2605,28 @@ public class PostgresClientIT {
     PostgresClient.pojo2json(postgresClient);
   }
 
-  private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
-    String schema = PostgresClient.convertToPsqlStandard(TENANT);
-    String polines = getMockData("mockdata/poLines.json");
-    postgresClient = createTable(context, TENANT, tableName, tableDefiniton);
-
-    // get count_estimate_smart2 definition
+  private static void loadFuncs(TestContext context, PostgresClient postgresClient) {
     Async async = context.async();
     try {
       String sql = IOUtils.toString(
-        getClass().getClassLoader().getResourceAsStream("templates/db_scripts/funcs.sql"), "UTF-8");
+        PostgresClientIT.class.getClassLoader().getResourceAsStream("templates/db_scripts/funcs.sql"), "UTF-8");
       sql = sql.replaceAll("tenants_raml_module_builder.", "");
       postgresClient.getClient().update(sql, reply -> {
         assertSuccess(context, reply);
         async.complete();
       });
     } catch (IOException ex) {
-      log.error("createTable: " + ex.getMessage());
+      context.fail(ex);
       async.complete();
     }
     async.awaitSuccess(1000);
+  }
 
+  private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
+    String schema = PostgresClient.convertToPsqlStandard(TENANT);
+    String polines = getMockData("mockdata/poLines.json");
+    postgresClient = createTable(context, TENANT, tableName, tableDefiniton);
+    loadFuncs(context, postgresClient);
     for (String jsonbValue : polines.split("\n")) {
       String additionalField = new JsonObject(jsonbValue).getString("publication_date");
       execute(context, "INSERT INTO " + schema + "." + tableName + " (id, jsonb, distinct_test_field) VALUES "

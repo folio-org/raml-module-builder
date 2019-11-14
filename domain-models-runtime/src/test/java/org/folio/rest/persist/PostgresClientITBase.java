@@ -17,6 +17,7 @@ import freemarker.template.TemplateException;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import org.apache.commons.io.IOUtils;
 
 public class PostgresClientITBase {
   protected static String tenant;
@@ -41,6 +42,24 @@ public class PostgresClientITBase {
         "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN",
         "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema,
         "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
+    loadFuncs(context, PostgresClient.getInstance(vertx));
+  }
+
+  private static void loadFuncs(TestContext context, PostgresClient postgresClient) {
+    Async async = context.async();
+    try {
+      String sql = IOUtils.toString(
+        PostgresClientITBase.class.getClassLoader().getResourceAsStream("templates/db_scripts/funcs.sql"), "UTF-8");
+      sql = sql.replaceAll("tenants_raml_module_builder.", "");
+      postgresClient.getClient().update(sql, reply -> {
+        context.assertTrue(reply.succeeded());
+        async.complete();
+      });
+    } catch (IOException ex) {
+      context.fail(ex);
+      async.complete();
+    }
+    async.awaitSuccess(1000);
   }
 
   @BeforeClass

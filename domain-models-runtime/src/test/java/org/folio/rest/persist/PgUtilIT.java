@@ -41,6 +41,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import junit.framework.AssertionFailedError;
+import org.apache.commons.io.IOUtils;
 
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
@@ -95,6 +96,24 @@ public class PgUtilIT {
   }
 
   private static final String DUMMY_VAL = "dummy value set by trigger";
+
+  private static void loadFuncs(TestContext context, PostgresClient postgresClient) {
+    Async async = context.async();
+    try {
+      String sql = IOUtils.toString(
+        PgUtilIT.class.getClassLoader().getResourceAsStream("templates/db_scripts/funcs.sql"), "UTF-8");
+      sql = sql.replaceAll("tenants_raml_module_builder.", schema + ".");
+      postgresClient.getClient().update(sql, reply -> {
+        context.assertTrue(reply.succeeded());
+        async.complete();
+      });
+    } catch (IOException ex) {
+      context.fail(ex);
+      async.complete();
+    }
+    async.awaitSuccess(1000);
+  }
+
   private static void createUserTable(TestContext context) {
     execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
     execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
@@ -117,6 +136,7 @@ public class PgUtilIT {
     execute(context, "CREATE TRIGGER idusername BEFORE INSERT OR UPDATE ON " + schema + ".users "
                      + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".dummy();");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
+    loadFuncs(context, PostgresClient.getInstance(vertx));
   }
 
   private static void execute(TestContext context, String sql) {
