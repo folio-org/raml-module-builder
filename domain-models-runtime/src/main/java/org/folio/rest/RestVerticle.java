@@ -39,7 +39,6 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.ClientGenerator;
@@ -1293,33 +1292,28 @@ public class RestVerticle extends AbstractVerticle {
 
               Errors errorResp = new Errors();
 
-              if(!allowEmptyObject(entityClazz, bodyContent)){
-                //right now - because no way in raml to make body optional - do not validate
-                //TenantAttributes object as it may be empty
+              //is this request only to validate a field value and not an actual
+              //request for additional processing
+              List<String> field2validate = request.params().getAll("validate_field");
+              Object[] resp = isValidRequest(rc, paramArray[order], errorResp, validRequest, field2validate, entityClazz);
+              boolean isValid = (boolean) resp[0];
+              paramArray[order] = resp[1];
 
-                //is this request only to validate a field value and not an actual
-                //request for additional processing
-                List<String> field2validate = request.params().getAll("validate_field");
-                Object[] resp = isValidRequest(rc, paramArray[order], errorResp, validRequest, field2validate, entityClazz);
-                boolean isValid = (boolean)resp[0];
-                paramArray[order] = resp[1];
-
-                if(!isValid){
-                  endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp) , validRequest);
-                  return;
-                }
-                else if(isValid && !field2validate.isEmpty()){
-                  //valid request for the field to validate request made
-                    AsyncResponseResult arr = new AsyncResponseResult();
-                    ResponseImpl ri = new ResponseImpl();
-                    ri.setStatus(200);
-                    arr.setResult(ri);
-                    //right now this is the only flag available to stop
-                    //any additional respones for this request. to fix
-                    validRequest[0] = false;
-                    sendResponse(rc, arr, 0, null);
-                    return;
-                }
+              if (!isValid) {
+                endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp), validRequest);
+                return;
+              }
+              if (!field2validate.isEmpty()) {
+                //valid request for the field to validate request made
+                AsyncResponseResult arr = new AsyncResponseResult();
+                ResponseImpl ri = new ResponseImpl();
+                ri.setStatus(200);
+                arr.setResult(ri);
+                //right now this is the only flag available to stop
+                //any additional respones for this request. to fix
+                validRequest[0] = false;
+                sendResponse(rc, arr, 0, null);
+                return;
               }
               // complex rules validation here (drools) - after simpler validation rules pass -
               Error error = new Error();
@@ -1614,17 +1608,6 @@ public class RestVerticle extends AbstractVerticle {
       log.warn("path = " + path + ", " + OKAPI_HEADER_TOKEN + " = " + token
           + ", userId = " + userId + ": " + e.getMessage(), e);
     }
-  }
-
-  private boolean allowEmptyObject(Class clazz, String bodyContent){
-    if(clazz.getName().equals(TenantAttributes.class.getName())){
-      //right now - because no way in raml to make body optional - do not validate
-      //TenantAttributes object if it is empty - since this is allowed
-      if(bodyContent == null || bodyContent.length() == 0){
-        return true;
-      }
-    }
-    return false;
   }
 
   public static MetricsService getServerMetrics(){
