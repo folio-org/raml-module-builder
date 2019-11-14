@@ -2411,11 +2411,12 @@ public class PostgresClientIT {
       async.awaitSuccess();
     }
     String distinctOn = "jsonb->>'order_format'";
+    List<FacetField> emptyFacets = new ArrayList<FacetField>();
     {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, true, true, false, facets, distinctOn, handler -> {
+        cqlWrapper, true, true, false, emptyFacets, distinctOn, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(4, resultInfo.getTotalRecords());
