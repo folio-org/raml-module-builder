@@ -48,6 +48,7 @@ public class TenantApiTest extends ApiTestBase {
     given(r).
       header("x-okapi-tenant", randomTenant()).
       header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
+      body("{\"module_to\":\"mod-api-1.0.0\"}").
     when().post("/_/tenant").
     then().
       statusCode(201).
@@ -62,6 +63,7 @@ public class TenantApiTest extends ApiTestBase {
       header("x-okapi-tenant", randomTenant()).
       header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
       header("X-Okapi-Request-Id", "1").
+      body("{\"module_to\":\"mod-api-1.0.0\"}").
     when().post("/_/tenant").
     then().
       statusCode(201).
