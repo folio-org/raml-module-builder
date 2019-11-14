@@ -1750,7 +1750,7 @@ public class PostgresClient {
     String mainQuery = SELECT + distinctOnClause + fieldName + addIdField
       + FROM + schemaName + DOT + table + SPACE + wrapper.getWithoutLimOff();
 
-    if (facets != null && !facets.isEmpty() && queryHelper.table != null) {
+    if (facets != null && !facets.isEmpty()) {
       FacetManager facetManager = buildFacetManager(wrapper, queryHelper, mainQuery, facets);
       // this method call invokes freemarker templating
       queryHelper.selectQuery = facetManager.generateFacetQuery();
