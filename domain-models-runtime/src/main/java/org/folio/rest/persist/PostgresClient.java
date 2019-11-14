@@ -1617,10 +1617,12 @@ public class PostgresClient {
     boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
   ) {
+    // streamGet appears to offer facets, but it does not implement it
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        doStreamGet(connection, false, table, clazz, fieldName, where, returnIdField, setId, facets, distinctOn, streamHandler, replyHandler);
+        doStreamGet(connection, false, table, clazz, fieldName, where,
+          returnIdField, setId, distinctOn, streamHandler, replyHandler);
       }
       else{
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -1644,7 +1646,7 @@ public class PostgresClient {
    */
   private <T> void doStreamGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
-    String fieldName, String where, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
+    String fieldName, String where, boolean returnIdField, boolean setId, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
   ) {
 
