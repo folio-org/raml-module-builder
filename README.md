@@ -1421,9 +1421,11 @@ An example can be found here:
 
  - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example.json
 
+The top level properties in schema.json (some of which are optional) are `scripts`, `tables`, `views` and `exactCount`.
+
 Entries in the json file to be aware of:
 
-For each **table**:
+For each **table** in `tables` property:
 
 1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
 2. `generateId` - No longer supported.  This functionality is not stable in Pgpool-II see https://www.pgpool.net/docs/latest/en/html/restrictions.html.  The solution is to generate a UUID in java in the same manner as https://github.com/folio-org/raml-module-builder/blob/v23.11.0/domain-models-runtime/src/main/java/org/folio/rest/persist/PgUtil.java#L358
@@ -1540,6 +1542,10 @@ The fields in the **script** section include:
 3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.
 4. `fromModuleVersion` - same as `fromModuleVersion` for table
 
+The **exactCount** section is optonal and the value of the property is
+a simple integer with a default value of 20000. Hit counts returned by
+get-familify of methods will use an exact hit count up to that value; beyond
+that, en estimated hit count is returned.
 
 The tables / views will be generated in the schema named tenantid_modulename
 
