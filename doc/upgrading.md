@@ -49,7 +49,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     * new: AbstractVerticle `start(Promise<Void> fut)`
     * old: `future.compose(res -> …, anotherFuture);`
     * new: `future.compose(res -> { …; return anotherFuture; });`
-* Deprecation changes due to [upgrading to Vert.x 3.8.1 > 3.6.2)(https://github.com/vert-x3/wiki/wiki/3.6.2-Deprecations)
+* Deprecation changes due to [upgrading to Vert.x 3.8.1 > 3.6.2](https://github.com/vert-x3/wiki/wiki/3.6.2-Deprecations)
     * old: `HttpClient` request/response methods with `Handler<HttpClientResponse>`
     * new: `WebClient` request/response methods with `Handler<AsyncResult<HttpClientResponse>>`
 
