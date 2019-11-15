@@ -126,6 +126,16 @@ public class CompoundIndexIT extends DatabaseTestBase {
   }
 
   @Test
+  public void multiFieldNamesDotStarGINPlain() throws Exception {
+    assertThat( cqla("ginfielddotstarplain == \"Boston\""),  IsEmptyCollection.empty());
+  }
+
+  @Test
+  public void multiFieldNamesDotStarFTAllPlain() throws Exception {
+    assertThat( cqla("ftfielddotstarplain all \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike"));
+  }
+
+  @Test
   public void multiFieldNamesDotStarFTAny() throws Exception {
     assertThat( cqla("ftfielddotstar any \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike", "Mary"));
   }

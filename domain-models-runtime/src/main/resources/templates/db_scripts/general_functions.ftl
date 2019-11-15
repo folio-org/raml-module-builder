@@ -120,5 +120,5 @@ create or replace function concat_array_object_values(jsonb_data jsonb, field te
 $$ LANGUAGE sql IMMUTABLE;
 
 create or replace function concat_array_object(jsonb_data jsonb) RETURNS text AS $$
-  SELECT string_agg(value, ' ') FROM jsonb_array_elements($1);
+  SELECT string_agg(value::text, ' ') FROM jsonb_array_elements_text($1);
 $$ LANGUAGE sql IMMUTABLE;

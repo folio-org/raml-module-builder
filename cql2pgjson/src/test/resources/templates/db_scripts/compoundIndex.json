@@ -23,6 +23,13 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
+        },
+        {
+          "fieldName": "ginfielddotstarplain",
+          "multiFieldNames": "field3.info[*],field3.info[*]",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
         }
       ],
       "fullTextIndex": [
@@ -43,6 +50,13 @@
         {
           "fieldName": "ftfielddotstar",
           "multiFieldNames": "field3.info[*].city,field3.info[*].state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ftfielddotstarplain",
+          "multiFieldNames": "field3.info[*],field3.info[*]",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false

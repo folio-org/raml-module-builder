@@ -112,7 +112,7 @@ public class Index extends TableIndexes {
       }
     }
     if(wasArrayIndex) {
-      if(j == rawExpandedTerm.length ) {
+      if(j == rawExpandedTerm.length - 1 ) {
         result.append("concat_array_object(").append(expandedTerm).append(")");
       } else {
         result.append("concat_array_object_values(").append(expandedTerm).append(")");
@@ -134,8 +134,9 @@ public class Index extends TableIndexes {
   private static boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
       int tokenIdx) {
     String arrowToken = "->";
-    if(currentTermIdx == rawExpandedTerm.length) {
-      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx));
+    if(currentTermIdx == rawExpandedTerm.length - 1) {
+      arrowToken = "->";
+      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("'");
     } else {
       expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");
     }
