@@ -22,6 +22,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   Remove Criterion.selects2String, Criterion.from2String .
   Remove Criteria.setJoinON, Criteria.isJoinON .
   CQLWrapper.toString no longer returns leading blank/space
+* [RMB-514](https://issues.folio.org/browse/RMB-514) Update aspectj-maven-plugin to version 11 and
+  its aspectjrt and aspectjtools versions to 1.9.4 in pom.xml ([example](https://github.com/folio-org/raml-module-builder/blob/a77786a4b118a523b753a26d2f10aa51e276a4da/sample2/pom.xml#L180-L221))
+  to avoid "bad version" warnings.
 
 ## Version 28
 
