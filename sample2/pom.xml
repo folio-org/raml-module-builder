@@ -18,7 +18,6 @@
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <aspectj.version>1.9.4</aspectj.version>
     <vertx-version>3.8.1</vertx-version>
   </properties>
 
@@ -211,12 +210,12 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjrt</artifactId>
-            <version>${aspectj.version}</version>
+            <version>1.9.4</version>
           </dependency>
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
-            <version>${aspectj.version}</version>
+            <version>1.9.4</version>
           </dependency>
         </dependencies>
       </plugin>
