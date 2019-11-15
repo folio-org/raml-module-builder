@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>28.1.0-SNAPSHOT</version>
+    <version>29.0.0-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -200,19 +200,14 @@
       <version>2.9.1</version>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>1.7.25</version>
-    </dependency>
-    <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-api</artifactId>
       <version>2.9.1</version>
     </dependency>
     <dependency>
-      <groupId>com.github.jsqlparser</groupId>
-      <artifactId>jsqlparser</artifactId>
-      <version>1.1</version>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-1.2-api</artifactId>
+      <version>2.9.1</version>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
@@ -342,7 +337,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.9</version>
+        <version>1.11</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
@@ -368,7 +363,19 @@
               <goal>test-compile</goal>
             </goals>
           </execution>
-        </executions>
+         </executions>
+         <dependencies>
+           <dependency>
+             <groupId>org.aspectj</groupId>
+             <artifactId>aspectjrt</artifactId>
+             <version>${aspectj.version}</version>
+           </dependency>
+           <dependency>
+             <groupId>org.aspectj</groupId>
+             <artifactId>aspectjtools</artifactId>
+             <version>${aspectj.version}</version>
+           </dependency>
+         </dependencies>
       </plugin>
 
       <plugin>

@@ -3,11 +3,28 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 29](#version-29)
 * [Version 28](#version-28)
 * [Version 27.1](#version-271)
 * [Version 27](#version-27)
+* [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 29
+
+* [RMB-510](https://issues.folio.org/browse/RMB-510) Tenant POST `/_/tenant` must include a body. Client that
+  used an empty request must now include a body with at least:
+  `{"module_to":"module-id"}`.
+* [RMB-497](https://issues.folio.org/browse/RMB-497) removed PostgresClient.join methods. It also deprecates all
+  PostgresClient.get methods taking where-clause strings. Module users
+  should use Criterion or CQLWrapper instead to construct queries.
+  Remove Criterion.selects2String, Criterion.from2String .
+  Remove Criteria.setJoinON, Criteria.isJoinON .
+  CQLWrapper.toString no longer returns leading blank/space
+* [RMB-514](https://issues.folio.org/browse/RMB-514) Update aspectj-maven-plugin to version 11 and
+  its aspectjrt and aspectjtools versions to 1.9.4 in pom.xml ([example](https://github.com/folio-org/raml-module-builder/blob/a77786a4b118a523b753a26d2f10aa51e276a4da/sample2/pom.xml#L180-L221))
+  to avoid "bad version" warnings.
 
 ## Version 28
 
@@ -26,7 +43,21 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 27.1
 
 * Remove all foreign keys fields and the primary key field `id` from the all index sections of schema.json. These btree indexes are created automatically.
-* Upgrade to Vert.x 3.8.1 (same as RMB)
+* Breaking change due to [upgrading to Vert.x 3.8.1](https://github.com/vert-x3/wiki/wiki/3.8.0-Deprecations-and-breaking-changes#blocking-tasks)
+    * old: `vertx.executeBlocking(future  -> …, result -> …);`
+    * new: `vertx.executeBlocking(promise -> …, result -> …);`
+    * old: `vertx.executeBlocking((Future <String> future ) -> …, result -> …);`
+    * new: `vertx.executeBlocking((Promise<String> promise) -> …, result -> …);`
+* Deprecation changes due to [upgrading to Vert.x 3.8.1](https://github.com/vert-x3/wiki/wiki/3.8.0-Deprecations-and-breaking-changes#future-creation-and-completion)
+    * old: `Future <String> fut     = Future.future();   … return fut;`
+    * new: `Promise<String> promise = Promise.promise(); … return promise.future();`
+    * old: AbstractVerticle `start(Future <Void> fut)`
+    * new: AbstractVerticle `start(Promise<Void> fut)`
+    * old: `future.compose(res -> …, anotherFuture);`
+    * new: `future.compose(res -> { …; return anotherFuture; });`
+* Deprecation changes due to [upgrading to Vert.x 3.8.1 > 3.6.2](https://github.com/vert-x3/wiki/wiki/3.6.2-Deprecations)
+    * old: `HttpClient` request/response methods with `Handler<HttpClientResponse>`
+    * new: `WebClient` request/response methods with `Handler<AsyncResult<HttpClientResponse>>`
 
 ## Version 27
 
@@ -34,6 +65,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     * Hint: `cd ramls/raml-util; git fetch; git checkout 69f6074; cd ../..; git add ramls/raml-util`
     * Note that pom.xml may revert any submodule update that hasn't been staged or committed!
       (See [notes](https://dev.folio.org/guides/developer-setup/#update-git-submodules).)
+
+## Version 26
+
+* The audit (history) table changed to a new incompatible schema, new audit configuration options are required in schema.json. See [README.md](../README.md#the-post-tenant-api) for details.
 
 ## Version 25
 
