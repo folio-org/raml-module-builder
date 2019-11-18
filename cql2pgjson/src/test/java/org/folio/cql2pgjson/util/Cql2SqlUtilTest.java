@@ -467,28 +467,36 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
   }
 
   @Test
-  @Parameters({
+  @Parameters({       // without double backslash required for Java String
+    "?",
+    "*",
     "abc?",
     "abc*",
     "abc?*",
-    "abc\\\\*",
-    "abc\\\\?",
-    "abc\\\\*\\\\?",
-    "abc\\*\\\\?",
-    "abc\\\\*\\?",
-    "abc\\*\\?*",
-    "abc\\*\\??",
+    "abc\\\\*",       // abc\\*
+    "abc\\\\?",       // abc\\?
+    "abc\\\\*\\\\?",  // abc\\*\\?
+    "abc\\*\\\\?",    // abc\*\\?
+    "abc\\\\*\\?",    // abc\\*\?
+    "abc\\*\\?*",     // abc\*\?*
+    "abc\\*\\??",     // abc\*\??
   })
   public void hasCqlWildCard(String term) {
     assertThat(Cql2SqlUtil.hasCqlWildCardd(term), is(true));
   }
 
   @Test
-  @Parameters({
-    "abc",
-    "abc\\?",
-    "abc\\*",
-    "abc\\*\\?",
+  @Parameters({        // without double backslash required for Java String
+    "\\?",             // \?
+    "\\*",             // \*
+    "abc",             // abc
+    "abc\\?",          // abc\?
+    "abc\\*",          // abc\*
+    "abc\\\\\\?",      // abc\\\?
+    "abc\\\\\\*",      // abc\\\*
+    "abc\\\\\\\\\\?",  // abc\\\\\?
+    "abc\\\\\\\\\\*",  // abc\\\\\*
+    "abc\\*\\?",       // abc\*\?
   })
   public void hasNoCqlWildCard(String term) {
     assertThat(Cql2SqlUtil.hasCqlWildCardd(term), is(false));
