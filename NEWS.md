@@ -1,3 +1,7 @@
+## 28.1.1 2019-11-18
+
+ * RMB-511 Use log4js MDC class, rather than slf4j
+
 ## 28.1.0 2019-11-06
 
  * RMB-504 Jackson-* version 2.10.0, fixes jackson-databind security
