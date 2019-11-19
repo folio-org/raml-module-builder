@@ -20,11 +20,12 @@ class Cql2PgUtilTest {
 
   @ParameterizedTest
   @CsvSource({
-    "a      , tab.jsonb->'a'",
-    "a.b    , tab.jsonb->'a'->'b'",
-    "a.b.c  , tab.jsonb->'a'->'b'->'c'",
-    "abc    , tab.jsonb->'abc'",
-    "abc.xyz, tab.jsonb->'abc'->'xyz'",
+    "a         , tab.jsonb->'a'",
+    "a.b       , tab.jsonb->'a'->'b'",
+    "a.b.c     , tab.jsonb->'a'->'b'->'c'",
+    "abc       , tab.jsonb->'abc'",
+    "abc.xyz   , tab.jsonb->'abc'->'xyz'",
+    "a'bc.'xyz', tab.jsonb->'a''bc'->'''xyz'''",  // sql injection test
   })
   void cqlNameAsSqlJson(String cqlName, String sql) {
     assertThat(Cql2PgUtil.cqlNameAsSqlJson("tab.jsonb", cqlName), is(sql));
@@ -40,11 +41,12 @@ class Cql2PgUtilTest {
 
   @ParameterizedTest
   @CsvSource({
-    "a      , tab.jsonb->>'a'",
-    "a.b    , tab.jsonb->'a'->>'b'",
-    "a.b.c  , tab.jsonb->'a'->'b'->>'c'",
-    "abc    , tab.jsonb->>'abc'",
-    "abc.xyz, tab.jsonb->'abc'->>'xyz'",
+    "a         , tab.jsonb->>'a'",
+    "a.b       , tab.jsonb->'a'->>'b'",
+    "a.b.c     , tab.jsonb->'a'->'b'->>'c'",
+    "abc       , tab.jsonb->>'abc'",
+    "abc.xyz   , tab.jsonb->'abc'->>'xyz'",
+    "a'bc.'xyz', tab.jsonb->'a''bc'->>'''xyz'''",  // sql injection test
   })
   void cqlNameAsSqlText(String cqlName, String sql) {
     assertThat(Cql2PgUtil.cqlNameAsSqlText("tab.jsonb", cqlName), is(sql));

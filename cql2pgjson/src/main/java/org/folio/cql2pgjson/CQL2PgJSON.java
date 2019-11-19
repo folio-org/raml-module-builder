@@ -442,8 +442,7 @@ public class CQL2PgJSON {
         + " (" + pg(node.getRightOperand()) + isNotTrue + ")";
   }
 
-  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
-      throws QueryValidationException {
+  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index) {
     if (jsonFields != null && jsonFields.size() > 1) {
       return multiFieldProcessing(index);
     }
@@ -453,7 +452,7 @@ public class CQL2PgJSON {
     return vals;
   }
 
-  private IndexTextAndJsonValues multiFieldProcessing(String index ) throws QueryValidationException {
+  private IndexTextAndJsonValues multiFieldProcessing(String index ) {
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
 
     // processing for case where index is prefixed with json field name
