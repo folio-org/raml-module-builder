@@ -1757,11 +1757,11 @@ public class PostgresClient {
       // this method call invokes freemarker templating
       queryHelper.selectQuery = facetManager.generateFacetQuery();
     }
-    if (countOn.equals("*")) { // only estimate on non distinct cases
-      queryHelper.countQuery = SELECT + "count_estimate_smart('"
-        + org.apache.commons.lang.StringEscapeUtils.escapeSql(queryHelper.countQuery)
-        + "')";
-    }
+    queryHelper.countQuery = SELECT + "count_estimate_smart3('"
+      + org.apache.commons.lang.StringEscapeUtils.escapeSql(mainQuery)
+      + "', '"
+      + org.apache.commons.lang.StringEscapeUtils.escapeSql(queryHelper.countQuery)
+      + "')";
     int offset = wrapper.getOffset().get();
     if (offset != -1) {
       queryHelper.offset = offset;
