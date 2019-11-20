@@ -22,14 +22,14 @@ DECLARE
   rows  integer;
   q text;
 BEGIN
-  q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT 100) x';
+  q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT ${exactCount}) x';
   EXECUTE q INTO rows;
-  IF rows < 100 THEN
+  IF rows < ${exactCount} THEN
     return rows;
   END IF;
-  rows = ${myuniversity}_${mymodule}.count_estimate_smart2(100, 100, query);
-  IF rows < 100 THEN
-    return 100;
+  rows = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
+  IF rows < ${exactCount} THEN
+    return ${exactCount} ;
   END IF;
   RETURN rows;
 END;
