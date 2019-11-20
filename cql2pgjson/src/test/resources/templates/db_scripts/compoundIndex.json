@@ -56,7 +56,7 @@
         },
         {
           "fieldName": "ftfielddotstarplain",
-          "multiFieldNames": "field3.info[*],field3.info[*]",
+          "multiFieldNames": "field3.info[*],field3.data[*]",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
