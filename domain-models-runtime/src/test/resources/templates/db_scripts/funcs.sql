@@ -17,12 +17,17 @@ $$ LANGUAGE plpgsql VOLATILE STRICT;
 CREATE OR REPLACE FUNCTION tenants_raml_module_builder.count_estimate_smart3(query text, cntquery text) RETURNS integer AS $$
 DECLARE
   rows  integer;
+  q text;
 BEGIN
-  rows = tenants_raml_module_builder.count_estimate_smart2(2000, 2000, query);
-  IF rows > 2000 THEN
-    RETURN rows;
+  q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT 100) x';
+  EXECUTE q INTO rows;
+  IF rows < 100 THEN
+    return rows;
   END IF;
-  EXECUTE cntquery INTO rows;
+  rows = tenants_raml_module_builder.count_estimate_smart2(100, 100, query);
+  IF rows < 100 THEN
+    return 101;
+  END IF;
   RETURN rows;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;

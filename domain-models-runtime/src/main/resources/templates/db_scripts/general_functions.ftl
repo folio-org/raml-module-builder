@@ -20,14 +20,17 @@ $$ LANGUAGE plpgsql VOLATILE STRICT;
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart3(query text, cntquery text) RETURNS integer AS $$
 DECLARE
   rows  integer;
+  q text;
 BEGIN
-  -- get a fast estimate
-  rows = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
-  -- if estimate is higher than what we allow for a fast count query, then return the estimate
-  IF rows > ${exactCount} THEN
-    RETURN rows;
+  q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT 100) x';
+  EXECUTE q INTO rows;
+  IF rows < 100 THEN
+    return rows;
   END IF;
-  EXECUTE cntquery INTO rows;
+  rows = ${myuniversity}_${mymodule}.count_estimate_smart2(100, 100, query);
+  IF rows < 100 THEN
+    return 100;
+  END IF;
   RETURN rows;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
