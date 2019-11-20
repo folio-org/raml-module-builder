@@ -22,11 +22,11 @@ import org.folio.rest.tools.utils.TenantTool;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
 
 /**
  * @author shale
@@ -38,6 +38,10 @@ public class TenantAPI implements Tenant {
   public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
 
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
+
+  PostgresClient postgresClient(Context context) {
+    return PostgresClient.getInstance(context.owner());
+  }
 
   @Validate
   @Override
@@ -91,7 +95,7 @@ public class TenantAPI implements Tenant {
             log.info("Attempting to run delete script for: " + tenantId);
             log.debug("GENERATED SCHEMA " + sqlFile);
             /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-            PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, true,
+            postgresClient(context).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
                     String res = "";
@@ -130,7 +134,7 @@ public class TenantAPI implements Tenant {
 
   void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
     /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-    PostgresClient.getInstance(context.owner()).select(
+    postgresClient(context).select(
       "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '"+ PostgresClient.convertToPsqlStandard(tenantId) +"');",
         reply -> {
           try {
@@ -157,7 +161,7 @@ public class TenantAPI implements Tenant {
       try {
 
         String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-        log.info("sending... postTenant for " + tenantId);
+        log.info("sending... getTenant for " + tenantId);
 
         tenantExists(context, tenantId, res -> {
           boolean exists = false;
@@ -229,8 +233,10 @@ public class TenantAPI implements Tenant {
               String newVersion = null;
               if (tenantExists) {
                 op = TenantOperation.UPDATE;
-                previousVersion = entity.getModuleFrom();
-                newVersion = entity.getModuleTo();
+                if (entity != null) {
+                  previousVersion = entity.getModuleFrom();
+                  newVersion = entity.getModuleTo();
+                }
               }
 
               SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
@@ -241,34 +247,27 @@ public class TenantAPI implements Tenant {
 
               String sqlFile = sMaker.generateDDL();
               log.debug("GENERATED SCHEMA " + sqlFile);
-              /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-              PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, true,
+              postgresClient(context).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
-                    StringBuffer res = new StringBuffer();
-                    if (reply.succeeded()) {
-                      boolean failuresExist = false;
-                      if(reply.result().size() > 0){
-                        failuresExist = true;
-                      }
-                      res.append(new JsonArray(reply.result()).encodePrettily());
-                      if (failuresExist){
-                        handlers.handle(io.vertx.core.Future.succeededFuture(
-                          PostTenantResponse.respond400WithTextPlain(res.toString())));
-                      } else {
-                        OutStream os = new OutStream();
-                        os.setData(res);
-                        if (tenantExists) {
-                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond200WithApplicationJson(os)));
-                        } else {
-                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(os)));
-                        }
-                      }
-                    } else {
+                    if (reply.failed()) {
                       log.error(reply.cause().getMessage(), reply.cause());
-                      handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
+                      handlers.handle(Future.succeededFuture(PostTenantResponse.
                         respond500WithTextPlain(reply.cause().getMessage())));
+                      return;
                     }
+                    boolean failuresExist = ! reply.result().isEmpty();
+                    if (failuresExist) {
+                      String res = new JsonArray(reply.result()).encodePrettily();
+                      handlers.handle(Future.succeededFuture(
+                        PostTenantResponse.respond400WithTextPlain(res)));
+                      return;
+                    }
+                    String jsonListOfFailures = "[]";
+                    PostTenantResponse postTenantResponse = tenantExists
+                        ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
+                        : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
+                    handlers.handle(Future.succeededFuture(postTenantResponse));
                   } catch (Exception e) {
                     log.error(e.getMessage(), e);
                     handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.

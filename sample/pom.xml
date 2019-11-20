@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-sample</artifactId>
-  <version>28.1.0-SNAPSHOT</version>
+  <version>29.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -18,6 +18,7 @@
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
+    <aspectj.version>1.9.4</aspectj.version>
     <vertx-version>3.8.1</vertx-version>
   </properties>
 
@@ -51,7 +52,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>28.1.0-SNAPSHOT</version>
+      <version>29.1.0-SNAPSHOT</version>
     </dependency>
 
     <dependency>
@@ -167,7 +168,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.9</version>
+        <version>1.11</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
@@ -197,12 +198,12 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjrt</artifactId>
-            <version>1.8.9</version>
+            <version>${aspectj.version}</version>
           </dependency>
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
-            <version>1.8.9</version>
+            <version>${aspectj.version}</version>
           </dependency>
         </dependencies>
       </plugin>

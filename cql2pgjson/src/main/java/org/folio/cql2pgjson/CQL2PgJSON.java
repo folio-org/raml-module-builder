@@ -25,6 +25,7 @@ import org.folio.cql2pgjson.model.DbFkInfo;
 import org.folio.cql2pgjson.model.DbIndex;
 import org.folio.cql2pgjson.model.IndexTextAndJsonValues;
 import org.folio.cql2pgjson.model.SqlSelect;
+import org.folio.cql2pgjson.util.Cql2PgUtil;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
 import org.folio.rest.persist.ddlgen.Index;
@@ -260,7 +261,10 @@ public class CQL2PgJSON {
    * @param cql  CQL expression to convert
    * @return SQL WHERE clause, without leading "WHERE ", may contain "ORDER BY" clause
    * @throws QueryValidationException  when parsing or validating cql fails
+   *
+   * @deprecated use toSql instead
    */
+  @Deprecated
   public String cql2pgJson(String cql) throws QueryValidationException {
     try {
       CQLParser parser = new CQLParser();
@@ -438,83 +442,33 @@ public class CQL2PgJSON {
         + " (" + pg(node.getRightOperand()) + isNotTrue + ")";
   }
 
-  /**
-   * Convert index name to SQL term of type text.
-   * Examples:
-   * <p>index2sqlText("json", "foo") = "json->>'foo'"
-   * <p>index2sqlText("table.json", "foo.bar.baz") = "table.json->'foo'->'bar'->>'baz'"
-   * @param jsonField
-   * @param index name to convert
-   *
-   * @return SQL term
-   */
-  static String index2sqlText(String jsonField, String index) throws QueryValidationException {
-    StringBuilder res = new StringBuilder();
-    String[] comp = index.split("\\.");
-    res.append(jsonField);
-    for (int j = 0; j < comp.length; j++) {
-      if (j < comp.length - 1) {
-        res.append("->");
-      } else {
-        res.append("->>");
-      }
-      res.append("\'");
-      res.append(Cql2SqlUtil.cql2string(comp[j]));
-      res.append("\'");
-    }
-    return res.toString();
-  }
-
-  /**
-   * Convert index name to SQL term of type json.
-   * Example result for field=user and index=foo.bar:
-   * user->'foo'->'bar'
-   * @param jsonField
-   * @param index name to convert
-   *
-   * @return SQL term
-   */
-  private static String index2sqlJson(String jsonField, String index) throws QueryValidationException {
-    StringBuilder res = new StringBuilder();
-    String[] comp = index.split("\\.");
-    res.append(jsonField);
-    for (int j = 0; j < comp.length; j++) {
-      res.append("->");
-      res.append("\'");
-      res.append(Cql2SqlUtil.cql2string(comp[j]));
-      res.append("\'");
-    }
-    return res.toString();
-  }
-
-  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
-      throws QueryValidationException {
+  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index) {
     if (jsonFields != null && jsonFields.size() > 1) {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    vals.setIndexJson(index2sqlJson(this.jsonField, index));
-    vals.setIndexText(index2sqlText(this.jsonField, index));
+    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(this.jsonField, index));
+    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(this.jsonField, index));
     return vals;
   }
 
-  private IndexTextAndJsonValues multiFieldProcessing(String index ) throws QueryValidationException {
+  private IndexTextAndJsonValues multiFieldProcessing(String index ) {
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
 
     // processing for case where index is prefixed with json field name
     for (String f : jsonFields) {
       if (index.startsWith(f+'.')) {
         String indexTermWithinField = index.substring(f.length()+1);
-        vals.setIndexJson(index2sqlJson(f, indexTermWithinField));
-        vals.setIndexText(index2sqlText(f, indexTermWithinField));
+        vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(f, indexTermWithinField));
+        vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(f, indexTermWithinField));
         return vals;
       }
     }
 
     // if no json field name prefix is found, the default field name gets applied.
     String defaultJsonField = this.jsonFields.get(0);
-    vals.setIndexJson(index2sqlJson(defaultJsonField, index));
-    vals.setIndexText(index2sqlText(defaultJsonField, index));
+    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(defaultJsonField, index));
+    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(defaultJsonField, index));
     return vals;
   }
 
@@ -591,8 +545,8 @@ public class CQL2PgJSON {
     String foreignTableJsonb = targetTable.getTableName() + "." + JSONB_COLUMN_NAME;
 
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    vals.setIndexJson(index2sqlJson(foreignTableJsonb, foreignTarget[1]));
-    vals.setIndexText(index2sqlText(foreignTableJsonb, foreignTarget[1]));
+    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(foreignTableJsonb, foreignTarget[1]));
+    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(foreignTableJsonb, foreignTarget[1]));
 
     CqlModifiers cqlModifiers = new CqlModifiers(node);
     String indexField = foreignTarget[1];
@@ -716,7 +670,7 @@ public class CQL2PgJSON {
           sqlOr.append(" or ");
         }
         IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-        vals.setIndexText(index2sqlText("t.c", foundModifier));
+        vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText("t.c", foundModifier));
         sqlOr.append(indexNode(index, this.dbTable, node, vals, modifiers));
       } else {
         final String comparator = relationModifier.getComparison();
@@ -724,7 +678,7 @@ public class CQL2PgJSON {
           throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + relationModifier.getType());
         }
         sqlAnd.append(" and ");
-        sqlAnd.append(queryByFt(index2sqlText("t.c", foundModifier), modifierValue,
+        sqlAnd.append(queryByFt(Cql2PgUtil.cqlNameAsSqlText("t.c", foundModifier), modifierValue,
           comparator, schemaIndex, targetTable));
       }
     }
@@ -739,7 +693,7 @@ public class CQL2PgJSON {
         throw new QueryValidationException("CQL: No arraySubfield defined for index " + index);
       }
       IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-      vals.setIndexText(index2sqlText("t.c", modifiersSubfield));
+      vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText("t.c", modifiersSubfield));
       sqlOr.append(indexNode(index, this.dbTable, node, vals, modifiers));
     }
     return "id in (select t.id"

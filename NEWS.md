@@ -1,3 +1,23 @@
+## 29.0.0 2019-11-20
+
+ * Update jackson to 2.10.1
+ * RMB-518 Extract index2sqlText and index2sqlJson for reuse
+ * RMB-516 Rename Cql2SqlUtil.hasCqlWildCardd to hasCqlWildCard
+ * RMB-514 Update to aspectj 1.9.4 and aspectj-maven-plugin 1.11
+ * RMB-511 Use log4js MDC class, rather than slf4j
+ * RMB-510 Breaking change: POST /_/tenant requires JSON body with module_to
+ * RMB-509 POST /_/tenant returns invalid JSON: "[ ]"
+ * RMB-508 Integration tests for /_/tenant with X-Okapi-Request-Id
+ * RMB-507 TenantAPI POST NullPointerException if tenant already exists
+ * RMB-497 Replace JSQL parser by using SqlSelect from CQL2PgJSON
+
+## 28.1.0 2019-11-06
+
+ * RMB-504 Jackson-* version 2.10.0, fixes jackson-databind security
+ * RMB-474 Support 'field[*].subfield' syntax in multiFieldNames
+ * Mention Vert.x 3.8 Future/Premise changes in upgrading.md
+ * Fix upgrading wording for fullText defaultDictionary
+
 ## 28.0.0 2019-10-30
 
  * RMB-433 Fix saveBatch must not overwrite existing id

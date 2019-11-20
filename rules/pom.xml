@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>28.1.0-SNAPSHOT</version>
+    <version>29.1.0-SNAPSHOT</version>
   </parent>
   <artifactId>rules</artifactId>
 
@@ -27,6 +27,10 @@
       <groupId>org.drools</groupId>
       <artifactId>drools-verifier</artifactId>
       <version>${droolsVersion}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-core</artifactId>
     </dependency>
     <dependency>
       <groupId>junit</groupId>

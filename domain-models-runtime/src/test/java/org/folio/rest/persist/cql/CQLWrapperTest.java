@@ -7,6 +7,8 @@ import static org.junit.Assert.fail;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.rest.persist.Criteria.Criteria;
+import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
 import org.folio.rest.persist.Criteria.Offset;
 import org.junit.BeforeClass;
@@ -23,13 +25,19 @@ public class CQLWrapperTest {
   @Test
   public void returnsWhere() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("name=miller");
-    assertThat(wrapper.toString(), startsWith(" WHERE "));
+    assertThat(wrapper.toString(), startsWith("WHERE "));
   }
 
   @Test
   public void allRecords() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1");
-    assertThat(wrapper.toString(), is(" WHERE true"));
+    assertThat(wrapper.toString(), is("WHERE true"));
+  }
+
+  @Test
+  public void setWhereClause() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper().setWhereClause("WHERE false");
+    assertThat(wrapper.toString(), is("WHERE false"));
   }
 
   @Test(expected = IllegalStateException.class)
@@ -51,6 +59,18 @@ public class CQLWrapperTest {
   }
 
   @Test
+  public void invalidCQLsortby() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("name=miller sortby");
+    try {
+      wrapper.getOrderByClause();
+      fail("exception expected");
+    }
+    catch (CQLQueryValidationException e) {
+      assertThat(e.getMessage(), allOf(containsString("ParseException"), containsString("no sort keys")));
+    }
+  }
+
+  @Test
   public void emptyCqlQueryValidationException() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("");
     try {
@@ -60,6 +80,13 @@ public class CQLWrapperTest {
     catch (CQLQueryValidationException e) {
       assertThat(e.getCause(), is(instanceOf(QueryValidationException.class)));
     }
+  }
+
+  @Test
+  public void constructor4Nothing() {
+    CQLWrapper cqlWrapper = new CQLWrapper();
+    assertThat(cqlWrapper.toString(), is(""));
+    assertThat(cqlWrapper.getQuery(), is(nullValue()));
   }
 
   @Test
@@ -107,17 +134,71 @@ public class CQLWrapperTest {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1");
     wrapper.addWrapper(wrapper);
     wrapper.addWrapper(wrapper, "or");
-    assertThat(wrapper.toString(), is(" WHERE ((true) and true) or true"));
+    assertThat(wrapper.toString(), is("WHERE ((true) and true) or true"));
+    assertThat(wrapper.getField(), is(cql2pgJson));
+  }
+
+  @Test
+  public void wrapWithSorting() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper(cql2pgJson, "author = abc sortby title");
+    CQLWrapper wrapper2 = new CQLWrapper(cql2pgJson, "year = 1990 sortby date");
+    wrapper.addWrapper(wrapper2);
+    assertThat(wrapper.toString(), stringContainsInOrder("WHERE", "author", "abc", "year", "1990", "ORDER BY", "title"));
+  }
+
+  @Test
+  public void wrapWithEmpty() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson);
+    CQLWrapper wrapper2 = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+    wrapper.addWrapper(wrapper2);
+    assertThat(wrapper.toString(), is("WHERE true"));
+  }
+
+  @Test
+  public void wrapWithEmpty2() throws FieldException {
+    CQLWrapper wrapper = new CQLWrapper();
+    CQLWrapper wrapper2 = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
+    wrapper.addWrapper(wrapper2);
+    assertThat(wrapper.toString(), is("WHERE true"));
   }
 
   @Test
   public void sortBy() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1 sortBy name");
-    assertThat(wrapper.toString(), stringContainsInOrder(" WHERE true ORDER BY ", "name"));
+    assertThat(wrapper.toString(), stringContainsInOrder("WHERE true ORDER BY ", "name"));
   }
 
   @Test
   public void empty() throws FieldException {
     assertThat(new CQLWrapper().setField(cql2pgJson).setQuery(null).toString(), is(""));
+  }
+
+  @Test
+  public void combo() throws FieldException {
+    CQLWrapper wrapperCql = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1 sortBy name");
+    Criterion criterion = new Criterion().addCriterion(new Criteria().addField("id").setOperation("=").setVal("42"));
+    CQLWrapper wrapperCriterion = new CQLWrapper(criterion);
+    CQLWrapper wrapperWhere = new CQLWrapper().setWhereClause("where false");
+    CQLWrapper wrapperNone = new CQLWrapper();
+
+    assertThat(wrapperCql.getType(), is("CQL"));
+    assertThat(wrapperCriterion.getType(), is("CRITERION"));
+    assertThat(wrapperWhere.getType(), is("WHERE"));
+    assertThat(wrapperNone.getType(), is("NONE"));
+
+    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
+    assertThat(wrapperCriterion.toString(), is("WHERE (jsonb->>id) = '42'"));
+    assertThat(wrapperWhere.toString(), is("where false"));
+
+    assertThat(wrapperCql.getQuery(), is("cql.allRecords=1 sortBy name"));
+    assertThat(wrapperCriterion.getQuery().trim(), is("WHERE (jsonb->>id) = '42'"));
+    assertThat(wrapperWhere.getQuery(), is("where false"));
+
+    wrapperCql.addWrapper(wrapperNone);
+    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
+    wrapperCql.addWrapper(wrapperCriterion);
+    assertThat(wrapperCql.toString(), is("WHERE (true) and (jsonb->>id) = '42' ORDER BY lower(f_unaccent(field->>'name'))"));
+    wrapperCriterion.addWrapper(wrapperCql, "or");
+    assertThat(wrapperCriterion.toString(), is("WHERE ((jsonb->>id) = '42') or true"));
   }
 }

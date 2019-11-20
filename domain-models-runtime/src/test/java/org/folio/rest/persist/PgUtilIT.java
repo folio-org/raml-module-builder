@@ -22,11 +22,11 @@ import org.folio.rest.jaxrs.model.Users;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
-import org.hamcrest.junit.ExpectedException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnit;
@@ -972,7 +972,7 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (4 - i)));
     }
-    searchForDataExpectFailure("username=foo sortBy username&%$sort.descending", 6, 3, testContext);
+    searchForData("username=foo sortBy username&%$sort.descending", 6, 3, testContext);
     exception.expect(NullPointerException.class);
     searchForDataNullHeadersExpectFailure("username=foo sortBy username/sort.descending", 6, 3, testContext);
     searchForDataNoClass("username=foo sortBy username/sort.descending",6, 3, testContext);

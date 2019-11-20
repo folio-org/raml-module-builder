@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
 import org.folio.rest.persist.Criteria.Offset;
 
@@ -14,17 +15,24 @@ public class CQLWrapper {
 
   private static final Logger log = LoggerFactory.getLogger(CQLWrapper.class);
   CQL2PgJSON field;
+  Criterion criterion;
   String query;
+  String whereClause;
   private Limit  limit = new Limit();
   private Offset offset = new Offset();
   private List<WrapTheWrapper> addedWrappers = new ArrayList<>();
 
   public CQLWrapper() {
-    super();
+    // nothing to do
+  }
+
+  public CQLWrapper(Criterion criterion) {
+    this.criterion = criterion;
+    this.limit = criterion.getLimit();
+    this.offset = criterion.getOffset();
   }
 
   public CQLWrapper(CQL2PgJSON field, String query) {
-    super();
     this.field = field;
     this.query = query;
   }
@@ -72,13 +80,54 @@ public class CQLWrapper {
   public CQL2PgJSON getField() {
     return field;
   }
+
   public CQLWrapper setField(CQL2PgJSON field) {
     this.field = field;
     return this;
   }
+
+  /**
+   * Returns input query for the wrapped query. Form is depending on
+   * input query type {@link CQLWrapper#getType()}
+   * @return input query
+   */
   public String getQuery() {
-    return query;
+    if (whereClause != null) {
+      return whereClause;
+    }
+    if (criterion != null) {
+      return criterion.toString();
+    }
+    return query; // CQL query
   }
+
+  /**
+   * @return type of query that is wrapped. {@code "WHERE"} {@link CQLWrapper#setWhereClause(java.lang.String) };
+   * {@code "CRITERION"} {@link CQLWrapper#CQLWrapper(org.folio.rest.persist.Criteria.Criterion) };
+   * {@code "CQL"} for wrap of CQL
+   * {@link CQLWrapper#CQLWrapper(org.folio.cql2pgjson.CQL2PgJSON, java.lang.String) } ;
+   * {@code "NONE"} for no query wrapped.
+   */
+  String getType() {
+    if (whereClause != null) {
+      return "WHERE";
+    }
+    if (criterion != null) {
+      return "CRITERION";
+    }
+    if (field != null && query != null) {
+      return "CQL";
+    }
+    return "NONE";
+  }
+
+  /**
+   * Sets CQL query (should be used with {@link CQLWrapper#setField(org.folio.cql2pgjson.CQL2PgJSON)}
+   * Or this constructor can be used to specify both:
+   * {@link CQLWrapper#CQLWrapper(org.folio.cql2pgjson.CQL2PgJSON, java.lang.String)
+   * @param query CQL query
+   * @return wrapper itself
+   */
   public CQLWrapper setQuery(String query) {
     this.query = query;
     return this;
@@ -109,29 +158,26 @@ public class CQLWrapper {
    * @return
    */
   public CQLWrapper addWrapper(CQLWrapper wrapper, String operator){
-    if(wrapper.query != null && wrapper.field != null){
-      addedWrappers.add(new WrapTheWrapper(wrapper, operator));
-    }
+    addedWrappers.add(new WrapTheWrapper(wrapper, operator));
     return this;
   }
 
   /**
-   * Append field.cql2pgJson(query) to sb.
-   *
-   * @param sb where to append
-   * @param query CQL query
-   * @param field field the query is based on
-   * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
+   * Get where clause (without WHERE prefix) for Criterion/CQL cases
+   * @return clause or empty string if none
    */
-  private void append(StringBuilder sb, String query, CQL2PgJSON field) {
-    if(query == null || field == null) {
-      return;
+  private String getWhereThis() {
+    if (criterion != null) {
+      return criterion.getWhere();
     }
-    try {
-      sb.append(field.cql2pgJson(query));
-    } catch (QueryValidationException e) {
-      throw new CQLQueryValidationException(e);
+    if (field != null && query != null) {
+      try {
+        return field.toSql(query).getWhere();
+      } catch (QueryValidationException e) {
+        throw new CQLQueryValidationException(e);
+      }
     }
+    return "";
   }
 
   /**
@@ -141,7 +187,7 @@ public class CQLWrapper {
    * @param text what to append
    */
   private void spaceAppend(StringBuilder sb, String text) {
-    if (text == null || text.isEmpty()) {
+    if (text.isEmpty()) {
       return;
     }
     if (sb.length() > 0) {
@@ -151,29 +197,100 @@ public class CQLWrapper {
   }
 
   /**
-   * @return a space followed by the SQL clauses of WHERE, OFFSET and LIMIT
-   * @throws CQLQueryValidationException when the underlying CQL2PgJSON throws a QueryValidationException
+   * @return where clause excluding WHERE prefix or empty string if for no where
+   */
+  private String getWhereOp() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(getWhereThis());
+    for (WrapTheWrapper wrap : addedWrappers) {
+      String a = wrap.wrapper.getWhereThis();
+      if (!a.isEmpty()) {
+        if (sb.length() > 0) {
+          sb.insert(0, '(');
+          sb.append(") ");
+          sb.append(wrap.operator);
+          sb.append(' ');
+        }
+        sb.append(a);
+      }
+    }
+    return sb.toString();
+  }
+
+  /**
+   * @return where clause including WHERE prefix or empty string if for no where
+   */
+  public String getWhereClause() {
+    if (whereClause != null) {
+      return whereClause;
+    }
+    String s = getWhereOp();
+    if (s.isEmpty()) {
+      return "";
+    }
+    return "WHERE " + s;
+  }
+
+
+  /**
+   * This function sets a raw WHERE clause - should not include limits, offset, or order
+   * It should not be used. Construct with CQL2PgJSON or Criterion instead
+   * @param whereClause including WHERE prefix
+   * @return itself (fluent)
+   */
+  public CQLWrapper setWhereClause(String whereClause) {
+    this.whereClause = whereClause;
+    return this;
+  }
+
+  /**
+   * @return sort by criteria excluding SORT BY prefix or empty string if no sorting
+   */
+  private String getOrderByOp() {
+    if (query == null || field == null) {
+      return "";
+    }
+    try {
+      return field.toSql(query).getOrderBy();
+    } catch (QueryValidationException e) {
+      throw new CQLQueryValidationException(e);
+    }
+  }
+
+  /**
+   * @return sort by criteria including SORT BY prefix or empty string if no sorting
+   */
+  String getOrderByClause() {
+    if (criterion != null) {
+      return criterion.getOrderBy();
+    }
+    String s = getOrderByOp();
+    if (s.isEmpty()) {
+      return "";
+    }
+    return "ORDER BY " + s;
+  }
+
+  /**
+   * @return query including SQL clauses of WHERE, ORDER BY
+   */
+  public String getWithoutLimOff() {
+    StringBuilder sb = new StringBuilder(getWhereClause());
+    spaceAppend(sb, getOrderByClause());
+    return sb.toString();
+  }
+
+  /**
+   * @return full query including SQL clauses of WHERE, ORDER BY, OFFSET and LIMIT.
    */
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    append(sb, query, field);
-    for (WrapTheWrapper wrap : addedWrappers) {
-      if (sb.length() > 0) {
-        // (q1) operator q2 .. left-associative
-        sb.insert(0, '(');
-        sb.append(") ").append(wrap.operator).append(' ');
-      }
-      append(sb, wrap.wrapper.getQuery(), wrap.wrapper.getField());
-    }
-    if (sb.length() > 0) {
-      sb.insert(0, " WHERE ");
-    }
+    StringBuilder sb = new StringBuilder(getWithoutLimOff());
     spaceAppend(sb, limit.toString());
     spaceAppend(sb, offset.toString());
     String sql = sb.toString();
     if (log.isInfoEnabled()) {
-      log.info("CQL >>> SQL: " + this.query + " >>>" + sql);
+      log.info(getType() + " >>> SQL: " + getQuery() + " >>>" + sql);
     }
     return sql;
   }

@@ -1,9 +1,6 @@
 package org.folio.rest.persist;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -14,7 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.facets.ParsedQuery;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.junit.After;
@@ -34,54 +30,8 @@ import io.vertx.ext.sql.SQLOperations;
 
 import freemarker.template.TemplateException;
 
-import net.sf.jsqlparser.JSQLParserException;
-
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
-
-  private static final String notTrue = "AND \\\\(\\\\(\\\\(FALSE\\\\)\\\\)\\\\)";
-  private static final String isTrue = "AND \\\\(\\\\(\\\\(TRUE\\\\)\\\\)\\\\)";
-
-  String []queries = new String[]{
-  //"SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>\\'aaa\\'  ORDER BY items2_mt_view.jsonb' ORDER BY items_mt_view.jsonb->>'aaa limit' OFFSET 31 limit 10",
-  "SELECT * FROM table WHERE items_mt_view.jsonb->>'title' LIKE '%12345%' ORDER BY items_mt_view.jsonb->>'title' DESC OFFSET 30 limit 10",
-  "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb@>'{\"barcode\":4}' order by jsonb->'a'  asc",
-  "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb @> '{\"barcode\":4}' limit 100 offset 0",
-  "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb @> '{\" AND IS TRUE \":4}' limit 100 offset 0",
-  //"SELECT * FROM table WHERE items0_mt_view.jsonb->>' ORDER BY items1_mt_view.jsonb->>''aaa'' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items3_mt_view.jsonb->>''aaa'' '",
-  "SELECT id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}' LIMIT 1 OFFSET 0 ",
-  "select * from diku999_circulation_storage.audit_loan WHERE audit_loan.jsonb->>'id' = 'cf23adf0-61ba-4887-bf82-956c4aae2260 order by created_date LIMIT 10 OFFSET 0' order by created_date LIMIT 10 OFFSET 0 ",
-  "select * from slowtest99_mod_inventory_storage.item where (item.jsonb->'barcode') = to_jsonb('1000000'::int)  order by a LIMIT 30;",
-  "SELECT  * FROM slowtest_cql5_mod_inventory_storage.item  WHERE lower(f_unaccent(item.jsonb->>'default')) LIKE lower(f_unaccent('true')) ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC LIMIT 10 OFFSET 0",
-  //"SELECT * FROM harvard_mod_configuration.config_data  WHERE ((true) AND ( (config_data.jsonb->>'userId' ~ '') IS NOT TRUE)) ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC, item.jsonb->>'code' DESC LIMIT 10 OFFSET 0",
-  //"SELECT * FROM harvard_mod_configuration.config_data  WHERE ((true) AND ( (config_data.jsonb->>'userId' ~ '') IS TRUE)) OR (lower(f_unaccent(config_data.jsonb->>'userId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]])joeshmoe($|[[:punct:]]|[[:space:]])')))  ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC, item.jsonb->>'code' DESC LIMIT 10 OFFSET 0",
-  "SELECT * FROM t WHERE TRUE AND lower(f_unaccent(item.jsonb->>'default')) IS NOT NULL ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC",
-  "SELECT * FROM t WHERE TRUE AND lower(f_unaccent(item.jsonb->>'default')) IS NOT TRUE ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC",
-  "SELECT * FROM harvard5_mod_inventory_storage.material_type  where (jsonb->>'test'  ~ '') IS NOT TRUE limit 10",
-  "SELECT * FROM harvard5_mod_inventory_storage.material_type  where (jsonb->>'test'  ~ '') IS TRUE limit 10",
-  "SELECT * FROM harvard5_mod_inventory_storage.material_type  where (jsonb->>'test'  ~ '') IS TRUE AND (jsonb->>'test'  ~ '') IS NOT TRUE limit 10",
-  "SELECT * FROM t WHERE ((((true) AND ( (instance_holding_item_view.ho_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE))",
-  "SELECT * FROM t WHERE (((lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) ~ lower(f_unaccent('(^\\|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]])).*($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'contributors')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\\\"name\\\":([[:punct:]]|[[:space:]]) \\\".*\\\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'identifiers')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\\\"value\\\":([[:punct:]]|[[:space:]]) \\\".*\\\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))",
-  "SELECT * FROM t WHERE (((lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]])).*($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'contributors')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\"name\":([[:punct:]]|[[:space:]]) \".*\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'identifiers')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\"value\":([[:punct:]]|[[:space:]]) \".*\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) AND ((((((((true) AND ( (instance_holding_item_view.ho_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))) OR ((((true) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))))) OR (((true) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.it_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.it_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))))) OR ((lower(f_unaccent(instance_holding_item_view.it_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.it_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))) ORDER BY lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) LIMIT 30 OFFSET 0"};
-
-  @Test
-  public void parseQuery() throws JSQLParserException {
-    for (int i = 0; i < queries.length; i++) {
-      ParsedQuery pQ = PostgresClient.parseQuery(queries[i]);
-
-      assertThat(pQ.getQueryWithoutLimOff(),
-        not(either(containsString(notTrue)).or(
-          containsString(isTrue))));
-
-      assertThat(pQ.getCountQuery(),
-        not(either(containsString(notTrue)).or(
-          containsString(isTrue))));
-
-      assertThat(pQ.getWhereClause(),
-        not(either(containsString(notTrue)).or(
-          containsString(isTrue))));
-   }
- }
 
   private Logger oldLogger;
   private String oldConfigFilePath;
@@ -259,6 +209,7 @@ public class PostgresClientTest {
     PostgresClient testClient = PostgresClient.testClient();
     QueryHelper queryHelper = new QueryHelper(false, "test_pojo", new ArrayList<FacetField>());
     queryHelper.selectQuery = "SELECT * FROM test_pojo";
+    queryHelper.countQuery = "COUNT (*) FROM test_pojo";
 
     int total = 10;
 
@@ -296,142 +247,6 @@ public class PostgresClientTest {
       }
     );
 
-  }
-
-  @Test
-  public void testPrepareCountQueryWithoutFacets() throws IOException, TemplateException {
-    PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper(false, "test_pojo", new ArrayList<FacetField>());
-    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_pojo LIMIT 10 OFFSET 1";
-    testClient.prepareCountQuery(queryHelper);
-
-    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_pojo"));
-  }
-
-  @Test
-  public void testPrepareCountQueryWithFacets() throws IOException, TemplateException {
-    PostgresClient testClient = PostgresClient.testClient();
-    List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb->>'biz'"));
-    }};
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
-    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 10 OFFSET 1";
-    testClient.prepareCountQuery(queryHelper);
-
-    assertThat(queryHelper.selectQuery.replace("\r\n", "\n"), is(
-      "with facets as (\n" +
-      "    SELECT id, foo, bar FROM test_jsonb_pojo  \n" +
-      "     LIMIT 10000 \n" +
-      " )\n" +
-      " ,\n" +
-      " count_on as (\n" +
-      "    SELECT\n" +
-      "      test_raml_module_builder.count_estimate_smart2(count(*) , 10000, 'SELECT COUNT(*) FROM test_jsonb_pojo') AS count\n" +
-      "    FROM facets\n" +
-      " )\n" +
-      " ,\n" +
-      " grouped_by as (\n" +
-      "    SELECT\n" +
-      "        jsonb->>'biz' as biz,\n" +
-      "      count(*) as count\n" +
-      "    FROM facets\n" +
-      "    GROUP BY GROUPING SETS (\n" +
-      "        jsonb->>'biz'    )\n" +
-      " )\n" +
-      " ,\n" +
-      "   lst1 as(\n" +
-      "     SELECT\n" +
-      "        jsonb_build_object(\n" +
-      "            'type' , 'biz',\n" +
-      "            'facetValues',\n" +
-      "            json_build_array(\n" +
-      "                jsonb_build_object(\n" +
-      "                'value', biz,\n" +
-      "                'count', count)\n" +
-      "            )\n" +
-      "        ) AS jsonb,\n" +
-      "        count as count\n" +
-      "    FROM grouped_by\n" +
-      "     where biz is not null\n" +
-      "     group by biz, count\n" +
-      "     order by count desc\n" +
-      "     )\n" +
-      ",\n" +
-      "ret_records as (\n" +
-      "       select id as id, jsonb  FROM facets\n" +
-      "       )\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id, jsonb FROM lst1 limit 5)\n" +
-      "  \n" +
-      "  UNION\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id,  jsonb_build_object('count' , count) FROM count_on)\n" +
-      "  UNION ALL\n" +
-      "  (select id as id, jsonb from ret_records  LIMIT 10  OFFSET 1);\n")
-    );
-    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_jsonb_pojo"));
-  }
-
-  @Test
-  public void testPrepareCountQueryWithFacetsAndWhereClause() throws IOException, TemplateException {
-    PostgresClient testClient = PostgresClient.testClient();
-    List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb->>'biz'"));
-    }};
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
-    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo WHERE jsonb->>'my' LIMIT 10 OFFSET 1";
-    testClient.prepareCountQuery(queryHelper);
-
-    // The string argument to count_estimate_smart2 is correctly escaped..
-    // But the LIMIT 10 OFFSET 1 is gone!
-    assertThat(queryHelper.selectQuery.replace("\r\n", "\n"), is(
-      "with facets as (\n" +
-      "    SELECT id, foo, bar FROM test_jsonb_pojo WHERE jsonb->>'my'  \n" +
-      "     LIMIT 10000 \n" +
-      " )\n" +
-      " ,\n" +
-      " count_on as (\n" +
-      "    SELECT\n" +
-      "      test_raml_module_builder.count_estimate_smart2(count(*) , 10000, 'SELECT COUNT(*) FROM test_jsonb_pojo WHERE jsonb->>''my''') AS count\n" +
-      "    FROM facets\n" +
-      " )\n" +
-      " ,\n" +
-      " grouped_by as (\n" +
-      "    SELECT\n" +
-      "        jsonb->>'biz' as biz,\n" +
-      "      count(*) as count\n" +
-      "    FROM facets\n" +
-      "    GROUP BY GROUPING SETS (\n" +
-      "        jsonb->>'biz'    )\n" +
-      " )\n" +
-      " ,\n" +
-      "   lst1 as(\n" +
-      "     SELECT\n" +
-      "        jsonb_build_object(\n" +
-      "            'type' , 'biz',\n" +
-      "            'facetValues',\n" +
-      "            json_build_array(\n" +
-      "                jsonb_build_object(\n" +
-      "                'value', biz,\n" +
-      "                'count', count)\n" +
-      "            )\n" +
-      "        ) AS jsonb,\n" +
-      "        count as count\n" +
-      "    FROM grouped_by\n" +
-      "     where biz is not null\n" +
-      "     group by biz, count\n" +
-      "     order by count desc\n" +
-      "     )\n" +
-      ",\n" +
-      "ret_records as (\n" +
-      "       select id as id, jsonb  FROM facets\n" +
-      "       )\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id, jsonb FROM lst1 limit 5)\n" +
-      "  \n" +
-      "  UNION\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id,  jsonb_build_object('count' , count) FROM count_on)\n" +
-      "  UNION ALL\n" +
-      "  (select id as id, jsonb from ret_records  );\n")
-    );
-    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_jsonb_pojo WHERE jsonb->>'my'"));
   }
 
   @Test
@@ -674,76 +489,6 @@ public class PostgresClientTest {
     public void setJsonb(JsonObject jsonb) {
       this.jsonb = jsonb;
     }
-  }
-
-  @Test
-  public void parseQueryWithDoubleAt() {
-    String whereFromCQLtoPG = "id in (select t.id from (select id as id, "
-      + "jsonb_array_elements(instance.jsonb->'contributors') as c) as t "
-      + "where to_tsvector('simple', f_unaccent(t.c->>'name')) @@ to_tsquery('simple', f_unaccent('novik')) "
-      + "and to_tsvector('simple', f_unaccent(t.c->>'contributorNameTypeId')) @@ to_tsquery('simple', f_unaccent('personal')))";
-    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 10 OFFSET 0";
-    String selectClause = "SELECT jsonb,id FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
-  }
-
-  @Test
-  public void parseQueryWithDoubleColon() {
-    String where = "tsvector @@ replace(to_tsquery('simple', '''foo''')::text, '&', '<->')::tsquery";
-    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
-  }
-
-  @Test
-  public void parseQueryWithDoubleAnd() {
-    String where = "to_tsvector() @@ (to_tsquery('''cool''') && to_tsquery('''water'''))";
-    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
-  }
-
-  @Test
-  public void parseQueryWithDoublePipe() {
-    String where = "to_tsvector() @@ (to_tsquery('''cool''') || to_tsquery('''water'''))";
-    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
-  }
-
-  @Test
-  public void parseQueryWithDoubleArrow() {
-    String where = "to_tsvector() @@ (to_tsquery('''cool''') <-> to_tsquery('''water'''))";
-    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
-  }
-
-  @Test
-  public void parseQueryWithUuid() {
-    String whereFromCQLtoPG = "id = '68b6a052-5e73-4f04-90ab-273694d125bd'";
-    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
-    String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
-  }
-
-  @Test
-  public void parseQueryWithIsTrueIsNotTrue() {
-    String whereFromCQLtoPG = "foo IS TRUE OR baz IS NOT TRUE OR baz IS TRUE OR bug IS NOT TRUE";
-    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
-    String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
-  }
-
-  /**
-   * Assert that parsQuery(String) returns a result where both .getWhereClause() and .getCountQuery()
-   * contain where, and assert that parsing doesn't cause an exception (that is logged as an error but ignored).
-   * @param select
-   * @param where
-   */
-  public void parseQueryWithoutErrorLogging(String select, String where) {
-    PostgresClient.log = new Logger(oldLogger.getDelegate()) {
-      @Override
-      public void error(Object message, Throwable e) {
-        // no not ignore this exception but fail the test.
-        throw new RuntimeException(message == null ? null : message.toString(), e);
-      }
-    };
-    ParsedQuery parsedQuery = PostgresClient.parseQuery(select);
-    assertThat(parsedQuery.getWhereClause().toLowerCase(), containsString(where.toLowerCase()));
-    assertThat(parsedQuery.getCountQuery() .toLowerCase(), containsString(where.toLowerCase()));
   }
 
   @Before

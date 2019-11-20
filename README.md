@@ -1565,7 +1565,10 @@ The converter will generate LIKE queries for `==` queries. For example `?query=f
 
 ##### Posting information
 
-Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
+Posting a new tenant must include a body. The body should contain a JSON conforming to the [moduleInfoSchema](https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema) schema. The `module_to` entry is mandatory, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
+
+The body may also hold a `parameters` property to specify per-tenant
+actions/info to be done during tenant creation/update.
 
 ##### Encrypting Tenant passwords
 
