@@ -1,3 +1,7 @@
+## 29.0.1 2019-11-20
+
+ * Release, but bump version for Jenkins to build artifacts
+
 ## 29.0.0 2019-11-20
 
  * Update jackson to 2.10.1
