@@ -104,9 +104,7 @@ public class Index extends TableIndexes {
 
         int arrayTermPresent = term.indexOf( "[*].");
         if(arrayTermPresent > -1) {
-          result.append("concat_array_object_values(").append(expandedTerm);
-          String arrayTerm = term.substring( arrayTermPresent + "[*].".length(), term.length());
-          result.append(",").append("'").append(arrayTerm).append("'");
+          formatArrayWithTerm(term, expandedTerm, result, arrayTermPresent);
         } else {
           result.append("concat_array_object(").append(expandedTerm);
         }
@@ -114,8 +112,13 @@ public class Index extends TableIndexes {
       } else {
         result.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlText("jsonb",term));
       }
-
     return result;
+  }
+  private static void formatArrayWithTerm(String term, StringBuilder expandedTerm, StringBuilder result,
+      int arrayTermPresent) {
+    result.append("concat_array_object_values(").append(expandedTerm);
+    String arrayTerm = term.substring( arrayTermPresent + "[*].".length(), term.length());
+    result.append(",").append("'").append(arrayTerm).append("'");
   }
 
 }
