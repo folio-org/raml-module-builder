@@ -7,11 +7,6 @@ import org.folio.cql2pgjson.exception.QueryValidationException;
  * Functions that convert some CQL string the equivalent SQL string.
  */
 public final class Cql2SqlUtil {
-
-  private static final String ESC_SLASH = Pattern.quote("\\\\");
-  private static final String ESC_STAR = Pattern.quote("\\*");
-  private static final String ESC_QUEST = Pattern.quote("\\?");
-
   /**
    * Postgres number, see spec at
    * <a href="https://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-CONSTANTS-NUMERIC">
@@ -348,14 +343,35 @@ public final class Cql2SqlUtil {
   }
 
   /**
-   * Test if term has CQL wildcard characters: * or ?
+   * Test if term contains a CQL wildcard character (* or ?) that is not masked by \
    *
-   * @param term
-   * @return
+   * @param term the non-null String
+   * @return true if found, false otherwise
+   * @deprecated use {@link #hasCqlWildCard(CharSequence)} instead
    */
+  @Deprecated
   public static boolean hasCqlWildCardd(String term) {
-    String s = ("" + term).replaceAll(ESC_SLASH, "").replaceAll(ESC_STAR, "").replaceAll(ESC_QUEST, "");
-    return s.contains("*") || s.contains("?");
+    return hasCqlWildCard(term);
   }
 
+  /**
+   * Test if term contains a CQL wildcard character (* or ?) that is not masked by \
+   *
+   * @param term the non-null CharSequence
+   * @return true if found, false otherwise
+   */
+  public static boolean hasCqlWildCard(final CharSequence term) {
+    final int length = term.length();
+    for (int i = 0; i < length; i++) {
+      final char c = term.charAt(i);
+      if (c == '\\') {
+        i++;  // skip the character that the backslash masks
+        continue;
+      }
+      if (c == '*' || c == '?') {
+        return true;
+      }
+    }
+    return false;
+  }
 }

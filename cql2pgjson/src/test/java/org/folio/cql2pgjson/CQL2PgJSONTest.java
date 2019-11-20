@@ -1130,28 +1130,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     logger.fine("instanceSubFT(): " + testcase + " OK");
   }
 
-  @Parameters({
-    "f,           a,       f->>'a'",
-    "f,           a.b.c.d, f->'a'->'b'->'c'->>'d'",
-    "myJsonField, a.b.c,   myJsonField->'a'->'b'->>'c'",
-    "f.g.h,       a.b.c,   f.g.h->'a'->'b'->>'c'",
-  })
-
-  @Test
-  public void index2sqlText(String jsonField, String index, String expected) throws Exception {
-    assertThat(CQL2PgJSON.index2sqlText(jsonField, index), is(expected));
-  }
-
-  @Parameters({
-    "f,           *",
-    "f,           a.b.c*c",
-  })
-
-  @Test(expected = QueryValidationException.class)
-  public void index2sqlTextException(String jsonField, String index) throws Exception {
-    CQL2PgJSON.index2sqlText(jsonField, index);
-  }
-
   /*
   CQL fields can be quoted and, thus, contain various characters that - if no
   properly escaped can be used to unquote the JSON path that is generated

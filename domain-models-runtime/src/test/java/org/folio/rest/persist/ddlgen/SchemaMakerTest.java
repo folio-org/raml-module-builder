@@ -11,9 +11,9 @@ import java.io.IOException;
 
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
-import org.hamcrest.junit.ExpectedException;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import freemarker.template.TemplateException;
 
