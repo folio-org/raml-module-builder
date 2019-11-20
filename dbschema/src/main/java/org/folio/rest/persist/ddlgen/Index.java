@@ -2,6 +2,8 @@ package org.folio.rest.persist.ddlgen;
 
 import java.util.List;
 
+import org.folio.cql2pgjson.util.Cql2PgUtil;
+
 /**
  * @author shale
  *
@@ -83,63 +85,37 @@ public class Index extends TableIndexes {
         if(i != 0) {
           result .append(" , ");
         }
-        appendExpandedTerm(tableLoc, splitIndex[i], result);
+        result.append(formatExpandedTerm(tableLoc, splitIndex[i]));
       }
       result.append(")");
       return result.toString();
     }
 
   }
-  public static void appendExpandedTerm(String tableLoc, String  currentTerm, StringBuilder result) {
-    String [] rawExpandedTerm = currentTerm.split("\\.");
-    StringBuilder expandedTerm = formatExpandedTerm(tableLoc + ".jsonb",rawExpandedTerm);
-    result.append(expandedTerm);
-  }
 
-  public static StringBuilder formatExpandedTerm(String table, String[] rawExpandedTerm) {
+  public static StringBuilder formatExpandedTerm(String table, String term) {
     StringBuilder expandedTerm = new StringBuilder();
     StringBuilder result = new StringBuilder();
-    boolean wasArrayIndex = false;
-    expandedTerm.append(table);
-    int j;
-    for(j = 0; j < rawExpandedTerm.length; j++) {
-      int idx = rawExpandedTerm[j].indexOf("[*]");
+
+      int idx = term.indexOf("[*]");
+      //case where the syntax is found
       if(idx > -1) {
-        wasArrayIndex = appendExpandedArrayTerm(rawExpandedTerm, expandedTerm, j, idx);
-        break;
+        expandedTerm.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx)));
+
+        int arrayTermPresent = term.indexOf( "[*].");
+        if(arrayTermPresent > -1) {
+          result.append("concat_array_object_values(").append(expandedTerm);
+          String arrayTerm = term.substring( arrayTermPresent + "[*].".length(), term.length());
+          result.append(",").append("'").append(arrayTerm).append("'");
+        } else {
+          result.append("concat_array_object(").append(expandedTerm);
+        }
+        result.append(")");
       } else {
-        wasArrayIndex = appendExpandedSimpleTerm(rawExpandedTerm, expandedTerm, j, idx);
+        result.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlText("jsonb",term));
       }
-    }
-    if(wasArrayIndex) {
-      if(j == rawExpandedTerm.length - 1 ) {
-        result.append("concat_array_object(").append(expandedTerm).append(")");
-      } else {
-        result.append("concat_array_object_values(").append(expandedTerm).append(")");
-      }
-    } else {
-      result.append(expandedTerm);
-    }
+
     return result;
   }
-  private static  boolean appendExpandedSimpleTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx, int tokenIdx) {
-    String arrowToken = "->";
-    int endOffset = tokenIdx > -1 ? -2 : -1;
-    if(currentTermIdx == rawExpandedTerm.length + endOffset) {
-      arrowToken = "->>";
-    }
-    expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx]).append("'");
-    return false;
-  }
-  private static boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
-      int tokenIdx) {
-    String arrowToken = "->";
-    if(currentTermIdx == rawExpandedTerm.length - 1) {
-      arrowToken = "->";
-      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("'");
-    } else {
-      expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");
-    }
-    return true;
-  }
+
 }
