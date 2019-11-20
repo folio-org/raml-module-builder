@@ -119,7 +119,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("ginfielddotstarplain == \"Boston MA\"").toString();
-    String expected = "WHERE lower(concat_space_sql(concat_array_object(tablea.jsonb->'field3'->'info') , concat_array_object(tablea.jsonb->'field3'->'info'))) LIKE lower('Boston MA')";
+    String expected = "WHERE lower(concat_space_sql(concat_array_object(tablea.jsonb->'field3'->'info') , concat_array_object(tablea.jsonb->'field3'->'data'))) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
   @Test
