@@ -1543,9 +1543,11 @@ The fields in the **script** section include:
 4. `fromModuleVersion` - same as `fromModuleVersion` for table
 
 The **exactCount** section is optonal and the value of the property is
-a simple integer with a default value of 10000. Hit counts returned by
+a simple integer with a default value of 1000. Hit counts returned by
 get-familify of methods will use an exact hit count up to that value; beyond
-that, en estimated hit count is returned.
+that, en estimated hit count is returned. However, for cases when query
+parameter is omitted (filter is null), an exact count is still returned.
+
 
 The tables / views will be generated in the schema named tenantid_modulename
 
