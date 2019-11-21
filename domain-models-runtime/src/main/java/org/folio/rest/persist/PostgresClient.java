@@ -1597,6 +1597,19 @@ public class PostgresClient {
     }
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnIdField
+   * @param setId
+   * @param distinctOn
+   * @param streamHandler
+   * @param replyHandler
+   */
   public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where, boolean returnIdField,
     boolean setId, String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
@@ -1604,6 +1617,19 @@ public class PostgresClient {
     streamGet(table, clazz, fieldName, where, returnIdField, setId, null, distinctOn, streamHandler, replyHandler);
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnIdField
+   * @param setId
+   * @param facets Not in use, but might work in the future, pass null for now
+   * @param streamHandler
+   * @param replyHandler
+   */
   public <T> void streamGet(
       String table, Class<T> clazz, String fieldName, String where,
       boolean returnIdField, boolean setId, List<FacetField> facets,
@@ -1612,6 +1638,20 @@ public class PostgresClient {
     streamGet(table, clazz, fieldName, where, returnIdField, setId, facets, null, streamHandler, replyHandler);
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnIdField
+   * @param setId
+   * @param facets Not in use, but might work in the future, pass null for now
+   * @param distinctOn
+   * @param streamHandler
+   * @param replyHandler
+   */
   public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where,
     boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
@@ -1630,20 +1670,6 @@ public class PostgresClient {
     });
   }
 
-  /**
-   *
-   * @param connection
-   * @param transactionMode
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnIdField
-   * @param setId
-   * @param facets
-   * @param streamHandler
-   * @param replyHandler
-   */
   private <T> void doStreamGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
     String fieldName, String where, boolean returnIdField, boolean setId, String distinctOn,
