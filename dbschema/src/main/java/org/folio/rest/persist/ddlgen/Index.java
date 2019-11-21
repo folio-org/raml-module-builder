@@ -73,7 +73,7 @@ public class Index extends TableIndexes {
   }
 
   public String getFinalSqlExpression(String tableLoc) {
-    if(this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
+    if (this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
       return this.fieldPath;
     } else if ( this.getSqlExpression() != null) {
       return this.getSqlExpression();
@@ -81,7 +81,7 @@ public class Index extends TableIndexes {
       String [] splitIndex = this.getMultiFieldNames().split(" *, *");
 
       StringBuilder result = new StringBuilder("concat_space_sql(");
-      for(int i = 0;i < splitIndex.length;i++) {
+      for (int i = 0;i < splitIndex.length;i++) {
         if(i != 0) {
           result .append(" , ");
         }
@@ -99,11 +99,11 @@ public class Index extends TableIndexes {
 
       int idx = term.indexOf("[*]");
       //case where the syntax is found
-      if(idx > -1) {
+      if (idx > -1) {
         expandedTerm.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx)));
 
         int arrayTermPresent = term.indexOf( "[*].");
-        if(arrayTermPresent > -1) {
+        if (arrayTermPresent > -1) {
           formatArrayWithTerm(term, expandedTerm, result, arrayTermPresent);
         } else {
           result.append("concat_array_object(").append(expandedTerm);
