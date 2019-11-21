@@ -94,7 +94,7 @@ public class Index extends TableIndexes {
 
   }
 
-  public static void appendExpandedTerm(String table, String term, StringBuilder result) {
+  protected static void appendExpandedTerm(String table, String term, StringBuilder result) {
     StringBuilder expandedTerm = new StringBuilder();
     int idx = term.indexOf(arrayToken);
 
