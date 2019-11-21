@@ -9,7 +9,8 @@ import org.folio.cql2pgjson.util.Cql2PgUtil;
  *
  */
 public class Index extends TableIndexes {
-
+  private static String arrayToken = "[*]";
+  private static String arrayTermToken = "[*].";
   private boolean caseSensitive = false;
   private String whereClause = null;
   private boolean stringType = true;
@@ -85,7 +86,7 @@ public class Index extends TableIndexes {
         if(i != 0) {
           result .append(" , ");
         }
-        result.append(formatExpandedTerm(tableLoc, splitIndex[i]));
+        appendExpandedTerm(tableLoc, splitIndex[i],result);
       }
       result.append(")");
       return result.toString();
@@ -93,32 +94,23 @@ public class Index extends TableIndexes {
 
   }
 
-  public static StringBuilder formatExpandedTerm(String table, String term) {
+  public static void appendExpandedTerm(String table, String term, StringBuilder result) {
     StringBuilder expandedTerm = new StringBuilder();
-    StringBuilder result = new StringBuilder();
+    int idx = term.indexOf(arrayToken);
 
-      int idx = term.indexOf("[*]");
-      //case where the syntax is found
-      if (idx > -1) {
-        expandedTerm.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx)));
-
-        int arrayTermPresent = term.indexOf( "[*].");
-        if (arrayTermPresent > -1) {
-          formatArrayWithTerm(term, expandedTerm, result, arrayTermPresent);
-        } else {
-          result.append("concat_array_object(").append(expandedTerm);
-        }
-        result.append(")");
-      } else {
-        result.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlText("jsonb",term));
-      }
-    return result;
+    //case where the syntax is not found
+    if (idx == -1) {
+      result.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlText("jsonb",term));
+      return;
+    }
+    //case where the [*] is found
+    if(idx == term.length() - arrayToken.length()) {
+      expandedTerm.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx)));
+      result.append("concat_array_object(").append(expandedTerm).append(")");
+      return;
+    }
+    //case where the [*].value is found
+    result.append("concat_array_object_values(").append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx))).append(",").append("'");
+    result.append(term.substring(idx + arrayTermToken.length(), term.length())).append("'").append(")");
   }
-  private static void formatArrayWithTerm(String term, StringBuilder expandedTerm, StringBuilder result,
-      int arrayTermPresent) {
-    result.append("concat_array_object_values(").append(expandedTerm);
-    String arrayTerm = term.substring( arrayTermPresent + "[*].".length(), term.length());
-    result.append(",").append("'").append(arrayTerm).append("'");
-  }
-
 }

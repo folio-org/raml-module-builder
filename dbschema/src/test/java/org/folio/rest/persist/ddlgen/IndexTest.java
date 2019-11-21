@@ -17,7 +17,7 @@ class IndexTest {
   })
   void appendExpandedSimpleTerm(String term, String expectedSql) {
     StringBuilder result = new StringBuilder();
-    result.append(Index.formatExpandedTerm( "table", term));
+    Index.appendExpandedTerm( "table", term,result);
     assertEquals("table.jsonb" + expectedSql,result.toString());
   }
   @ParameterizedTest
@@ -27,7 +27,7 @@ class IndexTest {
   }, delimiter = '|')
   void appendExpandedArrayTerm(String term, String expectedSql) {
     StringBuilder result = new StringBuilder();
-    result.append(Index.formatExpandedTerm( "table", term));
+    Index.appendExpandedTerm( "table", term,result);
     assertEquals( expectedSql,result.toString());
   }
 
@@ -38,7 +38,7 @@ class IndexTest {
   }, delimiter = '|')
   void appendExpandedArrayTermNoVariable(String term, String expectedSql) {
     StringBuilder result = new StringBuilder();
-    result.append(Index.formatExpandedTerm( "table", term));
+    Index.appendExpandedTerm( "table", term,result);
     assertEquals( expectedSql,result.toString());
   }
 
