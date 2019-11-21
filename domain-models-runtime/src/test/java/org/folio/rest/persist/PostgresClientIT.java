@@ -305,8 +305,6 @@ public class PostgresClientIT {
       String tenant, String table, String tableDefinition) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
     execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
-    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS "
-        + "$$ SELECT public.unaccent('public.unaccent', $1) $$ LANGUAGE sql IMMUTABLE;");
     execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
@@ -314,7 +312,7 @@ public class PostgresClientIT {
     execute(context, "CREATE TABLE " + schema + "." + table + " (" + tableDefinition + ");");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
     PostgresClient postgresClient = postgresClient(tenant);
-    loadFuncs(context, postgresClient);
+    LoadGeneralFunctions.loadFuncs(context, postgresClient, "");
     return postgresClient;
   }
 
@@ -2606,28 +2604,10 @@ public class PostgresClientIT {
     PostgresClient.pojo2json(postgresClient);
   }
 
-  private static void loadFuncs(TestContext context, PostgresClient postgresClient) {
-    Async async = context.async();
-    try {
-      String sql = IOUtils.toString(
-        PostgresClientIT.class.getClassLoader().getResourceAsStream("templates/db_scripts/funcs.sql"), "UTF-8");
-      sql = sql.replaceAll("tenants_raml_module_builder.", "");
-      postgresClient.getClient().update(sql, reply -> {
-        assertSuccess(context, reply);
-        async.complete();
-      });
-    } catch (IOException ex) {
-      context.fail(ex);
-      async.complete();
-    }
-    async.awaitSuccess(1000);
-  }
-
   private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     String polines = getMockData("mockdata/poLines.json");
     postgresClient = createTable(context, TENANT, tableName, tableDefiniton);
-    loadFuncs(context, postgresClient);
     for (String jsonbValue : polines.split("\n")) {
       String additionalField = new JsonObject(jsonbValue).getString("publication_date");
       execute(context, "INSERT INTO " + schema + "." + tableName + " (id, jsonb, distinct_test_field) VALUES "
