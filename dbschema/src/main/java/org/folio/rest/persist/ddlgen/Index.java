@@ -2,12 +2,15 @@ package org.folio.rest.persist.ddlgen;
 
 import java.util.List;
 
+import org.folio.cql2pgjson.util.Cql2PgUtil;
+
 /**
  * @author shale
  *
  */
 public class Index extends TableIndexes {
-
+  private static String arrayToken = "[*]";
+  private static String arrayTermToken = "[*].";
   private boolean caseSensitive = false;
   private String whereClause = null;
   private boolean stringType = true;
@@ -71,7 +74,7 @@ public class Index extends TableIndexes {
   }
 
   public String getFinalSqlExpression(String tableLoc) {
-    if(this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
+    if (this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
       return this.fieldPath;
     } else if ( this.getSqlExpression() != null) {
       return this.getSqlExpression();
@@ -79,57 +82,35 @@ public class Index extends TableIndexes {
       String [] splitIndex = this.getMultiFieldNames().split(" *, *");
 
       StringBuilder result = new StringBuilder("concat_space_sql(");
-      for(int i = 0;i < splitIndex.length;i++) {
+      for (int i = 0;i < splitIndex.length;i++) {
         if(i != 0) {
           result .append(" , ");
         }
-        appendExpandedTerm(tableLoc, splitIndex[i], result);
+        appendExpandedTerm(tableLoc, splitIndex[i],result);
       }
       result.append(")");
       return result.toString();
     }
 
   }
-  public static void appendExpandedTerm(String tableLoc, String  currentTerm, StringBuilder result) {
-    String [] rawExpandedTerm = currentTerm.split("\\.");
-    StringBuilder expandedTerm = formatExpandedTerm(tableLoc + ".jsonb",rawExpandedTerm);
-    result.append(expandedTerm);
-  }
 
-  public static StringBuilder formatExpandedTerm(String table, String[] rawExpandedTerm) {
+  protected static void appendExpandedTerm(String table, String term, StringBuilder result) {
     StringBuilder expandedTerm = new StringBuilder();
-    StringBuilder result = new StringBuilder();
-    boolean wasArrayIndex = false;
-    expandedTerm.append(table);
-    for(int j = 0; j < rawExpandedTerm.length; j++) {
-      int idx = rawExpandedTerm[j].indexOf("[*]");
-      if(idx > -1) {
-        wasArrayIndex = appendExpandedArrayTerm(rawExpandedTerm, expandedTerm, j, idx);
-        break;
-      } else {
-        wasArrayIndex = appendExpandedSimpleTerm(rawExpandedTerm, expandedTerm, j, idx);
-      }
+    int idx = term.indexOf(arrayToken);
+
+    //case where the syntax is not found
+    if (idx == -1) {
+      result.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlText("jsonb",term));
+      return;
     }
-    if(wasArrayIndex) {
-      result.append("concat_array_object_values(").append(expandedTerm).append(")");
-    } else {
-      result.append(expandedTerm);
+    //case where the [*] is found
+    if(idx == term.length() - arrayToken.length()) {
+      expandedTerm.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx)));
+      result.append("concat_array_object(").append(expandedTerm).append(")");
+      return;
     }
-    return result;
-  }
-  private static  boolean appendExpandedSimpleTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx, int tokenIdx) {
-    String arrowToken = "->";
-    int endOffset = tokenIdx > -1 ? -2 : -1;
-    if(currentTermIdx == rawExpandedTerm.length + endOffset) {
-      arrowToken = "->>";
-    }
-    expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx]).append("'");
-    return false;
-  }
-  private static boolean appendExpandedArrayTerm(String[] rawExpandedTerm, StringBuilder expandedTerm, int currentTermIdx,
-      int tokenIdx) {
-    String arrowToken = "->";
-    expandedTerm.append(arrowToken).append("'").append(rawExpandedTerm[currentTermIdx].substring(0,tokenIdx)).append("',").append("'").append(rawExpandedTerm[currentTermIdx+1]).append("'");
-    return true;
+    //case where the [*].value is found
+    result.append("concat_array_object_values(").append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx))).append(",").append("'");
+    result.append(term.substring(idx + arrayTermToken.length(), term.length())).append("'").append(")");
   }
 }

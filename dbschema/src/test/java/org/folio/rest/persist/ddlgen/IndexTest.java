@@ -30,6 +30,18 @@ class IndexTest {
     Index.appendExpandedTerm( "table", term,result);
     assertEquals( expectedSql,result.toString());
   }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "a[*]|concat_array_object(table.jsonb->'a')",
+    "a.b[*]|concat_array_object(table.jsonb->'a'->'b')"
+  }, delimiter = '|')
+  void appendExpandedArrayTermNoVariable(String term, String expectedSql) {
+    StringBuilder result = new StringBuilder();
+    Index.appendExpandedTerm( "table", term,result);
+    assertEquals( expectedSql,result.toString());
+  }
+
   @Test
   void multiFieldNames() {
     Index idx = new Index();
