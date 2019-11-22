@@ -2503,6 +2503,9 @@ Other [RMB documentation](doc/) (e.g. DB schema migration, Upgrading notes).
 
 Other [modules](https://dev.folio.org/source-code/#server-side).
 
+Dedicated [FOLIO Slack](https://wiki.folio.org/display/COMMUNITY/FOLIO+Communication+Spaces#FOLIOCommunicationSpaces-slackSlack)
+channel [#raml-module-builder](https://folio-project.slack.com/archives/CC0PHKEMT).
+
 See project [RMB](https://issues.folio.org/browse/RMB)
 at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).
 
