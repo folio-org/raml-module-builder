@@ -45,8 +45,7 @@ public class DbSchemaUtils {
     }
     dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
     dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
-    for (List<Index> index : Arrays.asList(table.getIndex(),
-      table.getUniqueIndex(), table.getLikeIndex())) {
+    for (List<Index> index : Arrays.asList(table.getIndex(), table.getUniqueIndex(), table.getLikeIndex())) {
       dbIndexStatus.setOther(checkDbIndex(indexName, index));
       if (dbIndexStatus.isOther()) {
         break;
