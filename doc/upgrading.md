@@ -72,13 +72,13 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 26
 
 * The audit (history) table changed to a new incompatible schema, new audit configuration options are required in schema.json. See [README.md](../README.md#the-post-tenant-api) for details.
+* PostgresClient constructor now, by default, starts Embedded Postgres.
+  This means that if you have unit tests that do not start Embedded Postgres
+  explicitly, you might need to terminate Embedded Postgres by calling
+  `PostgresClient.stopEmbeddedPostgres`.
 
 ## Version 25
 
-* PostgresClient constructor now, by default, starts Embedded Postgres.
-  This means that if you have unit tests that do not start Embedded Postgres
-  explicitly, you'll still need to terminate Embedded Postgres by calling
-  `PostgresClient.stopEmbeddedPostgres`.
 * Remove any `"pkColumnName"`, `"generateId"` and `"populateJsonWithId"` entries in `src/main/resources/templates/db_scripts/schema.json`.
     * Hint: `grep -v -e '"pkColumnName"' -e '"generateId"' -e '"populateJsonWithId"' < schema.json > schema.json.new`, review, `mv schema.json.new schema.json`
 * In Java files change cql2pgjson import statements:
