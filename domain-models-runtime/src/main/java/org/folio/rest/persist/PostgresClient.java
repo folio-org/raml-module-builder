@@ -1785,10 +1785,8 @@ public class PostgresClient {
     }
     if (!wrapper.getWhereClause().isEmpty()) {
       // only do estimation when filter is in use (such as CQL).
-      queryHelper.countQuery = SELECT + "count_estimate_smart3('"
+      queryHelper.countQuery = SELECT + "count_estimate_default('"
         + org.apache.commons.lang.StringEscapeUtils.escapeSql(mainQuery)
-        + "', '"
-        + org.apache.commons.lang.StringEscapeUtils.escapeSql(queryHelper.countQuery)
         + "')";
     }
     int offset = wrapper.getOffset().get();

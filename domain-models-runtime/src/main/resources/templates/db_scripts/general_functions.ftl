@@ -1,10 +1,10 @@
 -- if the amount of results matches the LIMIT , it means that the result set is larger than the limit and we should return an estimate
 -- for example, this is used in faceting with a limit of lets say 20,000 results. if we got back 20,000 results (passed in as the rows
 -- parameters , then our result set is larger than the limit most probably and we should estimate a count
-CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart2(rows bigint, lim bigint, query text) RETURNS integer AS $$
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart2(rows bigint, lim bigint, query text) RETURNS bigint AS $$
 DECLARE
   rec   record;
-  cnt integer;
+  cnt bigint;
 BEGIN
   IF rows = lim THEN
       FOR rec IN EXECUTE 'EXPLAIN ' || query LOOP
@@ -17,9 +17,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE STRICT;
 
-CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart3(query text, cntquery text) RETURNS integer AS $$
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_default(query text) RETURNS bigint AS $$
 DECLARE
-  rows  integer;
+  rows bigint;
   q text;
 BEGIN
   q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT ${exactCount}) x';
@@ -29,12 +29,11 @@ BEGIN
   END IF;
   rows = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
   IF rows < ${exactCount} THEN
-    return ${exactCount} ;
+    return ${exactCount};
   END IF;
   RETURN rows;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
-
 
 -- function used to convert accented strings into unaccented string
 CREATE OR REPLACE FUNCTION f_unaccent(text)
