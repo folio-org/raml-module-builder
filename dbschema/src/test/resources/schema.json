@@ -1,4 +1,5 @@
 {
+  "exactCount" : 10000,
   "tables": [
     {
       "tableName": "item",
