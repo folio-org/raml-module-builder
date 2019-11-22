@@ -936,12 +936,13 @@ Only these relations have been implemented yet:
 
 * `=` (this is `==` for number matching and `adj` for a string matching.
        Examples 1: `height =/number 3.4` Example 2: `title = Potter`)
-* `==` (exact match, for example `barcode == 883746123` or exact substring match `title == "Harry Potter*"`;
+* `==` (exact field match, for example `barcode == 883746123` or exact prefix match `title == "Harry Pott*"`
+        matching "Harry Potter and the chamber of secrets" but not "Sience of Harry Potter";
         `==/number` matches any form: 3.4 = 3.400 = 0.34e1)
 * `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
 * `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
 * `adj` (substring phrase match: all words of the query string exist consecutively in that order, there may be any
-          whitespace and punctuation in between, `title adj "Harry Potter"` matches "Harry - . - Potter")
+          whitespace and punctuation in between, `title adj "Harry Potter"` matches "The Harry - . - Potter Story")
 * `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
