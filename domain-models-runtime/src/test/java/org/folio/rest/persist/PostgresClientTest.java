@@ -207,7 +207,7 @@ public class PostgresClientTest {
   @Test
   public void testProcessQueryWithCount() throws IOException, TemplateException {
     PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper(false, "test_pojo", new ArrayList<FacetField>());
+    QueryHelper queryHelper = new QueryHelper(false, "test_pojo");
     queryHelper.selectQuery = "SELECT * FROM test_pojo";
     queryHelper.countQuery = "COUNT (*) FROM test_pojo";
 
@@ -257,7 +257,7 @@ public class PostgresClientTest {
         add(new FacetField("jsonb->>'biz'"));
       }
     };
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
+    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 30 OFFSET 1";
 
     int total = 30;
@@ -300,7 +300,7 @@ public class PostgresClientTest {
   @Test
   public void testProcessQueryFails() {
     PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", null);
+    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT foo";
 
     SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
@@ -331,7 +331,7 @@ public class PostgresClientTest {
   @Test
   public void testProcessQueryException() {
     PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", null);
+    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT foo";
 
     SQLConnection connection = null;

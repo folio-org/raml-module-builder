@@ -35,7 +35,6 @@ import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
-import org.folio.rest.persist.facets.ParsedQuery;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.PomReader;
@@ -109,8 +108,6 @@ public class PostgresClient {
   private static final String    SET    = " SET ";
   private static final String    WHERE  = " WHERE ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
-
-  private static final Pattern   OFFSET_MATCH_PATTERN = Pattern.compile("(?<=(?i)OFFSET\\s)(?:\\s*)(\\d+)(?=\\b)");
 
   private static final String    _PASSWORD = "password"; //NOSONAR
   private static final String    _USERNAME = "username";
@@ -1542,10 +1539,9 @@ public class PostgresClient {
     String selectQuery;
     String countQuery;
     int offset;
-    public QueryHelper(boolean transactionMode, String table, List<FacetField> facets) {
+    public QueryHelper(boolean transactionMode, String table) {
       this.transactionMode = transactionMode;
       this.table = table;
-      this.facets = facets;
       this.offset = 0;
     }
   }
@@ -1601,6 +1597,19 @@ public class PostgresClient {
     }
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnIdField
+   * @param setId
+   * @param distinctOn
+   * @param streamHandler
+   * @param replyHandler
+   */
   public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where, boolean returnIdField,
     boolean setId, String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
@@ -1608,6 +1617,19 @@ public class PostgresClient {
     streamGet(table, clazz, fieldName, where, returnIdField, setId, null, distinctOn, streamHandler, replyHandler);
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnIdField
+   * @param setId
+   * @param facets Not in use, but might work in the future, pass null for now
+   * @param streamHandler
+   * @param replyHandler
+   */
   public <T> void streamGet(
       String table, Class<T> clazz, String fieldName, String where,
       boolean returnIdField, boolean setId, List<FacetField> facets,
@@ -1616,15 +1638,31 @@ public class PostgresClient {
     streamGet(table, clazz, fieldName, where, returnIdField, setId, facets, null, streamHandler, replyHandler);
   }
 
+  /**
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param where
+   * @param returnIdField
+   * @param setId
+   * @param facets Not in use, but might work in the future, pass null for now
+   * @param distinctOn
+   * @param streamHandler
+   * @param replyHandler
+   */
   public <T> void streamGet(
     String table, Class<T> clazz, String fieldName, String where,
     boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
   ) {
+    // streamGet appears to offer facets, but it does not implement it
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        doStreamGet(connection, false, table, clazz, fieldName, where, returnIdField, setId, facets, distinctOn, streamHandler, replyHandler);
+        doStreamGet(connection, false, table, clazz, fieldName, where,
+          returnIdField, setId, distinctOn, streamHandler, replyHandler);
       }
       else{
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -1632,29 +1670,15 @@ public class PostgresClient {
     });
   }
 
-  /**
-   *
-   * @param connection
-   * @param transactionMode
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnIdField
-   * @param setId
-   * @param facets
-   * @param streamHandler
-   * @param replyHandler
-   */
   private <T> void doStreamGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
-    String fieldName, String where, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
+    String fieldName, String where, boolean returnIdField, boolean setId, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
   ) {
 
     vertx.runOnContext(v1 -> {
       try {
-        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, facets, distinctOn);
+        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, distinctOn);
 
         connection.queryStream(queryHelper.selectQuery, stream -> {
           if (stream.succeeded()) {
@@ -1739,7 +1763,7 @@ public class PostgresClient {
       addIdField = "";
     }
 
-    QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
+    QueryHelper queryHelper = new QueryHelper(transactionMode, table);
 
     String countOn = "*";
     String distinctOnClause = "";
@@ -1747,49 +1771,34 @@ public class PostgresClient {
       distinctOnClause = String.format("DISTINCT ON(%s) ", distinctOn);
       countOn = String.format("DISTINCT(%s)", distinctOn);
     }
-
     queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField
       + FROM + schemaName + DOT + table + SPACE + wrapper.toString();
-    queryHelper.countQuery = SELECT + "COUNT(" + countOn + ") "
+    queryHelper.countQuery = SELECT + "COUNT(" + countOn + ")"
       + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereClause();
+    String mainQuery = SELECT + distinctOnClause + fieldName + addIdField
+      + FROM + schemaName + DOT + table + SPACE + wrapper.getWithoutLimOff();
 
-    ParsedQuery pq = new ParsedQuery();
-    pq.setCountQuery(queryHelper.countQuery);
-    if (!wrapper.getWhereClause().isEmpty()) {
-      pq.setWhereClause(wrapper.getWhereClause());
-    }
-    if (!wrapper.getLimit().toString().isEmpty()) {
-      pq.setLimitClause(wrapper.getLimit().toString());
-    }
-    if (!wrapper.getOffset().toString().isEmpty()) {
-      pq.setOffsetClause(wrapper.getOffset().toString());
-    }
-    pq.setQueryWithoutLimOff(SELECT + distinctOnClause + fieldName + addIdField
-      + FROM + schemaName + DOT + table + SPACE + wrapper.getWithoutLimOff());
-
-    String offsetClause = null;
-    if (queryHelper.facets != null && !queryHelper.facets.isEmpty() && queryHelper.table != null) {
-      FacetManager facetManager = buildFacetManager(queryHelper.table, pq, queryHelper.facets);
+    if (facets != null && !facets.isEmpty()) {
+      FacetManager facetManager = buildFacetManager(wrapper, queryHelper, mainQuery, facets);
       // this method call invokes freemarker templating
       queryHelper.selectQuery = facetManager.generateFacetQuery();
-      queryHelper.countQuery = facetManager.getCountQuery();
-
-      offsetClause = facetManager.getOffsetClause();
-    } else {
-      offsetClause = pq.getOffsetClause();
     }
-    if (offsetClause != null) {
-      Matcher matcher = OFFSET_MATCH_PATTERN.matcher(offsetClause);
-      if (matcher.find()) {
-        queryHelper.offset = Integer.parseInt(matcher.group(1));
-      }
+    if (!wrapper.getWhereClause().isEmpty()) {
+      // only do estimation when filter is in use (such as CQL).
+      queryHelper.countQuery = SELECT + "count_estimate_default('"
+        + org.apache.commons.lang.StringEscapeUtils.escapeSql(mainQuery)
+        + "')";
+    }
+    int offset = wrapper.getOffset().get();
+    if (offset != -1) {
+      queryHelper.offset = offset;
     }
     return queryHelper;
   }
 
   QueryHelper buildSelectQueryHelper(
     boolean transactionMode, String table, String fieldName,
-    String where, boolean returnIdField, List<FacetField> facets, String distinctOn
+    String where, boolean returnIdField, String distinctOn
   ) {
     String addIdField = "";
     if (returnIdField) {
@@ -1802,7 +1811,7 @@ public class PostgresClient {
       addIdField = "";
     }
 
-    QueryHelper queryHelper = new QueryHelper(transactionMode, table, facets);
+    QueryHelper queryHelper = new QueryHelper(transactionMode, table);
 
     String distinctOnClause = "";
     if (distinctOn != null && !distinctOn.isEmpty()) {
@@ -1888,18 +1897,20 @@ public class PostgresClient {
    * @param facets
    * @return
    */
-  private FacetManager buildFacetManager(String tableName, ParsedQuery parsedQuery, List<FacetField> facets) {
-    FacetManager fm = new FacetManager(schemaName + DOT + tableName);
-    if (parsedQuery.getWhereClause() != null) {
-      fm.setWhere(" " + parsedQuery.getWhereClause());
+  private FacetManager buildFacetManager(CQLWrapper wrapper, QueryHelper queryHelper,
+    String mainQuery, List<FacetField> facets) {
+
+    FacetManager fm = new FacetManager(schemaName + DOT + queryHelper.table);
+    if (wrapper.getWhereClause().isEmpty()) {
+      fm.setWhere(" " + wrapper.getWhereClause());
     }
     fm.setSupportFacets(facets);
     fm.setIdField(ID_FIELD);
-    fm.setLimitClause(parsedQuery.getLimitClause());
-    fm.setOffsetClause(parsedQuery.getOffsetClause());
-    fm.setMainQuery(parsedQuery.getQueryWithoutLimOff());
+    fm.setLimitClause(wrapper.getLimit().toString());
+    fm.setOffsetClause(wrapper.getOffset().toString());
+    fm.setMainQuery(mainQuery);
     fm.setSchema(schemaName);
-    fm.setCountQuery(parsedQuery.getCountQuery());
+    fm.setCountQuery(queryHelper.countQuery);
     return fm;
   }
 

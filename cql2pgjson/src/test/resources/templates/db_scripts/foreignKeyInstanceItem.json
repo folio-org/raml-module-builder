@@ -11,6 +11,10 @@
           "targetTable":      "instance",
           "targetTableAlias": "instance",
           "tableAlias": "holdingsRecord"
+        },
+        {
+          "fieldName": "permanentLocationId",
+          "targetTable": "location"
         }
       ]
     },
@@ -30,6 +34,9 @@
           "tableAlias": "item"
         }
       ]
+    },
+    {
+      "tableName": "location"
     }
   ]
 }
