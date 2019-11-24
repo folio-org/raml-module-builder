@@ -726,7 +726,12 @@ public class CQL2PgJSON {
       return pgId(node, index);
     }
 
-    DbIndex dbIndex = dbIndexMap.computeIfAbsent(index, i -> DbSchemaUtils.getDbIndex(dbTable, i));
+    DbIndex dbIndex;
+    if (targetTable == null || dbTable.equals(targetTable)) {
+      dbIndex = dbIndexMap.computeIfAbsent(index              , i -> DbSchemaUtils.getDbIndex(dbTable, index));
+    } else {  // foreign table
+      dbIndex = dbIndexMap.computeIfAbsent(vals.getIndexJson(), i -> DbSchemaUtils.getDbIndex(targetTable, index));
+    }
 
     if (dbIndex.isForeignKey()) {
       return pgId(node, index);

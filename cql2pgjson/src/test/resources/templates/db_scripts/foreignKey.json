@@ -49,6 +49,12 @@
           "targetTable":      "tablea",
           "targetTableAlias": "tablea",
           "tableAlias": "tableb"
+        },
+        {
+          "fieldName": "tablefId",
+          "targetTable":      "tablef",
+          "targetTableAlias": "tablef",
+          "tableAlias": "tableb"
         }
       ]
     },
@@ -77,6 +83,9 @@
           "targetTable": "tablec"
         }
       ]
+    },
+    {
+      "tableName": "tablef"
     }
   ]
 }

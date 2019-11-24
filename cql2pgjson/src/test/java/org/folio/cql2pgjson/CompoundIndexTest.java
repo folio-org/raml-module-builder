@@ -88,6 +88,15 @@ public class CompoundIndexTest {
   }
 
   @Test
+  public void multiFieldnamesFTDotStarPlain() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
+    String sql = cql2pgJson.toSql("ftfielddotstarplain = \"Boston MA\"").toString();
+    String expected = "WHERE to_tsvector('simple', concat_space_sql(concat_array_object(tablea.jsonb->'field3'->'info') , concat_array_object(tablea.jsonb->'field3'->'data'))) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
+    assertEquals(expected, sql);
+  }
+
+  @Test
   public void multiFieldnamesGINStar() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
@@ -95,12 +104,22 @@ public class CompoundIndexTest {
     String expected = "WHERE lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','city') , concat_array_object_values(tablea.jsonb->'field2','state'))) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
+
   @Test
   public void multiFieldnamesGINDotStar() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("ginfielddotstar == \"Boston MA\"").toString();
     String expected = "WHERE lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field3'->'info','city') , concat_array_object_values(tablea.jsonb->'field3'->'info','state'))) LIKE lower('Boston MA')";
+    assertEquals(expected, sql);
+  }
+
+  @Test
+  public void multiFieldnamesGINDotStarPlain() throws Exception {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
+    cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
+    String sql = cql2pgJson.toSql("ginfielddotstarplain == \"Boston MA\"").toString();
+    String expected = "WHERE lower(concat_space_sql(concat_array_object(tablea.jsonb->'field3'->'info') , concat_array_object(tablea.jsonb->'field3'->'data'))) LIKE lower('Boston MA')";
     assertEquals(expected, sql);
   }
   @Test
