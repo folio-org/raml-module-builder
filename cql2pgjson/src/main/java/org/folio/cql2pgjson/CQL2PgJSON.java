@@ -887,15 +887,20 @@ public class CQL2PgJSON {
         schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
       }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
-      String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+      String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+      String termUnmod = term;
+      String indexMod;
       if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-        sql = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targetTable.getTableName()), schemaIndex);
+        indexMod = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targetTable.getTableName()), schemaIndex);
       } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
-        sql = schemaIndex.getSqlExpression();
+        indexMod = schemaIndex.getSqlExpression();
       } else {
-        sql = wrapInLowerUnaccent(indexText, schemaIndex);
+        indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
-      sql = sql +  likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+      indexMod = wrapIndexForLength(indexMod);
+      term = wrapInLowerUnaccent(term, schemaIndex);
+      sql = indexMod +  likeOperator + wrapTermForLength(term);
+      appendFullTermIfTooLong(likeOperator,indexText,termUnmod, sql);
     }
 
     if (!hasIndex) {
@@ -936,7 +941,7 @@ public class CQL2PgJSON {
 
     String sql = index + " " + comparator + term;
     if (!CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
-      sql = appendFullTermIfTooLong(comparator, index, term, termUnmod, sql);
+      sql = appendFullTermIfTooLong(comparator, index, termUnmod, sql);
     }
 
     if (!hasIndex) {
@@ -948,8 +953,8 @@ public class CQL2PgJSON {
     return sql;
   }
 
-  private String appendFullTermIfTooLong(String comparator, String index, String term, String termUnmod, String sql) {
-    if(term.length() >= 600) {
+  private String appendFullTermIfTooLong(String comparator, String index, String termUnmod, String sql) {
+    if(termUnmod.length() >= 600) {
        sql += " && " + index + " " + comparator + termUnmod;
     }
     return sql;

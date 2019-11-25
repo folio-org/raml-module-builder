@@ -12,5 +12,5 @@ INSERT INTO users (id,user_data,groupId) VALUES
     "name": "Ka Keller", "status": "Inactive", "email": "ka@example.com",
     "address": {"city": "Fred", "zip": 1900}, "lang": ["en", "dk", "fi"]}', '88888888-8888-8888-8888-888888888888'),
   ('33333333-3333-3333-3333-33333333333a','{"id":"33333333-3333-3333-3333-333333333333",
-    "name": "Lea Long", "status": "Active - Not Yet", "email": "lea@example.com",
+    "name": "Lea Long", "status": "Active - Not Yet", "email": "lea@example.com", "alternateEmail": "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff@example.com",
     "address": {"city": "Søvang", "zip": 2791}, "lang": ["en", "dk"]}', '99999999-9999-9999-9999-999999999999');
