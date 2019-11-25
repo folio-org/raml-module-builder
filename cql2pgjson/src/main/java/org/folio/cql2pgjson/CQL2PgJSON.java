@@ -923,16 +923,21 @@ public class CQL2PgJSON {
     if (comparator.equals("==")) {
       comparator = "=";
     }
+
     String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+    String termUnmod = term;
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
       index = "(" + index + ")::numeric";
       term = node.getTerm();
+    } else {
+      index = wrapIndexForLength(index);
+      term = wrapTermForLength(term);
     }
-    String termUnmod = term;
-    index = wrapIndexForLength(index);
-    term = wrapTermForLength(term);
+
     String sql = index + " " + comparator + term;
-    sql = appendFullTermIfTooLong(comparator, index, term, termUnmod, sql);
+    if (!CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
+      sql = appendFullTermIfTooLong(comparator, index, term, termUnmod, sql);
+    }
 
     if (!hasIndex) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", index, node.toCQL(), sql);
@@ -958,9 +963,7 @@ public class CQL2PgJSON {
   }
 
   private String wrapIndexForLength(String index) {
-    if(index.length() >= 600) {
-      index = "left(" + index + ",600)";
-    }
+    index = "left(" + index + ",600)";
     return index;
   }
 
