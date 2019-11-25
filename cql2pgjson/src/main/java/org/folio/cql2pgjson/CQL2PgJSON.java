@@ -955,7 +955,7 @@ public class CQL2PgJSON {
 
   private String appendFullTermIfTooLong(String comparator, String index, String termUnmod, String sql) {
     if(termUnmod.length() >= 600) {
-       sql += " && " + index + " " + comparator + termUnmod;
+       sql += " && " + index + " " + comparator + " " + termUnmod;
     }
     return sql;
   }
