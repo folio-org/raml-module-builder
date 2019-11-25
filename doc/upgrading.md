@@ -15,7 +15,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 * [RMB-510](https://issues.folio.org/browse/RMB-510) Tenant POST `/_/tenant` must include a body. Client that
   used an empty request must now include a body with at least:
-  `{"module_to":"module-id"}`.
+  `{"module_to":"module-id"}`. This means that for modules that are using
+  `org.folio.rest.client.TenantClient` that previously passed `null` as for
+  `org.folio.rest.jaxrs.model.TenantAttributes` must now create
+  `TenantAttributes` with `moduleTo` property.
 * [RMB-497](https://issues.folio.org/browse/RMB-497) removed PostgresClient.join methods. It also deprecates all
   PostgresClient.get methods taking where-clause strings. Module users
   should use Criterion or CQLWrapper instead to construct queries.
@@ -69,6 +72,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 26
 
 * The audit (history) table changed to a new incompatible schema, new audit configuration options are required in schema.json. See [README.md](../README.md#the-post-tenant-api) for details.
+* PostgresClient constructor now, by default, starts Embedded Postgres.
+  This means that if you have unit tests that do not start Embedded Postgres
+  explicitly, you might need to terminate Embedded Postgres by calling
+  `PostgresClient.stopEmbeddedPostgres`.
 
 ## Version 25
 
