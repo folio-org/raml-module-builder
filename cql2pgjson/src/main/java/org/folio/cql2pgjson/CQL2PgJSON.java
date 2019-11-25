@@ -928,7 +928,11 @@ public class CQL2PgJSON {
       index = "(" + index + ")::numeric";
       term = node.getTerm();
     }
+    String termUnmod = term;
+    index = wrapIndexForLength(index);
+    term = wrapTermForLength(term);
     String sql = index + " " + comparator + term;
+    sql = appendFullTermIfTooLong(comparator, index, term, termUnmod, sql);
 
     if (!hasIndex) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", index, node.toCQL(), sql);
@@ -937,6 +941,27 @@ public class CQL2PgJSON {
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
     return sql;
+  }
+
+  private String appendFullTermIfTooLong(String comparator, String index, String term, String termUnmod, String sql) {
+    if(term.length() >= 600) {
+       sql += " && " + index + " " + comparator + termUnmod;
+    }
+    return sql;
+  }
+
+  private String wrapTermForLength(String term) {
+    if(term.length() >= 600) {
+      term = "left(" + term + ",600) ";
+    }
+    return term;
+  }
+
+  private String wrapIndexForLength(String index) {
+    if(index.length() >= 600) {
+      index = "left(" + index + ",600)";
+    }
+    return index;
   }
 
 }

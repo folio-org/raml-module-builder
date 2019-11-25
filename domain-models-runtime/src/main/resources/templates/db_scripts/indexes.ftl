@@ -2,7 +2,7 @@
   <#if table.index??>
     <#list table.index as indexes>
     <#if indexes.tOps.name() == "ADD">
-    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx ON ${myuniversity}_${mymodule}.${table.tableName}
+    CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx ON left(${myuniversity}_${mymodule}.${table.tableName},600)
     (${indexes.getFinalSqlExpression(table.tableName)})
      <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
     <#else>
