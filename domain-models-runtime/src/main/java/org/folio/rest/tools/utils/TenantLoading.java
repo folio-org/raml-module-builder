@@ -205,7 +205,7 @@ public class TenantLoading {
     String id = null;
     switch (loadingEntry.strategy) {
       case BASENAME:
-        int base = url.getPath().lastIndexOf(File.separator);
+        int base = url.getPath().lastIndexOf('/');
         int suf = url.getPath().lastIndexOf('.');
         if (base == -1) {
           f.handle(Future.failedFuture("No basename for " + url.toString()));
@@ -325,7 +325,7 @@ public class TenantLoading {
 
     String filePath = loadingEntry.lead;
     if (!loadingEntry.filePath.isEmpty()) {
-      filePath = filePath + File.separator + loadingEntry.filePath;
+      filePath = filePath + '/' + loadingEntry.filePath;
     }
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
     final String endPointUrl = okapiUrl + "/" + loadingEntry.uriPath;
