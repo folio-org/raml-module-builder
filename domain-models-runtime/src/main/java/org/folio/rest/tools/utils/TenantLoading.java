@@ -247,6 +247,14 @@ public class TenantLoading {
     }
   }
 
+  private static void handleException(Throwable ex, HttpMethod method, String uri, Future<Void> f) {
+    String diag = method.name() + " " + uri + ": " + ex.getMessage();
+    log.error(diag);
+    if (!f.isComplete()) {
+      f.handle(Future.failedFuture(diag));
+    }
+  }
+
   private static void loadURL(Map<String, String> headers, URL url,
     HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
     Future<Void> f) {
@@ -311,13 +319,7 @@ public class TenantLoading {
                 }
               });
             });
-            reqPost.exceptionHandler(ex -> {
-              String diag = method2.name() + " " + endPointUrl + ": " + ex.getMessage();
-              log.error(diag);
-              if (!f.isComplete()) {
-                f.handle(Future.failedFuture(diag));
-              }
-            });
+            reqPost.exceptionHandler(ex -> handleException(ex, method2, endPointUrl, f));
             endWithXHeaders(reqPost, headers, fContent);
           } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
             || resPut.statusCode() == 204 || loadingEntry.statusAccept.contains(resPut.statusCode())) {
@@ -330,23 +332,9 @@ public class TenantLoading {
             f.handle(Future.failedFuture(diag));
           }
         });
-        resPut.exceptionHandler(ex -> {
-          if (!f.isComplete()) {
-            String diag = method1.name() + " " + putUri.toString() + ": " + ex.getMessage();
-            log.error(diag);
-            if (!f.isComplete()) {
-              f.handle(Future.failedFuture(diag));
-            }
-          }
-        });
+        resPut.exceptionHandler(ex -> handleException(ex, method1, putUri.toString(), f));
       });
-      reqPut.exceptionHandler(ex -> {
-        String diag = method1.name() + " " + putUri.toString() + ": " + ex.getMessage();
-        log.error(diag);
-        if (!f.isComplete()) {
-          f.handle(Future.failedFuture(diag));
-        }
-      });
+      reqPut.exceptionHandler(ex -> handleException(ex, method1, putUri.toString(), f));
       endWithXHeaders(reqPut, headers, content);
     } catch (Exception ex) {
       log.error(ex.getLocalizedMessage(), ex);
@@ -364,7 +352,6 @@ public class TenantLoading {
     }
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
     final String endPointUrl = okapiUrl + "/" + loadingEntry.uriPath;
-    List<Future> futures = new LinkedList<>();
     try {
       List<URL> urls = getURLsFromClassPathDir(filePath);
       if (urls.isEmpty()) {
