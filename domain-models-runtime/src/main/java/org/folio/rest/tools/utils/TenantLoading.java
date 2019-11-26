@@ -241,24 +241,30 @@ public class TenantLoading {
     return id;
   }
 
+  private static String getContent(URL url, LoadingEntry loadingEntry, Future<Void> f) {
+    try {
+      InputStream stream = url.openStream();
+      String content = IOUtils.toString(stream, StandardCharsets.UTF_8);
+      stream.close();
+      if (loadingEntry.contentFilter != null) {
+        content = loadingEntry.contentFilter.apply(content);
+      }
+      return content;
+    } catch (IOException ex) {
+      f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
+      return null;
+    }
+  }
+
   private static void loadURL(Map<String, String> headers, URL url,
     HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
     Future<Void> f) {
 
     log.info("loadURL url=" + url.toString());
-    String content;
-    try {
-      InputStream stream = url.openStream();
-      content = IOUtils.toString(stream, StandardCharsets.UTF_8);
-      stream.close();
-      if (loadingEntry.contentFilter != null) {
-        content = loadingEntry.contentFilter.apply(content);
-      }
-    } catch (IOException ex) {
-      f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
+    final String content = getContent(url, loadingEntry, f);
+    if (f.isComplete()) {
       return;
     }
-    final String fContent = content;
     String id = getId(loadingEntry, url, content, f);
     if (f.isComplete()) {
       return;
@@ -298,7 +304,7 @@ public class TenantLoading {
           }
           log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
         });
-        endWithXHeaders(reqPost, headers, fContent);
+        endWithXHeaders(reqPost, headers, content);
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
         || resPut.statusCode() == 204 || loadingEntry.statusAccept.contains(resPut.statusCode())) {
         f.handle(Future.succeededFuture());
