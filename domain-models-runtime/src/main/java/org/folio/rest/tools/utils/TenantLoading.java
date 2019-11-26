@@ -241,19 +241,24 @@ public class TenantLoading {
     return id;
   }
 
-  private static String getContent(URL url, LoadingEntry loadingEntry, Future<Void> f) {
+  static String getContent(URL url, Future<Void> f) {
     try {
       InputStream stream = url.openStream();
       String content = IOUtils.toString(stream, StandardCharsets.UTF_8);
       stream.close();
-      if (loadingEntry.contentFilter != null) {
-        content = loadingEntry.contentFilter.apply(content);
-      }
       return content;
     } catch (IOException ex) {
       f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
       return null;
     }
+  }
+
+  private static String getContent(URL url, LoadingEntry loadingEntry, Future<Void> f) {
+    String content = getContent(url, f);
+    if (content != null && loadingEntry.contentFilter != null) {
+      return loadingEntry.contentFilter.apply(content);
+    }
+    return content;
   }
 
   private static void loadURL(Map<String, String> headers, URL url,

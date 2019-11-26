@@ -22,11 +22,14 @@ import io.vertx.ext.web.RoutingContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -562,7 +565,7 @@ public class TenantLoadingTest {
   }
 
   @Test
-  public void testId(TestContext context) {
+  public void testGetIdBase(TestContext context) {
     Promise promise = Promise.promise();
     context.assertEquals("/a", TenantLoading.getIdBase("/path/a.json", promise.future()));
     context.assertFalse(promise.future().isComplete());
@@ -579,6 +582,13 @@ public class TenantLoadingTest {
     promise = Promise.promise();
     context.assertEquals("/c", TenantLoading.getIdBase("/a.b/c", promise.future()));
     context.assertFalse(promise.future().isComplete());
+  }
+
+  @Test
+  public void testContent(TestContext context) throws MalformedURLException {
+    URL url = new URL("file:///does.not.exist");
+    Promise promise = Promise.promise();
+    context.assertEquals(null, TenantLoading.getContent(url, promise.future()));
   }
 
   @Test
