@@ -1,5 +1,6 @@
 package org.folio.rest.tools.utils;
 
+import io.vertx.core.Promise;
 import java.util.List;
 import org.junit.Test;
 import java.util.HashMap;
@@ -558,6 +559,26 @@ public class TenantLoadingTest {
       context.assertTrue(res.failed());
       async.complete();
     });
+  }
+
+  @Test
+  public void testId(TestContext context) {
+    Promise promise = Promise.promise();
+    context.assertEquals("/a", TenantLoading.getIdBase("/path/a.json", promise.future()));
+    context.assertFalse(promise.future().isComplete());
+    promise = Promise.promise();
+    context.assertEquals(null, TenantLoading.getIdBase("a.json", promise.future()));
+    context.assertTrue(promise.future().isComplete());
+    context.assertEquals("No basename for a.json", promise.future().cause().getMessage());
+    promise = Promise.promise();
+    context.assertEquals(null, TenantLoading.getIdBase("a", promise.future()));
+    context.assertTrue(promise.future().isComplete());
+    promise = Promise.promise();
+    context.assertEquals("/a", TenantLoading.getIdBase("/path/a", promise.future()));
+    context.assertFalse(promise.future().isComplete());
+    promise = Promise.promise();
+    context.assertEquals("/c", TenantLoading.getIdBase("/a.b/c", promise.future()));
+    context.assertFalse(promise.future().isComplete());
   }
 
   @Test

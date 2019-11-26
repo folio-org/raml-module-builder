@@ -34,6 +34,7 @@ import java.util.jar.JarFile;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.util.StringUtil;
 
 /**
  * TenantLoading is utility for loading data into modules during the Tenant Init
@@ -199,23 +200,29 @@ public class TenantLoading {
     req.end(json);
   }
 
+  static String getIdBase(String path, Future<Void> f) {
+    String id;
+    int base = path.lastIndexOf('/');
+    int suf = path.lastIndexOf('.');
+    if (base == -1) {
+      f.handle(Future.failedFuture("No basename for " + path));
+      return null;
+    }
+    if (suf > base) {
+      id = path.substring(base, suf);
+    } else {
+      id = path.substring(base);
+    }
+    return id;
+  }
+
   private static String getId(LoadingEntry loadingEntry, URL url, String content,
     Future<Void> f) {
 
     String id = null;
     switch (loadingEntry.strategy) {
       case BASENAME:
-        int base = url.getPath().lastIndexOf('/');
-        int suf = url.getPath().lastIndexOf('.');
-        if (base == -1) {
-          f.handle(Future.failedFuture("No basename for " + url.toString()));
-          return null;
-        }
-        if (suf > base) {
-          id = url.getPath().substring(base, suf);
-        } else {
-          id = url.getPath().substring(base);
-        }
+        id = getIdBase(url.getPath(), f);
         break;
       case CONTENT:
         JsonObject jsonObject = new JsonObject(content);
@@ -228,12 +235,7 @@ public class TenantLoading {
             + loadingEntry.idProperty + " for url=" + url.toString()));
           return null;
         }
-        try {
-          id = URLEncoder.encode(id, StandardCharsets.UTF_8.name());
-        } catch (UnsupportedEncodingException ex) {
-          f.handle(Future.failedFuture("Encoding of " + id + FAILED_STR));
-          return null;
-        }
+        id = StringUtil.urlEncode(id);
         break;
       case RAW_PUT:
       case RAW_POST:
