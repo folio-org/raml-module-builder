@@ -268,7 +268,7 @@ public class TenantLoadingTest {
 
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
-    putStatus = 422;
+    putStatus = 423;
     tl.perform(tenantAttributes, headers, vertx, res -> {
       context.assertTrue(res.failed());
       async.complete();
@@ -276,7 +276,7 @@ public class TenantLoadingTest {
   }
 
   @Test
-  public void testOkStatusCode(TestContext context) {
+  public void testokWithAcceptStatus(TestContext context) {
     Async async = context.async();
     List<Parameter> parameters = new LinkedList<>();
     parameters.add(new Parameter().withKey("loadRef").withValue("true"));
@@ -288,7 +288,27 @@ public class TenantLoadingTest {
 
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
-    tl.withAcceptStatus(422);
+    putStatus = 423;
+    tl.withAcceptStatus(423);
+    tl.perform(tenantAttributes, headers, vertx, res -> {
+      context.assertTrue(res.succeeded());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testOkStatus422(TestContext context) {
+    Async async = context.async();
+    List<Parameter> parameters = new LinkedList<>();
+    parameters.add(new Parameter().withKey("loadRef").withValue("true"));
+    TenantAttributes tenantAttributes = new TenantAttributes()
+      .withModuleTo("mod-1.0.0")
+      .withParameters(parameters);
+    Map<String, String> headers = new HashMap<String, String>();
+    headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
+
+    TenantLoading tl = new TenantLoading();
+    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
     putStatus = 422;
     tl.perform(tenantAttributes, headers, vertx, res -> {
       context.assertTrue(res.succeeded());
