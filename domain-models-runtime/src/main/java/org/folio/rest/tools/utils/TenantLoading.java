@@ -13,7 +13,6 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -198,7 +197,6 @@ public class TenantLoading {
   }
 
   static String getIdBase(String path, Future<Void> f) {
-    String id;
     int base = path.lastIndexOf('/');
     int suf = path.lastIndexOf('.');
     if (base == -1) {
