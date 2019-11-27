@@ -930,7 +930,7 @@ public class CQL2PgJSON {
       comparator = "=";
     }
     String sql = "";
-    String term = Cql2SqlUtil.cql2like(node.getTerm()) ;
+    String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     String termUnmod = term;
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
       index = "(" + index + ")::numeric";
@@ -938,7 +938,7 @@ public class CQL2PgJSON {
     } else {
       index = wrapIndexForLength(index);
       term = wrapTermForLength(term);
-      sql = "CASE WHEN length('" + termUnmod + "') <= 600 then ";
+      sql = "CASE WHEN length(" + termUnmod + ") <= 600 then ";
     }
 
     sql += index + " " + comparator + termUnmod;

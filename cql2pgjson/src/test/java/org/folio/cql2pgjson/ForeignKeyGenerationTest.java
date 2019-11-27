@@ -27,7 +27,7 @@ public class ForeignKeyGenerationTest  {
   public void searchNumeric() throws Exception {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.blah == /number 123452").getWhere();
-    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE (tableb.jsonb->>'blah')::numeric =123452)", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE (tableb.jsonb->>'blah')::numeric ='123452')", sql);
   }
 
   @Test
