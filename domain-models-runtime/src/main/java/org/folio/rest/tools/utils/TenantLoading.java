@@ -92,7 +92,6 @@ public class TenantLoading {
 
   private static final Logger log = LoggerFactory.getLogger(TenantLoading.class);
   private static final String RETURNED_STATUS = " returned status ";
-  private static final String FAILED_STR = " failed ";
 
   private enum Strategy {
     CONTENT, // Id in JSON content PUT/POST
