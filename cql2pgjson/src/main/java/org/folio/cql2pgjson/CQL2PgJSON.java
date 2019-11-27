@@ -899,8 +899,9 @@ public class CQL2PgJSON {
       }
       indexMod = wrapIndexForLength(indexMod);
       term = wrapInLowerUnaccent(term, schemaIndex);
-      sql = indexMod +  likeOperator + wrapTermForLength(term);
-      appendFullTermIfTooLong(likeOperator,indexText,termUnmod, sql);
+      sql = "CASE WHEN length(" + termUnmod + ") <= 600 then ";
+      sql += indexMod +  likeOperator + wrapTermForLength(term);
+      sql = appendLengthCase(likeOperator,indexText,termUnmod,comparator.equals("<>"), sql);
     }
 
     if (!hasIndex) {
@@ -928,7 +929,7 @@ public class CQL2PgJSON {
     if (comparator.equals("==")) {
       comparator = "=";
     }
-
+    String sql = "";
     String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     String termUnmod = term;
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
@@ -937,11 +938,12 @@ public class CQL2PgJSON {
     } else {
       index = wrapIndexForLength(index);
       term = wrapTermForLength(term);
+      sql = "CASE WHEN length(" + termUnmod + ") <= 600 then ";
     }
 
-    String sql = index + " " + comparator + term;
+    sql += index + " " + comparator + termUnmod;
     if (!CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
-      sql = appendFullTermIfTooLong(comparator, index, termUnmod, sql);
+      sql = appendLengthCase(comparator, index, termUnmod,false, sql);
     }
 
     if (!hasIndex) {
@@ -953,18 +955,16 @@ public class CQL2PgJSON {
     return sql;
   }
 
-  private String appendFullTermIfTooLong(String comparator, String index, String termUnmod, String sql) {
-    if(termUnmod.length() >= 600) {
-       sql += " && " + index + " " + comparator + " " + termUnmod;
-    }
+  private String appendLengthCase(String comparator, String index, String termUnmod,boolean not, String sql) {
+
+    String joiner = not ? " OR " : " AND ";
+    sql += " ELSE " + wrapIndexForLength(index) + " " + comparator +  wrapTermForLength(termUnmod) + joiner + index + " " + comparator + " " + termUnmod + " END";
     return sql;
   }
 
   private String wrapTermForLength(String term) {
-    if(term.length() >= 600) {
-      term = "left(" + term + ",600) ";
-    }
-    return term;
+   term = "left(" + term + ",600) ";
+   return term;
   }
 
   private String wrapIndexForLength(String index) {
