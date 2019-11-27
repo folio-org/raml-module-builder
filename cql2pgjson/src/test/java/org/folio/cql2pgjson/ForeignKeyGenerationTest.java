@@ -35,7 +35,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
-        + "WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')))", sql);
+        + "WHERE CASE WHEN length('11111111-1111-1111-1111-111111111111') <= 600 then left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600)  ELSE left(tableb.jsonb->>'prefix',600)  LIKE left('11111111-1111-1111-1111-111111111111',600)  AND tableb.jsonb->>'prefix'  LIKE  '11111111-1111-1111-1111-111111111111' END)", sql);
   }
 
   @Test
@@ -43,14 +43,14 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tableb.json", "foreignKey.json")
         .toSql("tablea.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     assertEquals("tableb.tableaId IN  ( SELECT id FROM tablea "
-        + "WHERE lower(f_unaccent(tablea.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')))", sql);
+        + "WHERE CASE WHEN length('11111111-1111-1111-1111-111111111111') <= 600 then left(lower(f_unaccent(tablea.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600)  ELSE left(tablea.jsonb->>'prefix',600)  LIKE left('11111111-1111-1111-1111-111111111111',600)  AND tablea.jsonb->>'prefix'  LIKE  '11111111-1111-1111-1111-111111111111' END)", sql);
   }
 
   @Test
   public void searchWithLowerConstant() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.gprefix == x0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE lower(tableb.jsonb->>'gprefix') LIKE lower('x0'))", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE CASE WHEN length('x0') <= 600 then left(lower(tableb.jsonb->>'gprefix'),600) LIKE left(lower('x0'),600)  ELSE left(tableb.jsonb->>'gprefix',600)  LIKE left('x0',600)  AND tableb.jsonb->>'gprefix'  LIKE  'x0' END)", sql);
   }
 
   @Test
@@ -100,7 +100,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == *").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
-        + "WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('%')))", sql);
+        + "WHERE CASE WHEN length('%') <= 600 then left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('%')),600)  ELSE left(tableb.jsonb->>'prefix',600)  LIKE left('%',600)  AND tableb.jsonb->>'prefix'  LIKE  '%' END)", sql);
   }
 
   @Test
@@ -109,14 +109,14 @@ public class ForeignKeyGenerationTest  {
         .toSql("tablec.cindex == z1").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
         + "WHERE tableb.id IN  ( SELECT tablebId FROM tablec "
-        + "WHERE lower(f_unaccent(tablec.jsonb->>'cindex')) LIKE lower(f_unaccent('z1'))))",sql);
+        + "WHERE CASE WHEN length('z1') <= 600 then left(lower(f_unaccent(tablec.jsonb->>'cindex')),600) LIKE left(lower(f_unaccent('z1')),600)  ELSE left(tablec.jsonb->>'cindex',600)  LIKE left('z1',600)  AND tablec.jsonb->>'cindex'  LIKE  'z1' END))",sql);
   }
 
   @Test
   public void searchWithFUnaccent() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.otherindex >= y0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE tableb.jsonb->>'otherindex' >='y0')", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE CASE WHEN length('y0') <= 600 then left(tableb.jsonb->>'otherindex',600) >='y0' ELSE left(left(tableb.jsonb->>'otherindex',600),600) >=left('y0',600)  AND left(tableb.jsonb->>'otherindex',600) >= 'y0' END)", sql);
   }
 
   @Test
@@ -130,9 +130,9 @@ public class ForeignKeyGenerationTest  {
   public void searchFailureDueToTable() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON cql2pgJson = cql2pgJson("tablea.jsonb", "foreignKey.json");
     String sql = cql2pgJson.toSql("tablex.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("lower(f_unaccent(tablea.jsonb->'tablex'->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
+    assertEquals("CASE WHEN length('11111111-1111-1111-1111-111111111111') <= 600 then left(lower(f_unaccent(tablea.jsonb->'tablex'->>'prefix')),600) LIKE left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600)  ELSE left(tablea.jsonb->'tablex'->>'prefix',600)  LIKE left('11111111-1111-1111-1111-111111111111',600)  AND tablea.jsonb->'tablex'->>'prefix'  LIKE  '11111111-1111-1111-1111-111111111111' END",sql);
     sql = cql2pgJson.toSql("ardgsdfgdsfg.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("lower(f_unaccent(tablea.jsonb->'ardgsdfgdsfg'->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))",sql);
+    assertEquals("CASE WHEN length('11111111-1111-1111-1111-111111111111') <= 600 then left(lower(f_unaccent(tablea.jsonb->'ardgsdfgdsfg'->>'prefix')),600) LIKE left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600)  ELSE left(tablea.jsonb->'ardgsdfgdsfg'->>'prefix',600)  LIKE left('11111111-1111-1111-1111-111111111111',600)  AND tablea.jsonb->'ardgsdfgdsfg'->>'prefix'  LIKE  '11111111-1111-1111-1111-111111111111' END",sql);
   }
 
   @Test
@@ -148,7 +148,7 @@ public class ForeignKeyGenerationTest  {
         .toSql("item.barcode == 7834324634").toString();
     String expected = "WHERE instance.id IN  ( SELECT instanceId FROM holdings_record "
         + "WHERE holdings_record.id IN  ( SELECT holdingsRecordId FROM item "
-        + "WHERE lower(f_unaccent(item.jsonb->>'barcode')) LIKE lower(f_unaccent('7834324634'))))";
+        + "WHERE CASE WHEN length('7834324634') <= 600 then left(lower(f_unaccent(item.jsonb->>'barcode')),600) LIKE left(lower(f_unaccent('7834324634')),600)  ELSE left(item.jsonb->>'barcode',600)  LIKE left('7834324634',600)  AND item.jsonb->>'barcode'  LIKE  '7834324634' END))";
     assertEquals(expected, sql);
   }
 
