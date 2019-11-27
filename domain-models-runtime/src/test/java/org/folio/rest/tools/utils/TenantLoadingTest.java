@@ -1,5 +1,7 @@
 package org.folio.rest.tools.utils;
 
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import java.util.List;
 import org.junit.Test;
 import java.util.HashMap;
@@ -558,6 +560,28 @@ public class TenantLoadingTest {
       context.assertTrue(res.failed());
       async.complete();
     });
+  }
+
+  private void assertGetIdBase(TestContext context, String path, String expectedBase) {
+    Future<Void> future = Promise.<Void>promise().future();
+    context.assertEquals(expectedBase, TenantLoading.getIdBase(path, future));
+    context.assertFalse(future.isComplete());
+  }
+
+  private void assertGetIdBaseFail(TestContext context, String path) {
+    Future<Void> future = Promise.<Void>promise().future();
+    context.assertEquals(null, TenantLoading.getIdBase(path, future));
+    context.assertTrue(future.failed());
+    context.assertEquals("No basename for " + path, future.cause().getMessage());
+  }
+
+  @Test
+  public void testGetIdBase(TestContext context) {
+    assertGetIdBase(context, "/path/a.json", "/a");
+    assertGetIdBase(context, "/path/a", "/a");
+    assertGetIdBase(context, "/a.b/c", "/c");
+    assertGetIdBaseFail(context, "a.json");
+    assertGetIdBaseFail(context, "a");
   }
 
   @Test
