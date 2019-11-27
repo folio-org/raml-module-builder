@@ -1,5 +1,6 @@
 package org.folio.rest.tools.utils;
 
+import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import java.util.List;
 import org.junit.Test;
@@ -22,14 +23,11 @@ import io.vertx.ext.web.RoutingContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -564,31 +562,26 @@ public class TenantLoadingTest {
     });
   }
 
-  @Test
-  public void testGetIdBase(TestContext context) {
-    Promise promise = Promise.promise();
-    context.assertEquals("/a", TenantLoading.getIdBase("/path/a.json", promise.future()));
-    context.assertFalse(promise.future().isComplete());
-    promise = Promise.promise();
-    context.assertEquals(null, TenantLoading.getIdBase("a.json", promise.future()));
-    context.assertTrue(promise.future().isComplete());
-    context.assertEquals("No basename for a.json", promise.future().cause().getMessage());
-    promise = Promise.promise();
-    context.assertEquals(null, TenantLoading.getIdBase("a", promise.future()));
-    context.assertTrue(promise.future().isComplete());
-    promise = Promise.promise();
-    context.assertEquals("/a", TenantLoading.getIdBase("/path/a", promise.future()));
-    context.assertFalse(promise.future().isComplete());
-    promise = Promise.promise();
-    context.assertEquals("/c", TenantLoading.getIdBase("/a.b/c", promise.future()));
-    context.assertFalse(promise.future().isComplete());
+  private void assertGetIdBase(TestContext context, String path, String expectedBase) {
+    Future<Void> future = Promise.<Void>promise().future();
+    context.assertEquals(expectedBase, TenantLoading.getIdBase(path, future));
+    context.assertFalse(future.isComplete());
+  }
+
+  private void assertGetIdBaseFail(TestContext context, String path) {
+    Future<Void> future = Promise.<Void>promise().future();
+    context.assertEquals(null, TenantLoading.getIdBase(path, future));
+    context.assertTrue(future.failed());
+    context.assertEquals("No basename for " + path, future.cause().getMessage());
   }
 
   @Test
-  public void testContent(TestContext context) throws MalformedURLException {
-    URL url = new URL("file:///does.not.exist");
-    Promise promise = Promise.promise();
-    context.assertEquals(null, TenantLoading.getContent(url, promise.future()));
+  public void testGetIdBase(TestContext context) {
+    assertGetIdBase(context, "/path/a.json", "/a");
+    assertGetIdBase(context, "/path/a", "/a");
+    assertGetIdBase(context, "/a.b/c", "/c");
+    assertGetIdBaseFail(context, "a.json");
+    assertGetIdBaseFail(context, "a");
   }
 
   @Test
