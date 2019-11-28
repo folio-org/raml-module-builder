@@ -1,6 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
-import org.folio.util.ComparableVersion;
+import org.folio.okapi.common.ModuleId;
+import org.folio.okapi.common.SemVer;
 
 public abstract class Versioned {
 
@@ -12,17 +13,22 @@ public abstract class Versioned {
   public void setFromModuleVersion(String fromModuleVersion) {
     this.fromModuleVersion = fromModuleVersion;
   }
+
+  static private SemVer moduleVersionToSemVer(String version) {
+    try {
+      return new SemVer(version);
+    } catch (IllegalArgumentException ex) {
+      ModuleId id = new ModuleId(version);
+      return id.getSemVer();
+    }
+  }
+
   public boolean isNewForThisInstall(String prevVersion) {
-    if(fromModuleVersion == null){
+    if (fromModuleVersion == null) {
       //if no version is specified try to create
       return true;
     }
-    ComparableVersion cv = new ComparableVersion(fromModuleVersion);
-    int res = cv.compareTo(new ComparableVersion(prevVersion));
-    if(res > 0){
-      return true;
-    }
-    return false;
+    SemVer cv = moduleVersionToSemVer(fromModuleVersion);
+    return cv.compareTo(moduleVersionToSemVer(prevVersion)) > 0;
   }
-
 }

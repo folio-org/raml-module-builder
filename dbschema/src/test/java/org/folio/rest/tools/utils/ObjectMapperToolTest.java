@@ -34,6 +34,14 @@ class ObjectMapperToolTest {
       .getRun(), is("before"));
     assertThat(dbSchema.getScripts().get(0)
       .getFromModuleVersion(), is("mod-foo-18.2.2"));
+    assertThat(dbSchema.getScripts().get(0).isNewForThisInstall("mod-foo-18.2.1"),
+      is(true));
+    assertThat(dbSchema.getScripts().get(0).isNewForThisInstall("mod-foo-18.2.3"),
+      is(false));
+    assertThat(dbSchema.getScripts().get(0).isNewForThisInstall("18.2.1"),
+      is(true));
+    assertThat(dbSchema.getScripts().get(0).isNewForThisInstall("18.2.2"),
+      is(false));
     assertThat(dbSchema.getExactCount(), is(10000));
   }
 }
