@@ -13,12 +13,9 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Enumeration;
@@ -34,6 +31,7 @@ import java.util.jar.JarFile;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.util.StringUtil;
 
 /**
  * TenantLoading is utility for loading data into modules during the Tenant Init
@@ -93,7 +91,6 @@ public class TenantLoading {
 
   private static final Logger log = LoggerFactory.getLogger(TenantLoading.class);
   private static final String RETURNED_STATUS = " returned status ";
-  private static final String FAILED_STR = " failed ";
   private static final String POST_STR = "POST ";
 
   private enum Strategy {
@@ -199,23 +196,27 @@ public class TenantLoading {
     req.end(json);
   }
 
+  static String getIdBase(String path, Future<Void> f) {
+    int base = path.lastIndexOf('/');
+    int suf = path.lastIndexOf('.');
+    if (base == -1) {
+      f.handle(Future.failedFuture("No basename for " + path));
+      return null;
+    }
+    if (suf > base) {
+      return path.substring(base, suf);
+    } else {
+      return path.substring(base);
+    }
+  }
+
   private static String getId(LoadingEntry loadingEntry, URL url, String content,
     Future<Void> f) {
 
     String id = null;
     switch (loadingEntry.strategy) {
       case BASENAME:
-        int base = url.getPath().lastIndexOf(File.separator);
-        int suf = url.getPath().lastIndexOf('.');
-        if (base == -1) {
-          f.handle(Future.failedFuture("No basename for " + url.toString()));
-          return null;
-        }
-        if (suf > base) {
-          id = url.getPath().substring(base, suf);
-        } else {
-          id = url.getPath().substring(base);
-        }
+        id = getIdBase(url.getPath(), f);
         break;
       case CONTENT:
         JsonObject jsonObject = new JsonObject(content);
@@ -228,12 +229,7 @@ public class TenantLoading {
             + loadingEntry.idProperty + " for url=" + url.toString()));
           return null;
         }
-        try {
-          id = URLEncoder.encode(id, StandardCharsets.UTF_8.name());
-        } catch (UnsupportedEncodingException ex) {
-          f.handle(Future.failedFuture("Encoding of " + id + FAILED_STR));
-          return null;
-        }
+        id = StringUtil.urlEncode(id);
         break;
       case RAW_PUT:
       case RAW_POST:
@@ -242,24 +238,28 @@ public class TenantLoading {
     return id;
   }
 
+  private static String getContent(URL url, LoadingEntry loadingEntry, Future<Void> f) {
+    try {
+      String content = IOUtils.toString(url, StandardCharsets.UTF_8);
+      if (loadingEntry.contentFilter != null) {
+        return loadingEntry.contentFilter.apply(content);
+      }
+      return content;
+    } catch (IOException ex) {
+      f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
+      return null;
+    }
+  }
+
   private static void loadURL(Map<String, String> headers, URL url,
     HttpClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
     Future<Void> f) {
 
     log.info("loadURL url=" + url.toString());
-    String content;
-    try {
-      InputStream stream = url.openStream();
-      content = IOUtils.toString(stream, StandardCharsets.UTF_8);
-      stream.close();
-      if (loadingEntry.contentFilter != null) {
-        content = loadingEntry.contentFilter.apply(content);
-      }
-    } catch (IOException ex) {
-      f.handle(Future.failedFuture("IOException for url=" + url.toString() + " ex=" + ex.getLocalizedMessage()));
+    final String content = getContent(url, loadingEntry, f);
+    if (f.isComplete()) {
       return;
     }
-    final String fContent = content;
     String id = getId(loadingEntry, url, content, f);
     if (f.isComplete()) {
       return;
@@ -299,7 +299,7 @@ public class TenantLoading {
           }
           log.warn(POST_STR + endPointUrl + ": " + ex.getMessage());
         });
-        endWithXHeaders(reqPost, headers, fContent);
+        endWithXHeaders(reqPost, headers, content);
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
         || resPut.statusCode() == 204 || loadingEntry.statusAccept.contains(resPut.statusCode())) {
         f.handle(Future.succeededFuture());
@@ -325,7 +325,7 @@ public class TenantLoading {
 
     String filePath = loadingEntry.lead;
     if (!loadingEntry.filePath.isEmpty()) {
-      filePath = filePath + File.separator + loadingEntry.filePath;
+      filePath = filePath + '/' + loadingEntry.filePath;
     }
     log.info("loadData uriPath=" + loadingEntry.uriPath + " filePath=" + filePath);
     final String endPointUrl = okapiUrl + "/" + loadingEntry.uriPath;
