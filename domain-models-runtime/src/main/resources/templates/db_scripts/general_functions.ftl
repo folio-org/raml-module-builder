@@ -1,7 +1,8 @@
 -- if the amount of results matches the LIMIT , it means that the result set is larger than the limit and we should return an estimate
 -- for example, this is used in faceting with a limit of lets say 20,000 results. if we got back 20,000 results (passed in as the rows
 -- parameters , then our result set is larger than the limit most probably and we should estimate a count
-CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart2(rows bigint, lim bigint, query text) RETURNS bigint AS $$
+DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.count_estimate_smart2(bigint,bigint,text);
+CREATE FUNCTION ${myuniversity}_${mymodule}.count_estimate_smart2(rows bigint, lim bigint, query text) RETURNS bigint AS $$
 DECLARE
   rec   record;
   cnt bigint;
