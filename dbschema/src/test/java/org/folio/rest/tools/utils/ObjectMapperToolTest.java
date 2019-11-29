@@ -6,6 +6,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.util.ResourceUtil;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.Test;
 
 class ObjectMapperToolTest {
@@ -42,6 +43,9 @@ class ObjectMapperToolTest {
       is(true));
     assertThat(dbSchema.getScripts().get(0).isNewForThisInstall("18.2.2"),
       is(false));
+    assertNull(dbSchema.getScripts().get(1).getFromModuleVersion());
+    assertThat(dbSchema.getScripts().get(1).isNewForThisInstall("18.2.2"),
+      is(true));
     assertThat(dbSchema.getExactCount(), is(10000));
   }
 }

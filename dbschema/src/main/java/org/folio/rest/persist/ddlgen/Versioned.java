@@ -14,12 +14,16 @@ public abstract class Versioned {
     this.fromModuleVersion = fromModuleVersion;
   }
 
-  static private SemVer moduleVersionToSemVer(String version) {
-    try {
+  /**
+   * Utility to create SemVer class from module version string
+   * @param version which may either be a module-version or version
+   * @return version component
+   */
+  private static SemVer moduleVersionToSemVer(String version) {
+   try {
       return new SemVer(version);
     } catch (IllegalArgumentException ex) {
-      ModuleId id = new ModuleId(version);
-      return id.getSemVer();
+      return new ModuleId(version).getSemVer();
     }
   }
 
