@@ -13,6 +13,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 29
 
+* [RMB-529](https://issues.folio.org/browse/RMB-529) The update to Vert.x 3.8.4 deprecates several elements,
+  including Json#mapper, Json#prettyMapper and Json#decodeValue:
+  [3.8.2 Deprecations](https://github.com/vert-x3/wiki/wiki/3.8.2-Deprecations-and-breaking-changes),
+  [3.8.3 Deprecations](https://github.com/vert-x3/wiki/wiki/3.8.3-Deprecations-and-breaking-changes)
 * [RMB-510](https://issues.folio.org/browse/RMB-510) Tenant POST `/_/tenant` must include a body. Client that
   used an empty request must now include a body with at least:
   `{"module_to":"module-id"}`. This means that for modules that are using
