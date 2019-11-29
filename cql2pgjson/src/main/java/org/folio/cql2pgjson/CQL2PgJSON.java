@@ -956,7 +956,6 @@ public class CQL2PgJSON {
   }
 
   private String appendLengthCase(String comparator, String index, String termUnmod,boolean not, String sql) {
-
     String joiner = not ? " OR " : " AND ";
     sql += " ELSE " + wrapIndexForLength(index) + " " + comparator +  wrapTermForLength(termUnmod) + joiner + index + " " + comparator + " " + termUnmod + " END";
     return sql;
