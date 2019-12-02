@@ -1,3 +1,18 @@
+## 29.1.0 2019-12-02
+
+ * RMB-529 Upgrade Vert.x 3.8.4 fixing Netty HTTP request smuggling
+ * RMB-471 Fix ddlgen/Index.java StringBuilder code smells
+ * RMB-486 Use indexed id fields in foreign tables, such as
+   `holdingsRecords.permanentLocationId==abc*` from mod-inventory-storage
+ * RMB-487 support also field[*] notation
+ * RMB-404 Use org.folio.okapi.common.SemVer rather than copying Apache
+   Maven code
+ * RMB-506 Estimate hit counts
+ * RMB-522 TenantLoading in sequence - rather than parallel
+ * RMB-523 TenantLoading Retry with 422 for PUT/POST attempt
+ * RMB-524 TenantLoading does not work on Windows (path problem)
+ * RMB-528 schema.json's fromModuleVersion messy and buggy
+
 ## 29.0.0 2019-11-20
 
  * Update jackson to 2.10.1
