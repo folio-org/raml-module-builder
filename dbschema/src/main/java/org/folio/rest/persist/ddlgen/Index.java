@@ -9,8 +9,9 @@ import org.folio.cql2pgjson.util.Cql2PgUtil;
  *
  */
 public class Index extends TableIndexes {
-  private static String arrayToken = "[*]";
-  private static String arrayTermToken = "[*].";
+  private static final String ARRAY_TOKEN = "[*]";
+  private static final String ARRAY_TERM_TOKEN = "[*].";
+  private static final String JSONB = "jsonb";
   private boolean caseSensitive = false;
   private String whereClause = null;
   private boolean stringType = true;
@@ -23,24 +24,31 @@ public class Index extends TableIndexes {
   public boolean isCaseSensitive() {
     return caseSensitive;
   }
+
   public void setCaseSensitive(boolean caseSensitive) {
     this.caseSensitive = caseSensitive;
   }
+
   public String getWhereClause() {
     return whereClause;
   }
+
   public void setWhereClause(String whereClause) {
     this.whereClause = whereClause;
   }
+
   public boolean isStringType() {
     return stringType;
   }
+
   public void setStringType(boolean stringType) {
     this.stringType = stringType;
   }
+
   public boolean isRemoveAccents() {
     return removeAccents;
   }
+
   public void setRemoveAccents(boolean removeAccents) {
     this.removeAccents = removeAccents;
   }
@@ -60,12 +68,15 @@ public class Index extends TableIndexes {
   public void setArraySubfield(String modifiersSubfield) {
     this.arraySubfield = modifiersSubfield;
   }
+
   public String getMultiFieldNames() {
     return multiFieldNames;
   }
+
   public void setMultiFieldNames(String queryIndexName) {
     this.multiFieldNames = queryIndexName;
   }
+
   public String getSqlExpression() {
     return sqlExpression;
   }
@@ -76,41 +87,44 @@ public class Index extends TableIndexes {
   public String getFinalSqlExpression(String tableLoc) {
     if (this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
       return this.fieldPath;
-    } else if ( this.getSqlExpression() != null) {
+    }
+    if (this.getSqlExpression() != null) {
       return this.getSqlExpression();
-    } else {
-      String [] splitIndex = this.getMultiFieldNames().split(" *, *");
-
-      StringBuilder result = new StringBuilder("concat_space_sql(");
-      for (int i = 0;i < splitIndex.length;i++) {
-        if(i != 0) {
-          result .append(" , ");
-        }
-        appendExpandedTerm(tableLoc, splitIndex[i],result);
-      }
-      result.append(")");
-      return result.toString();
     }
 
+    String [] splitIndex = this.getMultiFieldNames().split(" *, *");
+
+    StringBuilder result = new StringBuilder("concat_space_sql(");
+    for (int i = 0; i < splitIndex.length; i++) {
+      if (i != 0) {
+        result.append(" , ");
+      }
+      appendExpandedTerm(tableLoc, splitIndex[i], result);
+    }
+    result.append(")");
+    return result.toString();
   }
 
   protected static void appendExpandedTerm(String table, String term, StringBuilder result) {
-    StringBuilder expandedTerm = new StringBuilder();
-    int idx = term.indexOf(arrayToken);
+    int idx = term.indexOf(ARRAY_TOKEN);
 
-    //case where the syntax is not found
+    //case where [*] is not found
     if (idx == -1) {
-      result.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlText("jsonb",term));
+      result.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlText(JSONB, term));
       return;
     }
-    //case where the [*] is found
-    if(idx == term.length() - arrayToken.length()) {
-      expandedTerm.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx)));
-      result.append("concat_array_object(").append(expandedTerm).append(")");
+    //case where [*] is found at the end
+    if (idx == term.length() - ARRAY_TOKEN.length()) {
+      result.append("concat_array_object(")
+            .append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson(JSONB, term.substring(0,idx)))
+            .append(")");
       return;
     }
-    //case where the [*].value is found
-    result.append("concat_array_object_values(").append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson("jsonb",term.substring(0,idx))).append(",").append("'");
-    result.append(term.substring(idx + arrayTermToken.length(), term.length())).append("'").append(")");
+    //case with [*].value
+    result.append("concat_array_object_values(")
+          .append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson(JSONB,term.substring(0,idx)))
+          .append(",")
+          .append("'").append(term.substring(idx + ARRAY_TERM_TOKEN.length(), term.length())).append("'")
+          .append(")");
   }
 }
