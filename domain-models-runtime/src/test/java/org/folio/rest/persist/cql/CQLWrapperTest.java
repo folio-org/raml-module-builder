@@ -186,7 +186,7 @@ public class CQLWrapperTest {
     assertThat(wrapperWhere.getType(), is("WHERE"));
     assertThat(wrapperNone.getType(), is("NONE"));
 
-    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
+    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY left(lower(f_unaccent(field->>'name')),600)"));
     assertThat(wrapperCriterion.toString(), is("WHERE (jsonb->>id) = '42'"));
     assertThat(wrapperWhere.toString(), is("where false"));
 
