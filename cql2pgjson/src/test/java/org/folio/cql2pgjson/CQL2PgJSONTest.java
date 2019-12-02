@@ -764,11 +764,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     assertThat(s.getWhere(),
         allOf(containsString("to_tsvector"),
             containsString("users.user_data->>'email'")));
-    assertEquals("lower(f_unaccent(users.user_data->>'name')) DESC", s.getOrderBy());
+    assertEquals("left(lower(f_unaccent(users.user_data->>'name')),600) DESC", s.getOrderBy());
     String sql = s.toString();
     assertTrue(sql.startsWith("WHERE to_tsvector('simple',"));
     assertTrue(sql.endsWith(" ORDER BY "
-      + "lower(f_unaccent(users.user_data->>'name')) DESC"));
+      + "left(lower(f_unaccent(users.user_data->>'name')),600) DESC"));
   }
 
   @Test
