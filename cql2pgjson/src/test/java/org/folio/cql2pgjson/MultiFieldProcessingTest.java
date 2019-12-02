@@ -67,7 +67,7 @@ public class MultiFieldProcessingTest {
             containsString("Smith"),
             containsString("field1->>'email'"),
             containsString("gmail.com"),
-            containsString("ORDER BY lower(f_unaccent(field2->>'name'))")));
+            containsString("ORDER BY left(lower(f_unaccent(field2->>'name')))")));
   }
 
 }
