@@ -64,6 +64,10 @@
       "run": "before",
       "snippetPath": "script.sql",
       "fromModuleVersion": "mod-foo-18.2.2"
+    },
+    {
+      "run": "after",
+      "snippetPath": "script.sql"
     }
   ]
 }

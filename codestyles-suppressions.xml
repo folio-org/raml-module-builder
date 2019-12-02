@@ -5,8 +5,6 @@
     "http://checkstyle.sourceforge.net/dtds/suppressions_1_1.dtd">
 
 <suppressions>
-  <!-- Source code copied from https://github.com/apache/maven -->
-  <suppress checks="DeclarationOrder"  files="util[\\/]src[\\/]main[\\/]java[\\/]org[\\/]folio[\\/]util[\\/]ComparableVersion.java"/>
   <!-- Tone down the checking for test code -->
   <suppress checks="ImportControl"     files=".*[\\/]src[\\/](test|it)[\\/]"/>
   <suppress checks="Javadoc"           files=".*[\\/]src[\\/](test|it)[\\/]"/>
