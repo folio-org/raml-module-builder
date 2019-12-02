@@ -395,7 +395,7 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
+      order.append(wrapIndexForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers))).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
