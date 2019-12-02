@@ -195,7 +195,7 @@ public class CQLWrapperTest {
     assertThat(wrapperWhere.getQuery(), is("where false"));
 
     wrapperCql.addWrapper(wrapperNone);
-    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
+    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY left(lower(f_unaccent(field->>'name')),600)"));
     wrapperCql.addWrapper(wrapperCriterion);
     assertThat(wrapperCql.toString(), is("WHERE (true) and (jsonb->>id) = '42' ORDER BY left(lower(f_unaccent(field->>'name')),600)"));
     wrapperCriterion.addWrapper(wrapperCql, "or");
