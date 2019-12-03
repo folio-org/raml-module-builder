@@ -594,7 +594,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "*         sortBy name/sort.descending/string    # Lea Long; Ka Keller; Jo Jane",
     "*         sortBy alternateEmail                 # Jo Jane; Lea Long; Ka Keller",
     "*         sortBy alternateEmail/sort.ascending  # Jo Jane; Lea Long; Ka Keller",
-    "*         sortBy alternateEmail/sort.descending # Ka Keller; Jo Jane; Lea Long",
+    "*         sortBy alternateEmail/sort.descending # Ka Keller; Lea Long; Jo Jane",
     "*         sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long",
     "name=\"\" sortBy name                           # Jo Jane; Ka Keller; Lea Long",
     "name=\"\" sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
