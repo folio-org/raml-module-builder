@@ -395,7 +395,7 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(wrapForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers))).append(desc).append(", ").append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
+      order.append(wrapIndexForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers))).append(desc).append(", ").append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
@@ -896,10 +896,10 @@ public class CQL2PgJSON {
       } else {
         indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
-      indexMod = wrapForLength(indexMod);
+      indexMod = wrapIndexForLength(indexMod);
       sql = "CASE WHEN length(" + term + ") <= 600 THEN "
-       + indexMod +  likeOperator + wrapForLength(wrapInLowerUnaccent(term, schemaIndex));
-      sql = appendLengthCase(likeOperator,likeOperator, indexText, term, comparator.equals("<>"), sql);
+       + indexMod +  likeOperator + wrapTermForLength(wrapInLowerUnaccent(term, schemaIndex));
+      sql = appendLengthCase(likeOperator, indexText, term, comparator.equals("<>"), sql);
     }
 
     if (!hasIndex) {
@@ -934,8 +934,7 @@ public class CQL2PgJSON {
     } else {
       sql = "CASE WHEN length(" + term + ") <= 600 THEN "
         + index + " " + comparator + term;
-      String lengthCaseComparator = determineLengthCaseComparator(comparator);
-      sql = appendLengthCase(lengthCaseComparator,comparator, index, term, false, sql);
+      sql = appendLengthCase(comparator, index, term, true, sql);
     }
 
     if (!hasIndex) {
@@ -947,27 +946,20 @@ public class CQL2PgJSON {
     return sql;
   }
 
-  private String determineLengthCaseComparator(String comparator) {
-    String lengthCaseComparator = "";
-    if(comparator.equals("<") ){
-      lengthCaseComparator = "<=";
-    } else if(comparator.equals(">")) {
-      lengthCaseComparator = ">=";
-    } else {
-      lengthCaseComparator = comparator;
-    }
-    return lengthCaseComparator;
-  }
-
-  private String appendLengthCase(String lengthCaseComparator, String comparator, String index, String termUnmod, boolean not, String sql) {
+  private String appendLengthCase(String comparator, String index, String termUnmod, boolean not, String sql) {
     String joiner = not ? " OR " : " AND ";
-    sql += " ELSE " + wrapForLength(index) + " " + lengthCaseComparator + " " +  wrapForLength(termUnmod) + joiner + index + " " + comparator + " " + termUnmod + " END";
+    sql += " ELSE " + wrapIndexForLength(index) + " " + comparator + " " +  wrapTermForLength(termUnmod) + joiner + index + " " + comparator + " " + termUnmod + " END";
     return sql;
   }
 
-  private String wrapForLength(String term) {
+  private String wrapTermForLength(String term) {
    term = "left(" + term + ",600) ";
    return term;
+  }
+
+  private String wrapIndexForLength(String index) {
+    index = "left(" + index + ",600)";
+    return index;
   }
 
 }
