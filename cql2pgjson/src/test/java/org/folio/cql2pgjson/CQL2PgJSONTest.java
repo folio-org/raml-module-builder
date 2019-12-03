@@ -781,7 +781,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     String sql = s.toString();
     assertTrue(sql.startsWith("WHERE to_tsvector('simple',"));
     assertTrue(sql.endsWith(" ORDER BY "
-      + "left(lower(f_unaccent(users.user_data->>'name')),600)  DESC, lower(f_unaccent(users.user_data->>'name')) DESC"));
+      + "left(lower(f_unaccent(users.user_data->>'name')),600) DESC, lower(f_unaccent(users.user_data->>'name')) DESC"));
   }
 
   @Test
