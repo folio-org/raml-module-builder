@@ -966,7 +966,7 @@ public class CQL2PgJSON {
   }
 
   private String wrapForLength(String term) {
-   term = "left(" + term + ",600) ";
+   term = "left(" + term + ",600)";
    return term;
   }
 
