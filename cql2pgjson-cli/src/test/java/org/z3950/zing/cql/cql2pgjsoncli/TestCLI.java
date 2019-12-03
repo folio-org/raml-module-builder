@@ -99,7 +99,7 @@ public class TestCLI {
   @Test
   public void testCLIAllRecordsSorted() throws Exception {
     testCLI("cql.allRecords=1 sortBy title",
-        "select * from instance where true order by left(lower(f_unaccent(instance.jsonb->>'title')),600)");
+        "select * from instance where true order by left(lower(f_unaccent(instance.jsonb->>'title')),600), lower(f_unaccent(instance.jsonb->>'title'))");
   }
 
   @Test
