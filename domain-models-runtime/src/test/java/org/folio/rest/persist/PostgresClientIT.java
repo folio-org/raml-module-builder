@@ -1460,6 +1460,18 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void getByCriterionWithIdColumn(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    Criterion criterion = new Criterion();
+    criterion.addCriterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setVal(ids.getString(0)));
+    postgresClient.get(FOO, StringPojo.class, criterion, false, false, context.asyncAssertSuccess(res -> {
+      assertThat(res.getResults().size(), is(1));
+      assertThat(res.getResults().get(0).key, is("x"));
+    }));
+  }
+
+  @Test
   public void getByIdsEmpty(TestContext context) {
     Async async = context.async();
     createFoo(context).getByIdAsString(FOO, new JsonArray(), res -> {
