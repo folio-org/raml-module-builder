@@ -322,8 +322,12 @@ public class PostgresClientIT {
   }
 
   private PostgresClient createFoo(TestContext context) {
-    return createTable(context, TENANT, FOO,
+    PostgresClient postgresClient = createTable(context, TENANT, FOO,
         "id UUID PRIMARY KEY , jsonb JSONB NOT NULL");
+    String schema = PostgresClient.convertToPsqlStandard(TENANT);
+    execute(context, "CREATE TRIGGER set_id_in_jsonb BEFORE INSERT OR UPDATE ON " + schema + "."  + FOO +
+        " FOR EACH ROW EXECUTE PROCEDURE " + schema + ".set_id_in_jsonb();");
+    return postgresClient;
   }
 
   private PostgresClient createFooBinary(TestContext context) {
@@ -560,27 +564,23 @@ public class PostgresClientIT {
     }));
   }
 
-  private void deleteByPojo(TestContext context, Object pojo) throws FieldException {
-    Async async = context.async();
-    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(randomUuid()));
-    postgresClient.delete(FOO, pojo, context.asyncAssertSuccess(delete -> {
-      context.assertEquals(1, delete.getUpdated(), "number of records deleted");
-      postgresClient.selectSingle("SELECT count(*) FROM " + FOO, context.asyncAssertSuccess(select -> {
-        context.assertEquals(1, select.getInteger(0), "remaining records");
-        async.complete();
+  @Test
+  public void deleteByPojo(TestContext context) throws FieldException {
+    StringPojo pojo1 = new StringPojo("'", randomUuid());
+    StringPojo pojo2 = new StringPojo("x", randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(pojo2.id).add(pojo1.id));
+    postgresClient.delete(FOO, pojo2, context.asyncAssertSuccess(delete1 -> {
+      context.assertEquals(1, delete1.getUpdated(), "number of records deleted");
+      postgresClient.selectSingle("SELECT count(*) FROM " + FOO, context.asyncAssertSuccess(select1 -> {
+        context.assertEquals(1, select1.getInteger(0), "remaining records");
+        postgresClient.delete(FOO, pojo1, context.asyncAssertSuccess(delete2 -> {
+          context.assertEquals(1, delete2.getUpdated(), "number of records deleted");
+          postgresClient.selectSingle("SELECT count(*) FROM " + FOO, context.asyncAssertSuccess(select2 -> {
+            context.assertEquals(0, select2.getInteger(0), "remaining records");
+          }));
+        }));
       }));
     }));
-    async.await(5000);
-  }
-
-  @Test
-  public void deleteByPojoX(TestContext context) throws FieldException {
-    deleteByPojo(context, xPojo);
-  }
-
-  @Test
-  public void deleteByPojoSingleQuote(TestContext context) throws FieldException {
-    deleteByPojo(context, singleQuotePojo);  // SQL injection?
   }
 
   @Test
@@ -1445,6 +1445,18 @@ public class PostgresClientIT {
       context.assertTrue(res.result().isEmpty());
       async.complete();
     });
+  }
+
+  @Test
+  public void getByCriterion(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    Criterion criterion = new Criterion();
+    criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setVal("x"));
+    postgresClient.get(FOO, StringPojo.class, criterion, false, false, context.asyncAssertSuccess(res -> {
+      assertThat(res.getResults().size(), is(1));
+      assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
+    }));
   }
 
   @Test
