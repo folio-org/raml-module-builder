@@ -1465,7 +1465,7 @@ public class PostgresClientIT {
     PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
     Criterion criterion = new Criterion();
     criterion.addCriterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setVal(ids.getString(0)));
-    postgresClient.get(FOO, StringPojo.class, criterion, false, false, context.asyncAssertSuccess(res -> {
+    postgresClient.get(FOO, StringPojo.class, criterion, false, context.asyncAssertSuccess(res -> {
       assertThat(res.getResults().size(), is(1));
       assertThat(res.getResults().get(0).key, is("x"));
     }));
