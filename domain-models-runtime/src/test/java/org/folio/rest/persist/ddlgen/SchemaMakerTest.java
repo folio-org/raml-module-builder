@@ -344,7 +344,7 @@ public class SchemaMakerTest {
     // by default all indexes are wrapped with lower/f_unaccent
     // except full text which only obeys f_unaccent
     assertThat(ddl, containsString("(left(lower(f_unaccent(jsonb->>'id')),600))"));
-    assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'name')))"));
+    assertThat(ddl, containsString("(left(lower(f_unaccent(jsonb->>'name')),600))"));
     assertThat(ddl, containsString("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
     assertThat(ddl, containsString("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
     assertThat(ddl, containsString("GIN(to_tsvector('simple', f_unaccent(jsonb->>'title')))"));

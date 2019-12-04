@@ -16,7 +16,7 @@
     <#list table.uniqueIndex as indexes>
     <#if indexes.tOps.name() == "ADD">
     CREATE UNIQUE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique ON ${myuniversity}_${mymodule}.${table.tableName}
-    ( ${indexes.getFinalSqlExpression(table.tableName)} )
+    (left( ${indexes.getFinalSqlExpression(table.tableName)},600) )
      <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
     <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique;
