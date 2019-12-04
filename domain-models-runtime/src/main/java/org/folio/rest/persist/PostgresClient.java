@@ -2108,7 +2108,7 @@ public class PostgresClient {
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     get(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME, filter, returnCount,
-      false, setId, facets, replyHandler);
+      true, setId, facets, replyHandler);
   }
 
   <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
