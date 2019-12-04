@@ -1,3 +1,7 @@
+## 29.1.1 2019-12-04
+
+ * RMB-532 Fix Criterion get does not select id (only jsonb)
+
 ## 29.1.0 2019-12-02
 
  * RMB-529 Upgrade Vert.x 3.8.4 fixing Netty HTTP request smuggling
