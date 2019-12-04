@@ -742,7 +742,7 @@ public class CQL2PgJSON {
     switch (comparator) {
     case "=":
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+        return queryBySql(dbIndex.isOther() ? index : null , vals, node, comparator, modifiers, targetTable);
       } else {
         return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
       }
@@ -759,13 +759,13 @@ public class CQL2PgJSON {
         }
         return queryByLike(index, hasIndex, vals, node, comparator, modifiers, targetTable);
       } else {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+        return queryBySql(dbIndex.isOther() ? index : null, vals, node, comparator, modifiers, targetTable);
       }
     case "<" :
     case ">" :
     case "<=" :
     case ">=" :
-      return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+      return queryBySql(dbIndex.isOther() ? index : null, vals, node, comparator, modifiers, targetTable);
     default:
       throw new CQLFeatureUnsupportedException("Relation " + comparator
           + " not implemented yet: " + node.toString());
@@ -883,8 +883,10 @@ public class CQL2PgJSON {
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
       Index schemaIndex = null;
+      Index otherIndex = null;
       if (targetTable != null) {
         schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
+        otherIndex = DbSchemaUtils.getIndex(index, targetTable.getIndex());
       }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
@@ -896,10 +898,14 @@ public class CQL2PgJSON {
       } else {
         indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
-      indexMod = wrapForLength(indexMod);
-      sql = "CASE WHEN length(" + term + ") <= 600 THEN "
-       + indexMod +  likeOperator + wrapForLength(wrapInLowerUnaccent(term, schemaIndex));
-      sql = appendLengthCase(likeOperator,likeOperator, indexText, term, comparator.equals("<>"), sql);
+      if(otherIndex != null) {
+        indexMod = wrapForLength(indexMod);
+        sql = "CASE WHEN length(" + term + ") <= 600 THEN "
+         + indexMod +  likeOperator + wrapForLength(wrapInLowerUnaccent(term, schemaIndex));
+        sql = appendLengthCase(likeOperator,likeOperator, indexText, term, comparator.equals("<>"), sql);
+      } else {
+        sql = indexMod +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
+      }
     }
 
     if (!hasIndex) {
@@ -921,29 +927,35 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
-    String index = vals.getIndexText();
+  private String queryBySql(String index, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers, Table targetTable) {
+    String indexMod = vals.getIndexText();
+    Index otherIndex = null;
+    if(targetTable != null && index != null)
+      otherIndex = DbSchemaUtils.getIndex(index, targetTable.getIndex());
 
     if (comparator.equals("==")) {
       comparator = "=";
     }
+
     String sql;
     String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
-      sql = "(" + index + ")::numeric " + comparator + term;
-    } else {
+      sql = "(" + indexMod + ")::numeric " + comparator + term;
+    } else if(otherIndex != null) {
       sql = "CASE WHEN length(" + term + ") <= 600 THEN "
-        + index + " " + comparator + term;
+        + indexMod + " " + comparator + term;
       String lengthCaseComparator = determineLengthCaseComparator(comparator);
-      sql = appendLengthCase(lengthCaseComparator,comparator, index, term, false, sql);
+      sql = appendLengthCase(lengthCaseComparator,comparator, indexMod, term, false, sql);
+    } else {
+      sql = indexMod + " " + comparator + term;
     }
 
-    if (!hasIndex) {
-      String s = String.format("%s, CQL >>> SQL: %s >>> %s", index, node.toCQL(), sql);
+    if (index == null) {
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexMod, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing SQL query without index for {0}", s);
     }
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
+    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexMod, sql});
     return sql;
   }
 
