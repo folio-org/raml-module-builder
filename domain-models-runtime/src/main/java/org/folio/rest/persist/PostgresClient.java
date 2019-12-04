@@ -1950,7 +1950,7 @@ public class PostgresClient {
     String fieldsStr = Arrays.toString(fields);
     Class<T> clazz = (Class<T>) entity.getClass();
     get(null, table, clazz, fieldsStr.substring(1, fieldsStr.length() - 1),
-      criterion, returnCount, returnIdField, false, replyHandler);
+      criterion, returnCount, returnIdField, false, null, replyHandler);
   }
 
   /**
