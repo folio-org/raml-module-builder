@@ -99,8 +99,11 @@ public class ForeignKeyGenerationTest  {
   public void searchLikeStar() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == *").getWhere();
-    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
-        + "WHERE CASE WHEN length('%') <= 600 THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('%')),600) ELSE left(tableb.jsonb->>'prefix',600)  LIKE  left('%',600) AND tableb.jsonb->>'prefix'  LIKE  '%' END)", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE "
+        + "CASE WHEN length(f_unaccent('%')) <= 600 "
+        + "THEN left(f_unaccent(tableb.jsonb->>'prefix'),600) LIKE left(f_unaccent('%'),600) "
+        + "ELSE left(f_unaccent(tableb.jsonb->>'prefix'),600)  LIKE  left(f_unaccent('%'),600) "
+        + "AND f_unaccent(tableb.jsonb->>'prefix')  LIKE  f_unaccent('%') END)", sql);
   }
 
   @Test
@@ -116,7 +119,11 @@ public class ForeignKeyGenerationTest  {
   public void searchWithFUnaccent() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.otherindex >= y0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE CASE WHEN length('y0') <= 600 THEN tableb.jsonb->>'otherindex' >='y0' ELSE left(tableb.jsonb->>'otherindex',600) >= left('y0',600) AND tableb.jsonb->>'otherindex' >= 'y0' END)", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE "
+        + "CASE WHEN length(f_unaccent('y0')) <= 600 "
+        + "THEN f_unaccent(tableb.jsonb->>'otherindex') >= f_unaccent('y0') "
+        + "ELSE left(f_unaccent(tableb.jsonb->>'otherindex'),600) >= left(f_unaccent('y0'),600) "
+        + "AND f_unaccent(tableb.jsonb->>'otherindex') >= f_unaccent('y0') END)", sql);
   }
 
   @Test
