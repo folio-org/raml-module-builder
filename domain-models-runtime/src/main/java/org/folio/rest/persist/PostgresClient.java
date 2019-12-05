@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -1474,7 +1473,7 @@ public class PostgresClient {
    * @param where
    * @param returnCount
    * @param returnIdField
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param replyHandler
    * @deprecated use get with CQLWrapper or Criterion instead
    */
@@ -1494,7 +1493,7 @@ public class PostgresClient {
    * @param where
    * @param returnCount
    * @param returnIdField
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param facets
    * @param replyHandler
    * @deprecated use get with CQLWrapper or Criterion instead
@@ -1515,7 +1514,7 @@ public class PostgresClient {
  * @param where
  * @param returnCount
  * @param returnIdField
- * @param setId
+ * @param setId - unused, the database trigger will always set jsonb->'id' automatically
  * @param facets
  * @param distinctOn
  * @param replyHandler
@@ -1565,7 +1564,7 @@ public class PostgresClient {
    * @param wrapper
    * @param returnCount
    * @param returnIdField
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param facets
    * @param distinctOn
    * @param replyHandler
@@ -1605,7 +1604,7 @@ public class PostgresClient {
    * @param fieldName
    * @param where
    * @param returnIdField
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param distinctOn
    * @param streamHandler
    * @param replyHandler
@@ -1625,7 +1624,7 @@ public class PostgresClient {
    * @param fieldName
    * @param where
    * @param returnIdField
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param facets Not in use, but might work in the future, pass null for now
    * @param streamHandler
    * @param replyHandler
@@ -1646,7 +1645,7 @@ public class PostgresClient {
    * @param fieldName
    * @param where
    * @param returnIdField
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param facets Not in use, but might work in the future, pass null for now
    * @param distinctOn
    * @param streamHandler
@@ -1689,18 +1688,16 @@ public class PostgresClient {
 
             boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
-            Map<String, Method> externalColumnSettters = getExternalColumnSetters(
+            Map<String, Method> externalColumnSetters = getExternalColumnSetters(
               resultsHelper.columnNames,
               resultsHelper.clazz,
               isAuditFlavored
             );
 
-            String idPropName = databaseFieldToPojoSetter(ID_FIELD);
-
             sqlRowStream.resultSetClosedHandler(v ->  sqlRowStream.moreResults()).handler(r -> {
               JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
               try {
-                streamHandler.handle((T) deserializeRow(resultsHelper, externalColumnSettters, isAuditFlavored, idPropName, row));
+                streamHandler.handle((T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));
               } catch (Exception e) {
                 sqlRowStream.close();
                 if (!transactionMode) {
@@ -1950,15 +1947,10 @@ public class PostgresClient {
     if (limit != -1) {
       criterion.setLimit(new Limit(limit));
     }
-    boolean setId = true;
-    if (returnIdField == false) {
-      //if no id fields then cannot setId from extrnal column into json object
-      setId = false;
-    }
     String fieldsStr = Arrays.toString(fields);
     Class<T> clazz = (Class<T>) entity.getClass();
     get(null, table, clazz, fieldsStr.substring(1, fieldsStr.length() - 1),
-      criterion, returnCount, returnIdField, setId, null, replyHandler);
+      criterion, returnCount, returnIdField, false, null, replyHandler);
   }
 
   /**
@@ -2016,7 +2008,7 @@ public class PostgresClient {
    * @param fields
    * @param filter
    * @param returnCount
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param replyHandler
    * @deprecated use get with CQLWrapper or Criterion instead
    */
@@ -2039,7 +2031,7 @@ public class PostgresClient {
    * @param clazz
    * @param filter
    * @param returnCount
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param replyHandler
    * @deprecated use get with CQLWrapper or Criterion instead
    */
@@ -2093,7 +2085,7 @@ public class PostgresClient {
    * @param clazz - class of objects to be returned
    * @param filter - see Criterion class
    * @param returnCount - whether to return the amount of records matching the query
-   * @param setId - whether to automatically set the "id" field of the returned object
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param replyHandler
    * @throws Exception
    */
@@ -2347,7 +2339,7 @@ public class PostgresClient {
    * @param rs
    * @param total
    * @param clazz
-   * @param setId
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @return
    */
   <T> Results<T> processResults(ResultSet rs, Integer total, Class<T> clazz, boolean setId) {
@@ -2382,17 +2374,15 @@ public class PostgresClient {
 
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
-    Map<String, Method> externalColumnSettters = getExternalColumnSetters(
+    Map<String, Method> externalColumnSetters = getExternalColumnSetters(
       resultsHelper.columnNames,
       resultsHelper.clazz,
       isAuditFlavored
     );
 
-    String idPropName = databaseFieldToPojoSetter(ID_FIELD);
-
     for(JsonObject row : resultsHelper.resultSet.getRows()) {
       try {
-        resultsHelper.list.add((T) deserializeRow(resultsHelper, externalColumnSettters, isAuditFlavored, idPropName, row));
+        resultsHelper.list.add((T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         resultsHelper.list.add(null);
@@ -2403,19 +2393,16 @@ public class PostgresClient {
   /**
    *
    * @param resultsHelper
-   * @param externalColumnSettters
+   * @param externalColumnSetters
    * @param isAuditFlavored
-   * @param idPropName
    * @param row
    */
   <T> Object deserializeRow(
-    ResultsHelper<T> resultsHelper, Map<String, Method> externalColumnSettters,
-    boolean isAuditFlavored, String idPropName, JsonObject row
-  ) throws IOException, InstantiationException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    ResultsHelper<T> resultsHelper, Map<String, Method> externalColumnSetters,
+    boolean isAuditFlavored, JsonObject row
+  ) throws IOException, InstantiationException, IllegalAccessException {
 
     Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
-    Object id = row.getValue(ID_FIELD);
-
     Object o = null;
 
     if (!isAuditFlavored && jo != null) {
@@ -2448,11 +2435,7 @@ public class PostgresClient {
       o = resultsHelper.clazz.newInstance();
     }
 
-    populateExternalColumns(externalColumnSettters, o, row);
-
-    if (resultsHelper.setId) {
-      o.getClass().getMethod(idPropName, String.class).invoke(o, id.toString());
-    }
+    populateExternalColumns(externalColumnSetters, o, row);
 
     return o;
   }
@@ -2492,18 +2475,18 @@ public class PostgresClient {
    * @return
    */
   <T> Map<String, Method> getExternalColumnSetters(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored) {
-    Map<String, Method> externalColumnSettters = new HashMap<>();
+    Map<String, Method> externalColumnSetters = new HashMap<>();
     for (String columnName : columnNames) {
       if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(ID_FIELD)) {
         String methodName = databaseFieldToPojoSetter(columnName);
         for (Method method : clazz.getMethods()) {
           if (method.getName().equals(methodName)) {
-            externalColumnSettters.put(columnName, method);
+            externalColumnSetters.put(columnName, method);
           }
         }
       }
     }
-    return externalColumnSettters;
+    return externalColumnSetters;
   }
 
   /**
@@ -2514,12 +2497,12 @@ public class PostgresClient {
    * as well - also support the audit mode descrbed above.
    * NOTE: that the query must request any field it wants to get populated into the jsonb obj
    *
-   * @param externalColumnSettters
+   * @param externalColumnSetters
    * @param o
    * @param row
    */
-  void populateExternalColumns(Map<String, Method> externalColumnSettters, Object o, JsonObject row) {
-    for (Map.Entry<String, Method> entry : externalColumnSettters.entrySet()) {
+  void populateExternalColumns(Map<String, Method> externalColumnSetters, Object o, JsonObject row) {
+    for (Map.Entry<String, Method> entry : externalColumnSetters.entrySet()) {
       String columnName = entry.getKey();
       Method method = entry.getValue();
       try {
