@@ -395,7 +395,8 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(wrapForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers))).append(desc).append(", ").append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
+      order.append(wrapForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers))).append(desc).append(", ")
+      .append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
@@ -884,9 +885,11 @@ public class CQL2PgJSON {
     } else {
       Index schemaIndex = null;
       Index otherIndex = null;
+      Index uniqueIndex = null;
       if (targetTable != null) {
         schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
         otherIndex = DbSchemaUtils.getIndex(index, targetTable.getIndex());
+        uniqueIndex = DbSchemaUtils.getIndex(index, targetTable.getUniqueIndex());
       }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
@@ -898,11 +901,8 @@ public class CQL2PgJSON {
       } else {
         indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
-      if(otherIndex != null) {
-        indexMod = wrapForLength(indexMod);
-        sql = "CASE WHEN length(" + term + ") <= 600 THEN "
-         + indexMod +  likeOperator + wrapForLength(wrapInLowerUnaccent(term, schemaIndex));
-        sql = appendLengthCase(likeOperator,likeOperator, indexText, term, comparator.equals("<>"), sql);
+      if(otherIndex != null || uniqueIndex != null) {
+        sql = createLikeLengthCase(comparator, indexText, schemaIndex, likeOperator, term, indexMod);
       } else {
         sql = indexMod +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
       }
@@ -942,10 +942,7 @@ public class CQL2PgJSON {
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
       sql = "(" + indexMod + ")::numeric " + comparator + term;
     } else if(otherIndex != null) {
-      sql = "CASE WHEN length(" + term + ") <= 600 THEN "
-        + indexMod + " " + comparator + term;
-      String lengthCaseComparator = determineLengthCaseComparator(comparator);
-      sql = appendLengthCase(lengthCaseComparator,comparator, indexMod, term, false, sql);
+      sql = createSQLLengthCase(comparator, indexMod, term, false);
     } else {
       sql = indexMod + " " + comparator + term;
     }
@@ -956,6 +953,22 @@ public class CQL2PgJSON {
     }
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexMod, sql});
+    return sql;
+  }
+
+  private String createSQLLengthCase(String comparator, String index, String term, boolean not) {
+    String sql;
+    sql = "CASE WHEN length(" + term + ") <= 600 THEN " + index + " " + comparator + term;
+    String lengthCaseComparator = determineLengthCaseComparator(comparator);
+    sql = appendLengthCase(lengthCaseComparator,comparator, index, term, not, sql);
+    return sql;
+  }
+
+  private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term, String indexMod) {
+    String sql;
+    indexMod = wrapForLength(indexMod);
+    sql = "CASE WHEN length(" + term + ") <= 600 THEN " + indexMod +  likeOperator + wrapForLength(wrapInLowerUnaccent(term, schemaIndex));
+    sql = appendLengthCase(likeOperator,likeOperator, indexText, term, comparator.equals("<>"), sql);
     return sql;
   }
 
