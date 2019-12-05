@@ -886,11 +886,13 @@ public class CQL2PgJSON {
       Index schemaIndex = null;
       Index otherIndex = null;
       Index uniqueIndex = null;
+      Index ginIndex = null;
       if (targetTable != null) {
-        schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
+        ginIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
         otherIndex = DbSchemaUtils.getIndex(index, targetTable.getIndex());
         uniqueIndex = DbSchemaUtils.getIndex(index, targetTable.getUniqueIndex());
       }
+      schemaIndex = ginIndex != null? ginIndex : otherIndex != null ? otherIndex: uniqueIndex != null? uniqueIndex: null;
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       String indexMod;
@@ -901,7 +903,7 @@ public class CQL2PgJSON {
       } else {
         indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
-      if(otherIndex != null || uniqueIndex != null) {
+      if(schemaIndex != null && ginIndex == null) {
         sql = createLikeLengthCase(comparator, indexText, schemaIndex, likeOperator, term, indexMod);
       } else {
         sql = indexMod +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
@@ -966,9 +968,8 @@ public class CQL2PgJSON {
 
   private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term, String indexMod) {
     String sql;
-    indexMod = wrapForLength(indexMod);
-    sql = "CASE WHEN length(" + term + ") <= 600 THEN " + indexMod +  likeOperator + wrapForLength(wrapInLowerUnaccent(term, schemaIndex));
-    sql = appendLengthCase(likeOperator,likeOperator, indexText, term, comparator.equals("<>"), sql);
+    sql = "CASE WHEN length(" + term + ") <= 600 THEN " + wrapForLength(indexMod) +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
+    sql = appendLengthCase(likeOperator,likeOperator, indexMod, wrapInLowerUnaccent(term, schemaIndex), comparator.equals("<>"), sql);
     return sql;
   }
 
