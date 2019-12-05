@@ -2350,7 +2350,7 @@ public class PostgresClientIT {
         "cql.allRecords="); // syntax error
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, true, true, false, null, null/*facets*/, handler -> {
+        cqlWrapper, true, true, null, null/*facets*/, handler -> {
           context.assertTrue(handler.failed());
           async.complete();
         });
@@ -2368,7 +2368,7 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, false, true, false, null, null/*facets*/, handler -> {
+        cqlWrapper, false, true, null, null/*facets*/, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(6, resultInfo.getTotalRecords());
@@ -2388,7 +2388,7 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb",
-        cqlWrapper, true, true, false, facets, null, handler -> {
+        cqlWrapper, true, true, facets, null, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(6, resultInfo.getTotalRecords());
@@ -2401,7 +2401,7 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "jsonb",
-        cqlWrapper, true, true, false, facets, distinctOn, handler -> {
+        cqlWrapper, true, true, facets, distinctOn, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(4, resultInfo.getTotalRecords());
@@ -2422,7 +2422,7 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, true, true, false, facets, null, handler -> {
+        cqlWrapper, true, true, facets, null, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(6, resultInfo.getTotalRecords());
@@ -2438,7 +2438,7 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, true, true, false, emptyFacets, distinctOn, handler -> {
+        cqlWrapper, true, true, emptyFacets, distinctOn, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(4, resultInfo.getTotalRecords());
@@ -2452,7 +2452,7 @@ public class PostgresClientIT {
       Async async = context.async();
       CQLWrapper cqlWrapperNull = null;
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapperNull, true, true, false, facets, null, handler -> {
+        cqlWrapperNull, true, true, facets, null, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(6, resultInfo.getTotalRecords());
@@ -2466,7 +2466,7 @@ public class PostgresClientIT {
       Async async = context.async();
       CQLWrapper cqlWrapperNull = null;
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapperNull, true, true, false, facets, distinctOn, handler -> {
+        cqlWrapperNull, true, true, facets, distinctOn, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(4, resultInfo.getTotalRecords());
@@ -2536,7 +2536,7 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, true, true, false, facets, null, handler -> {
+        cqlWrapper, true, true, facets, null, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(6, resultInfo.getTotalRecords());
@@ -2551,7 +2551,7 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, true, true, false, facets, distinctOn, handler -> {
+        cqlWrapper, true, true, facets, distinctOn, handler -> {
           context.assertTrue(handler.succeeded());
           ResultInfo resultInfo = handler.result().getResultInfo();
           context.assertEquals(4, resultInfo.getTotalRecords());
@@ -2565,7 +2565,7 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "order_format==Other");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, true, true, false, facets, distinctOn, handler -> {
+        cqlWrapper, true, true, facets, distinctOn, handler -> {
           context.assertTrue(handler.succeeded());
 
           try {
