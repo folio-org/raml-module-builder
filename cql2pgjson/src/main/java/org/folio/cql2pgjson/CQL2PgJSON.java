@@ -904,7 +904,7 @@ public class CQL2PgJSON {
         indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
       if(schemaIndex != null && ginIndex == null) {
-        sql = createLikeLengthCase(comparator, indexText, schemaIndex, likeOperator, term, indexMod);
+        sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
       } else {
         sql = indexMod +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
       }
@@ -944,7 +944,7 @@ public class CQL2PgJSON {
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
       sql = "(" + indexMod + ")::numeric " + comparator + term;
     } else if(otherIndex != null) {
-      sql = createSQLLengthCase(comparator, indexMod, term, false);
+      sql = createSQLLengthCase(comparator, indexMod, term, false,otherIndex);
     } else {
       sql = indexMod + " " + comparator + term;
     }
@@ -958,18 +958,18 @@ public class CQL2PgJSON {
     return sql;
   }
 
-  private String createSQLLengthCase(String comparator, String index, String term, boolean not) {
+  private String createSQLLengthCase(String comparator, String index, String term, boolean not, Index schemaIndex) {
     String sql;
-    sql = "CASE WHEN length(" + term + ") <= 600 THEN " + index + " " + comparator + term;
+    sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapInLowerUnaccent(index, schemaIndex) + " " + comparator + " " + wrapInLowerUnaccent(term, schemaIndex);
     String lengthCaseComparator = determineLengthCaseComparator(comparator);
-    sql = appendLengthCase(lengthCaseComparator,comparator, index, term, not, sql);
+    sql = appendLengthCase(lengthCaseComparator,comparator, wrapInLowerUnaccent(index, schemaIndex), wrapInLowerUnaccent(term, schemaIndex), not, sql);
     return sql;
   }
 
-  private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term, String indexMod) {
+  private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term) {
     String sql;
-    sql = "CASE WHEN length(" + term + ") <= 600 THEN " + wrapForLength(indexMod) +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
-    sql = appendLengthCase(likeOperator,likeOperator, indexMod, wrapInLowerUnaccent(term, schemaIndex), comparator.equals("<>"), sql);
+    sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapForLength(indexText) +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
+    sql = appendLengthCase(likeOperator,likeOperator, indexText, wrapInLowerUnaccent(term, schemaIndex), comparator.equals("<>"), sql);
     return sql;
   }
 

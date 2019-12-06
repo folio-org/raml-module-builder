@@ -11,7 +11,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("keys == x").toString();
-    String expected = "WHERE CASE WHEN length('x') <= 600 "
+    String expected = "WHERE CASE WHEN length(lower(f_unaccent('x'))) <= 600 "
         + "THEN left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'key1' , tablea.jsonb->>'key2'))),600) LIKE lower(f_unaccent('x')) "
         + "ELSE left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'key1' , tablea.jsonb->>'key2'))),600)  LIKE  left(lower(f_unaccent('x')),600) "
         + "AND lower(f_unaccent(concat_space_sql(tablea.jsonb->>'key1' , tablea.jsonb->>'key2')))  LIKE  lower(f_unaccent('x')) END";
@@ -23,7 +23,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("barcode == y").toString();
-    String expected = "WHERE CASE WHEN length('y') <= 600 "
+    String expected = "WHERE CASE WHEN length(lower(f_unaccent('y'))) <= 600 "
       + "THEN left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))),600) LIKE lower(f_unaccent('y')) "
       + "ELSE left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))),600)  LIKE  left(lower(f_unaccent('y')),600) "
       + "AND lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber')))  LIKE  lower(f_unaccent('y')) END";
