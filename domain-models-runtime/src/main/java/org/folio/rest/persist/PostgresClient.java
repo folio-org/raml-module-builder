@@ -1527,7 +1527,7 @@ public class PostgresClient {
 
     CQLWrapper wrapper = new CQLWrapper().setWhereClause(where);
     client.getConnection(conn
-      -> doGet(conn, table, clazz, fieldName, wrapper, returnCount, returnIdField, setId, facets, distinctOn,
+      -> doGet(conn, table, clazz, fieldName, wrapper, returnCount, returnIdField, facets, distinctOn,
         closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -1564,14 +1564,13 @@ public class PostgresClient {
    * @param wrapper
    * @param returnCount
    * @param returnIdField
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param facets
    * @param distinctOn
    * @param replyHandler
    */
   private <T> void doGet(
     AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
-    String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField, boolean setId,
+    String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField,
     List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
   ) {
 
@@ -1585,10 +1584,10 @@ public class PostgresClient {
       QueryHelper queryHelper = buildQueryHelper(true, table, fieldName, wrapper, returnIdField, facets, distinctOn);
       if (returnCount) {
         processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
-          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
+          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz), replyHandler);
       } else {
         processQuery(connection, queryHelper, null, GET_STAT_METHOD,
-          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz, setId), replyHandler);
+          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz), replyHandler);
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1661,7 +1660,7 @@ public class PostgresClient {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         doStreamGet(connection, false, table, clazz, fieldName, where,
-          returnIdField, setId, distinctOn, streamHandler, replyHandler);
+          returnIdField, distinctOn, streamHandler, replyHandler);
       }
       else{
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -1671,7 +1670,7 @@ public class PostgresClient {
 
   private <T> void doStreamGet(
     SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
-    String fieldName, String where, boolean returnIdField, boolean setId, String distinctOn,
+    String fieldName, String where, boolean returnIdField, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
   ) {
 
@@ -1684,7 +1683,7 @@ public class PostgresClient {
 
             SQLRowStream sqlRowStream = stream.result();
 
-            ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz, setId);
+            ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
 
             boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
@@ -1950,7 +1949,7 @@ public class PostgresClient {
     String fieldsStr = Arrays.toString(fields);
     Class<T> clazz = (Class<T>) entity.getClass();
     get(null, table, clazz, fieldsStr.substring(1, fieldsStr.length() - 1),
-      criterion, returnCount, returnIdField, false, null, replyHandler);
+      criterion, returnCount, returnIdField, null, replyHandler);
   }
 
   /**
@@ -1964,39 +1963,45 @@ public class PostgresClient {
    */
   public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, filter, returnCount, true /*setId*/, replyHandler);
+    get(table, clazz, filter, returnCount, false /*setId*/, replyHandler);
   }
 
+  /**
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   */
   public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
       boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, fields, filter, returnCount, setId, null /*facets*/, replyHandler);
   }
 
+  /**
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   */
   public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
     boolean returnCount, boolean setId, List<FacetField> facets,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     String distinctOn = null;
     boolean returnIdField = true;
-    get(table, clazz, fields, filter, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
+    get(table, clazz, fields, filter, returnCount, returnIdField, facets, distinctOn, replyHandler);
   }
 
   <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
-    boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
+    boolean returnCount, boolean returnIdField, List<FacetField> facets, String distinctOn,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     String fieldsStr = Arrays.toString(fields);
     String fieldName = fieldsStr.substring(1, fieldsStr.length() - 1);
-    get(table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn, replyHandler);
+    get(table, clazz, fieldName, filter, returnCount, returnIdField, facets, distinctOn, replyHandler);
   }
 
   <T> void get(String table, Class<T> clazz, String fieldName, CQLWrapper filter,
-    boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
+    boolean returnCount, boolean returnIdField, List<FacetField> facets, String distinctOn,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     client.getConnection(conn
-      -> doGet(conn, table, clazz, fieldName, filter, returnCount, returnIdField, setId, facets, distinctOn,
+      -> doGet(conn, table, clazz, fieldName, filter, returnCount, returnIdField, facets, distinctOn,
         closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -2048,31 +2053,53 @@ public class PostgresClient {
 
   public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
       boolean returnCount, Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, fields, filter, returnCount, true, replyHandler);
+    get(table, clazz, fields, filter, returnCount, false /* setId */, replyHandler);
   }
 
   /* PGUTIL USED VERSION */
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, true /*setId*/, replyHandler);
+    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, false /*setId*/, replyHandler);
   }
 
+  /**
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   * @deprecated use {@link #get(String, Class, CQLWrapper, boolean, Handler)} instead.
+   */
+  @Deprecated
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, replyHandler);
   }
 
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter,
-      boolean returnCount, boolean setId, List<FacetField> facets,
+      boolean returnCount, List<FacetField> facets,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, facets, replyHandler);
+    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, false /* setId */, facets, replyHandler);
   }
 
+  /**
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   * @deprecated use {@link #get(String, Class, CQLWrapper, boolean, List, Handler)} instead.
+   */
+  @Deprecated
+  public <T> void get(String table, Class<T> clazz, CQLWrapper filter,
+      boolean returnCount, boolean setId, List<FacetField> facets,
+      Handler<AsyncResult<Results<T>>> replyHandler) {
+    get(table, clazz, filter, returnCount, facets, replyHandler);
+  }
+
+  /**
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   */
   public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, filter, returnCount, setId, null, replyHandler);
   }
 
+  /**
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   */
   public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter,
     boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2095,25 +2122,28 @@ public class PostgresClient {
     get(null, table, clazz, filter, returnCount, setId, facets, replyHandler);
   }
 
+  /**
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   */
   public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
     Criterion filter, boolean returnCount, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     get(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME, filter, returnCount,
-      false, setId, facets, replyHandler);
+      false, facets, replyHandler);
   }
 
   <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
     String fieldName, Criterion filter, boolean returnCount, boolean returnIdField,
-    boolean setId, List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
+    List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     CQLWrapper cqlWrapper = new CQLWrapper(filter);
     if (conn == null) {
       get(table, clazz, fieldName, cqlWrapper, returnCount,
-        returnIdField, setId, facets, null, replyHandler);
+        returnIdField, facets, null, replyHandler);
     } else {
       doGet(conn, table, clazz, fieldName, cqlWrapper, returnCount,
-        returnIdField, setId, facets, null, replyHandler);
+        returnIdField, facets, null, replyHandler);
     }
   }
 
@@ -2299,24 +2329,21 @@ public class PostgresClient {
     final ResultSet resultSet;
     final List<String> columnNames;
     final Class<T> clazz;
-    final boolean setId;
     int total;
-    public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz, boolean setId) {
+    public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz) {
       this.list = new ArrayList<>();
       this.facets = new HashMap<>();
       this.resultSet = resultSet;
       this.columnNames = resultSet.getColumnNames();
       this.clazz= clazz;
-      this.setId = setId;
       this.total = total;
     }
-    public ResultsHelper(SQLRowStream sqlRowStream, Class<T> clazz, boolean setId) {
+    public ResultsHelper(SQLRowStream sqlRowStream, Class<T> clazz) {
       this.list = new ArrayList<>();
       this.facets = new HashMap<>();
       this.resultSet = null;
       this.columnNames = sqlRowStream.columns();
       this.clazz= clazz;
-      this.setId = setId;
     }
   }
 
@@ -2339,10 +2366,9 @@ public class PostgresClient {
    * @param rs
    * @param total
    * @param clazz
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @return
    */
-  <T> Results<T> processResults(ResultSet rs, Integer total, Class<T> clazz, boolean setId) {
+  <T> Results<T> processResults(ResultSet rs, Integer total, Class<T> clazz) {
     long start = System.nanoTime();
 
     if (total == null) {
@@ -2350,7 +2376,7 @@ public class PostgresClient {
       total = rs.getNumRows();
     }
 
-    ResultsHelper<T> resultsHelper = new ResultsHelper<>(rs, total, clazz, setId);
+    ResultsHelper<T> resultsHelper = new ResultsHelper<>(rs, total, clazz);
 
     deserializeResults(resultsHelper);
 

@@ -128,7 +128,7 @@ public class PostgresClientTest {
     int total = 15;
     ResultSet rs = getMockTestPojoResultSet(total);
 
-    List<TestPojo> results = testClient.processResults(rs, total, TestPojo.class, false).getResults();
+    List<TestPojo> results = testClient.processResults(rs, total, TestPojo.class).getResults();
 
     assertTestPojoResults(results, total);
   }
@@ -139,7 +139,7 @@ public class PostgresClientTest {
 
     int total = 25;
     ResultSet rs = getMockTestPojoResultSet(total);
-    PostgresClient.ResultsHelper<TestPojo> resultsHelper = new PostgresClient.ResultsHelper<>(rs, total, TestPojo.class, false);
+    PostgresClient.ResultsHelper<TestPojo> resultsHelper = new PostgresClient.ResultsHelper<>(rs, total, TestPojo.class);
 
     testClient.deserializeResults(resultsHelper);
 
@@ -238,7 +238,7 @@ public class PostgresClientTest {
     testClient.processQueryWithCount(connection, queryHelper, "get",
       totaledResults -> {
         assertThat(totaledResults.total, is(total));
-        return testClient.processResults(totaledResults.set, totaledResults.total, TestPojo.class, false);
+        return testClient.processResults(totaledResults.set, totaledResults.total, TestPojo.class);
       },
       reply -> {
         List<TestPojo> results = reply.result().getResults();
@@ -287,7 +287,7 @@ public class PostgresClientTest {
     };
 
     testClient.processQuery(connection, queryHelper, total, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class),
       reply -> {
         List<TestJsonbPojo> results = reply.result().getResults();
 
@@ -320,7 +320,7 @@ public class PostgresClientTest {
     };
 
     testClient.processQuery(connection, queryHelper, 30, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class),
       reply -> {
         assertThat(reply.failed(), is(true));
         assertThat(reply.cause().getMessage(), is("Bad query"));
@@ -336,7 +336,7 @@ public class PostgresClientTest {
 
     SQLConnection connection = null;
     testClient.processQuery(connection, queryHelper, 30, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class),
       reply -> {
         assertThat(reply.failed(), is(true));
         assertThat(reply.cause() instanceof NullPointerException, is(true));
