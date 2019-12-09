@@ -35,7 +35,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
-        + "WHERE CASE WHEN length('11111111-1111-1111-1111-111111111111') <= 600 THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600) ELSE left(tableb.jsonb->>'prefix',600)  LIKE  left('11111111-1111-1111-1111-111111111111',600) AND tableb.jsonb->>'prefix'  LIKE  '11111111-1111-1111-1111-111111111111' END)", sql);
+        + "WHERE CASE WHEN length(lower(f_unaccent('11111111-1111-1111-1111-111111111111'))) <= 600 THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')) ELSE left(lower(f_unaccent(tableb.jsonb->>'prefix')),600)  LIKE  left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600) AND lower(f_unaccent(tableb.jsonb->>'prefix'))  LIKE  lower(f_unaccent('11111111-1111-1111-1111-111111111111')) END)", sql);
   }
 
   @Test
@@ -43,7 +43,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tableb.json", "foreignKey.json")
         .toSql("tablea.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     assertEquals("tableb.tableaId IN  ( SELECT id FROM tablea "
-        + "WHERE CASE WHEN length('11111111-1111-1111-1111-111111111111') <= 600 THEN left(lower(f_unaccent(tablea.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600) ELSE left(tablea.jsonb->>'prefix',600)  LIKE  left('11111111-1111-1111-1111-111111111111',600) AND tablea.jsonb->>'prefix'  LIKE  '11111111-1111-1111-1111-111111111111' END)", sql);
+        + "WHERE CASE WHEN length(lower(f_unaccent('11111111-1111-1111-1111-111111111111'))) <= 600 THEN left(lower(f_unaccent(tablea.jsonb->>'prefix')),600) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')) ELSE left(lower(f_unaccent(tablea.jsonb->>'prefix')),600)  LIKE  left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600) AND lower(f_unaccent(tablea.jsonb->>'prefix'))  LIKE  lower(f_unaccent('11111111-1111-1111-1111-111111111111')) END)", sql);
   }
 
   @Test
@@ -100,10 +100,10 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == *").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE "
-        + "CASE WHEN length(f_unaccent('%')) <= 600 "
-        + "THEN left(f_unaccent(tableb.jsonb->>'prefix'),600) LIKE left(f_unaccent('%'),600) "
-        + "ELSE left(f_unaccent(tableb.jsonb->>'prefix'),600)  LIKE  left(f_unaccent('%'),600) "
-        + "AND f_unaccent(tableb.jsonb->>'prefix')  LIKE  f_unaccent('%') END)", sql);
+        + "CASE WHEN length(lower(f_unaccent('%'))) <= 600 "
+        + "THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE lower(f_unaccent('%')) "
+        + "ELSE left(lower(f_unaccent(tableb.jsonb->>'prefix')),600)  LIKE  left(lower(f_unaccent('%')),600) "
+        + "AND lower(f_unaccent(tableb.jsonb->>'prefix'))  LIKE  lower(f_unaccent('%')) END)", sql);
   }
 
   @Test
