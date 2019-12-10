@@ -871,17 +871,15 @@ public class CQL2PgJSON {
   private String queryByLike(String index, DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node,
     String comparator, CqlModifiers modifiers, Table targetTable) throws QueryValidationException {
 
-    String indexText = vals.getIndexText();
+    final String indexText = vals.getIndexText();
+    final Index schemaIndex = ObjectUtils.firstNonNull(
+        dbIndex.getGinIndex(), dbIndex.getLikeIndex(), dbIndex.getUniqueIndex(), dbIndex.getIndex());
     String sql = null;
-    Index schemaIndex;
 
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
-       schemaIndex = dbIndex.getGinIndex();  // FIXME
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
-      schemaIndex = ObjectUtils.firstNonNull(
-          dbIndex.getGinIndex(), dbIndex.getLikeIndex(), dbIndex.getUniqueIndex(), dbIndex.getIndex());
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
