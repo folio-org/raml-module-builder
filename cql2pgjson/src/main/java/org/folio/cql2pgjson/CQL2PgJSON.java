@@ -881,12 +881,6 @@ public class CQL2PgJSON {
     if (!relationModifiers.isEmpty()) {
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
-      Index otherIndex = null;
-      Index uniqueIndex = null;
-      Index ginIndex = null;
-        otherIndex = DbSchemaUtils.getIndex(index, targetTable.getIndex());
-        uniqueIndex = DbSchemaUtils.getIndex(index, targetTable.getUniqueIndex());
-      schemaIndex = ginIndex != null? ginIndex : otherIndex != null ? otherIndex: uniqueIndex != null? uniqueIndex: null;
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       String indexMod;
@@ -897,7 +891,7 @@ public class CQL2PgJSON {
       } else {
         indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
-      if(schemaIndex != null && ginIndex == null) {
+      if(schemaIndex != null) {
         sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
       } else {
         sql = indexMod +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
@@ -932,20 +926,16 @@ public class CQL2PgJSON {
    */
   private String queryBySql(DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
     String indexMod = vals.getIndexText();
-    Index otherIndex = null;
-    if(targetTable != null && index != null)
-      otherIndex = DbSchemaUtils.getIndex(index, targetTable.getIndex());
-
     if (comparator.equals("==")) {
       comparator = "=";
     }
-
+    Index schemaIndex = dbIndex.getIndex();
     String sql;
     String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
       sql = "(" + indexMod + ")::numeric " + comparator + term;
-    } else if(otherIndex != null) {
-      sql = createSQLLengthCase(comparator, indexMod, term, false,otherIndex);
+    } else if(dbIndex != null) {
+      sql = createSQLLengthCase(comparator, indexMod, term, false,schemaIndex);
     } else {
       sql = indexMod + " " + comparator + term;
     }

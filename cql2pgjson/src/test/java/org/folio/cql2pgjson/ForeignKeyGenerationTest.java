@@ -50,7 +50,9 @@ public class ForeignKeyGenerationTest  {
   public void searchWithLowerConstant() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.gprefix == x0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE lower(tableb.jsonb->>'gprefix') LIKE lower('x0'))", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE CASE WHEN length(lower('x0')) <= 600 THEN left(lower(tableb.jsonb->>'gprefix'),600)"
+        + " LIKE lower('x0') ELSE left(lower(tableb.jsonb->>'gprefix'),600)  LIKE  left(lower('x0'),600) "
+        + "AND lower(tableb.jsonb->>'gprefix')  LIKE  lower('x0') END)", sql);
   }
 
   @Test
@@ -100,7 +102,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == *").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE "
-        + "WHERE lower(tableb.jsonb->>'prefix') LIKE lower('%'))", sql);
+        + "CASE WHEN length(lower(f_unaccent('%'))) <= 600 "
         + "THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE lower(f_unaccent('%')) "
         + "ELSE left(lower(f_unaccent(tableb.jsonb->>'prefix')),600)  LIKE  left(lower(f_unaccent('%')),600) "
         + "AND lower(f_unaccent(tableb.jsonb->>'prefix'))  LIKE  lower(f_unaccent('%')) END)", sql);
