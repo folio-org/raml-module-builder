@@ -100,7 +100,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == *").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE "
-        + "CASE WHEN length(lower(f_unaccent('%'))) <= 600 "
+        + "WHERE lower(tableb.jsonb->>'prefix') LIKE lower('%'))", sql);
         + "THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE lower(f_unaccent('%')) "
         + "ELSE left(lower(f_unaccent(tableb.jsonb->>'prefix')),600)  LIKE  left(lower(f_unaccent('%')),600) "
         + "AND lower(f_unaccent(tableb.jsonb->>'prefix'))  LIKE  lower(f_unaccent('%')) END)", sql);
