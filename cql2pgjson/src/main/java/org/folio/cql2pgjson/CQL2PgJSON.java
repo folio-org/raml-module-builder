@@ -934,7 +934,7 @@ public class CQL2PgJSON {
     String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
       sql = "(" + indexMod + ")::numeric " + comparator + term;
-    } else if(dbIndex != null) {
+    } else if(schemaIndex != null) {
       sql = createSQLLengthCase(comparator, indexMod, term, false,schemaIndex);
     } else {
       sql = indexMod + " " + comparator + term;
