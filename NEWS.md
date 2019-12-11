@@ -1,3 +1,7 @@
+## 29.1.2 2019-12-11
+
+ * RMB-533 Unit tests fail due to missing index knowledge
+
 ## 29.1.1 2019-12-04
 
  * RMB-532 Fix Criterion get does not select id (only jsonb)
