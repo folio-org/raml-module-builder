@@ -11,6 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -742,30 +743,26 @@ public class CQL2PgJSON {
     switch (comparator) {
     case "=":
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+        return queryBySql(dbIndex, vals, node, comparator, modifiers);
       } else {
-        return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
+        return queryByFt(index, dbIndex, vals, node, comparator, modifiers, targetTable);
       }
     case "adj":
     case "all":
     case "any":
-      return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
+      return queryByFt(index, dbIndex, vals, node, comparator, modifiers, targetTable);
     case "==":
     case "<>":
       if (CqlTermFormat.STRING == modifiers.getCqlTermFormat()) {
-        boolean hasIndex = dbIndex.isGin();
-        if (!Cql2SqlUtil.hasCqlWildCardd(node.getTerm())) {
-          hasIndex = hasIndex || dbIndex.isOther();
-        }
-        return queryByLike(index, hasIndex, vals, node, comparator, modifiers, targetTable);
+        return queryByLike(index, dbIndex, vals, node, comparator, modifiers, targetTable);
       } else {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+        return queryBySql(dbIndex, vals, node, comparator, modifiers);
       }
     case "<" :
     case ">" :
     case "<=" :
     case ">=" :
-      return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+      return queryBySql(dbIndex, vals, node, comparator, modifiers);
     default:
       throw new CQLFeatureUnsupportedException("Relation " + comparator
           + " not implemented yet: " + node.toString());
@@ -783,7 +780,7 @@ public class CQL2PgJSON {
    * @return
    * @throws QueryValidationException
    */
-  private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator,
+  private String queryByFt(String index, DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator,
       CqlModifiers modifiers,Table targetTable) throws QueryValidationException {
     final String indexText = vals.getIndexText();
 
@@ -813,7 +810,7 @@ public class CQL2PgJSON {
       throw new CQLFeatureUnsupportedException("full text index does not support case sensitive: " + index);
     }
 
-    if (!hasFtIndex) {
+    if (! dbIndex.hasFullTextIndex()) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing FT search without index for {0}", s);
     }
@@ -871,21 +868,18 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryByLike(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
+  private String queryByLike(String index, DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node,
     String comparator, CqlModifiers modifiers, Table targetTable) throws QueryValidationException {
 
-    String indexText = vals.getIndexText();
+    final String indexText = vals.getIndexText();
+    final Index schemaIndex = ObjectUtils.firstNonNull(
+        dbIndex.getGinIndex(), dbIndex.getLikeIndex(), dbIndex.getUniqueIndex(), dbIndex.getIndex());
     String sql = null;
 
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
     if (!relationModifiers.isEmpty()) {
-      final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
-      Index schemaIndex = null;
-      if (targetTable != null) {
-        schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
-      }
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
@@ -898,9 +892,16 @@ public class CQL2PgJSON {
       sql = sql +  likeOperator + wrapInLowerUnaccent(like, schemaIndex);
     }
 
-    if (!hasIndex) {
-      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
-      logger.log(Level.WARNING, "Doing LIKE search without index for {0}", s);
+    if (Cql2SqlUtil.hasCqlWildCard(node.getTerm())) {  // FIXME: right truncation "abc*" works with index/uniqueIndex
+      if (! dbIndex.hasGinIndex() && ! dbIndex.hasLikeIndex()) {
+        String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
+        logger.log(Level.WARNING, "Doing wildcard LIKE search without index for {0}", s);
+      }
+    } else {
+      if (schemaIndex == null) {
+        String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
+        logger.log(Level.WARNING, "Doing LIKE search without index for {0}", s);
+      }
     }
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexText, sql});
@@ -917,7 +918,7 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
+  private String queryBySql(DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
     String index = vals.getIndexText();
 
     if (comparator.equals("==")) {
@@ -930,7 +931,7 @@ public class CQL2PgJSON {
     }
     String sql = index + " " + comparator + term;
 
-    if (!hasIndex) {
+    if (! dbIndex.hasIndex() && ! dbIndex.hasFullTextIndex() && ! dbIndex.hasLikeIndex()) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", index, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing SQL query without index for {0}", s);
     }

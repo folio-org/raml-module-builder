@@ -14,10 +14,24 @@ public class Table extends Versioned {
   private String tableName;
   private boolean withMetadata;
   private boolean withAuditing;
+  /**
+   * indexes using text_pattern_ops
+   * @see <a href="https://www.postgresql.org/docs/current/indexes-opclass.html">https://www.postgresql.org/docs/current/indexes-opclass.html</a>
+   */
   private List<Index> likeIndex;
+  /** unique btree indexes */
   private List<Index> uniqueIndex;
+  /** non-unique btree indexes */
   private List<Index> index;
+  /**
+   * indexes using gin_trgm_ops trigram matching
+   * @see <a href="https://www.postgresql.org/docs/current/pgtrgm.html#id-1.11.7.40.7">https://www.postgresql.org/docs/current/pgtrgm.html#id-1.11.7.40.7</a>
+   */
   private List<Index> ginIndex;
+  /**
+   * indexes using to_tsvector full text search
+   * @see <a href="https://www.postgresql.org/docs/current/textsearch-indexes.html">https://www.postgresql.org/docs/current/textsearch-indexes.html</a>
+   */
   private List<Index> fullTextIndex;
   private List<ForeignKeys> foreignKeys;
   private String customSnippetPath;

@@ -35,7 +35,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
-        + "WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')))", sql);
+        + "WHERE lower(tableb.jsonb->>'prefix') LIKE lower('11111111-1111-1111-1111-111111111111'))", sql);
   }
 
   @Test
@@ -43,7 +43,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tableb.json", "foreignKey.json")
         .toSql("tablea.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
     assertEquals("tableb.tableaId IN  ( SELECT id FROM tablea "
-        + "WHERE lower(f_unaccent(tablea.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')))", sql);
+        + "WHERE lower(tablea.jsonb->>'prefix') LIKE lower('11111111-1111-1111-1111-111111111111'))", sql);
   }
 
   @Test
@@ -100,7 +100,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == *").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
-        + "WHERE lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('%')))", sql);
+        + "WHERE lower(tableb.jsonb->>'prefix') LIKE lower('%'))", sql);
   }
 
   @Test
