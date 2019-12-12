@@ -1,6 +1,6 @@
 ## 29.1.2 2019-12-11
 
- * RMB-533 Unit tests fail due to missing index knowledge
+ * RMB-533 Performance: Fix lower/f\_unaccent usage by checking all 5 index types
 
 ## 29.1.1 2019-12-04
 
