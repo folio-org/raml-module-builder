@@ -48,7 +48,7 @@ class IndexTest {
     idx.setFieldPath("testIdx");
     idx.setFieldName("testIdx");
     idx.setMultiFieldNames("field1,field2,field3");
-    assertEquals("concat_space_sql(test_table.jsonb->>'field1' , test_table.jsonb->>'field2' , test_table.jsonb->>'field3')",idx.getFinalSqlExpression("test_table"));
+    assertEquals("f_unaccent(concat_space_sql(test_table.jsonb->>'field1' , test_table.jsonb->>'field2' , test_table.jsonb->>'field3'))",idx.getFinalSqlExpression("test_table"));
 
   }
 
@@ -58,7 +58,7 @@ class IndexTest {
     idx.setFieldPath("testIdx");
     idx.setFieldName("testIdx");
     idx.setMultiFieldNames("field1[*].test,field2[*].name,field3.blah.blah2[*].foo");
-    assertEquals("concat_space_sql(concat_array_object_values(test_table.jsonb->'field1','test') , concat_array_object_values(test_table.jsonb->'field2','name') , concat_array_object_values(test_table.jsonb->'field3'->'blah'->'blah2','foo'))",idx.getFinalSqlExpression("test_table"));
+    assertEquals("f_unaccent(concat_space_sql(concat_array_object_values(test_table.jsonb->'field1','test') , concat_array_object_values(test_table.jsonb->'field2','name') , concat_array_object_values(test_table.jsonb->'field3'->'blah'->'blah2','foo')))",idx.getFinalSqlExpression("test_table"));
 
   }
   @Test
@@ -74,7 +74,7 @@ class IndexTest {
     Index idx = new Index();
     idx.setFieldName("testIdx");
     idx.setMultiFieldNames("blah.blah2.field1,blah.blah2.field2");
-    assertEquals("concat_space_sql(test_table.jsonb->'blah'->'blah2'->>'field1' , test_table.jsonb->'blah'->'blah2'->>'field2')",idx.getFinalSqlExpression("test_table"));
+    assertEquals("f_unaccent(concat_space_sql(test_table.jsonb->'blah'->'blah2'->>'field1' , test_table.jsonb->'blah'->'blah2'->>'field2'))",idx.getFinalSqlExpression("test_table"));
   }
   @Test
   void nullSQLExpression() {
