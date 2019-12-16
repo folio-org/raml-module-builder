@@ -267,6 +267,14 @@ public final class Cql2SqlUtil {
         break;
       case '&':   // replace & so that we can replace all tsquery & by <-> for phrase search
       case '\'':  // replace single quote to avoid single quote masking
+        // replace all other single quotes that f_unaccent converts into the regular single quote
+        // select * from (select chr(generate_series(1,       55295))) x(s) where f_unaccent(s) = ''''
+        // select * from (select chr(generate_series(57344, 1114111))) x(s) where f_unaccent(s) = ''''
+      case '‘':
+      case '’':
+      case '‛':
+      case '′':
+      case '＇':
         t.append(',');
         backslash = false;
         break;
