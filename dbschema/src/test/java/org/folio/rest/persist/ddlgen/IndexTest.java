@@ -92,6 +92,7 @@ class IndexTest {
     idx.setFieldName("testIdx");
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(true);
+    idx.setMultiFieldNames("test1,test2.test3");
     assertEquals("",idx.getFinalSqlExpression("test_table"));
   }
 
@@ -102,6 +103,7 @@ class IndexTest {
     idx.setFieldName("testIdx");
     idx.setCaseSensitive(false);
     idx.setRemoveAccents(true);
+    idx.setMultiFieldNames("test1,test2.test3");
     assertEquals("",idx.getFinalSqlExpression("test_table"));
   }
 
@@ -112,6 +114,7 @@ class IndexTest {
     idx.setFieldName("testIdx");
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(false);
+    idx.setMultiFieldNames("test1,test2.test3");
     assertEquals("",idx.getFinalSqlExpression("test_table"));
   }
 
@@ -122,6 +125,7 @@ class IndexTest {
     idx.setFieldName("testIdx");
     idx.setCaseSensitive(false);
     idx.setRemoveAccents(false);
+    idx.setMultiFieldNames("test1,test2.test3");
     assertEquals("",idx.getFinalSqlExpression("test_table"));
   }
 }
