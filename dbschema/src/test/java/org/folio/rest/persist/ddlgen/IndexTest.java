@@ -86,46 +86,46 @@ class IndexTest {
   }
 
   @Test
-  void sqlWrapSetCaseSensitiveSetRemoveAccents() {
+  void sqlsetMultiFieldNamesWrapSetCaseSensitiveSetRemoveAccents() {
     Index idx = new Index();
     idx.setFieldPath("testIdx");
     idx.setFieldName("testIdx");
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(true);
     idx.setMultiFieldNames("test1,test2.test3");
-    assertEquals("",idx.getFinalSqlExpression("test_table"));
+    assertEquals("lower(f_unaccent(concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3')))",idx.getFinalSqlExpression("test_table"));
   }
 
   @Test
-  void sqlWrapSetRemoveAccents() {
+  void sqlsetMultiFieldNamesWrapSetRemoveAccents() {
     Index idx = new Index();
     idx.setFieldPath("testIdx");
     idx.setFieldName("testIdx");
     idx.setCaseSensitive(false);
     idx.setRemoveAccents(true);
     idx.setMultiFieldNames("test1,test2.test3");
-    assertEquals("",idx.getFinalSqlExpression("test_table"));
+    assertEquals("f_unaccent(concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3'))",idx.getFinalSqlExpression("test_table"));
   }
 
   @Test
-  void sqlWrapSetCaseSensitive() {
+  void sqlsetMultiFieldNamesWrapSetCaseSensitive() {
     Index idx = new Index();
     idx.setFieldPath("testIdx");
     idx.setFieldName("testIdx");
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(false);
     idx.setMultiFieldNames("test1,test2.test3");
-    assertEquals("",idx.getFinalSqlExpression("test_table"));
+    assertEquals("lower(concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3'))",idx.getFinalSqlExpression("test_table"));
   }
 
   @Test
-  void sqlWrap() {
+  void sqlsetMultiFieldNamesWrap() {
     Index idx = new Index();
     idx.setFieldPath("testIdx");
     idx.setFieldName("testIdx");
     idx.setCaseSensitive(false);
     idx.setRemoveAccents(false);
     idx.setMultiFieldNames("test1,test2.test3");
-    assertEquals("",idx.getFinalSqlExpression("test_table"));
+    assertEquals("concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3')",idx.getFinalSqlExpression("test_table"));
   }
 }
