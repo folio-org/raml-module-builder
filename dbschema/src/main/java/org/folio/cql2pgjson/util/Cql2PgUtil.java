@@ -250,6 +250,7 @@ public final class Cql2PgUtil {
     }
     result.append('\'');
   }
+
   public static String wrapInLowerUnaccent(String term, boolean lower, boolean unaccent) {
     if (lower) {
       if (unaccent) {
@@ -265,6 +266,4 @@ public final class Cql2PgUtil {
       }
     }
   }
-
-
 }
