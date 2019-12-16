@@ -86,14 +86,6 @@ public class CompoundIndexTest {
     String expected = "WHERE to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field3'->'info','city') , concat_array_object_values(tablea.jsonb->'field3'->'info','state'))) @@ replace((to_tsquery('simple', ('''Boston''')) && to_tsquery('simple', ('''MA''')))::text, '&', '<->')::tsquery";
     assertEquals(expected, sql);
   }
-@Test
-public void Test() throws Exception {
-  CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
-  cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
-  String sql = cql2pgJson.toSql("limit=30&query=(keyword all \"time\") sortby title").toString();
-  String expected = "WHERE (to_tsvector('simple'::regconfig, f_unaccent(concat_space_sql(VARIADIC ARRAY[jsonb ->> 'title'::text, concat_array_object_values(jsonb -> 'contributors'::text, 'name'::text), concat_array_object_values(jsonb -> 'identifiers'::text, 'value'::text)]))))";
-  assertEquals(expected, sql);
-}
 
   @Test
   public void multiFieldnamesFTDotStarPlain() throws Exception {

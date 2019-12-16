@@ -84,4 +84,44 @@ class IndexTest {
     idx.setSqlExpression(null);
     assertEquals("testIdx",idx.getFinalSqlExpression("test_table"));
   }
+
+  @Test
+  void sqlWrapSetCaseSensitiveSetRemoveAccents() {
+    Index idx = new Index();
+    idx.setFieldPath("testIdx");
+    idx.setFieldName("testIdx");
+    idx.setCaseSensitive(true);
+    idx.setRemoveAccents(true);
+    assertEquals("",idx.getFinalSqlExpression("test_table"));
+  }
+
+  @Test
+  void sqlWrapSetRemoveAccents() {
+    Index idx = new Index();
+    idx.setFieldPath("testIdx");
+    idx.setFieldName("testIdx");
+    idx.setCaseSensitive(false);
+    idx.setRemoveAccents(true);
+    assertEquals("",idx.getFinalSqlExpression("test_table"));
+  }
+
+  @Test
+  void sqlWrapSetCaseSensitive() {
+    Index idx = new Index();
+    idx.setFieldPath("testIdx");
+    idx.setFieldName("testIdx");
+    idx.setCaseSensitive(true);
+    idx.setRemoveAccents(false);
+    assertEquals("",idx.getFinalSqlExpression("test_table"));
+  }
+
+  @Test
+  void sqlWrap() {
+    Index idx = new Index();
+    idx.setFieldPath("testIdx");
+    idx.setFieldName("testIdx");
+    idx.setCaseSensitive(false);
+    idx.setRemoveAccents(false);
+    assertEquals("",idx.getFinalSqlExpression("test_table"));
+  }
 }
