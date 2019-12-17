@@ -317,21 +317,6 @@ public class CQL2PgJSON {
     return new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
-  private static String wrapInLowerUnaccent(String term, boolean lower, boolean unaccent) {
-    if (lower) {
-      if (unaccent) {
-        return "lower(f_unaccent(" + term + "))";
-      } else {
-        return "lower(" + term + ")";
-      }
-    } else {
-      if (unaccent) {
-        return "f_unaccent(" + term + ")";
-      } else {
-        return term;
-      }
-    }
-  }
 
   /**
    * Return $term, lower($term), f_unaccent($term) or lower(f_unaccent($term))
@@ -342,7 +327,7 @@ public class CQL2PgJSON {
    * @return wrapped term
    */
   private static String wrapInLowerUnaccent(String term, CqlModifiers cqlModifiers) {
-    return wrapInLowerUnaccent(term,
+    return Cql2PgUtil.wrapInLowerUnaccent(term,
         cqlModifiers.getCqlCase() != CqlCase.RESPECT_CASE,
         cqlModifiers.getCqlAccents() != CqlAccents.RESPECT_ACCENTS);
   }
@@ -356,9 +341,9 @@ public class CQL2PgJSON {
    */
   private static String wrapInLowerUnaccent(String term, Index index) {
     if (index == null) {
-      return wrapInLowerUnaccent(term, true, true);
+      return Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
     } else {
-      return wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
+      return Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
     }
   }
 
@@ -846,11 +831,11 @@ public class CQL2PgJSON {
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
     if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-      indexText = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targettable.getTableName()),  /* lower */ false, removeAccents);
+      indexText = schemaIndex.getFinalSqlExpression(targettable.getTableName());
     } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
       indexText = schemaIndex.getSqlExpression();
     } else {
-      indexText = wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
+      indexText = Cql2PgUtil.wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
     }
     String sql = "to_tsvector('simple', " + indexText + ") "
       + "@@ " + tsTerm;
