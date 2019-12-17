@@ -861,14 +861,15 @@ public class CQL2PgJSON {
     final Index schemaIndex = ObjectUtils.firstNonNull(
         dbIndex.getGinIndex(), dbIndex.getLikeIndex(), dbIndex.getUniqueIndex(), dbIndex.getIndex());
     String sql = null;
-
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
+
     if (!relationModifiers.isEmpty()) {
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
       String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       String indexMod;
+
       if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
         indexMod = schemaIndex.getFinalSqlExpression(targetTable.getTableName());
       } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
@@ -876,6 +877,7 @@ public class CQL2PgJSON {
       } else {
         indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
+
       if(schemaIndex != null) {
         sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
       } else {
