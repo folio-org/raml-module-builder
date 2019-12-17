@@ -961,7 +961,7 @@ public class CQL2PgJSON {
 
   private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term) {
     String sql;
-    sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapInLowerUnaccent(indexText, schemaIndex) +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
+    sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapForLength(indexText) +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
     sql += " ELSE ";
     sql = appendLengthCase(likeOperator,likeOperator, indexText, wrapInLowerUnaccent(term, schemaIndex), comparator.equals("<>"), sql);
     sql +=  " END";
