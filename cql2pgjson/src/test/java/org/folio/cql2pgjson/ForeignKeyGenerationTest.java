@@ -123,7 +123,7 @@ public class ForeignKeyGenerationTest  {
         .toSql("tableb.otherindex >= y0").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE "
         + "CASE WHEN length(f_unaccent('y0')) <= 600 "
-        + "THEN f_unaccent(tableb.jsonb->>'otherindex') >= f_unaccent('y0') "
+        + "THEN left(f_unaccent(tableb.jsonb->>'otherindex'),600) >= f_unaccent('y0') "
         + "ELSE left(f_unaccent(tableb.jsonb->>'otherindex'),600) >= left(f_unaccent('y0'),600) "
         + "AND f_unaccent(tableb.jsonb->>'otherindex') >= f_unaccent('y0') END)", sql);
   }

@@ -870,7 +870,7 @@ public class CQL2PgJSON {
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       String indexMod;
       if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-        indexMod = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targetTable.getTableName()), schemaIndex);
+        indexMod = schemaIndex.getFinalSqlExpression(targetTable.getTableName());
       } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
         indexMod = schemaIndex.getSqlExpression();
       } else {
@@ -936,7 +936,7 @@ public class CQL2PgJSON {
 
   private String createSQLLengthCase(String comparator, String index, String term, boolean not, Index schemaIndex) {
     String sql;
-    sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapInLowerUnaccent(index, schemaIndex) + " " + comparator + " " + wrapInLowerUnaccent(term, schemaIndex);
+    sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " " + wrapInLowerUnaccent(term, schemaIndex);
     sql += " ELSE ";
     String lengthCaseComparator = lengtCaseComparator(comparator);
     sql = appendLengthCase(lengthCaseComparator,comparator, wrapInLowerUnaccent(index, schemaIndex), wrapInLowerUnaccent(term, schemaIndex), not, sql);
