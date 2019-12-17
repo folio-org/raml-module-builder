@@ -274,6 +274,9 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     "abc‘def",
     "abc‘‘def",
     "abc‘‘‘def",
+    "abcŉdef",  // f_unaccent('ŉ') = regular single quote + n
+    "abcŉŉdef",
+    "abcŉŉŉdef",
     "abc’def",
     "abc’’def",
     "abc’’’def",
