@@ -265,9 +265,25 @@ public final class Cql2SqlUtil {
                                : "&& to_tsquery('simple', ('''");
         backslash = false;
         break;
-      case '&':   // replace & so that we can replace all tsquery & by <-> for phrase search
-      case '\'':  // replace single quote to avoid single quote masking
-        t.append(',');
+      case '&':   // Replace & by , so that we can replace all tsquery & by <-> for phrase search.
+        // Replace regular single quote and all other characters that f_unaccent converts into
+        // a regular single quote. This avoids masking the single quote (sql injection).
+        // How to find these characters:
+        // select * from (select chr(generate_series(1,       55295))) x(s) where f_unaccent(s) LIKE '%''%'
+        // select * from (select chr(generate_series(57344, 1114111))) x(s) where f_unaccent(s) LIKE '%''%'
+        // Or search on
+        // https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=contrib/unaccent/unaccent.rules;hb=HEAD
+      case '\'':  // a regular single quote
+      case '‘':
+      case '’':
+      case '‛':
+      case '′':
+      case '＇':
+        t.append(',');  // replace by comma to avoid masking and sql injection
+        backslash = false;
+        break;
+      case 'ŉ':  // f_unaccent('ŉ') = regular single quote + n, see comment above
+        t.append(",n");  // replace single quote by comma to avoid masking and sql injection
         backslash = false;
         break;
       default:
