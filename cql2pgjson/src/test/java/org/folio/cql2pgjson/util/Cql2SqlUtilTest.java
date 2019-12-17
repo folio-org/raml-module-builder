@@ -238,9 +238,6 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
         "abc/def",         // 'abc/def'
         "abc//def",        // 'abc' & '/def'
         "abc///def",       // 'abc' & '/def'
-        "abc'def",         // single quote masking, RMB-432
-        "abc''def",
-        "abc'''def",
         "abc\\?def",       // masked ? wildcard
         "abc\\?\\?def",
         "abc\\*def",       // masked * wildcard
@@ -265,6 +262,38 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
   @Parameters(method = "cql2tsqueryParams")
   public void cql2tsqueryPhrase(String term) {
     assertCql2tsqueryPhrase(term, term, "t");
+  }
+
+  @Test
+  @Parameters({
+    // single quote masking, RMB-432
+    "abc'def",
+    "abc''def",
+    "abc'''def",
+    // f_unaccent converts these other single quotes into a regular single quote, RMB-537
+    "abc‘def",
+    "abc‘‘def",
+    "abc‘‘‘def",
+    "abcŉdef",  // f_unaccent('ŉ') = regular single quote + n
+    "abcŉŉdef",
+    "abcŉŉŉdef",
+    "abc’def",
+    "abc’’def",
+    "abc’’’def",
+    "abc‛def",
+    "abc‛‛def",
+    "abc‛‛‛def",
+    "abc′def",
+    "abc′′def",
+    "abc′′′def",
+    "abc＇def",
+    "abc＇＇def",
+    "abc＇＇＇def",
+  })
+  public void cql2tsquerySingleQuote(String term) {
+    assertCql2tsqueryAnd   (term, term, true, "t");
+    assertCql2tsqueryOr    (term, term, true, "t");
+    assertCql2tsqueryPhrase(term, term, true, "t");
   }
 
   @Test
