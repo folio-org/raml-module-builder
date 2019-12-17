@@ -952,33 +952,36 @@ public class CQL2PgJSON {
   private String createSQLLengthCase(String comparator, String index, String term, boolean not, Index schemaIndex) {
     String sql;
     sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapInLowerUnaccent(index, schemaIndex) + " " + comparator + " " + wrapInLowerUnaccent(term, schemaIndex);
-    String lengthCaseComparator = determineLengthCaseComparator(comparator);
+    sql += " ELSE ";
+    String lengthCaseComparator = lengtCaseComparator(comparator);
     sql = appendLengthCase(lengthCaseComparator,comparator, wrapInLowerUnaccent(index, schemaIndex), wrapInLowerUnaccent(term, schemaIndex), not, sql);
+    sql +=  " END";
     return sql;
   }
 
   private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term) {
     String sql;
-    sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapForLength(indexText) +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
+    sql = "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapInLowerUnaccent(indexText, schemaIndex) +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
+    sql += " ELSE ";
     sql = appendLengthCase(likeOperator,likeOperator, indexText, wrapInLowerUnaccent(term, schemaIndex), comparator.equals("<>"), sql);
+    sql +=  " END";
     return sql;
   }
 
-  private String determineLengthCaseComparator(String comparator) {
-    String lengthCaseComparator = "";
-    if(comparator.equals("<") ){
-      lengthCaseComparator = "<=";
-    } else if(comparator.equals(">")) {
-      lengthCaseComparator = ">=";
-    } else {
-      lengthCaseComparator = comparator;
+  private String lengtCaseComparator(String comparator) {
+    switch(comparator) {
+    case "<":
+      return "<=";
+    case ">":
+      return ">=";
+    default:
+     return comparator;
     }
-    return lengthCaseComparator;
   }
 
   private String appendLengthCase(String lengthCaseComparator, String comparator, String index, String termUnmod, boolean not, String sql) {
     String joiner = not ? " OR " : " AND ";
-    sql += " ELSE " + wrapForLength(index) + " " + lengthCaseComparator + " " +  wrapForLength(termUnmod) + joiner + index + " " + comparator + " " + termUnmod + " END";
+    sql +=  wrapForLength(index) + " " + lengthCaseComparator + " " +  wrapForLength(termUnmod) + joiner + index + " " + comparator + " " + termUnmod ;
     return sql;
   }
 
