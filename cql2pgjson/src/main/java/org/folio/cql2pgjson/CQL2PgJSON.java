@@ -939,10 +939,10 @@ public class CQL2PgJSON {
   private String createSQLLengthCase(String comparator, String index, String term, Index schemaIndex) {
     String lengthCaseComparator = lengtCaseComparator(comparator);
     return  "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600"
-        + " THEN " + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " "
+        + " THEN " + wrapInLowerUnaccent(index, schemaIndex) + " " + comparator + " "
                    + wrapInLowerUnaccent(term, schemaIndex)
         + " ELSE "
-        + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " "
+        + wrapInLowerUnaccent(index, schemaIndex) + " " + comparator + " "
         + wrapForLength(wrapInLowerUnaccent(term, schemaIndex))
         + " AND "
         + wrapInLowerUnaccent(index, schemaIndex) + " " + lengthCaseComparator + " "
@@ -954,10 +954,10 @@ public class CQL2PgJSON {
     String joiner = comparator.equals("<>") ? " OR " : " AND ";
     return "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600"
         + " THEN "
-        + wrapForLength(indexText) + " " + likeOperator + " "
+        + indexText + " " + likeOperator + " "
         + wrapInLowerUnaccent(term, schemaIndex)
         + " ELSE "
-        + wrapForLength(indexText) + " " + likeOperator + " "
+        + indexText + " " + likeOperator + " "
         + wrapForLength(wrapInLowerUnaccent(term, schemaIndex))
         + joiner
         + indexText + " " + likeOperator + " "
