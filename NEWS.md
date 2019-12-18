@@ -1,3 +1,9 @@
+## 29.1.3 2019-12-18
+ * [RMB-536](https://issues.folio.org/browse/RMB-536) Missing f\_unaccent for compound fields full text index
+ * [RMB-537](https://issues.folio.org/browse/RMB-537) f\_unaccent single quote fullText tsquery sql injection
+ * [RMB-533](https://issues.folio.org/browse/RMB-533)/[RMB-536](https://issues.folio.org/browse/RMB-536) Another bugfix for index wrapping
+ * [RMB-498](https://issues.folio.org/browse/RMB-498) Truncate b-tree string for 2712 index row size
+
 ## 29.1.2 2019-12-11
 
  * RMB-533 Performance: Fix lower/f\_unaccent usage by checking all 5 index types
@@ -12,7 +18,7 @@
  * RMB-471 Fix ddlgen/Index.java StringBuilder code smells
  * RMB-486 Use indexed id fields in foreign tables, such as
    `holdingsRecords.permanentLocationId==abc*` from mod-inventory-storage
- * RMB-487 support also field[*] notation
+ * RMB-487 support also field[\*] notation
  * RMB-404 Use org.folio.okapi.common.SemVer rather than copying Apache
    Maven code
  * RMB-506 Estimate hit counts
