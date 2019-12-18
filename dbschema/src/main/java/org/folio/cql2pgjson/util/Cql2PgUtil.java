@@ -250,4 +250,20 @@ public final class Cql2PgUtil {
     }
     result.append('\'');
   }
+
+  public static String wrapInLowerUnaccent(String term, boolean lower, boolean unaccent) {
+    if (lower) {
+      if (unaccent) {
+        return "lower(f_unaccent(" + term + "))";
+      } else {
+        return "lower(" + term + ")";
+      }
+    } else {
+      if (unaccent) {
+        return "f_unaccent(" + term + ")";
+      } else {
+        return term;
+      }
+    }
+  }
 }
