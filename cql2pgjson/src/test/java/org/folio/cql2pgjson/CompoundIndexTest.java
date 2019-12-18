@@ -15,8 +15,8 @@ public class CompoundIndexTest {
     String sql = cql2pgJson.toSql("keys == x").toString();
     String expected = "WHERE CASE WHEN length(lower(f_unaccent('x'))) <= 600 "
         + "THEN left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'key1' , tablea.jsonb->>'key2'))),600) LIKE lower(f_unaccent('x')) "
-        + "ELSE left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'key1' , tablea.jsonb->>'key2'))),600)  LIKE  left(lower(f_unaccent('x')),600) "
-        + "AND lower(f_unaccent(concat_space_sql(tablea.jsonb->>'key1' , tablea.jsonb->>'key2')))  LIKE  lower(f_unaccent('x')) END";
+        + "ELSE left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'key1' , tablea.jsonb->>'key2'))),600) LIKE left(lower(f_unaccent('x')),600) "
+        + "AND lower(f_unaccent(concat_space_sql(tablea.jsonb->>'key1' , tablea.jsonb->>'key2'))) LIKE lower(f_unaccent('x')) END";
     assertEquals(expected, sql);
   }
 
@@ -27,8 +27,8 @@ public class CompoundIndexTest {
     String sql = cql2pgJson.toSql("barcode == y").toString();
     String expected = "WHERE CASE WHEN length(lower(f_unaccent('y'))) <= 600 "
       + "THEN left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))),600) LIKE lower(f_unaccent('y')) "
-      + "ELSE left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))),600)  LIKE  left(lower(f_unaccent('y')),600) "
-      + "AND lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber')))  LIKE  lower(f_unaccent('y')) END";
+      + "ELSE left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))),600) LIKE left(lower(f_unaccent('y')),600) "
+      + "AND lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))) LIKE lower(f_unaccent('y')) END";
     assertEquals(expected, sql);
   }
 
@@ -39,8 +39,8 @@ public class CompoundIndexTest {
     String sql = cql2pgJson.toSql("fullname == \"John Smith\"").toString();
     String expected = "WHERE CASE WHEN length(lower('John Smith')) <= 600 "
         + "THEN left(lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')),600) LIKE lower('John Smith') "
-        + "ELSE left(lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')),600)  LIKE  left(lower('John Smith'),600) "
-        + "AND lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName'))  LIKE  lower('John Smith') END";
+        + "ELSE left(lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')),600) LIKE left(lower('John Smith'),600) "
+        + "AND lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')) LIKE lower('John Smith') END";
     assertEquals(expected, sql);
   }
 
@@ -58,7 +58,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tableb");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("address == \"Boston MA\"").toString();
-    String expected =  "LIKE lower('Boston MA') ELSE left(lower(concat_space_sql(jsonb->>'city', jsonb->>'state')),600)  ";
+    String expected = "lower(concat_space_sql(jsonb->>'city', jsonb->>'state')) LIKE lower('Boston MA')";
     assertThat(sql, containsString(expected ));
   }
 
@@ -85,7 +85,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablec");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tablecginindex == \"Boston MA\"").toString();
-    String expected = "lower('Boston MA') ELSE left(lower(concat_space_sql(tablec.jsonb->>'firstName' , tablec.jsonb->>'lastName')),600)";
+    String expected = "lower(concat_space_sql(tablec.jsonb->>'firstName' , tablec.jsonb->>'lastName')) LIKE lower('Boston MA')";
     assertThat(sql, containsString(expected ));
   }
 
@@ -130,8 +130,9 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("ginfieldstar == \"Boston MA\"").toString();
-    String expected = "lower('Boston MA') ELSE left(lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','city') , concat_array_object_values(tablea.jsonb->'field2','state'))),600)";
-    assertThat(sql,containsString(expected));
+    String expected = "lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','city') ,"
+        + " concat_array_object_values(tablea.jsonb->'field2','state'))) LIKE lower('Boston MA')";
+    assertThat(sql, containsString(expected));
   }
 
   @Test
@@ -139,8 +140,9 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("ginfielddotstar == \"Boston MA\"").toString();
-    String expected = "lower('Boston MA') ELSE left(lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field3'->'info','city') , concat_array_object_values(tablea.jsonb->'field3'->'info','state'))),600)";
-    assertThat(sql,containsString(expected));
+    String expected = "lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'field3'->'info','city') ,"
+        + " concat_array_object_values(tablea.jsonb->'field3'->'info','state'))) LIKE lower('Boston MA')";
+    assertThat(sql, containsString(expected));
   }
 
   @Test
@@ -148,15 +150,17 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("ginfielddotstarplain == \"Boston MA\"").toString();
-    String expected = "lower('Boston MA') ELSE left(lower(concat_space_sql(concat_array_object(tablea.jsonb->'field3'->'info') , concat_array_object(tablea.jsonb->'field3'->'data'))),600)";
-    assertThat(sql,containsString(expected));
+    String expected = "lower(concat_space_sql(concat_array_object(tablea.jsonb->'field3'->'info') ,"
+        + " concat_array_object(tablea.jsonb->'field3'->'data'))) LIKE lower('Boston MA')";
+    assertThat(sql, containsString(expected));
   }
+
   @Test
   public void multiFieldnamesMultipartGIN() throws Exception {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tabled");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("tabledginindex == \"Boston MA\"").toString();
-    String expected = "lower('Boston MA') ELSE left(lower(concat_space_sql(tabled.jsonb->'proxy'->'personal'->>'city' , tabled.jsonb->'proxy'->'personal'->>'state')),600)  ";
-    assertThat(sql,containsString(expected));
+    String expected = "lower(concat_space_sql(tabled.jsonb->'proxy'->'personal'->>'city' , tabled.jsonb->'proxy'->'personal'->>'state')) LIKE lower('Boston MA')";
+    assertThat(sql, containsString(expected));
   }
 }

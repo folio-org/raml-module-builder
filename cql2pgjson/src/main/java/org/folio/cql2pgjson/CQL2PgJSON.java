@@ -866,7 +866,7 @@ public class CQL2PgJSON {
     if (!relationModifiers.isEmpty()) {
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
-      String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
+      String likeOperator = comparator.equals("<>") ? "NOT LIKE" : "LIKE";
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       String indexMod;
 
@@ -881,7 +881,7 @@ public class CQL2PgJSON {
       if(schemaIndex != null) {
         sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
       } else {
-        sql = indexMod +  likeOperator + wrapInLowerUnaccent(term, schemaIndex);
+        sql = indexMod + " " + likeOperator + " " + wrapInLowerUnaccent(term, schemaIndex);
       }
     }
 
@@ -938,21 +938,30 @@ public class CQL2PgJSON {
 
   private String createSQLLengthCase(String comparator, String index, String term, Index schemaIndex) {
     String lengthCaseComparator = lengtCaseComparator(comparator);
-    String joiner =  " AND ";
-    return  "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) +
-        " " + comparator + " " + wrapInLowerUnaccent(term, schemaIndex)
+    return  "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600"
+        + " THEN " + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " "
+                   + wrapInLowerUnaccent(term, schemaIndex)
         + " ELSE "
-        + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " " +  wrapForLength(wrapInLowerUnaccent(term, schemaIndex)) +
-        joiner + wrapInLowerUnaccent(index, schemaIndex) + " " + lengthCaseComparator + " " + wrapInLowerUnaccent(term, schemaIndex)
+        + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " "
+        + wrapForLength(wrapInLowerUnaccent(term, schemaIndex))
+        + " AND "
+        + wrapInLowerUnaccent(index, schemaIndex) + " " + lengthCaseComparator + " "
+        + wrapInLowerUnaccent(term, schemaIndex)
         + " END";
   }
 
   private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term) {
     String joiner = comparator.equals("<>") ? " OR " : " AND ";
-    return "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600 THEN " + wrapForLength(indexText) +  likeOperator + wrapInLowerUnaccent(term, schemaIndex)
+    return "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600"
+        + " THEN "
+        + wrapForLength(indexText) + " " + likeOperator + " "
+        + wrapInLowerUnaccent(term, schemaIndex)
         + " ELSE "
-        + wrapForLength(indexText) + " " + likeOperator + " " +  wrapForLength(wrapInLowerUnaccent(term, schemaIndex)) + joiner + indexText + " "
-        + likeOperator + " " + wrapInLowerUnaccent(term, schemaIndex)
+        + wrapForLength(indexText) + " " + likeOperator + " "
+        + wrapForLength(wrapInLowerUnaccent(term, schemaIndex))
+        + joiner
+        + indexText + " " + likeOperator + " "
+        + wrapInLowerUnaccent(term, schemaIndex)
         + " END";
   }
 

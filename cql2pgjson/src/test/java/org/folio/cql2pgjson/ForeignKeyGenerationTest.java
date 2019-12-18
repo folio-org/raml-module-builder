@@ -34,25 +34,36 @@ public class ForeignKeyGenerationTest  {
   public void searchChildParent() throws Exception {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
-        + "WHERE CASE WHEN length(lower(f_unaccent('11111111-1111-1111-1111-111111111111'))) <= 600 THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')) ELSE left(lower(f_unaccent(tableb.jsonb->>'prefix')),600)  LIKE  left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600) AND lower(f_unaccent(tableb.jsonb->>'prefix'))  LIKE  lower(f_unaccent('11111111-1111-1111-1111-111111111111')) END)", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE"
+        + " CASE WHEN length(lower(f_unaccent('11111111-1111-1111-1111-111111111111'))) <= 600"
+        + " THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))"
+        + " ELSE left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600)"
+        + " AND lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))"
+        + " END)", sql);
   }
 
   @Test
   public void searchParentChild() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     String sql = cql2pgJson("tableb.json", "foreignKey.json")
         .toSql("tablea.prefix == 11111111-1111-1111-1111-111111111111").getWhere();
-    assertEquals("tableb.tableaId IN  ( SELECT id FROM tablea "
-        + "WHERE CASE WHEN length(lower(f_unaccent('11111111-1111-1111-1111-111111111111'))) <= 600 THEN left(lower(f_unaccent(tablea.jsonb->>'prefix')),600) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111')) ELSE left(lower(f_unaccent(tablea.jsonb->>'prefix')),600)  LIKE  left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600) AND lower(f_unaccent(tablea.jsonb->>'prefix'))  LIKE  lower(f_unaccent('11111111-1111-1111-1111-111111111111')) END)", sql);
+    assertEquals("tableb.tableaId IN  ( SELECT id FROM tablea WHERE"
+        + " CASE WHEN length(lower(f_unaccent('11111111-1111-1111-1111-111111111111'))) <= 600"
+        + " THEN left(lower(f_unaccent(tablea.jsonb->>'prefix')),600) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))"
+        + " ELSE left(lower(f_unaccent(tablea.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('11111111-1111-1111-1111-111111111111')),600)"
+        + " AND lower(f_unaccent(tablea.jsonb->>'prefix')) LIKE lower(f_unaccent('11111111-1111-1111-1111-111111111111'))"
+        + " END)", sql);
   }
 
   @Test
   public void searchWithLowerConstant() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.gprefix == x0").getWhere();
-    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE CASE WHEN length(lower('x0')) <= 600 THEN left(lower(tableb.jsonb->>'gprefix'),600)"
-        + " LIKE lower('x0') ELSE left(lower(tableb.jsonb->>'gprefix'),600)  LIKE  left(lower('x0'),600) "
-        + "AND lower(tableb.jsonb->>'gprefix')  LIKE  lower('x0') END)", sql);
+    assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE"
+        + " CASE WHEN length(lower('x0')) <= 600"
+        + " THEN left(lower(tableb.jsonb->>'gprefix'),600) LIKE lower('x0')"
+        + " ELSE left(lower(tableb.jsonb->>'gprefix'),600) LIKE left(lower('x0'),600)"
+        + " AND lower(tableb.jsonb->>'gprefix') LIKE lower('x0')"
+        + " END)", sql);
   }
 
   @Test
@@ -104,8 +115,8 @@ public class ForeignKeyGenerationTest  {
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE "
         + "CASE WHEN length(lower(f_unaccent('%'))) <= 600 "
         + "THEN left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE lower(f_unaccent('%')) "
-        + "ELSE left(lower(f_unaccent(tableb.jsonb->>'prefix')),600)  LIKE  left(lower(f_unaccent('%')),600) "
-        + "AND lower(f_unaccent(tableb.jsonb->>'prefix'))  LIKE  lower(f_unaccent('%')) END)", sql);
+        + "ELSE left(lower(f_unaccent(tableb.jsonb->>'prefix')),600) LIKE left(lower(f_unaccent('%')),600) "
+        + "AND lower(f_unaccent(tableb.jsonb->>'prefix')) LIKE lower(f_unaccent('%')) END)", sql);
   }
 
   @Test
