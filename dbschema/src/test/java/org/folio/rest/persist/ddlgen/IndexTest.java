@@ -50,7 +50,7 @@ class IndexTest {
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(false);
     idx.setMultiFieldNames("field1,field2,field3");
-    assertEquals("concat_space_sql(test_table.jsonb->>'field1' , test_table.jsonb->>'field2' , test_table.jsonb->>'field3')",idx.getFinalSqlExpression("test_table"));
+    assertEquals("<concat_space_sql(left(test_table.jsonb->>'field1',200) , left(test_table.jsonb->>'field2',200) , left(test_table.jsonb->>'field3',200))",idx.getFinalSqlExpression("test_table"));
 
   }
 
