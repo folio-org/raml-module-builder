@@ -54,6 +54,18 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 27.1
 
 * Remove all foreign keys fields and the primary key field `id` from the all index sections of schema.json. These btree indexes are created automatically.
+* Each fullTextIndex that was created with a dictionary different than 'simple' (for example using `to_tsvector('english', jsonb->>'foo')`)
+  needs to be dropped. Then RMB will recreate the index with 'simple'.
+  [Example](https://github.com/folio-org/mod-circulation-storage/blob/a8cbed7d32861ec92295a67f93335780e4034e7b/src/main/resources/templates/db_scripts/schema.json):
+```
+  "scripts": [
+    {
+      "run": "before",
+      "fromModuleVersion": "10.0.1",
+      "snippet": "DROP INDEX IF EXISTS loan_userid_idx_ft;"
+    }
+  ]
+```
 * Breaking change due to [upgrading to Vert.x 3.8.1](https://github.com/vert-x3/wiki/wiki/3.8.0-Deprecations-and-breaking-changes#blocking-tasks)
     * old: `vertx.executeBlocking(future  -> …, result -> …);`
     * new: `vertx.executeBlocking(promise -> …, result -> …);`
