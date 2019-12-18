@@ -346,6 +346,7 @@ public class SchemaMaker {
     //so split on command and build a path for each and then combine
     String []requestIndexPath = path.split(",");
     StringBuilder finalClause = new StringBuilder();
+    int limit = 600  / requestIndexPath.length;
     for (int i = 0; i < requestIndexPath.length; i++) {
       if(finalClause.length() > 0) {
         if(isFullText) {
@@ -364,6 +365,7 @@ public class SchemaMaker {
         prefixString = prefix +".jsonb";
       }
       StringBuilder sb = new StringBuilder(prefixString);
+      sb.append("left(");
       for (int j = 0; j < pathParts.length; j++) {
         if(j == pathParts.length-1){
           if(stringType){
@@ -392,6 +394,7 @@ public class SchemaMaker {
         //need to wrap path expression in () if lower / unaccent isnt
         //appended to the path
         sb.insert(0, "(").append(")");
+        sb.append(",").append(Integer.toString(limit)).append(")");
       }
       finalClause.append(sb.toString());
     }

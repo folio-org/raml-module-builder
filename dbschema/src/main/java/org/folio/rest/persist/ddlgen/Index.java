@@ -95,11 +95,14 @@ public class Index extends TableIndexes {
     String [] splitIndex = this.getMultiFieldNames().split(" *, *");
 
     StringBuilder result = new StringBuilder("concat_space_sql(");
+    int limit = 600 / splitIndex.length;
     for (int i = 0; i < splitIndex.length; i++) {
       if (i != 0) {
         result.append(" , ");
       }
+      result.append("left(");
       appendExpandedTerm(tableLoc, splitIndex[i], result);
+      result.append(",").append(Integer.toString(limit)).append(")");
     }
     result.append(")");
     return Cql2PgUtil.wrapInLowerUnaccent(result.toString(), !caseSensitive , removeAccents) ;
