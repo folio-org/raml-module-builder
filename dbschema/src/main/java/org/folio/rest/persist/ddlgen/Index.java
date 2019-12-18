@@ -102,7 +102,7 @@ public class Index extends TableIndexes {
       appendExpandedTerm(tableLoc, splitIndex[i], result);
     }
     result.append(")");
-    return Cql2PgUtil.wrapInLowerUnaccent(result.toString(), caseSensitive , removeAccents) ;
+    return Cql2PgUtil.wrapInLowerUnaccent(result.toString(), !caseSensitive , removeAccents) ;
   }
 
   protected static void appendExpandedTerm(String table, String term, StringBuilder result) {
