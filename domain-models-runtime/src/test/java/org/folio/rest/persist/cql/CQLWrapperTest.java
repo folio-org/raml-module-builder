@@ -186,7 +186,7 @@ public class CQLWrapperTest {
     assertThat(wrapperWhere.getType(), is("WHERE"));
     assertThat(wrapperNone.getType(), is("NONE"));
 
-    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
+    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY left(lower(f_unaccent(field->>'name')),600), lower(f_unaccent(field->>'name'))"));
     assertThat(wrapperCriterion.toString(), is("WHERE (jsonb->>id) = '42'"));
     assertThat(wrapperWhere.toString(), is("where false"));
 
@@ -195,9 +195,9 @@ public class CQLWrapperTest {
     assertThat(wrapperWhere.getQuery(), is("where false"));
 
     wrapperCql.addWrapper(wrapperNone);
-    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY lower(f_unaccent(field->>'name'))"));
+    assertThat(wrapperCql.toString(), is("WHERE true ORDER BY left(lower(f_unaccent(field->>'name')),600), lower(f_unaccent(field->>'name'))"));
     wrapperCql.addWrapper(wrapperCriterion);
-    assertThat(wrapperCql.toString(), is("WHERE (true) and (jsonb->>id) = '42' ORDER BY lower(f_unaccent(field->>'name'))"));
+    assertThat(wrapperCql.toString(), is("WHERE (true) and (jsonb->>id) = '42' ORDER BY left(lower(f_unaccent(field->>'name')),600), lower(f_unaccent(field->>'name'))"));
     wrapperCriterion.addWrapper(wrapperCql, "or");
     assertThat(wrapperCriterion.toString(), is("WHERE ((jsonb->>id) = '42') or true"));
   }

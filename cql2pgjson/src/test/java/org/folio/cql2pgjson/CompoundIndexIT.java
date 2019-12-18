@@ -77,6 +77,16 @@ public class CompoundIndexIT extends DatabaseTestBase {
   }
 
   @Test
+  public void multiFieldNamesNonUniqueIndex() throws Exception {
+    assertThat(cqla("keys == \"K1 K2\""), containsInAnyOrder("Karin"));
+  }
+
+  @Test
+  public void multiFieldNamesUniqueIndex() throws Exception {
+    assertThat(cqla("barcode == \"SALES 6\""), containsInAnyOrder("Daisy"));
+  }
+
+  @Test
   public void multiFieldNamesGIN() throws Exception {
     assertThat(cqla("fullname == \"Tom Jones\""), containsInAnyOrder("Tom"));
   }
