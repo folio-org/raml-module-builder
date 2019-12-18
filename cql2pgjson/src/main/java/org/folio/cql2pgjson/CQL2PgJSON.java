@@ -381,7 +381,8 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
+      order.append(wrapForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers))).append(desc).append(", ")
+      .append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
@@ -860,21 +861,28 @@ public class CQL2PgJSON {
     final Index schemaIndex = ObjectUtils.firstNonNull(
         dbIndex.getGinIndex(), dbIndex.getLikeIndex(), dbIndex.getUniqueIndex(), dbIndex.getIndex());
     String sql = null;
-
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
+
     if (!relationModifiers.isEmpty()) {
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
-      String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
-      String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+      String likeOperator = comparator.equals("<>") ? "NOT LIKE" : "LIKE";
+      String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+      String indexMod;
+
       if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-        sql = schemaIndex.getFinalSqlExpression(targetTable.getTableName());
+        indexMod = schemaIndex.getFinalSqlExpression(targetTable.getTableName());
       } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
-        sql = schemaIndex.getSqlExpression();
+        indexMod = schemaIndex.getSqlExpression();
       } else {
-        sql = wrapInLowerUnaccent(indexText, schemaIndex);
+        indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
-      sql = sql +  likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+
+      if(schemaIndex != null) {
+        sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
+      } else {
+        sql = indexMod + " " + likeOperator + " " + wrapInLowerUnaccent(term, schemaIndex);
+      }
     }
 
     if (Cql2SqlUtil.hasCqlWildCard(node.getTerm())) {  // FIXME: right truncation "abc*" works with index/uniqueIndex
@@ -904,25 +912,73 @@ public class CQL2PgJSON {
    * @return
    */
   private String queryBySql(DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
-    String index = vals.getIndexText();
-
+    String indexMod = vals.getIndexText();
     if (comparator.equals("==")) {
       comparator = "=";
     }
+    Index schemaIndex = dbIndex.getIndex();
+    String sql;
     String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
-      index = "(" + index + ")::numeric";
-      term = node.getTerm();
+      sql = "(" + indexMod + ")::numeric " + comparator + term;
+    } else if(schemaIndex != null) {
+      sql = createSQLLengthCase(comparator, indexMod, term,schemaIndex);
+    } else {
+      sql = indexMod + " " + comparator + term;
     }
-    String sql = index + " " + comparator + term;
 
     if (! dbIndex.hasIndex() && ! dbIndex.hasFullTextIndex() && ! dbIndex.hasLikeIndex()) {
-      String s = String.format("%s, CQL >>> SQL: %s >>> %s", index, node.toCQL(), sql);
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexMod, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing SQL query without index for {0}", s);
     }
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
+    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexMod, sql});
     return sql;
+  }
+
+  private String createSQLLengthCase(String comparator, String index, String term, Index schemaIndex) {
+    String lengthCaseComparator = lengtCaseComparator(comparator);
+    return  "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600"
+        + " THEN " + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " "
+                   + wrapInLowerUnaccent(term, schemaIndex)
+        + " ELSE "
+        + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " "
+        + wrapForLength(wrapInLowerUnaccent(term, schemaIndex))
+        + " AND "
+        + wrapInLowerUnaccent(index, schemaIndex) + " " + lengthCaseComparator + " "
+        + wrapInLowerUnaccent(term, schemaIndex)
+        + " END";
+  }
+
+  private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term) {
+    String joiner = comparator.equals("<>") ? " OR " : " AND ";
+    return "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600"
+        + " THEN "
+        + wrapForLength(indexText) + " " + likeOperator + " "
+        + wrapInLowerUnaccent(term, schemaIndex)
+        + " ELSE "
+        + wrapForLength(indexText) + " " + likeOperator + " "
+        + wrapForLength(wrapInLowerUnaccent(term, schemaIndex))
+        + joiner
+        + indexText + " " + likeOperator + " "
+        + wrapInLowerUnaccent(term, schemaIndex)
+        + " END";
+  }
+
+  private String lengtCaseComparator(String comparator) {
+    switch(comparator) {
+    case "<":
+      return "<=";
+    case ">":
+      return ">=";
+    default:
+     return comparator;
+    }
+  }
+
+  private String wrapForLength(String term) {
+   term = "left(" + term + ",600)";
+   return term;
   }
 
 }

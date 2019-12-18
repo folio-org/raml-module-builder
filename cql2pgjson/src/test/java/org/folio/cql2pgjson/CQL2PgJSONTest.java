@@ -176,7 +176,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void cql2pgJsonException(CQL2PgJSON cql2pgJson, String cql,
       Class<? extends Exception> clazz, String ... contains) throws RuntimeException {
     try {
-      cql2pgJson.cql2pgJson(cql);
+      cql2pgJson.toSql(cql).getWhere();
     } catch (Throwable e) {
       if (!clazz.isInstance(e)) {
         logger.fine("Wrong exception. Expected " + clazz + ". " + "but got " + e);
@@ -212,7 +212,21 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name=*                         # Jo Jane; Ka Keller; Lea Long",
     "email=\"\"                     # Jo Jane; Ka Keller; Lea Long",
     "email=\"*\"                    # Jo Jane; Ka Keller; Lea Long",
-    "email=*                        # Jo Jane; Ka Keller; Lea Long",})
+    "email=*                        # Jo Jane; Ka Keller; Lea Long",
+    "alternateEmail==\"ffgffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff@example.com\" # Ka Keller",
+    "alternateEmail<>\"ffgffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff@example.com\" # Jo Jane; Lea Long",
+    "alternateEmail==\"ffffffffffffgffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff@example.com\" #",
+    "alternateEmail<>\"ffffffffffffgffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff@example.com\" # Jo Jane; Ka Keller; Lea Long",
+    // 603 x "f" + "fffffffffffg@example.com"
+    "alternateEmail==\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffg@example.com\" #",
+    "alternateEmail<>\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffg@example.com\" # Jo Jane; Ka Keller; Lea Long",
+    // 603 x "f" + "gfffffffffff@example.com"
+    "alternateEmail==\"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffgfffffffffff@example.com\" # Jo Jane",
+    "alternateEmail<>\"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffgfffffffffff@example.com\" # Ka Keller; Lea Long",
+    // 603 x "f" + "hfffffffffff@example.com"
+    "alternateEmail==\"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffhfffffffffff@example.com\" # Lea Long",
+    "alternateEmail<>\"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffhfffffffffff@example.com\" # Jo Jane; Ka Keller",
+  })
   public void basic(String testcase) {
     select(testcase);
   }
@@ -561,7 +575,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void like(String testcase) throws QueryValidationException {
     select(cql2pgjsonRespectBoth, testcase);
-    String sql = cql2pgjsonRespectBoth.cql2pgJson(testcase.substring(0, testcase.indexOf('#')));
+    String sql = cql2pgjsonRespectBoth.toSql(testcase.substring(0, testcase.indexOf('#'))).getWhere();
     assertThat(sql, containsString(" LIKE "));
   }
 
@@ -578,6 +592,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "*         sortBy name/sort.ascending/string     # Jo Jane; Ka Keller; Lea Long",
     "*         sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
     "*         sortBy name/sort.descending/string    # Lea Long; Ka Keller; Jo Jane",
+    "*         sortBy alternateEmail                 # Jo Jane; Lea Long; Ka Keller",
+    "*         sortBy alternateEmail/sort.ascending  # Jo Jane; Lea Long; Ka Keller",
+    "*         sortBy alternateEmail/sort.descending # Ka Keller; Lea Long; Jo Jane",
     "*         sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long",
     "name=\"\" sortBy name                           # Jo Jane; Ka Keller; Lea Long",
     "name=\"\" sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
@@ -649,6 +666,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name<>\"Ka Keller\"  # Jo Jane; Lea Long",
     "name<>4              # Jo Jane; Ka Keller; Lea Long",
     "name=4               #",
+    // "fff" + 600 x "f" + "gfffffffffff@example.com"  # Jo Jane
+    // "fff" + 600 x "f" + "hfffffffffff@example.com"  # Lea Long
+    // "ffg" + 600 x "f" + "fffffffffffg@example.com"  # Ka Keller
+    // compare against Jo Jane's value:
+    "alternateEmail< \"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffgfffffffffff@example.com\" #",
+    "alternateEmail<=\"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffgfffffffffff@example.com\" # Jo Jane",
+    "alternateEmail> \"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffgfffffffffff@example.com\" #  Ka Keller; Lea Long",
+    "alternateEmail>=\"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffgfffffffffff@example.com\" # Jo Jane; Ka Keller; Lea Long",
+    // compare against Lea Long's value:
+    "alternateEmail< \"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffhfffffffffff@example.com\" # Jo Jane",
+    "alternateEmail<=\"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffhfffffffffff@example.com\" # Jo Jane; Lea Long",
+    "alternateEmail> \"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffhfffffffffff@example.com\" # Ka Keller",
+    "alternateEmail>=\"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffhfffffffffff@example.com\" # Ka Keller; Lea Long",
   })
   public void compareString(String testcase) {
     select(testcase);
@@ -747,11 +777,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     assertThat(s.getWhere(),
         allOf(containsString("to_tsvector"),
             containsString("users.user_data->>'email'")));
-    assertEquals("lower(f_unaccent(users.user_data->>'name')) DESC", s.getOrderBy());
+    assertEquals("left(lower(f_unaccent(users.user_data->>'name')),600) DESC, lower(f_unaccent(users.user_data->>'name')) DESC", s.getOrderBy());
     String sql = s.toString();
     assertTrue(sql.startsWith("WHERE to_tsvector('simple',"));
     assertTrue(sql.endsWith(" ORDER BY "
-      + "lower(f_unaccent(users.user_data->>'name')) DESC"));
+      + "left(lower(f_unaccent(users.user_data->>'name')),600) DESC, lower(f_unaccent(users.user_data->>'name')) DESC"));
   }
 
   @Test
