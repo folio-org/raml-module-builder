@@ -62,7 +62,7 @@ class IndexTest {
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(false);
     idx.setMultiFieldNames("field1[*].test,field2[*].name,field3.blah.blah2[*].foo");
-    assertEquals("concat_space_sql(concat_array_object_values(test_table.jsonb->'field1','test') , concat_array_object_values(test_table.jsonb->'field2','name') , concat_array_object_values(test_table.jsonb->'field3'->'blah'->'blah2','foo'))",idx.getFinalSqlExpression("test_table"));
+    assertEquals("concat_space_sql(left(concat_array_object_values(test_table.jsonb->'field1','test'),200) , left(concat_array_object_values(test_table.jsonb->'field2','name'),200) , left(concat_array_object_values(test_table.jsonb->'field3'->'blah'->'blah2','foo'),200))",idx.getFinalSqlExpression("test_table"));
 
   }
   @Test
@@ -82,7 +82,7 @@ class IndexTest {
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(false);
     idx.setMultiFieldNames("blah.blah2.field1,blah.blah2.field2");
-    assertEquals("concat_space_sql(test_table.jsonb->'blah'->'blah2'->>'field1' , test_table.jsonb->'blah'->'blah2'->>'field2')",idx.getFinalSqlExpression("test_table"));
+    assertEquals("concat_space_sql(left(test_table.jsonb->'blah'->'blah2'->>'field1',300) , left(test_table.jsonb->'blah'->'blah2'->>'field2',300))",idx.getFinalSqlExpression("test_table"));
   }
   @Test
   void nullSQLExpression() {
@@ -103,7 +103,7 @@ class IndexTest {
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(true);
     idx.setMultiFieldNames("test1,test2.test3");
-    assertEquals("f_unaccent(concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3'))",idx.getFinalSqlExpression("test_table"));
+    assertEquals("f_unaccent(concat_space_sql(left(test_table.jsonb->>'test1',300) , left(test_table.jsonb->'test2'->>'test3',300)))",idx.getFinalSqlExpression("test_table"));
   }
 
   @Test
@@ -114,7 +114,7 @@ class IndexTest {
     idx.setCaseSensitive(false);
     idx.setRemoveAccents(true);
     idx.setMultiFieldNames("test1,test2.test3");
-    assertEquals("lower(f_unaccent(concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3')))",idx.getFinalSqlExpression("test_table"));
+    assertEquals("lower(f_unaccent(concat_space_sql(left(test_table.jsonb->>'test1',300) , left(test_table.jsonb->'test2'->>'test3',300))))",idx.getFinalSqlExpression("test_table"));
   }
 
   @Test
@@ -125,7 +125,7 @@ class IndexTest {
     idx.setCaseSensitive(true);
     idx.setRemoveAccents(false);
     idx.setMultiFieldNames("test1,test2.test3");
-    assertEquals("concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3')",idx.getFinalSqlExpression("test_table"));
+    assertEquals("concat_space_sql(left(test_table.jsonb->>'test1',300) , left(test_table.jsonb->'test2'->>'test3',300))",idx.getFinalSqlExpression("test_table"));
   }
 
   @Test
@@ -136,6 +136,6 @@ class IndexTest {
     idx.setCaseSensitive(false);
     idx.setRemoveAccents(false);
     idx.setMultiFieldNames("test1,test2.test3");
-    assertEquals("lower(concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3'))",idx.getFinalSqlExpression("test_table"));
+    assertEquals("lower(concat_space_sql(left(test_table.jsonb->>'test1',300) , left(test_table.jsonb->'test2'->>'test3',300)))",idx.getFinalSqlExpression("test_table"));
   }
 }
