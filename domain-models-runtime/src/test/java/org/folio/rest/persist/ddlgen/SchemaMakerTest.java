@@ -178,7 +178,7 @@ public class SchemaMakerTest {
     String json = ResourceUtil.asString("templates/db_scripts/caseinsensitive.json");
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
     assertThat(tidy(schemaMaker.generateDDL()), containsString(
-        "CREATE INDEX IF NOT EXISTS item_title_idx ON harvard_circ.item(lower(f_unaccent(jsonb->>'title'))"));
+        "CREATE INDEX IF NOT EXISTS item_title_idx ON harvard_circ.item(left(lower(f_unaccent(jsonb->>'title')),600))"));
   }
 
   @Test
@@ -343,8 +343,8 @@ public class SchemaMakerTest {
 
     // by default all indexes are wrapped with lower/f_unaccent
     // except full text which only obeys f_unaccent
-    assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'id')))"));
-    assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'name')))"));
+    assertThat(ddl, containsString("(left(lower(f_unaccent(jsonb->>'id')),600))"));
+    assertThat(ddl, containsString("(left(lower(f_unaccent(jsonb->>'name')),600))"));
     assertThat(ddl, containsString("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
     assertThat(ddl, containsString("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
     assertThat(ddl, containsString("GIN(to_tsvector('simple', f_unaccent(jsonb->>'title')))"));

@@ -7,7 +7,7 @@
           "fieldName": "prefix",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": false
+          "removeAccents": true
         }
       ]
     },
@@ -34,7 +34,7 @@
           "fieldName": "prefix",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": false
+          "removeAccents": true
         },
         {
           "fieldName": "otherindex",

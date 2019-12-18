@@ -2,6 +2,22 @@
   "tables": [
     {
       "tableName": "tablea",
+      "index": [
+        {
+          "fieldName": "keys",
+          "multiFieldNames": "key1,key2",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "barcode",
+          "multiFieldNames": "department,staffnumber",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
       "ginIndex": [
         {
           "fieldName": "fullname",
