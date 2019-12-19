@@ -25,10 +25,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("barcode == y").toString();
-    String expected = "WHERE CASE WHEN length(lower(f_unaccent('y'))) <= 600 "
-      + "THEN left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))),600) LIKE lower(f_unaccent('y')) "
-      + "ELSE left(lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))),600) LIKE left(lower(f_unaccent('y')),600) "
-      + "AND lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))) LIKE lower(f_unaccent('y')) END";
+    String expected = "WHERE lower(f_unaccent(concat_space_sql(tablea.jsonb->>'department' , tablea.jsonb->>'staffnumber'))) LIKE lower(f_unaccent('y'))";
     assertEquals(expected, sql);
   }
 
@@ -37,10 +34,7 @@ public class CompoundIndexTest {
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("tablea");
     cql2pgJson.setDbSchemaPath("templates/db_scripts/compoundIndex.json");
     String sql = cql2pgJson.toSql("fullname == \"John Smith\"").toString();
-    String expected = "WHERE CASE WHEN length(lower('John Smith')) <= 600 "
-        + "THEN left(lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')),600) LIKE lower('John Smith') "
-        + "ELSE left(lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')),600) LIKE left(lower('John Smith'),600) "
-        + "AND lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')) LIKE lower('John Smith') END";
+    String expected = "WHERE lower(concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')) LIKE lower('John Smith')";
     assertEquals(expected, sql);
   }
 

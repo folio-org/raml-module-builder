@@ -57,13 +57,9 @@ public class ForeignKeyGenerationTest  {
   @Test
   public void searchWithLowerConstant() throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
-        .toSql("tableb.gprefix == x0").getWhere();
+        .toSql("tableb.gprefix == x0").getWhere();  // ginx index
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb WHERE"
-        + " CASE WHEN length(lower('x0')) <= 600"
-        + " THEN left(lower(tableb.jsonb->>'gprefix'),600) LIKE lower('x0')"
-        + " ELSE left(lower(tableb.jsonb->>'gprefix'),600) LIKE left(lower('x0'),600)"
-        + " AND lower(tableb.jsonb->>'gprefix') LIKE lower('x0')"
-        + " END)", sql);
+        + " lower(tableb.jsonb->>'gprefix') LIKE lower('x0'))", sql);
   }
 
   @Test
