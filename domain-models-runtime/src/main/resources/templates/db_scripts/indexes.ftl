@@ -2,8 +2,9 @@
   <#if table.index??>
     <#list table.index as indexes>
     <#if indexes.tOps.name() == "ADD">
+    <#-- Truncate using left(..., 600) to fit into the 2712 byte limit of PostgreSQL indexes (600 multi-byte characters) -->
     CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx ON ${myuniversity}_${mymodule}.${table.tableName}
-    (left(${indexes.getFinalSqlExpression(table.tableName)},600))
+    (${indexes.getFinalTruncatedSqlExpression(table.tableName)})
      <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
     <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx;
@@ -11,12 +12,13 @@
     </#list>
   </#if>
 
-  <#-- Create / Drop unique indexes -->
+  <#-- Create / Drop unique btree indexes -->
   <#if table.uniqueIndex??>
     <#list table.uniqueIndex as indexes>
     <#if indexes.tOps.name() == "ADD">
+    <#-- Do not truncate the value using left(..., 600) -- use complete value for uniqueness check -->
     CREATE UNIQUE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique ON ${myuniversity}_${mymodule}.${table.tableName}
-    (left(${indexes.getFinalSqlExpression(table.tableName)},600))
+    (${indexes.getFinalSqlExpression(table.tableName)})
      <#if indexes.whereClause??> ${indexes.whereClause};<#else>;</#if>
     <#else>
     DROP INDEX IF EXISTS ${table.tableName}_${indexes.fieldName}_idx_unique;

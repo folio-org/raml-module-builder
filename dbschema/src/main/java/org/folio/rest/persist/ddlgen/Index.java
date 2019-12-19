@@ -85,11 +85,11 @@ public class Index extends TableIndexes {
   }
 
   public String getFinalSqlExpression(String tableLoc) {
-    if (this.getMultiFieldNames() == null && this.getSqlExpression() == null) {
-      return this.fieldPath;
-    }
     if (this.getSqlExpression() != null) {
       return this.getSqlExpression();
+    }
+    if (this.getMultiFieldNames() == null) {
+      return this.fieldPath;
     }
 
     String [] splitIndex = this.getMultiFieldNames().split(" *, *");
@@ -103,6 +103,29 @@ public class Index extends TableIndexes {
     }
     result.append(")");
     return Cql2PgUtil.wrapInLowerUnaccent(result.toString(), !caseSensitive , removeAccents) ;
+  }
+
+  /**
+   * Like getFinalSqlExpression, but wrap in left(..., 600).
+   * <p>
+   * Special case: getSqlExpression() is returned unchanged, the sqlExpression developer must take care
+   * of the 2712 by limit.
+   * <p>
+   * PostgreSQL indexes have a 2712 byte limit, 600 multi-byte characters are within this limit.
+   */
+  public String getFinalTruncatedSqlExpression(String tableLoc) {
+    if (this.getSqlExpression() != null) {
+      return this.getSqlExpression();
+    }
+    if (this.getMultiFieldNames() != null) {
+      return "left(" + getFinalSqlExpression(tableLoc) + ",600)";
+    }
+    if (this.fieldName.contains(",")) {
+      // "left(jsonb->>'a', jsonb->>'b', 600)" fails with "function left(text, text, integer) does not exist"
+      // https://issues.folio.org/browse/RMB-539
+      throw new UnsupportedOperationException("Index with multi field name not supported: " + this.fieldName);
+    }
+    return "left(" + this.fieldPath + ",600)";
   }
 
   protected static void appendExpandedTerm(String table, String term, StringBuilder result) {
