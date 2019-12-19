@@ -870,15 +870,15 @@ public class CQL2PgJSON {
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       String indexMod;
 
-      if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
+      if (schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
         indexMod = schemaIndex.getFinalSqlExpression(targetTable.getTableName());
-      } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
+      } else if (schemaIndex != null && schemaIndex.getSqlExpression() != null) {
         indexMod = schemaIndex.getSqlExpression();
       } else {
         indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
       }
 
-      if(schemaIndex != null) {
+      if (schemaIndex != null && schemaIndex == dbIndex.getIndex()) {
         sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
       } else {
         sql = indexMod + " " + likeOperator + " " + wrapInLowerUnaccent(term, schemaIndex);
