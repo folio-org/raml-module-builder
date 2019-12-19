@@ -1,3 +1,7 @@
+## 29.1.4 2019-12-19
+ * [RMB-539](https://issues.folio.org/browse/RMB-539) Fails to create index (problem with left function and operands)
+ * [RMB-540](https://issues.folio.org/browse/RMB-540) Unique index must not truncate for 2712 max index byte size
+
 ## 29.1.3 2019-12-18
  * [RMB-536](https://issues.folio.org/browse/RMB-536) Missing f\_unaccent for compound fields full text index
  * [RMB-537](https://issues.folio.org/browse/RMB-537) f\_unaccent single quote fullText tsquery sql injection
