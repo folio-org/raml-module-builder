@@ -1031,7 +1031,7 @@ public final class PgUtil {
       + "               ORDER BY " + wrappedColumn + ascDesc
       + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
       + "             )"
-      + "   ORDER BY left(lower(f_unaccent(jsonb->>'" + column + "')),600) " + ascDesc
+      + "   ORDER BY " + wrappedColumn + ascDesc
       + "   LIMIT " + limit + " OFFSET " + offset
       + " ), "
       + " allrecords AS ("
