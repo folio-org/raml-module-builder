@@ -1,3 +1,6 @@
+## 29.1.5 2019-12-20
+ * [RMB-541](https://issues.folio.org/browse/RMB-541) PgUtil.getWithOptimizedSql with left(..., 600)
+
 ## 29.1.4 2019-12-19
  * [RMB-539](https://issues.folio.org/browse/RMB-539) Fails to create index (problem with left function and operands)
  * [RMB-540](https://issues.folio.org/browse/RMB-540) Unique index must not truncate for 2712 max index byte size
