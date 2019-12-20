@@ -871,7 +871,8 @@ public final class PgUtil {
    * <p>
    * PostgreSQL has no statistics about a field within a JSONB resulting in bad performance.
    * <p>
-   * This method requires both a b-tree index and a full text index for the field used for sorting.
+   * This method requires that the sortField has a b-tree index (non-unique) and caseSensitive=false
+   * and removeAccents=true, and that the cql query is supported by a full text index.
    * <p>
    * This method starts a full table scan until getOptimizedSqlSize() records have been scanned.
    * Then it assumes that there are only a few result records and uses the full text match.
@@ -1018,18 +1019,19 @@ public final class PgUtil {
     // If "headrecords" are enough to return the requested "LIMIT" number of records we are done.
     // Otherwise use the full text index to create "allrecords" with all matching
     // records and do sorting and LIMIT afterwards.
+    String wrappedColumn = "left(lower(f_unaccent(jsonb->>'" + column + "')),600) ";
     String sql =
         " WITH "
       + " headrecords AS ("
       + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
       + "   WHERE (" + where + ")"
-      + "     AND lower(f_unaccent(jsonb->>'" + column + "'))" + lessGreater
-      + "             ( SELECT lower(f_unaccent(jsonb->>'" + column + "'))"
+      + "     AND " + wrappedColumn + lessGreater
+      + "             ( SELECT " + wrappedColumn
       + "               FROM " + tableName
-      + "               ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
+      + "               ORDER BY " + wrappedColumn + ascDesc
       + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
       + "             )"
-      + "   ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
+      + "   ORDER BY left(lower(f_unaccent(jsonb->>'" + column + "')),600) " + ascDesc
       + "   LIMIT " + limit + " OFFSET " + offset
       + " ), "
       + " allrecords AS ("
