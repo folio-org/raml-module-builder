@@ -5,19 +5,18 @@ import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.oneOf;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.folio.rest.jaxrs.model.Book;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.RoutingContext;
 
 class RestVerticleTest {
 
@@ -149,5 +148,19 @@ class RestVerticleTest {
     Book book = new Book();
     RestVerticle.populateMetaData(book, null, null);
     assertThat(book.getMetadata(), is(nullValue()));
+  }
+
+  @Test
+  void routeExceptionReturns500() {
+    class MyRestVerticle extends RestVerticle {
+      public int status = -1;
+      @Override
+      void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, boolean[] isValid) {
+        this.status = status;
+      }
+    };
+    MyRestVerticle myRestVerticle = new MyRestVerticle();
+    myRestVerticle.route(null, null, null, null);
+    assertThat(myRestVerticle.status, is(500));
   }
 }
