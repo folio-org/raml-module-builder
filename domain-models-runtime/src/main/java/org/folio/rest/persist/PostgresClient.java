@@ -1608,7 +1608,7 @@ public class PostgresClient {
    * @param streamHandler
    * @param replyHandler
    */
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"unchecked", "squid:S00107"})
   public <T> void streamGet(String table, T entity, String fieldName, CQLWrapper filter, boolean returnIdField,
       String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
 
@@ -1617,14 +1617,14 @@ public class PostgresClient {
         SQLConnection connection = res.result();
         Class<T> clazz = (Class<T>) entity.getClass();
         doStreamGet(connection, false, table, clazz, fieldName, filter, returnIdField, distinctOn,
-            Collections.EMPTY_LIST, streamHandler, replyHandler);
+            Collections.emptyList(), streamHandler, replyHandler);
       } else {
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"unchecked", "squid:S00107"})
   private <T> void doStreamGet(SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
       String fieldName, CQLWrapper wrapper, boolean returnIdField, String distinctOn, List<FacetField> facets,
       Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
