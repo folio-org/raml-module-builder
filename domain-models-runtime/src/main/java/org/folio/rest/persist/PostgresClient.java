@@ -1596,87 +1596,43 @@ public class PostgresClient {
   }
 
   /**
+   * Return query results as a stream.
    *
    * @param <T>
    * @param table
-   * @param clazz
+   * @param entity
    * @param fieldName
-   * @param where
+   * @param filter
    * @param returnIdField
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    * @param distinctOn
    * @param streamHandler
    * @param replyHandler
    */
-  public <T> void streamGet(
-    String table, Class<T> clazz, String fieldName, String where, boolean returnIdField,
-    boolean setId, String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
-  ) {
-    streamGet(table, clazz, fieldName, where, returnIdField, setId, null, distinctOn, streamHandler, replyHandler);
-  }
+  @SuppressWarnings("unchecked")
+  public <T> void streamGet(String table, T entity, String fieldName, CQLWrapper filter, boolean returnIdField,
+      String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
 
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnIdField
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param facets Not in use, but might work in the future, pass null for now
-   * @param streamHandler
-   * @param replyHandler
-   */
-  public <T> void streamGet(
-      String table, Class<T> clazz, String fieldName, String where,
-      boolean returnIdField, boolean setId, List<FacetField> facets,
-      Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
-    ) {
-    streamGet(table, clazz, fieldName, where, returnIdField, setId, facets, null, streamHandler, replyHandler);
-  }
-
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnIdField
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param facets Not in use, but might work in the future, pass null for now
-   * @param distinctOn
-   * @param streamHandler
-   * @param replyHandler
-   */
-  public <T> void streamGet(
-    String table, Class<T> clazz, String fieldName, String where,
-    boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
-    Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
-  ) {
-    // streamGet appears to offer facets, but it does not implement it
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
-        doStreamGet(connection, false, table, clazz, fieldName, where,
-          returnIdField, distinctOn, streamHandler, replyHandler);
-      }
-      else{
+        Class<T> clazz = (Class<T>) entity.getClass();
+        doStreamGet(connection, false, table, clazz, fieldName, filter, returnIdField, distinctOn,
+            Collections.EMPTY_LIST, streamHandler, replyHandler);
+      } else {
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
 
-  private <T> void doStreamGet(
-    SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
-    String fieldName, String where, boolean returnIdField, String distinctOn,
-    Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler
-  ) {
+  @SuppressWarnings("unchecked")
+  private <T> void doStreamGet(SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
+      String fieldName, CQLWrapper wrapper, boolean returnIdField, String distinctOn, List<FacetField> facets,
+      Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
 
     vertx.runOnContext(v1 -> {
       try {
-        QueryHelper queryHelper = buildSelectQueryHelper(transactionMode, table, fieldName, where, returnIdField, distinctOn);
+        QueryHelper queryHelper = buildQueryHelper(transactionMode, table, fieldName, wrapper, returnIdField, facets,
+            distinctOn);
 
         connection.queryStream(queryHelper.selectQuery, stream -> {
           if (stream.succeeded()) {
@@ -1687,13 +1643,10 @@ public class PostgresClient {
 
             boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
-            Map<String, Method> externalColumnSetters = getExternalColumnSetters(
-              resultsHelper.columnNames,
-              resultsHelper.clazz,
-              isAuditFlavored
-            );
+            Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
+                resultsHelper.clazz, isAuditFlavored);
 
-            sqlRowStream.resultSetClosedHandler(v ->  sqlRowStream.moreResults()).handler(r -> {
+            sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
               JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
               try {
                 streamHandler.handle((T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));

@@ -2219,6 +2219,39 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void streamGet(TestContext context) throws IOException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", null, false, null,
+        streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+          context.assertEquals(6, objectCount.get());
+          async.complete();
+        });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetWithFilter(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+        streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+          context.assertEquals(3, objectCount.get());
+          async.complete();
+        });
+    async.awaitSuccess();
+  }
+
+  @Test
   public void streamGetDistinctOn(TestContext context) throws IOException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
@@ -2226,34 +2259,11 @@ public class PostgresClientIT {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
-      "jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
-        context.assertEquals(2, objectCount.get());
-        async.complete();
-      });
-    async.awaitSuccess();
-  }
-
-  // While facets are passed, this does NOT seem to deal with facets
-  // In fact, quite possibly, streamGet do not support facets at all
-  @Test
-  public void streamGetDistinctOnWithFacets(TestContext context) throws IOException {
-    AtomicInteger objectCount = new AtomicInteger();
-    Async async = context.async();
-
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb->>'edition'"));
-    }};
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", "", false, false,
-      facets,"jsonb->>'edition'", streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
-        context.assertEquals(2, objectCount.get());
-        async.complete();
-      });
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", null, false, "jsonb->>'edition'",
+        streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+          context.assertEquals(2, objectCount.get());
+          async.complete();
+        });
     async.awaitSuccess();
   }
 
