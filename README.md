@@ -343,7 +343,7 @@ Adjust the POM file to match your project, e.g. artifactID, version, etc.
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>20.0.0</version>
+      <version>29.0.0</version>
     </dependency>
     ...
     ...
