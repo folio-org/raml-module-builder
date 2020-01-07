@@ -1,7 +1,7 @@
 
 # Raml-Module-Builder
 
-Copyright (C) 2016-2019 The Open Library Foundation
+Copyright (C) 2016-2020 The Open Library Foundation
 
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
@@ -343,7 +343,7 @@ Adjust the POM file to match your project, e.g. artifactID, version, etc.
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>20.0.0</version>
+      <version>29.0.0</version>
     </dependency>
     ...
     ...

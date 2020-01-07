@@ -1,3 +1,16 @@
+## 29.2.0 2020-01-06
+
+ * RMB-498 Truncate b-tree string for 2712 index row size
+ * RMB-533 Performance: Fix lower/f_unaccent usage by checking all 5
+   index types
+ * RMB-532 Criterion get does not select id (only jsonb)
+ * RMB-536 Missing f_unaccent for compound fields full text index
+ * RMB-537 f_unaccent single quote fullText tsquery sql injection
+ * RMB-540 Unique index must not truncate for 2712 max index byte size
+ * RMB-542 Implement streamGet with CQLWrapper as parameter
+ * RMB-541 contributors and identifiers search perf regression with
+   RMB 29.1.3/29.1.4
+
 ## 29.1.0 2019-12-02
 
  * RMB-529 Upgrade Vert.x 3.8.4 fixing Netty HTTP request smuggling
