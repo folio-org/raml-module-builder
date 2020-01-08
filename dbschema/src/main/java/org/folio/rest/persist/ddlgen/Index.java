@@ -84,7 +84,7 @@ public class Index extends TableIndexes {
     this.sqlExpression = sqlExpression;
   }
 
-  public String getFinalSqlExpression(String tableLoc) {
+  public String getFinalSqlExpression(String tableLoc, boolean lowerIt) {
     if (this.getSqlExpression() != null) {
       return this.getSqlExpression();
     }
@@ -102,7 +102,11 @@ public class Index extends TableIndexes {
       appendExpandedTerm(tableLoc, splitIndex[i], result);
     }
     result.append(")");
-    return Cql2PgUtil.wrapInLowerUnaccent(result.toString(), !caseSensitive , removeAccents) ;
+    return Cql2PgUtil.wrapInLowerUnaccent(result.toString(), lowerIt , removeAccents);
+  }
+
+  public String getFinalSqlExpression(String tableLoc) {
+    return this.getFinalSqlExpression(tableLoc, !caseSensitive);
   }
 
   /**
