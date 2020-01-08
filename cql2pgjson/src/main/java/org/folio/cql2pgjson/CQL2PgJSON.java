@@ -831,7 +831,7 @@ public class CQL2PgJSON {
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
     if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-      indexText = schemaIndex.getFinalSqlExpression(targettable.getTableName());
+      indexText = schemaIndex.getFinalSqlExpression(targettable.getTableName(), false);
     } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
       indexText = schemaIndex.getSqlExpression();
     } else {
