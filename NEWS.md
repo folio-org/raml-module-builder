@@ -1,3 +1,8 @@
+## 29.2.1 2020-01-08
+
+ * RMB-549 Mismatch lower() for compound index (keyword searches slow
+   in mod-inventory-storage)
+
 ## 29.2.0 2020-01-06
 
  * RMB-498 Truncate b-tree string for 2712 index row size
