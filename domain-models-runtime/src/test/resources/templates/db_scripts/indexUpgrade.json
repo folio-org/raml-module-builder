@@ -1,0 +1,39 @@
+{
+  "tables": [
+    {
+      "tableName": "tablea",
+      "index": [
+        {
+          "fieldName": "a"
+        }
+      ]
+    },
+    {
+      "tableName": "tableb",
+      "fromModuleVersion": "18.2.2",
+      "uniqueIndex": [
+        {
+          "fieldName": "b"
+        }
+      ]
+    },
+    {
+      "tableName": "tablec",
+      "fromModuleVersion": "18.2.3",
+      "ginIndex": [
+        {
+          "fieldName": "c"
+        }
+      ]
+    },
+    {
+      "tableName": "tabled",
+      "fromModuleVersion": "18.2.4",
+      "fullTextIndex": [
+        {
+          "fieldName": "d"
+        }
+      ]
+    }
+  ]
+}
