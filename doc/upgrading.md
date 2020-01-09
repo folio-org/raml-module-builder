@@ -14,6 +14,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 29.2
 
 * [RMB-532](https://issues.folio.org/browse/RMB-532) Use PostgresClient.get without the unused and deprecated setId parameter.
+* [RMB-550](https://issues.folio.org/browse/RMB-550) All indexes will be recreated on module upgrade, this may take long. This is needed for [RMB-498](https://issues.folio.org/browse/RMB-498) and other index changes.
 
 ## Version 29
 

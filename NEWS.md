@@ -1,3 +1,7 @@
+## 29.2.2 2020-01-09
+
+* [RMB-550](https://issues.folio.org/browse/RMB-550) Index recreation on module upgrade
+
 ## 29.2.1 2020-01-08
 
  * RMB-549 Mismatch lower() for compound index (keyword searches slow

@@ -121,6 +121,9 @@ SET search_path TO public, ${myuniversity}_${mymodule};
       <#include table.customSnippetPath>
     </#if>
   </#if>
+<#else>
+    <#-- The table has not changed, but we always recreate all indexes because they may have changed. -->
+    <#include "indexes.ftl">
 </#if>
 </#list>
 
