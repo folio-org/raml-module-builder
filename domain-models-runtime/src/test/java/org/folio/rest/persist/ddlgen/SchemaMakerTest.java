@@ -80,13 +80,31 @@ public class SchemaMakerTest {
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
     String result = schemaMaker.generateDDL();
 
-    assertThat(result,containsString("CREATE INDEX IF NOT EXISTS tablea_ftfield_idx_ft"));
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tablea_ftfield_idx_ft"));
     assertThat(result, containsString("concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')"));
 
     assertThat(result,containsString("((lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'user','firstName') , concat_array_object_values(tablea.jsonb->'user','lastName')))) gin_trgm_ops)"));
     assertThat(result,containsString("((lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'user'->'info','firstName') , concat_array_object_values(tablea.jsonb->'user'->'info','lastName')))) gin_trgm_ops)"));
     assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','firstName') , concat_array_object_values(tablea.jsonb->'field2','lastName'))) )"));
     assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->'info','firstName') , concat_array_object_values(tablea.jsonb->'field2'->'info','lastName'))) )"));
+  }
+
+  @Test
+  public void canRecreateIndexOnUpgrade() throws Exception {
+    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
+        "mod-foo-18.2.3", "mod-foo-18.2.4");
+    String json = ResourceUtil.asString("templates/db_scripts/indexUpgrade.json");
+    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+    String result = schemaMaker.generateDDL();
+    System.out.println(result);
+    assertThat(result, containsString("DROP INDEX IF EXISTS tablea_a_idx"));
+    assertThat(result, containsString("DROP INDEX IF EXISTS tableb_b_idx_unique"));
+    assertThat(result, containsString("DROP INDEX IF EXISTS tablec_c_idx_gin"));
+    assertThat(result, containsString("DROP INDEX IF EXISTS tabled_d_idx_ft"));
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tablea_a_idx"));
+    assertThat(result, containsString("CREATE UNIQUE INDEX IF NOT EXISTS tableb_b_idx_unique"));
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tablec_c_idx_gin"));
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tabled_d_idx_ft"));
   }
 
   @Test
