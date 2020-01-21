@@ -942,6 +942,43 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     logger.fine("basicFT: " + testcase + " OK ");
   }
 
+  /**
+   * Isolated fulltext search tests for special characters.
+   *
+   * The use of a single equal operator '=' results in a fulltext search.
+   * Additional characters are tested to ensure that they do not cause any problems.
+   *.
+   * This uses www, xxx, yyy, and zzz to explicitly avoid potential stop-words.
+   *
+   * @param testcase conditions expected to pass.
+   */
+  @Test
+  @Parameters({
+    "text='text' # a; b; c; d; e; f",
+    "text='text without www' # a",
+    "text='text with' # b; c; d; e; f",
+    "text='text with xxx-yyy' # b",
+    "text='text with xxx-' # c",
+    "text='text with xxx' # c",
+    "text='text with yyy' # d",
+    "text='text with -yyy' # d",
+    "text='text with zzz' # e; f",
+    "text='text with zzz\\?\\*\\\\‘’‛′＇ŉ&' # f",
+    "text='\" text with zzz' # e; f",
+    "text='\"text with zzz\"' # e; f",
+    "text='\\'text with zzz\\'' # e; f",
+    "text='xxx test with' # ",  // if order is ignored, then should instead find "c".
+    "text='xxx- test with' # ", // if order is ignored, then should instead find "c".
+    "text='test xxx- with' # "  // if order is ignored, then should instead find "c".
+  })
+  public void specialFT(String testcase)
+    throws IOException, FieldException, ServerChoiceIndexesException {
+    logger.info("specialFT: " + testcase);
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("instances.jsonb");
+    select(aCql2pgJson, "special-fulltext.sql", testcase);
+    logger.info("specialFT: " + testcase + " OK ");
+  }
+
   @Test
   @Parameters({
     // email works different, no need to test here. See basicFT()
