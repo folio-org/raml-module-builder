@@ -2222,7 +2222,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void streamGet(TestContext context) throws IOException {
+  public void streamGetLegacy(TestContext context) throws IOException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
@@ -2239,7 +2239,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void streamGetWithFilter(TestContext context) throws IOException, FieldException {
+  public void streamGetLegacyFilter(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
@@ -2257,7 +2257,51 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void streamGetWithFilterNoHandlers(TestContext context) throws IOException, FieldException {
+  public void streamGetLegacySyntaxError(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=");
+    Async async = context.async();
+    AtomicInteger objectCount = new AtomicInteger();
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+      streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+        context.assertTrue(asyncResult.failed());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetLegacyQuerySingleError(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    Async async = context.async();
+    AtomicInteger objectCount = new AtomicInteger();
+    postgresClient.streamGet("noSuchTable", new Object(), "jsonb", wrapper, false, null,
+      streamHandler -> objectCount.incrementAndGet(), asyncResult -> {
+        context.assertTrue(asyncResult.failed());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetQuerySingleError(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    Async async = context.async();
+    postgresClient.streamGet("noSuchTable", new Object(), "jsonb", wrapper, false, null,
+      asyncResult -> {
+        context.assertTrue(asyncResult.failed());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetFilterNoHandlers(TestContext context) throws IOException, FieldException {
     Async async = context.async();
 
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
@@ -2366,6 +2410,30 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void streamGetExceptionInEndHandler2(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    StringBuilder events = new StringBuilder();
+    Async async = context.async();
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+      asyncResult -> {
+        context.assertTrue(asyncResult.succeeded());
+        PostgresClientStreamResult sr = asyncResult.result();
+        sr.handler(streamHandler -> {
+          events.append("[handler]");
+        });
+        sr.endHandler(x -> {
+          events.append("[endHandler]");
+          throw new NullPointerException("null");
+        });
+        // no exceptionHandler defined
+      });
+    async.awaitSuccess();
+    context.assertEquals("[handler][handler][handler][endHandler]", events.toString());
+  }
+
+  @Test
   public void streamGetWithLimit(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
 
@@ -2452,7 +2520,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void streamGetDistinctOn(TestContext context) throws IOException {
+  public void streamGetLegacyDistinctOn(TestContext context) throws IOException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 

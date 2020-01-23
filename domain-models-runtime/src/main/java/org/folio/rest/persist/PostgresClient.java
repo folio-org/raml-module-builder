@@ -1647,6 +1647,7 @@ public class PostgresClient {
     });
   }
 
+  @SuppressWarnings({"unchecked", "squid:S00107"})
   private <T> void doStreamGet(SQLConnection connection, boolean transactionMode,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
