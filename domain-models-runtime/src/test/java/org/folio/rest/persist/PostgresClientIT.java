@@ -2410,7 +2410,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void streamGetExceptionInEndHandler2(TestContext context) throws IOException, FieldException {
+  public void streamGetExceptionInHandler2(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
@@ -2422,10 +2422,11 @@ public class PostgresClientIT {
         PostgresClientStreamResult sr = asyncResult.result();
         sr.handler(streamHandler -> {
           events.append("[handler]");
+          throw new NullPointerException("null");
         });
         sr.endHandler(x -> {
           events.append("[endHandler]");
-          throw new NullPointerException("null");
+          async.complete();
         });
         // no exceptionHandler defined
       });
