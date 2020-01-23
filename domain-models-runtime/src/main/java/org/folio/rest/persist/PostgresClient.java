@@ -1610,78 +1610,111 @@ public class PostgresClient {
    */
   @SuppressWarnings({"unchecked", "squid:S00107"})
   public <T> void streamGet(String table, T entity, String fieldName, CQLWrapper filter, boolean returnIdField,
-      String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
+    String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
 
     client.getConnection(res -> {
       if (res.succeeded()) {
         SQLConnection connection = res.result();
         Class<T> clazz = (Class<T>) entity.getClass();
         doStreamGet(connection, false, table, clazz, fieldName, filter, returnIdField, distinctOn,
-            Collections.emptyList(), streamHandler, replyHandler);
+          Collections.emptyList(), res1 -> {
+          if (res1.failed()) {
+            replyHandler.handle(Future.failedFuture(res1.cause()));
+            return;
+          }
+          PostgresClientStreamResult streamResult = res1.result();
+          streamResult.handler(streamHandler);
+          streamResult.endHandler(x -> replyHandler.handle(Future.succeededFuture()));
+        });
       } else {
         replyHandler.handle(Future.failedFuture(res.cause()));
       }
     });
   }
 
-  @SuppressWarnings({"unchecked", "squid:S00107"})
-  private <T> void doStreamGet(SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
-      String fieldName, CQLWrapper wrapper, boolean returnIdField, String distinctOn, List<FacetField> facets,
-      Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
+  public <T> void streamGet(String table, T entity, String fieldName, CQLWrapper filter, boolean returnIdField,
+      String distinctOn, Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
 
-    vertx.runOnContext(v1 -> {
-      try {
-        QueryHelper queryHelper = buildQueryHelper(transactionMode, table, fieldName, wrapper, returnIdField, facets,
-            distinctOn);
+    client.getConnection(res -> {
+      if (res.succeeded()) {
+        SQLConnection connection = res.result();
+        Class<T> clazz = (Class<T>) entity.getClass();
+        doStreamGet(connection, false, table, clazz, fieldName, filter, returnIdField, distinctOn,
+            Collections.emptyList(), replyHandler);
+      } else {
+        replyHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+  }
 
+  private <T> void doStreamGet(SQLConnection connection, boolean transactionMode,
+    String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
+    boolean returnIdField, String distinctOn, List<FacetField> facets,
+    Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
+
+    try {
+      QueryHelper queryHelper = buildQueryHelper(transactionMode, table,
+        fieldName, wrapper, returnIdField, facets, distinctOn);
+
+      connection.querySingle(queryHelper.countQuery, countQueryResult -> {
+        if (countQueryResult.failed()) {
+          if (!transactionMode) {
+            connection.close();
+          }
+          replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
+          return;
+        }
+        ResultInfo resultInfo = new ResultInfo();
+        resultInfo.setTotalRecords(countQueryResult.result().getInteger(0));
         connection.queryStream(queryHelper.selectQuery, stream -> {
-          if (stream.succeeded()) {
-
-            SQLRowStream sqlRowStream = stream.result();
-
-            ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
-
-            boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
-
-            Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
-                resultsHelper.clazz, isAuditFlavored);
-
-            sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
-              JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
-              try {
-                streamHandler.handle((T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));
-              } catch (Exception e) {
-                sqlRowStream.close();
-                if (!transactionMode) {
-                  connection.close();
-                }
-                log.error(e.getMessage(), e);
-                replyHandler.handle(Future.failedFuture(e));
-              }
-            }).endHandler(v2 -> {
-              if (!transactionMode) {
-                connection.close();
-              }
-              replyHandler.handle(Future.succeededFuture());
-            });
-
-          } else {
+          if (stream.failed()) {
             if (!transactionMode) {
               connection.close();
             }
             log.error(stream.cause().getMessage(), stream.cause());
             replyHandler.handle(Future.failedFuture(stream.cause()));
+            return;
           }
-        });
+          PostgresClientStreamResult streamResult = new PostgresClientStreamResult(resultInfo);
 
-      } catch (Exception e) {
-        if (!transactionMode) {
-          connection.close();
-        }
-        log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
+          replyHandler.handle(Future.succeededFuture(streamResult));
+
+          SQLRowStream sqlRowStream = stream.result();
+
+          ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
+
+          boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
+
+          Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
+            resultsHelper.clazz, isAuditFlavored);
+
+          sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
+            JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
+            try {
+              streamResult.fireHandler(deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));
+            } catch (Exception e) {
+              sqlRowStream.close();
+              if (!transactionMode) {
+                connection.close();
+              }
+              log.error(e.getMessage(), e);
+              streamResult.fireExceptionHandler(e);
+            }
+          }).endHandler(v2 -> {
+            if (!transactionMode) {
+              connection.close();
+            }
+            streamResult.fireEndHandler();
+          });
+        });
+      });
+    } catch (Exception e) {
+      if (!transactionMode) {
+        connection.close();
       }
-    });
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   private JsonObject convertRowStreamArrayToObject(SQLRowStream sqlRowStream, JsonArray rowAsArray) {
