@@ -32,14 +32,22 @@ class PostgresClientStreamResult<T> {
   }
 
   void fireHandler(T t) {
-    if (streamHandler != null) {
-      streamHandler.handle(t);
+    try {
+      if (streamHandler != null) {
+        streamHandler.handle(t);
+      }
+    } catch (Exception ex) {
+      fireExceptionHandler(ex);
     }
   }
 
   void fireEndHandler() {
-    if (endHandler != null) {
-      endHandler.handle(null);
+    try {
+      if (endHandler != null) {
+        endHandler.handle(null);
+      }
+    } catch (Exception ex) {
+      fireExceptionHandler(ex);
     }
   }
 
