@@ -154,4 +154,36 @@ public class Index extends TableIndexes {
           .append("'").append(term.substring(idx + ARRAY_TERM_TOKEN.length(), term.length())).append("'")
           .append(")");
   }
+
+  public void setupIndex() {
+    if (! isStringType()){
+      setCaseSensitive(true);
+      setRemoveAccents(false);
+    }
+    setFieldPath(convertDotPath2PostgresNotation(null, getFieldName(), isStringType(), this, false));
+    setFieldName(normalizeFieldName(getFieldName()));
+  }
+
+  public void setupLikeIndex() {
+    setupIndex();
+  }
+
+  public void setupUniqueIndex() {
+    setupIndex();
+  }
+
+  public void setupGinIndex() {
+    setFieldPath(convertDotPath2PostgresNotation(null, getFieldName(), true , this, true));
+    setFieldName(normalizeFieldName(getFieldName()));
+  }
+
+  public void setupFullTextIndex() {
+    if (isCaseSensitive()) {
+      throw new IllegalArgumentException("full text index does not support case sensitive: " + getFieldName());
+    }
+    // this suppresses the lower() in the CREATE INDEX.
+    setCaseSensitive(true);
+    setFieldPath(convertDotPath2PostgresNotation(null, getFieldName(), true, this, true));
+    setFieldName(normalizeFieldName(getFieldName()));
+  }
 }

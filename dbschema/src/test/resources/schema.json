@@ -4,6 +4,8 @@
     {
       "tableName": "item",
       "withAuditing": true,
+      "auditingTableName": "itemAudit",
+      "auditingFieldName": "audit",
       "auditingSnippet": {
         "insert": {
           "declare": "-- extra declare for insert",
@@ -18,6 +20,11 @@
           "statement": "-- extra statement for delete"
         }
       },
+      "deleteFields": [
+        {
+          "fieldName": "a.b.c"
+        }
+      ],
       "index": [
         {
           "fieldName": "id",
@@ -28,6 +35,13 @@
         {
           "fieldName": "name",
           "tOps": "ADD"
+        },
+        {
+          "fieldName": "idCardNumber",
+          "stringType": false
+        },
+        {
+          "fieldName": "firstName,lastName"
         }
       ],
       "likeIndex": [
@@ -55,6 +69,51 @@
           "fieldName": "title",
           "removeAccents": false,
           "tOps": "ADD"
+        },
+        {
+          "fieldName": "firstName,lastName"
+        },
+        {
+          "fieldName": "a.b.c"
+        },
+        {
+          "fieldName": "keys",
+          "multiFieldNames": "key1,key2"
+        },
+        {
+          "fieldName": "typeId"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "targetTable":      "holdings"
+        },
+        {
+          "fieldName": "typeId",
+          "targetTable":      "type",
+          "targetTableAlias": "type",
+          "tableAlias": "item"
+        }
+      ]
+    },
+    {
+      "tableName": "type"
+    }
+  ],
+  "views": [
+    {
+      "viewName": "item_type_view",
+      "join": [
+        {
+          "table": {
+            "tableName": "item",
+            "joinOnField": "typeId"
+          },
+          "joinTable": {
+            "tableName": "type",
+            "joinOnField": "id",
+            "jsonFieldAlias": "type_jsonb"
+          }
         }
       ]
     }

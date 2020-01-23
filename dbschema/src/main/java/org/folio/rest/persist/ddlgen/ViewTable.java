@@ -1,5 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
+import java.util.List;
+
 /**
  * @author shale
  *
@@ -55,4 +57,53 @@ public class ViewTable {
     this.prefix = prefix;
   }
 
+  void setup(List<Table> tables) {
+    setPrefix(getTableName());
+    Index index = getIndex(tables);
+    setJoinOnField(Field.convertDotPath2PostgresNotation(getPrefix(),
+      getJoinOnField(), true, index, false));
+    if (index != null) {
+      //when creating the join on condition, we want to create it the same way as we created the index
+      //so that the index will get used, for example:
+      //ON lower(f_unaccent(instance.jsonb->>'id'::text))=lower(f_unaccent(holdings_record.jsonb->>'instanceId'))
+      setIndexUsesCaseSensitive(index.isCaseSensitive());
+      setIndexUsesRemoveAccents(index.isRemoveAccents());
+    }
+  }
+
+  Index getIndex(List<Table> tables) {
+    for (Table table : tables) {
+      if (! table.getTableName().equals(getTableName())) {
+        continue;
+      }
+
+      String normalizedFieldName = Field.normalizeFieldName(getJoinOnField());
+      Index index = getIndex(normalizedFieldName, table.getFullTextIndex());
+      if (index != null) {
+        return index;
+      }
+      index = getIndex(normalizedFieldName, table.getUniqueIndex());
+      if (index != null) {
+        return index;
+      }
+      index = getIndex(normalizedFieldName, table.getIndex());
+      if (index != null) {
+        return index;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  Index getIndex(String normalizedFieldName, List<Index> list) {
+    if (list == null) {
+      return null;
+    }
+    for (Index index : list) {
+      if (normalizedFieldName.equals(Field.normalizeFieldName(index.getFieldName())) ) {
+        return index;
+      }
+    }
+    return null;
+  }
 }
