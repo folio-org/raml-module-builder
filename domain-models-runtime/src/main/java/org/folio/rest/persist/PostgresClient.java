@@ -1700,6 +1700,7 @@ public class PostgresClient {
               }
               log.error(e.getMessage(), e);
               streamResult.fireExceptionHandler(e);
+              streamResult.fireEndHandler();
             }
           }).endHandler(v2 -> {
             if (!transactionMode) {
