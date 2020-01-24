@@ -87,13 +87,8 @@ public class Field {
       }
       StringBuilder sb = new StringBuilder(prefixString);
       for (int j = 0; j < pathParts.length; j++) {
-        if(j == pathParts.length-1){
-          if(stringType){
-            sb.append("->>");
-          }
-          else{
-            sb.append("->");
-          }
+        if (j == pathParts.length-1 && stringType) {
+          sb.append("->>");
         } else{
           sb.append("->");
         }
@@ -121,6 +116,6 @@ public class Field {
   }
 
   static String normalizeFieldName(String path) {
-    return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
+    return path.replace('.', '_').replace(',', '_').replace(" ", "");
   }
 }
