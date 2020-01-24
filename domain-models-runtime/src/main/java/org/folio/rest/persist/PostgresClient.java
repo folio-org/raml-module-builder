@@ -1533,14 +1533,12 @@ public class PostgresClient {
   }
 
   static class QueryHelper {
-    final boolean transactionMode;
     String table;
     List<FacetField> facets;
     String selectQuery;
     String countQuery;
     int offset;
-    public QueryHelper(boolean transactionMode, String table) {
-      this.transactionMode = transactionMode;
+    public QueryHelper(String table) {
       this.table = table;
       this.offset = 0;
     }
@@ -1582,7 +1580,7 @@ public class PostgresClient {
     }
     SQLConnection connection = conn.result();
     try {
-      QueryHelper queryHelper = buildQueryHelper(true, table, fieldName, wrapper, returnIdField, facets, distinctOn);
+      QueryHelper queryHelper = buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
       if (returnCount) {
         processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
           totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz), replyHandler);
@@ -1658,7 +1656,7 @@ public class PostgresClient {
     }
     SQLConnection connection = conn.result();
     try {
-      QueryHelper queryHelper = buildQueryHelper(true, table,
+      QueryHelper queryHelper = buildQueryHelper(table,
         fieldName, wrapper, returnIdField, facets, distinctOn);
 
       connection.querySingle(queryHelper.countQuery, countQueryResult -> {
@@ -1738,7 +1736,7 @@ public class PostgresClient {
   }
 
   QueryHelper buildQueryHelper(
-    boolean transactionMode, String table, String fieldName, CQLWrapper wrapper,
+    String table, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, List<FacetField> facets,
     String distinctOn) throws IOException, TemplateException {
 
@@ -1757,7 +1755,7 @@ public class PostgresClient {
       addIdField = "";
     }
 
-    QueryHelper queryHelper = new QueryHelper(transactionMode, table);
+    QueryHelper queryHelper = new QueryHelper(table);
 
     String countOn = "*";
     String distinctOnClause = "";
@@ -1805,7 +1803,7 @@ public class PostgresClient {
       addIdField = "";
     }
 
-    QueryHelper queryHelper = new QueryHelper(transactionMode, table);
+    QueryHelper queryHelper = new QueryHelper(table);
 
     String distinctOnClause = "";
     if (distinctOn != null && !distinctOn.isEmpty()) {
@@ -1826,9 +1824,6 @@ public class PostgresClient {
     connection.querySingle(queryHelper.countQuery, countQueryResult -> {
       try {
         if (countQueryResult.failed()) {
-          if (!queryHelper.transactionMode) {
-            connection.close();
-          }
           log.error("query with count: " + countQueryResult.cause().getMessage()
             + " - " + queryHelper.countQuery, countQueryResult.cause());
           replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
@@ -1842,9 +1837,6 @@ public class PostgresClient {
         log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
 
         if (total <= queryHelper.offset) {
-          if (!queryHelper.transactionMode) {
-            connection.close();
-          }
           log.debug("Skipping query due to no results expected!");
           ResultSet emptyResultSet = new ResultSet(Collections.singletonList(ID_FIELD), Collections.emptyList(), null);
           replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
@@ -1853,9 +1845,6 @@ public class PostgresClient {
 
         processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
       } catch (Exception e) {
-        if (!queryHelper.transactionMode) {
-          connection.close();
-        }
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
@@ -1868,9 +1857,6 @@ public class PostgresClient {
   ) {
     try {
       queryAndAnalyze(connection, queryHelper.selectQuery, statMethod, query -> {
-        if (!queryHelper.transactionMode) {
-          connection.close();
-        }
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
           return;

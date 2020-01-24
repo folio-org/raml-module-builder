@@ -2984,14 +2984,14 @@ public class PostgresClientIT {
   public void processQueryWithCountSqlFailure(TestContext context) {
     postgresClient = postgresClient();
     postgresClient.startTx(context.asyncAssertSuccess(conn -> {
-      QueryHelper queryHelper = new QueryHelper(false, "table");
+      QueryHelper queryHelper = new QueryHelper("table");
       queryHelper.selectQuery = "'";
       queryHelper.countQuery = "'";
       postgresClient.processQueryWithCount(conn, queryHelper, "statMethod", null,
           context.asyncAssertFailure(fail -> {
             assertThat(fail.getMessage(), containsString("unterminated quoted string"));
-            // the sql error caused a rollback and ended the transaction, therefore this commit must fail.
-            postgresClient.endTx(Future.succeededFuture(conn), context.asyncAssertFailure());
+            // processQueryWithCount never closes the connection anymore.
+            postgresClient.endTx(Future.succeededFuture(conn), context.asyncAssertSuccess());
           }));
     }));
   }
