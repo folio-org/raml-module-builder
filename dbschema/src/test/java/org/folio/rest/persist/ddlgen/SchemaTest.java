@@ -1,6 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -25,7 +26,12 @@ class SchemaTest {
 
   @Test
   void canSetupSchema() {
-    getSchema().setup();
+    Schema schema = getSchema();
+    assertThat(schema.getTables().get(0).getMode(), is(nullValue()));
+    assertThat(schema.getTables().get(0).getFullTextIndex().get(0).getFieldPath(), is(nullValue()));
+    schema.setup();
+    assertThat(schema.getTables().get(0).getMode(), is("new"));
+    assertThat(schema.getTables().get(0).getFullTextIndex().get(0).getFieldPath(), is("(jsonb->>'title')"));
   }
 
   @Test
