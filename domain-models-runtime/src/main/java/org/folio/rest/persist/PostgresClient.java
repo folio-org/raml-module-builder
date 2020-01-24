@@ -1788,33 +1788,6 @@ public class PostgresClient {
     return queryHelper;
   }
 
-  QueryHelper buildSelectQueryHelper(
-    boolean transactionMode, String table, String fieldName,
-    String where, boolean returnIdField, String distinctOn
-  ) {
-    String addIdField = "";
-    if (returnIdField) {
-      addIdField = COMMA + ID_FIELD;
-    }
-
-    if (!"null".equals(fieldName) && fieldName.contains("*")) {
-      // if we are requesting all fields (*) , then dont add the id field to the select
-      // this will return two id columns which will create ambiguity in facet queries
-      addIdField = "";
-    }
-
-    QueryHelper queryHelper = new QueryHelper(table);
-
-    String distinctOnClause = "";
-    if (distinctOn != null && !distinctOn.isEmpty()) {
-      distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOn);
-    }
-
-    queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
-
-    return queryHelper;
-  }
-
   <T> void processQueryWithCount(
     SQLConnection connection, QueryHelper queryHelper, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
