@@ -24,7 +24,7 @@ class SchemaTest {
   }
 
   @Test
-  void canGetSchema() {
+  void canSetupSchema() {
     getSchema().setup();
   }
 

@@ -3,15 +3,11 @@ package org.folio.rest.persist.ddlgen;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
 import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.utils.ObjectMapperTool;
-
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -153,103 +149,5 @@ public class SchemaMaker {
 
   public void setSchema(Schema schema) {
     this.schema = schema;
-  }
-
-  private static String normalizeFieldName(String path) {
-    return path.replaceAll("\\.", "_").replaceAll(",","_").replaceAll(" ", "");
-  }
-
-  /**
-   * Convert JSON dot path to PostgreSQL notation. By default string type index will be
-   * wrapped with lower/f_unaccent functions except full text index <code>(isFtIndex = true)</code>.
-   * Full text index uses to_tsvector to normalize token, so no need of lower/f_unaccent.
-   *
-   * @param prefix
-   * @param path
-   * @param stringType
-   * @param index
-   * @param isFullText
-   * @return
-   */
-  private static String convertDotPath2PostgresNotation(String prefix,
-    String path, boolean stringType, Index index, boolean isFullText){
-    //when an index is on multiple columns, this will be defined something like "username,type"
-    //so split on command and build a path for each and then combine
-    String []requestIndexPath = path.split(",");
-    StringBuilder finalClause = new StringBuilder();
-    for (int i = 0; i < requestIndexPath.length; i++) {
-      if(finalClause.length() > 0) {
-        if(isFullText) {
-          finalClause.append(" || ' ' || ");
-        }
-        else {
-          finalClause.append(" , ");
-        }
-      }
-      //generate index based on paths - note that all indexes will be with a -> to allow
-      //postgres to treat the different data types differently and not ->> which would be all
-      //strings
-      String []pathParts = requestIndexPath[i].trim().split("\\.");
-      String prefixString = "jsonb";
-      if(prefix != null) {
-        prefixString = prefix +".jsonb";
-      }
-      StringBuilder sb = new StringBuilder(prefixString);
-      for (int j = 0; j < pathParts.length; j++) {
-        if(j == pathParts.length-1){
-          if(stringType){
-            sb.append("->>");
-          }
-          else{
-            sb.append("->");
-          }
-        } else{
-          sb.append("->");
-        }
-        sb.append("'").append(pathParts[j]).append("'");
-      }
-      boolean added = false;
-      if (index != null && stringType) {
-        if (index.isRemoveAccents()) {
-          sb.insert(0, "f_unaccent(").append(")");
-          added = true;
-        }
-        if (!index.isCaseSensitive()) {
-          sb.insert(0, "lower(").append(")");
-          added = true;
-        }
-      }
-      if (!added) {
-        //need to wrap path expression in () if lower / unaccent isnt
-        //appended to the path
-        sb.insert(0, "(").append(")");
-      }
-      finalClause.append(sb.toString());
-    }
-    return finalClause.toString();
-  }
-
-  public static String convertDotPath2PostgresMutateNotation(String path){
-    String []pathParts = path.split("\\.");
-    StringBuilder sb = new StringBuilder("'{");
-    for (int j = 0; j < pathParts.length; j++) {
-      sb.append(pathParts[j]);
-      if(j != pathParts.length-1){
-        sb.append(",");
-      }
-    }
-    return sb.append("}'").toString();
-  }
-
-
-  public static void main(String args[]) throws Exception {
-
-    SchemaMaker fm = new SchemaMaker("cql7", "mod_inventory_storage", TenantOperation.UPDATE, "mod-foo-18.2.1-SNAPSHOT.2", "mod-foo-18.2.4-SNAPSHOT.2");
-    String f = "C:\\Git\\clones\\rmb_release\\master\\raml-module-builder\\domain-models-runtime\\src\\main\\resources\\templates\\db_scripts\\examples\\schema.json.example.json";
-    byte[] encoded = Files.readAllBytes(Paths.get(f));
-    String json = new String(encoded, "UTF8");
-    fm.setSchema(ObjectMapperTool.getMapper().readValue(
-      json, Schema.class));
-    System.out.println(fm.generateDDL());
   }
 }

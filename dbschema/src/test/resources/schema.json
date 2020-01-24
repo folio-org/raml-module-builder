@@ -102,8 +102,32 @@
   ],
   "views": [
     {
+    },
+    {
       "viewName": "item_type_view",
       "join": [
+        {
+          "table": {
+            "tableName": "item",
+            "joinOnField": "id"
+          },
+          "joinTable": {
+            "tableName": "type",
+            "joinOnField": "itemId",
+            "jsonFieldAlias": "type_jsonb"
+          }
+        },
+        {
+          "table": {
+            "tableName": "item",
+            "joinOnField": "name"
+          },
+          "joinTable": {
+            "tableName": "type",
+            "joinOnField": "itemName",
+            "jsonFieldAlias": "type_jsonb"
+          }
+        },
         {
           "table": {
             "tableName": "item",
@@ -112,6 +136,28 @@
           "joinTable": {
             "tableName": "type",
             "joinOnField": "id",
+            "jsonFieldAlias": "type_jsonb"
+          }
+        },
+        {
+          "table": {
+            "tableName": "item",
+            "joinOnField": "foo"
+          },
+          "joinTable": {
+            "tableName": "type",
+            "joinOnField": "itemFoo",
+            "jsonFieldAlias": "type_jsonb"
+          }
+        },
+        {
+          "table": {
+            "tableName": "bar",
+            "joinOnField": "baz"
+          },
+          "joinTable": {
+            "tableName": "type",
+            "joinOnField": "itemBaz",
             "jsonFieldAlias": "type_jsonb"
           }
         }
