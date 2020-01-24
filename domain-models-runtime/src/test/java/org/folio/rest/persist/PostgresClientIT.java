@@ -2534,12 +2534,10 @@ public class PostgresClientIT {
         PostgresClientStreamResult sr = asyncResult.result();
         sr.handler(streamHandler -> {
           events.append("[handler]");
-        });
-        sr.endHandler(x -> {
+        }).endHandler(x -> {
           events.append("[endHandler]");
           async.complete();
-        });
-        sr.exceptionHandler(x -> {
+        }).exceptionHandler(x -> {
           events.append("[exception]");
         });
       });

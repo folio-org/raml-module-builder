@@ -1713,6 +1713,10 @@ public class PostgresClient {
               }
               resultsHelper.offset++;
             } catch (Exception e) {
+              if (!promise.future().isComplete()) {
+                promise.complete(streamResult);
+                replyHandler.handle(promise.future());
+              }
               sqlRowStream.close();
               closeIfNotTransaction(connection, transactionMode);
               log.error(e.getMessage(), e);

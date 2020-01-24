@@ -19,16 +19,19 @@ class PostgresClientStreamResult<T> {
     return this.resultInfo;
   }
 
-  public void handler(Handler<T> streamHandler) {
+  public PostgresClientStreamResult<T> handler(Handler<T> streamHandler) {
     this.streamHandler = streamHandler;
+    return this;
   }
 
-  public void endHandler(Handler<Void> endHandler) {
+  public PostgresClientStreamResult<T> endHandler(Handler<Void> endHandler) {
     this.endHandler = endHandler;
+    return this;
   }
 
-  public void exceptionHandler(Handler<Throwable> exceptionHandler) {
+  public PostgresClientStreamResult<T> exceptionHandler(Handler<Throwable> exceptionHandler) {
     this.exceptionHandler = exceptionHandler;
+    return this;
   }
 
   void fireHandler(T t) {
