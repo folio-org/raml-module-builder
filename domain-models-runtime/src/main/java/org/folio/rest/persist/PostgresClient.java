@@ -1614,7 +1614,8 @@ public class PostgresClient {
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
 
-    streamGet(table, entity, fieldName, filter, returnIdField, distinctOn,
+    Class<T> clazz = (Class<T>) entity.getClass();
+    streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
       res -> {
         if (res.failed()) {
           replyHandler.handle(Future.failedFuture(res.cause()));
@@ -1626,50 +1627,42 @@ public class PostgresClient {
       });
   }
 
-  public <T> void streamGet(String table, T entity, String fieldName,
+  public <T> void streamGet(String table, Class<T> clazz, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
 
-    streamGet(table, entity, fieldName, filter, returnIdField, distinctOn,
+    streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
       Collections.emptyList(), replyHandler);
   }
 
-  @SuppressWarnings({"unchecked", "squid:S00107"})
-  public <T> void streamGet(String table, T entity, String fieldName,
+  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  public <T> void streamGet(String table, Class<T> clazz, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
 
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        Class<T> clazz = (Class<T>) entity.getClass();
-        doStreamGet(connection, false, table, clazz, fieldName, filter, returnIdField,
-          distinctOn, facets, replyHandler);
-      } else {
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
+    client.getConnection(conn ->
+      doStreamGet(conn, table, clazz, fieldName, filter, returnIdField,
+        distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
   }
 
-  private void closeIfNotTransaction(SQLConnection connection, boolean transaction) {
-    if (!transaction) {
-      connection.close();
-    }
-  }
-
-  @SuppressWarnings({"unchecked", "squid:S00107"})
-  private <T> void doStreamGet(SQLConnection connection, boolean transactionMode,
+  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  private <T> void doStreamGet(AsyncResult<SQLConnection> conn,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
     Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
 
+    if (conn.failed()) {
+      log.error(conn.cause().getMessage(), conn.cause());
+      replyHandler.handle(Future.failedFuture(conn.cause()));
+      return;
+    }
+    SQLConnection connection = conn.result();
     try {
-      QueryHelper queryHelper = buildQueryHelper(transactionMode, table,
+      QueryHelper queryHelper = buildQueryHelper(true, table,
         fieldName, wrapper, returnIdField, facets, distinctOn);
 
       connection.querySingle(queryHelper.countQuery, countQueryResult -> {
         if (countQueryResult.failed()) {
-          closeIfNotTransaction(connection, transactionMode);
           replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
           return;
         }
@@ -1677,7 +1670,6 @@ public class PostgresClient {
         resultInfo.setTotalRecords(countQueryResult.result().getInteger(0));
         connection.queryStream(queryHelper.selectQuery, stream -> {
           if (stream.failed()) {
-            closeIfNotTransaction(connection, transactionMode);
             log.error(stream.cause().getMessage(), stream.cause());
             replyHandler.handle(Future.failedFuture(stream.cause()));
             return;
@@ -1718,7 +1710,6 @@ public class PostgresClient {
                 replyHandler.handle(promise.future());
               }
               sqlRowStream.close();
-              closeIfNotTransaction(connection, transactionMode);
               log.error(e.getMessage(), e);
               streamResult.fireExceptionHandler(e);
               streamResult.fireEndHandler();
@@ -1728,13 +1719,11 @@ public class PostgresClient {
               promise.complete(streamResult);
               replyHandler.handle(promise.future());
             }
-            closeIfNotTransaction(connection, transactionMode);
             streamResult.fireEndHandler();
           });
         });
       });
     } catch (Exception e) {
-      closeIfNotTransaction(connection, transactionMode);
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }

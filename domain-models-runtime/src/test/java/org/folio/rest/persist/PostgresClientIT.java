@@ -2292,7 +2292,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     Async async = context.async();
-    postgresClient.streamGet("noSuchTable", new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet("noSuchTable", Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.failed());
         async.complete();
@@ -2308,7 +2308,7 @@ public class PostgresClientIT {
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2327,7 +2327,7 @@ public class PostgresClientIT {
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2350,7 +2350,7 @@ public class PostgresClientIT {
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2375,7 +2375,7 @@ public class PostgresClientIT {
     facets.add(new FacetField("jsonb->>'title'"));
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, true, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
       facets, asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2411,7 +2411,7 @@ public class PostgresClientIT {
     facets.add(new FacetField("jsonb->>'title'"));
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, true, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
       facets, asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2433,7 +2433,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=");
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.failed());
         async.complete();
@@ -2448,7 +2448,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2475,7 +2475,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2502,7 +2502,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2527,7 +2527,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new StringBuilder() /* no JSON mapping */,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, StringBuilder.class /* no JSON mapping */,
       "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
@@ -2556,7 +2556,7 @@ public class PostgresClientIT {
     Async async = context.async();
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
       .setLimit(new Limit(1));
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2580,7 +2580,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
       .setOffset(new Offset(1));
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       asyncResult -> {
         context.assertTrue(asyncResult.succeeded());
         PostgresClientStreamResult sr = asyncResult.result();
@@ -2606,7 +2606,7 @@ public class PostgresClientIT {
 
       CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
         .setOffset(new Offset(i)).setLimit(new Limit(1));
-      postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+      postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
         asyncResult -> {
           context.assertTrue(asyncResult.succeeded());
           PostgresClientStreamResult sr = asyncResult.result();
