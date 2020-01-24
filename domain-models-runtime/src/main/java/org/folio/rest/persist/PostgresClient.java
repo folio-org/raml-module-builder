@@ -56,6 +56,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
@@ -1683,21 +1684,34 @@ public class PostgresClient {
           }
           PostgresClientStreamResult streamResult = new PostgresClientStreamResult(resultInfo);
 
-          replyHandler.handle(Future.succeededFuture(streamResult));
-
           SQLRowStream sqlRowStream = stream.result();
-
+          Promise promise = Promise.promise();
           ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
-
           boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
-
           Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
             resultsHelper.clazz, isAuditFlavored);
-
+          // fetch rows and produce ResultInfo when facets are all read
           sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
             JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
             try {
-              streamResult.fireHandler(deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));
+              Object objRow = null;
+              // deserializeRow can not determine if count or user object
+              // in case where user T=Object
+              // skip the initial count result when facets are in use
+              if (resultsHelper.offset == 0 && !facets.isEmpty()) {
+                resultsHelper.facet = true;
+              } else {
+                objRow = deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
+              }
+              if (!resultsHelper.facet) {
+                if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
+                  resultsHelper.facets.forEach((k, v) -> resultInfo.getFacets().add(v));
+                  promise.complete(streamResult);
+                  replyHandler.handle(promise.future());
+                }
+                streamResult.fireHandler(objRow);
+              }
+              resultsHelper.offset++;
             } catch (Exception e) {
               sqlRowStream.close();
               closeIfNotTransaction(connection, transactionMode);
@@ -1706,6 +1720,10 @@ public class PostgresClient {
               streamResult.fireEndHandler();
             }
           }).endHandler(v2 -> {
+            if (!promise.future().isComplete()) {
+              promise.complete(streamResult);
+              replyHandler.handle(promise.future());
+            }
             closeIfNotTransaction(connection, transactionMode);
             streamResult.fireEndHandler();
           });
@@ -2317,6 +2335,8 @@ public class PostgresClient {
     final List<String> columnNames;
     final Class<T> clazz;
     int total;
+    int offset;
+    boolean facet;
     public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz) {
       this.list = new ArrayList<>();
       this.facets = new HashMap<>();
@@ -2324,6 +2344,7 @@ public class PostgresClient {
       this.columnNames = resultSet.getColumnNames();
       this.clazz= clazz;
       this.total = total;
+      this.offset = 0;
     }
     public ResultsHelper(SQLRowStream sqlRowStream, Class<T> clazz) {
       this.list = new ArrayList<>();
@@ -2331,6 +2352,7 @@ public class PostgresClient {
       this.resultSet = null;
       this.columnNames = sqlRowStream.columns();
       this.clazz= clazz;
+      this.offset = 0;
     }
   }
 
@@ -2417,6 +2439,7 @@ public class PostgresClient {
 
     Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
     Object o = null;
+    resultsHelper.facet = false;
 
     if (!isAuditFlavored && jo != null) {
       boolean finished = false;
@@ -2442,6 +2465,7 @@ public class PostgresClient {
         }
       }
       if (finished) {
+        resultsHelper.facet = true;
         return o;
       }
     } else {

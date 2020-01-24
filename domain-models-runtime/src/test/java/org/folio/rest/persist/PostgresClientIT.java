@@ -2342,6 +2342,92 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void streamGetWithFilterZeroHits(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+      asyncResult -> {
+        context.assertTrue(asyncResult.succeeded());
+        PostgresClientStreamResult sr = asyncResult.result();
+        context.assertEquals(0, sr.resultInto().getTotalRecords());
+        sr.handler(streamHandler -> objectCount.incrementAndGet());
+        sr.endHandler(x -> {
+          context.assertEquals(0, objectCount.get());
+          async.complete();
+        });
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetWithFacetsAndFilter(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    List<FacetField> facets = new ArrayList<FacetField>();
+    facets.add(new FacetField("jsonb->>'edition'"));
+    facets.add(new FacetField("jsonb->>'title'"));
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, true, null,
+      facets, asyncResult -> {
+        context.assertTrue(asyncResult.succeeded());
+        PostgresClientStreamResult sr = asyncResult.result();
+        ResultInfo resultInfo = sr.resultInto();
+        context.assertEquals(3, resultInfo.getTotalRecords());
+        context.assertEquals(2, resultInfo.getFacets().size());
+        context.assertEquals("edition", resultInfo.getFacets().get(0).getType());
+        context.assertEquals(1, resultInfo.getFacets().get(0).getFacetValues().size());
+        context.assertEquals("First edition", resultInfo.getFacets().get(0).getFacetValues().get(0).getValue());
+        context.assertEquals(3, resultInfo.getFacets().get(0).getFacetValues().get(0).getCount());
+        context.assertEquals("title", resultInfo.getFacets().get(1).getType());
+        context.assertEquals(3, resultInfo.getFacets().get(1).getFacetValues().size());
+        context.assertEquals(1, resultInfo.getFacets().get(1).getFacetValues().get(0).getCount());
+        context.assertEquals(1, resultInfo.getFacets().get(1).getFacetValues().get(1).getCount());
+        context.assertEquals(1, resultInfo.getFacets().get(1).getFacetValues().get(2).getCount());
+        sr.handler(streamHandler -> objectCount.incrementAndGet());
+        sr.endHandler(x -> {
+          context.assertEquals(3, objectCount.get());
+          async.complete();
+        });
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
+  public void streamGetWithFacetsZeroHits(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    List<FacetField> facets = new ArrayList<FacetField>();
+    facets.add(new FacetField("jsonb->>'edition'"));
+    facets.add(new FacetField("jsonb->>'title'"));
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, true, null,
+      facets, asyncResult -> {
+        context.assertTrue(asyncResult.succeeded());
+        PostgresClientStreamResult sr = asyncResult.result();
+        ResultInfo resultInfo = sr.resultInto();
+        context.assertEquals(0, resultInfo.getTotalRecords());
+        context.assertEquals(0, resultInfo.getFacets().size());
+        sr.handler(streamHandler -> objectCount.incrementAndGet());
+        sr.endHandler(x -> {
+          context.assertEquals(0, objectCount.get());
+          async.complete();
+        });
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
   public void streamGetWithSyntaxError(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
