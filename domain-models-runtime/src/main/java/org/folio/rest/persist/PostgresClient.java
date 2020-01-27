@@ -1625,7 +1625,7 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(res.cause()));
           return;
         }
-        PostgresClientStreamResult streamResult = res.result();
+        PostgresClientStreamResult<T> streamResult = res.result();
         streamResult.handler(streamHandler);
         streamResult.endHandler(x -> replyHandler.handle(Future.succeededFuture()));
       });
@@ -1749,10 +1749,10 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(stream.cause()));
         return;
       }
-      PostgresClientStreamResult streamResult = new PostgresClientStreamResult(resultInfo);
+      PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
 
       SQLRowStream sqlRowStream = stream.result();
-      Promise promise = Promise.promise();
+      Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
       ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
       boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
       Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
@@ -1761,14 +1761,14 @@ public class PostgresClient {
       sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
         JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
         try {
-          Object objRow = null;
+          T objRow = null;
           // deserializeRow can not determine if count or user object
           // in case where user T=Object
           // skip the initial count result when facets are in use
           if (resultsHelper.offset == 0 && !facets.isEmpty()) {
             resultsHelper.facet = true;
           } else {
-            objRow = deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
+            objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
           }
           if (!resultsHelper.facet) {
             if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
