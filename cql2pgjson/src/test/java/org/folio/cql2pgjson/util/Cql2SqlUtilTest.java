@@ -234,6 +234,10 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
         "abc-def-ghi",     // 'abc-def-ghi' & 'abc' & 'def' & 'ghi'
         "abc-def-ghi*",    // 'abc-def-ghi':* & 'abc':* & 'def':* & 'ghi':*
         "abc-def ghi-jkl", // 'abc-def' & 'abc' & 'def' & 'ghi-jkl' & 'ghi' & 'jkl'
+        "-abc def",        // 'abc' & 'def'
+        "abc- def",        // 'abc' & 'def'
+        "abc -def",        // 'abc' & 'def'
+        "abc def-",        // 'abc' & 'def'
         "abc - def",       // minus as a word, RMB-439
         "abc/def",         // 'abc/def'
         "abc//def",        // 'abc' & '/def'
