@@ -105,6 +105,21 @@ public class ForeignKeys extends Field {
     this.targetPath = targetPath;
   }
 
+  /**
+   * Set fieldPath using fieldName. Normalize fieldName.
+   */
+  @Override
+  public void setup() {
+    if (getFieldName() == null) {  // e.g. "targetPath"
+      return;
+    }
+    //NOTE , FK are created on fields without the lowercasing / unaccenting
+    //meaning, there needs to be an index created without lowercasing / unaccenting
+    //otherwise no index will be used
+    setFieldPath(convertDotPath2PostgresNotation("NEW", getFieldName(), true , null, false));
+    setFieldName(normalizeFieldName(getFieldName()));
+  }
+
   @Override
   public String toString() {
     return "ForeignKeys [tableAlias=" + tableAlias + ", targetTable=" + targetTable

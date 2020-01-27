@@ -1,5 +1,7 @@
 package org.folio.rest.persist.ddlgen;
 
+import java.util.List;
+
 /**
  * @author shale
  *
@@ -20,5 +22,10 @@ public class Join {
   }
   public void setJoinTable(ViewTable joinTable) {
     this.joinTable = joinTable;
+  }
+
+  void setup(List<Table> tables) {
+    getJoinTable().setup(tables);
+    getTable().setup(tables);
   }
 }
