@@ -1645,7 +1645,7 @@ public class PostgresClient {
    */
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
-    Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
       Collections.emptyList(), replyHandler);
@@ -1666,7 +1666,7 @@ public class PostgresClient {
   @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
-    List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
+    List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     client.getConnection(conn ->
       doStreamGet(conn, table, clazz, fieldName, filter, returnIdField,
@@ -1690,7 +1690,7 @@ public class PostgresClient {
   private <T> void doStreamGet(AsyncResult<SQLConnection> connResult,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
-    Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
     if (connResult.failed()) {
       log.error(connResult.cause().getMessage(), connResult.cause());
       replyHandler.handle(Future.failedFuture(connResult.cause()));
@@ -1717,7 +1717,7 @@ public class PostgresClient {
   private <T> void doStreamGetCount(SQLConnection connection,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
-    Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     try {
       QueryHelper queryHelper = buildQueryHelper(table,
@@ -1741,7 +1741,7 @@ public class PostgresClient {
 
   private <T> void doStreamGetQuery(SQLConnection connection, String selectQuery,
     ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
-    Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     connection.queryStream(selectQuery, stream -> {
       if (stream.failed()) {
