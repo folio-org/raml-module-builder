@@ -2321,21 +2321,21 @@ public class PostgresClientIT {
         } catch (Exception ex) {
           message = ex.getMessage();
         }
-        context.assertEquals("Not supported yet.", message);
+        context.assertEquals("Not supported yet: pause", message);
         message = null;
         try {
           sr.resume();
         } catch (Exception ex) {
           message = ex.getMessage();
         }
-        context.assertEquals("Not supported yet.", message);
+        context.assertEquals("Not supported yet: resume", message);
         message = null;
         try {
           sr.fetch(0);
         } catch (Exception ex) {
           message = ex.getMessage();
         }
-        context.assertEquals("Not supported yet.", message);
+        context.assertEquals("Not supported yet: fetch", message);
         async.complete();
       }));
     async.await();
