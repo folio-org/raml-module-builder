@@ -113,16 +113,16 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
 
   @Override
   public ReadStream<T> pause() {
-    throw new UnsupportedOperationException("Not supported yet: pause"); //To change body of generated methods, choose Tools | Templates.
+    throw new UnsupportedOperationException("Not supported yet: pause");
   }
 
   @Override
   public ReadStream<T> resume() {
-    throw new UnsupportedOperationException("Not supported yet: resume"); //To change body of generated methods, choose Tools | Templates.
+    throw new UnsupportedOperationException("Not supported yet: resume");
   }
 
   @Override
   public ReadStream<T> fetch(long amount) {
-    throw new UnsupportedOperationException("Not supported yet: fetch"); //To change body of generated methods, choose Tools | Templates.
+    throw new UnsupportedOperationException("Not supported yet: fetch");
   }
 }
