@@ -119,32 +119,6 @@ public class SchemaMakerTest {
   }
 
   @Test
-  public void failsWhenAuditingTableNameIsMissing() throws Exception {
-    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
-        "mod-foo-18.2.3", "mod-foo-18.2.4");
-    String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
-    Schema schema  = ObjectMapperTool.getMapper().readValue(json, Schema.class);
-    schema.getTables().get(0).setAuditingTableName(null);
-    schemaMaker.setSchema(schema);
-
-    thrown.expectMessage("auditingTableName missing");
-    schemaMaker.generateDDL();
-  }
-
-  @Test
-  public void failsWhenAuditingFieldNameIsMissing() throws Exception {
-    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
-        "mod-foo-18.2.3", "mod-foo-18.2.4");
-    String json = ResourceUtil.asString("templates/db_scripts/schemaWithAudit.json");
-    Schema schema  = ObjectMapperTool.getMapper().readValue(json, Schema.class);
-    schema.getTables().get(0).setAuditingFieldName(null);
-    schemaMaker.setSchema(schema);
-
-    thrown.expectMessage("auditingFieldName missing");
-    schemaMaker.generateDDL();
-  }
-
-  @Test
   public void failsWhenGenerateID() throws Exception {
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
