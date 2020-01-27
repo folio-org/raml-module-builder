@@ -45,4 +45,14 @@ public class View extends Versioned {
     this.join = join;
   }
 
+  public void setup(List<Table> tables) {
+    if (getMode() == null) {
+      setMode("new");
+    }
+    List<Join> joins = getJoin();
+    if (joins == null) {
+      return;
+    }
+    joins.forEach(j -> j.setup(tables));
+  }
 }
