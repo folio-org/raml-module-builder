@@ -40,4 +40,16 @@ public class Schema {
   public void setExactCount(int exactCount) {
     this.exactCount = exactCount;
   }
+
+  /**
+   * Call setup() for each table, field, index and view.
+   */
+  public void setup() {
+    if (tables != null) {
+      tables.forEach(Table::setup);
+    }
+    if (views != null) {
+      views.forEach(view -> view.setup(tables));
+    }
+  }
 }

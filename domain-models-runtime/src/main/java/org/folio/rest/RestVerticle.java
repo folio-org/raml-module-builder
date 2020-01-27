@@ -357,7 +357,7 @@ public class RestVerticle extends AbstractVerticle {
    * @param regex2Pattern  create a map of regular expression to url path
    * @param rc  RoutingContext of this URL
    */
-  private void route(MappedClasses mappedURLs, Set<String> urlPaths, Map<String, Pattern> regex2Pattern,
+  void route(MappedClasses mappedURLs, Set<String> urlPaths, Map<String, Pattern> regex2Pattern,
       RoutingContext rc) {
     long start = System.nanoTime();
     try {
@@ -564,6 +564,7 @@ public class RestVerticle extends AbstractVerticle {
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
+      endRequestWithError(rc, 500, true, "Server error", new boolean[] { true });
     }
   }
 
@@ -841,7 +842,7 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  private void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, boolean[] isValid) {
+  void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, boolean[] isValid) {
     if (isValid[0]) {
       HttpServerResponse response = rc.response();
       if (!response.closed()) {
