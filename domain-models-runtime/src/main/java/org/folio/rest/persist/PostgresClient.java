@@ -1595,19 +1595,25 @@ public class PostgresClient {
   }
 
   /**
-   * Return query results as a stream.
-   *
+   * Streamed GET with CQLWrapper (T variant, no facets)
    * @param <T>
    * @param table
    * @param entity
-   * @param fieldName
-   * @param filter
+   * @param fieldName usually "jsonb"
+   * @param filter usually CQL query
    * @param returnIdField
    * @param distinctOn
-   * @param streamHandler
-   * @param replyHandler
+   * @param streamHandler called for each record
+   * @param replyHandler called when query is complete
+   * This function is deprecated because it is impossible to avoid it has
+   * no callback for the case where the HTTP headers are generated.
+   * Furthermore, the hit count is not passed.
+   * Thus, the only option, is to use the replyHandler to produce this.
+   * Use streamGet with {@link PostgresClientStreamResult} instead.
+   * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String, org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String, io.vertx.core.Handler, io.vertx.core.Handler)}
    */
   @SuppressWarnings({"unchecked", "squid:S00107"})
+  @Deprecated
   public <T> void streamGet(String table, T entity, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
@@ -1625,6 +1631,25 @@ public class PostgresClient {
       });
   }
 
+
+  /**
+   * Streamed GET with CQLWrapper (class<T> variant, no facets)
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param filter
+   * @param returnIdField
+   * @param distinctOn
+   * @param replyHandler
+   * This function is deprecated because it is impossible to avoid it has
+   * no callback for the case where the HTTP headers are generated.
+   * Furthermore, the hit count is not passed.
+   * Thus, the only option, is to use the replyHandler to produce this.
+   * Use streamGet with {@link PostgresClientStreamResult} instead.
+   * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String, org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String, io.vertx.core.Handler, io.vertx.core.Handler)}
+   */
+  @Deprecated
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
@@ -1633,6 +1658,18 @@ public class PostgresClient {
       Collections.emptyList(), replyHandler);
   }
 
+  /**
+   * Stream GET with CQLWrapper and {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param filter
+   * @param returnIdField may be null
+   * @param distinctOn may be null
+   * @param facets may not be null (Collections.emptyList() for no facets)
+   * @param replyHandler AsyncResult; on success with result of {@link org.folio.rest.persist.PostgresClientStreamResult}
+   */
   @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
@@ -1644,17 +1681,25 @@ public class PostgresClient {
   }
 
   @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
-  private <T> void doStreamGet(AsyncResult<SQLConnection> conn,
+  private <T> void doStreamGet(AsyncResult<SQLConnection> connResult,
+    String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
+    boolean returnIdField, String distinctOn, List<FacetField> facets,
+    Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
+    if (connResult.failed()) {
+      log.error(connResult.cause().getMessage(), connResult.cause());
+      replyHandler.handle(Future.failedFuture(connResult.cause()));
+      return;
+    }
+    this.doStreamGetCount(connResult.result(), table, clazz, fieldName, wrapper, returnIdField,
+      distinctOn, facets, replyHandler);
+  }
+
+  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  private <T> void doStreamGetCount(SQLConnection connection,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
     Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
 
-    if (conn.failed()) {
-      log.error(conn.cause().getMessage(), conn.cause());
-      replyHandler.handle(Future.failedFuture(conn.cause()));
-      return;
-    }
-    SQLConnection connection = conn.result();
     try {
       QueryHelper queryHelper = buildQueryHelper(table,
         fieldName, wrapper, returnIdField, facets, distinctOn);
@@ -1666,65 +1711,73 @@ public class PostgresClient {
         }
         ResultInfo resultInfo = new ResultInfo();
         resultInfo.setTotalRecords(countQueryResult.result().getInteger(0));
-        connection.queryStream(queryHelper.selectQuery, stream -> {
-          if (stream.failed()) {
-            log.error(stream.cause().getMessage(), stream.cause());
-            replyHandler.handle(Future.failedFuture(stream.cause()));
-            return;
-          }
-          PostgresClientStreamResult streamResult = new PostgresClientStreamResult(resultInfo);
-
-          SQLRowStream sqlRowStream = stream.result();
-          Promise promise = Promise.promise();
-          ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
-          boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
-          Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
-            resultsHelper.clazz, isAuditFlavored);
-          // fetch rows and produce ResultInfo when facets are all read
-          sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
-            JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
-            try {
-              Object objRow = null;
-              // deserializeRow can not determine if count or user object
-              // in case where user T=Object
-              // skip the initial count result when facets are in use
-              if (resultsHelper.offset == 0 && !facets.isEmpty()) {
-                resultsHelper.facet = true;
-              } else {
-                objRow = deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
-              }
-              if (!resultsHelper.facet) {
-                if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
-                  resultsHelper.facets.forEach((k, v) -> resultInfo.getFacets().add(v));
-                  promise.complete(streamResult);
-                  replyHandler.handle(promise.future());
-                }
-                streamResult.fireHandler(objRow);
-              }
-              resultsHelper.offset++;
-            } catch (Exception e) {
-              if (!promise.future().isComplete()) {
-                promise.complete(streamResult);
-                replyHandler.handle(promise.future());
-              }
-              sqlRowStream.close();
-              log.error(e.getMessage(), e);
-              streamResult.fireExceptionHandler(e);
-              streamResult.fireEndHandler();
-            }
-          }).endHandler(v2 -> {
-            if (!promise.future().isComplete()) {
-              promise.complete(streamResult);
-              replyHandler.handle(promise.future());
-            }
-            streamResult.fireEndHandler();
-          });
-        });
+        doStreamGetQuery(connection, queryHelper.selectQuery, resultInfo,
+          clazz, facets, replyHandler);
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
+  }
+
+  private <T> void doStreamGetQuery(SQLConnection connection, String selectQuery,
+    ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
+    Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
+
+    connection.queryStream(selectQuery, stream -> {
+      if (stream.failed()) {
+        log.error(stream.cause().getMessage(), stream.cause());
+        replyHandler.handle(Future.failedFuture(stream.cause()));
+        return;
+      }
+      PostgresClientStreamResult streamResult = new PostgresClientStreamResult(resultInfo);
+
+      SQLRowStream sqlRowStream = stream.result();
+      Promise promise = Promise.promise();
+      ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
+      boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
+      Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
+        resultsHelper.clazz, isAuditFlavored);
+      // fetch rows and produce ResultInfo when facets are all read
+      sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
+        JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
+        try {
+          Object objRow = null;
+          // deserializeRow can not determine if count or user object
+          // in case where user T=Object
+          // skip the initial count result when facets are in use
+          if (resultsHelper.offset == 0 && !facets.isEmpty()) {
+            resultsHelper.facet = true;
+          } else {
+            objRow = deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
+          }
+          if (!resultsHelper.facet) {
+            if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
+              resultsHelper.facets.forEach((k, v) -> resultInfo.getFacets().add(v));
+              promise.complete(streamResult);
+              replyHandler.handle(promise.future());
+            }
+            streamResult.fireHandler(objRow);
+          }
+          resultsHelper.offset++;
+        } catch (Exception e) {
+          if (!promise.future().isComplete()) {
+            promise.complete(streamResult);
+            replyHandler.handle(promise.future());
+          }
+          sqlRowStream.close();
+          log.error(e.getMessage(), e);
+          streamResult.fireExceptionHandler(e);
+          streamResult.fireEndHandler();
+        }
+      }).endHandler(v2 -> {
+        if (!promise.future().isComplete()) {
+          promise.complete(streamResult);
+          replyHandler.handle(promise.future());
+        }
+        streamResult.fireEndHandler();
+      });
+    });
   }
 
   private JsonObject convertRowStreamArrayToObject(SQLRowStream sqlRowStream, JsonArray rowAsArray) {

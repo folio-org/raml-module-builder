@@ -2428,6 +2428,24 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void streamGetWithFacetsError(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    List<FacetField> badFacets = new ArrayList<FacetField>();
+    badFacets.add(new FacetField("'"));  // bad facet
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
+      badFacets, asyncResult -> {
+        context.assertTrue(asyncResult.failed());
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
+  @Test
   public void streamGetWithSyntaxError(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
