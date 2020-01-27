@@ -2288,9 +2288,7 @@ public class PostgresClientIT {
   public void streamGetWithFilterHandlers(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
-
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
@@ -2301,6 +2299,44 @@ public class PostgresClientIT {
           context.assertEquals(3, objectCount.get());
           async.complete();
         });
+      }));
+    async.await();
+  }
+
+  @Test
+  public void streamGetUnsupported(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+      context.asyncAssertSuccess(sr -> {
+        String message;
+        message = null;
+        try {
+          sr.pause();
+        } catch (Exception ex) {
+          message = ex.getMessage();
+        }
+        context.assertEquals("Not supported yet.", message);
+        message = null;
+        try {
+          sr.resume();
+        } catch (Exception ex) {
+          message = ex.getMessage();
+        }
+        context.assertEquals("Not supported yet.", message);
+        message = null;
+        try {
+          sr.fetch(0);
+        } catch (Exception ex) {
+          message = ex.getMessage();
+        }
+        context.assertEquals("Not supported yet.", message);
+        async.complete();
       }));
     async.await();
   }

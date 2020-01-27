@@ -1,15 +1,15 @@
 package org.folio.rest.persist;
 
 import io.vertx.core.Handler;
+import io.vertx.core.streams.ReadStream;
 import org.folio.rest.jaxrs.model.ResultInfo;
 
 /**
- * Upon successful completion of PostgresCLient.streamGet, the result is this
- * class.
+ * The result of successful completion of PostgresCLient.streamGet
  *
  * @param <T> each item returned in stream is of this type
  */
-class PostgresClientStreamResult<T> {
+class PostgresClientStreamResult<T> implements ReadStream<T> {
 
   private final ResultInfo resultInfo;
 
@@ -41,6 +41,7 @@ class PostgresClientStreamResult<T> {
    * @param streamHandler
    * @return this instance (fluent)
    */
+  @Override
   public PostgresClientStreamResult<T> handler(Handler<T> streamHandler) {
     this.streamHandler = streamHandler;
     return this;
@@ -52,6 +53,7 @@ class PostgresClientStreamResult<T> {
    * @param endHandler
    * @return this instance (fluent)
    */
+  @Override
   public PostgresClientStreamResult<T> endHandler(Handler<Void> endHandler) {
     this.endHandler = endHandler;
     return this;
@@ -64,6 +66,7 @@ class PostgresClientStreamResult<T> {
    * @param exceptionHandler
    * @return this instance (fluent)
    */
+  @Override
   public PostgresClientStreamResult<T> exceptionHandler(Handler<Throwable> exceptionHandler) {
     this.exceptionHandler = exceptionHandler;
     return this;
@@ -106,5 +109,20 @@ class PostgresClientStreamResult<T> {
     if (exceptionHandler != null) {
       exceptionHandler.handle(cause);
     }
+  }
+
+  @Override
+  public ReadStream<T> pause() {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public ReadStream<T> resume() {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public ReadStream<T> fetch(long amount) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 }
