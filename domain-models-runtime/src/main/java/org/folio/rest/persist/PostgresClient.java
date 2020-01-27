@@ -1602,18 +1602,18 @@ public class PostgresClient {
    * @param fieldName usually "jsonb"
    * @param filter usually CQL query
    * @param returnIdField
-   * @param distinctOn
+   * @param distinctOn may be null
    * @param streamHandler called for each record
    * @param replyHandler called when query is complete
-   * This function is deprecated because it is impossible to avoid it has
+   * @deprecated This function is deprecated because it is impossible to avoid it has
    * no callback for the case where the HTTP headers are generated.
    * Furthermore, the hit count is not passed.
    * Thus, the only option, is to use the replyHandler to produce this.
    * Use streamGet with {@link PostgresClientStreamResult} instead.
    * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String, org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String, io.vertx.core.Handler, io.vertx.core.Handler)}
    */
-  @SuppressWarnings({"unchecked", "squid:S00107"})
   @Deprecated
+  @SuppressWarnings({"unchecked", "squid:S00107"})
   public <T> void streamGet(String table, T entity, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
@@ -1633,23 +1633,16 @@ public class PostgresClient {
 
 
   /**
-   * Streamed GET with CQLWrapper (class<T> variant, no facets)
+   * Stream GET with CQLWrapper, no facets {@link org.folio.rest.persist.PostgresClientStreamResult}
    * @param <T>
    * @param table
    * @param clazz
    * @param fieldName
    * @param filter
    * @param returnIdField
-   * @param distinctOn
-   * @param replyHandler
-   * This function is deprecated because it is impossible to avoid it has
-   * no callback for the case where the HTTP headers are generated.
-   * Furthermore, the hit count is not passed.
-   * Thus, the only option, is to use the replyHandler to produce this.
-   * Use streamGet with {@link PostgresClientStreamResult} instead.
-   * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String, org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String, io.vertx.core.Handler, io.vertx.core.Handler)}
+   * @param distinctOn may be null
+   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
    */
-  @Deprecated
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     Handler<AsyncResult<PostgresClientStreamResult>> replyHandler) {
@@ -1659,16 +1652,16 @@ public class PostgresClient {
   }
 
   /**
-   * Stream GET with CQLWrapper and {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * Stream GET with CQLWrapper and facets {@link org.folio.rest.persist.PostgresClientStreamResult}
    * @param <T>
    * @param table
    * @param clazz
    * @param fieldName
    * @param filter
-   * @param returnIdField may be null
+   * @param returnIdField must be true if facets are in passed
    * @param distinctOn may be null
    * @param facets may not be null (Collections.emptyList() for no facets)
-   * @param replyHandler AsyncResult; on success with result of {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
    */
   @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
@@ -1680,6 +1673,19 @@ public class PostgresClient {
         distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
   }
 
+  /**
+   * private for now, might be public later (and renamed)
+   * @param <T>
+   * @param connResult
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param wrapper
+   * @param returnIdField
+   * @param distinctOn
+   * @param facets
+   * @param replyHandler
+   */
   @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
   private <T> void doStreamGet(AsyncResult<SQLConnection> connResult,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
@@ -1694,6 +1700,19 @@ public class PostgresClient {
       distinctOn, facets, replyHandler);
   }
 
+  /**
+   * private for now, might be public later (and renamed)
+   * @param <T>
+   * @param connection
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param wrapper
+   * @param returnIdField
+   * @param distinctOn
+   * @param facets
+   * @param replyHandler
+   */
   @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
   private <T> void doStreamGetCount(SQLConnection connection,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
