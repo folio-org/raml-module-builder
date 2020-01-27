@@ -53,7 +53,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 27.1
 
-* Remove all foreign keys fields and the primary key field `id` from the all index sections of schema.json. These btree indexes are created automatically.
+* Remove each foreign key field index and each primary key field `id` index and uniqueIndex by setting `"tOps": "DELETE"` in schema.json. These btree indexes are created automatically.
 * Each fullTextIndex that was created with a dictionary different than 'simple' (for example using `to_tsvector('english', jsonb->>'foo')`)
   needs to be dropped. Then RMB will recreate the index with 'simple'.
   [Example](https://github.com/folio-org/mod-circulation-storage/blob/a8cbed7d32861ec92295a67f93335780e4034e7b/src/main/resources/templates/db_scripts/schema.json):
