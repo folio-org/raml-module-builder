@@ -1759,8 +1759,8 @@ public class PostgresClient {
         resultsHelper.clazz, isAuditFlavored);
       // fetch rows and produce ResultInfo when facets are all read
       sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
-        JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
         try {
+          JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
           T objRow = null;
           // deserializeRow can not determine if count or user object
           // in case where user T=Object
