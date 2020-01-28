@@ -1787,14 +1787,17 @@ public class PostgresClient {
           sqlRowStream.close();
           log.error(e.getMessage(), e);
           streamResult.fireExceptionHandler(e);
-          streamResult.fireEndHandler();
         }
       }).endHandler(v2 -> {
-        if (!promise.future().isComplete()) {
-          promise.complete(streamResult);
-          replyHandler.handle(promise.future());
+        try {
+          if (!promise.future().isComplete()) {
+            promise.complete(streamResult);
+            replyHandler.handle(promise.future());
+          }
+          streamResult.fireEndHandler();
+        } catch (Exception ex) {
+          streamResult.fireExceptionHandler(ex);
         }
-        streamResult.fireEndHandler();
       });
     });
   }

@@ -2457,14 +2457,14 @@ public class PostgresClientIT {
         });
         sr.endHandler(x -> {
           events.append("[endHandler]");
-          async.complete();
         });
         sr.exceptionHandler(x -> {
           events.append("[exception]");
+          async.complete();
         });
       }));
-    async.awaitSuccess();
-    context.assertEquals("[handler][exception][handler][exception][handler][exception][endHandler]", events.toString());
+    async.await(1000);
+    context.assertEquals("[handler][exception]", events.toString());
   }
 
   @Test
@@ -2488,8 +2488,31 @@ public class PostgresClientIT {
           async.complete();
         });
       }));
-    async.awaitSuccess();
+    async.await(1000);
     context.assertEquals("[handler][handler][handler][endHandler][exception]", events.toString());
+  }
+
+  @Test
+  public void streamGetExceptionInEndHandler2(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    StringBuilder events = new StringBuilder();
+    Async async = context.async();
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+      context.asyncAssertSuccess(sr -> {
+        sr.handler(streamHandler -> {
+          events.append("[handler]");
+        });
+        sr.endHandler(x -> {
+          events.append("[endHandler]");
+          throw new NullPointerException("null");
+        });
+        // no exceptionHandler defined
+        vertx.setTimer(100, x -> async.complete());
+      }));
+    async.await(1000);
+    context.assertEquals("[handler][handler][handler][endHandler]", events.toString());
   }
 
   @Test
@@ -2510,9 +2533,10 @@ public class PostgresClientIT {
           async.complete();
         });
         // no exceptionHandler defined
+        vertx.setTimer(100, x -> async.complete());
       }));
-    async.awaitSuccess();
-    context.assertEquals("[handler][handler][handler][endHandler]", events.toString());
+    async.await(1000);
+    context.assertEquals("[handler]", events.toString());
   }
 
   @Test
@@ -2528,13 +2552,13 @@ public class PostgresClientIT {
           events.append("[handler]");
         }).endHandler(x -> {
           events.append("[endHandler]");
-          async.complete();
         }).exceptionHandler(x -> {
           events.append("[exception]");
+          async.complete();
         });
       }));
-    async.awaitSuccess();
-    context.assertEquals("[exception][endHandler]", events.toString());
+    async.await(1000);
+    context.assertEquals("[exception]", events.toString());
   }
 
   @Test
@@ -2557,7 +2581,7 @@ public class PostgresClientIT {
           async.complete();
         });
       }));
-    async.awaitSuccess();
+    async.await(1000);
   }
 
   @Test
@@ -2579,7 +2603,7 @@ public class PostgresClientIT {
           async.complete();
         });
       }));
-    async.awaitSuccess();
+    async.await(1000);
   }
 
   @Test
@@ -2610,7 +2634,7 @@ public class PostgresClientIT {
             async.complete();
           });
         }));
-      async.awaitSuccess();
+      async.await(1000);
       // expect when in-bounds; 0 when out of bounds
       context.assertEquals(i < 3 ? 1 : 0, objectCount.get());
     }

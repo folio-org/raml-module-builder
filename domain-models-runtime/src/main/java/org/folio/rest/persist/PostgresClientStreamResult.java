@@ -78,12 +78,8 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
    * @param t
    */
   void fireHandler(T t) {
-    try {
-      if (streamHandler != null) {
-        streamHandler.handle(t);
-      }
-    } catch (Exception ex) {
-      fireExceptionHandler(ex);
+    if (streamHandler != null) {
+      streamHandler.handle(t);
     }
   }
 
@@ -91,12 +87,8 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
    * Only to be called by PostgresClient itself
    */
   void fireEndHandler() {
-    try {
-      if (endHandler != null) {
-        endHandler.handle(null);
-      }
-    } catch (Exception ex) {
-      fireExceptionHandler(ex);
+    if (endHandler != null) {
+      endHandler.handle(null);
     }
   }
 
