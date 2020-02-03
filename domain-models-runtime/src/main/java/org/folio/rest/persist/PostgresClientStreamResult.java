@@ -61,7 +61,8 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
 
   /**
    * Sets handler to be called if an exception occurs Both exceptions in user
-   * handlers and PostgresClient are caught.
+   * handlers and PostgresClient are caught. This handler will be called only once
+   * and neither the item handler, nor the endHandler will be called.
    *
    * @param exceptionHandler
    * @return this instance (fluent)

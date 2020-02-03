@@ -2247,9 +2247,8 @@ public class PostgresClientIT {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=");
-    AtomicInteger objectCount = new AtomicInteger();
     postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper,
-      false, null, streamHandler -> objectCount.incrementAndGet(), context.asyncAssertFailure());
+      false, null, streamHandler -> context.fail(), context.asyncAssertFailure());
   }
 
   @Test
@@ -2305,40 +2304,31 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetUnsupported(TestContext context) throws IOException, FieldException {
-    AtomicInteger objectCount = new AtomicInteger();
-    Async async = context.async();
-
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       context.asyncAssertSuccess(sr -> {
-        String message;
-        message = null;
         try {
           sr.pause();
+          context.fail();
         } catch (Exception ex) {
-          message = ex.getMessage();
+          context.assertEquals("Not supported yet: pause", ex.getMessage());
         }
-        context.assertEquals("Not supported yet: pause", message);
-        message = null;
         try {
           sr.resume();
+          context.fail();
         } catch (Exception ex) {
-          message = ex.getMessage();
+          context.assertEquals("Not supported yet: resume", ex.getMessage());
         }
-        context.assertEquals("Not supported yet: resume", message);
-        message = null;
         try {
           sr.fetch(0);
+          context.fail();
         } catch (Exception ex) {
-          message = ex.getMessage();
+          context.assertEquals("Not supported yet: fetch", ex.getMessage());
         }
-        context.assertEquals("Not supported yet: fetch", message);
-        async.complete();
       }));
-    async.await();
   }
 
   @Test

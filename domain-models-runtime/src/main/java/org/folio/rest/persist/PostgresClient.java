@@ -1605,12 +1605,13 @@ public class PostgresClient {
    * @param distinctOn may be null
    * @param streamHandler called for each record
    * @param replyHandler called when query is complete
-   * @deprecated This function is deprecated because it is impossible to avoid it has
-   * no callback for the case where the HTTP headers are generated.
-   * Furthermore, the hit count is not passed.
-   * Thus, the only option, is to use the replyHandler to produce this.
+   * @deprecated This function is deprecated because either you'll have to
+   * buffer whole HTTP buffer in memory to produce HTTP status; or you'll have to
+   * return a fake error. Furthermore, this API does provide totalCount
    * Use streamGet with {@link PostgresClientStreamResult} instead.
-   * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String, org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String, io.vertx.core.Handler, io.vertx.core.Handler)}
+   * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String,
+   *         org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String,
+   *         io.vertx.core.Handler, io.vertx.core.Handler)}
    */
   @Deprecated
   @SuppressWarnings({"unchecked", "squid:S00107"})
@@ -1628,9 +1629,9 @@ public class PostgresClient {
         PostgresClientStreamResult<T> streamResult = res.result();
         streamResult.handler(streamHandler);
         streamResult.endHandler(x -> replyHandler.handle(Future.succeededFuture()));
+        streamResult.exceptionHandler(e -> replyHandler.handle(Future.failedFuture(e)));
       });
   }
-
 
   /**
    * Stream GET with CQLWrapper, no facets {@link org.folio.rest.persist.PostgresClientStreamResult}
@@ -1798,6 +1799,12 @@ public class PostgresClient {
         } catch (Exception ex) {
           streamResult.fireExceptionHandler(ex);
         }
+      }).exceptionHandler(e -> {
+        if (!promise.future().isComplete()) {
+          promise.complete(streamResult);
+          replyHandler.handle(promise.future());
+        }
+        streamResult.fireExceptionHandler(e);
       });
     });
   }
