@@ -626,6 +626,15 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void updateIdWithSingleQuote(TestContext context) {
+    createFoo(context)
+      .update(FOO, xPojo, "foo'bar", context.asyncAssertFailure(fail -> {
+        assertThat(fail.getMessage(), containsString("22P02"));  // invalid input syntax for type uuid
+        // we don't want SQL injection with 42601 syntax error
+      }));
+  }
+
+  @Test
   public void updateSectionX(TestContext context) {
     UpdateSection updateSection = new UpdateSection();
     updateSection.addField("key").setValue("x");
