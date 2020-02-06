@@ -1678,7 +1678,7 @@ public class PostgresClient {
   }
 
   /**
-   * private for now, might be public later (and renamed)
+   * internal for now, might be public later (and renamed)
    * @param <T>
    * @param connResult
    * @param table
@@ -1744,7 +1744,7 @@ public class PostgresClient {
     }
   }
 
-  private <T> void doStreamGetQuery(SQLConnection connection, String selectQuery,
+  <T> void doStreamGetQuery(SQLConnection connection, String selectQuery,
     ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
@@ -1755,61 +1755,67 @@ public class PostgresClient {
         return;
       }
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
+      doStreamRowResults(stream.result(), clazz, facets, resultInfo, streamResult, replyHandler);
+    });
+  }
 
-      SQLRowStream sqlRowStream = stream.result();
-      Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
-      ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
-      boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
-      Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
-        resultsHelper.clazz, isAuditFlavored);
-      // fetch rows and produce ResultInfo when facets are all read
-      sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
-        try {
-          JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
-          T objRow = null;
-          // deserializeRow can not determine if count or user object
-          // in case where user T=Object
-          // skip the initial count result when facets are in use
-          if (resultsHelper.offset == 0 && !facets.isEmpty()) {
-            resultsHelper.facet = true;
-          } else {
-            objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
-          }
-          if (!resultsHelper.facet) {
-            if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
-              resultsHelper.facets.forEach((k, v) -> resultInfo.getFacets().add(v));
-              promise.complete(streamResult);
-              replyHandler.handle(promise.future());
-            }
-            streamResult.fireHandler(objRow);
-          }
-          resultsHelper.offset++;
-        } catch (Exception e) {
-          if (!promise.future().isComplete()) {
+<T> void doStreamRowResults(SQLRowStream sqlRowStream, Class<T> clazz,
+    List<FacetField> facets, ResultInfo resultInfo,
+    PostgresClientStreamResult<T> streamResult,
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+
+    Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
+    ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
+    boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
+    Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
+      resultsHelper.clazz, isAuditFlavored);
+    // fetch rows and produce ResultInfo when facets are all read
+    sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
+      try {
+        JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
+        T objRow = null;
+        // deserializeRow can not determine if count or user object
+        // in case where user T=Object
+        // skip the initial count result when facets are in use
+        if (resultsHelper.offset == 0 && !facets.isEmpty()) {
+          resultsHelper.facet = true;
+        } else {
+          objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
+        }
+        if (!resultsHelper.facet) {
+          if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
+            resultsHelper.facets.forEach((k, v) -> resultInfo.getFacets().add(v));
             promise.complete(streamResult);
             replyHandler.handle(promise.future());
           }
-          sqlRowStream.close();
-          log.error(e.getMessage(), e);
-          streamResult.fireExceptionHandler(e);
+          streamResult.fireHandler(objRow);
         }
-      }).endHandler(v2 -> {
-        try {
-          if (!promise.future().isComplete()) {
-            promise.complete(streamResult);
-            replyHandler.handle(promise.future());
-          }
-          streamResult.fireEndHandler();
-        } catch (Exception ex) {
-          streamResult.fireExceptionHandler(ex);
-        }
-      }).exceptionHandler(e -> {
+        resultsHelper.offset++;
+      } catch (Exception e) {
         if (!promise.future().isComplete()) {
           promise.complete(streamResult);
           replyHandler.handle(promise.future());
         }
+        sqlRowStream.close();
+        log.error(e.getMessage(), e);
         streamResult.fireExceptionHandler(e);
-      });
+      }
+    }).endHandler(v2 -> {
+      try {
+        if (!promise.future().isComplete()) {
+          promise.complete(streamResult);
+          replyHandler.handle(promise.future());
+        }
+        streamResult.fireEndHandler();
+      } catch (Exception ex) {
+        streamResult.fireExceptionHandler(ex);
+      }
+    }).exceptionHandler(e -> {
+      if (!promise.future().isComplete()) {
+        promise.complete(streamResult);
+        replyHandler.handle(promise.future());
+      }
+      streamResult.fireExceptionHandler(e);
     });
   }
 

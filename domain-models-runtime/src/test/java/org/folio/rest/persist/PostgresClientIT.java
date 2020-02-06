@@ -25,6 +25,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.streams.ReadStream;
 import io.vertx.ext.asyncsql.AsyncSQLClient;
 import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
 import io.vertx.ext.sql.ResultSet;
@@ -2477,6 +2478,99 @@ public class PostgresClientIT {
     postgresClient.doStreamGet(connResult, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true,
       null, facets, context.asyncAssertFailure(
         x -> context.assertEquals("connection error", x.getMessage())));
+  }
+
+  class MySQLRowStream implements SQLRowStream {
+
+    @Override
+    public SQLRowStream exceptionHandler(Handler<Throwable> hndlr) {
+      vertx.runOnContext(x -> hndlr.handle(new Throwable("SQLRowStream exception")));
+      return this;
+    }
+
+    @Override
+    public SQLRowStream handler(Handler<JsonArray> hndlr) {
+      return this;
+    }
+
+    @Override
+    public SQLRowStream pause() {
+      return this;
+    }
+
+    @Override
+    public SQLRowStream resume() {
+      return this;
+    }
+
+    @Override
+    public SQLRowStream endHandler(Handler<Void> hndlr) {
+      return this;
+    }
+
+    @Override
+    public int column(String string) {
+      throw new UnsupportedOperationException("column");
+    }
+
+    @Override
+    public List<String> columns() {
+      return Arrays.asList("jsonb", "id");
+    }
+
+    @Override
+    public SQLRowStream resultSetClosedHandler(Handler<Void> hndlr) {
+      return this;
+    }
+
+    @Override
+    public void moreResults() {
+    }
+
+    @Override
+    public void close() {
+    }
+
+    @Override
+    public void close(Handler<AsyncResult<Void>> hndlr) {
+      hndlr.handle(Future.succeededFuture());
+    }
+
+    @Override
+    public ReadStream<JsonArray> fetch(long l) {
+      throw new UnsupportedOperationException("fetch");
+    }
+  }
+
+  @Test
+  public void streamGetResultException(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    List<FacetField> facets = new ArrayList<FacetField>();
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    ResultInfo resultInfo = new ResultInfo();
+    context.assertNotNull(vertx);
+    SQLRowStream sqlRowStream = new MySQLRowStream();
+    StringBuilder events = new StringBuilder();
+    Async async = context.async();
+    PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
+    postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, resultInfo,
+      streamResult, context.asyncAssertSuccess(sr -> {
+        sr.handler(streamHandler -> {
+          events.append("[handler]");
+        });
+        sr.endHandler(x -> {
+          events.append("[endHandler]");
+          throw new NullPointerException("null");
+        });
+        sr.exceptionHandler(x -> {
+          events.append("[exception]");
+          context.assertEquals("SQLRowStream exception", x.getMessage());
+          async.complete();
+        });
+      }));
+    async.await(1000);
+    context.assertEquals("[exception]", events.toString());
   }
 
   @Test
