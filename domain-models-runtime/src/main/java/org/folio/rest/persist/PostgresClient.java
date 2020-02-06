@@ -1610,7 +1610,7 @@ public class PostgresClient {
    * @param replyHandler called when query is complete
    * @deprecated This function is deprecated because either you'll have to
    * buffer whole HTTP buffer in memory to produce HTTP status; or you'll have to
-   * return a fake error. Furthermore, this API does provide totalCount
+   * return a fake error. Furthermore, this API does not provide totalCount
    * Use streamGet with {@link PostgresClientStreamResult} instead.
    * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String,
    *         org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String,
@@ -1691,10 +1691,11 @@ public class PostgresClient {
    * @param replyHandler
    */
   @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
-  private <T> void doStreamGet(AsyncResult<SQLConnection> connResult,
+  <T> void doStreamGet(AsyncResult<SQLConnection> connResult,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+
     if (connResult.failed()) {
       log.error(connResult.cause().getMessage(), connResult.cause());
       replyHandler.handle(Future.failedFuture(connResult.cause()));

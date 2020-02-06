@@ -2467,6 +2467,19 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void streamGetConnectionFailed(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    List<FacetField> facets = new ArrayList<FacetField>();
+    AsyncResult<SQLConnection> connResult = Future.failedFuture("connection error");
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.doStreamGet(connResult, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true,
+      null, facets, context.asyncAssertFailure(
+        x -> context.assertEquals("connection error", x.getMessage())));
+  }
+
+  @Test
   public void streamGetExceptionInEndHandler(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
