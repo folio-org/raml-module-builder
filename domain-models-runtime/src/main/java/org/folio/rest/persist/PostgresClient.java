@@ -57,6 +57,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
@@ -1535,14 +1536,12 @@ public class PostgresClient {
   }
 
   static class QueryHelper {
-    final boolean transactionMode;
     String table;
     List<FacetField> facets;
     String selectQuery;
     String countQuery;
     int offset;
-    public QueryHelper(boolean transactionMode, String table) {
-      this.transactionMode = transactionMode;
+    public QueryHelper(String table) {
       this.table = table;
       this.offset = 0;
     }
@@ -1584,7 +1583,7 @@ public class PostgresClient {
     }
     SQLConnection connection = conn.result();
     try {
-      QueryHelper queryHelper = buildQueryHelper(true, table, fieldName, wrapper, returnIdField, facets, distinctOn);
+      QueryHelper queryHelper = buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
       if (returnCount) {
         processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
           totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz), replyHandler);
@@ -1599,91 +1598,224 @@ public class PostgresClient {
   }
 
   /**
-   * Return query results as a stream.
-   *
+   * Streamed GET with CQLWrapper (T variant, no facets)
    * @param <T>
    * @param table
    * @param entity
+   * @param fieldName usually "jsonb"
+   * @param filter usually CQL query
+   * @param returnIdField
+   * @param distinctOn may be null
+   * @param streamHandler called for each record
+   * @param replyHandler called when query is complete
+   * @deprecated This function is deprecated because either you'll have to
+   * buffer whole HTTP buffer in memory to produce HTTP status; or you'll have to
+   * return a fake error. Furthermore, this API does not provide totalCount
+   * Use streamGet with {@link PostgresClientStreamResult} instead.
+   * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String,
+   *         org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String,
+   *         io.vertx.core.Handler, io.vertx.core.Handler)}
+   */
+  @Deprecated
+  @SuppressWarnings({"unchecked", "squid:S00107"})
+  public <T> void streamGet(String table, T entity, String fieldName,
+    CQLWrapper filter, boolean returnIdField, String distinctOn,
+    Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
+
+    Class<T> clazz = (Class<T>) entity.getClass();
+    streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
+      res -> {
+        if (res.failed()) {
+          replyHandler.handle(Future.failedFuture(res.cause()));
+          return;
+        }
+        PostgresClientStreamResult<T> streamResult = res.result();
+        streamResult.handler(streamHandler);
+        streamResult.endHandler(x -> replyHandler.handle(Future.succeededFuture()));
+        streamResult.exceptionHandler(e -> replyHandler.handle(Future.failedFuture(e)));
+      });
+  }
+
+  /**
+   * Stream GET with CQLWrapper, no facets {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param <T>
+   * @param table
+   * @param clazz
    * @param fieldName
    * @param filter
    * @param returnIdField
+   * @param distinctOn may be null
+   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
+   */
+  public <T> void streamGet(String table, Class<T> clazz, String fieldName,
+    CQLWrapper filter, boolean returnIdField, String distinctOn,
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+
+    streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
+      Collections.emptyList(), replyHandler);
+  }
+
+  /**
+   * Stream GET with CQLWrapper and facets {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param filter
+   * @param returnIdField must be true if facets are in passed
+   * @param distinctOn may be null
+   * @param facets may not be null (Collections.emptyList() for no facets)
+   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
+   */
+  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  public <T> void streamGet(String table, Class<T> clazz, String fieldName,
+    CQLWrapper filter, boolean returnIdField, String distinctOn,
+    List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+
+    client.getConnection(conn ->
+      doStreamGet(conn, table, clazz, fieldName, filter, returnIdField,
+        distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * internal for now, might be public later (and renamed)
+   * @param <T>
+   * @param connResult
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param wrapper
+   * @param returnIdField
    * @param distinctOn
-   * @param streamHandler
+   * @param facets
    * @param replyHandler
    */
-  @SuppressWarnings({"unchecked", "squid:S00107"})
-  public <T> void streamGet(String table, T entity, String fieldName, CQLWrapper filter, boolean returnIdField,
-      String distinctOn, Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
+  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  <T> void doStreamGet(AsyncResult<SQLConnection> connResult,
+    String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
+    boolean returnIdField, String distinctOn, List<FacetField> facets,
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SQLConnection connection = res.result();
-        Class<T> clazz = (Class<T>) entity.getClass();
-        doStreamGet(connection, false, table, clazz, fieldName, filter, returnIdField, distinctOn,
-            Collections.emptyList(), streamHandler, replyHandler);
-      } else {
-        replyHandler.handle(Future.failedFuture(res.cause()));
+    if (connResult.failed()) {
+      log.error(connResult.cause().getMessage(), connResult.cause());
+      replyHandler.handle(Future.failedFuture(connResult.cause()));
+      return;
+    }
+    this.doStreamGetCount(connResult.result(), table, clazz, fieldName, wrapper, returnIdField,
+      distinctOn, facets, replyHandler);
+  }
+
+  /**
+   * private for now, might be public later (and renamed)
+   * @param <T>
+   * @param connection
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param wrapper
+   * @param returnIdField
+   * @param distinctOn
+   * @param facets
+   * @param replyHandler
+   */
+  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  private <T> void doStreamGetCount(SQLConnection connection,
+    String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
+    boolean returnIdField, String distinctOn, List<FacetField> facets,
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+
+    try {
+      QueryHelper queryHelper = buildQueryHelper(table,
+        fieldName, wrapper, returnIdField, facets, distinctOn);
+
+      connection.querySingle(queryHelper.countQuery, countQueryResult -> {
+        if (countQueryResult.failed()) {
+          replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
+          return;
+        }
+        ResultInfo resultInfo = new ResultInfo();
+        resultInfo.setTotalRecords(countQueryResult.result().getInteger(0));
+        doStreamGetQuery(connection, queryHelper.selectQuery, resultInfo,
+          clazz, facets, replyHandler);
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  <T> void doStreamGetQuery(SQLConnection connection, String selectQuery,
+    ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+
+    connection.queryStream(selectQuery, stream -> {
+      if (stream.failed()) {
+        log.error(stream.cause().getMessage(), stream.cause());
+        replyHandler.handle(Future.failedFuture(stream.cause()));
+        return;
       }
+      PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
+      doStreamRowResults(stream.result(), clazz, facets, resultInfo, streamResult, replyHandler);
     });
   }
 
-  @SuppressWarnings({"unchecked", "squid:S00107"})
-  private <T> void doStreamGet(SQLConnection connection, boolean transactionMode, String table, Class<T> clazz,
-      String fieldName, CQLWrapper wrapper, boolean returnIdField, String distinctOn, List<FacetField> facets,
-      Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
+<T> void doStreamRowResults(SQLRowStream sqlRowStream, Class<T> clazz,
+    List<FacetField> facets, ResultInfo resultInfo,
+    PostgresClientStreamResult<T> streamResult,
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    vertx.runOnContext(v1 -> {
+    Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
+    ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
+    boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
+    Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
+      resultsHelper.clazz, isAuditFlavored);
+    // fetch rows and produce ResultInfo when facets are all read
+    sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
       try {
-        QueryHelper queryHelper = buildQueryHelper(transactionMode, table, fieldName, wrapper, returnIdField, facets,
-            distinctOn);
-
-        connection.queryStream(queryHelper.selectQuery, stream -> {
-          if (stream.succeeded()) {
-
-            SQLRowStream sqlRowStream = stream.result();
-
-            ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
-
-            boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
-
-            Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
-                resultsHelper.clazz, isAuditFlavored);
-
-            sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
-              JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
-              try {
-                streamHandler.handle((T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));
-              } catch (Exception e) {
-                sqlRowStream.close();
-                if (!transactionMode) {
-                  connection.close();
-                }
-                log.error(e.getMessage(), e);
-                replyHandler.handle(Future.failedFuture(e));
-              }
-            }).endHandler(v2 -> {
-              if (!transactionMode) {
-                connection.close();
-              }
-              replyHandler.handle(Future.succeededFuture());
-            });
-
-          } else {
-            if (!transactionMode) {
-              connection.close();
-            }
-            log.error(stream.cause().getMessage(), stream.cause());
-            replyHandler.handle(Future.failedFuture(stream.cause()));
-          }
-        });
-
-      } catch (Exception e) {
-        if (!transactionMode) {
-          connection.close();
+        JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
+        T objRow = null;
+        // deserializeRow can not determine if count or user object
+        // in case where user T=Object
+        // skip the initial count result when facets are in use
+        if (resultsHelper.offset == 0 && !facets.isEmpty()) {
+          resultsHelper.facet = true;
+        } else {
+          objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
         }
+        if (!resultsHelper.facet) {
+          if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
+            resultsHelper.facets.forEach((k, v) -> resultInfo.getFacets().add(v));
+            promise.complete(streamResult);
+            replyHandler.handle(promise.future());
+          }
+          streamResult.fireHandler(objRow);
+        }
+        resultsHelper.offset++;
+      } catch (Exception e) {
+        if (!promise.future().isComplete()) {
+          promise.complete(streamResult);
+          replyHandler.handle(promise.future());
+        }
+        sqlRowStream.close();
         log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
+        streamResult.fireExceptionHandler(e);
       }
+    }).endHandler(v2 -> {
+      try {
+        if (!promise.future().isComplete()) {
+          promise.complete(streamResult);
+          replyHandler.handle(promise.future());
+        }
+        streamResult.fireEndHandler();
+      } catch (Exception ex) {
+        streamResult.fireExceptionHandler(ex);
+      }
+    }).exceptionHandler(e -> {
+      if (!promise.future().isComplete()) {
+        promise.complete(streamResult);
+        replyHandler.handle(promise.future());
+      }
+      streamResult.fireExceptionHandler(e);
     });
   }
 
@@ -1696,7 +1828,7 @@ public class PostgresClient {
   }
 
   QueryHelper buildQueryHelper(
-    boolean transactionMode, String table, String fieldName, CQLWrapper wrapper,
+    String table, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, List<FacetField> facets,
     String distinctOn) throws IOException, TemplateException {
 
@@ -1715,7 +1847,7 @@ public class PostgresClient {
       addIdField = "";
     }
 
-    QueryHelper queryHelper = new QueryHelper(transactionMode, table);
+    QueryHelper queryHelper = new QueryHelper(table);
 
     String countOn = "*";
     String distinctOnClause = "";
@@ -1748,33 +1880,6 @@ public class PostgresClient {
     return queryHelper;
   }
 
-  QueryHelper buildSelectQueryHelper(
-    boolean transactionMode, String table, String fieldName,
-    String where, boolean returnIdField, String distinctOn
-  ) {
-    String addIdField = "";
-    if (returnIdField) {
-      addIdField = COMMA + ID_FIELD;
-    }
-
-    if (!"null".equals(fieldName) && fieldName.contains("*")) {
-      // if we are requesting all fields (*) , then dont add the id field to the select
-      // this will return two id columns which will create ambiguity in facet queries
-      addIdField = "";
-    }
-
-    QueryHelper queryHelper = new QueryHelper(transactionMode, table);
-
-    String distinctOnClause = "";
-    if (distinctOn != null && !distinctOn.isEmpty()) {
-      distinctOnClause = String.format("DISTINCT ON (%s) ", distinctOn);
-    }
-
-    queryHelper.selectQuery = SELECT + distinctOnClause + fieldName + addIdField + FROM + schemaName + DOT + table + SPACE + where;
-
-    return queryHelper;
-  }
-
   <T> void processQueryWithCount(
     SQLConnection connection, QueryHelper queryHelper, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
@@ -1784,9 +1889,6 @@ public class PostgresClient {
     connection.querySingle(queryHelper.countQuery, countQueryResult -> {
       try {
         if (countQueryResult.failed()) {
-          if (!queryHelper.transactionMode) {
-            connection.close();
-          }
           log.error("query with count: " + countQueryResult.cause().getMessage()
             + " - " + queryHelper.countQuery, countQueryResult.cause());
           replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
@@ -1800,9 +1902,6 @@ public class PostgresClient {
         log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
 
         if (total <= queryHelper.offset) {
-          if (!queryHelper.transactionMode) {
-            connection.close();
-          }
           log.debug("Skipping query due to no results expected!");
           ResultSet emptyResultSet = new ResultSet(Collections.singletonList(ID_FIELD), Collections.emptyList(), null);
           replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptyResultSet, total))));
@@ -1811,9 +1910,6 @@ public class PostgresClient {
 
         processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
       } catch (Exception e) {
-        if (!queryHelper.transactionMode) {
-          connection.close();
-        }
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
       }
@@ -1826,9 +1922,6 @@ public class PostgresClient {
   ) {
     try {
       queryAndAnalyze(connection, queryHelper.selectQuery, statMethod, query -> {
-        if (!queryHelper.transactionMode) {
-          connection.close();
-        }
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
           return;
@@ -2286,6 +2379,8 @@ public class PostgresClient {
     final List<String> columnNames;
     final Class<T> clazz;
     int total;
+    int offset;
+    boolean facet;
     public ResultsHelper(ResultSet resultSet, int total, Class<T> clazz) {
       this.list = new ArrayList<>();
       this.facets = new HashMap<>();
@@ -2293,6 +2388,7 @@ public class PostgresClient {
       this.columnNames = resultSet.getColumnNames();
       this.clazz= clazz;
       this.total = total;
+      this.offset = 0;
     }
     public ResultsHelper(SQLRowStream sqlRowStream, Class<T> clazz) {
       this.list = new ArrayList<>();
@@ -2300,6 +2396,7 @@ public class PostgresClient {
       this.resultSet = null;
       this.columnNames = sqlRowStream.columns();
       this.clazz= clazz;
+      this.offset = 0;
     }
   }
 
@@ -2386,6 +2483,7 @@ public class PostgresClient {
 
     Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
     Object o = null;
+    resultsHelper.facet = false;
 
     if (!isAuditFlavored && jo != null) {
       boolean finished = false;
@@ -2411,6 +2509,7 @@ public class PostgresClient {
         }
       }
       if (finished) {
+        resultsHelper.facet = true;
         return o;
       }
     } else {
