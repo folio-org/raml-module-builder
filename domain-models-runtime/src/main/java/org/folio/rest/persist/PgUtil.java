@@ -1,5 +1,7 @@
 package org.folio.rest.persist;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -23,14 +25,20 @@ import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.jaxrs.model.Diagnostic;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.facets.FacetManager;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.Json;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.web.RoutingContext;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -38,8 +46,6 @@ import org.z3950.zing.cql.CQLParser;
 import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Helper methods for using PostgresClient.
@@ -457,6 +463,76 @@ public final class PgUtil {
     setList.invoke(collection, list);
     setTotalRecords.invoke(collection, totalRecords);
     return collection;
+  }
+
+  private static <T> void streamGetResult(PostgresClientStreamResult<T> result,
+    Class<T> clazz, String element, HttpServerResponse response) {
+    response.setStatusCode(200);
+    response.setChunked(true);
+    response.putHeader("Content-Type", "application/json");
+    response.write("{\n");
+    response.write(String.format("  \"totalRecords\":\"%d\",\n", result.resultInto().getTotalRecords()));
+    response.write(String.format("  \"%s\": [\n", element));
+    final int[] cnt = { 0 };
+    result.exceptionHandler(res -> {
+      String message = res.getMessage();
+      List<Diagnostic> diag = new ArrayList<>();
+      diag.add(new Diagnostic().withCode("500").withMessage(message));
+      result.resultInto().setDiagnostics(diag);
+      response.write("],\n");
+      response.write(Json.encode(result.resultInto()));
+      response.write("\n}");
+    });
+    result.endHandler(res -> {
+      response.write("],\n");
+      response.write(Json.encode(result.resultInto()));
+      response.write("\n}");
+    });
+    result.handler(res -> {
+      if (cnt[0]++ > 0) {
+        response.write(",\n");
+      }
+      try {
+        response.write(OBJECT_MAPPER.writeValueAsString(res));
+      } catch (JsonProcessingException ex) {
+        logger.error(ex.getCause(), ex);
+        throw new IllegalArgumentException(ex.getCause());
+      }
+    });
+  }
+
+  public static <T> void streamGet(String table, Class<T> clazz,
+    String cql, int offset, int limit, List<String> facets,
+    String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
+    Context vertxContext) {
+    HttpServerResponse response = routingContext.response();
+    final String fieldName = "jsonb";
+    try {
+      List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, fieldName);
+      CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(fieldName), cql, limit, offset);
+      PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+      postgresClient.streamGet(table, clazz, fieldName, wrapper, true, null,
+        facetList, reply -> {
+          if (reply.failed()) {
+            String message = PgExceptionUtil.badRequestMessage(reply.cause());
+            if (message == null) {
+              message = reply.cause().getMessage();
+            }
+            logger.error(message, reply.cause());
+            response.setStatusCode(400);
+            response.putHeader("Content-Type", "text/plain");
+            response.end(message);
+            return;
+          }
+          streamGetResult(reply.result(), clazz, element, response);
+        });
+    } catch (FieldException e) {
+      logger.error(e.getMessage(), e);
+      response.setStatusCode(400);
+      response.putHeader("Content-Type", "text/plain");
+      response.end(e.getMessage());
+      return;
+    }
   }
   /**
    * Get records by CQL.
