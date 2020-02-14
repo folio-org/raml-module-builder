@@ -1,14 +1,5 @@
 package org.folio.rest.impl;
 
-import java.util.List;
-import java.util.Map;
-
-import javax.ws.rs.core.Response;
-
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.resource.Rmbtests;
-import org.folio.rest.tools.utils.OutStream;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -18,7 +9,16 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
 import java.io.InputStream;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.folio.rest.annotations.Stream;
+import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Book;
+import org.folio.rest.jaxrs.resource.Rmbtests;
+import org.folio.rest.persist.PgUtil;
+import org.folio.rest.tools.utils.OutStream;
 
 /**
  * This is a demo class for unit testing - and to serve as an example only!
@@ -62,10 +62,17 @@ public class BooksDemoAPI implements Rmbtests {
 
   @Validate
   @Override
-  public void getRmbtestsTest(String query,
+  public void getRmbtestsTest(String query, RoutingContext routingContext,
     Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
     Context vertxContext) {
 
+    String table = "test_tenantapi";
+    if ("badclass=true".equals(query)) {
+      PgUtil.streamGet(table, StringBuilder.class, query, 0, 0, new LinkedList<String>(), "books",
+        routingContext, okapiHeaders, vertxContext);
+    }
+    PgUtil.streamGet(table, Book.class, query, 0, 0, new LinkedList<String>(), "books",
+      routingContext, okapiHeaders, vertxContext);
   }
 
   @Validate

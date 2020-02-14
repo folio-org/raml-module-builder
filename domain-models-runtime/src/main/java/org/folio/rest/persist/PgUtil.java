@@ -39,6 +39,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.web.RoutingContext;
+import org.folio.rest.jaxrs.model.ResultInfo;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -465,6 +466,13 @@ public final class PgUtil {
     return collection;
   }
 
+  private static void streamTrailer(HttpServerResponse response, ResultInfo resultInfo) {
+    response.write("],\n");
+    response.write("  \"resultInfo\": ");
+    response.write(Json.encode(resultInfo));
+    response.write("\n}");
+    response.end();
+  }
   private static <T> void streamGetResult(PostgresClientStreamResult<T> result,
     Class<T> clazz, String element, HttpServerResponse response) {
     response.setStatusCode(200);
@@ -479,14 +487,10 @@ public final class PgUtil {
       List<Diagnostic> diag = new ArrayList<>();
       diag.add(new Diagnostic().withCode("500").withMessage(message));
       result.resultInto().setDiagnostics(diag);
-      response.write("],\n");
-      response.write(Json.encode(result.resultInto()));
-      response.write("\n}");
+      streamTrailer(response, result.resultInto());
     });
     result.endHandler(res -> {
-      response.write("],\n");
-      response.write(Json.encode(result.resultInto()));
-      response.write("\n}");
+      streamTrailer(response, result.resultInto());
     });
     result.handler(res -> {
       if (cnt[0]++ > 0) {
@@ -528,7 +532,7 @@ public final class PgUtil {
         });
     } catch (FieldException e) {
       logger.error(e.getMessage(), e);
-      response.setStatusCode(400);
+      response.setStatusCode(500);
       response.putHeader("Content-Type", "text/plain");
       response.end(e.getMessage());
       return;
