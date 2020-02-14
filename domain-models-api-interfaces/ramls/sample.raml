@@ -6,6 +6,7 @@ version: v1
 
 types:
   book: !include book.schema
+  books: !include books.schema
 
 traits:
   facets: !include raml-util/traits/facets.raml
@@ -92,6 +93,25 @@ traits:
         302:
           headers:
             Location:
+    get:
+      queryParameters:
+        query:
+          displayName: CQL query
+          type: string
+          description: CQL query
+          example: title=water
+          required: true
+      responses:
+        200:
+          body:
+            application/json:
+              schema: books
+        400:
+          body:
+             text/plain:
+        500:
+          body:
+            text/plain:
   /testStream:
     post:
       body:

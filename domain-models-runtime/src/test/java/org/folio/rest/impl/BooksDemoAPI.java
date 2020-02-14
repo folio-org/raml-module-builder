@@ -62,6 +62,14 @@ public class BooksDemoAPI implements Rmbtests {
 
   @Validate
   @Override
+  public void getRmbtestsTest(String query,
+    Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+    Context vertxContext) {
+
+  }
+
+  @Validate
+  @Override
   public void postRmbtestsTest(Object entity, RoutingContext routingContext,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
