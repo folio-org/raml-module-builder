@@ -166,6 +166,9 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/_/tenant", buf,
       201, HttpMethod.POST, "application/json", TENANT, false);
 
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=nullpointer%3Dtrue", 500);
+    context.assertEquals("java.lang.NullPointerException", buf.toString());
+
     Books books;
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
     books = Json.decodeValue(buf, Books.class);
@@ -219,6 +222,7 @@ public class DemoRamlRestTest {
     context.assertEquals(2, books.getResultInfo().getTotalRecords());
     context.assertEquals(2, books.getBooks().size());
 
+    // need at least one record in result before we can trigger this error
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=badclass%3Dtrue", 200);
     books = Json.decodeValue(buf, Books.class);
     context.assertEquals(2, books.getTotalRecords());

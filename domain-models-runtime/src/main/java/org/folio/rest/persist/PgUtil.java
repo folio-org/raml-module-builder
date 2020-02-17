@@ -506,34 +506,45 @@ public final class PgUtil {
     String cql, int offset, int limit, List<String> facets,
     String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
     Context vertxContext) {
+
     HttpServerResponse response = routingContext.response();
-    final String fieldName = JSON_COLUMN;
     try {
-      List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, fieldName);
-      CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(fieldName), cql, limit, offset);
-      PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
-      postgresClient.streamGet(table, clazz, fieldName, wrapper, true, null,
-        facetList, reply -> {
-          if (reply.failed()) {
-            String message = PgExceptionUtil.badRequestMessage(reply.cause());
-            if (message == null) {
-              message = reply.cause().getMessage();
-            }
-            logger.error(message, reply.cause());
-            response.setStatusCode(400);
-            response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
-            response.end(message);
-            return;
-          }
-          streamGetResult(reply.result(), element, response);
-        });
-    } catch (FieldException e) {
-      logger.error(e.getMessage(), e);
+      List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
+      CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(JSON_COLUMN), cql, limit, offset);
+      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext);
+    } catch (Exception e) {
+      logger.info("e={}", e.getCause(), e);
       response.setStatusCode(500);
       response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
-      response.end(e.getMessage());
+      response.end(e.toString());
     }
   }
+
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T> void streamGet(String table, Class<T> clazz,
+    CQLWrapper filter, List<FacetField> facetList, String element,
+    RoutingContext routingContext, Map<String, String> okapiHeaders,
+    Context vertxContext) {
+
+    HttpServerResponse response = routingContext.response();
+    PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+    postgresClient.streamGet(table, clazz, JSON_COLUMN, filter, true, null,
+      facetList, reply -> {
+        if (reply.failed()) {
+          String message = PgExceptionUtil.badRequestMessage(reply.cause());
+          if (message == null) {
+            message = reply.cause().getMessage();
+          }
+          logger.error(message, reply.cause());
+          response.setStatusCode(400);
+          response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
+          response.end(message);
+          return;
+        }
+        streamGetResult(reply.result(), element, response);
+      });
+  }
+
   /**
    * Get records by CQL.
    * @param table  the table that contains the records

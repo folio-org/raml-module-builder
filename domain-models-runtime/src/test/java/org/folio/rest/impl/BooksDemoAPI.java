@@ -71,6 +71,10 @@ public class BooksDemoAPI implements Rmbtests {
       PgUtil.streamGet(TABLE, StringBuilder.class, null, 0, 10, new LinkedList<String>(), "books",
         routingContext, okapiHeaders, vertxContext);
     }
+    if ("nullpointer=true".equals(query)) {
+      PgUtil.streamGet(TABLE, StringBuilder.class, null, 0, 10, null, "books",
+        routingContext, /* okapiHeaders= */ null, vertxContext);
+    }
     PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<String>(), "books",
       routingContext, okapiHeaders, vertxContext);
   }
