@@ -32,6 +32,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.Json;
@@ -467,20 +468,17 @@ public final class PgUtil {
   }
 
   private static void streamTrailer(HttpServerResponse response, ResultInfo resultInfo) {
-    response.write("],\n");
-    response.write("  \"resultInfo\": ");
-    response.write(Json.encode(resultInfo));
-    response.write("\n}");
-    response.end();
+    response.end(String.format("],%n  \"resultInfo\": %s%n}", Json.encode(resultInfo)));
   }
+
   private static <T> void streamGetResult(PostgresClientStreamResult<T> result,
-    Class<T> clazz, String element, HttpServerResponse response) {
+    String element, HttpServerResponse response) {
     response.setStatusCode(200);
     response.setChunked(true);
-    response.putHeader("Content-Type", "application/json");
+    response.putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     response.write("{\n");
-    response.write(String.format("  \"totalRecords\":\"%d\",\n", result.resultInto().getTotalRecords()));
-    response.write(String.format("  \"%s\": [\n", element));
+    response.write(String.format("  \"totalRecords\":\"%d\",%n", result.resultInto().getTotalRecords()));
+    response.write(String.format("  \"%s\": [%n", element));
     final int[] cnt = { 0 };
     result.exceptionHandler(res -> {
       String message = res.getMessage();
@@ -489,12 +487,10 @@ public final class PgUtil {
       result.resultInto().setDiagnostics(diag);
       streamTrailer(response, result.resultInto());
     });
-    result.endHandler(res -> {
-      streamTrailer(response, result.resultInto());
-    });
+    result.endHandler(res -> streamTrailer(response, result.resultInto()));
     result.handler(res -> {
       if (cnt[0]++ > 0) {
-        response.write(",\n");
+        response.write(String.format(",%n"));
       }
       try {
         response.write(OBJECT_MAPPER.writeValueAsString(res));
@@ -505,12 +501,13 @@ public final class PgUtil {
     });
   }
 
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
     String cql, int offset, int limit, List<String> facets,
     String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
     Context vertxContext) {
     HttpServerResponse response = routingContext.response();
-    final String fieldName = "jsonb";
+    final String fieldName = JSON_COLUMN;
     try {
       List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, fieldName);
       CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(fieldName), cql, limit, offset);
@@ -524,18 +521,17 @@ public final class PgUtil {
             }
             logger.error(message, reply.cause());
             response.setStatusCode(400);
-            response.putHeader("Content-Type", "text/plain");
+            response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
             response.end(message);
             return;
           }
-          streamGetResult(reply.result(), clazz, element, response);
+          streamGetResult(reply.result(), element, response);
         });
     } catch (FieldException e) {
       logger.error(e.getMessage(), e);
       response.setStatusCode(500);
-      response.putHeader("Content-Type", "text/plain");
+      response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
       response.end(e.getMessage());
-      return;
     }
   }
   /**
