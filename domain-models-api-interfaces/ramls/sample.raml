@@ -86,13 +86,22 @@ traits:
     post:
       body:
         application/json:
+          schema: book
       responses:
-        200:
-          body:
-            application/json:
-        302:
+        201:
           headers:
             Location:
+          body:
+            application/json:
+        400:
+          body:
+            text/plain:
+        422:
+          body:
+            text/plain:
+        500:
+          body:
+            text/plain:
     get:
       queryParameters:
         query:
@@ -100,7 +109,7 @@ traits:
           type: string
           description: CQL query
           example: title=water
-          required: true
+          required: false
       responses:
         200:
           body:
@@ -109,6 +118,9 @@ traits:
         400:
           body:
              text/plain:
+        422:
+          body:
+            text/plain:
         500:
           body:
             text/plain:

@@ -160,7 +160,7 @@ public class DemoRamlRestTest {
   }
 
   @Test
-  public void getBookWithRoutingContext(TestContext context) {
+  public void getBookWithRoutingContext(TestContext context)  throws Exception {
     Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
     NetClient cli = vertx.createNetClient();
     postData(context, "http://localhost:" + port + "/_/tenant", buf,
@@ -169,14 +169,63 @@ public class DemoRamlRestTest {
     Books books;
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
     books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(0, books.getTotalRecords());
+    context.assertEquals(0, books.getResultInfo().getDiagnostics().size());
+    context.assertEquals(0, books.getResultInfo().getTotalRecords());
+    context.assertEquals(0, books.getBooks().size());
 
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=title%3Dwater", 200);
     books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(0, books.getTotalRecords());
 
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=a%3D", 400);
     context.assertTrue(buf.toString().contains("expected index or term, got EOF"));
 
+    Data d = new Data();
+    d.setAuthor("a");
+    d.setGenre("g");
+    d.setDescription("description1");
+    d.setTitle("title");
+    d.setDatetime(new Datetime());
+    d.setLink("link");
+
+    Book b = new Book();
+    b.setData(d);
+    b.setStatus(0);
+    b.setSuccess(true);
+
+    ObjectMapper om = new ObjectMapper();
+    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+
+    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201,
+      HttpMethod.POST, "application/json", TENANT, false);
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(1, books.getTotalRecords());
+    context.assertEquals(0, books.getResultInfo().getDiagnostics().size());
+    context.assertEquals(1, books.getResultInfo().getTotalRecords());
+    context.assertEquals(1, books.getBooks().size());
+
+    d.setDescription("description2");
+    book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201,
+      HttpMethod.POST, "application/json", TENANT, false);
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(2, books.getTotalRecords());
+    context.assertEquals(0, books.getResultInfo().getDiagnostics().size());
+    context.assertEquals(2, books.getResultInfo().getTotalRecords());
+    context.assertEquals(2, books.getBooks().size());
+
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=badclass%3Dtrue", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(2, books.getTotalRecords());
+    context.assertEquals(1, books.getResultInfo().getDiagnostics().size());
+    context.assertTrue(books.getResultInfo().getDiagnostics().get(0).getMessage().contains("Cannot deserialize instance of"));
+    context.assertEquals(2, books.getResultInfo().getTotalRecords());
+    context.assertEquals(0, books.getBooks().size());
   }
 
   @Test
@@ -219,19 +268,14 @@ public class DemoRamlRestTest {
     d.setGenre("g");
     d.setDescription("asdfss");
     b.setData(d);
-
-    ObjectMapper om = new ObjectMapper();
-    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
-
-    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 200, HttpMethod.POST,
-      "application/json", TENANT, false);
+    d.setTitle("title");
 
     d.setDatetime(new Datetime());
-    d.setTitle("title");
     d.setLink("link");
     b.setStatus(0);
     b.setSuccess(true);
-    book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    ObjectMapper om = new ObjectMapper();
+    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
 
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, HttpMethod.POST, "application/json", TENANT, true);
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, HttpMethod.POST, "application/json", TENANT, false);

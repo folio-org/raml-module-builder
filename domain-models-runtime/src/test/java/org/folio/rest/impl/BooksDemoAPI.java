@@ -26,6 +26,7 @@ import org.folio.rest.tools.utils.OutStream;
 public class BooksDemoAPI implements Rmbtests {
 
   private static final Logger log = LoggerFactory.getLogger(BooksDemoAPI.class);
+  private static final String TABLE = "test_tenantapi";
 
   /**
    * validate to test the validation aspect
@@ -66,30 +67,21 @@ public class BooksDemoAPI implements Rmbtests {
     Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
     Context vertxContext) {
 
-    String table = "test_tenantapi";
     if ("badclass=true".equals(query)) {
-      PgUtil.streamGet(table, StringBuilder.class, query, 0, 0, new LinkedList<String>(), "books",
+      PgUtil.streamGet(TABLE, StringBuilder.class, null, 0, 10, new LinkedList<String>(), "books",
         routingContext, okapiHeaders, vertxContext);
     }
-    PgUtil.streamGet(table, Book.class, query, 0, 0, new LinkedList<String>(), "books",
+    PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<String>(), "books",
       routingContext, okapiHeaders, vertxContext);
   }
 
   @Validate
   @Override
-  public void postRmbtestsTest(Object entity, RoutingContext routingContext,
+  public void postRmbtestsTest(Book entity, RoutingContext routingContext,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
 
-    OutStream os = new OutStream();
-    try {
-      os.setData(routingContext.getBodyAsJson());
-      asyncResultHandler.handle(Future.succeededFuture(
-        PostRmbtestsTestResponse.respond200WithApplicationJson(os)));
-    } catch (Exception e) {
-      log.error( e.getMessage(),  e );
-      asyncResultHandler.handle(Future.succeededFuture(null));
-    }
+    PgUtil.post(TABLE, entity, okapiHeaders, vertxContext, PostRmbtestsTestResponse.class, asyncResultHandler);
   }
 
   @Validate
