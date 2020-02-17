@@ -215,4 +215,44 @@ public class SchemaMakerIT extends PostgresClientITBase {
   public void foreignKey(TestContext context) {
     runSchema(context, TenantOperation.CREATE, "schemaInstanceItem.json");
   }
+
+  private void assertSelectSingle(TestContext context, String sql, String expected) {
+    runSchema(context, TenantOperation.CREATE, "schema.json");
+    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
+    postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
+      context.assertEquals(expected, result.getString(0));
+    }));
+  }
+
+  @Test
+  public void concat_array_object_values(TestContext context) {
+    assertSelectSingle(context, String.format(
+        "SELECT concat_array_object_values('%s'::jsonb, 'f')",
+        "[{},{'k':'v','f':'1'},{'k':'v'},{'f':'2'},{'k':'v','f':'3'}]".replace('\'', '"')),
+        "1 2 3");
+  }
+
+  @Test
+  public void concat_array_object_values_filter(TestContext context) {
+    assertSelectSingle(context, String.format(
+        "SELECT concat_array_object_values('%s'::jsonb, 'f', 'k', 'v')",
+        "[{},{'k':'v','f':'1'},{'k':'v'},{'f':'2'},{'k':'v','f':'3'}]".replace('\'', '"')),
+        "1 3");
+  }
+
+  @Test
+  public void first_array_object_values_filter(TestContext context) {
+    assertSelectSingle(context, String.format(
+        "SELECT first_array_object_value('%s'::jsonb, 'f', 'k', 'v')",
+        "[{},{'k':'v','f':'1'},{'k':'v'},{'f':'2'},{'k':'v','f':'3'}]".replace('\'', '"')),
+        "1");
+  }
+
+  @Test
+  public void concat_array_object(TestContext context) {
+    assertSelectSingle(context, String.format(
+        "SELECT concat_array_object('%s'::jsonb)",
+        "[{},3,'foo',{'a': 'b', 'c': 'd'}]".replace('\'', '"')),
+        "{} 3 foo {'a': 'b', 'c': 'd'}".replace('\'', '"'));
+  }
 }

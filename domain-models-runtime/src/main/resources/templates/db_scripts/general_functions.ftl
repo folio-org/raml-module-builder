@@ -52,14 +52,30 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-create or replace function concat_space_sql(VARIADIC text[])
+-- Concatenate the parameters using space as separator
+create or replace function ${myuniversity}_${mymodule}.concat_space_sql(VARIADIC text[])
 RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); 
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 
-create or replace function concat_array_object_values(jsonb_data jsonb, field text) RETURNS text AS $$
+-- For each element of the jsonb_array take the value of field; concatenate them using space as separator
+create or replace function ${myuniversity}_${mymodule}.concat_array_object_values(jsonb_array jsonb, field text) RETURNS text AS $$
   SELECT string_agg(value->>$2, ' ') FROM jsonb_array_elements($1);
-$$ LANGUAGE sql IMMUTABLE;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
-create or replace function concat_array_object(jsonb_data jsonb) RETURNS text AS $$
+-- Take each value of the field attribute of the jsonb_array elements where the filterkey of the element has filtervalue;
+-- concate the values using space as separator.
+create or replace function ${myuniversity}_${mymodule}.concat_array_object_values(
+  jsonb_array jsonb, field text, filterkey text, filtervalue text) RETURNS text AS $$
+SELECT string_agg(value->>$2, ' ') FROM jsonb_array_elements($1) WHERE value->>$3 = $4;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+-- Return the value of the field attribute of the first jsonb_array element where filterkey has filtervalue.
+create or replace function ${myuniversity}_${mymodule}.first_array_object_value(
+  jsonb_array jsonb, field text, filterkey text, filtervalue text) RETURNS text AS $$
+SELECT value->>$2 FROM jsonb_array_elements($1) WHERE value->>$3 = $4 LIMIT 1;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+-- Concatenate the elements of the jsonb_array using space as separator
+create or replace function ${myuniversity}_${mymodule}.concat_array_object(jsonb_array jsonb) RETURNS text AS $$
   SELECT string_agg(value::text, ' ') FROM jsonb_array_elements_text($1);
-$$ LANGUAGE sql IMMUTABLE;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
