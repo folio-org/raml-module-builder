@@ -44,6 +44,7 @@ import io.vertx.core.net.NetSocket;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.rest.persist.PostgresClient;
 
 /**
  * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
@@ -94,24 +95,9 @@ public class DemoRamlRestTest {
    */
   @AfterClass
   public static void tearDown(TestContext context) {
-    deleteTempFilesCreated();
     Locale.setDefault(oldLocale);
+    PostgresClient.stopEmbeddedPostgres();
     vertx.close(context.asyncAssertSuccess());
-  }
-
-  private static void deleteTempFilesCreated(){
-    log.info("deleting created files");
-    // Lists all files in folder
-    File folder = new File(RestVerticle.DEFAULT_TEMP_DIR);
-    File fList[] = folder.listFiles();
-    // Searchs test.json
-    for (int i = 0; i < fList.length; i++) {
-        String pes = fList[i].getName();
-        if (pes.endsWith("test.json")) {
-            // and deletes
-            boolean success = fList[i].delete();
-        }
-    }
   }
 
   @Test
@@ -582,33 +568,6 @@ public class DemoRamlRestTest {
     return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
   }
 
-
-  /**
-   *
-   * @param filename
-   * @param closeBody - if creating a request with multiple parts in the body
-   * close the body once all parts have been added - for example - passing multiple files
-   * in the body - you would close the body after adding the final file
-   * @return
-   */
-  private Buffer getBody(String filename, boolean closeBody) {
-    Buffer buffer = Buffer.buffer();
-    buffer.appendString("--MyBoundary\r\n");
-    buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
-    buffer.appendString("Content-Type: application/octet-stream\r\n");
-    buffer.appendString("Content-Transfer-Encoding: binary\r\n");
-    buffer.appendString("\r\n");
-    try {
-      buffer.appendString(getFile(filename));
-      buffer.appendString("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage(), e);
-    }
-    if(closeBody){
-      buffer.appendString("--MyBoundary--\r\n");
-    }
-    return buffer;
-  }
 
   private List<Object> getListOfBooks(){
     List<Object> list = new ArrayList<>();
