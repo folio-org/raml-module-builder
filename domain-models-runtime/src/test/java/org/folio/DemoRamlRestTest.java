@@ -43,7 +43,6 @@ import io.vertx.core.net.NetSocket;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import javax.validation.constraints.NotNull;
 import org.folio.rest.persist.PostgresClient;
 
 /**
