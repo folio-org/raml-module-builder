@@ -1,6 +1,5 @@
 package org.folio;
 
-import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -44,6 +43,7 @@ import io.vertx.core.net.NetSocket;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import javax.validation.constraints.NotNull;
 import org.folio.rest.persist.PostgresClient;
 
 /**
@@ -230,6 +230,13 @@ public class DemoRamlRestTest {
     context.assertTrue(books.getResultInfo().getDiagnostics().get(0).getMessage().contains("Cannot deserialize instance of"));
     context.assertEquals(2, books.getResultInfo().getTotalRecords());
     context.assertEquals(0, books.getBooks().size());
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=slim%3Dtrue", 200);
+    JsonObject jo = new JsonObject(buf);
+    log.info("jo={}", jo.encodePrettily());
+    context.assertEquals(2, jo.getInteger("totalRecords"));
+    context.assertEquals(0, jo.getJsonArray("books").getJsonObject(0).getInteger("status"));
+    context.assertEquals(0, jo.getJsonArray("books").getJsonObject(1).getInteger("status"));
   }
 
   @Test

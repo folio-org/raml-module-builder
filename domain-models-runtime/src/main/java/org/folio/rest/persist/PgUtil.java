@@ -477,7 +477,7 @@ public final class PgUtil {
     response.setChunked(true);
     response.putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     response.write("{\n");
-    response.write(String.format("  \"totalRecords\":\"%d\",%n", result.resultInto().getTotalRecords()));
+    response.write(String.format("  \"totalRecords\": %d,%n", result.resultInto().getTotalRecords()));
     response.write(String.format("  \"%s\": [%n", element));
     final int[] cnt = { 0 };
     result.exceptionHandler(res -> {
@@ -501,6 +501,20 @@ public final class PgUtil {
     });
   }
 
+  /**
+   * Streaming GET with query
+   * @param <T> Class for each item returned
+   * @param table SQL table
+   * @param clazz The item class
+   * @param cql CQL query
+   * @param offset offset >= 0; < 0 to ignore
+   * @param limit  limit >= 0 ; <0 to ignore
+   * @param facets facets (empty or null for  no facets)
+   * @param element wrapper JSON element for list of items (eg books / users)
+   * @param routingContext routing context from which a HTTP response is made
+   * @param okapiHeaders
+   * @param vertxContext
+   */
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
     String cql, int offset, int limit, List<String> facets,
@@ -521,7 +535,7 @@ public final class PgUtil {
   }
 
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
-  public static <T> void streamGet(String table, Class<T> clazz,
+  private static <T> void streamGet(String table, Class<T> clazz,
     CQLWrapper filter, List<FacetField> facetList, String element,
     RoutingContext routingContext, Map<String, String> okapiHeaders,
     Context vertxContext) {

@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import org.folio.SlimBook;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Book;
@@ -68,13 +69,18 @@ public class BooksDemoAPI implements Rmbtests {
     Context vertxContext) {
 
     if ("badclass=true".equals(query)) {
-      PgUtil.streamGet(TABLE, StringBuilder.class, null, 0, 10, new LinkedList<String>(), "books",
-        routingContext, okapiHeaders, vertxContext);
+      PgUtil.streamGet(TABLE, /* can not be deserialized */ StringBuilder.class,
+        null, 0, 10, new LinkedList<String>(), "books", routingContext, okapiHeaders, vertxContext);
     }
     if ("nullpointer=true".equals(query)) {
-      PgUtil.streamGet(TABLE, StringBuilder.class, null, 0, 10, null, "books",
-        routingContext, /* okapiHeaders= */ null, vertxContext);
+      PgUtil.streamGet(TABLE, Book.class, null, 0, 10, null, "books",
+        routingContext, /* okapiHeaders is null which results in exception */ null, vertxContext);
     }
+    if ("slim=true".equals(query)) {
+      PgUtil.streamGet(TABLE, SlimBook.class, null, 0, 10, new LinkedList<String>(), "books",
+        routingContext, okapiHeaders, vertxContext);
+    }
+
     PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<String>(), "books",
       routingContext, okapiHeaders, vertxContext);
   }
