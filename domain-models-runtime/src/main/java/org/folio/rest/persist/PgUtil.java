@@ -40,6 +40,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.web.RoutingContext;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
@@ -479,7 +480,7 @@ public final class PgUtil {
     response.write("{\n");
     response.write(String.format("  \"totalRecords\": %d,%n", result.resultInto().getTotalRecords()));
     response.write(String.format("  \"%s\": [%n", element));
-    final int[] cnt = { 0 };
+    AtomicBoolean first = new AtomicBoolean(true);
     result.exceptionHandler(res -> {
       String message = res.getMessage();
       List<Diagnostic> diag = new ArrayList<>();
@@ -489,15 +490,19 @@ public final class PgUtil {
     });
     result.endHandler(res -> streamTrailer(response, result.resultInto()));
     result.handler(res -> {
-      if (cnt[0]++ > 0) {
-        response.write(String.format(",%n"));
-      }
+      String itemString = null;
       try {
-        response.write(OBJECT_MAPPER.writeValueAsString(res));
+        itemString = OBJECT_MAPPER.writeValueAsString(res);
       } catch (JsonProcessingException ex) {
-        logger.error(ex.getCause(), ex);
+        logger.error(ex.getMessage(), ex);
         throw new IllegalArgumentException(ex.getCause());
       }
+      if (first.get()) {
+        first.set(false);
+      } else {
+        response.write(String.format(",%n"));
+      }
+      response.write(itemString);
     });
   }
 
@@ -535,8 +540,8 @@ public final class PgUtil {
    * @param table SQL table
    * @param clazz The item class
    * @param cql CQL query
-   * @param offset offset >= 0; < 0 to ignore
-   * @param limit  limit >= 0 ; <0 to ignore
+   * @param offset offset >= 0; < 0 for no offset
+   * @param limit  limit >= 0 ; <0 for no limit
    * @param facets facets (empty or null for  no facets)
    * @param element wrapper JSON element for list of items (eg books / users)
    * @param routingContext routing context from which a HTTP response is made
@@ -555,7 +560,7 @@ public final class PgUtil {
       CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset);
       streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext);
     } catch (Exception e) {
-      logger.info("e={}", e.getCause(), e);
+      logger.error(e.getMessage(), e);
       response.setStatusCode(500);
       response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
       response.end(e.toString());
