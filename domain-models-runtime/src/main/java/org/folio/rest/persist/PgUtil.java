@@ -502,7 +502,35 @@ public final class PgUtil {
   }
 
   /**
-   * Streaming GET with query
+   * Streaming GET with query. This produces a HTTP with JSON content with
+   * properties {@code totalRecords}, {@code resultInfo} and custom element.
+   * The custom element is array type which POJO that is of type clazz.
+   * The JSON schema looks as follows:
+   *
+   * <pre>{@code
+   * "properties": {
+   *   "element": {
+   *     "description": "the custom element array wrapper",
+   *     "type": "array",
+   *     "items": {
+   *       "description": "The clazz",
+   *       "type": "object",
+   *       "$ref": "clazz.schema"
+   *     }
+   *   },
+   *   "totalRecords": {
+   *     "type": "integer"
+   *   },
+   *   "resultInfo": {
+   *     "$ref": "raml-util/schemas/resultInfo.schema",
+   *     "readonly": true
+   *   }
+   * },
+   * "required": [
+   *   "instances",
+   *   "totalRecords"
+   * ]
+   *</pre>
    * @param <T> Class for each item returned
    * @param table SQL table
    * @param clazz The item class
