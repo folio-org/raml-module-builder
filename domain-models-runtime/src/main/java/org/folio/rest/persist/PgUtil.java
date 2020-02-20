@@ -1112,7 +1112,7 @@ public final class PgUtil {
    * @param column sorting criteria to check for (eg "title")
    * @return null if not eligible; CQL sort node it would be optimized
    */
-  public static CQLSortNode checkOptimizedSql(String cql, String column) {
+  public static CQLSortNode checkOptimizedCQL(String cql, String column) {
     CQLSortNode cqlSortNode = getSortNode(cql);
     if (cqlSortNode == null) {
       return null;
