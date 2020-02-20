@@ -1107,6 +1107,27 @@ public final class PgUtil {
   }
 
   /**
+   * Anticipate whether {@link #getWithOptimizedSql} will optimize for query
+   * @param cql CQL query string
+   * @param column sorting criteria to check for (eg "title")
+   * @return null if not eligible; CQL sort node it would be optimized
+   */
+  public static CQLSortNode checkOptimizedSql(String cql, String column) {
+    CQLSortNode cqlSortNode = getSortNode(cql);
+    if (cqlSortNode == null) {
+      return null;
+    }
+    List<ModifierSet> sortIndexes = cqlSortNode.getSortIndexes();
+    if (sortIndexes.size() != 1) {
+      return null;
+    }
+    ModifierSet modifierSet = sortIndexes.get(0);
+    if (! modifierSet.getBase().equals(column)) {
+      return null;
+    }
+    return cqlSortNode;
+  }
+  /**
    * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
    *
    * @param column the column that has an index to be used for sorting
@@ -1122,18 +1143,12 @@ public final class PgUtil {
       int offset, int limit) throws QueryValidationException {
 
     String cql = preparedCql.getCqlWrapper().getQuery();
-    CQLSortNode cqlSortNode = getSortNode(cql);
+    CQLSortNode cqlSortNode = checkOptimizedCQL(cql, column);
     if (cqlSortNode == null) {
       return null;
     }
     List<ModifierSet> sortIndexes = cqlSortNode.getSortIndexes();
-    if (sortIndexes.size() != 1) {
-      return null;
-    }
     ModifierSet modifierSet = sortIndexes.get(0);
-    if (! modifierSet.getBase().equals(column)) {
-      return null;
-    }
     String ascDesc = getAscDesc(modifierSet);
     cql = cqlSortNode.getSubtree().toCQL();
     String lessGreater = "";
