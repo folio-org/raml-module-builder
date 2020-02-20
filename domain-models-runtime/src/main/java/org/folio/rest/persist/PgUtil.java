@@ -567,8 +567,20 @@ public final class PgUtil {
     }
   }
 
+  /**
+   * streamGet that takes CQLWrapper and FacetField List
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param filter
+   * @param facetList
+   * @param element
+   * @param routingContext
+   * @param okapiHeaders
+   * @param vertxContext
+   */
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
-  private static <T> void streamGet(String table, Class<T> clazz,
+  public static <T> void streamGet(String table, Class<T> clazz,
     CQLWrapper filter, List<FacetField> facetList, String element,
     RoutingContext routingContext, Map<String, String> okapiHeaders,
     Context vertxContext) {
