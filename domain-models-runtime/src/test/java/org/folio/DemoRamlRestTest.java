@@ -230,12 +230,16 @@ public class DemoRamlRestTest {
     context.assertEquals(2, books.getResultInfo().getTotalRecords());
     context.assertEquals(0, books.getBooks().size());
 
+    // see that we can get a Book with only a few properties: id and status
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=slim%3Dtrue", 200);
     JsonObject jo = new JsonObject(buf);
-    log.info("jo={}", jo.encodePrettily());
     context.assertEquals(2, jo.getInteger("totalRecords"));
-    context.assertEquals(0, jo.getJsonArray("books").getJsonObject(0).getInteger("status"));
-    context.assertEquals(0, jo.getJsonArray("books").getJsonObject(1).getInteger("status"));
+    SlimBook sb = jo.getJsonArray("books").getJsonObject(0).mapTo(SlimBook.class);
+    context.assertEquals(0, sb.getStatus());
+    context.assertNotNull(sb.getId());
+    sb = jo.getJsonArray("books").getJsonObject(1).mapTo(SlimBook.class);
+    context.assertEquals(0, sb.getStatus());
+    context.assertNotNull(sb.getId());
   }
 
   @Test
