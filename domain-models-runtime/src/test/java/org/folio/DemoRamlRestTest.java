@@ -1,6 +1,5 @@
 package org.folio;
 
-import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -14,6 +13,7 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
 import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 import org.folio.rest.jaxrs.model.Book;
+import org.folio.rest.jaxrs.model.Books;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -29,13 +29,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -44,6 +43,7 @@ import io.vertx.core.net.NetSocket;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.rest.persist.PostgresClient;
 
 /**
  * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
@@ -60,7 +60,7 @@ public class DemoRamlRestTest {
   private static Vertx vertx;
   private static int port;
   private static Locale oldLocale = Locale.getDefault();
-  private static String TENANT = "abcdefg";
+  private static String TENANT = "folio_shared";
 
   /**
    * @param context  the test context.
@@ -94,24 +94,9 @@ public class DemoRamlRestTest {
    */
   @AfterClass
   public static void tearDown(TestContext context) {
-    deleteTempFilesCreated();
     Locale.setDefault(oldLocale);
+    PostgresClient.stopEmbeddedPostgres();
     vertx.close(context.asyncAssertSuccess());
-  }
-
-  private static void deleteTempFilesCreated(){
-    log.info("deleting created files");
-    // Lists all files in folder
-    File folder = new File(RestVerticle.DEFAULT_TEMP_DIR);
-    File fList[] = folder.listFiles();
-    // Searchs test.json
-    for (int i = 0; i < fList.length; i++) {
-        String pes = fList[i].getName();
-        if (pes.endsWith("test.json")) {
-            // and deletes
-            boolean success = fList[i].delete();
-        }
-    }
   }
 
   @Test
@@ -170,7 +155,92 @@ public class DemoRamlRestTest {
       context.fail(e);
     }
     postData(context, "http://localhost:" + port + "/rmbtests/books"+parameterString, Buffer.buffer(book),
-        expectedStatus, 1, "application/json", TENANT, false);
+        expectedStatus, HttpMethod.POST, "application/json", TENANT, false);
+  }
+
+  @Test
+  public void getBookWithRoutingContext(TestContext context)  throws Exception {
+    Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
+    NetClient cli = vertx.createNetClient();
+    postData(context, "http://localhost:" + port + "/_/tenant", buf,
+      201, HttpMethod.POST, "application/json", TENANT, false);
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=nullpointer%3Dtrue", 500);
+    context.assertEquals("java.lang.NullPointerException", buf.toString());
+
+    Books books;
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(0, books.getTotalRecords());
+    context.assertEquals(0, books.getResultInfo().getDiagnostics().size());
+    context.assertEquals(0, books.getResultInfo().getTotalRecords());
+    context.assertEquals(0, books.getBooks().size());
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=title%3Dwater", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(0, books.getTotalRecords());
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=a%3D", 400);
+    context.assertTrue(buf.toString().contains("expected index or term, got EOF"));
+
+    Data d = new Data();
+    d.setAuthor("a");
+    d.setGenre("g");
+    d.setDescription("description1");
+    d.setTitle("title");
+    d.setDatetime(new Datetime());
+    d.setLink("link");
+
+    Book b = new Book();
+    b.setData(d);
+    b.setStatus(0);
+    b.setSuccess(true);
+
+    ObjectMapper om = new ObjectMapper();
+    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+
+    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201,
+      HttpMethod.POST, "application/json", TENANT, false);
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(1, books.getTotalRecords());
+    context.assertEquals(0, books.getResultInfo().getDiagnostics().size());
+    context.assertEquals(1, books.getResultInfo().getTotalRecords());
+    context.assertEquals(1, books.getBooks().size());
+
+    d.setDescription("description2");
+    book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201,
+      HttpMethod.POST, "application/json", TENANT, false);
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(2, books.getTotalRecords());
+    context.assertEquals(0, books.getResultInfo().getDiagnostics().size());
+    context.assertEquals(2, books.getResultInfo().getTotalRecords());
+    context.assertEquals(2, books.getBooks().size());
+
+    // need at least one record in result before we can trigger this error
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=badclass%3Dtrue", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(2, books.getTotalRecords());
+    context.assertEquals(1, books.getResultInfo().getDiagnostics().size());
+    context.assertTrue(books.getResultInfo().getDiagnostics().get(0).getMessage().contains("Cannot deserialize instance of"));
+    context.assertEquals(2, books.getResultInfo().getTotalRecords());
+    context.assertEquals(0, books.getBooks().size());
+
+    // see that we can handle a subset of the Book properties: id and status
+    // use case: replace "SELECT jsonb FROM ..." by "SELECT jsonb_build_object('id', id, 'status', jsonb->'status') FROM ..."
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=slim%3Dtrue", 200);
+    JsonObject jo = new JsonObject(buf);
+    context.assertEquals(2, jo.getInteger("totalRecords"));
+    SlimBook sb = jo.getJsonArray("books").getJsonObject(0).mapTo(SlimBook.class);
+    context.assertEquals(0, sb.getStatus());
+    context.assertNotNull(sb.getId());
+    sb = jo.getJsonArray("books").getJsonObject(1).mapTo(SlimBook.class);
+    context.assertEquals(0, sb.getStatus());
+    context.assertNotNull(sb.getId());
   }
 
   @Test
@@ -213,34 +283,25 @@ public class DemoRamlRestTest {
     d.setGenre("g");
     d.setDescription("asdfss");
     b.setData(d);
-
-    ObjectMapper om = new ObjectMapper();
-    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
-
-    //check File Uploads
-   // postData(context, "http://localhost:" + port + "/admin/uploadmultipart", getBody("uploadtest.json", true), 200, 1, null, null, false);
-   // postData(context, "http://localhost:" + port + "/admin/uploadmultipart?file_name=test.json", getBody("uploadtest.json", true),
-   //   200, 1, null, null, false);
-    postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 200, 1,
-      "application/json", TENANT, false);
+    d.setTitle("title");
 
     d.setDatetime(new Datetime());
-    d.setTitle("title");
     d.setLink("link");
     b.setStatus(0);
     b.setSuccess(true);
-    book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    ObjectMapper om = new ObjectMapper();
+    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
 
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", TENANT, true);
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, 1, "application/json", TENANT, false);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, HttpMethod.POST, "application/json", TENANT, true);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, HttpMethod.POST, "application/json", TENANT, false);
 
     //check that additionalProperties (fields not appearing in schema) - returns 422
     JsonObject jo = new JsonObject(book);
     jo.put("lalala", "non existant");
-    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, 1, "application/json", TENANT, false);
+    postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(jo.encode()), 422, HttpMethod.POST, "application/json", TENANT, false);
 
 
-    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org.folio.rest", null, 200, 0, "application/json", TENANT, false);
+    postData(context, "http://localhost:" + port + "/admin/loglevel?level=FINE&java_package=org.folio.rest", null, 200, HttpMethod.PUT, "application/json", TENANT, false);
 
     Metadata md = new Metadata();
     md.setCreatedByUserId("12345678-1234-1234-1234-123456789098");
@@ -250,30 +311,16 @@ public class DemoRamlRestTest {
     md.setUpdatedByUserId("123456789098");
     b.setMetadata(md);
     postData(context, "http://localhost:" + port + "/rmbtests/books",
-      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 422, 1, "application/json", TENANT, false);
+      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 422, HttpMethod.POST, "application/json", TENANT, false);
 
     md.setUpdatedByUserId("12345678-1234-1234-1234-123456789098");
     postData(context, "http://localhost:" + port + "/rmbtests/books",
-      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 201, 1, "application/json", TENANT, false);
+      Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 201, HttpMethod.POST, "application/json", TENANT, false);
 
     List<Object> list = getListOfBooks();
 
-    checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200); // should be 200
-    checkURLs(context, "http://localhost:" + port + "/admin/loglevel", 200); // should be 200
-
-    //use generated client
-    //checkClientCode(context);
-
-/*    RmbtestsClient testClient = new RmbtestsClient("http://localhost:" + port, "abc", "abc", false);
-    String[] facets = new String[]{"author:10", "name:5"};
-    testClient.getRmbtestsBooks("aaa", new BigDecimal(1999), new BigDecimal(1999), null, facets, handler -> {
-      if(handler.statusCode() != 200){
-        context.fail();
-      }
-      else{
-        log.info(handler.statusCode() + "----------------------------------------- passed ---------------------------");
-      }
-    });*/
+    checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200);
+    checkURLs(context, "http://localhost:" + port + "/admin/loglevel", 200);
   }
 
   private void testStreamTcpClient(TestContext context, int size) {
@@ -386,58 +433,6 @@ public class DemoRamlRestTest {
       Async async = context.async(3);
 
       AdminClient aClient = new AdminClient("http://localhost:" + port, "abc", "abc", false);
-      /*
-      AdminUploadmultipartPostMultipartFormData data =
-          new AdminUploadmultipartPostMultipartFormDataImpl();
-
-      List<org.folio.rest.jaxrs.model.File> a = new ArrayList<>();
-      org.folio.rest.jaxrs.model.File t = new org.folio.rest.jaxrs.model.FileImpl();
-      t.setFile(new java.io.File("create_config.sql"));
-      a.add(t);
-      data.setFiles(a);
-      aClient.postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod.SAVE, "address", "abc",
-        data, reply -> {
-        reply.statusCode();
-        async.countDown();
-      });
-
-      aClient.postImportSQL(
-        Test.class.getClassLoader().getResourceAsStream("create_config.sql"), reply -> {
-        reply.statusCode();
-      });
-      aClient.getJstack( trace -> {
-        trace.bodyHandler( content -> {
-          System.out.println(content);
-        });
-      });
-
-      TenantClient tc = new TenantClient("http://localhost:" + 8888, "harvard", "harvard");
-      tc.post(null, response -> {
-        response.bodyHandler( body -> {
-          System.out.println(body.toString());
-          tc.delete( reply -> {
-            reply.bodyHandler( body2 -> {
-              System.out.println(body2.toString());
-            });
-          });
-        });
-      });
-      */
-/*      AdminUploadmultipartPostMultipartFormData data =
-          new AdminUploadmultipartPostMultipartFormDataImpl();
-      List<org.folio.rest.jaxrs.model.File> a = new ArrayList<>();
-      org.folio.rest.jaxrs.model.File t = new org.folio.rest.jaxrs.model.FileImpl();
-      t.setFile(new java.io.File("create_config.sql"));
-      t.setContent("content");
-      a.add(t);
-      data.setFile(a);
-      aClient.postAdminUploadmultipart(AdminUploadmultipartPostPersistMethod.SAVE, "address", "abc",
-        data, reply -> {
-        reply.statusCode();
-        System.out.println("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
-        async.countDown();
-      });*/
-
       aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
         reply.bodyHandler( body -> {
           //System.out.println(body.toString("UTF8"));
@@ -459,37 +454,6 @@ public class DemoRamlRestTest {
         });
       });
 
-      /*
-      aClient.postAdminImportSQL(
-        Test.class.getClassLoader().getResourceAsStream("job.json"), reply -> {
-        reply.statusCode();
-        async.countDown();
-      });
-      aClient.getAdminPostgresActiveSessions("postgres",  reply -> {
-        reply.bodyHandler( body -> {
-          System.out.println(body.toString("UTF8"));
-          async.countDown();
-        });
-      });
-      aClient.getAdminPostgresLoad("postgres",  reply -> {
-        reply.bodyHandler( body -> {
-          System.out.println(body.toString("UTF8"));
-          async.countDown();
-        });
-      });
-      aClient.getAdminPostgresTableAccessStats( reply -> {
-        reply.bodyHandler( body -> {
-          System.out.println(body.toString("UTF8"));
-          async.countDown();
-        });
-      });
-      aClient.getAdminPostgresTableSize("postgres", reply -> {
-        reply.bodyHandler( body -> {
-          System.out.println(body.toString("UTF8"));
-          async.countDown();
-        });
-      });
-*/
     }
     catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -521,13 +485,13 @@ public class DemoRamlRestTest {
         checkURLs(context, "http://localhost:" + port + url, 200);
         try {
           postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs"
-          , Buffer.buffer(getFile("job.json")), 201, 1, "application/json", TENANT, false);
+          , Buffer.buffer(getFile("job.json")), 201, HttpMethod.POST, "application/json", TENANT, false);
           postData(context, "http://localhost:" + port + url + "/" +location
-          , Buffer.buffer(getFile("job_conf_post.json")), 204, 0, null, TENANT, false);
+          , Buffer.buffer(getFile("job_conf_post.json")), 204, HttpMethod.PUT, null, TENANT, false);
           postData(context, "http://localhost:" + port + url + "/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, TENANT, false);
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, HttpMethod.DELETE, null, TENANT, false);
           postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, 2, null, TENANT, false);
+          , Buffer.buffer(getFile("job_conf_post.json")), 404, HttpMethod.DELETE, null, TENANT, false);
         } catch (Exception e) {
           log.error(e.getMessage(), e);
           context.fail();
@@ -552,27 +516,24 @@ public class DemoRamlRestTest {
     request.end();
   }
 
-  public void checkURLs(TestContext context, String url, int codeExpected) {
+  public Buffer checkURLs(TestContext context, String url, int codeExpected) {
     String accept = "application/json";
-    checkURLs(context, url, codeExpected, accept);
+    return checkURLs(context, url, codeExpected, accept);
   }
 
-  public void checkURLs(TestContext context, String url, int codeExpected, String accept) {
+  public Buffer checkURLs(TestContext context, String url, int codeExpected, String accept) {
+    Buffer res = Buffer.buffer();
     try {
       Async async = context.async();
-      HttpMethod method = HttpMethod.GET;
       HttpClient client = vertx.createHttpClient();
-      HttpClientRequest request = client.requestAbs(method,
-              url, new Handler<HttpClientResponse>() {
-        @Override
-        public void handle(HttpClientResponse httpClientResponse) {
+      HttpClientRequest request = client.getAbs(url, httpClientResponse -> {
+        httpClientResponse.handler(res::appendBuffer);
+        httpClientResponse.endHandler(x -> {
           log.info(httpClientResponse.statusCode() + ", " + codeExpected + " status expected: " + url);
           context.assertEquals(codeExpected, httpClientResponse.statusCode(), url);
-          httpClientResponse.bodyHandler( body -> {
-            log.info(body.toString());
-          });
+          log.info(res.toString());
           async.complete();
-        }
+        });
       });
       request.exceptionHandler(error -> {
         context.fail(url + " - " + error.getMessage());
@@ -582,33 +543,23 @@ public class DemoRamlRestTest {
       request.headers().add("Accept", accept);
       request.setChunked(true);
       request.end();
+      async.await();
     } catch (Throwable e) {
       log.error(e.getMessage(), e);
-    } finally {
+      context.fail(e);
     }
-  }
-
-  private void httpClientTest(){
-
+    return res;
   }
 
   /**
    * for POST
    */
-  private void postData(TestContext context, String url, Buffer buffer, int errorCode, int mode, String contenttype, String tenant, boolean userIdHeader) {
+  private void postData(TestContext context, String url, Buffer buffer, int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
     Exception stacktrace = new RuntimeException();  // save stacktrace for async handler
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
-    HttpClientRequest request = null;
-    if(mode == 0){
-      request = client.putAbs(url);
-    }
-    else if(mode == 1){
-      request = client.postAbs(url);
-    }
-    else {
-      request = client.deleteAbs(url);
-    }
+    HttpClientRequest request = client.requestAbs(method, url);
+
     request.exceptionHandler(error -> {
       async.complete();
       System.out.println(" ---------------xxxxxx-------------------- " + error.getMessage());
@@ -617,45 +568,43 @@ public class DemoRamlRestTest {
       int statusCode = response.statusCode();
       // is it 2XX
       log.info(statusCode + ", " + errorCode + " expected status at "
-            + System.currentTimeMillis() + " mode " + mode + " for " + url);
+        + System.currentTimeMillis() + " " + method.name() + " " + url);
 
-      if (statusCode == errorCode) {
-        final String str = response.getHeader("Content-type");
-        if (str == null && statusCode >= 400) {
-          context.fail(new RuntimeException("No Content-Type", stacktrace));
-        }
-        if (statusCode == 422) {
-          if (str.contains("application/json")){
-            context.assertTrue(true);
+      response.bodyHandler(responseData -> {
+        if (statusCode == errorCode) {
+          final String str = response.getHeader("Content-type");
+          if (str == null && statusCode >= 400) {
+            context.fail(new RuntimeException("No Content-Type", stacktrace));
           }
-          else{
-            context.fail(new RuntimeException(
+          if (statusCode == 422) {
+            if (str.contains("application/json")) {
+              context.assertTrue(true);
+            } else {
+              context.fail(new RuntimeException(
                 "422 response code should contain a Content-Type header of application/json",
                 stacktrace));
-          }
-        }
-        else if (statusCode == 201) {
-          response.bodyHandler(responseData -> {
-            String date = (String)new JsonPathParser(responseData.toJsonObject()).getValueAt("metadata.createdDate");
-            if(date == null && userIdHeader){
-              context.fail(new RuntimeException(
-                  "metaData schema createdDate missing from returned json", stacktrace));
             }
-          });
-        }
-        context.assertTrue(true);
-      } else {
-        response.bodyHandler(responseData -> {
+          } else if (statusCode == 201) {
+            if (userIdHeader) {
+              String date = (String) new JsonPathParser(responseData.toJsonObject()).getValueAt("metadata.createdDate");
+              if (date == null) {
+                context.fail(new RuntimeException(
+                  "metaData schema createdDate missing from returned json", stacktrace));
+              }
+            }
+          }
+          context.assertTrue(true);
+        } else {
           System.out.println(" ---------------xxxxxx-1------------------- " + responseData.toString());
 
-          context.fail(new RuntimeException("got unexpected response code, expected: " +
-              errorCode + ", received code: " + statusCode + " mode " + mode + " for url " +  url +
-              "\ndata:" + responseData.toString(), stacktrace));
-        });
-      }
-      if(!async.isCompleted()){
-        async.complete();
-      }
+          context.fail(new RuntimeException("got unexpected response code, expected: "
+            + errorCode + ", received code: " + statusCode + " " + method.name() + " " + url
+            + "\ndata:" + responseData.toString(), stacktrace));
+        }
+        if (!async.isCompleted()) {
+          async.complete();
+        }
+      });
     });
     request.setChunked(true);
     request.putHeader("X-Okapi-Request-Id", "999999999999");
@@ -666,57 +615,18 @@ public class DemoRamlRestTest {
     if(userIdHeader){
       request.putHeader("X-Okapi-User-Id", "af23adf0-61ba-4887-bf82-956c4aae2260");
     }
-    if(contenttype != null){
-      request.putHeader("Content-type",
-        contenttype);
-    }
-    else{
-      if(mode == 0 || mode == 2){
-        request.putHeader("Content-type",
-            "application/json");
-      }
-      else{
-        request.putHeader("Content-type",
-            "multipart/form-data; boundary=MyBoundary");
-      }
-    }
+    request.putHeader("Content-type",  contenttype);
     if(buffer != null){
       request.write(buffer);
     }
     request.end();
+    async.await();
   }
 
   private String getFile(String filename) throws IOException {
     return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
   }
 
-
-  /**
-   *
-   * @param filename
-   * @param closeBody - if creating a request with multiple parts in the body
-   * close the body once all parts have been added - for example - passing multiple files
-   * in the body - you would close the body after adding the final file
-   * @return
-   */
-  private Buffer getBody(String filename, boolean closeBody) {
-    Buffer buffer = Buffer.buffer();
-    buffer.appendString("--MyBoundary\r\n");
-    buffer.appendString("Content-Disposition: form-data; name=\"uploadtest\"; filename=\"uploadtest.json\"\r\n");
-    buffer.appendString("Content-Type: application/octet-stream\r\n");
-    buffer.appendString("Content-Transfer-Encoding: binary\r\n");
-    buffer.appendString("\r\n");
-    try {
-      buffer.appendString(getFile(filename));
-      buffer.appendString("\r\n");
-    } catch (IOException e) {
-      log.error(e.getMessage(), e);
-    }
-    if(closeBody){
-      buffer.appendString("--MyBoundary--\r\n");
-    }
-    return buffer;
-  }
 
   private List<Object> getListOfBooks(){
     List<Object> list = new ArrayList<>();

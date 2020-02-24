@@ -1652,7 +1652,7 @@ public class PostgresClient {
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
-      Collections.emptyList(), replyHandler);
+      null, replyHandler);
   }
 
   /**
@@ -1664,7 +1664,7 @@ public class PostgresClient {
    * @param filter
    * @param returnIdField must be true if facets are in passed
    * @param distinctOn may be null
-   * @param facets may not be null (Collections.emptyList() for no facets)
+   * @param facets for no facets: null or Collections.emptyList()
    * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
    */
   @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
@@ -1777,7 +1777,7 @@ public class PostgresClient {
         // deserializeRow can not determine if count or user object
         // in case where user T=Object
         // skip the initial count result when facets are in use
-        if (resultsHelper.offset == 0 && !facets.isEmpty()) {
+        if (resultsHelper.offset == 0 && facets != null && !facets.isEmpty()) {
           resultsHelper.facet = true;
         } else {
           objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);

@@ -1,5 +1,7 @@
 package org.folio.rest.persist;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -23,14 +25,23 @@ import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.jaxrs.model.Diagnostic;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.facets.FacetManager;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.Json;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.web.RoutingContext;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.folio.rest.jaxrs.model.ResultInfo;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -38,8 +49,6 @@ import org.z3950.zing.cql.CQLParser;
 import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Helper methods for using PostgresClient.
@@ -458,6 +467,143 @@ public final class PgUtil {
     setTotalRecords.invoke(collection, totalRecords);
     return collection;
   }
+
+  private static void streamTrailer(HttpServerResponse response, ResultInfo resultInfo) {
+    response.end(String.format("],%n  \"resultInfo\": %s%n}", Json.encode(resultInfo)));
+  }
+
+  private static <T> void streamGetResult(PostgresClientStreamResult<T> result,
+    String element, HttpServerResponse response) {
+    response.setStatusCode(200);
+    response.setChunked(true);
+    response.putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+    response.write("{\n");
+    response.write(String.format("  \"totalRecords\": %d,%n", result.resultInto().getTotalRecords()));
+    response.write(String.format("  \"%s\": [%n", element));
+    AtomicBoolean first = new AtomicBoolean(true);
+    result.exceptionHandler(res -> {
+      String message = res.getMessage();
+      List<Diagnostic> diag = new ArrayList<>();
+      diag.add(new Diagnostic().withCode("500").withMessage(message));
+      result.resultInto().setDiagnostics(diag);
+      streamTrailer(response, result.resultInto());
+    });
+    result.endHandler(res -> streamTrailer(response, result.resultInto()));
+    result.handler(res -> {
+      String itemString = null;
+      try {
+        itemString = OBJECT_MAPPER.writeValueAsString(res);
+      } catch (JsonProcessingException ex) {
+        logger.error(ex.getMessage(), ex);
+        throw new IllegalArgumentException(ex.getCause());
+      }
+      if (first.get()) {
+        first.set(false);
+      } else {
+        response.write(String.format(",%n"));
+      }
+      response.write(itemString);
+    });
+  }
+
+  /**
+   * Streaming GET with query. This produces a HTTP with JSON content with
+   * properties {@code totalRecords}, {@code resultInfo} and custom element.
+   * The custom element is array type which POJO that is of type clazz.
+   * The JSON schema looks as follows:
+   *
+   * <pre>{@code
+   * "properties": {
+   *   "element": {
+   *     "description": "the custom element array wrapper",
+   *     "type": "array",
+   *     "items": {
+   *       "description": "The clazz",
+   *       "type": "object",
+   *       "$ref": "clazz.schema"
+   *     }
+   *   },
+   *   "totalRecords": {
+   *     "type": "integer"
+   *   },
+   *   "resultInfo": {
+   *     "$ref": "raml-util/schemas/resultInfo.schema",
+   *     "readonly": true
+   *   }
+   * },
+   * "required": [
+   *   "instances",
+   *   "totalRecords"
+   * ]
+   *</pre>
+   * @param <T> Class for each item returned
+   * @param table SQL table
+   * @param clazz The item class
+   * @param cql CQL query
+   * @param offset offset >= 0; < 0 for no offset
+   * @param limit  limit >= 0 ; <0 for no limit
+   * @param facets facets (empty or null for  no facets)
+   * @param element wrapper JSON element for list of items (eg books / users)
+   * @param routingContext routing context from which a HTTP response is made
+   * @param okapiHeaders
+   * @param vertxContext
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T> void streamGet(String table, Class<T> clazz,
+    String cql, int offset, int limit, List<String> facets,
+    String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
+    Context vertxContext) {
+
+    HttpServerResponse response = routingContext.response();
+    try {
+      List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
+      CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset);
+      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      response.setStatusCode(500);
+      response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
+      response.end(e.toString());
+    }
+  }
+
+  /**
+   * streamGet that takes CQLWrapper and FacetField List
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param filter
+   * @param facetList
+   * @param element
+   * @param routingContext
+   * @param okapiHeaders
+   * @param vertxContext
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T> void streamGet(String table, Class<T> clazz,
+    CQLWrapper filter, List<FacetField> facetList, String element,
+    RoutingContext routingContext, Map<String, String> okapiHeaders,
+    Context vertxContext) {
+
+    HttpServerResponse response = routingContext.response();
+    PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+    postgresClient.streamGet(table, clazz, JSON_COLUMN, filter, true, null,
+      facetList, reply -> {
+        if (reply.failed()) {
+          String message = PgExceptionUtil.badRequestMessage(reply.cause());
+          if (message == null) {
+            message = reply.cause().getMessage();
+          }
+          logger.error(message, reply.cause());
+          response.setStatusCode(400);
+          response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
+          response.end(message);
+          return;
+        }
+        streamGetResult(reply.result(), element, response);
+      });
+  }
+
   /**
    * Get records by CQL.
    * @param table  the table that contains the records
@@ -973,6 +1119,27 @@ public final class PgUtil {
   }
 
   /**
+   * Anticipate whether {@link #getWithOptimizedSql} will optimize for query
+   * @param cql CQL query string
+   * @param column sorting criteria to check for (eg "title")
+   * @return null if not eligible; CQL sort node it would be optimized
+   */
+  public static CQLSortNode checkOptimizedCQL(String cql, String column) {
+    CQLSortNode cqlSortNode = getSortNode(cql);
+    if (cqlSortNode == null) {
+      return null;
+    }
+    List<ModifierSet> sortIndexes = cqlSortNode.getSortIndexes();
+    if (sortIndexes.size() != 1) {
+      return null;
+    }
+    ModifierSet modifierSet = sortIndexes.get(0);
+    if (! modifierSet.getBase().equals(column)) {
+      return null;
+    }
+    return cqlSortNode;
+  }
+  /**
    * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
    *
    * @param column the column that has an index to be used for sorting
@@ -988,18 +1155,12 @@ public final class PgUtil {
       int offset, int limit) throws QueryValidationException {
 
     String cql = preparedCql.getCqlWrapper().getQuery();
-    CQLSortNode cqlSortNode = getSortNode(cql);
+    CQLSortNode cqlSortNode = checkOptimizedCQL(cql, column);
     if (cqlSortNode == null) {
       return null;
     }
     List<ModifierSet> sortIndexes = cqlSortNode.getSortIndexes();
-    if (sortIndexes.size() != 1) {
-      return null;
-    }
     ModifierSet modifierSet = sortIndexes.get(0);
-    if (! modifierSet.getBase().equals(column)) {
-      return null;
-    }
     String ascDesc = getAscDesc(modifierSet);
     cql = cqlSortNode.getSubtree().toCQL();
     String lessGreater = "";
