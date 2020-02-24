@@ -230,7 +230,8 @@ public class DemoRamlRestTest {
     context.assertEquals(2, books.getResultInfo().getTotalRecords());
     context.assertEquals(0, books.getBooks().size());
 
-    // see that we can get a Book with only a few properties: id and status
+    // see that we can handle a subset of the Book properties: id and status
+    // use case: replace "SELECT jsonb FROM ..." by "SELECT jsonb_build_object('id', id, 'status', jsonb->'status') FROM ..."
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=slim%3Dtrue", 200);
     JsonObject jo = new JsonObject(buf);
     context.assertEquals(2, jo.getInteger("totalRecords"));
