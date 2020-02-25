@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "A collection of books",
+  "type": "object",
+  "properties": {
+    "books": {
+      "description": "List of records",
+      "type": "array",
+      "items": {
+        "description": "The book",
+        "type": "object",
+        "$ref": "book.schema"
+      }
+    },
+    "totalRecords": {
+      "type": "integer"
+    },
+    "resultInfo": {
+      "$ref": "raml-util/schemas/resultInfo.schema",
+      "readonly": true
+    }
+  },
+  "required": [
+    "instances",
+    "totalRecords"
+  ]
+}
+
