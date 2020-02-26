@@ -41,7 +41,23 @@ CREATE OR REPLACE FUNCTION f_unaccent(text)
   RETURNS text AS
 $func$
 SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
-$func$  LANGUAGE sql IMMUTABLE;
+$func$  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+-- Normalize digits by removing spaces, tabs and hyphen-minuses from the first chunk.
+-- Insert a space before the second chunk. The second chunk starts at the first character that is
+-- neither digit, space, tab nor hyphen-minus.
+-- Examples:
+-- normalize_digits(' 0-1  2--3 4 ') = '01234'
+-- normalize_digits(' 01 2- 3 -- 45 -a 7 -8 9') = '012345 a 7 -8 9'
+-- normalize_digits('978 92 8011 565 9(Vol. 1011-1021)') = '9789280115659 (Vol. 1011-1021)'
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.normalize_digits(text) RETURNS text AS $$
+  SELECT    translate((regexp_match($1, '^([0-9 \t-]*)(.*)'))[1], E' \t-', '')
+         || CASE WHEN (regexp_match($1, '^([0-9 \t-]*)(.*)'))[1] = '' THEN ''
+                 WHEN (regexp_match($1, '^([0-9 \t-]*)(.*)'))[2] = '' THEN ''
+                 ELSE ' '
+            END
+         || (regexp_match($1, '^([0-9 \t-]*)(.*)'))[2];
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- This trigger function copies primary key id from NEW.id to NEW.jsonb->'id'.
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_id_in_jsonb()
