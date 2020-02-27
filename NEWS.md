@@ -1,3 +1,14 @@
+## 29.3.0 2020-02-27
+
+ * RMB-499 add "normalizeDigits" function
+ * RMB-500 PostgresClient.streamGet with total hits and error handling
+ * RMB-549 Mismatch lower() for compound index
+ * RMB-559 Add stream get utility that produces HTTP result
+ * RMB-560 Upgrade vert.x from 3.8.4 to 3.8.5 fixing CompositeFuture
+ * RMB-563 SQL injection in PostgresClient.update by id
+ * RMB-562 Switch back to upstream vertx-mysql-postgresql-client
+ * RMB-568 Add JSON object array helper functions
+
 ## 29.2.0 2020-01-06
 
  * RMB-498 Truncate b-tree string for 2712 index row size
