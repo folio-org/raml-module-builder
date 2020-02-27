@@ -68,21 +68,23 @@ public class BooksDemoAPI implements Rmbtests {
     Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
     Context vertxContext) {
 
-    if ("badclass=true".equals(query)) {
-      PgUtil.streamGet(TABLE, /* can not be deserialized */ StringBuilder.class,
-        null, 0, 10, new LinkedList<String>(), "books", routingContext, okapiHeaders, vertxContext);
+    switch (query == null ? "null" : query) {
+      case "badclass=true":
+        PgUtil.streamGet(TABLE, /* can not be deserialized */ StringBuilder.class,
+          null, 0, 10, new LinkedList<String>(), "books", routingContext, okapiHeaders, vertxContext);
+        break;
+      case "nullpointer=true":
+        PgUtil.streamGet(TABLE, Book.class, null, 0, 10, null, "books",
+          routingContext, /* okapiHeaders is null which results in exception */ null, vertxContext);
+        break;
+      case "slim=true":
+        PgUtil.streamGet(TABLE, SlimBook.class, null, 0, 10, new LinkedList<String>(), "books",
+          routingContext, okapiHeaders, vertxContext);
+        break;
+      default:
+        PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<String>(), "books",
+          routingContext, okapiHeaders, vertxContext);
     }
-    if ("nullpointer=true".equals(query)) {
-      PgUtil.streamGet(TABLE, Book.class, null, 0, 10, null, "books",
-        routingContext, /* okapiHeaders is null which results in exception */ null, vertxContext);
-    }
-    if ("slim=true".equals(query)) {
-      PgUtil.streamGet(TABLE, SlimBook.class, null, 0, 10, new LinkedList<String>(), "books",
-        routingContext, okapiHeaders, vertxContext);
-    }
-
-    PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<String>(), "books",
-      routingContext, okapiHeaders, vertxContext);
   }
 
   @Validate
