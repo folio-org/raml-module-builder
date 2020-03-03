@@ -137,6 +137,9 @@ public class DatabaseTestBase {
           String url2 = url.replaceFirst("/postgres\\b", "/" + DB_NAME);
           System.out.println(url2);
           conn = DriverManager.getConnection(url);
+          runSqlStatement("DROP SCHEMA IF EXISTS " + DB_NAME + " CASCADE");
+          runSqlStatement("CREATE SCHEMA " + DB_NAME);
+          runSqlStatement("SET search_path TO " + DB_NAME + ", public");
         }
         return;
       }
@@ -319,6 +322,7 @@ public class DatabaseTestBase {
    */
   static void runSqlFile(String path) {
     String file = ResourceUtil.asString(path);
+    file = file.replace("${myuniversity}_${mymodule}", "test_cql2pgjson").replace("${exactCount}", "10");
     // replace \r and \n inside of $$ and $$ by space
     String [] chunks = file.split("\\$\\$");
     for (int i = 1; i < chunks.length; i += 2) {
@@ -329,5 +333,12 @@ public class DatabaseTestBase {
     for (String sql : statements) {
       runSqlStatement(sql);
     }
+  }
+
+  /**
+   * runSqlFile general_functions.ftl from domain-models-runtime
+   */
+  static void runGeneralFunctions() {
+    runSqlFile("./templates/db_scripts/general_functions.ftl");  // pom.xml copies it from domain-model-runtime
   }
 }

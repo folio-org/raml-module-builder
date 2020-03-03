@@ -1,7 +1,7 @@
 package org.folio.cql2pgjson;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.List;
 
@@ -17,10 +17,12 @@ public class CompoundIndexIT extends DatabaseTestBase {
   private CQL2PgJSON cql2pgJsonTableb;
   private CQL2PgJSON cql2pgJsonTablec;
   private CQL2PgJSON cql2pgJsonTabled;
+
   @BeforeClass
   static public void setUpDatabase()  {
     setupDatabase();
     runSqlFile("compoundIndex.sql");
+    runGeneralFunctions();
   }
 
   @AfterClass

@@ -513,7 +513,7 @@ public class AdminAPI implements Admin {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
-      "CREATE EXTENSION IF NOT EXISTS \"pg_buffercache\"", reply1 -> {
+      "CREATE EXTENSION IF NOT EXISTS \"pg_buffercache\" WITH SCHEMA public", reply1 -> {
         if(reply1.succeeded()){
           PostgresClient.getInstance(vertxContext.owner()).select(
             "SELECT c.relname, pg_size_pretty(count(*) * 8192) as buffered, round(100.0 * count(*) / "+

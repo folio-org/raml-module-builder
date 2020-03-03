@@ -2,30 +2,13 @@ DROP TABLE IF EXISTS tablea cascade;
 DROP TABLE IF EXISTS tableb cascade;
 DROP TABLE IF EXISTS tablec cascade;
 DROP TABLE IF EXISTS tabled cascade;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 CREATE TABLE tablea (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE TABLE tableb (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE TABLE tablec (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE TABLE tabled (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 
-CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
-
-CREATE OR REPLACE FUNCTION f_unaccent(text)
-  RETURNS text AS
-$func$
-SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
-$func$  LANGUAGE sql IMMUTABLE;
-create or replace function concat_space_sql(VARIADIC text[])
-RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); $$ LANGUAGE SQL IMMUTABLE;
-
-create or replace function concat_array_object_values(jsonb_data jsonb, field text) RETURNS text AS $$
-  SELECT string_agg(value->>$2, ' ') FROM jsonb_array_elements($1);
-$$ LANGUAGE sql IMMUTABLE;
-
-create or replace function concat_array_object(jsonb_data jsonb) RETURNS text AS $$
-  SELECT string_agg(value::text, ' ') FROM jsonb_array_elements_text($1);
-$$ LANGUAGE sql IMMUTABLE;
-    
 CREATE OR REPLACE FUNCTION update_id() RETURNS TRIGGER AS $$
 BEGIN
   NEW.id       = NEW.jsonb->>'id';
