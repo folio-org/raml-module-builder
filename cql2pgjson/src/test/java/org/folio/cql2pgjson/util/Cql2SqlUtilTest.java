@@ -2,7 +2,7 @@ package org.folio.cql2pgjson.util;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -171,6 +171,22 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     assertThat(Cql2SqlUtil.cql2regexp(cql), is(sql));
   }
 
+  @Test(expected = QueryValidationException.class)
+  public void appendCql2tsqueryQuestionmark() throws QueryValidationException {
+    Cql2SqlUtil.appendCql2tsquery(new StringBuilder(), "abc d?f");
+  }
+
+  @Test(expected = QueryValidationException.class)
+  public void appendCql2tsqueryInnerStar() throws QueryValidationException {
+    Cql2SqlUtil.appendCql2tsquery(new StringBuilder(), "abc d*f");
+  }
+
+  @Test
+  public void appendCql2tsqueryMasking() throws QueryValidationException {
+    StringBuilder sb = new StringBuilder();
+    Cql2SqlUtil.appendCql2tsquery(sb, "abc d\\*f g\\?i j\\kl");
+    assertThat(sb.toString(), is("'abc d*f g?i jkl'"));
+  }
   private String selectTsvector(String field, boolean removeAccents) {
     return removeAccents ? "SELECT to_tsvector('simple', f_unaccent('" + field.replace("'", "''") + "')) @@ "
                          : "SELECT to_tsvector('simple', '" + field.replace("'", "''") + "') @@ ";
@@ -246,6 +262,7 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
         "abc\\?\\?def",
         "abc\\*def",       // masked * wildcard
         "abc\\*\\*def",
+        "abc\\\\def",      // masked \ backslash
         "abc<->def"        // quoting of <-> phrase operator
     };
   }
