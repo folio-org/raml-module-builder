@@ -67,18 +67,20 @@ $$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- Normalize digits by removing spaces, tabs and hyphen-minuses from the first chunk.
 -- Insert a space before the second chunk. The second chunk starts at the first character that is
--- neither digit, space, tab nor hyphen-minus.
+-- neither digit, space, tab nor hyphen-minus. The first chunk may end with a star * for right
+-- truncation.
 -- Examples:
 -- normalize_digits(' 0-1  2--3 4 ') = '01234'
 -- normalize_digits(' 01 2- 3 -- 45 -a 7 -8 9') = '012345 a 7 -8 9'
+-- normalize_digits(' 01 2- 3 -- 45* -a 7 -8 9') = '012345* a 7 -8 9'
 -- normalize_digits('978 92 8011 565 9(Vol. 1011-1021)') = '9789280115659 (Vol. 1011-1021)'
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.normalize_digits(text) RETURNS text AS $$
-  SELECT    translate((regexp_match($1, '^([0-9 \t-]*)(.*)'))[1], E' \t-', '')
-         || CASE WHEN (regexp_match($1, '^([0-9 \t-]*)(.*)'))[1] = '' THEN ''
-                 WHEN (regexp_match($1, '^([0-9 \t-]*)(.*)'))[2] = '' THEN ''
+  SELECT    translate((regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[1], E' \t-', '')
+         || CASE WHEN (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[1] = '' THEN ''
+                 WHEN (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[2] = '' THEN ''
                  ELSE ' '
             END
-         || (regexp_match($1, '^([0-9 \t-]*)(.*)'))[2];
+         || (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[2];
 $$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- This trigger function copies primary key id from NEW.id to NEW.jsonb->'id'.
