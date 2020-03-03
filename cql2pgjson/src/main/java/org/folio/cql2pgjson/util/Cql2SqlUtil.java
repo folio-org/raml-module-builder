@@ -223,12 +223,7 @@ public final class Cql2SqlUtil {
         backslash = ! backslash;
         break;
       case '*':
-        if (backslash) {
-          t.append(',');   // replace by comma to prevent wildcard
-          backslash = false;
-          break;
-        }
-        if (i + 1 < length && s.charAt(i + 1) != ' ') {
+        if (! backslash && i + 1 < length && s.charAt(i + 1) != ' ') {
           throw new QueryValidationException(
               "* right truncation wildcard must be followed by space or end of string, but found " + s.charAt(i + 1));
         }
