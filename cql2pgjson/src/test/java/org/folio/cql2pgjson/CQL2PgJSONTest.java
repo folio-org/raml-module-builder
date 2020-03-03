@@ -1,10 +1,11 @@
 package org.folio.cql2pgjson;
 
-import static org.hamcrest.CoreMatchers.allOf;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.*;
+import static org.hamcrest.Matchers.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import org.junit.runner.RunWith;
 import org.z3950.zing.cql.ModifierSet;
 
@@ -54,6 +55,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public static void runOnceBeforeClass() throws Exception {
     setupDatabase();
     runSqlFile("users.sql");
+    runGeneralFunctions();
     cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
     cql2pgjsonRespectCase = new CQL2PgJSON("users.user_data", Arrays.asList("name","email"));
     cql2pgjsonRespectCase.setDbSchemaPath("./templates/db_scripts/schemaWithRespectCase.json");
@@ -476,9 +478,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.city= øvang             #",
     "address.city==øvang             #",
     "address.city= vang              #",
-//    "address.city= S?vang            # Lea Long",
-//    "address.city= S*vang            # Lea Long",
-//    "address.city= *ang              # Lea Long",
     "address.city= SØvang            # Lea Long",
     "address.city==SØvang            # Lea Long",
     "address.city= Sovang            # Lea Long",
@@ -494,8 +493,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void unicode(String testcase) {
     select(testcase);
-
-
     select(testcase.replace("==", "==/ignoreCase/ignoreAccents ")
                    .replace("= ", "= /ignoreCase/ignoreAccents "));
   }

@@ -18,6 +18,12 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersi
 
 </#if>
 
+<#if mode.name() == "CREATE">
+  <#include "uuid.ftl">
+</#if>
+
+<#include "general_functions.ftl">
+
 SET search_path TO ${myuniversity}_${mymodule},  public;
 
 <#if scripts??>
@@ -38,12 +44,6 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
 </#if>
 
 SET search_path TO public, ${myuniversity}_${mymodule};
-
-<#if mode.name() == "CREATE">
-  <#include "uuid.ftl">
-</#if>
-
-<#include "general_functions.ftl">
 
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>

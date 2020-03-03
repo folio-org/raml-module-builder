@@ -37,11 +37,33 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 -- function used to convert accented strings into unaccented string
-CREATE OR REPLACE FUNCTION f_unaccent(text)
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.f_unaccent(text)
   RETURNS text AS
-$func$
+$$
 SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
-$func$  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+$$  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+-- Convert a string into a tsquery. A star * before a space or at the end of the string
+-- is converted into a tsquery right truncation operator.
+--
+-- Implementation note:
+-- to_tsquery('simple', '''''') yields ERROR:  syntax error in tsquery: "''"
+-- use to_tsquery('simple', '') instead
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_and(text) RETURNS tsquery AS $$
+  SELECT to_tsquery('simple', string_agg(CASE WHEN length(v) = 0 OR v = '*' THEN ''
+                                              WHEN right(v, 1) = '*' THEN '''' || left(v, -1) || ''':*'
+                                              ELSE '''' || v || '''' END,
+                                         '&'))
+  FROM (SELECT regexp_split_to_table(translate($1, '&''', ',,'), ' +')) AS x(v);
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_or(text) RETURNS tsquery AS $$
+  SELECT replace(${myuniversity}_${mymodule}.tsquery_and($1)::text, '&', '|')::tsquery;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_phrase(text) RETURNS tsquery AS $$
+  SELECT replace(${myuniversity}_${mymodule}.tsquery_and($1)::text, '&', '<->')::tsquery;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- Normalize digits by removing spaces, tabs and hyphen-minuses from the first chunk.
 -- Insert a space before the second chunk. The second chunk starts at the first character that is

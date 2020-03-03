@@ -339,12 +339,29 @@ public class CQL2PgJSON {
    * @param index  where to get the modifiers from
    * @return wrapped term
    */
-  private static String wrapInLowerUnaccent(String term, Index index) {
+  private static String wrapIndexExpression(String term, Index index) {
     if (index == null) {
       return Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
-    } else {
+    }
+    return Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
+  }
+
+  /**
+   * Return $term, lower($term), f_unaccent($term), lower(f_unaccent($term)) or $term wrapped
+   * using custom sqlExpressionQuery wrapper according to the modifiers of index.
+   * @param term  the String to wrap
+   * @param index  where to get the modifiers from
+   * @return wrapped term
+   */
+  private static String wrapQueryExpression(String term, Index index) {
+    if (index == null) {
+      return Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
+    }
+    String wrapper = index.getSqlExpressionQuery();
+    if (wrapper == null) {
       return Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
     }
+    return wrapper.replace("$", term);
   }
 
   private SqlSelect toSql(CQLSortNode node) throws QueryValidationException {
@@ -804,6 +821,33 @@ public class CQL2PgJSON {
     return sql;
   }
 
+  /**
+   * Append template to sb and replace each $ in template by cql converted to an sql string suitable for to_tsquery.
+   */
+  private void appendTemplate(StringBuilder sb, String template, String cql) throws QueryValidationException {
+    for (int i=0; i<template.length(); i++) {
+      char c = template.charAt(i);
+      if (c == '$') {
+        Cql2SqlUtil.appendCql2tsquery(sb, cql);
+      } else {
+        sb.append(c);
+      }
+    }
+  }
+
+  /**
+   * Convert cql into sql suitable for to_tsquery, wrap into f_unaccent if removeAccents == true, and append to sb.
+   */
+  private void appendCql2tsquery(StringBuilder sb, String cql, boolean removeAccents) throws QueryValidationException {
+    if (removeAccents) {
+      sb.append("f_unaccent(");
+    }
+    Cql2SqlUtil.appendCql2tsquery(sb, cql);
+    if (removeAccents) {
+      sb.append(')');
+    }
+  }
+
   String queryByFt(String indexText, String term, String comparator, Index schemaIndex, Table targettable)
     throws QueryValidationException {
 
@@ -815,31 +859,36 @@ public class CQL2PgJSON {
     }
 
     boolean removeAccents = schemaIndex == null || schemaIndex.isRemoveAccents();
-    StringBuilder tsTerm;
+    StringBuilder tsTerm = new StringBuilder();
     switch (comparator) {
       case "=":
       case "adj":
-        tsTerm = Cql2SqlUtil.cql2tsqueryPhrase(term, removeAccents);
+        tsTerm.append("tsquery_phrase(");
         break;
       case "any":
-        tsTerm = Cql2SqlUtil.cql2tsqueryOr(term, removeAccents);
+        tsTerm.append("tsquery_or(");
         break;
       case "all":
-        tsTerm = Cql2SqlUtil.cql2tsqueryAnd(term, removeAccents);
+        tsTerm.append("tsquery_and(");
         break;
       default:
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
+    if (schemaIndex != null && schemaIndex.getSqlExpressionQuery() != null) {
+      appendTemplate(tsTerm, schemaIndex.getSqlExpressionQuery(), term);
+    } else {
+      appendCql2tsquery(tsTerm, term, removeAccents);
+    }
+    tsTerm.append(')');
     // Never apply lower for Fulltext.
-    if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
+    if (schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
       indexText = schemaIndex.getFinalSqlExpression(targettable.getTableName(), /*lower*/ false);
-    } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
+    } else if (schemaIndex != null && schemaIndex.getSqlExpression() != null) {
       indexText = schemaIndex.getSqlExpression();
     } else {
       indexText = Cql2PgUtil.wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
     }
-    String sql = "to_tsvector('simple', " + indexText + ") "
-      + "@@ " + tsTerm;
+    String sql = "to_tsvector('simple', " + indexText + ") " + "@@ " + tsTerm.toString();
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
     return sql;
@@ -876,13 +925,13 @@ public class CQL2PgJSON {
       } else if (schemaIndex != null && schemaIndex.getSqlExpression() != null) {
         indexMod = schemaIndex.getSqlExpression();
       } else {
-        indexMod = wrapInLowerUnaccent(indexText, schemaIndex);
+        indexMod = wrapIndexExpression(indexText, schemaIndex);
       }
 
       if (schemaIndex != null && schemaIndex == dbIndex.getIndex()) {
         sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
       } else {
-        sql = indexMod + " " + likeOperator + " " + wrapInLowerUnaccent(term, schemaIndex);
+        sql = indexMod + " " + likeOperator + " " + wrapQueryExpression(term, schemaIndex);
       }
     }
 
@@ -939,30 +988,30 @@ public class CQL2PgJSON {
 
   private String createSQLLengthCase(String comparator, String index, String term, Index schemaIndex) {
     String lengthCaseComparator = lengtCaseComparator(comparator);
-    return  "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600"
-        + " THEN " + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " "
-                   + wrapInLowerUnaccent(term, schemaIndex)
+    return  "CASE WHEN length(" + wrapQueryExpression(term, schemaIndex) + ") <= 600"
+        + " THEN " + wrapForLength(wrapIndexExpression(index, schemaIndex)) + " " + comparator + " "
+                   + wrapQueryExpression(term, schemaIndex)
         + " ELSE "
-        + wrapForLength(wrapInLowerUnaccent(index, schemaIndex)) + " " + comparator + " "
-        + wrapForLength(wrapInLowerUnaccent(term, schemaIndex))
+        + wrapForLength(wrapIndexExpression(index, schemaIndex)) + " " + comparator + " "
+        + wrapForLength(wrapQueryExpression(term, schemaIndex))
         + " AND "
-        + wrapInLowerUnaccent(index, schemaIndex) + " " + lengthCaseComparator + " "
-        + wrapInLowerUnaccent(term, schemaIndex)
+        + wrapIndexExpression(index, schemaIndex) + " " + lengthCaseComparator + " "
+        + wrapQueryExpression(term, schemaIndex)
         + " END";
   }
 
   private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term) {
     String joiner = comparator.equals("<>") ? " OR " : " AND ";
-    return "CASE WHEN length(" + wrapInLowerUnaccent(term, schemaIndex) + ") <= 600"
+    return "CASE WHEN length(" + wrapQueryExpression(term, schemaIndex) + ") <= 600"
         + " THEN "
         + wrapForLength(indexText) + " " + likeOperator + " "
-        + wrapInLowerUnaccent(term, schemaIndex)
+        + wrapQueryExpression(term, schemaIndex)
         + " ELSE "
         + wrapForLength(indexText) + " " + likeOperator + " "
-        + wrapForLength(wrapInLowerUnaccent(term, schemaIndex))
+        + wrapForLength(wrapQueryExpression(term, schemaIndex))
         + joiner
         + indexText + " " + likeOperator + " "
-        + wrapInLowerUnaccent(term, schemaIndex)
+        + wrapQueryExpression(term, schemaIndex)
         + " END";
   }
 
@@ -977,9 +1026,7 @@ public class CQL2PgJSON {
     }
   }
 
-  private String wrapForLength(String term) {
-   term = "left(" + term + ",600)";
-   return term;
+  private static String wrapForLength(String term) {
+    return "left(" + term + ",600)";
   }
-
 }
