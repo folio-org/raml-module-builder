@@ -96,7 +96,7 @@ public class DatabaseTestBase {
    * jdbc:postgresql://127.0.0.1:5433/postgres?currentSchema=public&user=postgres&password=postgres<br>
    * starting an new embedded postgres
    */
-  public static void setupDatabase() {
+  public static void setupConnection() {
     List<String> urls = new ArrayList<>(3);
     int port = 5432;
     try {
@@ -137,9 +137,6 @@ public class DatabaseTestBase {
           String url2 = url.replaceFirst("/postgres\\b", "/" + DB_NAME);
           System.out.println(url2);
           conn = DriverManager.getConnection(url);
-          runSqlStatement("DROP SCHEMA IF EXISTS " + DB_NAME + " CASCADE");
-          runSqlStatement("CREATE SCHEMA " + DB_NAME);
-          runSqlStatement("SET search_path TO " + DB_NAME + ", public");
         }
         return;
       }
@@ -174,6 +171,12 @@ public class DatabaseTestBase {
     }
   }
 
+  public static void setupDatabase() {
+    setupConnection();
+    runSqlStatement("DROP SCHEMA IF EXISTS " + DB_NAME + " CASCADE");
+    runSqlStatement("CREATE SCHEMA " + DB_NAME);
+    runSqlStatement("SET search_path TO " + DB_NAME + ", public");
+  }
 
   /**
    * Close conn and stop embedded progress if needed.
