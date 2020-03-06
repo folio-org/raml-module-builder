@@ -58,7 +58,7 @@ END
 $$ LANGUAGE plpgsql;
 
 -- function used to convert accented strings into unaccented string
-CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.f_unaccent(text)
+CREATE OR REPLACE FUNCTION f_unaccent(text)
   RETURNS text AS
 $$
 SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
