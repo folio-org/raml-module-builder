@@ -37,11 +37,11 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 -- function used to convert accented strings into unaccented string
-CREATE OR REPLACE FUNCTION f_unaccent(text)
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.f_unaccent(text)
   RETURNS text AS
-$func$
-SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
-$func$  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+$$
+  SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- Normalize digits by removing spaces, tabs and hyphen-minuses from the first chunk.
 -- Insert a space before the second chunk. The second chunk starts at the first character that is
