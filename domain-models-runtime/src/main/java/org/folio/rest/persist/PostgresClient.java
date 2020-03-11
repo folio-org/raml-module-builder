@@ -3295,6 +3295,7 @@ public class PostgresClient {
    * @param stopOnError - stop on first error
    * @param replyHandler - the handler's result is the list of statements that failed; the list may be empty
    */
+  @SuppressWarnings("checkstyle:EmptyBlock")
   public void runSQLFile(String sqlFile, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
     try {
