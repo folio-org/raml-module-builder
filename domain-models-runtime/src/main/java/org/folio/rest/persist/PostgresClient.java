@@ -3286,6 +3286,50 @@ public class PostgresClient {
     return lines.toArray(new String [0]);
   }
 
+  @SuppressWarnings("checkstyle:EmptyBlock")
+  static String [] preprocessSqlStatements(String sqlFile) throws Exception {
+    StringBuilder singleStatement = new StringBuilder();
+    String[] allLines = splitSqlStatements(sqlFile);
+    List<String> execStatements = new ArrayList<>();
+    boolean inCopy = false;
+    for (int i = 0; i < allLines.length; i++) {
+      if (allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
+        final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
+        final Matcher matcher = pattern.matcher(allLines[i]);
+        if(matcher.find()){
+          /** password argument indicated in the create user / role statement */
+          String newPassword = createPassword(matcher.group(1));
+          allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
+        }
+      }
+      if (allLines[i].trim().startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].trim().startsWith("--")) {
+        // this is an sql comment, skip
+      } else if (allLines[i].toUpperCase().matches("^\\s*(COPY ).*?FROM.*?STDIN.*")) {
+        singleStatement.append(allLines[i]);
+        inCopy = true;
+      } else if (inCopy && (allLines[i].trim().equals("\\."))) {
+        inCopy = false;
+        execStatements.add( singleStatement.toString() );
+        singleStatement = new StringBuilder();
+      } else if (allLines[i].trim().endsWith(SEMI_COLON) && !inCopy) {
+        execStatements.add( singleStatement.append(SPACE + allLines[i]).toString() );
+        singleStatement = new StringBuilder();
+      } else {
+        if (inCopy)  {
+          singleStatement.append("\n");
+        } else {
+          singleStatement.append(SPACE);
+        }
+        singleStatement.append(allLines[i]);
+      }
+    }
+    String lastStatement = singleStatement.toString();
+    if (! lastStatement.trim().isEmpty()) {
+      execStatements.add(lastStatement);
+    }
+    return execStatements.toArray(new String[]{});
+  }
+
   /**
    * Will connect to a specific database and execute the commands in the .sql file
    * against that database.<p />
@@ -3295,50 +3339,10 @@ public class PostgresClient {
    * @param stopOnError - stop on first error
    * @param replyHandler - the handler's result is the list of statements that failed; the list may be empty
    */
-  @SuppressWarnings("checkstyle:EmptyBlock")
   public void runSQLFile(String sqlFile, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
     try {
-      StringBuilder singleStatement = new StringBuilder();
-      String[] allLines = splitSqlStatements(sqlFile);
-      List<String> execStatements = new ArrayList<>();
-      boolean inCopy = false;
-      for (int i = 0; i < allLines.length; i++) {
-        if (allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
-          final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
-          final Matcher matcher = pattern.matcher(allLines[i]);
-          if(matcher.find()){
-            /** password argument indicated in the create user / role statement */
-            String newPassword = createPassword(matcher.group(1));
-            allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
-          }
-        }
-        if (allLines[i].trim().startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].trim().startsWith("--")) {
-          // this is an sql comment, skip
-        } else if (allLines[i].toUpperCase().matches("^\\s*(COPY ).*?FROM.*?STDIN.*")) {
-          singleStatement.append(allLines[i]);
-          inCopy = true;
-        } else if (inCopy && (allLines[i].trim().equals("\\."))) {
-          inCopy = false;
-          execStatements.add( singleStatement.toString() );
-          singleStatement = new StringBuilder();
-        } else if (allLines[i].trim().endsWith(SEMI_COLON) && !inCopy) {
-          execStatements.add( singleStatement.append(SPACE + allLines[i]).toString() );
-          singleStatement = new StringBuilder();
-        } else {
-          if (inCopy)  {
-            singleStatement.append("\n");
-          } else {
-            singleStatement.append(SPACE);
-          }
-          singleStatement.append(allLines[i]);
-        }
-      }
-      String lastStatement = singleStatement.toString();
-      if (! lastStatement.trim().isEmpty()) {
-        execStatements.add(lastStatement);
-      }
-      execute(execStatements.toArray(new String[]{}), stopOnError, replyHandler);
+      execute(preprocessSqlStatements(sqlFile), stopOnError, replyHandler);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));

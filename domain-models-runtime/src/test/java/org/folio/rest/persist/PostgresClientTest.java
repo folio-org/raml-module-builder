@@ -2,7 +2,9 @@ package org.folio.rest.persist;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.collection.ArrayMatching.arrayContaining;
+import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -14,6 +16,7 @@ import java.util.UUID;
 
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.util.ResourceUtil;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.junit.After;
 import org.junit.Before;
@@ -530,5 +533,12 @@ public class PostgresClientTest {
             "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;",
             "SELECT $$12$xyz$34$xyz$56$$;",
             "")));
+  }
+
+  @Test
+  public void preprocessSqlStatements() throws Exception {
+    String sqlFile = ResourceUtil.asString("import.sql");
+    assertThat(PostgresClient.preprocessSqlStatements(sqlFile), hasItemInArray(stringContainsInOrder(
+        "COPY test.po_line", "24\t")));
   }
 }
