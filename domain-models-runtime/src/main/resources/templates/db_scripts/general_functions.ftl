@@ -37,10 +37,10 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 -- function used to convert accented strings into unaccented string
-CREATE OR REPLACE FUNCTION f_unaccent(text)
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.f_unaccent(text)
   RETURNS text AS
 $$
-SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
+  SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
 $$  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- Convert a string into a tsquery. A star * before a space or at the end of the string
