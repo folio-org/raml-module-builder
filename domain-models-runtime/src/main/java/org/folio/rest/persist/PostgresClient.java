@@ -17,7 +17,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
@@ -143,8 +142,6 @@ public class PostgresClient {
   private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
-  private static final Pattern POSTGRES_DOLLAR_QUOTING =
-      Pattern.compile("[^\\n\\r]*\\B(\\$\\w*\\$).*?\\1[^\\n\\r]*", Pattern.DOTALL);
 
   private static int embeddedPort            = -1;
 
@@ -3260,85 +3257,19 @@ public class PostgresClient {
     }
   }
 
-  /**
-   * Split string into lines.
-   */
-  private static List<String> lines(String string) {
-    return Arrays.asList(string.split("\\r\\n|\\n|\\r"));
-  }
-
-  /**
-   * Split the sqlFile into SQL statements.
-   *
-   * <a href="https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING">
-   * Dollar-quoted string constants</a> with $$ or $[0-9a-zA-Z_]+$ are preserved.
-   */
-  static String [] splitSqlStatements(String sqlFile) {
-    List<String> lines = new ArrayList<>();
-    Matcher matcher = POSTGRES_DOLLAR_QUOTING.matcher(sqlFile);
-    int searchStart = 0;
-    while (matcher.find()) {
-      lines.addAll(lines(sqlFile.substring(searchStart, matcher.start())));
-      lines.add(matcher.group());
-      searchStart = matcher.end();
-    }
-    lines.addAll(lines(sqlFile.substring(searchStart)));
-    return lines.toArray(new String [0]);
-  }
-
-  /**
-   * Will connect to a specific database and execute the commands in the .sql file
-   * against that database.<p />
-   * NOTE: NOT tested on all types of statements - but on a lot
-   *
-   * @param sqlFile - string of sqls with executable statements
-   * @param stopOnError - stop on first error
-   * @param replyHandler - the handler's result is the list of statements that failed; the list may be empty
-   */
-  @SuppressWarnings("checkstyle:EmptyBlock")
   public void runSQLFile(String sqlFile, boolean stopOnError,
-      Handler<AsyncResult<List<String>>> replyHandler){
+    Handler<AsyncResult<List<String>>> replyHandler) {
+
     try {
-      StringBuilder singleStatement = new StringBuilder();
-      String[] allLines = splitSqlStatements(sqlFile);
-      List<String> execStatements = new ArrayList<>();
-      boolean inCopy = false;
-      for (int i = 0; i < allLines.length; i++) {
-        if (allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
-          final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
-          final Matcher matcher = pattern.matcher(allLines[i]);
-          if(matcher.find()){
-            /** password argument indicated in the create user / role statement */
-            String newPassword = createPassword(matcher.group(1));
-            allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
-          }
+      execute(sqlFile, res -> {
+        if (res.failed()) {
+          List<String> msg = new ArrayList<>();
+          msg.add(res.cause().getMessage());
+          replyHandler.handle(Future.succeededFuture(msg));
+          return;
         }
-        if (allLines[i].trim().startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].trim().startsWith("--")) {
-          // this is an sql comment, skip
-        } else if (allLines[i].toUpperCase().matches("^\\s*(COPY ).*?FROM.*?STDIN.*")) {
-          singleStatement.append(allLines[i]);
-          inCopy = true;
-        } else if (inCopy && (allLines[i].trim().equals("\\."))) {
-          inCopy = false;
-          execStatements.add( singleStatement.toString() );
-          singleStatement = new StringBuilder();
-        } else if (allLines[i].trim().endsWith(SEMI_COLON) && !inCopy) {
-          execStatements.add( singleStatement.append(SPACE + allLines[i]).toString() );
-          singleStatement = new StringBuilder();
-        } else {
-          if (inCopy)  {
-            singleStatement.append("\n");
-          } else {
-            singleStatement.append(SPACE);
-          }
-          singleStatement.append(allLines[i]);
-        }
-      }
-      String lastStatement = singleStatement.toString();
-      if (! lastStatement.trim().isEmpty()) {
-        execStatements.add(lastStatement);
-      }
-      execute(execStatements.toArray(new String[]{}), stopOnError, replyHandler);
+        replyHandler.handle(Future.succeededFuture(new ArrayList<String>()));
+      });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
@@ -3361,139 +3292,6 @@ public class PostgresClient {
     }
     return DriverManager.getConnection(
       "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
-  }
-
-  /**
-   * Copy files via the COPY FROM postgres syntax
-   * Support 3 modes
-   * 1. In line (STDIN) Notice the mandatory \. at the end of all entries to import
-   * COPY config_data (jsonb) FROM STDIN ENCODING 'UTF8';
-   * {"module":"SETTINGS","config_name":"locale","update_date":"1.1.2017","code":"system.currency_symbol.dk","description":"currency code","default": false,"enabled": true,"value": "kr"}
-   * \.
-   * 2. Copy from a data file packaged in the jar
-   * COPY config_data (jsonb) FROM 'data/locales.data' ENCODING 'UTF8';
-   * 3. Copy from a file on disk (absolute path)
-   * COPY config_data (jsonb) FROM 'C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\data\\locales.data' ENCODING 'UTF8';
-
-   * @param copyInStatement
-   * @param connection
-   * @throws Exception
-   */
-  private void copyIn(String copyInStatement, Connection connection) throws Exception {
-    long totalInsertedRecords = 0;
-    CopyManager copyManager = new CopyManager((BaseConnection) connection);
-    if(copyInStatement.contains("STDIN")){
-      //run as is
-      int sep = copyInStatement.indexOf("\n");
-      String copyIn = copyInStatement.substring(0, sep);
-      String data = copyInStatement.substring(sep+1);
-      totalInsertedRecords = copyManager.copyIn(copyIn, new StringReader(data));
-    }
-    else{
-      //copy from a file,
-      String[] valuesInQuotes = StringUtils.substringsBetween(copyInStatement , "'", "'");
-      if(valuesInQuotes.length == 0){
-        log.warn("SQL statement: COPY FROM, has no STDIN and no file path wrapped in ''");
-        throw new Exception("SQL statement: COPY FROM, has no STDIN and no file path wrapped in ''");
-      }
-      //do not read from the file system for now as this needs to support data files packaged in
-      //the jar, read files into memory and load - consider improvements to this
-      String filePath = valuesInQuotes[0];
-      String data;
-      if(new File(filePath).isAbsolute()){
-        data = FileUtils.readFileToString(new File(filePath), "UTF8");
-      }
-      else{
-        try {
-          //assume running from within a jar,
-          data = ResourceUtils.resource2String(filePath);
-        } catch (Exception e) {
-          //from IDE
-          data = ResourceUtils.resource2String("/"+filePath);
-        }
-      }
-      copyInStatement = copyInStatement.replace("'"+filePath+"'", "STDIN");
-      totalInsertedRecords = copyManager.copyIn(copyInStatement, new StringReader(data));
-    }
-    log.info("Inserted " + totalInsertedRecords + " via COPY IN. Tenant: " + tenantId);
-  }
-
-  private void execute(String[] sql, boolean stopOnError,
-      Handler<AsyncResult<List<String>>> replyHandler){
-
-    long s = System.nanoTime();
-    log.info("Executing multiple statements with id " + Arrays.hashCode(sql));
-    List<String> results = new ArrayList<>();
-    vertx.executeBlocking(dothis -> {
-      Connection connection = null;
-      Statement statement = null;
-      boolean error = false;
-      try {
-
-        /* this should be  super user account that is in the config file */
-        connection = getStandaloneConnection(null, false);
-        connection.setAutoCommit(false);
-        statement = connection.createStatement();
-
-        for (int j = 0; j < sql.length; j++) {
-          try {
-            log.info("trying to execute: " + sql[j].substring(0, Math.min(sql[j].length()-1, 1000)));
-            if(sql[j].trim().toUpperCase().startsWith("COPY ")){
-              copyIn(sql[j], connection);
-            }
-            else{
-              statement.executeUpdate(sql[j]); //NOSONAR
-            }
-            log.info("Successfully executed: " + sql[j].substring(0, Math.min(sql[j].length()-1, 400)));
-          } catch (Exception e) {
-            results.add(sql[j]);
-            error = true;
-            log.error(e.getMessage(),e);
-            if(stopOnError){
-              break;
-            }
-          }
-        }
-        try {
-          if(error){
-            connection.rollback();
-            log.error("Rollback for: " + Arrays.hashCode(sql));
-          }
-          else{
-            connection.commit();
-            log.info("Successfully committed: " + Arrays.hashCode(sql));
-          }
-        } catch (Exception e) {
-          error = true;
-          log.error("Commit failed " + Arrays.hashCode(sql) + SPACE + e.getMessage(), e);
-        }
-      }
-      catch(Exception e){
-        log.error(e.getMessage(), e);
-        error = true;
-      }
-      finally {
-        try {
-          if(statement != null) statement.close();
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-        }
-        try {
-          if(connection != null) connection.close();
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-        }
-        if(error){
-          dothis.fail("error");
-        }
-        else{
-          dothis.complete();
-        }
-      }
-    }, done -> {
-      logTimer("execute", "" + Arrays.hashCode(sql), s);
-      replyHandler.handle(Future.succeededFuture(results));
-    });
   }
 
   private static void rememberEmbeddedPostgres() {

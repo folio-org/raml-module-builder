@@ -36,9 +36,9 @@ public class RunSQLIT {
       { 1, "syntaxerror" },
       { 1, "syntaxerror;" },
       { 1, "syntaxerror\n" },
-      { 2, "syntaxerror1;\nsyntaxerror2" },
-      { 2, "syntaxerror1;\nsyntaxerror2;" },
-      { 2, "syntaxerror1;\nsyntaxerror2\n" }
+      { 1, "syntaxerror1;\nsyntaxerror2" },
+      { 1, "syntaxerror1;\nsyntaxerror2;" },
+      { 1, "syntaxerror1;\nsyntaxerror2\n" }
     });
   }
 
