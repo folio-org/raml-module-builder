@@ -124,7 +124,6 @@ public class PostgresClient {
   private static final String    SPACE = " ";
   private static final String    DOT = ".";
   private static final String    COMMA = ",";
-  private static final String    SEMI_COLON = ";";
 
   private static final String    COUNT_FIELD = "count";
 
