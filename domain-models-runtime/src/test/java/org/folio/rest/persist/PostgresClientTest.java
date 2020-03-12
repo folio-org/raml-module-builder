@@ -502,33 +502,4 @@ public class PostgresClientTest {
   public void restoreLogger() {
     PostgresClient.log = oldLogger;
   }
-
-  @Test
-  public void splitSqlStatementsSingleLine() {
-    assertThat(PostgresClient.splitSqlStatements("foo bar"),
-        is(arrayContaining("foo bar")));
-  }
-
-  @Test
-  public void splitSqlStatementsLines() {
-    assertThat(PostgresClient.splitSqlStatements("foo\nbar\rbaz\r\nend"),
-        is(arrayContaining("foo", "bar", "baz", "end")));
-  }
-
-  @Test
-  public void splitSqlStatementsDollarQuoting() {
-    assertThat(PostgresClient.splitSqlStatements("foo\nbar $$\rbaz\r\n$$ end"),
-        is(arrayContaining("foo", "bar $$\rbaz\r\n$$ end", "")));
-  }
-
-  @Test
-  public void splitSqlStatementsNestedDollarQuoting() {
-    assertThat(PostgresClient.splitSqlStatements(
-        "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;\r\nSELECT $$12$xyz$34$xyz$56$$;"),
-        is(arrayContaining(
-            "",
-            "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;",
-            "SELECT $$12$xyz$34$xyz$56$$;",
-            "")));
-  }
 }
