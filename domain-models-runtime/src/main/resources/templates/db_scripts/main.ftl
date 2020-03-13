@@ -22,6 +22,13 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersi
 
 </#if>
 
+CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
+  name text PRIMARY KEY,
+  def text NOT NULL,
+  remove boolean NOT NULL
+);
+UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
+
 <#if scripts??>
   <#list scripts as script>
     <#if script.run == "before">
@@ -146,6 +153,17 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersi
   </#list>
 </#if>
 
+-- Drop all indexes that schema.json no longer defines but had been defined by schema.json before.
+DO $$
+DECLARE
+  aname TEXT;
+BEGIN
+  FOR aname IN SELECT name FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE remove = TRUE
+  LOOP
+    EXECUTE format('DROP INDEX IF EXISTS %s', aname);
+  END LOOP;
+END $$;
+
 -- Fix functions calls with "public." in indexes https://issues.folio.org/browse/RMB-583
 -- Some functions have been moved from public schema into ${myuniversity}_${mymodule} schema.
 -- https://github.com/folio-org/raml-module-builder/commit/872c1f80da4c8d49e6836ca9221f637dc5e7420b
@@ -177,6 +195,3 @@ BEGIN
 END $$;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};
-
-UPDATE ${myuniversity}_${mymodule}.rmb_internal
-SET jsonb = jsonb || '{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb;

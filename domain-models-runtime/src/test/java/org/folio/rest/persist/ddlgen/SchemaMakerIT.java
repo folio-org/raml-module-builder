@@ -1,5 +1,6 @@
 package org.folio.rest.persist.ddlgen;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -272,6 +273,36 @@ public class SchemaMakerIT extends PostgresClientITBase {
         "{} 3 foo {'a': 'b', 'c': 'd'}".replace('\'', '"'));
   }
 
+  private String indexdef(TestContext context, String indexname) {
+    return selectText(context, "SELECT indexdef FROM pg_catalog.pg_indexes "
+        + "WHERE indexname = '" + indexname + "' AND schemaname='" + schema + "'");
+  }
+
+  @Test
+  public void indexUpgrade(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "indexRemoveAccents.json");
+    assertThat(indexdef(context, "casetable_i_idx"),        containsString("lower(f_unaccent((jsonb ->> 'i'::text)))"));
+    assertThat(indexdef(context, "casetable_u_idx_unique"), containsString("lower(f_unaccent((jsonb ->> 'u'::text)))"));
+    assertThat(indexdef(context, "casetable_l_idx_like"),   containsString("lower(f_unaccent((jsonb ->> 'l'::text)))"));
+    assertThat(indexdef(context, "casetable_g_idx_gin"),    containsString("lower(f_unaccent((jsonb ->> 'g'::text)))"));
+    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString(    ", f_unaccent((jsonb ->> 'f'::text)))"));
+
+    runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
+    assertThat(indexdef(context, "casetable_i_idx"),        containsString("lower((jsonb ->> 'i'::text))"));
+    assertThat(indexdef(context, "casetable_u_idx_unique"), containsString("lower((jsonb ->> 'u'::text))"));
+    assertThat(indexdef(context, "casetable_l_idx_like"),   containsString("lower((jsonb ->> 'l'::text))"));
+    assertThat(indexdef(context, "casetable_g_idx_gin"),    containsString("lower((jsonb ->> 'g'::text))"));
+    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString(    ", (jsonb ->> 'f'::text))"));
+
+    // no indexes get recreated when schema doesn't change.
+    execute(context, "DROP INDEX "
+        + "casetable_i_idx, casetable_u_idx_unique, casetable_l_idx_like, casetable_g_idx_gin, casetable_f_idx_ft");
+    runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
+    int n = selectInteger(context, "SELECT count(*) FROM pg_catalog.pg_indexes "
+        + "WHERE indexname LIKE 'casetable___idx%' AND schemaname='" + schema + "'");
+    assertThat(n, is(0));
+  }
+
   @Test
   public void replacePublicSchemaFunctions(TestContext context) throws InterruptedException {
     runSchema(context, TenantOperation.CREATE, "schema.json");
@@ -280,20 +311,19 @@ public class SchemaMakerIT extends PostgresClientITBase {
         + "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"29.1.0\"}'::jsonb;"
         + indexdef;
     runSqlFileAsSuperuser(context, sql);
-    String selectIndexdef = "SELECT indexdef FROM pg_catalog.pg_indexes WHERE indexname = 'foo' AND schemaname='" + schema + "'";
-    assertThat("indexdef before update", selectText(context, selectIndexdef), is(indexdef));
+    assertThat("indexdef before update", indexdef(context, "foo"), is(indexdef));
 
     runSchema(context, TenantOperation.UPDATE, "schema.json");
     // has "public.f_unaccent" been changed to "f_unaccent"?
-    assertThat("indexdef after update", selectText(context, selectIndexdef), is(indexdef.replace("public.", "")));
+    assertThat("indexdef after update", indexdef(context, "foo"), is(indexdef.replace("public.", "")));
 
     // run upgrade where rmbVersion suppresses index upgrade.
     sql = "DROP INDEX " + schema + ".foo;"
         + "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"X\"}'::jsonb;"
         + indexdef;
     runSqlFileAsSuperuser(context, sql);
-    assertThat("indexdef before suppressed update", selectText(context, selectIndexdef), is(indexdef));
+    assertThat("indexdef before suppressed update", indexdef(context, "foo"), is(indexdef));
     runSchema(context, TenantOperation.UPDATE, "schema.json");
-    assertThat("indexdef after suppresseed update", selectText(context, selectIndexdef), is(indexdef));
+    assertThat("indexdef after suppresseed update", indexdef(context, "foo"), is(indexdef));
   }
 }
