@@ -1,7 +1,11 @@
 package org.folio.rest.persist;
 
+import static org.hamcrest.collection.ArrayMatching.arrayContaining;
+import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertThat;
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -12,6 +16,7 @@ import java.util.UUID;
 
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.util.ResourceUtil;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.junit.After;
 import org.junit.Before;
@@ -499,5 +504,42 @@ public class PostgresClientTest {
   @After
   public void restoreLogger() {
     PostgresClient.log = oldLogger;
+  }
+
+  @Test
+  public void splitSqlStatementsSingleLine() {
+    assertThat(PostgresClient.splitSqlStatements("foo bar"),
+        is(arrayContaining("foo bar")));
+  }
+
+  @Test
+  public void splitSqlStatementsLines() {
+    assertThat(PostgresClient.splitSqlStatements("foo\nbar\rbaz\r\nend"),
+        is(arrayContaining("foo", "bar", "baz", "end")));
+  }
+
+  @Test
+  public void splitSqlStatementsDollarQuoting() {
+    assertThat(PostgresClient.splitSqlStatements("foo\nbar $$\rbaz\r\n$$ end"),
+        is(arrayContaining("foo", "bar $$\rbaz\r\n$$ end", "")));
+  }
+
+  @Test
+  public void splitSqlStatementsNestedDollarQuoting() {
+    assertThat(PostgresClient.splitSqlStatements(
+        "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;\r\nSELECT $$12$xyz$34$xyz$56$$;\nSELECT $$12$$;"),
+        is(arrayContaining(
+            "",
+            "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;",
+            "SELECT $$12$xyz$34$xyz$56$$;",
+            "SELECT $$12$$;",
+            "")));
+  }
+
+  @Test
+  public void preprocessSqlStatements() throws Exception {
+    String sqlFile = ResourceUtil.asString("import.sql");
+    assertThat(PostgresClient.preprocessSqlStatements(sqlFile), hasItemInArray(stringContainsInOrder(
+        "COPY test.po_line", "24\t")));
   }
 }

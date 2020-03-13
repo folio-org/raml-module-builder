@@ -3,24 +3,20 @@ package org.folio.rest.persist.ddlgen;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
-
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 
 import freemarker.template.TemplateException;
 
 public class SchemaMakerTest {
-  @Rule
-  public ExpectedException thrown = ExpectedException.none();
-
   private String tidy(String s) {
     return s
         .replaceAll("-- [^\n\r]*", " ")  // remove comment
@@ -90,24 +86,6 @@ public class SchemaMakerTest {
   }
 
   @Test
-  public void canRecreateIndexOnUpgrade() throws Exception {
-    SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
-        "mod-foo-18.2.3", "mod-foo-18.2.4");
-    String json = ResourceUtil.asString("templates/db_scripts/indexUpgrade.json");
-    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-    String result = schemaMaker.generateDDL();
-    System.out.println(result);
-    assertThat(result, containsString("DROP INDEX IF EXISTS tablea_a_idx"));
-    assertThat(result, containsString("DROP INDEX IF EXISTS tableb_b_idx_unique"));
-    assertThat(result, containsString("DROP INDEX IF EXISTS tablec_c_idx_gin"));
-    assertThat(result, containsString("DROP INDEX IF EXISTS tabled_d_idx_ft"));
-    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tablea_a_idx"));
-    assertThat(result, containsString("CREATE UNIQUE INDEX IF NOT EXISTS tableb_b_idx_unique"));
-    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tablec_c_idx_gin"));
-    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tabled_d_idx_ft"));
-  }
-
-  @Test
   public void canCreateSQLExpressionIndex() throws IOException, TemplateException {
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.UPDATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4");
@@ -123,9 +101,9 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
     String json = ResourceUtil.asString("templates/db_scripts/schemaGenerateId.json");
-    thrown.expectMessage("Unrecognized field \"generateId\"");
-    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-    schemaMaker.generateDDL();
+    assertThat(assertThrows(UnrecognizedPropertyException.class, () -> {
+      schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+    }).getMessage(), containsString("Unrecognized field \"generateId\""));
   }
 
   @Test
@@ -133,9 +111,9 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
     String json = ResourceUtil.asString("templates/db_scripts/schemaPkColumnName.json");
-    thrown.expectMessage("Unrecognized field \"pkColumnName\"");
-    schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-    schemaMaker.generateDDL();
+    assertThat(assertThrows(UnrecognizedPropertyException.class, () -> {
+      schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+    }).getMessage(), containsString("Unrecognized field \"pkColumnName\""));
   }
 
   @Test
@@ -149,16 +127,12 @@ public class SchemaMakerTest {
 
     SchemaMaker schemaMaker = new SchemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
-    try {
+    IOException e = assertThrows(IOException.class, () -> {
       String json = ResourceUtil.asString("templates/db_scripts/schemaPopulateJsonWithId.json");
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
       schemaMaker.generateDDL();
-      fail();
-
-    } catch(IOException e) {
-      assertThat(tidy(e.getMessage()), containsString(
-          "Unrecognized field \"populateJsonWithId\""));
-    }
+    });
+    assertThat(tidy(e.getMessage()), containsString("Unrecognized field \"populateJsonWithId\""));
   }
 
   @Test
@@ -170,7 +144,8 @@ public class SchemaMakerTest {
     String json = ResourceUtil.asString("templates/db_scripts/caseinsensitive.json");
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
     assertThat(tidy(schemaMaker.generateDDL()), containsString(
-        "CREATE INDEX IF NOT EXISTS item_title_idx ON harvard_circ.item(left(lower(f_unaccent(jsonb->>'title')),600))"));
+        "CREATE INDEX IF NOT EXISTS item_title_idx ON harvard_circ.item ' "
+        + "|| $rmb$(left(lower(f_unaccent(jsonb->>'title')),600))$rmb$)"));
   }
 
   @Test
@@ -185,8 +160,8 @@ public class SchemaMakerTest {
     assertThat(tidy(schemaMaker.generateDDL()), containsString(
         "select * from start;"));
 
-    assertFalse("generated schema contains 'select * from end;' but it should not",
-      tidy(schemaMaker.generateDDL()).contains("select * from end;"));
+    assertThat("generated schema contains 'select * from end;' but it shouldn't",
+      tidy(schemaMaker.generateDDL()), not(containsString("select * from end;")));
   }
 
   @Test
@@ -273,11 +248,11 @@ public class SchemaMakerTest {
     String json = ResourceUtil.asString("templates/db_scripts/scriptexists.json");
     schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
 
-    assertFalse("generated schema contains 'select * from start;' but it should not",
-      tidy(schemaMaker.generateDDL()).contains("select * from start;"));
+    assertThat("generated schema contains 'select * from start;' but it should not",
+      tidy(schemaMaker.generateDDL()), not(containsString("select * from start;")));
 
-    assertFalse("generated schema contains 'select * from end;' but it should not",
-      tidy(schemaMaker.generateDDL()).contains("select * from end;"));
+    assertThat("generated schema contains 'select * from end;' but it should not",
+      tidy(schemaMaker.generateDDL()), not(containsString("select * from end;")));
   }
 
   @Test
@@ -338,9 +313,9 @@ public class SchemaMakerTest {
     assertThat(ddl, containsString("(left(lower(f_unaccent(jsonb->>'title')),600))"));  // index
     assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'name')))"));             // unique index
     assertThat(ddl, containsString("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
-    assertThat(ddl, containsString("GIN((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
-    assertThat(ddl, containsString("GIN(to_tsvector('simple', f_unaccent(jsonb->>'title')))"));
-    assertThat(ddl, containsString("GIN(to_tsvector('simple',(jsonb->>'author')))"));
+    assertThat(ddl, containsString("GIN ' || $rmb$((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
+    assertThat(ddl, containsString("GIN ' || $rmb$(to_tsvector('simple', f_unaccent(jsonb->>'title')))"));
+    assertThat(ddl, containsString("GIN ' || $rmb$(to_tsvector('simple',(jsonb->>'author')))"));
   }
 
 }
