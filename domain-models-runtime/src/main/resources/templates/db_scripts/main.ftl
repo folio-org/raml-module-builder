@@ -20,6 +20,13 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersi
 
 SET search_path TO ${myuniversity}_${mymodule},  public;
 
+CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
+  name text PRIMARY KEY,
+  def text NOT NULL,
+  remove boolean NOT NULL
+);
+UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
+
 <#if scripts??>
   <#list scripts as script>
     <#if script.run == "before">
@@ -36,8 +43,6 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
     </#if>
   </#list>
 </#if>
-
-SET search_path TO public, ${myuniversity}_${mymodule};
 
 <#if mode.name() == "CREATE">
   <#include "uuid.ftl">
@@ -129,8 +134,6 @@ SET search_path TO public, ${myuniversity}_${mymodule};
 
 <#include "views.ftl">
 
-SET search_path TO ${myuniversity}_${mymodule},  public;
-
 <#if scripts??>
   <#list scripts as script>
     <#if script.run == "after">
@@ -147,5 +150,46 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
     </#if>
   </#list>
 </#if>
+
+-- Drop all indexes that schema.json no longer defines but had been defined by schema.json before.
+DO $$
+DECLARE
+  aname TEXT;
+BEGIN
+  FOR aname IN SELECT name FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE remove = TRUE
+  LOOP
+    EXECUTE format('DROP INDEX IF EXISTS %s', aname);
+  END LOOP;
+END $$;
+
+-- Fix functions calls with "public." in indexes https://issues.folio.org/browse/RMB-583
+-- Some functions have been moved from public schema into ${myuniversity}_${mymodule} schema.
+-- https://github.com/folio-org/raml-module-builder/commit/872c1f80da4c8d49e6836ca9221f637dc5e7420b
+DO $$
+DECLARE
+  version TEXT;
+  i RECORD;
+  newindexdef TEXT;
+BEGIN
+  SELECT jsonb->>'rmbVersion' INTO version FROM ${myuniversity}_${mymodule}.rmb_internal;
+  IF version !~ '^(\d\.|1\d\.|2[0-8]\.|29\.[0-3]\.)' THEN
+    -- skip this upgrade if last install/upgrade was made by RMB >= 29.4.x
+    RETURN;
+  END IF;
+  -- Remove "public" from search_path to enforce "public." in indexdef
+  SET search_path TO ${myuniversity}_${mymodule};
+  FOR i IN SELECT * FROM pg_catalog.pg_indexes WHERE schemaname = '${myuniversity}_${mymodule}'
+  LOOP
+    newindexdef := regexp_replace(i.indexdef,
+      -- \m = beginning of a word, \M = end of a word
+      '\mpublic.(f_unaccent|concat_space_sql|concat_array_object_values|concat_array_object)\M',
+      '${myuniversity}_${mymodule}.\1');
+    IF newindexdef <> i.indexdef THEN
+      EXECUTE format('DROP INDEX %I.%I', i.schemaname, i.indexname);
+      EXECUTE newindexdef;
+    END IF;
+  END LOOP;
+  SET search_path TO ${myuniversity}_${mymodule}, public;
+END $$;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};
