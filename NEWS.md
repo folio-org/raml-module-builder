@@ -1,3 +1,10 @@
+## 29.3.1 2020-03-13
+
+ * RMB-580 Fix Unit tests in Jenkins fail which seem related to streamGet
+ * Revert RMB-568 which introduced a regression with keyword searches being
+   slow. MODINVSTOR-455. If your module is using the new function that
+   were introduced with RMB-568, you'll have to use use RMB 29.4.0.
+
 ## 29.3.0 2020-02-27
 
  * RMB-499 add "normalizeDigits" function
