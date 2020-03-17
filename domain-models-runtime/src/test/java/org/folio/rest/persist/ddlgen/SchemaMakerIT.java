@@ -262,6 +262,11 @@ public class SchemaMakerIT extends PostgresClientITBase {
         + "WHERE indexname = '" + indexname + "' AND schemaname='" + schema + "'");
   }
 
+  private int countCasetableIndexes(TestContext context) {
+    return selectInteger(context, "SELECT count(*) FROM pg_catalog.pg_indexes "
+        + "WHERE indexname LIKE 'casetable___idx%' AND schemaname='" + schema + "'");
+  }
+
   @Test
   public void indexUpgrade(TestContext context) {
     runSchema(context, TenantOperation.CREATE, "indexRemoveAccents.json");
@@ -282,9 +287,18 @@ public class SchemaMakerIT extends PostgresClientITBase {
     execute(context, "DROP INDEX "
         + "casetable_i_idx, casetable_u_idx_unique, casetable_l_idx_like, casetable_g_idx_gin, casetable_f_idx_ft");
     runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
-    int n = selectInteger(context, "SELECT count(*) FROM pg_catalog.pg_indexes "
-        + "WHERE indexname LIKE 'casetable___idx%' AND schemaname='" + schema + "'");
-    assertThat(n, is(0));
+    assertThat(countCasetableIndexes(context), is(0));
+  }
+
+  @Test
+  public void indexDelete(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "indexKeepAccents.json");
+    assertThat(countCasetableIndexes(context), is(5));
+
+    // delete two indexes using "tOps": "DELETE"
+    // and delete two indexes by completely removing their entries from schema
+    runSchema(context, TenantOperation.UPDATE, "indexDelete.json");
+    assertThat(countCasetableIndexes(context), is(1));
   }
 
   @Test
