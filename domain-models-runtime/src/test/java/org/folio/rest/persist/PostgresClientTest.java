@@ -527,11 +527,12 @@ public class PostgresClientTest {
   @Test
   public void splitSqlStatementsNestedDollarQuoting() {
     assertThat(PostgresClient.splitSqlStatements(
-        "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;\r\nSELECT $$12$xyz$34$xyz$56$$;"),
+        "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;\r\nSELECT $$12$xyz$34$xyz$56$$;\nSELECT $$12$$;"),
         is(arrayContaining(
             "",
             "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;",
             "SELECT $$12$xyz$34$xyz$56$$;",
+            "SELECT $$12$$;",
             "")));
   }
 

@@ -1563,22 +1563,22 @@ The tables / views will be generated in the schema named tenantid_modulename
 The x-okapi-tenant header passed in to the API call will be used to get the tenant id.
 The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
 
-#### Important information
-Right now all indexes on string fields in the jsonb should be declared as case in-sensitive and lower cased. This is how the [CQL to Postgres converter](#cql-contextual-query-language) generates SQL queries, so in order for the indexes generated to be used during query time, the indexes must be declared in a similar manner
-```
+#### Removing an index
+
+When upgrading a module via the Tenant API an index is deleted if either `"tOps": "DELETE"` is set or the complete index entry is removed. Note that indexes are the only elements where removing the entry in schema.json removes them from the database.
+
+"tOps" example:
+
+```JSON
+"index": [
   {
     "fieldName": "title",
-    "tOps": "ADD",
+    "tOps": "DELETE",
     "caseSensitive": false,
     "removeAccents": true
   }
+]
 ```
-
-Behind the scenes, the CQL to Postgres query converter will generate regex queries for `=` queries.
-For example: `?query=fieldA=ABC` will generate an SQL regex query, which will require a gin index to perform on large tables.
-
-The converter will generate LIKE queries for `==` queries. For example `?query=fieldA==ABC` will generate an SQL LIKE query that will use a btree index (if it exists). For queries that only look up specific ids, etc... the preferred approach would be to query with two equals `==` and hence, declare a regular btree (index).
-
 
 ##### Posting information
 

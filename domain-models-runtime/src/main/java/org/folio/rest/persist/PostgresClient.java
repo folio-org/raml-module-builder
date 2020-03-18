@@ -145,7 +145,7 @@ public class PostgresClient {
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
       // \\B = a non-word boundary, the first $ must not be part of an identifier (foo$bar$baz)
-      Pattern.compile("[^\\n\\r]*\\B(\\$\\w*\\$).*?\\1[^\\n\\r]*", Pattern.DOTALL);
+      Pattern.compile("[^\\n\\r]*?\\B(\\$\\w*\\$).*?\\1[^\\n\\r]*", Pattern.DOTALL);
   private static final Pattern POSTGRES_COPY_FROM_STDIN =
       // \\b = a word boundary
       Pattern.compile("^\\s*COPY\\b.*\\bFROM\\s+STDIN\\b.*", Pattern.CASE_INSENSITIVE);
