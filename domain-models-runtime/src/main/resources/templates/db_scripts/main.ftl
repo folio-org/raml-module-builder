@@ -33,6 +33,13 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
 );
 UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
 
+<#if mode.name() == "CREATE">
+  <#include "uuid.ftl">
+</#if>
+
+<#include "general_functions.ftl">
+<#include "rmb_internal_index.ftl">
+
 <#if scripts??>
   <#list scripts as script>
     <#if script.run == "before">
