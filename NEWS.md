@@ -1,3 +1,7 @@
+## 29.3.2 2020-03-18
+
+ * [RMB-552](https://issues.folio.org/browse/RMB-552) Smart index recreation on module upgrade
+
 ## 29.3.1 2020-03-13
 
  * RMB-580 Fix Unit tests in Jenkins fail which seem related to streamGet
