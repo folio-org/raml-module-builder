@@ -302,9 +302,9 @@ public class SchemaMakerIT extends PostgresClientITBase {
   }
 
   @Test
-  public void replacePublicSchemaFunctions(TestContext context) throws InterruptedException {
+  public void publicSchemaFunctions(TestContext context) throws InterruptedException {
     runSchema(context, TenantOperation.CREATE, "schema.json");
-    String indexdef = "CREATE INDEX foo ON " + schema + ".test_tenantapi USING btree (public.f_unaccent((jsonb ->> 'foo'::text)))";
+    String indexdef = "CREATE INDEX foo ON " + schema + ".test_tenantapi USING btree (f_unaccent((jsonb ->> 'foo'::text)))";
     String sql = "CREATE OR REPLACE FUNCTION public.f_unaccent(text) RETURNS text AS 'SELECT $1' LANGUAGE sql;"
         + "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"29.1.0\"}'::jsonb;"
         + indexdef;
@@ -312,16 +312,6 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertThat("indexdef before update", indexdef(context, "foo"), is(indexdef));
 
     runSchema(context, TenantOperation.UPDATE, "schema.json");
-    // has "public.f_unaccent" been changed to "f_unaccent"?
     assertThat("indexdef after update", indexdef(context, "foo"), is(indexdef.replace("public.", "")));
-
-    // run upgrade where rmbVersion suppresses index upgrade.
-    sql = "DROP INDEX " + schema + ".foo;"
-        + "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"X\"}'::jsonb;"
-        + indexdef;
-    runSqlFileAsSuperuser(context, sql);
-    assertThat("indexdef before suppressed update", indexdef(context, "foo"), is(indexdef));
-    runSchema(context, TenantOperation.UPDATE, "schema.json");
-    assertThat("indexdef after suppresseed update", indexdef(context, "foo"), is(indexdef));
   }
 }
