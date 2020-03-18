@@ -1,0 +1,37 @@
+{
+  "tables": [
+    {
+      "tableName": "casetable",
+      "index": [
+        {
+          "fieldName": "i",
+          "removeAccents": false
+        }
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "u",
+          "removeAccents": false
+        }
+      ],
+      "likeIndex": [
+        {
+          "fieldName": "l",
+          "removeAccents": false
+        }
+      ],
+      "ginIndex": [
+        {
+          "fieldName": "g",
+          "removeAccents": false
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "f",
+          "removeAccents": false
+        }
+      ]
+    }
+  ]
+}
