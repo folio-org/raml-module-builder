@@ -1111,7 +1111,7 @@ And to match any of the sub properties type1, type2, you could use:
 
 In schema.json two new properties, `arraySubfield` and `arrayModifiers`,
 specifies the subfield and the list of modifiers respectively.
-This can be applied to `ginIndex` and `fullTextIndex`.
+This can be applied to `ginIndex` or `fullTextIndex`.
 schema.json example:
 
     {
