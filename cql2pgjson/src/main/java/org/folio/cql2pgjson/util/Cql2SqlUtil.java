@@ -200,6 +200,56 @@ public final class Cql2SqlUtil {
   }
 
   /**
+   * Convert a CQL string into a single quoted SQL string suitable for to_tsquery and append it to t.
+   *
+   * @param s CQL string without leading or trailing double quote
+   * @throws QueryValidationException if s contains an unmasked wildcard question mark or an unmasked
+   *                                  star that is not at the of the string or before a space
+   */
+  @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
+  public static void appendCql2tsquery(StringBuilder t, CharSequence s) throws QueryValidationException {
+    t.append("'");
+    /** whether the previous character is a masking backslash */
+    boolean backslash = false;
+
+    final int length = s.length();
+    for (int i=0; i<length; i++) {
+      char c = s.charAt(i);
+      switch (c) {
+      case '\\':
+        if (backslash) {
+          t.append("\\\\");
+        }
+        backslash = ! backslash;
+        break;
+      case '*':
+        if (! backslash && i + 1 < length && s.charAt(i + 1) != ' ') {
+          throw new QueryValidationException(
+              "* right truncation wildcard must be followed by space or end of string, but found " + s.charAt(i + 1));
+        }
+        t.append('*');
+        break;
+      case '?':
+        if (! backslash) {
+          throw new QueryValidationException("? wildcard not allowed in full text query string");
+        }
+        t.append(c);
+        backslash = false;
+        break;
+      case '\'':
+        t.append("''");
+        backslash = false;
+        break;
+      default:
+        t.append(c);
+        backslash = false;
+        break;
+      }
+    }
+    t.append("'");
+  }
+
+  /**
    * Convert a CQL string to an SQL tsquery where each word matches in any order.
    *
    * @param s CQL string without leading or trailing double quote

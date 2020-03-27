@@ -2,7 +2,6 @@ package org.folio.rest.persist.ddlgen;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -40,6 +39,14 @@ class IndexTest {
     StringBuilder result = new StringBuilder();
     Index.appendExpandedTerm( "table", term,result);
     assertEquals( expectedSql,result.toString());
+  }
+
+  @Test
+  void sqlExpressionQuery() {
+    Index index = index("testIdx", "testIdx");
+    assertNull(index.getSqlExpressionQuery());
+    index.setSqlExpressionQuery("foo($)");
+    assertEquals("foo($)", index.getSqlExpressionQuery());
   }
 
   /**

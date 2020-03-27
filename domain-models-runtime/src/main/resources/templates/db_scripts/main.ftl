@@ -18,6 +18,12 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersi
 
 </#if>
 
+<#if mode.name() == "CREATE">
+  <#include "uuid.ftl">
+</#if>
+
+<#include "general_functions.ftl">
+
 SET search_path TO ${myuniversity}_${mymodule},  public;
 
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
@@ -26,6 +32,8 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
   remove boolean NOT NULL
 );
 UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
+
+<#include "rmb_internal_index.ftl">
 
 <#if scripts??>
   <#list scripts as script>
@@ -45,12 +53,6 @@ UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
 </#if>
 
 SET search_path TO public, ${myuniversity}_${mymodule};
-
-<#if mode.name() == "CREATE">
-  <#include "uuid.ftl">
-</#if>
-
-<#include "general_functions.ftl">
 
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>

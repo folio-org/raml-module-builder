@@ -36,48 +36,51 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
--- Recreate index if its definition has changed, drop it if tops = 'DELETE', update its entry in table rmb_internal_index.
-CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.rmb_internal_index(aname text, tops text, newdef text) RETURNS void AS
-$$
-DECLARE
-  olddef text;
-BEGIN
-  IF tops = 'DELETE' THEN
-    EXECUTE format('DROP INDEX IF EXISTS %s', aname);
-    EXECUTE 'DELETE FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE name = $1' USING aname;
-    RETURN;
-  END IF;
-  SELECT def INTO olddef FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE name = aname;
-  IF olddef IS DISTINCT FROM newdef THEN
-    EXECUTE format('DROP INDEX IF EXISTS %s', aname);
-    EXECUTE newdef;
-  END IF;
-  EXECUTE 'INSERT INTO ${myuniversity}_${mymodule}.rmb_internal_index VALUES ($1, $2, FALSE) '
-          'ON CONFLICT (name) DO UPDATE SET def = EXCLUDED.def, remove = EXCLUDED.remove' USING aname, newdef;
-END
-$$ LANGUAGE plpgsql;
-
 -- function used to convert accented strings into unaccented string
 CREATE OR REPLACE FUNCTION f_unaccent(text)
   RETURNS text AS
-$func$
+$$
 SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
-$func$  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+$$  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+-- Convert a string into a tsquery. A star * before a space or at the end of the string
+-- is converted into a tsquery right truncation operator.
+--
+-- Implementation note:
+-- to_tsquery('simple', '''''') yields ERROR:  syntax error in tsquery: "''"
+-- use to_tsquery('simple', '') instead
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_and(text) RETURNS tsquery AS $$
+  SELECT to_tsquery('simple', string_agg(CASE WHEN length(v) = 0 OR v = '*' THEN ''
+                                              WHEN right(v, 1) = '*' THEN '''' || left(v, -1) || ''':*'
+                                              ELSE '''' || v || '''' END,
+                                         '&'))
+  FROM (SELECT regexp_split_to_table(translate($1, '&''', ',,'), ' +')) AS x(v);
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_or(text) RETURNS tsquery AS $$
+  SELECT replace(${myuniversity}_${mymodule}.tsquery_and($1)::text, '&', '|')::tsquery;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_phrase(text) RETURNS tsquery AS $$
+  SELECT replace(${myuniversity}_${mymodule}.tsquery_and($1)::text, '&', '<->')::tsquery;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- Normalize digits by removing spaces, tabs and hyphen-minuses from the first chunk.
 -- Insert a space before the second chunk. The second chunk starts at the first character that is
--- neither digit, space, tab nor hyphen-minus.
+-- neither digit, space, tab nor hyphen-minus. The first chunk may end with a star * for right
+-- truncation.
 -- Examples:
 -- normalize_digits(' 0-1  2--3 4 ') = '01234'
 -- normalize_digits(' 01 2- 3 -- 45 -a 7 -8 9') = '012345 a 7 -8 9'
+-- normalize_digits(' 01 2- 3 -- 45* -a 7 -8 9') = '012345* a 7 -8 9'
 -- normalize_digits('978 92 8011 565 9(Vol. 1011-1021)') = '9789280115659 (Vol. 1011-1021)'
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.normalize_digits(text) RETURNS text AS $$
-  SELECT    translate((regexp_match($1, '^([0-9 \t-]*)(.*)'))[1], E' \t-', '')
-         || CASE WHEN (regexp_match($1, '^([0-9 \t-]*)(.*)'))[1] = '' THEN ''
-                 WHEN (regexp_match($1, '^([0-9 \t-]*)(.*)'))[2] = '' THEN ''
+  SELECT    translate((regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[1], E' \t-', '')
+         || CASE WHEN (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[1] = '' THEN ''
+                 WHEN (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[2] = '' THEN ''
                  ELSE ' '
             END
-         || (regexp_match($1, '^([0-9 \t-]*)(.*)'))[2];
+         || (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[2];
 $$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- This trigger function copies primary key id from NEW.id to NEW.jsonb->'id'.

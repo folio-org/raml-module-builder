@@ -20,6 +20,7 @@ public class Index extends TableIndexes {
   private String arraySubfield = null;
   private String multiFieldNames;
   private String sqlExpression;
+  private String sqlExpressionQuery;
 
   public boolean isCaseSensitive() {
     return caseSensitive;
@@ -82,6 +83,14 @@ public class Index extends TableIndexes {
   }
   public void setSqlExpression(String sqlExpression) {
     this.sqlExpression = sqlExpression;
+  }
+
+  public String getSqlExpressionQuery() {
+    return sqlExpressionQuery;
+  }
+
+  public void setSqlExpressionQuery(String sqlExpressionQuery) {
+    this.sqlExpressionQuery = sqlExpressionQuery;
   }
 
   public String getFinalSqlExpression(String tableLoc, boolean lowerIt) {
