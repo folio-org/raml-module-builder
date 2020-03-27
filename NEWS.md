@@ -1,3 +1,7 @@
+## 29.4.0 2020-03-27
+
+ + [RMB-575](https://issues.folio.org/browse/RMB-575) Add "sqlExpressionQuery" schema.json parameter
+
 ## 29.3.2 2020-03-18
 
  * [RMB-552](https://issues.folio.org/browse/RMB-552) Smart index recreation on module upgrade
