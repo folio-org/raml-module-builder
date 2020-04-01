@@ -11,6 +11,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
+## Version 29.4
+
+* [RMB-594](https://issues.folio.org/browse/RMB-594) RMB no longer uses a random order but a fixed order to generate the .java classes from the .raml and .json files. This may consistently fail the build if two classes with the same name are generated. To prevent the second from overwriting the first set a different class name using "javaType": "org.folio.rest.jaxrs.model.Bar", for example for link-field "folio:isVirtual" annotations for mod-graphql.
+
 ## Version 29.2
 
 * [RMB-532](https://issues.folio.org/browse/RMB-532) Use PostgresClient.get without the unused and deprecated setId parameter.
