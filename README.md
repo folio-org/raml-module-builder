@@ -1552,10 +1552,31 @@ The fields in the **script** section include:
 3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.
 4. `fromModuleVersion` - same as `fromModuleVersion` for table
 
-The **exactCount** section is optonal and the value of the property is
+A `snippetPath` SQL file (but not a `snippet` SQL statement) can make use of
+[FreeMarker template engine](https://freemarker.apache.org) that runs and evaluates on runtime. For examples, see RMB's
+[db_scripts directory](https://github.com/folio-org/raml-module-builder/tree/master/domain-models-runtime/src/main/resources/templates/db_scripts).
+RMB provides these variables:
+
+* `${myuniversity}` tenant id, for example `diku`
+* `${mymodule}` module name, for example `mod-inventory-storage`
+* `${mode}` either `CREATE`, `UPDATE`, or `DELETE`
+* `${version}` the previous module version on update (for example `mod-inventory-storage-18.0.0` or `18.0.0`),
+  or `0.0` if not available (not provided by Okapi or in `CREATE` mode).
+* `${newVersion}` the new version that currently gets installed (`CREATE` mode) or is upgraded to (`UPDATE` mode),
+  for example `mod-inventory-storage-18.1.0` or `18.1.0`.
+* `${rmbVersion}` the raml module builder version the module currently uses, for example `29.3.2`.
+* `${exactCount}` the `exactCount` number from schema.json or the default.
+
+In addition the `tables`, `views` and `scripts` sections of schema.json are available.
+
+Maven's pom.xml file may contain `<filtering>true</filtering>` to replace variables at build time,
+it also uses the `${}` syntax. Disable maven's filtering for the SQL script files or exclude them from filtering,
+otherwise it replaces for example `${version}` by a wrong value (the current module version from pom.xml).
+
+The **exactCount** section is optional and the value of the property is
 a simple integer with a default value of 1000. Hit counts returned by
 get-familify of methods will use an exact hit count up to that value; beyond
-that, en estimated hit count is returned. However, for cases when query
+that, an estimated hit count is returned. However, for cases when query
 parameter is omitted (filter is null), an exact count is still returned.
 
 

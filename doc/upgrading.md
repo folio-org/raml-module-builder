@@ -3,6 +3,8 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 29.5](#version-295)
+* [Version 29.2](#version-292)
 * [Version 29](#version-29)
 * [Version 28](#version-28)
 * [Version 27.1](#version-271)
@@ -11,8 +13,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
-## Version 29.4
+## Version 29.5
 
+* [RMB-588](https://issues.folio.org/browse/RMB-588) Consider removing
+  `<directory>src/main/resources</directory> <filtering>true</filtering>`
+  from pom.xml (or use a more specific directory tree). For details see [FOLIO-2548](https://issues.folio.org/browse/FOLIO-2548).
 * [RMB-594](https://issues.folio.org/browse/RMB-594) RMB no longer uses a random order but a fixed order to generate the .java classes from the .raml and .json files. This may consistently fail the build if two classes with the same name are generated. To prevent the second from overwriting the first set a different class name using "javaType": "org.folio.rest.jaxrs.model.Bar", for example for link-field "folio:isVirtual" annotations for mod-graphql.
 
 ## Version 29.2
