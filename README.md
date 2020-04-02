@@ -449,8 +449,9 @@ Create JSON schemas indicating the objects exposed by the module.
 Use the `description` field alongside the `type` field to explain the content and
 usage and to add documentation.
 
-Use `"javaType": "org.folio.rest.jaxrs.model.MyEntity"` to change the name of the
-generated Java type.
+Use `"javaType": "org.folio.rest.jaxrs.model.MyEntity"` to set the class name of the
+generated Java type to prevent a duplicate name where the second class overwrites the first class
+or to avoid a misleading name. Otherwise the field name in the .json schema file is used as class name.
 
 See (jsonschema2pojo Reference)[https://github.com/joelittlejohn/jsonschema2pojo/wiki/Reference]
 for JSON schema details.
