@@ -98,15 +98,8 @@
   </dependencies>
 
   <build>
-    <resources>
-      <resource>
-        <!-- for src/main/resources/API_PATH_MAPPINGS -->
-        <directory>src/main/resources</directory>
-        <filtering>true</filtering>
-      </resource>
-    </resources>
-
     <plugins>
+
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.0</version>
