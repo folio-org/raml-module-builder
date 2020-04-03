@@ -951,6 +951,9 @@ Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
 
+Refer to further explanation of [CQL string matching](https://dev.folio.org/faqs/explain-cql/)
+for the "Exact match operator" and "Word match operators".
+
 ### CQL: Modifiers
 
 Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
