@@ -1,5 +1,7 @@
 package org.folio.rest.persist;
 
+import static org.apache.commons.lang.StringEscapeUtils.escapeSql;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.InvocationTargetException;
@@ -1144,10 +1146,8 @@ public final class PgUtil {
    *
    * @param column the column that has an index to be used for sorting
    * @param preparedCql the cql query
-   * @param tenantId the tenant used to generate schema location
    * @param offset start index of objects to return
    * @param limit max number of objects to return
-   * @param size the number of rows that determines which method will be used to generate the ultimate result
    * @throws QueryValidationException
    * @return the generated SQL string, or null if the CQL query is not suitable for optimization.
    */
@@ -1180,36 +1180,39 @@ public final class PgUtil {
     // If "headrecords" are enough to return the requested "LIMIT" number of records we are done.
     // Otherwise use the full text index to create "allrecords" with all matching
     // records and do sorting and LIMIT afterwards.
-    String wrappedColumn = "left(lower(f_unaccent(jsonb->>'" + column + "')),600) ";
+    String wrappedColumn =
+      "lower(f_unaccent(jsonb->>'" + column + "')) ";
+    String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
     String sql =
-        " WITH "
-      + " headrecords AS ("
-      + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
-      + "   WHERE (" + where + ")"
-      + "     AND " + wrappedColumn + lessGreater
-      + "             ( SELECT " + wrappedColumn
-      + "               FROM " + tableName
-      + "               ORDER BY " + wrappedColumn + ascDesc
-      + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
-      + "             )"
-      + "   ORDER BY " + wrappedColumn + ascDesc
-      + "   LIMIT " + limit + " OFFSET " + offset
-      + " ), "
-      + " allrecords AS ("
-      + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
-      + "   WHERE (" + where + ")"
-      + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
-      + " )"
-      + " SELECT jsonb, title,  0                                 AS count"
-      + "   FROM headrecords"
-      + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
-      + " UNION"
-      + " (SELECT jsonb, title, (SELECT COUNT(*) FROM allrecords) AS count"
-      + "   FROM allrecords"
-      + "   ORDER BY title " + ascDesc
-      + "   LIMIT " + limit + " OFFSET " + offset
-      + " )"
-      + " ORDER BY title " + ascDesc;
+      " WITH "
+        + " headrecords AS ("
+        + "   SELECT jsonb, (" + wrappedColumn + ") AS "+column+" FROM " + tableName
+        + "   WHERE (" + where + ")"
+        + "     AND " + cutWrappedColumn + lessGreater
+        + "             ( SELECT " + cutWrappedColumn
+        + "               FROM " + tableName
+        + "               ORDER BY " + cutWrappedColumn + ascDesc
+        + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
+        + "             )"
+        + "   ORDER BY " + cutWrappedColumn + ascDesc
+        + "   LIMIT " + limit + " OFFSET " + offset
+        + " ), "
+        + " allrecords AS ("
+        + "   SELECT jsonb, " + wrappedColumn + " AS "+ column +" FROM " + tableName
+        + "   WHERE (" + where + ")"
+        + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
+        + " )"
+        + " SELECT jsonb, "+ column +",  0 AS count"
+        + "   FROM headrecords"
+        + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
+        + " UNION"
+        + " (SELECT jsonb, "+ column +", (" + preparedCql.getSchemaName()
+        + ".count_estimate_default('SELECT " + escapeSql(wrappedColumn) + " AS "+ column
+        + " FROM " + tableName + " WHERE " + escapeSql(where) + "')) AS count"
+        + "   FROM allrecords ORDER BY "+ column +" " + ascDesc
+        + "   LIMIT " + limit + " OFFSET " + offset
+        + " )"
+        + " ORDER BY "+ column +" " + ascDesc;
 
     logger.info("optimized SQL generated from CQL: " + sql);
     return sql;
@@ -1219,19 +1222,28 @@ public final class PgUtil {
     private final String tableName;
     private final String fullTableName;
     private final CQLWrapper cqlWrapper;
+    private final String schemaName;
 
     public PreparedCQL(String tableName, CQLWrapper cqlWrapper, Map<String, String> okapiHeaders) {
       String tenantId = TenantTool.tenantId(okapiHeaders);
       this.tableName = tableName;
-      this.fullTableName = PostgresClient.convertToPsqlStandard(tenantId) + "." + tableName;
       this.cqlWrapper = cqlWrapper;
+      schemaName = PostgresClient.convertToPsqlStandard(tenantId);
+      fullTableName = schemaName + "." + tableName;
     }
 
     public String getTableName() {
       return tableName;
     }
 
-    /** @return full table name including schema, for example tenant_mymodule.users */
+    public String getSchemaName() {
+      return schemaName;
+    }
+
+    /**
+     * @return full table name including schema, for example
+     * tenant_mymodule.users
+     */
     public String getFullTableName() {
       return fullTableName;
     }
