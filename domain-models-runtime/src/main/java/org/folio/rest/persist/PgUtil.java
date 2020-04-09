@@ -1183,10 +1183,17 @@ public final class PgUtil {
     String wrappedColumn =
       "lower(f_unaccent(jsonb->>'" + column + "')) ";
     String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
+    String countSql = "(" + preparedCql.getSchemaName()
+      + ".count_estimate_default('SELECT " + escapeSql(wrappedColumn)
+      + " AS title "
+      + "FROM " + tableName + " "
+      + "WHERE " + escapeSql(where)
+      + "'))" +
+      " AS count";
     String sql =
       " WITH "
         + " headrecords AS ("
-        + "   SELECT jsonb, (" + wrappedColumn + ") AS "+column+" FROM " + tableName
+        + "   SELECT jsonb, (" + wrappedColumn + ") AS title FROM " + tableName
         + "   WHERE (" + where + ")"
         + "     AND " + cutWrappedColumn + lessGreater
         + "             ( SELECT " + cutWrappedColumn
@@ -1198,21 +1205,21 @@ public final class PgUtil {
         + "   LIMIT " + limit + " OFFSET " + offset
         + " ), "
         + " allrecords AS ("
-        + "   SELECT jsonb, " + wrappedColumn + " AS "+ column +" FROM " + tableName
+        + "   SELECT jsonb, " + wrappedColumn + " AS title FROM " + tableName
         + "   WHERE (" + where + ")"
         + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
         + " )"
-        + " SELECT jsonb, "+ column +",  0 AS count"
+        + " SELECT jsonb, title,  " +
+        countSql
         + "   FROM headrecords"
         + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
         + " UNION"
-        + " (SELECT jsonb, "+ column +", (" + preparedCql.getSchemaName()
-        + ".count_estimate_default('SELECT " + escapeSql(wrappedColumn) + " AS "+ column
-        + " FROM " + tableName + " WHERE " + escapeSql(where) + "')) AS count"
-        + "   FROM allrecords ORDER BY "+ column +" " + ascDesc
+        + " (SELECT jsonb, title, " + countSql
+        + "   FROM allrecords"
+        + "   ORDER BY title " + ascDesc
         + "   LIMIT " + limit + " OFFSET " + offset
         + " )"
-        + " ORDER BY "+ column +" " + ascDesc;
+        + " ORDER BY title " + ascDesc;
 
     logger.info("optimized SQL generated from CQL: " + sql);
     return sql;
