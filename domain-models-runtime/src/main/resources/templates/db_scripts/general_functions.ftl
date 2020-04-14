@@ -41,7 +41,7 @@ DECLARE
 count bigint;
 q text;
 BEGIN
-count = diku_mod_inventory_storage.count_estimate_smart2(${exactCount}, ${exactCount}, query);
+count = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
 IF count > 4*${exactCount} THEN
 return count;
 END IF;
