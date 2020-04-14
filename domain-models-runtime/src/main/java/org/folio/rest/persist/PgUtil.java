@@ -1,7 +1,5 @@
 package org.folio.rest.persist;
 
-import static org.apache.commons.lang.StringEscapeUtils.escapeSql;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.InvocationTargetException;
@@ -16,6 +14,7 @@ import java.io.IOException;
 
 import javax.ws.rs.core.Response;
 
+import org.apache.commons.lang.StringEscapeUtils;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -1184,10 +1183,10 @@ public final class PgUtil {
       "lower(f_unaccent(jsonb->>'" + column + "')) ";
     String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
     String countSql = "(" + preparedCql.getSchemaName()
-      + ".count_estimate_default('SELECT " + escapeSql(wrappedColumn)
+      + ".count_estimate_optimized('SELECT " + StringEscapeUtils.escapeSql(wrappedColumn)
       + " AS title "
       + "FROM " + tableName + " "
-      + "WHERE " + escapeSql(where)
+      + "WHERE " + StringEscapeUtils.escapeSql(where)
       + "'))" +
       " AS count";
     String sql =
