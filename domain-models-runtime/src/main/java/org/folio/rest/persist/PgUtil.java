@@ -1170,12 +1170,12 @@ public final class PgUtil {
     }
     String tableName = preparedCql.getFullTableName();
     String where = preparedCql.getCqlWrapper().getField().toSql(cql).getWhere();
-    // If there are many matches use a full table scan in title sort order
-    // using the title index, but stop this scan after OPTIMIZED_SQL_SIZE index entries.
+    // If there are many matches use a full table scan in data_column sort order
+    // using the data_column index, but stop this scan after OPTIMIZED_SQL_SIZE index entries.
     // Otherwise use full text matching because there are only a few matches.
     //
     // "headrecords" are the matching records found within the first OPTIMIZED_SQL_SIZE records
-    // by stopping at the title from "OFFSET OPTIMIZED_SQL_SIZE LIMIT 1".
+    // by stopping at the data_column from "OFFSET OPTIMIZED_SQL_SIZE LIMIT 1".
     // If "headrecords" are enough to return the requested "LIMIT" number of records we are done.
     // Otherwise use the full text index to create "allrecords" with all matching
     // records and do sorting and LIMIT afterwards.
@@ -1184,7 +1184,7 @@ public final class PgUtil {
     String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
     String countSql = "(" + preparedCql.getSchemaName()
       + ".count_estimate_optimized('SELECT " + StringEscapeUtils.escapeSql(wrappedColumn)
-      + " AS title "
+      + " AS data_column "
       + "FROM " + tableName + " "
       + "WHERE " + StringEscapeUtils.escapeSql(where)
       + "'))" +
@@ -1192,7 +1192,7 @@ public final class PgUtil {
     String sql =
       " WITH "
         + " headrecords AS ("
-        + "   SELECT jsonb, (" + wrappedColumn + ") AS title FROM " + tableName
+        + "   SELECT jsonb, (" + wrappedColumn + ") AS data_column FROM " + tableName
         + "   WHERE (" + where + ")"
         + "     AND " + cutWrappedColumn + lessGreater
         + "             ( SELECT " + cutWrappedColumn
@@ -1204,21 +1204,21 @@ public final class PgUtil {
         + "   LIMIT " + limit + " OFFSET " + offset
         + " ), "
         + " allrecords AS ("
-        + "   SELECT jsonb, " + wrappedColumn + " AS title FROM " + tableName
+        + "   SELECT jsonb, " + wrappedColumn + " AS data_column FROM " + tableName
         + "   WHERE (" + where + ")"
         + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
         + " )"
-        + " SELECT jsonb, title,  " +
+        + " SELECT jsonb, data_column,  " +
         countSql
         + "   FROM headrecords"
         + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
         + " UNION"
-        + " (SELECT jsonb, title, " + countSql
+        + " (SELECT jsonb, data_column, " + countSql
         + "   FROM allrecords"
-        + "   ORDER BY title " + ascDesc
+        + "   ORDER BY data_column " + ascDesc
         + "   LIMIT " + limit + " OFFSET " + offset
         + " )"
-        + " ORDER BY title " + ascDesc;
+        + " ORDER BY data_column " + ascDesc;
 
     logger.info("optimized SQL generated from CQL: " + sql);
     return sql;
