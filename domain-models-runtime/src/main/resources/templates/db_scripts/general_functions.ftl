@@ -36,6 +36,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_optimized(query text) RETURNS bigint AS $$
+DECLARE
+count bigint;
+q text;
+BEGIN
+count = diku_mod_inventory_storage.count_estimate_smart2(${exactCount}, ${exactCount}, query);
+IF count > 4*${exactCount} THEN
+return count;
+END IF;
+q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT ${exactCount}) x';
+EXECUTE q INTO count;
+RETURN count;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+
 -- function used to convert accented strings into unaccented string
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.f_unaccent(text)
   RETURNS text AS
@@ -94,7 +110,7 @@ $$ language 'plpgsql';
 
 -- Concatenate the parameters using space as separator
 create or replace function ${myuniversity}_${mymodule}.concat_space_sql(VARIADIC text[])
-RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); 
+RETURNS text AS $$ select concat_ws(' ', VARIADIC $1);
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 
 -- For each element of the jsonb_array take the value of field; concatenate them using space as separator
