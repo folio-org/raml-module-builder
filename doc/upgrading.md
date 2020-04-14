@@ -3,6 +3,8 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 29.5](#version-295)
+* [Version 29.2](#version-292)
 * [Version 29](#version-29)
 * [Version 28](#version-28)
 * [Version 27.1](#version-271)
@@ -10,6 +12,13 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 29.5
+
+* [RMB-588](https://issues.folio.org/browse/RMB-588) Consider removing
+  `<directory>src/main/resources</directory> <filtering>true</filtering>`
+  from pom.xml (or use a more specific directory tree). For details see [FOLIO-2548](https://issues.folio.org/browse/FOLIO-2548).
+* [RMB-594](https://issues.folio.org/browse/RMB-594) RMB no longer uses a random order, but a fixed order to generate the .java classes from the .raml and .json files. This may consistently fail the build if two classes with the same name are generated. To prevent the second from overwriting the first, set a different class name using "javaType": "org.folio.rest.jaxrs.model.Bar". For example for link-field "folio:isVirtual" annotations for mod-graphql.
 
 ## Version 29.2
 
@@ -29,10 +38,12 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   `TenantAttributes` with `moduleTo` property.
 * [RMB-497](https://issues.folio.org/browse/RMB-497) removed PostgresClient.join methods. It also deprecates all
   PostgresClient.get methods taking where-clause strings. Module users
-  should use Criterion or CQLWrapper instead to construct queries.
-  Remove Criterion.selects2String, Criterion.from2String .
-  Remove Criteria.setJoinON, Criteria.isJoinON .
-  CQLWrapper.toString no longer returns leading blank/space
+  should use Criterion or CQLWrapper instead to construct queries:
+
+    * Remove Criterion.selects2String, Criterion.from2String
+    * Remove Criteria.setJoinON, Criteria.isJoinON
+    * CQLWrapper.toString no longer returns leading blank/space
+
 * [RMB-514](https://issues.folio.org/browse/RMB-514) Update aspectj-maven-plugin to version 11 and
   its aspectjrt and aspectjtools versions to 1.9.4 in pom.xml ([example](https://github.com/folio-org/raml-module-builder/blob/a77786a4b118a523b753a26d2f10aa51e276a4da/sample2/pom.xml#L180-L221))
   to avoid "bad version" warnings.
@@ -41,7 +52,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 * [RMB-485](https://issues.folio.org/browse/RMB-485) changed the postgresql driver. Namespace prefix change
    `com.github.mauricio.async.db.postgresql` to
-   `com.github.jasync.sql.db.postgresql`.
+   `com.github.jasync.sql.db.postgresql`
 
     * `org.folio.rest.persist.PgExceptionFacade.getFields` returns
       `Map<Character.String>` rather than `Map<Object,String>`
@@ -49,11 +60,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     * `org.folio.rest.persist.PgExceptionUtil.getBadRequestFields` returns
       `Map<Character,String>` rather than `Map<Object,String>`
 
-* [RMB-462](https://issues.folio.org/browse/RMB-462) removed support for `fullText defaultDictionary` property (`simple`, `english`, `german`, etc.) in `schema.json`.
+* [RMB-462](https://issues.folio.org/browse/RMB-462) removed support for `fullText defaultDictionary` property (`simple`, `english`, `german`, etc.) in `schema.json`
 
 ## Version 27.1
 
-* Remove each foreign key field index and each primary key field `id` index and uniqueIndex by setting `"tOps": "DELETE"` in schema.json. These btree indexes are created automatically.
+* Remove each foreign key field index and each primary key field `id` index and uniqueIndex, by setting `"tOps": "DELETE"` in schema.json. These btree indexes are created automatically.
 * Each fullTextIndex that was created with a dictionary different than 'simple' (for example using `to_tsvector('english', jsonb->>'foo')`)
   needs to be dropped. Then RMB will recreate the index with 'simple'.
   [Example](https://github.com/folio-org/mod-circulation-storage/blob/a8cbed7d32861ec92295a67f93335780e4034e7b/src/main/resources/templates/db_scripts/schema.json):
@@ -91,11 +102,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 26
 
-* The audit (history) table changed to a new incompatible schema, new audit configuration options are required in schema.json. See [README.md](../README.md#the-post-tenant-api) for details.
+* The audit (history) table changed to a new incompatible schema. New audit configuration options are required in schema.json. See [README.md](../README.md#the-post-tenant-api) for details.
 * PostgresClient constructor now, by default, starts Embedded Postgres.
   This means that if you have unit tests that do not start Embedded Postgres
   explicitly, you might need to terminate Embedded Postgres by calling
-  `PostgresClient.stopEmbeddedPostgres`.
+  `PostgresClient.stopEmbeddedPostgres`
 
 ## Version 25
 

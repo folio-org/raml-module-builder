@@ -297,9 +297,9 @@ Postgres itself, but is a value - in milliseconds - that triggers query
 execution analysis. If a single query exceeds this threshold, it will be
 analyzed by using `EXPLAIN ANALYZE`. Note that this in turn further adds
 time to the query, so this should only be executed for slow queries that
-needs further attention. The enalysis can effectively be turned off by setting
-it to a high value (eg 300000 ~ 5 minutes). Like the DB-environment
-variables this pertains per RMB-module (process). The default
+needs further attention. The analysis can effectively be turned off by setting
+it to a high value (e.g. 300000 ~ 5 minutes). Like the DB-environment
+variables, this pertains per RMB-module (process). The default
 value of `DB_EXPLAIN_QUERY_THRESHOLD` is 1000 (1 second).
 
 The EXPLAIN ANALYZE - is only performed for PostgresClient.get,
@@ -434,7 +434,7 @@ The end-points that share the same first path segment must go into the same .ram
 because the first path segment determines the name of the resource .java interface, for example
 `/foo/bar` and `/foo/baz` should go into foo.raml, and foo.raml will generate
 `org/folio/rest/jaxrs/resource/Foo.java`. However, you may
-(overrule the convention for the resource interface name)[https://github.com/mulesoft-labs/raml-for-jax-rs/issues/111]
+[overrule the convention for the resource interface name](https://github.com/mulesoft-labs/raml-for-jax-rs/issues/111)
 by implementing a GeneratorExtension.
 
 Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files
@@ -449,10 +449,11 @@ Create JSON schemas indicating the objects exposed by the module.
 Use the `description` field alongside the `type` field to explain the content and
 usage and to add documentation.
 
-Use `"javaType": "org.folio.rest.jaxrs.model.MyEntity"` to change the name of the
-generated Java type.
+Use `"javaType": "org.folio.rest.jaxrs.model.MyEntity"` to set the class name of the
+generated Java type to prevent a duplicate name where the second class overwrites the first class
+or to avoid a misleading name. Otherwise the field name in the .json schema file is used as class name.
 
-See (jsonschema2pojo Reference)[https://github.com/joelittlejohn/jsonschema2pojo/wiki/Reference]
+See [jsonschema2pojo Reference](https://github.com/joelittlejohn/jsonschema2pojo/wiki/Reference)
 for JSON schema details.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
@@ -846,11 +847,11 @@ public class InitConfigService implements PostDeployVerticle {
 
 ### Foreign keys constraint
 
-An `foreignKeys` entry in schema.json of the Tenant API automatically creates the following columns, triggers and indexes for the foreign key.
+A `foreignKeys` entry in schema.json of the Tenant API automatically creates the following columns, triggers and indexes for the foreign key.
 
 This additional column is needed because PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB.
 
-Example, similar to the SQL produced by an `foreignKeys` entry:
+Example, similar to the SQL produced by a `foreignKeys` entry:
 
 ```sql
 CREATE TABLE item (
@@ -938,7 +939,7 @@ Only these relations have been implemented yet:
 * `=` (this is `==` for number matching and `adj` for a string matching.
        Examples 1: `height =/number 3.4` Example 2: `title = Potter`)
 * `==` (exact field match, for example `barcode == 883746123` or exact prefix match `title == "Harry Pott*"`
-        matching "Harry Potter and the chamber of secrets" but not "Sience of Harry Potter";
+        matching "Harry Potter and the chamber of secrets" but not "Science of Harry Potter";
         `==/number` matches any form: 3.4 = 3.400 = 0.34e1)
 * `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
 * `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
@@ -949,6 +950,9 @@ Only these relations have been implemented yet:
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
+
+Refer to further explanation of [CQL string matching](https://dev.folio.org/faqs/explain-cql/)
+for the "Exact match operator" and "Word match operators".
 
 ### CQL: Modifiers
 
@@ -1147,13 +1151,13 @@ CQL2PGjson allows generating and querying indexes that contain multiple columns.
 	```
 	
 * multiFieldNames
-	This is a comma separated list of json fields that are to be concatenated together via concat_ws with a space character.
+	This is a comma-separated list of json fields that are to be concatenated together via concat_ws with a space character.
 	example:
 	```
 		"fieldName": "address",
 		"multiFieldNames": "city,state",
 	```
-these 2 examples are equivalent and would be queried by using the fieldName such as:
+These 2 examples are equivalent and would be queried by using the fieldName such as:
 
 ```
 address = Boston MA
@@ -1175,11 +1179,11 @@ Join conditions of this example:
 
 The field in the child table points to the primary key `id` field of the parent table; the parent table is also called the target table.
 
-* Precede the index you want to search with the table name in camelCase, e.g. `instance.title = "bee"`.
-* There is no change with child table fields, use them in the regular way without table name prefix.
+* Precede the index you want to search, with the table name in camelCase, e.g. `instance.title = "bee"`.
+* There is no change with child table fields. Use them in the regular way without table name prefix.
 * The `foreignKey` entry in schema.json automatically creates an index on the foreign key field.
-* For fast queries declare an index on any other searched field like `title` in the schema.json file.
-* For a multi-table join use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
+* For fast queries, declare an index on any other searched field like `title` in the schema.json file.
+* For a multi-table join, use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
   It must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance.
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The sortBy clause doesn't support foreign table fields. Use the API endpoint of the records with the field you want to sort on.
@@ -1449,7 +1453,7 @@ For each **table** in `tables` property:
     * `multiFieldNames` - see [CQL2PgJSON: Multi Field Index](#cql2pgjson-multi-field-index) above
     * `sqlExpression` - see [CQL2PgJSON: Multi Field Index](#cql2pgjson-multi-field-index) above
     * `sqlExpressionQuery` - How to wrap the query string $ before matching against the index expression. This overwrites any `caseSensitive` and `removeAccents` wrapping. Example that manually implements case insensitive matching: `"sqlExpression": "lower(jsonb->>'name')", "sqlExpressionQuery": "lower($)"`
-    * Do not manually add an index for an `id` field or a foreign key field, they get indexed automatically.
+    * Do not manually add an index for an `id` field or a foreign key field. They get indexed automatically.
 7. `ginIndex` - generate an inverted index on the JSON using the `gin_trgm_ops` extension. Allows for left and right truncation LIKE queries and regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the full field match (SQL `=` operator and CQL `==` operator without wildcards). See the `likeIndex` for available options.
 8. `uniqueIndex` - create a unique index on a field in the JSON
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
@@ -1551,10 +1555,31 @@ The fields in the **script** section include:
 3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.
 4. `fromModuleVersion` - same as `fromModuleVersion` for table
 
-The **exactCount** section is optonal and the value of the property is
+A `snippetPath` SQL file (but not a `snippet` SQL statement) can make use of
+[FreeMarker template engine](https://freemarker.apache.org) that runs and evaluates on runtime. For examples, see RMB's
+[db_scripts directory](https://github.com/folio-org/raml-module-builder/tree/master/domain-models-runtime/src/main/resources/templates/db_scripts).
+RMB provides these variables:
+
+* `${myuniversity}` tenant id, for example `diku`
+* `${mymodule}` module name, for example `mod-inventory-storage`
+* `${mode}` either `CREATE`, `UPDATE`, or `DELETE`
+* `${version}` the previous module version on update (for example `mod-inventory-storage-18.0.0` or `18.0.0`),
+  or `0.0` if not available (not provided by Okapi or in `CREATE` mode).
+* `${newVersion}` the new version that currently gets installed (`CREATE` mode) or is upgraded to (`UPDATE` mode),
+  for example `mod-inventory-storage-18.1.0` or `18.1.0`.
+* `${rmbVersion}` the RMB version that the module currently uses, for example `29.3.2`.
+* `${exactCount}` the `exactCount` number from schema.json or the default.
+
+In addition the `tables`, `views` and `scripts` sections of schema.json are available.
+
+Maven's pom.xml file may contain `<filtering>true</filtering>` to replace variables at build time,
+it also uses the `${}` syntax. Disable maven's filtering for the SQL script files or exclude them from filtering,
+otherwise it replaces for example `${version}` by a wrong value (the current module version from pom.xml).
+
+The **exactCount** section is optional and the value of the property is
 a simple integer with a default value of 1000. Hit counts returned by
 get-familify of methods will use an exact hit count up to that value; beyond
-that, en estimated hit count is returned. However, for cases when query
+that, an estimated hit count is returned. However, for cases when query
 parameter is omitted (filter is null), an exact count is still returned.
 
 
@@ -1565,7 +1590,7 @@ The value used for the module name is the artifactId found in the pom.xml (the p
 
 #### Removing an index
 
-When upgrading a module via the Tenant API an index is deleted if either `"tOps": "DELETE"` is set or the complete index entry is removed. Note that indexes are the only elements where removing the entry in schema.json removes them from the database.
+When upgrading a module via the Tenant API, an index is deleted if either `"tOps": "DELETE"` is set or the complete index entry is removed. Note that indexes are the only elements where removing the entry in schema.json removes them from the database.
 
 "tOps" example:
 
