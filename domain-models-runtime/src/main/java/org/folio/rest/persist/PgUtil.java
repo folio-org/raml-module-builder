@@ -1183,12 +1183,11 @@ public final class PgUtil {
       "lower(f_unaccent(jsonb->>'" + column + "')) ";
     String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
     String countSql = "(" + preparedCql.getSchemaName()
-      + ".count_estimate_optimized('SELECT " + StringEscapeUtils.escapeSql(wrappedColumn)
-      + " AS data_column "
-      + "FROM " + tableName + " "
-      + "WHERE " + StringEscapeUtils.escapeSql(where)
-      + "'))" +
-      " AS count";
+      + ".count_estimate('"
+      + "  SELECT " + StringEscapeUtils.escapeSql(wrappedColumn) + " AS data_column "
+      + "  FROM " + tableName + " "
+      + "  WHERE " + StringEscapeUtils.escapeSql(where)
+      + "')) AS count";
     String sql =
         " WITH "
       + " headrecords AS ("

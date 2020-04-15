@@ -36,7 +36,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
-CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate_optimized(query text) RETURNS bigint AS $$
+
+-- In order not to calculate possibly unnecessary precise count, primarily estimate the count by explain select (see: count_estimate_smart2).
+-- If the approximate count is more than desirable exact records counts multiplied by 4 (empiric constant) return it
+-- Otherwise calculate precise count and return it if it is less than desirable exact records, otherwise return approximate count
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate(query text) RETURNS bigint AS $$
 DECLARE
 count bigint;
 est_count bigint;
@@ -53,7 +57,7 @@ RETURN count;
 END IF;
 RETURN est_count;
 END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$ LANGUAGE plpgsql STABLE;
 
 
 -- function used to convert accented strings into unaccented string
