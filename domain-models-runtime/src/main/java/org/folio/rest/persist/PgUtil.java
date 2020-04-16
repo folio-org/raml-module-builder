@@ -2,47 +2,45 @@ package org.folio.rest.persist;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.io.IOException;
-
-import javax.ws.rs.core.Response;
-
-import org.apache.commons.lang.StringEscapeUtils;
-import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.folio.rest.tools.utils.OutStream;
-import org.folio.rest.tools.utils.TenantTool;
-import org.folio.rest.tools.utils.ValidationHelper;
-import org.folio.util.UuidUtil;
-import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.cql2pgjson.exception.FieldException;
-import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.rest.persist.cql.CQLWrapper;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
-import org.folio.rest.jaxrs.model.Diagnostic;
-import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.facets.FacetManager;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.web.RoutingContext;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.ws.rs.core.Response;
+import org.apache.commons.lang.StringEscapeUtils;
+import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.rest.jaxrs.model.Diagnostic;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.ResultInfo;
+import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.facets.FacetManager;
+import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.rest.tools.utils.OutStream;
+import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.tools.utils.ValidationHelper;
+import org.folio.util.UuidUtil;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -1189,34 +1187,33 @@ public final class PgUtil {
       + "  WHERE " + StringEscapeUtils.escapeSql(where)
       + "')) AS count";
     String sql =
-        " WITH "
-      + " headrecords AS ("
+      " WITH "
+        + " headrecords AS ("
         + "   SELECT jsonb, (" + wrappedColumn + ") AS data_column FROM " + tableName
-      + "   WHERE (" + where + ")"
+        + "   WHERE (" + where + ")"
         + "     AND " + cutWrappedColumn + lessGreater
         + "             ( SELECT " + cutWrappedColumn
-      + "               FROM " + tableName
+        + "               FROM " + tableName
         + "               ORDER BY " + cutWrappedColumn + ascDesc
-      + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
-      + "             )"
+        + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
+        + "             )"
         + "   ORDER BY " + cutWrappedColumn + ascDesc
-      + "   LIMIT " + limit + " OFFSET " + offset
-      + " ), "
-      + " allrecords AS ("
+        + "   LIMIT " + limit + " OFFSET " + offset
+        + " ), "
+        + " allrecords AS ("
         + "   SELECT jsonb, " + wrappedColumn + " AS data_column FROM " + tableName
-      + "   WHERE (" + where + ")"
-      + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
-      + " )"
-        + " SELECT jsonb, data_column,  " +
-        countSql
-      + "   FROM headrecords"
-      + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
-      + " UNION"
+        + "   WHERE (" + where + ")"
+        + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
+        + " )"
+        + " SELECT jsonb, data_column, " + countSql
+        + "   FROM headrecords"
+        + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
+        + " UNION"
         + " (SELECT jsonb, data_column, " + countSql
-      + "   FROM allrecords"
+        + "   FROM allrecords"
         + "   ORDER BY data_column " + ascDesc
-      + "   LIMIT " + limit + " OFFSET " + offset
-      + " )"
+        + "   LIMIT " + limit + " OFFSET " + offset
+        + " )"
         + " ORDER BY data_column " + ascDesc;
 
     logger.info("optimized SQL generated from CQL: " + sql);
