@@ -42,20 +42,20 @@ $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 -- Otherwise calculate precise count and return it if it is less than desirable exact records, otherwise return approximate count
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate(query text) RETURNS bigint AS $$
 DECLARE
-count bigint;
-est_count bigint;
-q text;
+  count bigint;
+  est_count bigint;
+  q text;
 BEGIN
-est_count = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
-IF est_count > 4*${exactCount} THEN
-RETURN est_count;
-END IF;
-q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT ${exactCount}) x';
-EXECUTE q INTO count;
-IF count < ${exactCount} THEN
-RETURN count;
-END IF;
-RETURN est_count;
+  est_count = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
+  IF est_count > 4*${exactCount} THEN
+    RETURN est_count;
+  END IF;
+  q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT ${exactCount}) x';
+  EXECUTE q INTO count;
+  IF count < ${exactCount} THEN
+    RETURN count;
+  END IF;
+  RETURN est_count;
 END;
 $$ LANGUAGE plpgsql STABLE;
 
