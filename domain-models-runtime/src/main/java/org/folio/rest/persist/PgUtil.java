@@ -2,46 +2,45 @@ package org.folio.rest.persist;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.io.IOException;
-
-import javax.ws.rs.core.Response;
-
-import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.folio.rest.tools.utils.OutStream;
-import org.folio.rest.tools.utils.TenantTool;
-import org.folio.rest.tools.utils.ValidationHelper;
-import org.folio.util.UuidUtil;
-import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.cql2pgjson.exception.FieldException;
-import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.rest.persist.cql.CQLWrapper;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
-import org.folio.rest.jaxrs.model.Diagnostic;
-import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.facets.FacetManager;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.web.RoutingContext;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.ws.rs.core.Response;
+import org.apache.commons.lang.StringEscapeUtils;
+import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.rest.jaxrs.model.Diagnostic;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.ResultInfo;
+import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.facets.FacetManager;
+import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.rest.tools.utils.OutStream;
+import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.tools.utils.ValidationHelper;
+import org.folio.util.UuidUtil;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -1144,10 +1143,8 @@ public final class PgUtil {
    *
    * @param column the column that has an index to be used for sorting
    * @param preparedCql the cql query
-   * @param tenantId the tenant used to generate schema location
    * @param offset start index of objects to return
    * @param limit max number of objects to return
-   * @param size the number of rows that determines which method will be used to generate the ultimate result
    * @throws QueryValidationException
    * @return the generated SQL string, or null if the CQL query is not suitable for optimization.
    */
@@ -1171,45 +1168,53 @@ public final class PgUtil {
     }
     String tableName = preparedCql.getFullTableName();
     String where = preparedCql.getCqlWrapper().getField().toSql(cql).getWhere();
-    // If there are many matches use a full table scan in title sort order
-    // using the title index, but stop this scan after OPTIMIZED_SQL_SIZE index entries.
+    // If there are many matches use a full table scan in data_column sort order
+    // using the data_column index, but stop this scan after OPTIMIZED_SQL_SIZE index entries.
     // Otherwise use full text matching because there are only a few matches.
     //
     // "headrecords" are the matching records found within the first OPTIMIZED_SQL_SIZE records
-    // by stopping at the title from "OFFSET OPTIMIZED_SQL_SIZE LIMIT 1".
+    // by stopping at the data_column from "OFFSET OPTIMIZED_SQL_SIZE LIMIT 1".
     // If "headrecords" are enough to return the requested "LIMIT" number of records we are done.
     // Otherwise use the full text index to create "allrecords" with all matching
     // records and do sorting and LIMIT afterwards.
-    String wrappedColumn = "left(lower(f_unaccent(jsonb->>'" + column + "')),600) ";
+    String wrappedColumn =
+      "lower(f_unaccent(jsonb->>'" + column + "')) ";
+    String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
+    String countSql = "(" + preparedCql.getSchemaName()
+      + ".count_estimate('"
+      + "  SELECT " + StringEscapeUtils.escapeSql(wrappedColumn) + " AS data_column "
+      + "  FROM " + tableName + " "
+      + "  WHERE " + StringEscapeUtils.escapeSql(where)
+      + "')) AS count";
     String sql =
-        " WITH "
-      + " headrecords AS ("
-      + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
-      + "   WHERE (" + where + ")"
-      + "     AND " + wrappedColumn + lessGreater
-      + "             ( SELECT " + wrappedColumn
-      + "               FROM " + tableName
-      + "               ORDER BY " + wrappedColumn + ascDesc
-      + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
-      + "             )"
-      + "   ORDER BY " + wrappedColumn + ascDesc
-      + "   LIMIT " + limit + " OFFSET " + offset
-      + " ), "
-      + " allrecords AS ("
-      + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
-      + "   WHERE (" + where + ")"
-      + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
-      + " )"
-      + " SELECT jsonb, title,  0                                 AS count"
-      + "   FROM headrecords"
-      + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
-      + " UNION"
-      + " (SELECT jsonb, title, (SELECT COUNT(*) FROM allrecords) AS count"
-      + "   FROM allrecords"
-      + "   ORDER BY title " + ascDesc
-      + "   LIMIT " + limit + " OFFSET " + offset
-      + " )"
-      + " ORDER BY title " + ascDesc;
+      " WITH "
+        + " headrecords AS ("
+        + "   SELECT jsonb, (" + wrappedColumn + ") AS data_column FROM " + tableName
+        + "   WHERE (" + where + ")"
+        + "     AND " + cutWrappedColumn + lessGreater
+        + "             ( SELECT " + cutWrappedColumn
+        + "               FROM " + tableName
+        + "               ORDER BY " + cutWrappedColumn + ascDesc
+        + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
+        + "             )"
+        + "   ORDER BY " + cutWrappedColumn + ascDesc
+        + "   LIMIT " + limit + " OFFSET " + offset
+        + " ), "
+        + " allrecords AS ("
+        + "   SELECT jsonb, " + wrappedColumn + " AS data_column FROM " + tableName
+        + "   WHERE (" + where + ")"
+        + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
+        + " )"
+        + " SELECT jsonb, data_column, " + countSql
+        + "   FROM headrecords"
+        + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
+        + " UNION"
+        + " (SELECT jsonb, data_column, " + countSql
+        + "   FROM allrecords"
+        + "   ORDER BY data_column " + ascDesc
+        + "   LIMIT " + limit + " OFFSET " + offset
+        + " )"
+        + " ORDER BY data_column " + ascDesc;
 
     logger.info("optimized SQL generated from CQL: " + sql);
     return sql;
@@ -1219,19 +1224,28 @@ public final class PgUtil {
     private final String tableName;
     private final String fullTableName;
     private final CQLWrapper cqlWrapper;
+    private final String schemaName;
 
     public PreparedCQL(String tableName, CQLWrapper cqlWrapper, Map<String, String> okapiHeaders) {
       String tenantId = TenantTool.tenantId(okapiHeaders);
       this.tableName = tableName;
-      this.fullTableName = PostgresClient.convertToPsqlStandard(tenantId) + "." + tableName;
       this.cqlWrapper = cqlWrapper;
+      schemaName = PostgresClient.convertToPsqlStandard(tenantId);
+      fullTableName = schemaName + "." + tableName;
     }
 
     public String getTableName() {
       return tableName;
     }
 
-    /** @return full table name including schema, for example tenant_mymodule.users */
+    public String getSchemaName() {
+      return schemaName;
+    }
+
+    /**
+     * @return full table name including schema, for example
+     * tenant_mymodule.users
+     */
     public String getFullTableName() {
       return fullTableName;
     }
