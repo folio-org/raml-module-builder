@@ -813,7 +813,7 @@ public class CQL2PgJSON {
       throw new CQLFeatureUnsupportedException("full text index does not support case sensitive: " + index);
     }
 
-    if (! dbIndex.hasFullTextIndex()) {
+    if (! dbIndex.hasFullTextIndex() && ! "true".equals(sql)) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing FT search without index for {0}", s);
     }
