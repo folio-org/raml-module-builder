@@ -1,6 +1,8 @@
 package org.folio.rest.impl;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -20,10 +22,12 @@ import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 
+import freemarker.template.TemplateException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -34,8 +38,7 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class TenantAPI implements Tenant {
 
-  public static final String       TABLE_JSON = "templates/db_scripts/schema.json";
-  public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
+  public static final String TABLE_JSON = "templates/db_scripts/schema.json";
 
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
 
@@ -76,13 +79,6 @@ public class TenantAPI implements Tenant {
 
             String sqlFile = null;
             try {
-/*              InputStream is = TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_JSON);
-              if(is == null){
-                log.info("No delete json to use for deleting tenant " + tenantId);
-                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withNoContent()));
-                return;
-              }
-              sqlFile = IOUtils.toString(is);*/
               SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), TenantOperation.DELETE, null, PomReader.INSTANCE.getRmbVersion());
               sqlFile = sMaker.generateDDL();
 
@@ -130,6 +126,12 @@ public class TenantAPI implements Tenant {
           .respond500WithTextPlain(e.getMessage())));
       }
     });
+  }
+
+  Future<Boolean> tenantExists(Context context, String tenantId) {
+    Promise<Boolean> promise = Promise.promise();
+    tenantExists(context, tenantId, promise.future());
+    return promise.future();
   }
 
   void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
@@ -184,110 +186,84 @@ public class TenantAPI implements Tenant {
     });
   }
 
+  String getTablePath() {
+    return TABLE_JSON;
+  }
+
+  static class NoSchemaJsonException extends RuntimeException {
+  }
+
+  String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity)
+      throws IOException, TemplateException {
+
+    InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(getTablePath());
+    if (tableInput == null) {
+      log.info("Could not find templates/db_scripts/schema.json , "
+          + " RMB will not run any scripts for " + tenantId);
+      throw new NoSchemaJsonException();
+    }
+
+    TenantOperation op = TenantOperation.CREATE;
+    String previousVersion = null;
+    String newVersion = entity == null ? null : entity.getModuleTo();
+    if (tenantExists) {
+      op = TenantOperation.UPDATE;
+      if (entity != null) {
+        previousVersion = entity.getModuleFrom();
+      }
+    }
+
+    SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
+
+    String tableInputStr = IOUtils.toString(tableInput, StandardCharsets.UTF_8);
+    sMaker.setSchemaJson(tableInputStr);
+    Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+    sMaker.setSchema(schema);
+    String sqlFile = sMaker.generateDDL();
+    log.debug("GENERATED SCHEMA " + sqlFile);
+    return sqlFile;
+  }
 
   @Validate
   @Override
   public void postTenant(TenantAttributes entity, Map<String, String> headers,
       Handler<AsyncResult<Response>> handlers, Context context)  {
 
-    /**
-     * http://host:port/tenant
-     * Validation by rmb means the entity is either properly populated on is null
-     * depending on whether this is an upgrade or a create tenant
-     *
-     * Modules that are not DB bound but are still RMB modules should override this API and do
-     * any tenant bootstrapping they need
-     */
+    String tenantId = TenantTool.tenantId(headers);
+    log.info("sending... postTenant for " + tenantId);
+    if (entity != null) {
+      log.debug("upgrade from " + entity.getModuleFrom() + " to " + entity.getModuleTo());
+    }
 
-    context.runOnContext(v -> {
-      String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
-      log.info("sending... postTenant for " + tenantId);
+    Future<Boolean> tenantExistsFuture = tenantExists(context, tenantId);
+    tenantExistsFuture.compose(tenantExists -> {
       try {
-        //body is optional so that the TenantAttributes
-        if(entity != null){
-          log.debug("upgrade from " + entity.getModuleFrom() + " to " + entity.getModuleTo());
-        }
-
-        tenantExists(context, tenantId,
-          h -> {
-            try {
-              if (h.failed()) {
-                handlers.handle(io.vertx.core.Future.failedFuture(h.cause().getMessage()));
-                log.error(h.cause().getMessage(), h.cause());
-                return;
-              }
-              final boolean tenantExists = h.result();
-              InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(
-                TABLE_JSON);
-
-              if(tableInput == null) {
-                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-                  .respond204()));
-                log.info("Could not find templates/db_scripts/schema.json , "
-                    + " RMB will not run any scripts for " + tenantId);
-                return;
-              }
-
-              TenantOperation op = TenantOperation.CREATE;
-              String previousVersion = null;
-              String newVersion = entity == null ? null : entity.getModuleTo();
-              if (tenantExists) {
-                op = TenantOperation.UPDATE;
-                if (entity != null) {
-                  previousVersion = entity.getModuleFrom();
-                }
-              }
-
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
-
-              String tableInputStr = IOUtils.toString(tableInput, StandardCharsets.UTF_8);
-              Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
-              sMaker.setSchema(schema);
-
-              String sqlFile = sMaker.generateDDL();
-              log.debug("GENERATED SCHEMA " + sqlFile);
-              postgresClient(context).runSQLFile(sqlFile, true,
-                reply -> {
-                  try {
-                    if (reply.failed()) {
-                      log.error(reply.cause().getMessage(), reply.cause());
-                      handlers.handle(Future.succeededFuture(PostTenantResponse.
-                        respond500WithTextPlain(reply.cause().getMessage())));
-                      return;
-                    }
-                    boolean failuresExist = ! reply.result().isEmpty();
-                    if (failuresExist) {
-                      String res = new JsonArray(reply.result()).encodePrettily();
-                      handlers.handle(Future.succeededFuture(
-                        PostTenantResponse.respond400WithTextPlain(res)));
-                      return;
-                    }
-                    String jsonListOfFailures = "[]";
-                    PostTenantResponse postTenantResponse = tenantExists
-                        ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
-                        : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
-                    handlers.handle(Future.succeededFuture(postTenantResponse));
-                  } catch (Exception e) {
-                    log.error(e.getMessage(), e);
-                    handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                      respond500WithTextPlain(e.getMessage())));
-                  }
-                });
-            } catch (Exception e) {
-              log.error(e.getMessage(), e);
-              handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                respond500WithTextPlain(e.getMessage())));
-            }
-          });
-      } catch (Exception e) {
-        if(e.getMessage() != null){
-          //if no db connection, the caught exception is a NPE which has a null for a message
-          //which will print an NPE trace to the log which we dont want
-          log.error(e.getMessage(), e);
-        }
-        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-          respond500WithTextPlain(e.getMessage())));
+        String sqlFile = sqlFile(tenantId, tenantExists, entity);
+        PostgresClient pc = postgresClient(context);
+        return pc.runSQLFile(sqlFile, true);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      } catch (TemplateException e) {
+        throw new RuntimeException(e);
       }
-    });
+    })
+    .map(failedStatements -> {
+      String jsonListOfFailures = new JsonArray(failedStatements).encodePrettily();
+      if (! failedStatements.isEmpty()) {
+        return PostTenantResponse.respond400WithTextPlain(jsonListOfFailures);
+      }
+      return tenantExistsFuture.result().booleanValue()
+              ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
+              : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
+    })
+    .onFailure(e -> {
+      if (e instanceof NoSchemaJsonException) {
+        handlers.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+        return;
+      }
+      log.error(e.getMessage(), e);
+      handlers.handle(Future.succeededFuture(PostTenantResponse.respond500WithTextPlain(e.getMessage())));
+    })
+    .onSuccess(response -> handlers.handle(Future.succeededFuture(response)));
   }
 }

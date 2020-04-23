@@ -13,8 +13,6 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
-import javax.ws.rs.core.Response;
-
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PgUtil;
@@ -26,8 +24,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
-import org.mockito.AdditionalAnswers;
-
 import de.flapdoodle.embed.process.collections.Collections;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -256,20 +252,10 @@ public class TenantAPIIT {
     assertThat(book.getMetadata(), is(nullValue()));
   }
 
-  void handleFailure(Object replyHandler) {
-    ((Handler<Object>) replyHandler).handle(Future.failedFuture("mock returns failure"));
-  }
-
-  <T> void handleSuccess(Object replyHandler, T result) {
-    ((Handler<AsyncResult<T>>) replyHandler).handle(Future.succeededFuture(result));
-  }
-
   @Test
   public void postWithSqlError(TestContext context) {
     PostgresClient postgresClient = mock(PostgresClient.class);
-
-    doAnswer(AdditionalAnswers.answerVoid((sqlFile, stopOnError, replyHandler) -> handleFailure(replyHandler)))
-      .when(postgresClient).runSQLFile(anyString(), anyBoolean(), any());
+    when(postgresClient.runSQLFile(anyString(), anyBoolean())).thenReturn(Future.failedFuture("mock returns failure"));
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
       PostgresClient postgresClient(Context context) {
@@ -291,8 +277,7 @@ public class TenantAPIIT {
   public void postWithSqlFailure(TestContext context) {
     PostgresClient postgresClient = mock(PostgresClient.class);
     List<String> failureList = Collections.newArrayList("first failure");
-    doAnswer(AdditionalAnswers.answerVoid((sqlFile, stopOnError, replyHandler) -> handleSuccess(replyHandler, failureList)))
-      .when(postgresClient).runSQLFile(anyString(), anyBoolean(), any());
+    when(postgresClient.runSQLFile(anyString(), anyBoolean())).thenReturn(Future.succeededFuture(failureList));
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
       PostgresClient postgresClient(Context context) {
@@ -304,11 +289,23 @@ public class TenantAPIIT {
         handler.handle(Future.succeededFuture(false));
       }
     };
-    TenantAttributes tenantAttributes = new TenantAttributes();
-    AsyncResult<Response> h = null;
-    tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
+    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
       assertThat(result.getStatus(), is(400));
       assertThat(result.getEntity(), is("[ \"first failure\" ]"));
+    }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postWithoutSchemaJson(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI() {
+      @Override
+      String getTablePath() {
+        return "does/not/exist";
+      }
+    };
+    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(204));
+      assertThat(result.getEntity(), is(nullValue()));
     }), vertx.getOrCreateContext());
   }
 
