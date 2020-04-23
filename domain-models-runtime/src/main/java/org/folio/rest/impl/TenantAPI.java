@@ -243,8 +243,8 @@ public class TenantAPI implements Tenant {
         return pc.runSQLFile(sqlFile, true);
       } catch (IOException e) {
         throw new UncheckedIOException(e);
-      } catch (TemplateException e) {
-        throw new RuntimeException(e);
+      } catch (TemplateException e) {  // checked exception from main.tpl parsing
+        throw new IllegalArgumentException(e);
       }
     })
     .map(failedStatements -> {

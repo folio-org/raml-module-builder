@@ -5,6 +5,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.*;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,6 +19,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.hamcrest.CoreMatchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -25,6 +27,7 @@ import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import de.flapdoodle.embed.process.collections.Collections;
+import freemarker.template.TemplateException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -307,6 +310,33 @@ public class TenantAPIIT {
       assertThat(result.getStatus(), is(204));
       assertThat(result.getEntity(), is(nullValue()));
     }), vertx.getOrCreateContext());
+  }
+
+  private void postWithSqlFileException(TestContext context, Class<? extends Exception> exceptionClass) {
+    TenantAPI tenantAPI = new TenantAPI() {
+      @Override
+      String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity)
+          throws IOException, TemplateException {
+        switch (exceptionClass.getName()) {
+        case "java.io.IOException": throw new IOException();
+        default: throw new TemplateException(null);
+        }
+      }
+    };
+    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(500));
+      assertThat(result.getEntity().toString(), is(CoreMatchers.startsWith(exceptionClass.getName())));
+    }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postWithSqlFileIOException(TestContext context) {
+    postWithSqlFileException(context, IOException.class);
+  }
+
+  @Test
+  public void postWithSqlFileTemplateException(TestContext context) {
+    postWithSqlFileException(context, TemplateException.class);
   }
 
   @Test
