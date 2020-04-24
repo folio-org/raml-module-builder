@@ -1080,7 +1080,7 @@ public final class PgUtil {
             asyncResultHandler.handle(response(cause.getMessage(), respond500, respond500));
             return;
           }
-          C collection = collection(clazz, collectionClazz, reply.result(), limit);
+          C collection = collection(clazz, collectionClazz, reply.result(), offset, limit);
           asyncResultHandler.handle(response(collection, respond200, respond500));
         } catch (Exception e) {
           logger.error(e.getMessage(), e);
@@ -1097,11 +1097,13 @@ public final class PgUtil {
     }
   }
 
-  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, ResultSet resultSet, int limit)
+  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, ResultSet resultSet,
+    int offset, int limit)
       throws ReflectiveOperationException, IOException {
 
     List<JsonObject> jsonList = resultSet.getRows();
-    List<T> recordList = new ArrayList<>(jsonList.size());
+    int resultSize = jsonList.size();
+    List<T> recordList = new ArrayList<>(resultSize);
     int totalRecords = 0;
     for (JsonObject object : jsonList) {
       String jsonb = object.getString(JSON_COLUMN);
@@ -1109,8 +1111,9 @@ public final class PgUtil {
       totalRecords = object.getInteger("count");
     }
 
-    // full table scan was stopped without total records calculation.
-    if (totalRecords == 0 && jsonList.size() == limit) {
+    if (limit > 0 && resultSize < limit) {
+      totalRecords = offset + resultSize;
+    } else if (totalRecords == 0) { // full table scan was stopped without total records calculation
       totalRecords = 999999999;  // unknown total
     }
 

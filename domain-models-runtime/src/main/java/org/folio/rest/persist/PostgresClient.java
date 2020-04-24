@@ -1,5 +1,25 @@
 package org.folio.rest.persist;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import freemarker.template.TemplateException;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.asyncsql.AsyncSQLClient;
+import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.SQLRowStream;
+import io.vertx.ext.sql.UpdateResult;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -16,12 +36,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.crypto.SecretKey;
-
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
@@ -43,37 +63,11 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-
-import freemarker.template.TemplateException;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.asyncsql.AsyncSQLClient;
-import io.vertx.ext.sql.ResultSet;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.SQLRowStream;
-import io.vertx.ext.sql.UpdateResult;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.folio.rest.tools.utils.NetworkUtils;
-
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
@@ -1538,14 +1532,15 @@ public class PostgresClient {
   }
 
   static class QueryHelper {
+
     String table;
     List<FacetField> facets;
     String selectQuery;
     String countQuery;
     int offset;
+    int limit;
     public QueryHelper(String table) {
       this.table = table;
-      this.offset = 0;
     }
   }
 
@@ -1879,6 +1874,10 @@ public class PostgresClient {
     if (offset != -1) {
       queryHelper.offset = offset;
     }
+    int limit = wrapper.getLimit().get();
+    if (limit != -1) {
+      queryHelper.limit = limit;
+    }
     return queryHelper;
   }
 
@@ -1928,7 +1927,13 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(query.cause()));
           return;
         }
-        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
+        ResultSet result = query.result();
+        Integer actualTotal = total;
+        if (queryHelper.limit > 0 && result.getNumRows() < queryHelper.limit) {
+          actualTotal = queryHelper.offset +result.getNumRows();
+        }
+        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(
+          result, actualTotal))));
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
