@@ -6,17 +6,23 @@ import java.io.IOException;
 import org.apache.commons.io.IOUtils;
 
 public class LoadGeneralFunctions {
-  static void loadFuncs(TestContext context, PostgresClient postgresClient, String rep) {
+  static private void load(TestContext context, PostgresClient postgresClient, String rep, String file) {
     Async async = context.async();
     try {
       String sql = IOUtils.toString(
-        LoadGeneralFunctions.class.getClassLoader().getResourceAsStream("templates/db_scripts/general_functions.ftl"), "UTF-8");
-      sql = sql.replace("${myuniversity}_${mymodule}.", rep);
+        LoadGeneralFunctions.class.getClassLoader().getResourceAsStream("templates/db_scripts/" + file), "UTF-8");
+      sql = sql.replace("${myuniversity}_${mymodule}.", rep.isEmpty() ? "" : (rep + "."));
+      sql = sql.replace("${myuniversity}_${mymodule}", rep);
       sql = sql.replace("${exactCount}", "1000");
       postgresClient.getClient().update(sql, context.asyncAssertSuccess(reply -> async.complete()));
     } catch (IOException ex) {
       context.fail(ex);
     }
     async.awaitSuccess(1000);
+  }
+
+  static void loadFuncs(TestContext context, PostgresClient postgresClient, String rep) {
+    load(context, postgresClient, rep, "extensions.ftl");
+    load(context, postgresClient, rep, "general_functions.ftl");
   }
 }

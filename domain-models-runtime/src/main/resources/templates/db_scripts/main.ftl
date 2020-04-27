@@ -9,7 +9,8 @@ CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodu
 
 </#if>
 
-SET search_path TO ${myuniversity}_${mymodule}, public;
+ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "$user";
+SET search_path TO ${myuniversity}_${mymodule};
 
 <#if mode.name() == "CREATE">
 
@@ -52,6 +53,9 @@ UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
     </#if>
   </#list>
 </#if>
+
+REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>
@@ -130,7 +134,7 @@ UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
     </#if>
   </#if>
 <#else>
-    <#-- The table has not changed, but we always recreate all indexes because they may have changed. -->
+    <#-- The table has not changed, but we always check all its indexes because they may have changed. -->
     <#include "indexes.ftl">
 </#if>
 </#list>
@@ -166,7 +170,7 @@ BEGIN
 END $$;
 
 -- Fix functions calls with "public." in indexes https://issues.folio.org/browse/RMB-583
--- Some functions have been moved from public schema into ${myuniversity}_${mymodule} schema.
+-- All functions have been moved from public schema into ${myuniversity}_${mymodule} schema.
 -- https://github.com/folio-org/raml-module-builder/commit/872c1f80da4c8d49e6836ca9221f637dc5e7420b
 DO $$
 DECLARE
@@ -179,20 +183,17 @@ BEGIN
     -- skip this upgrade if last install/upgrade was made by RMB >= 29.4.x
     RETURN;
   END IF;
-  -- Remove "public" from search_path to enforce "public." in indexdef
-  SET search_path TO ${myuniversity}_${mymodule};
   FOR i IN SELECT * FROM pg_catalog.pg_indexes WHERE schemaname = '${myuniversity}_${mymodule}'
   LOOP
     newindexdef := regexp_replace(i.indexdef,
       -- \m = beginning of a word, \M = end of a word
-      '\mpublic.(f_unaccent|concat_space_sql|concat_array_object_values|concat_array_object)\M',
+      '\mpublic.(f_unaccent|gin_trgm_ops|concat_space_sql|concat_array_object_values|concat_array_object)\M',
       '${myuniversity}_${mymodule}.\1');
     IF newindexdef <> i.indexdef THEN
       EXECUTE format('DROP INDEX %I.%I', i.schemaname, i.indexname);
       EXECUTE newindexdef;
     END IF;
   END LOOP;
-  SET search_path TO ${myuniversity}_${mymodule}, public;
 END $$;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};
