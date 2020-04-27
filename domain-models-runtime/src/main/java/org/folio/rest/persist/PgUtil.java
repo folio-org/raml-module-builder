@@ -1111,14 +1111,14 @@ public final class PgUtil {
       totalRecords = object.getInteger("count");
     }
 
-    if (limit == 0) {
-      // client requested totalRecords only (no records needed) - nothing to do
-    } else if (resultSize == 0) {
-      totalRecords = Math.min(offset, totalRecords);
-    } else if (resultSize == limit) {
-      totalRecords = Math.max(offset + limit, totalRecords);
-    } else {
-      totalRecords = offset + resultSize;
+    if (limit != 0) {
+      if (resultSize == 0) {
+        totalRecords = Math.min(offset, totalRecords);
+      } else if (resultSize == limit) {
+        totalRecords = Math.max(offset + limit, totalRecords);
+      } else {
+        totalRecords = offset + resultSize;
+      }
     }
 
     return collection(collectionClazz, recordList, totalRecords);

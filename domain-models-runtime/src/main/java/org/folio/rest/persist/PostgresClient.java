@@ -1932,18 +1932,17 @@ public class PostgresClient {
         int resultSize = result.getNumRows();
         int limit = queryHelper.limit;
         int offset = queryHelper.offset;
-        if (limit == 0) {
-          // client requested totalRecords only (no records needed)
-          // nothing to do
-        } else if (resultSize == 0) {
-          totalRecords = Math.min(offset, totalRecords);
-        } else if (resultSize == limit) {
-          totalRecords = Math.max(offset + limit, totalRecords);
-        } else {
-          totalRecords = offset + resultSize;
-        }
-        if (limit > 0 && resultSize < limit) {
-          totalRecords = offset + resultSize;
+        if (limit != 0) {
+          if (resultSize == 0) {
+            totalRecords = Math.min(offset, totalRecords);
+          } else if (resultSize == limit) {
+            totalRecords = Math.max(offset + limit, totalRecords);
+          } else {
+            totalRecords = offset + resultSize;
+          }
+          if (limit > 0 && resultSize < limit) {
+            totalRecords = offset + resultSize;
+          }
         }
         replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(
           result, totalRecords))));
