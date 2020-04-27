@@ -1111,17 +1111,35 @@ public final class PgUtil {
       totalRecords = object.getInteger("count");
     }
 
-    if (limit != 0) {
-      if (resultSize == 0) {
-        totalRecords = Math.min(offset, totalRecords);
-      } else if (resultSize == limit) {
-        totalRecords = Math.max(offset + limit, totalRecords);
-      } else {
-        totalRecords = offset + resultSize;
-      }
-    }
+    totalRecords = getTotalRecords(resultSize, totalRecords, offset, limit);
 
     return collection(collectionClazz, recordList, totalRecords);
+  }
+
+  /**
+   * Function to correct estimated result count:
+   * If the resultsCount is equal to 0, the result should be not more than offset
+   * If the resultsCount is equal to limit, the result should be not less than offset
+   * Otherwise it should be equal to offset + resultsCount
+   *
+   * @param resultsCount the count of rows, that are returned from database
+   * @param estimateCount the estimate result count from returned by database
+   * @param offset database offset
+   * @param limit database limit
+   * @return corrected results count
+   */
+  static int getTotalRecords(int resultsCount, int estimateCount, int offset, int limit) {
+    if (limit == 0) {
+      return estimateCount;
+    }
+    if (resultsCount == 0) {
+      estimateCount = Math.min(offset, estimateCount);
+    } else if (resultsCount == limit) {
+      estimateCount = Math.max(offset + limit, estimateCount);
+    } else {
+      estimateCount = offset + resultsCount;
+    }
+    return estimateCount;
   }
 
   /**
