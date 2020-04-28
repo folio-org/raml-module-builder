@@ -166,6 +166,7 @@ public class GenerateRunner {
     int numMatches = 0;
 
     File []ramls = new File(inputDirectory).listFiles( (dir, name) -> name.endsWith(".raml") );
+    Arrays.sort(ramls);
     RamlScanner scanner = new RamlScanner(configuration);
     for (int j = 0; j < ramls.length; j++) {
       String line;
@@ -223,6 +224,7 @@ public class GenerateRunner {
       paths = pathStream.map(basePath::relativize)
           .filter(path -> pathMatchers.stream()
                             .anyMatch(pathMatcher -> pathMatcher.matches(path)))
+          .sorted()
           .collect(Collectors.toList());
     }
 

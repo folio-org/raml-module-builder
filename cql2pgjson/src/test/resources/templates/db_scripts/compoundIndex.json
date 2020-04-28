@@ -88,12 +88,28 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
+        },
+        {
+          "fieldName": "cityWithoutVocals",
+          "sqlExpression": "translate(jsonb->>'city', 'aeiouAEIOU', '')",
+          "sqlExpressionQuery": "translate($, 'aeiouAEIOU', '')",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
         }
       ],
       "fullTextIndex": [
         {
           "fieldName": "ftfield",
           "sqlExpression": "lower(concat_space_sql(jsonb->>'field1', jsonb->>'field2'))",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "stateReverse",
+          "sqlExpression": "reverse(jsonb->>'state')",
+          "sqlExpressionQuery": "reverse($)",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false

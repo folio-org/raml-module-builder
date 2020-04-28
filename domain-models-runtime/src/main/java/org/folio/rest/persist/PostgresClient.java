@@ -142,11 +142,13 @@ public class PostgresClient {
 
   private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
-  private static final String CLOSE_FUNCTION_POSTGRES = "WINDOW|IMMUTABLE|STABLE|VOLATILE|"
-      +"CALLED ON NULL INPUT|RETURNS NULL ON NULL INPUT|STRICT|"
-      +"SECURITY INVOKER|SECURITY DEFINER|SET\\s.*|AS\\s.*|COST\\s\\d.*|ROWS\\s.*";
-
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
+  private static final Pattern POSTGRES_DOLLAR_QUOTING =
+      // \\B = a non-word boundary, the first $ must not be part of an identifier (foo$bar$baz)
+      Pattern.compile("[^\\n\\r]*?\\B(\\$\\w*\\$).*?\\1[^\\n\\r]*", Pattern.DOTALL);
+  private static final Pattern POSTGRES_COPY_FROM_STDIN =
+      // \\b = a word boundary
+      Pattern.compile("^\\s*COPY\\b.*\\bFROM\\s+STDIN\\b.*", Pattern.CASE_INSENSITIVE);
 
   private static int embeddedPort            = -1;
 
@@ -1869,7 +1871,7 @@ public class PostgresClient {
     }
     if (!wrapper.getWhereClause().isEmpty()) {
       // only do estimation when filter is in use (such as CQL).
-      queryHelper.countQuery = SELECT + "count_estimate_default('"
+      queryHelper.countQuery = SELECT + "count_estimate('"
         + org.apache.commons.lang.StringEscapeUtils.escapeSql(mainQuery)
         + "')";
     }
@@ -3263,6 +3265,76 @@ public class PostgresClient {
   }
 
   /**
+   * Split string into lines.
+   */
+  private static List<String> lines(String string) {
+    return Arrays.asList(string.split("\\r\\n|\\n|\\r"));
+  }
+
+  /**
+   * Split the sqlFile into SQL statements.
+   *
+   * <a href="https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING">
+   * Dollar-quoted string constants</a> with $$ or $[0-9a-zA-Z_]+$ are preserved.
+   */
+  static String [] splitSqlStatements(String sqlFile) {
+    List<String> lines = new ArrayList<>();
+    Matcher matcher = POSTGRES_DOLLAR_QUOTING.matcher(sqlFile);
+    int searchStart = 0;
+    while (matcher.find()) {
+      lines.addAll(lines(sqlFile.substring(searchStart, matcher.start())));
+      lines.add(matcher.group());
+      searchStart = matcher.end();
+    }
+    lines.addAll(lines(sqlFile.substring(searchStart)));
+    return lines.toArray(new String [0]);
+  }
+
+  @SuppressWarnings("checkstyle:EmptyBlock")
+  static String [] preprocessSqlStatements(String sqlFile) throws Exception {
+    StringBuilder singleStatement = new StringBuilder();
+    String[] allLines = splitSqlStatements(sqlFile);
+    List<String> execStatements = new ArrayList<>();
+    boolean inCopy = false;
+    for (int i = 0; i < allLines.length; i++) {
+      if (allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
+        final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
+        final Matcher matcher = pattern.matcher(allLines[i]);
+        if(matcher.find()){
+          /** password argument indicated in the create user / role statement */
+          String newPassword = createPassword(matcher.group(1));
+          allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
+        }
+      }
+      if (allLines[i].trim().startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].trim().startsWith("--")) {
+        // this is an sql comment, skip
+      } else if (POSTGRES_COPY_FROM_STDIN.matcher(allLines[i]).matches()) {
+        singleStatement.append(allLines[i]);
+        inCopy = true;
+      } else if (inCopy && (allLines[i].trim().equals("\\."))) {
+        inCopy = false;
+        execStatements.add( singleStatement.toString() );
+        singleStatement = new StringBuilder();
+      } else if (allLines[i].trim().endsWith(SEMI_COLON) && !inCopy) {
+        execStatements.add( singleStatement.append(SPACE + allLines[i]).toString() );
+        singleStatement = new StringBuilder();
+      } else {
+        if (inCopy)  {
+          singleStatement.append("\n");
+        } else {
+          singleStatement.append(SPACE);
+        }
+        singleStatement.append(allLines[i]);
+      }
+    }
+    String lastStatement = singleStatement.toString();
+    if (! lastStatement.trim().isEmpty()) {
+      execStatements.add(lastStatement);
+    }
+    return execStatements.toArray(new String[]{});
+  }
+
+  /**
    * Will connect to a specific database and execute the commands in the .sql file
    * against that database.<p />
    * NOTE: NOT tested on all types of statements - but on a lot
@@ -3273,83 +3345,8 @@ public class PostgresClient {
    */
   public void runSQLFile(String sqlFile, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
-    if(sqlFile == null){
-      log.error("sqlFile value is null");
-      replyHandler.handle(Future.failedFuture("sqlFile value is null"));
-      return;
-    }
     try {
-      StringBuilder singleStatement = new StringBuilder();
-      String[] allLines = sqlFile.split("(\r\n|\r|\n)");
-      List<String> execStatements = new ArrayList<>();
-      boolean inFunction = false;
-      boolean inCopy = false;
-      for (int i = 0; i < allLines.length; i++) {
-        if(allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
-          final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
-          final Matcher matcher = pattern.matcher(allLines[i]);
-          if(matcher.find()){
-            /** password argument indicated in the create user / role statement */
-            String newPassword = createPassword(matcher.group(1));
-            allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
-          }
-        }
-        if(allLines[i].trim().startsWith("\ufeff--") || allLines[i].trim().length() == 0 || allLines[i].trim().startsWith("--")){
-          //this is an sql comment, skip
-          continue;
-        }
-        else if(allLines[i].toUpperCase().matches("^\\s*(COPY ).*?FROM.*?STDIN.*") && !inFunction){
-          singleStatement.append(allLines[i]);
-          inCopy = true;
-        }
-        else if (inCopy && (allLines[i].trim().equals("\\."))){
-          inCopy = false;
-          execStatements.add( singleStatement.toString() );
-          singleStatement = new StringBuilder();
-        }
-        else if(allLines[i].toUpperCase().matches("^\\s*(CREATE OR REPLACE FUNCTION|CREATE FUNCTION).*")){
-          singleStatement.append(allLines[i]+"\n");
-          inFunction = true;
-        }
-        else if (inFunction && allLines[i].trim().toUpperCase().matches(".*\\s*LANGUAGE .*")){
-          singleStatement.append(SPACE + allLines[i]);
-          if(!allLines[i].trim().endsWith(SEMI_COLON)){
-            int j=0;
-            if(i+1<allLines.length){
-              for (j = i+1; j < allLines.length; j++) {
-                if(allLines[j].trim().toUpperCase().trim().matches(CLOSE_FUNCTION_POSTGRES)){
-                  singleStatement.append(SPACE + allLines[j]);
-                }
-                else{
-                  break;
-                }
-              }
-            }
-            i = j;
-          }
-          inFunction = false;
-          execStatements.add( singleStatement.toString() );
-          singleStatement = new StringBuilder();
-        }
-        else if(allLines[i].trim().endsWith(SEMI_COLON) && !inFunction && !inCopy){
-          execStatements.add( singleStatement.append(SPACE + allLines[i]).toString() );
-          singleStatement = new StringBuilder();
-        }
-        else {
-          if(inCopy)  {
-            singleStatement.append("\n");
-          }
-          else{
-            singleStatement.append(SPACE);
-          }
-          singleStatement.append(allLines[i]);
-        }
-      }
-      String lastStatement = singleStatement.toString();
-      if (! lastStatement.trim().isEmpty()) {
-        execStatements.add(lastStatement);
-      }
-      execute(execStatements.toArray(new String[]{}), stopOnError, replyHandler);
+      execute(preprocessSqlStatements(sqlFile), stopOnError, replyHandler);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));

@@ -1,0 +1,27 @@
+{
+  "tables": [
+    {
+      "tableName": "casetable",
+      "index": [
+        {
+          "fieldName": "i",
+          "removeAccents": false,
+          "tOps": "DELETE"
+        }
+      ],
+      "likeIndex": [
+        {
+          "fieldName": "l",
+          "removeAccents": false
+        }
+      ],
+      "ginIndex": [
+        {
+          "fieldName": "g",
+          "removeAccents": false,
+          "tOps": "DELETE"
+        }
+      ]
+    }
+  ]
+}

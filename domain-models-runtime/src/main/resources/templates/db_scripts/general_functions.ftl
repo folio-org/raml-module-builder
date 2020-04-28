@@ -36,12 +36,77 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
+
+-- In order not to calculate possibly unnecessary precise count, primarily estimate the count by
+-- explain select (see: count_estimate_smart2). If the approximate count is more than desirable
+-- exact records counts multiplied by 4 (empiric constant) return it. Otherwise return precise
+-- count if it is less than desirable exact records. Otherwise return approximate count.
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate(query text) RETURNS bigint AS $$
+DECLARE
+  count bigint;
+  est_count bigint;
+  q text;
+BEGIN
+  est_count = ${myuniversity}_${mymodule}.count_estimate_smart2(${exactCount}, ${exactCount}, query);
+  IF est_count > 4*${exactCount} THEN
+    RETURN est_count;
+  END IF;
+  q = 'SELECT COUNT(*) FROM (' || query || ' LIMIT ${exactCount}) x';
+  EXECUTE q INTO count;
+  IF count < ${exactCount} THEN
+    RETURN count;
+  END IF;
+  RETURN est_count;
+END;
+$$ LANGUAGE plpgsql STABLE STRICT;
+
+
 -- function used to convert accented strings into unaccented string
-CREATE OR REPLACE FUNCTION f_unaccent(text)
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.f_unaccent(text)
   RETURNS text AS
-$func$
-SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
-$func$  LANGUAGE sql IMMUTABLE;
+$$
+  SELECT public.unaccent('public.unaccent', $1)  -- schema-qualify function and dictionary
+$$  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+-- Convert a string into a tsquery. A star * before a space or at the end of the string
+-- is converted into a tsquery right truncation operator.
+--
+-- Implementation note:
+-- to_tsquery('simple', '''''') yields ERROR:  syntax error in tsquery: "''"
+-- use to_tsquery('simple', '') instead
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_and(text) RETURNS tsquery AS $$
+  SELECT to_tsquery('simple', string_agg(CASE WHEN length(v) = 0 OR v = '*' THEN ''
+                                              WHEN right(v, 1) = '*' THEN '''' || left(v, -1) || ''':*'
+                                              ELSE '''' || v || '''' END,
+                                         '&'))
+  FROM (SELECT regexp_split_to_table(translate($1, '&''', ',,'), ' +')) AS x(v);
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_or(text) RETURNS tsquery AS $$
+  SELECT replace(${myuniversity}_${mymodule}.tsquery_and($1)::text, '&', '|')::tsquery;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.tsquery_phrase(text) RETURNS tsquery AS $$
+  SELECT replace(${myuniversity}_${mymodule}.tsquery_and($1)::text, '&', '<->')::tsquery;
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+
+-- Normalize digits by removing spaces, tabs and hyphen-minuses from the first chunk.
+-- Insert a space before the second chunk. The second chunk starts at the first character that is
+-- neither digit, space, tab nor hyphen-minus. The first chunk may end with a star * for right
+-- truncation.
+-- Examples:
+-- normalize_digits(' 0-1  2--3 4 ') = '01234'
+-- normalize_digits(' 01 2- 3 -- 45 -a 7 -8 9') = '012345 a 7 -8 9'
+-- normalize_digits(' 01 2- 3 -- 45* -a 7 -8 9') = '012345* a 7 -8 9'
+-- normalize_digits('978 92 8011 565 9(Vol. 1011-1021)') = '9789280115659 (Vol. 1011-1021)'
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.normalize_digits(text) RETURNS text AS $$
+  SELECT    translate((regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[1], E' \t-', '')
+         || CASE WHEN (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[1] = '' THEN ''
+                 WHEN (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[2] = '' THEN ''
+                 ELSE ' '
+            END
+         || (regexp_match($1, '^([0-9 \t-]*(?:\*[ \t]*)?)(.*)'))[2];
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 
 -- This trigger function copies primary key id from NEW.id to NEW.jsonb->'id'.
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_id_in_jsonb()
@@ -54,7 +119,7 @@ $$ language 'plpgsql';
 
 -- Concatenate the parameters using space as separator
 create or replace function ${myuniversity}_${mymodule}.concat_space_sql(VARIADIC text[])
-RETURNS text AS $$ select concat_ws(' ', VARIADIC $1); 
+RETURNS text AS $$ select concat_ws(' ', VARIADIC $1);
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 
 -- For each element of the jsonb_array take the value of field; concatenate them using space as separator

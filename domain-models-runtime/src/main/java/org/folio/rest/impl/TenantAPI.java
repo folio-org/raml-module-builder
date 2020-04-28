@@ -230,12 +230,11 @@ public class TenantAPI implements Tenant {
 
               TenantOperation op = TenantOperation.CREATE;
               String previousVersion = null;
-              String newVersion = null;
+              String newVersion = entity == null ? null : entity.getModuleTo();
               if (tenantExists) {
                 op = TenantOperation.UPDATE;
                 if (entity != null) {
                   previousVersion = entity.getModuleFrom();
-                  newVersion = entity.getModuleTo();
                 }
               }
 

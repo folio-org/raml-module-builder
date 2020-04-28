@@ -146,7 +146,7 @@ public class PostgresClientITBase {
         async.complete();
         return;
       }
-      context.fail(new RuntimeException(result.get(0) + ". SQL File: " + sqlFile));
+      context.fail(new RuntimeException(result.get(0) + "\n### SQL File: ###\n" + sqlFile + "\n### end of SQL File ###"));
     }));
     async.awaitSuccess();
   }
