@@ -1119,7 +1119,7 @@ public final class PgUtil {
   /**
    * Function to correct estimated result count:
    * If the resultsCount is equal to 0, the result should be not more than offset
-   * If the resultsCount is equal to limit, the result should be not less than offset
+   * If the resultsCount is equal to limit, the result should be not less than offset + limit
    * Otherwise it should be equal to offset + resultsCount
    *
    * @param resultsCount the count of rows, that are returned from database
