@@ -1880,9 +1880,7 @@ public class PostgresClient {
       queryHelper.offset = offset;
     }
     int limit = wrapper.getLimit().get();
-    if (limit != -1) {
-      queryHelper.limit = Integer.MAX_VALUE;
-    }
+    queryHelper.limit = limit != -1 ? limit : Integer.MAX_VALUE;
     return queryHelper;
   }
 
