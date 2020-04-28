@@ -1128,7 +1128,10 @@ public final class PgUtil {
    * @param limit database limit
    * @return corrected results count
    */
-  static int getTotalRecords(int resultsCount, int estimateCount, int offset, int limit) {
+  static Integer getTotalRecords(int resultsCount, Integer estimateCount, int offset, int limit) {
+    if (estimateCount == null) {
+      return null;
+    }
     if (limit == 0) {
       return estimateCount;
     }

@@ -1,6 +1,7 @@
 package org.folio.rest.persist;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
@@ -1009,15 +1010,19 @@ public class PgUtilIT {
 
   @Test
   public void getTotalRecordsTest() {
-    assertEquals(PgUtil.getTotalRecords(10, 20, 0, 0), 20);
+    assertNull(PgUtil.getTotalRecords(10, null, 0, 0));
 
-    assertEquals(PgUtil.getTotalRecords(0, 20, 10, 10), 10);
+    assertEquals(PgUtil.getTotalRecords(10, 20, 0, 0),  (Integer)20);
 
-    assertEquals(PgUtil.getTotalRecords(10, 30, 10, 10), 30);
+    assertEquals(PgUtil.getTotalRecords(0, 20, 10, 10),  (Integer)10);
 
-    assertEquals(PgUtil.getTotalRecords(10, 20, 20, 10), 30);
+    assertEquals(PgUtil.getTotalRecords(10, 30, 10, 10),  (Integer)30);
 
-    assertEquals(PgUtil.getTotalRecords(5, 20, 20, 10), 25);
+    assertEquals(PgUtil.getTotalRecords(10, 20, 20, 10),  (Integer)30);
+
+    assertEquals(PgUtil.getTotalRecords(5, 20, 20, 10), (Integer) 25);
+
+    assertEquals(PgUtil.getTotalRecords(5, 20, 20, 10), (Integer) 25);
   }
 
   private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {

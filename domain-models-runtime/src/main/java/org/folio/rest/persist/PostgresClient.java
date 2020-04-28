@@ -1934,7 +1934,7 @@ public class PostgresClient {
         }
         ResultSet result = query.result();
         int totalRecords = PgUtil
-          .getTotalRecords(total, result.getNumRows(), queryHelper.offset, queryHelper.limit);
+          .getTotalRecords(result.getNumRows(), total, queryHelper.offset, queryHelper.limit);
         replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(
           new TotaledResults(result, totalRecords))));
       });
