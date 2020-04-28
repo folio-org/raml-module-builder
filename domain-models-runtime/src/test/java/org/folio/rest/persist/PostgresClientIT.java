@@ -2355,6 +2355,12 @@ public class PostgresClientIT {
     postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
+  // see RunSQLIT.java for more tests
+  @Test
+  public void runSQLNull(TestContext context) throws Exception {
+    postgresClient().runSQLFile(null, false).onComplete(context.asyncAssertFailure());
+  }
+
   private PostgresClient createNumbers(TestContext context, int ...numbers) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     execute(context, "DROP TABLE IF EXISTS numbers CASCADE;");
