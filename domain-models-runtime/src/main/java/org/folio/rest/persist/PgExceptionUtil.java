@@ -1,9 +1,9 @@
 package org.folio.rest.persist;
 
-import java.util.Map;
+import io.vertx.pgclient.PgException;
 
-import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class PgExceptionUtil {
   // https://www.postgresql.org/docs/current/static/errcodes-appendix.html
@@ -81,19 +81,17 @@ public final class PgExceptionUtil {
    * @return detail text of the violation, or null if some other Exception
    */
   public static String badRequestMessage(Throwable throwable) {
-    if (!(throwable instanceof GenericDatabaseException)) {
+    Map<Character,String> fields = getBadRequestFields(throwable);
+    if (fields == null) {
       return null;
     }
-
-    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).getErrorMessage();
-    Map<Character,String> fields = errorMessage.getFields();
     String sqlstate = fields.get('C');
     if (sqlstate == null) {
       return null;
     }
-
     String detail = fields.getOrDefault('D', "");
     String message = fields.getOrDefault('M', "");
+
     switch (sqlstate) {
     case FOREIGN_KEY_VIOLATION:
       // insert or update on table "item" violates foreign key constraint "item_permanentloantypeid_fkey":
@@ -109,12 +107,14 @@ public final class PgExceptionUtil {
     }
   }
 
-  public static Map<Character,String> getBadRequestFields(Throwable throwable) {
-    if (!(throwable instanceof GenericDatabaseException)) {
+  public static Map<Character, String> getBadRequestFields(Throwable throwable) {
+    if (!(throwable instanceof PgException)) {
       return null;
     }
-
-    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).getErrorMessage();
-    return errorMessage.getFields();
+    Map<Character, String> map = new HashMap<>();
+    map.put('M', ((PgException) throwable).getMessage());
+    map.put('D', ((PgException) throwable).getDetail());
+    map.put('C', ((PgException) throwable).getCode());
+    return map;
   }
 }

@@ -13,7 +13,7 @@ public class LoadGeneralFunctions {
         LoadGeneralFunctions.class.getClassLoader().getResourceAsStream("templates/db_scripts/general_functions.ftl"), "UTF-8");
       sql = sql.replace("${myuniversity}_${mymodule}.", rep);
       sql = sql.replace("${exactCount}", "1000");
-      postgresClient.getClient().update(sql, context.asyncAssertSuccess(reply -> async.complete()));
+      postgresClient.getClient().query(sql, context.asyncAssertSuccess(reply -> async.complete()));
     } catch (IOException ex) {
       context.fail(ex);
     }

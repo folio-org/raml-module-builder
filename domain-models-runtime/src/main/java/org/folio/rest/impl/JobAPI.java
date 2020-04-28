@@ -142,12 +142,13 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
           RTFConsts.JOB_CONF_COLLECTION, jobconfsId,
           reply -> {
             if(reply.succeeded()){
-              if(reply.result().getUpdated() == 1){
+              if (reply.result().rowCount() == 1){
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
                   DeleteJobsJobconfsByJobconfsIdResponse.respond204()));
               }
               else{
-                String message = messages.getMessage(lang, MessageConsts.DeletedCountError, 1,reply.result().getUpdated());
+                String message = messages.getMessage(lang, MessageConsts.DeletedCountError,
+                    1,reply.result().rowCount());
                 log.error(message);
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsByJobconfsIdResponse
                   .respond400WithTextPlain(message)));
@@ -191,7 +192,7 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
           PostgresClient.getInstance(vertxContext.owner()).update(
             RTFConsts.JOB_CONF_COLLECTION, entity, jobconfsId,
             reply -> {
-              if (reply.succeeded() && reply.result().getUpdated() == 0) {
+              if (reply.succeeded() && reply.result().rowCount() == 0) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
                   PutJobsJobconfsByJobconfsIdResponse.respond400WithTextPlain(jobconfsId)));
               } else {
@@ -372,12 +373,13 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
           PostgresClient.getInstance(vertxContext.owner()).delete(RTFConsts.JOBS_COLLECTION, query,
             reply -> {
               if(reply.succeeded()){
-                if(reply.result().getUpdated() == 1){
+                if (reply.result().rowCount() == 1){
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
                     DeleteJobsJobconfsJobsByJobconfsIdAndJobIdResponse.respond204()));
                 }
                 else{
-                  String message = messages.getMessage(lang, MessageConsts.DeletedCountError, 1,reply.result().getUpdated());
+                  String message = messages.getMessage(lang, MessageConsts.DeletedCountError,
+                      1,reply.result().rowCount());
                   log.error(message);
                   asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteJobsJobconfsJobsByJobconfsIdAndJobIdResponse
                     .respond404WithTextPlain(message)));
@@ -426,7 +428,7 @@ public class JobAPI implements org.folio.rest.jaxrs.resource.Jobs {
           PostgresClient.getInstance(vertxContext.owner()).update(RTFConsts.JOBS_COLLECTION, entity,
             criterion, true,
             reply -> {
-              if (reply.succeeded() && reply.result().getUpdated() == 0) {
+              if (reply.succeeded() && reply.result().rowCount() == 0) {
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
                   PutJobsJobconfsJobsByJobconfsIdAndJobIdResponse.respond404WithTextPlain(jobId)));
               } else {

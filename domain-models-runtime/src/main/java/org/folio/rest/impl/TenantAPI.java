@@ -139,7 +139,7 @@ public class TenantAPI implements Tenant {
         reply -> {
           try {
             if(reply.succeeded()){
-              handler.handle(io.vertx.core.Future.succeededFuture(reply.result().getResults().get(0).getBoolean(0)));
+              handler.handle(io.vertx.core.Future.succeededFuture(reply.result().iterator().next().getBoolean(0)));
             }
             else {
               log.error(reply.cause().getMessage(), reply.cause());

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.TenantOperation;
@@ -23,6 +25,7 @@ public class PostgresClientITBase {
   protected static Map<String,String> okapiHeaders;
   protected static String schema;
   protected static Vertx vertx;
+  static Logger log = LoggerFactory.getLogger(PostgresClientITBase.class);
 
   static {
     setTenant("sometenant");
@@ -113,7 +116,7 @@ public class PostgresClientITBase {
   public static void executeSuperuser(TestContext context, String ... sqlStatements) {
     for (String sql : sqlStatements) {
       Async async = context.async();
-      PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
+      PostgresClient.getInstance(vertx).getClient().query(sql, reply -> {
         if (reply.failed()) {
           context.fail(new RuntimeException(reply.cause().getMessage() + ". SQL: " + sql, reply.cause()));
         }
@@ -129,7 +132,7 @@ public class PostgresClientITBase {
   public static void executeSuperuserIgnore(TestContext context, String ... sqlStatements) {
     for (String sql : sqlStatements) {
       Async async = context.async();
-      PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
+      PostgresClient.getInstance(vertx).getClient().query(sql, reply -> {
         async.complete();
       });
       async.await();

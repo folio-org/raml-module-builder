@@ -12,7 +12,6 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.web.RoutingContext;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -25,6 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
+
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
+import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -238,7 +241,7 @@ public final class PgUtil {
       Errors errors = ValidationHelper.createValidationErrorMessage(key, value, message);
       Response response = (Response) response422Method.invoke(null, errors);
       return Future.succeededFuture(response);
-    } catch (IllegalAccessException | InvocationTargetException e) {
+    } catch (IllegalAccessException | InvocationTargetException | NullPointerException e) {
       throw new IllegalArgumentException(e);
     }
   }
@@ -416,7 +419,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
-        int deleted = reply.result().getUpdated();
+        int deleted = reply.result().rowCount();
         if (deleted == 0) {
           asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
           return;
@@ -917,7 +920,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
-        int updated = reply.result().getUpdated();
+        int updated = reply.result().rowCount();
         if (updated == 0) {
           asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
           return;
@@ -1097,20 +1100,20 @@ public final class PgUtil {
     }
   }
 
-  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, ResultSet resultSet, int limit)
+  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, RowSet<Row> resultSet, int limit)
       throws ReflectiveOperationException, IOException {
 
-    List<JsonObject> jsonList = resultSet.getRows();
-    List<T> recordList = new ArrayList<>(jsonList.size());
     int totalRecords = 0;
-    for (JsonObject object : jsonList) {
-      String jsonb = object.getString(JSON_COLUMN);
+    List<T> recordList = new ArrayList<>(resultSet.rowCount());
+    RowIterator<Row> iterator = resultSet.iterator();
+    while (iterator.hasNext()) {
+      Row row = iterator.next();
+      String jsonb = row.getValue(JSON_COLUMN).toString();
       recordList.add(OBJECT_MAPPER.readValue(jsonb, clazz));
-      totalRecords = object.getInteger("count");
+      totalRecords = row.getInteger("count");
     }
-
     // full table scan was stopped without total records calculation.
-    if (totalRecords == 0 && jsonList.size() == limit) {
+    if (totalRecords == 0 && resultSet.rowCount() == limit) {
       totalRecords = 999999999;  // unknown total
     }
 

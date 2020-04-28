@@ -16,6 +16,7 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
   private Handler<T> streamHandler;
   private Handler<Void> endHandler;
   private Handler<Throwable> exceptionHandler;
+  private boolean failed = false; // to ensure exceptionHandler being called at most once
 
   /**
    * Only to be constructed from PostgresClient itself
@@ -79,7 +80,7 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
    * @param t
    */
   void fireHandler(T t) {
-    if (streamHandler != null) {
+    if (!failed && streamHandler != null) {
       streamHandler.handle(t);
     }
   }
@@ -99,9 +100,10 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
    * @param cause
    */
   void fireExceptionHandler(Throwable cause) {
-    if (exceptionHandler != null) {
+    if (!failed && exceptionHandler != null) {
       exceptionHandler.handle(cause);
     }
+    failed = true;
   }
 
   @Override
