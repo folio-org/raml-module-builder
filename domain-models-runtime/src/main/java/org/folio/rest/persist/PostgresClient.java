@@ -1933,7 +1933,7 @@ public class PostgresClient {
           return;
         }
         ResultSet result = query.result();
-        int totalRecords = PgUtil
+        Integer totalRecords = PgUtil
           .getTotalRecords(result.getNumRows(), total, queryHelper.offset, queryHelper.limit);
         replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(
           new TotaledResults(result, totalRecords))));

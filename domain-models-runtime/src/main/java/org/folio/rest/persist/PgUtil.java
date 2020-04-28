@@ -1104,7 +1104,7 @@ public final class PgUtil {
     List<JsonObject> jsonList = resultSet.getRows();
     int resultSize = jsonList.size();
     List<T> recordList = new ArrayList<>(resultSize);
-    int totalRecords = 0;
+    Integer totalRecords = 0;
     for (JsonObject object : jsonList) {
       String jsonb = object.getString(JSON_COLUMN);
       recordList.add(OBJECT_MAPPER.readValue(jsonb, clazz));
