@@ -1133,13 +1133,12 @@ public final class PgUtil {
       return estimateCount;
     }
     if (resultsCount == 0) {
-      estimateCount = Math.min(offset, estimateCount);
+      return Math.min(offset, estimateCount);
     } else if (resultsCount == limit) {
-      estimateCount = Math.max(offset + limit, estimateCount);
+      return Math.max(offset + limit, estimateCount);
     } else {
-      estimateCount = offset + resultsCount;
+      return offset + resultsCount;
     }
-    return estimateCount;
   }
 
   /**
