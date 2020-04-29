@@ -2344,6 +2344,11 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void executeListConnectionFails(TestContext context) throws Exception {
+    postgresClient().execute(Future.failedFuture("failed"), "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
   public void mutateOK(TestContext context) {
     Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
@@ -2548,6 +2553,13 @@ public class PostgresClientIT {
         context.asyncAssertSuccess(select -> {
           context.assertEquals(51, select.getInteger(0));
         }));
+  }
+
+  @Test
+  public void selectSingleParamSyntaxError(TestContext context) {
+    postgresClient = createNumbers(context, 51, 52, 53);
+    postgresClient.selectSingle("SELECT (",
+        new JsonArray(), context.asyncAssertFailure());
   }
 
   @Test

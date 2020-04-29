@@ -2221,7 +2221,7 @@ public class PostgresClient {
           return;
         }
         RowSet<Row> result = query.result();
-        if (result == null || result.rowCount() == 0) {
+        if (result.size() == 0) {
           replyHandler.handle(Future.succeededFuture(null));
           return;
         }
@@ -2807,30 +2807,28 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(res.cause()));
           return;
         }
-        RowIterator<Row> iterator = res.result().iterator();
-        if (!iterator.hasNext()) {
-          Future.succeededFuture(null);
-          return;
-        }
         try {
-          Row row = iterator.next();
-          JsonArray ar = new JsonArray();
-          for (int i = 0; i < row.size(); i++) {
-            Object obj = row.getValue(i);
-            if (obj instanceof java.util.UUID) {
-              ar.add(obj.toString());
-            } else {
-              ar.add(obj);
+          RowIterator<Row> iterator = res.result().iterator();
+          if (iterator.hasNext()) {
+            Row row = iterator.next();
+            JsonArray ar = new JsonArray();
+            for (int i = 0; i < row.size(); i++) {
+              Object obj = row.getValue(i);
+              if (obj instanceof java.util.UUID) {
+                ar.add(obj.toString());
+              } else {
+                ar.add(obj);
+              }
             }
+            replyHandler.handle(Future.succeededFuture(ar));
           }
-          replyHandler.handle(Future.succeededFuture(ar));
         } catch (Exception e) {
-          log.error("select single sql: " + e.getMessage() + " - " + sql, e);
+          log.error(e.getMessage(), e);
           replyHandler.handle(Future.failedFuture(e));
         }
       });
     } catch (Exception e) {
-      log.error("select single sql: " + e.getMessage() + " - " + sql, e);
+      log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
   }
@@ -2999,14 +2997,9 @@ public class PostgresClient {
       }
       SqlConnection connection = conn.result();
       long s = System.nanoTime();
-      log.fatal("SQL=" + legacySql(sql, params));
       connection.preparedQuery(legacySql(sql, params), legacyArguments(params), query -> {
-        if (query.failed()) {
-          replyHandler.handle(Future.failedFuture(query.cause()));
-        } else {
-          replyHandler.handle(Future.succeededFuture(query.result()));
-        }
-        logTimer("executeWithParams", sql, s);
+        replyHandler.handle(query);
+        logTimer("execute", sql, s);
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
