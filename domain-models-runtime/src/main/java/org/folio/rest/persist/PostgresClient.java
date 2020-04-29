@@ -585,12 +585,7 @@ public class PostgresClient {
     if (entity instanceof JsonObject) {
       return ((JsonObject) entity);
     } else {
-      try {
-        return new JsonObject(mapper.writeValueAsString(entity));
-      } catch (JsonProcessingException e) {
-        log.error(e.getMessage(), e);
-        throw e;
-      }
+      return new JsonObject(mapper.writeValueAsString(entity));
     }
   }
 

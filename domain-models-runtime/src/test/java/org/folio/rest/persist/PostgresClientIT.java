@@ -3564,7 +3564,7 @@ public class PostgresClientIT {
     }));
   }
 
-  @Test(expected = Exception.class)
+  @Test(expected = IllegalArgumentException.class)
   public void pojo2JsonObjectNull() throws Exception {
     PostgresClient.pojo2JsonObject(null);
   }
@@ -3582,7 +3582,15 @@ public class PostgresClientIT {
     context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
   }
 
-  @Test(expected = Exception.class)
+  @Test
+  public void pojo2JsonObjectMap2(TestContext context) throws Exception {
+    UUID id = UUID.randomUUID();
+    Map<UUID,String> m = new HashMap<>();
+    m.put(id, "b");
+    context.assertEquals("{\"" + id.toString() + "\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
   public void pojo2JsonObjectBadMap(TestContext context) throws Exception {
     PostgresClient.pojo2JsonObject(postgresClient);
   }
