@@ -15,7 +15,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.vertx.core.AsyncResult;
@@ -30,8 +29,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-
-import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
@@ -59,7 +56,6 @@ import org.folio.rest.persist.helpers.SimplePojo;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -156,34 +152,6 @@ public class PostgresClientIT {
       resultHandler.handle(trans.result());
       async.complete();
     };
-  }
-
-  @Test
-  public void testPgConnectOptionsEmpty() {
-    JsonObject conf = new JsonObject();
-    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
-    Assert.assertEquals("localhost", options.getHost());
-    Assert.assertEquals(5432, options.getPort());
-    Assert.assertEquals("user", options.getUser());
-    Assert.assertEquals("pass", options.getPassword());
-    Assert.assertEquals("db", options.getDatabase());
-  }
-
-  @Test
-  public void testPgConnectOptionsFull() {
-    JsonObject conf = new JsonObject()
-        .put("host", "myhost")
-        .put("port", 5433)
-        .put("username", "myuser")
-        .put("password", "mypassword")
-        .put("database", "mydatabase");
-
-    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
-    Assert.assertEquals("myhost", options.getHost());
-    Assert.assertEquals(5433, options.getPort());
-    Assert.assertEquals("myuser", options.getUser());
-    Assert.assertEquals("mypassword", options.getPassword());
-    Assert.assertEquals("mydatabase", options.getDatabase());
   }
 
   @Test

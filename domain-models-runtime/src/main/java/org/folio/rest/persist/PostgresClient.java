@@ -22,6 +22,18 @@ import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.RowIterator;
@@ -62,19 +74,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 
 import freemarker.template.TemplateException;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.pgclient.PgPool;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -2587,14 +2586,14 @@ public class PostgresClient {
       String columnName = entry.getKey();
       Method method = entry.getValue();
       try {
-        Object value = row.getValue(columnName);
-        if (value instanceof JsonArray) {
-           method.invoke(o, Json.decodeValue(((JsonArray) value).encode(), method.getParameterTypes()[0]));
-        } else {
-          method.invoke(o, value);
+        String[] stringArray = row.getStringArray(columnName);
+        if (stringArray != null) {
+          method.invoke(o, Arrays.asList(stringArray));
+          continue;
         }
+        method.invoke(o, row.getValue(columnName));
       } catch (Exception e) {
-        log.warn("Unable to populate field " + columnName + " for object of type " + o.getClass().getName());
+        log.warn("Unable to populate field " + columnName + " for object of type " + o.getClass().getName(), e);
       }
     }
   }

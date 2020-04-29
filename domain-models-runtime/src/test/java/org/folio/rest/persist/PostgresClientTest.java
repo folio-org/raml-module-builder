@@ -6,32 +6,28 @@ import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.impl.RowImpl;
+import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.SqlConnection;
-import org.folio.rest.persist.facets.FacetField;
+import io.vertx.sqlclient.impl.RowDesc;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.ResourceUtil;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-
-import freemarker.template.TemplateException;
 
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
@@ -124,6 +120,34 @@ public class PostgresClientTest {
     assertThat(config.getInteger("connectionReleaseDelay"), is(30000));
   }
 
+  @Test
+  public void testPgConnectOptionsEmpty() {
+    JsonObject conf = new JsonObject();
+    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+    Assert.assertEquals("localhost", options.getHost());
+    Assert.assertEquals(5432, options.getPort());
+    Assert.assertEquals("user", options.getUser());
+    Assert.assertEquals("pass", options.getPassword());
+    Assert.assertEquals("db", options.getDatabase());
+  }
+
+  @Test
+  public void testPgConnectOptionsFull() {
+    JsonObject conf = new JsonObject()
+        .put("host", "myhost")
+        .put("port", 5433)
+        .put("username", "myuser")
+        .put("password", "mypassword")
+        .put("database", "mydatabase");
+
+    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+    Assert.assertEquals("myhost", options.getHost());
+    Assert.assertEquals(5433, options.getPort());
+    Assert.assertEquals("myuser", options.getUser());
+    Assert.assertEquals("mypassword", options.getPassword());
+    Assert.assertEquals("mydatabase", options.getDatabase());
+  }
+
   /* DISABLED
   @Test
   public void testProcessResults() {
@@ -173,37 +197,42 @@ public class PostgresClientTest {
     assertThat(externalColumnSetters.get("baz"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("baz"), List.class)));
   }
 
-  /* DISABLED
   @Test
   public void testPopulateExternalColumns() {
     PostgresClient testClient = PostgresClient.testClient();
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
     }));
-    Map<String, Method> externalColumnSettters = testClient.getExternalColumnSetters(columnNames, TestPojo.class, false);
+    Map<String, Method> externalColumnSettters = new HashMap<>();
+    testClient.getExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSettters);
     TestPojo o = new TestPojo();
     String foo = "Hello";
     String bar = "World";
     Double biz = 1.0;
-    List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
-      "This", "is", "a", "test"
-    }));
-    JsonObject row = new JsonObject()
-        .put("foo", foo)
-        .put("bar", bar)
-        .put("biz", biz)
-        .put("baz", baz);
+    String [] baz = new String[] { "This", "is", "a", "test" };
+
+    List<String> rowColumns = new LinkedList<>();
+    rowColumns.add("foo");
+    rowColumns.add("bar");
+    rowColumns.add("biz");
+    rowColumns.add("baz");
+    RowDesc desc = new RowDesc(rowColumns);
+    Row row = new RowImpl(desc);
+    row.addString(foo);
+    row.addString(bar);
+    row.addDouble(biz);
+    row.addStringArray(baz);
+
     testClient.populateExternalColumns(externalColumnSettters, o, row);
     assertThat(o.getFoo(), is(foo));
     assertThat(o.getBar(), is(bar));
     assertThat(o.getBiz(), is(biz));
-    assertThat(o.getBaz().size(), is(baz.size()));
-    assertThat(o.getBaz().get(0), is(baz.get(0)));
-    assertThat(o.getBaz().get(1), is(baz.get(1)));
-    assertThat(o.getBaz().get(2), is(baz.get(2)));
-    assertThat(o.getBaz().get(3), is(baz.get(3)));
+    assertThat(o.getBaz().size(), is(baz.length));
+    assertThat(o.getBaz().get(0), is(baz[0]));
+    assertThat(o.getBaz().get(1), is(baz[1]));
+    assertThat(o.getBaz().get(2), is(baz[2]));
+    assertThat(o.getBaz().get(3), is(baz[3]));
   }
-*/
 
   @Test
   public void testDatabaseFieldToPojoSetter() {
