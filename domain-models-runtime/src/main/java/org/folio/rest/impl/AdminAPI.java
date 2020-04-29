@@ -554,8 +554,7 @@ public class AdminAPI implements Admin {
     PostgresClient.getInstance(vertxContext.owner()).select(
       "SELECT pg_terminate_backend('"+pid+"');", reply -> {
         if(reply.succeeded()){
-          System.out.println("locking q -> " + reply.result().iterator().next().getBoolean(0));
-          if (!reply.result().iterator().next().getBoolean(0)) {
+          if (!Boolean.TRUE.equals(reply.result().iterator().next().getBoolean(0))) {
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteAdminKillQueryResponse.respond404WithTextPlain(pid)));
           }
           else{

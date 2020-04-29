@@ -579,41 +579,35 @@ public class PostgresClient {
   }
 
   public static String pojo2json(Object entity) throws Exception {
-    // SimpleModule module = new SimpleModule();
-    // module.addSerializer(entity.getClass(), new PoJoJsonSerializer());
-    // mapper.registerModule(module);
-    if (entity != null) {
-      if (entity instanceof JsonObject) {
-        return ((JsonObject) entity).encode();
-      } else {
-        try {
-          return mapper.writeValueAsString(entity);
-        } catch (JsonProcessingException e) {
-          log.error(e.getMessage(), e);
-          throw e;
-        }
+    if (entity == null) {
+      throw new IllegalArgumentException("Entity can not be null");
+    }
+    if (entity instanceof JsonObject) {
+      return ((JsonObject) entity).encode();
+    } else {
+      try {
+        return mapper.writeValueAsString(entity);
+      } catch (JsonProcessingException e) {
+        log.error(e.getMessage(), e);
+        throw e;
       }
     }
-    throw new Exception("Entity can not be null");
   }
 
   public static JsonObject pojo2JsonObject(Object entity) throws Exception {
-    // SimpleModule module = new SimpleModule();
-    // module.addSerializer(entity.getClass(), new PoJoJsonSerializer());
-    // mapper.registerModule(module);
-    if (entity != null) {
-      if (entity instanceof JsonObject) {
-        return ((JsonObject) entity);
-      } else {
-        try {
-          return new JsonObject(mapper.writeValueAsString(entity));
-        } catch (JsonProcessingException e) {
-          log.error(e.getMessage(), e);
-          throw e;
-        }
+    if (entity == null) {
+      throw new IllegalArgumentException("Entity can not be null");
+    }
+    if (entity instanceof JsonObject) {
+      return ((JsonObject) entity);
+    } else {
+      try {
+        return new JsonObject(mapper.writeValueAsString(entity));
+      } catch (JsonProcessingException e) {
+        log.error(e.getMessage(), e);
+        throw e;
       }
     }
-    throw new Exception("Entity can not be null");
   }
 
   /**
@@ -659,12 +653,10 @@ public class PostgresClient {
   public void rollbackTx(PgTransaction trans, Handler<AsyncResult<Void>> done) {
     log.fatal("rollBackTx");
     try {
-      trans.tx.rollback(res -> {
-        // this will most likely return that rollback has already completed.. because of error..
-        // which is why user code most often call rollBack!!
-        // TODO: check for rollback already completed
-        done.handle(Future.succeededFuture());
-      });
+      // this will most likely return that rollback has already completed.. because of error..
+      // which is why user code most often call rollBack!!
+      // TODO: check for rollback already completed
+      trans.tx.rollback(res -> done.handle(Future.succeededFuture()));
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       done.handle(Future.failedFuture(e.getCause()));
@@ -913,6 +905,7 @@ public class PostgresClient {
    * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
    * @param replyHandler  where to report success status and the final id of the id field
    */
+  @SuppressWarnings({"unchecked", "squid:S00107"})   // Method has more than 7 parameters
   public void save(AsyncResult<SqlConnection> sqlConnection, String table, String id, Object entity,
       boolean returnId, boolean upsert, boolean convertEntity,
       Handler<AsyncResult<String>> replyHandler) {
@@ -1774,16 +1767,6 @@ public class PostgresClient {
     });
   }
 
-  private static List<String> getColumnNames(Row row) {
-    int i = 0;
-    List<String> columns = new ArrayList<>();
-    while (row.getColumnName(i) != null) {
-      columns.add(row.getColumnName(i));
-      i++;
-    }
-    return columns;
-  }
-
   private List<String> populateColumnNames(Row row)
   {
     int i = 0;
@@ -1802,7 +1785,7 @@ public class PostgresClient {
 
     ResultInfo resultInfo = streamResult.resultInto();
     Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
-    ResultsHelper<T> resultsHelper = new ResultsHelper<>(sqlRowStream, clazz);
+    ResultsHelper<T> resultsHelper = new ResultsHelper<>(clazz);
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
     Map<String, Method> externalColumnSetters = new HashMap<>();
     sqlRowStream.handler(r -> {
@@ -2201,6 +2184,7 @@ public class PostgresClient {
   /**
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    */
+  @SuppressWarnings({"unchecked", "squid:S00107"})   // Method has more than 7 parameters
   public <T> void get(AsyncResult<SqlConnection> conn, String table, Class<T> clazz,
     Criterion filter, boolean returnCount, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2209,6 +2193,7 @@ public class PostgresClient {
       false, facets, replyHandler);
   }
 
+  @SuppressWarnings({"unchecked", "squid:S00107"})   // Method has more than 7 parameters
   <T> void get(AsyncResult<SqlConnection> conn, String table, Class<T> clazz,
     String fieldName, Criterion filter, boolean returnCount, boolean returnIdField,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2421,7 +2406,7 @@ public class PostgresClient {
       this.total = total;
       this.offset = 0;
     }
-    public ResultsHelper(RowStream<Row> sqlRowStream, Class<T> clazz) {
+    public ResultsHelper(Class<T> clazz) {
       this.list = new ArrayList<>();
       this.facets = new HashMap<>();
       this.resultSet = null;
@@ -2940,7 +2925,6 @@ public class PostgresClient {
           return;
         }
         PreparedQuery pq = res.result();
-        // should be in a transaction Transaction tx = connection.begin();
         RowStream<Row> rowStream = pq.createStream(50, Tuple.wrap(params.getList()));
         replyHandler.handle(Future.succeededFuture(rowStream));
       });
