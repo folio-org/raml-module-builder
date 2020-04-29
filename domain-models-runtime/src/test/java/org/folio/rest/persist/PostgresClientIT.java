@@ -2140,7 +2140,6 @@ public class PostgresClientIT {
     postgresClientConnectionThrowsException().execute("SELECT 1", context.asyncAssertFailure());
   }
 
-
   @Test
   public void executeParam(TestContext context) {
     Async async = context.async();
@@ -2378,11 +2377,8 @@ public class PostgresClientIT {
   }
 
   private PostgresClient createNumbers(TestContext context, int ...numbers) {
+    PostgresClient postgresClient = createTable(context, TENANT, "numbers", "i INT");
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
-    execute(context, "DROP TABLE IF EXISTS numbers CASCADE;");
-    execute(context, "CREATE TABLE numbers (i INT);");
-    executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + schema + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
-    execute(context, "GRANT ALL PRIVILEGES ON TABLE numbers TO " + schema + ";");
     StringBuilder s = new StringBuilder();
     for (int n : numbers) {
       if (s.length() > 0) {
@@ -2390,8 +2386,7 @@ public class PostgresClientIT {
       }
       s.append('(').append(n).append(')');
     }
-    execute(context, "INSERT INTO numbers VALUES " + s + ";");
-    postgresClient = postgresClient(TENANT);
+    execute(context, "INSERT INTO " + schema + ".numbers VALUES " + s + ";");
     return postgresClient;
   }
 

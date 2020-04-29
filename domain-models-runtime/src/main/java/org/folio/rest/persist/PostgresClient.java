@@ -636,7 +636,6 @@ public class PostgresClient {
    */
   //@Timer
   public void rollbackTx(PgTransaction trans, Handler<AsyncResult<Void>> done) {
-    log.fatal("rollBackTx");
     trans.tx.rollback(res -> finalizeTx(res, done));
   }
 
