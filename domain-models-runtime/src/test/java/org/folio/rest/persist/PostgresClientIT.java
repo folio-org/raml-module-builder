@@ -85,13 +85,11 @@ public class PostgresClientIT {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
 
-/*
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
   }
-*/
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {

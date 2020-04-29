@@ -27,6 +27,7 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.util.Cql2PgUtil;
+import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -1588,10 +1589,10 @@ public class PostgresClient {
       QueryHelper queryHelper = buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
       if (returnCount) {
         processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
-          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz), replyHandler);
+          totaledResults -> processResults(totaledResults.set, totaledResults.total, queryHelper.offset, queryHelper.limit, clazz), replyHandler);
       } else {
         processQuery(connection, queryHelper, null, GET_STAT_METHOD,
-          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz), replyHandler);
+          totaledResults -> processResults(totaledResults.set, totaledResults.total, queryHelper.offset, queryHelper.limit, clazz), replyHandler);
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1930,11 +1931,7 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(query.cause()));
           return;
         }
-        ResultSet result = query.result();
-        Integer totalRecords = PgUtil
-          .getTotalRecords(result.getNumRows(), total, queryHelper.offset, queryHelper.limit);
-        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(
-          new TotaledResults(result, totalRecords))));
+        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -2429,7 +2426,7 @@ public class PostgresClient {
    * @param clazz
    * @return
    */
-  <T> Results<T> processResults(ResultSet rs, Integer total, Class<T> clazz) {
+  <T> Results<T> processResults(ResultSet rs, Integer total, int offset, int limit, Class<T> clazz) {
     long start = System.nanoTime();
 
     if (total == null) {
@@ -2443,7 +2440,10 @@ public class PostgresClient {
 
     ResultInfo resultInfo = new ResultInfo();
     resultsHelper.facets.forEach((k , v) -> resultInfo.getFacets().add(v));
-    resultInfo.setTotalRecords(resultsHelper.total);
+    Integer totalRecords = PgUtil
+      .getTotalRecords(getResultListRowCounts(resultsHelper.list),
+        resultsHelper.total, offset, limit);
+    resultInfo.setTotalRecords(totalRecords);
 
     Results<T> results = new Results<>();
     results.setResults(resultsHelper.list);
@@ -2451,6 +2451,11 @@ public class PostgresClient {
 
     statsTracker(PROCESS_RESULTS_STAT_METHOD, clazz.getSimpleName(), start);
     return results;
+  }
+
+  private <T> int getResultListRowCounts(List<T> list) {
+    return (int) list.stream().filter(e -> !(e instanceof Facet)
+      && !((e instanceof Map) && ((Map) e).containsKey("count"))).count();
   }
 
   /**
