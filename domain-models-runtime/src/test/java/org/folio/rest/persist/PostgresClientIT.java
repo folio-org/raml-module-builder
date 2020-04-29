@@ -3555,37 +3555,6 @@ public class PostgresClientIT {
     }));
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void pojo2JsonObjectNull() throws Exception {
-    PostgresClient.pojo2JsonObject(null);
-  }
-
-  @Test
-  public void pojo2JsonObjectJson(TestContext context) throws Exception {
-    JsonObject j = new JsonObject().put("a", "b");
-    context.assertEquals(j.encode(), PostgresClient.pojo2JsonObject(j).encode());
-  }
-
-  @Test
-  public void pojo2JsonObjectMap(TestContext context) throws Exception {
-    Map<String,String> m = new HashMap<>();
-    m.put("a", "b");
-    context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
-  }
-
-  @Test
-  public void pojo2JsonObjectMap2(TestContext context) throws Exception {
-    UUID id = UUID.randomUUID();
-    Map<UUID,String> m = new HashMap<>();
-    m.put(id, "b");
-    context.assertEquals("{\"" + id.toString() + "\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void pojo2JsonObjectBadMap(TestContext context) throws Exception {
-    PostgresClient.pojo2JsonObject(postgresClient);
-  }
-
   private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     String polines = getMockData("mockdata/poLines.json");

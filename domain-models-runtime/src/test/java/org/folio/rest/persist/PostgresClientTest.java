@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
@@ -577,4 +579,37 @@ public class PostgresClientTest {
     assertThat(PostgresClient.preprocessSqlStatements(sqlFile), hasItemInArray(stringContainsInOrder(
         "COPY test.po_line", "24\t")));
   }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void pojo2JsonObjectNull() throws Exception {
+    PostgresClient.pojo2JsonObject(null);
+  }
+
+  @Test
+  public void pojo2JsonObjectJson() throws Exception {
+    JsonObject j = new JsonObject().put("a", "b");
+    Assert.assertEquals(j.encode(), PostgresClient.pojo2JsonObject(j).encode());
+  }
+
+  @Test
+  public void pojo2JsonObjectMap() throws Exception {
+    Map<String,String> m = new HashMap<>();
+    m.put("a", "b");
+    Assert.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
+  }
+
+  @Test
+  public void pojo2JsonObjectMap2() throws Exception {
+    UUID id = UUID.randomUUID();
+    Map<UUID,String> m = new HashMap<>();
+    m.put(id, "b");
+    Assert.assertEquals("{\"" + id.toString() + "\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
+  }
+
+  @Test(expected = Exception.class)
+  public void pojo2JsonObjectBadMap() throws Exception {
+    PostgresClient.pojo2JsonObject(this);
+  }
+
+
 }
