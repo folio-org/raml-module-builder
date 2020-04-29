@@ -620,6 +620,13 @@ public class PostgresClient {
     });
   }
 
+  private void finalizeTx(AsyncResult<Void> txResult, Handler<AsyncResult<Void>> done ) {
+    if (txResult.failed() && !"Transaction already completed".equals(txResult.cause().getMessage())) {
+      done.handle(Future.failedFuture(txResult.cause()));
+      return;
+    }
+    done.handle(Future.succeededFuture());
+  }
   /**
    * Rollback a SQL transaction started on the connection. This closes the connection.
    *
@@ -630,15 +637,7 @@ public class PostgresClient {
   //@Timer
   public void rollbackTx(PgTransaction trans, Handler<AsyncResult<Void>> done) {
     log.fatal("rollBackTx");
-    try {
-      // this will most likely return that rollback has already completed.. because of error..
-      // which is why user code most often call rollBack!!
-      // TODO: check for rollback already completed
-      trans.tx.rollback(res -> done.handle(Future.succeededFuture()));
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      done.handle(Future.failedFuture(e.getCause()));
-    }
+    trans.tx.rollback(res -> finalizeTx(res, done));
   }
 
   /**
@@ -650,13 +649,7 @@ public class PostgresClient {
    */
   //@Timer
   public void endTx(PgTransaction trans, Handler<AsyncResult<Void>> done) {
-    trans.tx.commit(res -> {
-      trans.tx.close();
-      if (res.failed()) {
-        log.error(res.cause().getMessage(), res.cause());
-      }
-      done.handle(res);
-    });
+    trans.tx.commit(res -> finalizeTx(res, done));
   }
 
   /**

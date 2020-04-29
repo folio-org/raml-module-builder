@@ -2330,8 +2330,8 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void executeListSyntaxError(TestContext context) {
-    postgresClient().execute("'", list1JsonArray(), context.asyncAssertFailure());
+  public void executeListConnectionThrowsException(TestContext context) throws Exception {
+    postgresClientConnectionThrowsException().execute("SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
   @Test
@@ -2514,6 +2514,17 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectStreamParamSyntaxError(TestContext context) {
+    postgresClient = createNumbers(context, 31, 32, 33);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.selectStream(trans.connection(), "SELECT (", new JsonArray(),
+          context.asyncAssertFailure(select -> {
+            postgresClient.endTx(trans, context.asyncAssertSuccess());
+          }));
+    }));
+  }
+
+  @Test
   public void selectSingle(TestContext context) {
     postgresClient = createNumbers(context, 41, 42, 43);
     postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (41, 43, 45) ORDER BY i",
@@ -2585,6 +2596,11 @@ public class PostgresClientIT {
   @Test
   public void selectStreamParamTxException(TestContext context) {
     postgresClient().selectStream(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectStreamParamTxSqlError(TestContext context) {
+    postgresClient().selectStream("sql", new JsonArray(), context.asyncAssertFailure());
   }
 
   @Test
