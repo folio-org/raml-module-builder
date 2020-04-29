@@ -577,7 +577,7 @@ public class PostgresClient {
     return postgreSQLClientConfig;
   }
 
-  public static JsonObject pojo2JsonObject(Object entity) throws IllegalArgumentException, JsonProcessingException {
+  public static JsonObject pojo2JsonObject(Object entity) throws JsonProcessingException {
     if (entity == null) {
       throw new IllegalArgumentException("Entity can not be null");
     }
