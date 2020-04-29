@@ -578,23 +578,7 @@ public class PostgresClient {
     return postgreSQLClientConfig;
   }
 
-  public static String pojo2json(Object entity) throws Exception {
-    if (entity == null) {
-      throw new IllegalArgumentException("Entity can not be null");
-    }
-    if (entity instanceof JsonObject) {
-      return ((JsonObject) entity).encode();
-    } else {
-      try {
-        return mapper.writeValueAsString(entity);
-      } catch (JsonProcessingException e) {
-        log.error(e.getMessage(), e);
-        throw e;
-      }
-    }
-  }
-
-  public static JsonObject pojo2JsonObject(Object entity) throws Exception {
+  public static JsonObject pojo2JsonObject(Object entity) throws IllegalArgumentException, JsonProcessingException {
     if (entity == null) {
       throw new IllegalArgumentException("Entity can not be null");
     }

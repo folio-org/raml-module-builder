@@ -31,6 +31,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
+import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
@@ -58,6 +59,7 @@ import org.folio.rest.persist.helpers.SimplePojo;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -154,6 +156,34 @@ public class PostgresClientIT {
       resultHandler.handle(trans.result());
       async.complete();
     };
+  }
+
+  @Test
+  public void testPgConnectOptionsEmpty() {
+    JsonObject conf = new JsonObject();
+    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+    Assert.assertEquals("localhost", options.getHost());
+    Assert.assertEquals(5432, options.getPort());
+    Assert.assertEquals("user", options.getUser());
+    Assert.assertEquals("pass", options.getPassword());
+    Assert.assertEquals("db", options.getDatabase());
+  }
+
+  @Test
+  public void testPgConnectOptionsFull() {
+    JsonObject conf = new JsonObject()
+        .put("host", "myhost")
+        .put("port", 5433)
+        .put("username", "myuser")
+        .put("password", "mypassword")
+        .put("database", "mydatabase");
+
+    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+    Assert.assertEquals("myhost", options.getHost());
+    Assert.assertEquals(5433, options.getPort());
+    Assert.assertEquals("myuser", options.getUser());
+    Assert.assertEquals("mypassword", options.getPassword());
+    Assert.assertEquals("mydatabase", options.getDatabase());
   }
 
   @Test
@@ -273,25 +303,14 @@ public class PostgresClientIT {
   private void execute(TestContext context, String sql) {
     Async async = context.async();
     PostgresClient c = PostgresClient.getInstance(vertx);
-    c.getClient().query(sql, reply -> {
-      c.closeClient(close -> {
-        assertSuccess(context, reply);
-        assertSuccess(context, close);
-        async.complete();
-      });
-    });
+    c.execute(sql, context.asyncAssertSuccess(reply -> async.complete()));
     async.awaitSuccess(5000);
   }
 
   private void executeIgnore(TestContext context, String sql) {
     Async async = context.async();
     PostgresClient c = PostgresClient.getInstance(vertx);
-    c.getClient().query(sql, reply -> {
-      c.closeClient(close -> {
-        assertSuccess(context, close);
-        async.complete();
-      });
-    });
+    c.execute(sql, reply -> async.complete());
     async.awaitSuccess(5000);
   }
 
@@ -2121,7 +2140,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void execute(TestContext context) {
+  public void executeOK(TestContext context) {
     Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
@@ -2130,6 +2149,7 @@ public class PostgresClientIT {
       context.assertEquals(1, res.result().rowCount());
       async.complete();
     });
+    async.await(1000);
   }
 
   @Test
@@ -2151,6 +2171,7 @@ public class PostgresClientIT {
   public void executeConnectionThrowsException(TestContext context) throws Exception {
     postgresClientConnectionThrowsException().execute("SELECT 1", context.asyncAssertFailure());
   }
+
 
   @Test
   public void executeParam(TestContext context) {
@@ -2353,6 +2374,33 @@ public class PostgresClientIT {
   @Test
   public void executeListTransNull(TestContext context) throws Exception {
     postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void mutateOK(TestContext context) {
+    Async async = context.async();
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+        .mutate("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'", res -> {
+          assertSuccess(context, res);
+          async.complete();
+        });
+    async.await(1000);
+  }
+
+  @Test
+  public void mutateSyntaxError(TestContext context) {
+    postgresClient().mutate("'", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void mutateParamGetConnectionFails(TestContext context) throws Exception {
+    postgresClientGetConnectionFails().mutate("SELECT 1", context.asyncAssertFailure());
+  }
+
+  @Test
+  public void mutateParamNullConnection(TestContext context) throws Exception {
+    postgresClientNullConnection().mutate("SELECT 1", context.asyncAssertFailure());
   }
 
   // see RunSQLIT.java for more tests
@@ -3517,29 +3565,6 @@ public class PostgresClientIT {
   }
 
   @Test(expected = Exception.class)
-  public void pojo2jsonNull() throws Exception {
-    PostgresClient.pojo2json(null);
-  }
-
-  @Test
-  public void pojo2jsonJson(TestContext context) throws Exception {
-    JsonObject j = new JsonObject().put("a", "b");
-    context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2json(j));
-  }
-
-  @Test
-  public void pojo2jsonMap(TestContext context) throws Exception {
-    Map<String,String> m = new HashMap<>();
-    m.put("a", "b");
-    context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2json(m));
-  }
-
-  @Test(expected = Exception.class)
-  public void pojo2jsonBadMap(TestContext context) throws Exception {
-    PostgresClient.pojo2json(postgresClient);
-  }
-
-  @Test(expected = Exception.class)
   public void pojo2JsonObjectNull() throws Exception {
     PostgresClient.pojo2JsonObject(null);
   }
@@ -3548,6 +3573,13 @@ public class PostgresClientIT {
   public void pojo2JsonObjectJson(TestContext context) throws Exception {
     JsonObject j = new JsonObject().put("a", "b");
     context.assertEquals(j.encode(), PostgresClient.pojo2JsonObject(j).encode());
+  }
+
+  @Test
+  public void pojo2JsonObjectMap(TestContext context) throws Exception {
+    Map<String,String> m = new HashMap<>();
+    m.put("a", "b");
+    context.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
   }
 
   @Test(expected = Exception.class)
