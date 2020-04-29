@@ -3073,7 +3073,6 @@ public class PostgresClientIT {
             events.append("[exception]");
             async.complete();
           });
-          vertx.setTimer(100, x -> async.complete());
         }));
     async.await(1000);
     context.assertEquals("[handler][exception]", events.toString());
