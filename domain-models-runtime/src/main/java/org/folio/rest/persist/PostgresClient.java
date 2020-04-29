@@ -875,7 +875,7 @@ public class PostgresClient {
    * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
    * @param replyHandler  where to report success status and the final id of the id field
    */
-  @SuppressWarnings({"unchecked", "squid:S00107"})   // Method has more than 7 parameters
+  @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
   public void save(AsyncResult<SqlConnection> sqlConnection, String table, String id, Object entity,
       boolean returnId, boolean upsert, boolean convertEntity,
       Handler<AsyncResult<String>> replyHandler) {
@@ -1592,7 +1592,7 @@ public class PostgresClient {
    *         io.vertx.core.Handler, io.vertx.core.Handler)}
    */
   @Deprecated
-  @SuppressWarnings({"unchecked", "squid:S00107"})
+  @SuppressWarnings({"squid:S00107"})  // has more than 7 parameters
   public <T> void streamGet(String table, T entity, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
@@ -1642,7 +1642,7 @@ public class PostgresClient {
    * @param facets for no facets: null or Collections.emptyList()
    * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
    */
-  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
@@ -1665,7 +1665,7 @@ public class PostgresClient {
    * @param facets
    * @param replyHandler
    */
-  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   <T> void doStreamGet(AsyncResult<SqlConnection> connResult,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
@@ -1693,7 +1693,7 @@ public class PostgresClient {
    * @param facets
    * @param replyHandler
    */
-  @SuppressWarnings({"unchecked", "squid:S00107"})    // Method has >7 parameters
+  @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   private <T> void doStreamGetCount(SqlConnection connection,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
@@ -2154,7 +2154,7 @@ public class PostgresClient {
   /**
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    */
-  @SuppressWarnings({"unchecked", "squid:S00107"})   // Method has more than 7 parameters
+  @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
   public <T> void get(AsyncResult<SqlConnection> conn, String table, Class<T> clazz,
     Criterion filter, boolean returnCount, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2163,7 +2163,7 @@ public class PostgresClient {
       false, facets, replyHandler);
   }
 
-  @SuppressWarnings({"unchecked", "squid:S00107"})   // Method has more than 7 parameters
+  @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
   <T> void get(AsyncResult<SqlConnection> conn, String table, Class<T> clazz,
     String fieldName, Criterion filter, boolean returnCount, boolean returnIdField,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
