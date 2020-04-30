@@ -3,6 +3,7 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 30.0](#version-30)
 * [Version 29.5](#version-295)
 * [Version 29.2](#version-292)
 * [Version 29](#version-29)
@@ -12,6 +13,24 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 30.0
+
+* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to vertx-pg-client.
+  * Class `SQLConnection` is now provided by RMB. But it was part of
+    old SQL client. `io.vertx.ext.sql.SQLConnection` ->
+    `org.folio.rest.persist.SQLConnection`.
+  * All functions that previusly returned `UpdateResult` now returns
+    `RowSet<Row>`. From that result the number of rows affacted by
+    SQL was `getUpdated()` it is now `rowCount()`.
+  * All functions that previusly returned `ResultSet` now returns
+    `RowSet<Row>`. From that result, the number of rows affacted by
+    SQL is `rowCount()`. The size() method returns number of rows
+    returned. An iterator to go through rows is obtained by calling
+    `iterator`.
+  * `PostgresClient.getClient()` is no longer public. If you need a
+    connection, use PostgresClient.startTx(). If you don't have
+    transactions, you don't need access to SQLConnection.
 
 ## Version 29.5
 
