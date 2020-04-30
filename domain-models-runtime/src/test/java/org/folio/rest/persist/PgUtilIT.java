@@ -1012,17 +1012,17 @@ public class PgUtilIT {
   public void getTotalRecordsTest() {
     assertNull(PgUtil.getTotalRecords(10, null, 0, 0));
 
-    assertEquals(PgUtil.getTotalRecords(10, 20, 0, 0),  (Integer)20);
+    assertEquals((Integer)20, PgUtil.getTotalRecords(10, 20, 0, 0));
 
-    assertEquals(PgUtil.getTotalRecords(0, 20, 10, 10),  (Integer)10);
+    assertEquals((Integer)10, PgUtil.getTotalRecords(0, 20, 10, 10));
 
-    assertEquals(PgUtil.getTotalRecords(10, 30, 10, 10),  (Integer)30);
+    assertEquals((Integer)30, PgUtil.getTotalRecords(10, 30, 10, 10));
 
-    assertEquals(PgUtil.getTotalRecords(10, 20, 20, 10),  (Integer)30);
+    assertEquals((Integer)30, PgUtil.getTotalRecords(10, 20, 20, 10));
 
-    assertEquals(PgUtil.getTotalRecords(5, 20, 20, 10), (Integer) 25);
+    assertEquals((Integer) 25, PgUtil.getTotalRecords(5, 20, 20, 10));
 
-    assertEquals(PgUtil.getTotalRecords(5, 20, 20, 10), (Integer) 25);
+    assertEquals((Integer) 25, PgUtil.getTotalRecords(5, 20, 20, 10));
   }
 
   private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
