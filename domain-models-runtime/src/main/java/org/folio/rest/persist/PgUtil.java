@@ -1102,7 +1102,7 @@ public final class PgUtil {
       throws ReflectiveOperationException, IOException {
 
     int totalRecords = 0;
-    List<T> recordList = new ArrayList<>(resultSet.rowCount());
+    List<T> recordList = new ArrayList<>(resultSet.size());
     RowIterator<Row> iterator = resultSet.iterator();
     while (iterator.hasNext()) {
       Row row = iterator.next();
@@ -1111,7 +1111,7 @@ public final class PgUtil {
       totalRecords = row.getInteger("count");
     }
     // full table scan was stopped without total records calculation.
-    if (totalRecords == 0 && resultSet.rowCount() == limit) {
+    if (totalRecords == 0 && resultSet.size() == limit) {
       totalRecords = 999999999;  // unknown total
     }
 

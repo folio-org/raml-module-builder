@@ -13,7 +13,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-import org.folio.rest.persist.PgTransaction;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.PostgresClientITBase;
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -122,15 +121,13 @@ public class SchemaMakerIT extends PostgresClientITBase {
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
     postgresClient.startTx(tx1 -> {
       context.assertTrue(tx1.succeeded());
-      PgTransaction tx1t = tx1.result();
       postgresClient.startTx(tx2 -> {
         context.assertTrue(tx2.succeeded());
-        PgTransaction tx2t = tx2.result();
         String sql = "UPDATE " + table + " SET jsonb=jsonb_set(jsonb, '{x}', to_jsonb('y'::text)) WHERE jsonb->>'username' = ";
-        postgresClient.execute(tx1t.connection(), sql + "'patron1'", context.asyncAssertSuccess(update1 -> {
-          postgresClient.execute(tx2t.connection(), sql + "'patron2'", context.asyncAssertSuccess(update2 -> {
-            postgresClient.endTx(tx1t, context.asyncAssertSuccess(endTx1 -> {
-              postgresClient.endTx(tx2t, context.asyncAssertSuccess(endTx2 -> {
+        postgresClient.execute(tx1, sql + "'patron1'", context.asyncAssertSuccess(update1 -> {
+          postgresClient.execute(tx2, sql + "'patron2'", context.asyncAssertSuccess(update2 -> {
+            postgresClient.endTx(tx1, context.asyncAssertSuccess(endTx1 -> {
+              postgresClient.endTx(tx2, context.asyncAssertSuccess(endTx2 -> {
                 String sql3 = "SELECT * FROM " + table.replace(".", ".audit_");
                 postgresClient.select(sql3, context.asyncAssertSuccess(result -> {
                   context.assertEquals(4, result.rowCount());

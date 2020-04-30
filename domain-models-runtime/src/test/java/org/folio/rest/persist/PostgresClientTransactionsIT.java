@@ -37,7 +37,6 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     //create connection
     c1.startTx(handler -> {
       if(handler.succeeded()){
-        PgTransaction tx = handler.result();
         SimplePojo z = new SimplePojo();
         z.setId("1");
         z.setName("me");
@@ -50,7 +49,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
           context.fail(e1);
         }
         CQLWrapper cql = new CQLWrapper(cql2pgJson, "name==d");
-        c1.update(tx.connection(),
+        c1.update(handler,
           "z", z, cql, true, reply -> {
             if(reply.succeeded()){
               //make sure record is not updated since not committed yet
@@ -66,7 +65,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
                   context.fail(e.getMessage());
                 }
                 //end transaction / commit
-                c1.endTx(tx, done -> {
+                c1.endTx(handler, done -> {
                   if(done.succeeded()){
                     //record should have been updated
                     c1.select("SELECT jsonb->>'name' FROM " + fullTable, selectReply -> {
@@ -109,14 +108,13 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     Async async = context.async();
     c1.startTx( handler -> {
       if(handler.succeeded()){
-        PgTransaction tx = handler.result();
         SimplePojo z = new SimplePojo();
         z.setId("1");
         z.setName("me");
-        c1.update(tx.connection(),
+        c1.update(handler,
           table, z, "jsonb", "where (jsonb->>'name') = 'd'", true, reply -> {
             if(reply.succeeded()){
-              c1.rollbackTx(tx, done -> {
+              c1.rollbackTx(handler, done -> {
                 if(done.succeeded()){
                   c1.select("SELECT jsonb->>'name' FROM " + table, reply2 -> {
                     if (! reply2.succeeded()) {
@@ -158,15 +156,14 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     //create connection
     c1.startTx( handler -> {
       if(handler.succeeded()){
-        PgTransaction tx = handler.result();
         Criteria c = new Criteria();
         c.addField("'name'").setOperation("=").setVal("me");
-        c1.delete(tx.connection(), table, new Criterion(c) , reply -> {
+        c1.delete(handler, table, new Criterion(c) , reply -> {
             if(reply.succeeded()){
               //make sure record is deleted when querying using this connection
               //but since not committed yet we should still get it back
               //when sending the query on a different connection
-              c1.get(tx.connection(), "z", SimplePojo.class , new Criterion(c) ,
+              c1.get(handler, "z", SimplePojo.class , new Criterion(c) ,
                   true, true, reply2 -> {
                 if (! reply2.succeeded()) {
                   context.fail(reply2.cause());
@@ -190,7 +187,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
                           //end transaction / commit
                           //doesnt seem like a good idea to reuse the handler within the get()
                           //which lives outside of this connection, but for testing ok.
-                          c1.endTx(tx, done -> {
+                          c1.endTx(handler, done -> {
                             if(done.succeeded()){
                               //record should have been deleted, so only one record should return
                               //not both
