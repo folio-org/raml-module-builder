@@ -620,7 +620,10 @@ public class PostgresClient {
     });
   }
 
-  private void finalizeTx(AsyncResult<Void> txResult, Handler<AsyncResult<Void>> done ) {
+  private void finalizeTx(AsyncResult<Void> txResult, SqlConnection conn, Handler<AsyncResult<Void>> done ) {
+    if (conn != null) {
+      conn.close();
+    }
     if (txResult.failed() && !"Transaction already completed".equals(txResult.cause().getMessage())) {
       done.handle(Future.failedFuture(txResult.cause()));
       return;
@@ -640,7 +643,7 @@ public class PostgresClient {
       done.handle(Future.failedFuture(trans.cause()));
       return;
     }
-    trans.result().tx.rollback(res -> finalizeTx(res, done));
+    trans.result().tx.rollback(res -> finalizeTx(res, trans.result().conn, done));
   }
 
   /**
@@ -656,7 +659,7 @@ public class PostgresClient {
       done.handle(Future.failedFuture(trans.cause()));
       return;
     }
-    trans.result().tx.commit(res -> finalizeTx(res, done));
+    trans.result().tx.commit(res -> finalizeTx(res, trans.result().conn, done));
   }
 
   /**
