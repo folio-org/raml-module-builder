@@ -44,7 +44,6 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
@@ -73,6 +72,8 @@ import io.vertx.ext.sql.SQLRowStream;
 import io.vertx.ext.sql.UpdateResult;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.folio.rest.tools.utils.NetworkUtils;
 
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -1738,7 +1739,7 @@ public class PostgresClient {
         }
         ResultInfo resultInfo = new ResultInfo();
         resultInfo.setTotalRecords(countQueryResult.result().getInteger(0));
-        doStreamGetQuery(connection, queryHelper.selectQuery, resultInfo,
+        doStreamGetQuery(connection, queryHelper, resultInfo,
           clazz, facets, replyHandler);
       });
     } catch (Exception e) {
@@ -1747,23 +1748,23 @@ public class PostgresClient {
     }
   }
 
-  <T> void doStreamGetQuery(SQLConnection connection, String selectQuery,
+  <T> void doStreamGetQuery(SQLConnection connection, QueryHelper queryHelper,
     ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    connection.queryStream(selectQuery, stream -> {
+    connection.queryStream(queryHelper.selectQuery, stream -> {
       if (stream.failed()) {
         log.error(stream.cause().getMessage(), stream.cause());
         replyHandler.handle(Future.failedFuture(stream.cause()));
         return;
       }
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
-      doStreamRowResults(stream.result(), clazz, facets, resultInfo, streamResult, replyHandler);
+      doStreamRowResults(stream.result(), clazz, facets, resultInfo, queryHelper, streamResult, replyHandler);
     });
   }
 
 <T> void doStreamRowResults(SQLRowStream sqlRowStream, Class<T> clazz,
-    List<FacetField> facets, ResultInfo resultInfo,
+    List<FacetField> facets, ResultInfo resultInfo, QueryHelper queryHelper,
     PostgresClientStreamResult<T> streamResult,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
@@ -1804,6 +1805,9 @@ public class PostgresClient {
         streamResult.fireExceptionHandler(e);
       }
     }).endHandler(v2 -> {
+      resultInfo.setTotalRecords(
+        PgUtil.getTotalRecords(resultsHelper.list.size(), resultInfo.getTotalRecords(),
+          queryHelper.offset, queryHelper.limit));
       try {
         if (!promise.future().isComplete()) {
           promise.complete(streamResult);
