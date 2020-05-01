@@ -47,7 +47,7 @@ public class PostgresClientTest {
 
   private static final int DEFAULT_OFFSET = 0;
 
-  private static int DEFAULT_LIMIT = 10;
+  private static final int DEFAULT_LIMIT = 10;
 
   @Before
   public void initConfig() {
