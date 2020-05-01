@@ -2469,7 +2469,7 @@ public class PostgresClient {
     return (int) list.stream()
         .filter(e -> !(e instanceof Facet) &&
                      !((e instanceof Map) &&
-                         ((Map) e).size() == 1) && ((Map) e).containsKey(COUNT_FIELD))
+                         ((Map) e).size() == 1 && ((Map) e).containsKey(COUNT_FIELD)))
         .count();
   }
 
