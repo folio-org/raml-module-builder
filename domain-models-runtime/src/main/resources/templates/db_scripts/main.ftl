@@ -198,4 +198,7 @@ END $$;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};
 
 UPDATE ${myuniversity}_${mymodule}.rmb_internal
-  SET jsonb = jsonb || '{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb;
+  SET jsonb = jsonb || jsonb_build_object(
+    'rmbVersion', '${rmbVersion}',
+    'moduleVersion', '${newVersion}',
+    'schemaJson', $mainftl$${schemaJson}$mainftl$);

@@ -3341,6 +3341,21 @@ public class PostgresClient {
    *
    * @param sqlFile - string of sqls with executable statements
    * @param stopOnError - stop on first error
+   * @return Future with list of statements that failed; the list may be empty
+   */
+  public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
+    Promise<List<String>> promise = Promise.promise();
+    runSQLFile(sqlFile, stopOnError, promise.future());
+    return promise.future();
+  }
+
+  /**
+   * Will connect to a specific database and execute the commands in the .sql file
+   * against that database.<p />
+   * NOTE: NOT tested on all types of statements - but on a lot
+   *
+   * @param sqlFile - string of sqls with executable statements
+   * @param stopOnError - stop on first error
    * @param replyHandler - the handler's result is the list of statements that failed; the list may be empty
    */
   public void runSQLFile(String sqlFile, boolean stopOnError,
