@@ -2794,18 +2794,50 @@ public class PostgresClient {
     return tuple;
   }
 
+  private static JsonArray rowSetToJsonArray(RowSet rowSet) {
+    List<JsonArray> list = new LinkedList<>();
+    RowIterator<Row> iterator = rowSet.iterator();
+    JsonArray ar = new JsonArray();
+    if (iterator.hasNext()) {
+      Row row = iterator.next();
+      for (int i = 0; i < row.size(); i++) {
+        Object obj = row.getValue(i);
+        if (obj instanceof java.util.UUID) {
+          ar.add(obj.toString());
+        } else {
+          ar.add(obj);
+        }
+      }
+    }
+    return ar;
+  }
+
+  private static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<JsonArray>> replyHandler) {
+    if (res.failed()) {
+      replyHandler.handle(Future.failedFuture(res.cause()));
+      return;
+    }
+    try {
+      JsonArray ar = rowSetToJsonArray(res.result());
+      replyHandler.handle(Future.succeededFuture(ar));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
   /**
-   * Run a parameterized/prepared select query and return the first record, or null if there is no result.
-   *
-   * <p>This never closes the connection conn.
-   *
-   * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
-   *
-   * @param conn  The connection on which to execute the query on.
-   * @param sql  The sql query to run.
-   * @param params  The parameters for the placeholders in sql.
-   * @param replyHandler  The query result or the failure.
-   */
+     * Run a parameterized/prepared select query and return the first record, or null if there is no result.
+     *
+     * <p>This never closes the connection conn.
+     *
+     * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
+     *
+     * @param conn  The connection on which to execute the query on.
+     * @param sql  The sql query to run.
+     * @param params  The parameters for the placeholders in sql.
+     * @param replyHandler  The query result or the failure.
+     */
   public void selectSingle(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
                            Handler<AsyncResult<JsonArray>> replyHandler) {
     try {
@@ -2813,31 +2845,12 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      conn.result().conn.preparedQuery(legacySql(sql, params), Tuple.wrap(params.getList()), res -> {
-        if (res.failed()) {
-          replyHandler.handle(Future.failedFuture(res.cause()));
-          return;
-        }
-        try {
-          RowIterator<Row> iterator = res.result().iterator();
-          if (iterator.hasNext()) {
-            Row row = iterator.next();
-            JsonArray ar = new JsonArray();
-            for (int i = 0; i < row.size(); i++) {
-              Object obj = row.getValue(i);
-              if (obj instanceof java.util.UUID) {
-                ar.add(obj.toString());
-              } else {
-                ar.add(obj);
-              }
-            }
-            replyHandler.handle(Future.succeededFuture(ar));
-          }
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      });
+      if (params.size() == 0) {
+        conn.result().conn.query(sql, res -> selectReturn(res, replyHandler));
+      } else {
+        conn.result().conn.preparedQuery(legacySql(sql, params), Tuple.wrap(params.getList()),
+          res -> selectReturn(res, replyHandler));
+      }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
