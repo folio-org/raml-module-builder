@@ -17,12 +17,11 @@ public final class PgExceptionUtil {
 
   /**
    * Return the value for key in the
-   * {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage} map of the
-   * {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}.
+   *   {@link io.vertx.pgclient.PgException PgException}
    * @param throwable a Throwable or null
-   * @param key the {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage} key
+   * @param key
    * @return the value if throwable is a
-   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
+   *   {@link io.vertx.pgclient.PgException PgException}
    *   and the key exists, null otherwise.
    */
   public static String get(Throwable throwable, Character key) {
@@ -37,9 +36,7 @@ public final class PgExceptionUtil {
    * Check for foreign key violation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
-   *   containing an
-   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link io.vertx.pgclient.PgException PgException}
    *   that reports a foreign key violation, false otherwise.
    */
   public static boolean isForeignKeyViolation(Throwable throwable) {
@@ -50,9 +47,7 @@ public final class PgExceptionUtil {
    * Check for unique violation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
-   *   containing an
-   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link io.vertx.pgclient.PgException PgException}
    *   that reports a unique violation, false otherwise.
    */
   public static boolean isUniqueViolation(Throwable throwable) {
@@ -63,9 +58,7 @@ public final class PgExceptionUtil {
    * Check for invalid text representation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
-   *   containing an
-   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link io.vertx.pgclient.PgException PgException}
    *   that reports an invalid text representation, false otherwise.
    */
   public static boolean isInvalidTextRepresentation(Throwable throwable) {
