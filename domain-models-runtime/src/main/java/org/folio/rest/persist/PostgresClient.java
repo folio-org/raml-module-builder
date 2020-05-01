@@ -431,15 +431,15 @@ public class PostgresClient {
    */
   public static void closeAllClients() {
     @SuppressWarnings("rawtypes")
-    List<Promise<Object>> list = new ArrayList<>(connectionPool.size());
+    List<Future> list = new ArrayList<>(connectionPool.size());
     // copy of values() because closeClient will delete them from connectionPool
     for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
       Promise<Object> promise = Promise.promise();
-      list.add(promise);
+      list.add(promise.future());
       client.closeClient(f -> promise.complete());
     }
 
-    CompositeFuture.join(list.stream().map(Promise::future).collect(Collectors.toList()));
+    CompositeFuture.join(list);
   }
 
   private void init() throws Exception {
