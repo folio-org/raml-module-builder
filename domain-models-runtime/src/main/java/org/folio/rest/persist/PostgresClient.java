@@ -3018,10 +3018,18 @@ public class PostgresClient {
       }
       SqlConnection connection = conn.result().conn;
       long s = System.nanoTime();
-      connection.preparedQuery(legacySql(sql, params), legacyArguments(params), query -> {
-        replyHandler.handle(query);
-        logTimer("execute", sql, s);
-      });
+      // more than optimization.. preparedQuery does not work for multiple SQL statements
+      if (params.size() == 0) {
+        connection.query(sql, query -> {
+          replyHandler.handle(query);
+          logTimer("execute", sql, s);
+        });
+      } else {
+        connection.preparedQuery(legacySql(sql, params), legacyArguments(params), query -> {
+          replyHandler.handle(query);
+          logTimer("execute", sql, s);
+        });
+      }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
