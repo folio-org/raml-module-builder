@@ -110,4 +110,13 @@ public final class PgExceptionUtil {
     map.put('C', ((PgException) throwable).getCode());
     return map;
   }
+
+  /**
+   * Constructor for PgException similar to the old postgres driver
+   * @param map map of message, detail, code
+   * @return
+   */
+  public static PgException createPgExceptionFromMap(Map<Character, String> map) {
+    return new PgException(map.get('M'), null, map.get('C'), map.get('D'));
+  }
 }
