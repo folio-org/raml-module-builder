@@ -29,6 +29,7 @@ public class SchemaMaker {
   private String newVersion;
   private String rmbVersion;
   private Schema schema;
+  private String schemaJson = "{}";
 
   /**
    * @param onTable
@@ -91,6 +92,8 @@ public class SchemaMaker {
     //version, to check if core rmb scripts need updating due to an update
     templateInput.put("rmbVersion", this.rmbVersion);
 
+    templateInput.put("schemaJson", this.getSchemaJson());
+
     this.schema.setup();
 
     templateInput.put("tables", this.schema.getTables());
@@ -149,5 +152,13 @@ public class SchemaMaker {
 
   public void setSchema(Schema schema) {
     this.schema = schema;
+  }
+
+  public String getSchemaJson() {
+    return schemaJson;
+  }
+
+  public void setSchemaJson(String schemaJson) {
+    this.schemaJson = schemaJson;
   }
 }
