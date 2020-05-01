@@ -468,7 +468,8 @@ public final class PgUtil {
   }
 
   private static void streamTrailer(HttpServerResponse response, ResultInfo resultInfo) {
-    response.end(String.format("],%n  \"resultInfo\": %s%n}", Json.encode(resultInfo)));
+    response.write(String.format("],%n  \"totalRecords\": %d,%n", resultInfo.getTotalRecords()));
+    response.end(String.format(" \"resultInfo\": %s%n}", Json.encode(resultInfo)));
   }
 
   private static <T> void streamGetResult(PostgresClientStreamResult<T> result,
@@ -477,7 +478,6 @@ public final class PgUtil {
     response.setChunked(true);
     response.putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     response.write("{\n");
-    response.write(String.format("  \"totalRecords\": %d,%n", result.resultInto().getTotalRecords()));
     response.write(String.format("  \"%s\": [%n", element));
     AtomicBoolean first = new AtomicBoolean(true);
     result.exceptionHandler(res -> {

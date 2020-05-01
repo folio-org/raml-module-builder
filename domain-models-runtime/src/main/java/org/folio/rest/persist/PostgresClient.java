@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1774,6 +1775,7 @@ public class PostgresClient {
     Map<String, Method> externalColumnSetters = getExternalColumnSetters(resultsHelper.columnNames,
       resultsHelper.clazz, isAuditFlavored);
     // fetch rows and produce ResultInfo when facets are all read
+    AtomicInteger resultCount = new AtomicInteger();
     sqlRowStream.resultSetClosedHandler(v -> sqlRowStream.moreResults()).handler(r -> {
       try {
         JsonObject row = convertRowStreamArrayToObject(sqlRowStream, r);
@@ -1785,6 +1787,7 @@ public class PostgresClient {
           resultsHelper.facet = true;
         } else {
           objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
+          resultCount.incrementAndGet();
         }
         if (!resultsHelper.facet) {
           if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
@@ -1806,7 +1809,8 @@ public class PostgresClient {
       }
     }).endHandler(v2 -> {
       resultInfo.setTotalRecords(
-        PgUtil.getTotalRecords(resultsHelper.list.size(), resultInfo.getTotalRecords(),
+        PgUtil.getTotalRecords(resultCount.get(),
+          resultInfo.getTotalRecords(),
           queryHelper.offset, queryHelper.limit));
       try {
         if (!promise.future().isComplete()) {
