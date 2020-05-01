@@ -45,7 +45,7 @@ public class PostgresClientTest {
   /** empty = no environment variables */
   private JsonObject empty = new JsonObject();
 
-  private static int DEFAULT_OFFSET = 0;
+  private static final int DEFAULT_OFFSET = 0;
 
   private static int DEFAULT_LIMIT = 10;
 
