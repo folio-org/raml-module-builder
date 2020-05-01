@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.*;
 
+import io.vertx.core.Promise;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.HttpURLConnection;
@@ -356,12 +357,12 @@ public class PostgresRunnerTest {
   }
 
   @Test
-  public void stopPostgres(TestContext context) throws Exception {
+  public void stopPostgres(TestContext context) {
     PostgresProcess postgresProcessMock = mock(PostgresProcess.class);
     class MyPostgresRunner extends PostgresRunner {
-      @Override public void start(Future<Void> startFuture) {
+      @Override public void start(Promise<Void> startPromise) {
         postgresProcess = postgresProcessMock;
-        startFuture.complete();
+        startPromise.complete();
       }
     };
 

@@ -1,5 +1,6 @@
 package org.folio.rest;
 
+import io.vertx.core.Promise;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -205,7 +206,7 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   @Override
-  public void start(Future<Void> startFuture) throws Exception {
+  public void start(Promise<Void> startPromise) throws Exception {
 
     readInGitProps();
 
@@ -271,7 +272,7 @@ public class RestVerticle extends AbstractVerticle {
       if (((Future<?>) vv).failed()) {
         String reason = ((Future<?>) vv).cause().getMessage();
         log.error( messages.getMessage("en", MessageConsts.InitializeVerticleFail, reason));
-        startFuture.fail(reason);
+        startPromise.fail(reason);
         vertx.close();
         System.exit(-1);
       } else {
@@ -329,7 +330,7 @@ public class RestVerticle extends AbstractVerticle {
           // default to 8181.
           result -> {
             if (result.failed()) {
-              startFuture.fail(new RuntimeException("Listening on port " + p, result.cause()));
+              startPromise.fail(new RuntimeException("Listening on port " + p, result.cause()));
             } else {
               try {
                 runPostDeployHook( res2 -> {
@@ -343,7 +344,7 @@ public class RestVerticle extends AbstractVerticle {
               LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + p + ".");
               LogUtil.formatLogMessage(className, "start", "Documentation available at: " + "http://localhost:" + Integer.toString(p)
                 + "/apidocs/");
-              startFuture.complete();
+              startPromise.complete();
             }
           });
       }
@@ -999,7 +1000,7 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   @Override
-  public void stop(Future<Void> stopFuture) throws Exception {
+  public void stop(Promise<Void> stopPromise) throws Exception {
     super.stop();
     try {
       droolsSession.dispose();
@@ -1008,9 +1009,9 @@ public class RestVerticle extends AbstractVerticle {
     LogUtil.closeLogger();
     runShutdownHook(v -> {
       if (v.succeeded()) {
-        stopFuture.complete();
+        stopPromise.complete();
       } else {
-        stopFuture.fail("shutdown hook failed....");
+        stopPromise.fail("shutdown hook failed....");
       }
     });
   }

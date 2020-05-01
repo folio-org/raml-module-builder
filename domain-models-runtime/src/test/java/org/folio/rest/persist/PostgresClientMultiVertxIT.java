@@ -1,5 +1,6 @@
 package org.folio.rest.persist;
 
+import io.vertx.core.Promise;
 import java.util.List;
 
 import org.folio.rest.tools.utils.VertxUtils;
@@ -9,7 +10,6 @@ import org.junit.runner.RunWith;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
@@ -61,14 +61,14 @@ public class PostgresClientMultiVertxIT {
     private PostgresClient client;
 
     @Override
-    public void start(Future<Void> startFuture) {
+    public void start(Promise<Void> startPromise) {
       client = PostgresClient.getInstance(vertx);
-      startFuture.complete();
+      startPromise.complete();
     }
 
     @Override
-    public void stop(Future<Void> stopFuture) {
-      client.closeClient(stopFuture.completer());
+    public void stop(Promise<Void> stopPromise) {
+      client.closeClient(stopPromise);
     }
 
     public void runSQL(Handler<AsyncResult<List<String>>> handler) {
