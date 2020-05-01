@@ -8,7 +8,7 @@ import io.vertx.pgclient.PgException;
 
 /**
  * Easy access to
- * {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException}
+ * {@link io.vertx.pgclient.PgException PgException}
  * fields.
  */
 public class PgExceptionFacade {
