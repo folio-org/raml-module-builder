@@ -742,13 +742,14 @@ for chunks of 10000 records each.
 
 The PostgreSQL connection parameters locations are searched in this order:
 
+- org.folio.rest.tools.utils.Envs.setEnv, useful for https://www.testcontainers.org/modules/databases/postgres/
 - [DB_* environment variables](#environment-variables)
 - Configuration file, defaults to `resources/postgres-conf.json` but can be set via [command-line options](#command-line-options)
 - Embedded PostgreSQL using [default credentials](#credentials)
 
-By default an embedded PostgreSQL is included in the runtime, but it is only run if neither DB_* environment variables
+By default an embedded PostgreSQL is included in the runtime, but it is only run if neither Envs nor DB_* environment variables
 nor a postgres configuration file are present. To start an embedded PostgreSQL using connection parameters from the
-environment variables or the configuration file add `embed_postgres=true` to the command line
+Envs or environment variables or the configuration file add `embed_postgres=true` to the command line
 (`java -jar mod-notify-fat.jar embed_postgres=true`). Use PostgresClient.setEmbeddedPort(int) to overwrite the port.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
