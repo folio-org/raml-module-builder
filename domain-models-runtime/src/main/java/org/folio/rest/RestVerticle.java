@@ -319,7 +319,7 @@ public class RestVerticle extends AbstractVerticle {
         serverOptions.setCompressionSupported(true);
 
         HttpServer server = vertx.createHttpServer(serverOptions);
-        server.requestHandler(router::accept)
+        server.requestHandler(router)
         // router object (declared in the beginning of the atrt function accepts request and will pass to next handler for
         // specified path
 

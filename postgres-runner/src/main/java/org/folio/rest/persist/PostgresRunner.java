@@ -277,7 +277,7 @@ public class PostgresRunner extends AbstractVerticle {
       }
     });
 
-    runnerServer.requestHandler(router::accept).listen(port, listenHandler);
+    runnerServer.requestHandler(router).listen(port, listenHandler);
   }
 
   PostgresProcess startPostgres(PostgresConfig postgresConfig) throws IOException {
