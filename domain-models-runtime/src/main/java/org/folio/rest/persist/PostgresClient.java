@@ -2461,9 +2461,16 @@ public class PostgresClient {
     return results;
   }
 
+  /**
+   * @return number of list entries excluding the Facet count and total count entries
+   */
+  @SuppressWarnings("rawtypes")
   private <T> int getResultListRowCounts(List<T> list) {
-    return (int) list.stream().filter(e -> !(e instanceof Facet)
-      && !((e instanceof Map) && ((Map) e).containsKey("count"))).count();
+    return (int) list.stream()
+        .filter(e -> !(e instanceof Facet) &&
+                     !((e instanceof Map) &&
+                         ((Map) e).size() == 1) && ((Map) e).containsKey(COUNT_FIELD))
+        .count();
   }
 
   /**
