@@ -130,10 +130,8 @@ The framework consists of a number of tools:
 
 ## Upgrading
 
-See separate [upgrading notes](doc/upgrading.md).
-
-Note: This version of the README is for RMB v20+ version.
-If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.
+See separate [upgrading notes](doc/upgrading.md) how to upgrade an RMB based module to
+a new RMB version.
 
 ## Overview
 
@@ -742,13 +740,14 @@ for chunks of 10000 records each.
 
 The PostgreSQL connection parameters locations are searched in this order:
 
+- org.folio.rest.tools.utils.Envs.setEnv, useful for https://www.testcontainers.org/modules/databases/postgres/
 - [DB_* environment variables](#environment-variables)
 - Configuration file, defaults to `resources/postgres-conf.json` but can be set via [command-line options](#command-line-options)
 - Embedded PostgreSQL using [default credentials](#credentials)
 
-By default an embedded PostgreSQL is included in the runtime, but it is only run if neither DB_* environment variables
+By default an embedded PostgreSQL is included in the runtime, but it is only run if neither Envs nor DB_* environment variables
 nor a postgres configuration file are present. To start an embedded PostgreSQL using connection parameters from the
-environment variables or the configuration file add `embed_postgres=true` to the command line
+Envs or environment variables or the configuration file add `embed_postgres=true` to the command line
 (`java -jar mod-notify-fat.jar embed_postgres=true`). Use PostgresClient.setEmbeddedPort(int) to overwrite the port.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
@@ -1435,14 +1434,14 @@ Entries in the json file to be aware of:
 
 For each **table** in `tables` property:
 
-1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
+1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code. Maximum length is 49 characters.
 2. `generateId` - No longer supported.  This functionality is not stable in Pgpool-II see https://www.pgpool.net/docs/latest/en/html/restrictions.html.  The solution is to generate a UUID in java in the same manner as https://github.com/folio-org/raml-module-builder/blob/v23.11.0/domain-models-runtime/src/main/java/org/folio/rest/persist/PgUtil.java#L358
 3. `fromModuleVersion` - this field indicates the version in which the table was created / updated in. When a tenant update is requested - only versions older than the indicated version will generate the declared table. This ensures that if a module upgrades from an older version, the needed tables will be generated for it, however, subsequent upgrades from versions equal or later than the version indicated for the table will not re-generate the table.
     * Note that this is enforced for all tables, views, indexes, FK, triggers, etc. (via the `IF NOT EXISTS` sql Postgres statement)
 4. `mode` - should be used only to indicate `delete`
 5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
 6. `likeIndex` - indicate which fields in the json will be queried using the `LIKE`. Needed for fields that will be faceted on.
-    * `fieldName` the field name in the json for which to create the index
+    * `fieldName` the field name in the json for which to create the index, maximum name length is 49 characters.
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. Defaults to false.
     *  `removeAccents` - normalize accents or leave accented chars as is. Defaults to true.

@@ -38,11 +38,10 @@ public class PostgresClientITBase {
     vertx = VertxUtils.getVertxWithExceptionHandler();
     dropSchemaAndRole(context);
     executeSuperuser(context,
-        "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public",
         "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN",
         "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema,
         "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
-    LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema + ".");
+    LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
   }
 
   @BeforeClass

@@ -19,7 +19,14 @@ public class Field {
     return fieldName;
   }
 
+  /**
+   * Set the field name, for example setFieldName("status.name").
+   * @throws IllegalArgumentException if fieldName length exceeds 49.
+   */
   public void setFieldName(String fieldName) {
+    if (fieldName.length() > 49) {
+      throw new IllegalArgumentException("Maximum fieldName length is 49: " + fieldName);
+    }
     this.fieldName = fieldName;
   }
 

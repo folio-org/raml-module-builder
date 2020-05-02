@@ -1168,4 +1168,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void sqlInjectionInField(String testcase) {
     select(testcase);
   }
+
+  @Test(expected = FieldException.class)
+  public void validateFieldName() throws FieldException {
+    new CQL2PgJSON("foo'bar");
+  }
 }
