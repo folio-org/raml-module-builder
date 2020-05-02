@@ -187,6 +187,7 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     Cql2SqlUtil.appendCql2tsquery(sb, "abc d\\*f g\\?i j\\kl");
     assertThat(sb.toString(), is("'abc d*f g?i jkl'"));
   }
+
   private String selectTsvector(String field, boolean removeAccents) {
     return removeAccents ? "SELECT to_tsvector('simple', f_unaccent('" + field.replace("'", "''") + "')) @@ "
                          : "SELECT to_tsvector('simple', '" + field.replace("'", "''") + "') @@ ";
@@ -231,13 +232,18 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     assertCql2tsqueryPhrase(field, query, false, result);
   }
 
-  String [] cql2tsqueryParams() {
-    return new String [] {
+  List<String> cql2tsqueryParams() {
+    return Arrays.asList(
         "abc",
         "abc*",
         " abc ",
         "  abc  ",
         "   abc   ",
+        "\\ abc\\ ",
+        "\\ \\ abc\\ \\ ",
+        "\\ \\ \\ abc\\ \\ \\ ",
+        "\\  abc\\  ",
+        " \\ abc \\ ",
         "abc  xyz",
         "abc   xyz",
         "a b c",
@@ -264,7 +270,7 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
         "abc\\*\\*def",
         "abc\\\\def",      // masked \ backslash
         "abc<->def"        // quoting of <-> phrase operator
-    };
+    );
   }
 
   @Test
@@ -441,8 +447,8 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     assertCql2tsqueryPhrase(field, query, result);
   }
 
-  String [] cql2tsqueryExceptionParams() {
-    return new String [] {
+  List<String> cql2tsqueryExceptionParams() {
+    return Arrays.asList(
       "?",
       "? abc",
       "?abc",
@@ -454,7 +460,7 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
       "*abc",
       "ab*c",
       "abc *."
-    };
+    );
   }
 
   @Test(expected = QueryValidationException.class)
