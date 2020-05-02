@@ -130,10 +130,8 @@ The framework consists of a number of tools:
 
 ## Upgrading
 
-See separate [upgrading notes](doc/upgrading.md).
-
-Note: This version of the README is for RMB v20+ version.
-If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.
+See separate [upgrading notes](doc/upgrading.md) how to upgrade an RMB based module to
+a new RMB version.
 
 ## Overview
 
