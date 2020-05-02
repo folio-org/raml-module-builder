@@ -250,6 +250,14 @@ public final class Cql2SqlUtil {
   }
 
   /**
+   * @return true if s has " " or "\\ " (one backslash, one space) at pos, false otherwise.
+   */
+  private static boolean isSpace(String s, int pos) {
+    return (s.length() > pos && s.charAt(pos) == ' ')
+        || (s.length() > pos + 1 && s.charAt(pos) == '\\' && s.charAt(pos + 1) == ' ');
+  }
+
+  /**
    * Convert a CQL string to an SQL tsquery where each word matches in any order.
    *
    * @param s CQL string without leading or trailing double quote
@@ -271,7 +279,20 @@ public final class Cql2SqlUtil {
     boolean star = false;
 
     final int length = s.length();
-    for (int i=0; i<length; i++) {
+    int i = 0;
+    // skip space and backslashed space
+    for ( ; i<length; i++) {
+      char c = s.charAt(i);
+      if (c == ' ') {
+        // skip space
+        backslash = false;
+      } else if (c == '\\') {
+        backslash = true;
+      } else {
+        break;
+      }
+    }
+    for ( ; i<length; i++) {
       char c = s.charAt(i);
       switch (c) {
       case '\\':
@@ -301,8 +322,13 @@ public final class Cql2SqlUtil {
         backslash = false;
         break;
       case ' ':
-        if (i>0 && s.charAt(i-1) == ' ') {
-          // skip space if previous character already was a space
+        backslash = false;
+        if (isSpace(s, i + 1)) {
+          // skip until the last space
+          break;
+        }
+        if (i + 1 == length) {
+          // don't create new empty word at the end
           break;
         }
         if (star) {
@@ -313,7 +339,6 @@ public final class Cql2SqlUtil {
         }
         t.append(removeAccents ? "&& to_tsquery('simple', f_unaccent('''"
                                : "&& to_tsquery('simple', ('''");
-        backslash = false;
         break;
       case '&':   // Replace & by , so that we can replace all tsquery & by <-> for phrase search.
         // Replace regular single quote and all other characters that f_unaccent converts into
