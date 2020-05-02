@@ -1,5 +1,7 @@
 package org.folio.rest.persist;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
@@ -1005,6 +1007,24 @@ public class PgUtilIT {
     PgUtil.setOptimizedSqlSize(oldSize);
     assertThat(PgUtil.getOptimizedSqlSize(), is(oldSize));
   }
+
+    @Test
+  public void getTotalRecordsTest() {
+    assertNull(PgUtil.getTotalRecords(10, null, 0, 0));
+
+    assertEquals((Integer)20, PgUtil.getTotalRecords(10, 20, 0, 0));
+
+    assertEquals((Integer)20, PgUtil.getTotalRecords(10, 20, 0, 10));
+
+    assertEquals((Integer)10, PgUtil.getTotalRecords(0, 20, 10, 20));
+
+    assertEquals((Integer)20, PgUtil.getTotalRecords(10, 30, 10, 20));
+
+    assertEquals((Integer)30, PgUtil.getTotalRecords(10, 20, 20, 10));
+
+    assertEquals((Integer) 25, PgUtil.getTotalRecords(5, 20, 20, 10));
+  }
+
 
   private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
     Async async = testContext.async();
