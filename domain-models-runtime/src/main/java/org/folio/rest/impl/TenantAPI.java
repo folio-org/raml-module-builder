@@ -190,10 +190,17 @@ public class TenantAPI implements Tenant {
     return TABLE_JSON;
   }
 
-  static class NoSchemaJsonException extends RuntimeException {
+  public static class NoSchemaJsonException extends RuntimeException {
   }
 
-  String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity)
+  /**
+   * @param tenantExists false for initial installation, true for upgrading
+   * @param tenantAttributes parameters like module version that may influence generated SQL
+   * @return the SQL commands to create or upgrade the tenant's schema
+   * @throws NoSchemaJsonException when templates/db_scripts/schema.json doesn't exist
+   * @throws TemplateException when processing templates/db_scripts/schema.json fails
+   */
+  public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes tenantAttributes)
       throws IOException, TemplateException {
 
     InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(getTablePath());
@@ -205,11 +212,11 @@ public class TenantAPI implements Tenant {
 
     TenantOperation op = TenantOperation.CREATE;
     String previousVersion = null;
-    String newVersion = entity == null ? null : entity.getModuleTo();
+    String newVersion = tenantAttributes == null ? null : tenantAttributes.getModuleTo();
     if (tenantExists) {
       op = TenantOperation.UPDATE;
-      if (entity != null) {
-        previousVersion = entity.getModuleFrom();
+      if (tenantAttributes != null) {
+        previousVersion = tenantAttributes.getModuleFrom();
       }
     }
 
