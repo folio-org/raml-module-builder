@@ -127,7 +127,7 @@ public class CQL2PgJSON {
       throw new FieldException( "fields list must not be empty" );
     this.jsonFields = new ArrayList<>();
     for (String field : fields) {
-      this.jsonFields.add(trimNotEmpty(field));
+      this.jsonFields.add(trimValidateFieldName(field));
     }
     if (this.jsonFields.size() == 1) {
       this.jsonField = this.jsonFields.get(0);
@@ -204,7 +204,7 @@ public class CQL2PgJSON {
   }
 
   private void doInit(String field, String dbSchemaPath) throws FieldException {
-    jsonField = trimNotEmpty(field);
+    jsonField = trimValidateFieldName(field);
     loadDbSchema(dbSchemaPath);
   }
 
@@ -239,20 +239,22 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Return field.trim(). Throw FieldException if field is null or
-   * field.trim() is empty.
+   * Validate and return field.trim().
    *
    * @param field  the field name to trim
    * @return trimmed field
-   * @throws FieldException  if field is null or the trimmed field name is empty
+   * @throws FieldException  if field is null or the trimmed field name is empty or contains a single quote.
    */
-  private String trimNotEmpty(String field) throws FieldException {
+  private String trimValidateFieldName(String field) throws FieldException {
     if (field == null) {
       throw new FieldException("a field name must not be null");
     }
     String fieldTrimmed = field.trim();
     if (fieldTrimmed.isEmpty()) {
       throw new FieldException("a field name must not be empty");
+    }
+    if (fieldTrimmed.indexOf('\'') != -1) {
+      throw new FieldException("a field name must not contain a single quote");
     }
     return fieldTrimmed;
   }
@@ -364,6 +366,7 @@ public class CQL2PgJSON {
     return wrapper.replace("$", term);
   }
 
+  @SuppressWarnings("squid:S135")  // suppress "reduce to one continue in for loop"
   private SqlSelect toSql(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
     String where = pg(node.getSubtree());

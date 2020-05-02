@@ -85,4 +85,15 @@ class Cql2PgUtilTest {
     Cql2PgUtil.appendQuoted("u" + s + "v", 1, 1 + s.length(), y);
     assertThat(y.toString(), is("y " + quoted));
   }
+
+  @ParameterizedTest
+  @CsvSource({
+    "false, false, x",
+    "true,  false, lower(x)",
+    "false, true,  f_unaccent(x)",
+    "true,  true,  lower(f_unaccent(x))",
+  })
+  void wrapInLowerUnaccent(boolean lower, boolean unaccent, String expected) {
+    assertThat(Cql2PgUtil.wrapInLowerUnaccent("x", lower, unaccent), is(expected));
+  }
 }
