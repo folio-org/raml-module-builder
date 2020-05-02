@@ -242,6 +242,11 @@ public class SchemaMakerIT extends PostgresClientITBase {
   }
 
   @Test
+  public void f_unaccent_combining_character(TestContext context) {
+    assertSchemaSelectSingle(context, "SELECT f_unaccent(E'a\\u0308 and a\\u0308')", "a and a");
+  }
+
+  @Test
   public void concat_array_object_values(TestContext context) {
     assertSchemaSelectSingle(context, String.format(
         "SELECT concat_array_object_values('%s'::jsonb, 'f')",
