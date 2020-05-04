@@ -2816,8 +2816,7 @@ public class PostgresClient {
     return tuple;
   }
 
-  private static JsonArray rowSetToJsonArray(RowSet rowSet) {
-    List<JsonArray> list = new LinkedList<>();
+  private static JsonArray rowSetToJsonArray(RowSet<Row> rowSet) {
     RowIterator<Row> iterator = rowSet.iterator();
     JsonArray ar = new JsonArray();
     if (iterator.hasNext()) {
@@ -3137,7 +3136,6 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(res.cause()));
         return;
       }
-      SQLConnection tx = res.result();
       execute(res, sql, params, result -> {
         if (result.failed()) {
           rollbackTx(res, rollback -> replyHandler.handle(result));
