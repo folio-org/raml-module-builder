@@ -404,7 +404,7 @@ public class PostgresClient {
   /**
    * @return this instance's AsyncSQLClient that can connect to Postgres
    */
-  public PgPool getClient() {
+  PgPool getClient() {
     return client;
   }
 

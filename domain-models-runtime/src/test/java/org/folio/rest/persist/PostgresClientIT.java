@@ -158,55 +158,55 @@ public class PostgresClientIT {
   @Test
   public void closeClient(TestContext context) {
     PostgresClient c = PostgresClient.getInstance(vertx);
-    context.assertNotNull(c.getClient(), "getClient()");
+    context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
     c.closeClient(context.asyncAssertSuccess());
-    context.assertNull(c.getClient(), "getClient()");
+    context.assertNull(PostgresClientHelper.getClient(c), "getClient()");
   }
 
   @Test
   public void closeClientTenant(TestContext context) {
     PostgresClient c = PostgresClient.getInstance(vertx, TENANT);
-    context.assertNotNull(c.getClient(), "getClient()");
+    context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
     c.closeClient(context.asyncAssertSuccess());
-    context.assertNull(c.getClient(), "getClient()");
+    context.assertNull(PostgresClientHelper.getClient(c), "getClient()");
   }
 
   @Test
   public void closeClientTwice(TestContext context) {
     PostgresClient c = PostgresClient.getInstance(vertx);
-    context.assertNotNull(c.getClient(), "getClient()");
+    context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
     c.closeClient(context.asyncAssertSuccess());
-    context.assertNull(c.getClient(), "getClient()");
+    context.assertNull(PostgresClientHelper.getClient(c), "getClient()");
     c.closeClient(context.asyncAssertSuccess());
-    context.assertNull(c.getClient(), "getClient()");
+    context.assertNull(PostgresClientHelper.getClient(c), "getClient()");
   }
 
   @Test
   public void closeClientTwiceTenant(TestContext context) {
     PostgresClient c = PostgresClient.getInstance(vertx, TENANT);
-    context.assertNotNull(c.getClient(), "getClient()");
+    context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
     c.closeClient(context.asyncAssertSuccess());
-    context.assertNull(c.getClient(), "getClient()");
+    context.assertNull(PostgresClientHelper.getClient(c), "getClient()");
     c.closeClient(context.asyncAssertSuccess());
-    context.assertNull(c.getClient(), "getClient()");
+    context.assertNull(PostgresClientHelper.getClient(c), "getClient()");
   }
 
   @Test
   public void closeClientGetInstance(TestContext context) {
     PostgresClient c = PostgresClient.getInstance(vertx, TENANT);
-    context.assertNotNull(c.getClient(), "getClient()");
+    context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
     c.closeClient(context.asyncAssertSuccess());
-    context.assertNull(c.getClient(), "getClient()");
+    context.assertNull(PostgresClientHelper.getClient(c), "getClient()");
     c = PostgresClient.getInstance(vertx, TENANT);
-    context.assertNotNull(c.getClient(), "getClient()");
+    context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
     c.closeClient(context.asyncAssertSuccess());
-    context.assertNull(c.getClient(), "getClient()");
+    context.assertNull(PostgresClientHelper.getClient(c), "getClient()");
   }
 
   @Test
   public void closeAllClients(TestContext context) {
     PostgresClient c = PostgresClient.getInstance(vertx);
-    context.assertNotNull(c.getClient(), "getClient()");
+    context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
     PostgresClient.closeAllClients();
   }
 
