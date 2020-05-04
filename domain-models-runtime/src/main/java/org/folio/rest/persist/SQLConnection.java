@@ -1,7 +1,5 @@
 package org.folio.rest.persist;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 
