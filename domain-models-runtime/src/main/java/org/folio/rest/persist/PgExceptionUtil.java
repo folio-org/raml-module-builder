@@ -67,13 +67,16 @@ public final class PgExceptionUtil {
 
   /**
    * If this throwable is an Exception thrown because of some PostgreSQL data
-   * restriction (foreign key violation, invalid uuid, duplicate key) then
-   * return some detail text of that Exception, otherwise return null.
+   * restriction (foreign key violation, invalid uuid, duplicate key) or a user error
+   * Eg invalid UUID, then return some detail text of that Exception, otherwise return null.
    *
    * @param throwable - where to read the text from
-   * @return detail text of the violation, or null if some other Exception
+   * @return detail text of the violation if user error, or null if some other Exception (server error)
    */
   public static String badRequestMessage(Throwable throwable) {
+    if (throwable instanceof IllegalArgumentException) {
+      return throwable.getMessage();
+    }
     Map<Character,String> fields = getBadRequestFields(throwable);
     if (fields == null) {
       return null;
