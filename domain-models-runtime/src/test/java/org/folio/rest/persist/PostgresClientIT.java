@@ -997,7 +997,6 @@ public class PostgresClientIT {
 
   @Test
   public void saveBatchXTrans2(TestContext context) {
-    log.fatal("started saveBatchXTrans2");
     List<Object> list = new LinkedList<>();
     list.add(context);
     postgresClient = createFoo(context);
@@ -1253,7 +1252,6 @@ public class PostgresClientIT {
     Async async = context.async();
     List<Object> list = Collections.emptyList();
     createFoo(context).saveBatch(FOO, list, res -> {
-      log.fatal("saveBatchEmpty 2");
       assertSuccess(context, res);
       context.assertEquals(null, res.result());
       async.complete();
@@ -2277,11 +2275,8 @@ public class PostgresClientIT {
   @Test
   public void executeTransParamSyntaxError(TestContext context) {
     postgresClient = createFoo(context);
-    log.fatal("executeTransParamSyntaxError 0");
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      log.fatal("executeTransParamSyntaxError 1");
       postgresClient.execute(trans, "'", new JsonArray(), context.asyncAssertFailure(execute -> {
-        log.fatal("executeTransParamSyntaxError 2");
         postgresClient.rollbackTx(trans, context.asyncAssertSuccess());
       }));
     }));
