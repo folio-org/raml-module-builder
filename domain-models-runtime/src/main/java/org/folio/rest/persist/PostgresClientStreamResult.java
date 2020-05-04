@@ -100,10 +100,13 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
    * @param cause
    */
   void fireExceptionHandler(Throwable cause) {
-    if (!failed && exceptionHandler != null) {
-      exceptionHandler.handle(cause);
+    if (failed) {
+      return;
     }
     failed = true;
+    if (exceptionHandler != null) {
+      exceptionHandler.handle(cause);
+    }
   }
 
   @Override
