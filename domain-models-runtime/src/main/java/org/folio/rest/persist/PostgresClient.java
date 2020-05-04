@@ -1748,7 +1748,7 @@ public class PostgresClient {
       Transaction tx = connection.begin();
       RowStream<Row> stream = pq.createStream(50, Tuple.tuple());
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
-      doStreamRowResults(stream, clazz, facets, tx, resultInfo, queryHelper, streamResult, replyHandler);
+      doStreamRowResults(stream, clazz, facets, tx, queryHelper, streamResult, replyHandler);
     });
   }
 
@@ -1762,10 +1762,11 @@ public class PostgresClient {
   }
 
   <T> void doStreamRowResults(RowStream<Row> sqlRowStream, Class<T> clazz,
-    List<FacetField> facets, Transaction tx, ResultInfo resultInfo, QueryHelper queryHelper,
+    List<FacetField> facets, Transaction tx, QueryHelper queryHelper,
     PostgresClientStreamResult<T> streamResult,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
+    ResultInfo resultInfo = streamResult.resultInto();
     Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
     ResultsHelper<T> resultsHelper = new ResultsHelper<>(clazz);
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
