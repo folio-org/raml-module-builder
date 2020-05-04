@@ -342,7 +342,8 @@ public class SchemaMakerIT extends PostgresClientITBase {
   @Test
   public void replacePublicSchemaFunctions(TestContext context) throws InterruptedException {
     runSchema(context, TenantOperation.CREATE, "schema.json");
-    String indexdef = "CREATE INDEX foo ON " + schema + ".test_tenantapi USING btree (public.f_unaccent((jsonb ->> 'foo'::text)))";
+    String indexdef = "CREATE INDEX foo ON " + schema + ".test_tenantapi USING btree "
+        + "(COALESCE(public.f_unaccent((jsonb ->> 'foo'::text)), public.f_unaccent((jsonb ->> 'bar'::text))))";
     String sql = "CREATE OR REPLACE FUNCTION public.f_unaccent(text) RETURNS text AS 'SELECT $1' LANGUAGE sql;"
         + "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"29.1.0\"}'::jsonb;"
         + indexdef;
