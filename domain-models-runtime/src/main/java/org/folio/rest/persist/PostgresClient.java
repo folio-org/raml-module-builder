@@ -22,7 +22,6 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 
 import io.vertx.core.AsyncResult;
@@ -1752,13 +1751,11 @@ public class PostgresClient {
     });
   }
 
-  private List<String> populateColumnNames(Row row)
+  private static List<String> getColumnNames(Row row)
   {
-    int i = 0;
     List<String> columnNames = new ArrayList<>();
-    while (row.getColumnName(i) != null) {
+    for (int i = 0; row.getColumnName(i) != null; i++) {
       columnNames.add(row.getColumnName(i));
-      i++;
     }
     return columnNames;
   }
@@ -1777,7 +1774,7 @@ public class PostgresClient {
       try {
         // for first row, get column names
         if (resultsHelper.offset == 0) {
-          List<String> columnNames = populateColumnNames(r);
+          List<String> columnNames = getColumnNames(r);
           getExternalColumnSetters(columnNames,
               resultsHelper.clazz, isAuditFlavored, externalColumnSetters);
         }
