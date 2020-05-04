@@ -491,7 +491,7 @@ public class PgUtilIT {
   public void postInvalidId(TestContext testContext) {
     PgUtil.post("users", new User().withUsername("Kiri").withId("someInvalidUuid"),
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
-        asyncAssertSuccess(testContext, 400, "Invalid UUID string: someInvalidUuid"));
+        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
   }
 
   @Test

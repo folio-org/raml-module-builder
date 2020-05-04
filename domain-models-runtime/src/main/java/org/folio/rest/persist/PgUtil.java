@@ -856,6 +856,10 @@ public final class PgUtil {
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
 
       String id = initId(entity);
+      if (! UuidUtil.isUuid(id)) {
+        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
+        return;
+      }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.saveAndReturnUpdatedEntity(table, id, entity, reply -> {
         if (reply.failed()) {
