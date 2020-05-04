@@ -2224,8 +2224,8 @@ public class PostgresClient {
    * @param replyHandler  the result after applying function
    */
   private <R> void getById(String table, String id,
-      FunctionWithException<String, R, Exception> function,
-      Handler<AsyncResult<R>> replyHandler) {
+                           FunctionWithException<String, R, Exception> function,
+                           Handler<AsyncResult<R>> replyHandler) {
     client.getConnection(res -> {
       if (res.failed()) {
         replyHandler.handle(Future.failedFuture(res.cause()));
@@ -2235,25 +2235,29 @@ public class PostgresClient {
       String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
           + FROM + schemaName + DOT + table
           + WHERE + ID_FIELD + "= $1";
-      connection.preparedQuery(sql, Tuple.of(UUID.fromString(id)), query -> {
-        connection.close();
-        if (query.failed()) {
-          replyHandler.handle(Future.failedFuture(query.cause()));
-          return;
-        }
-        RowSet<Row> result = query.result();
-        if (result.size() == 0) {
-          replyHandler.handle(Future.succeededFuture(null));
-          return;
-        }
-        try {
-          String entity = result.iterator().next().getValue(0).toString();
-          R r = function.apply(entity);
-          replyHandler.handle(Future.succeededFuture(r));
-        } catch (Exception e) {
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      });
+      try {
+        connection.preparedQuery(sql, Tuple.of(UUID.fromString(id)), query -> {
+          connection.close();
+          if (query.failed()) {
+            replyHandler.handle(Future.failedFuture(query.cause()));
+            return;
+          }
+          RowSet<Row> result = query.result();
+          if (result.size() == 0) {
+            replyHandler.handle(Future.succeededFuture(null));
+            return;
+          }
+          try {
+            String entity = result.iterator().next().getValue(0).toString();
+            R r = function.apply(entity);
+            replyHandler.handle(Future.succeededFuture(r));
+          } catch (Exception e) {
+            replyHandler.handle(Future.failedFuture(e));
+          }
+        });
+      } catch (Exception e) {
+        replyHandler.handle(Future.failedFuture(e));
+      }
     });
   }
 

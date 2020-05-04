@@ -399,7 +399,7 @@ public class PgUtilIT {
   public void getByIdInvalidUuid(TestContext testContext) {
     PgUtil.getById("users", User.class, "invalidUuid", okapiHeaders, vertx.getOrCreateContext(),
         Users.GetUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 404, "Invalid UUID format"));
+        asyncAssertSuccess(testContext, 404, "Invalid UUID string: invalidUuid"));
   }
 
   @Test
@@ -491,7 +491,7 @@ public class PgUtilIT {
   public void postInvalidId(TestContext testContext) {
     PgUtil.post("users", new User().withUsername("Kiri").withId("someInvalidUuid"),
         okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
-        asyncAssertSuccess(testContext, 400, "Invalid UUID format"));
+        asyncAssertSuccess(testContext, 400, "Invalid UUID string: someInvalidUuid"));
   }
 
   @Test

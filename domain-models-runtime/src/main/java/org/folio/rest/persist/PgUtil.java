@@ -407,6 +407,7 @@ public final class PgUtil {
       Method respond204 = clazz.getMethod(RESPOND_204);
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
+
       if (! UuidUtil.isUuid(id)) {
         asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
         return;
@@ -719,14 +720,15 @@ public final class PgUtil {
     try {
       Method respond200 = responseDelegateClass.getMethod(RESPOND_200_WITH_APPLICATION_JSON, clazz);
       Method respond404 = responseDelegateClass.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
-      if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, responseDelegateClass, respond404, respond500));
-        return;
-      }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.getById(table, id, clazz, reply -> {
         if (reply.failed()) {
-          asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
+          String message = PgExceptionUtil.badRequestMessage(reply.cause());
+          if (message != null) {
+            asyncResultHandler.handle(response(message, respond404, respond500));
+          } else {
+            asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
+          }
           return;
         }
         if (reply.result() == null) {
@@ -854,10 +856,6 @@ public final class PgUtil {
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
 
       String id = initId(entity);
-      if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
-        return;
-      }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.saveAndReturnUpdatedEntity(table, id, entity, reply -> {
         if (reply.failed()) {

@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThat;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import io.vertx.pgclient.PgException;
 import org.folio.rest.testing.UtilityClassTester;
@@ -77,6 +78,16 @@ public class PgExceptionUtilTest {
   private void assertString(String sqlstate, String detail, String message, String expected) {
     String actual = PgExceptionUtil.badRequestMessage(new PgException(message, null, sqlstate, detail));
     assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void testBadUUID() {
+    try {
+      UUID t = UUID.fromString("bad-uid");
+    } catch (Exception ex) {
+      String actual = PgExceptionUtil.badRequestMessage(ex);
+      assertThat(actual, is("Invalid UUID string: bad-uid"));
+    }
   }
 
 }
