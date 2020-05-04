@@ -29,6 +29,7 @@ public class EnvsTest {
     // we dropped support for dot form. check that it is ignored
     map.put("db.username", "superwoman");
     map.put("DB.USERNAME", "superwoman");
+    map.put("DB_RUNNER_PORT", "5444");  // not used by PostgresClient
     Envs.setEnv(Collections.unmodifiableMap(map));
   }
 
@@ -79,6 +80,17 @@ public class EnvsTest {
   }
 
   @Test
+  public void set5Envs() {
+    Envs.setEnv("127.0.0.1", 5432, "foo", "bar", "devnull");
+    assertEquals("127.0.0.1", Envs.getEnv(Envs.DB_HOST));
+    assertEquals("5432", Envs.getEnv(Envs.DB_PORT));
+    assertEquals("foo", Envs.getEnv(Envs.DB_USERNAME));
+    assertEquals("bar", Envs.getEnv(Envs.DB_PASSWORD));
+    assertEquals("devnull", Envs.getEnv(Envs.DB_DATABASE));
+    assertEquals(null, Envs.getEnv(Envs.DB_MAXPOOLSIZE));
+  }
+
+  @Test
   public void numberFormatException() {
     Envs.setEnv(Collections.singletonMap("DB_PORT", "qqq"));
 
@@ -99,5 +111,4 @@ public class EnvsTest {
 
     Envs.allDBConfs();
   }
-
 }

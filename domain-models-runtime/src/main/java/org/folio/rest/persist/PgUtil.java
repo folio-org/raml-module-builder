@@ -18,30 +18,30 @@ import io.vertx.sqlclient.RowSet;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import org.apache.commons.lang.StringEscapeUtils;
-import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.cql2pgjson.exception.FieldException;
-import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.rest.jaxrs.model.Diagnostic;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.ResultInfo;
-import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
-import org.folio.rest.persist.cql.CQLWrapper;
-import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.util.UuidUtil;
+import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.jaxrs.model.Diagnostic;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.facets.FacetManager;
+import org.folio.rest.jaxrs.model.ResultInfo;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -469,7 +469,8 @@ public final class PgUtil {
   }
 
   private static void streamTrailer(HttpServerResponse response, ResultInfo resultInfo) {
-    response.end(String.format("],%n  \"resultInfo\": %s%n}", Json.encode(resultInfo)));
+    response.write(String.format("],%n  \"totalRecords\": %d,%n", resultInfo.getTotalRecords()));
+    response.end(String.format(" \"resultInfo\": %s%n}", Json.encode(resultInfo)));
   }
 
   private static <T> void streamGetResult(PostgresClientStreamResult<T> result,
@@ -478,7 +479,6 @@ public final class PgUtil {
     response.setChunked(true);
     response.putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     response.write("{\n");
-    response.write(String.format("  \"totalRecords\": %d,%n", result.resultInto().getTotalRecords()));
     response.write(String.format("  \"%s\": [%n", element));
     AtomicBoolean first = new AtomicBoolean(true);
     result.exceptionHandler(res -> {
@@ -1081,7 +1081,7 @@ public final class PgUtil {
             asyncResultHandler.handle(response(cause.getMessage(), respond500, respond500));
             return;
           }
-          C collection = collection(clazz, collectionClazz, reply.result(), limit);
+          C collection = collection(clazz, collectionClazz, reply.result(), offset, limit);
           asyncResultHandler.handle(response(collection, respond200, respond500));
         } catch (Exception e) {
           logger.error(e.getMessage(), e);
@@ -1098,11 +1098,12 @@ public final class PgUtil {
     }
   }
 
-  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, RowSet<Row> resultSet, int limit)
+  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, RowSet<Row> resultSet, int offset, int limit)
       throws ReflectiveOperationException, IOException {
 
     int totalRecords = 0;
-    List<T> recordList = new ArrayList<>(resultSet.size());
+    int resultSize = resultSet.size();
+    List<T> recordList = new ArrayList<>(resultSize);
     RowIterator<Row> iterator = resultSet.iterator();
     while (iterator.hasNext()) {
       Row row = iterator.next();
@@ -1110,11 +1111,7 @@ public final class PgUtil {
       recordList.add(OBJECT_MAPPER.readValue(jsonb, clazz));
       totalRecords = row.getInteger("count");
     }
-    // full table scan was stopped without total records calculation.
-    if (totalRecords == 0 && resultSet.size() == limit) {
-      totalRecords = 999999999;  // unknown total
-    }
-
+    totalRecords = PostgresClient.getTotalRecords(resultSize, totalRecords, offset, limit);
     return collection(collectionClazz, recordList, totalRecords);
   }
 

@@ -86,7 +86,7 @@ public class TenantLoadingTest {
     ids.clear();
     HttpServerOptions so = new HttpServerOptions().setHandle100ContinueAutomatically(true);
     vertx.createHttpServer(so)
-      .requestHandler(router::accept)
+      .requestHandler(router)
       .listen(
         port,
         result -> {

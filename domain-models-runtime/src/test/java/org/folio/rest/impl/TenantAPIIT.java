@@ -315,7 +315,7 @@ public class TenantAPIIT {
   private void postWithSqlFileException(TestContext context, Class<? extends Exception> exceptionClass) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity)
+      public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity)
           throws IOException, TemplateException {
         switch (exceptionClass.getName()) {
         case "java.io.IOException": throw new IOException();

@@ -1,5 +1,7 @@
 package org.folio.rest.persist;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
@@ -121,7 +123,7 @@ public class PgUtilIT {
     execute(context, "CREATE TRIGGER idusername BEFORE INSERT OR UPDATE ON " + schema + ".users "
                      + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".dummy();");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
-    LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema + ".");
+    LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
   }
 
   private static void execute(TestContext context, String sql) {

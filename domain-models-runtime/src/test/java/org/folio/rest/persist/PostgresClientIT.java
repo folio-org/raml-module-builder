@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -298,15 +299,14 @@ public class PostgresClientIT {
   private PostgresClient createTable(TestContext context,
       String tenant, String table, String tableDefinition) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
-    execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
     execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
-    execute(context, "CREATE TABLE " + schema + "." + table + " (" + tableDefinition + ");");
-    execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
     PostgresClient postgresClient = postgresClient(tenant);
     LoadGeneralFunctions.loadFuncs(context, postgresClient, "");
+    execute(context, "CREATE TABLE " + schema + "." + table + " (" + tableDefinition + ");");
+    execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
     return postgresClient;
   }
 
@@ -2978,7 +2978,7 @@ public class PostgresClientIT {
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
     postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, resultInfo,
-      streamResult, context.asyncAssertSuccess(sr -> {
+      new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
         });
@@ -3579,4 +3579,22 @@ public class PostgresClientIT {
       }
     }
   }
+
+  @Test
+  public void getTotalRecordsTest() {
+    assertNull(PostgresClient.getTotalRecords(10, null, 0, 0));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 0));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 10));
+
+    assertEquals((Integer)10, PostgresClient.getTotalRecords(0, 20, 10, 20));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 30, 10, 20));
+
+    assertEquals((Integer)30, PostgresClient.getTotalRecords(10, 20, 20, 10));
+
+    assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
+  }
+
 }

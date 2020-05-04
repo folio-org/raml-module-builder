@@ -37,6 +37,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 29.5
 
+* [RMB-587](https://issues.folio.org/browse/RMB-587) Write access to `public` schema has been removed, it is no longer in `search_path` and should be used for Postgres extensions only, prepend `public.` when calling their methods and operators. Example: RMB replaces `gin_trgm_ops` by `public.gin_trgm_ops` in indexes that RMB maintains.
 * [RMB-588](https://issues.folio.org/browse/RMB-588) Consider removing
   `<directory>src/main/resources</directory> <filtering>true</filtering>`
   from pom.xml (or use a more specific directory tree). For details see [FOLIO-2548](https://issues.folio.org/browse/FOLIO-2548).

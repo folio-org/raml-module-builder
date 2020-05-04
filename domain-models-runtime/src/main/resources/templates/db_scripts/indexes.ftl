@@ -45,7 +45,7 @@
     BEGIN
       PERFORM ${myuniversity}_${mymodule}.rmb_internal_index('${table.tableName}_${indexes.fieldName}_idx_gin', '${indexes.tOps.name()}',
       'CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_gin ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN '
-      || $rmb$((${indexes.getFinalSqlExpression(table.tableName)}) gin_trgm_ops)$rmb$
+      || $rmb$((${indexes.getFinalSqlExpression(table.tableName)}) public.gin_trgm_ops)$rmb$
       <#if indexes.whereClause??>|| $rmb$ ${indexes.whereClause}$rmb$</#if>);
     END $do$;
   </#list>

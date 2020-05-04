@@ -1,5 +1,6 @@
 package org.folio.rest.persist;
 
+import io.vertx.core.Promise;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -11,7 +12,6 @@ import java.util.Map;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
@@ -162,7 +162,7 @@ public class PostgresRunner extends AbstractVerticle {
   }
 
   @Override
-  public void start(Future<Void> startFuture) {
+  public void start(Promise<Void> startPromise) {
     log.debug("start(Future)");
 
     int runnerPort   = config().getInteger("runnerPort");
@@ -170,7 +170,7 @@ public class PostgresRunner extends AbstractVerticle {
 
     if (isPortInUse(runnerPort)) {
       undeploy();
-      startFuture.fail(new IOException("Quitting because PostgresRunnerPort " + runnerPort + " is already in use."));
+      startPromise.fail(new IOException("Quitting because PostgresRunnerPort " + runnerPort + " is already in use."));
       return;
     }
 
@@ -184,14 +184,14 @@ public class PostgresRunner extends AbstractVerticle {
               config().getString(USERNAME),
               config().getString(PASSWORD));
           future.complete();
-        }, result -> whenPostgresRuns(startFuture));
+        }, result -> whenPostgresRuns(startPromise));
       } else {
-        whenPostgresRuns(startFuture);
+        whenPostgresRuns(startPromise);
       }
     });
   }
 
-  public void whenPostgresRuns(Future<Void> startFuture) {
+  public void whenPostgresRuns(Promise<Void> startPromise) {
     log.debug("whenPostgresRuns(Future)");
 
     postgresRuns = true;
@@ -205,42 +205,42 @@ public class PostgresRunner extends AbstractVerticle {
     if (! postRequests.isEmpty()) {
       undeploy();
     }
-    startFuture.complete();
+    startPromise.complete();
   }
 
   @Override
-  public void stop(Future<Void> stopFuture) throws InterruptedException {
+  public void stop(Promise<Void> stopPromise) throws Exception {
     log.debug("stop(Future)");
 
-    Future<Void> serverFuture = Future.future();
-    Future<Void> postgresFuture = Future.future();
+    Promise<Void> serverPromise = Promise.promise();
+    Promise<Void> postgresPromise = Promise.promise();
 
     if (runnerServer == null) {
-      serverFuture.complete();
+      serverPromise.complete();
     } else {
-      runnerServer.close(serverFuture.completer());
+      runnerServer.close(serverPromise.future());
       runnerServer = null;
     }
 
     if (postgresProcess == null) {
-      postgresFuture.complete();
+      postgresPromise.complete();
     } else {
       PostgresProcess oldPostgresProcess = postgresProcess;
       postgresProcess = null;
       vertx.executeBlocking(future -> {
         oldPostgresProcess.stop();
         future.complete();
-      }, h -> postgresFuture.complete());
+      }, h -> postgresPromise.complete());
     }
 
     Handler<AsyncResult<Void>> handler = h -> {
-      if (serverFuture.isComplete() && postgresFuture.isComplete()) {
+      if (serverPromise.future().isComplete() && postgresPromise.future().isComplete()) {
         log.debug("stop(Future) complete");
-        stopFuture.complete();
+        stopPromise.complete();
       }
     };
-    serverFuture.setHandler(handler);
-    postgresFuture.setHandler(handler);
+    serverPromise.future().onComplete(handler);
+    postgresPromise.future().onComplete(handler);
   }
 
   @SuppressWarnings("squid:S1166")  // "Exception handlers should preserve the original exceptions"
@@ -277,7 +277,7 @@ public class PostgresRunner extends AbstractVerticle {
       }
     });
 
-    runnerServer.requestHandler(router::accept).listen(port, listenHandler);
+    runnerServer.requestHandler(router).listen(port, listenHandler);
   }
 
   PostgresProcess startPostgres(PostgresConfig postgresConfig) throws IOException {

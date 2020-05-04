@@ -1,8 +1,8 @@
 package org.folio.rest.persist;
 
+import io.vertx.core.Promise;
 import java.io.IOException;
 
-import io.vertx.core.Future;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
@@ -35,9 +35,9 @@ public class PostgresRunnerMock extends PostgresRunner {
   }
 
   @Override
-  public void stop(Future<Void> startFuture) throws InterruptedException {
+  public void stop(Promise<Void> startPromise) throws Exception {
     log.debug("stop(Future)");
-    super.stop(startFuture);
+    super.stop(startPromise);
     stopInvoked = true;
   }
 

@@ -17,10 +17,12 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 
 import io.vertx.core.AsyncResult;
@@ -49,6 +51,7 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.util.Cql2PgUtil;
+import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -438,9 +441,9 @@ public class PostgresClient {
     List<Future> list = new ArrayList<>(connectionPool.size());
     // copy of values() because closeClient will delete them from connectionPool
     for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
-      Future<Object> future = Future.future();
-      list.add(future);
-      client.closeClient(f -> future.complete());
+      Promise<Object> promise = Promise.promise();
+      list.add(promise.future());
+      client.closeClient(f -> promise.complete());
     }
 
     CompositeFuture.join(list);
@@ -1523,14 +1526,15 @@ public class PostgresClient {
   }
 
   static class QueryHelper {
+
     String table;
     List<FacetField> facets;
     String selectQuery;
     String countQuery;
     int offset;
+    int limit;
     public QueryHelper(String table) {
       this.table = table;
-      this.offset = 0;
     }
   }
 
@@ -1573,10 +1577,10 @@ public class PostgresClient {
       QueryHelper queryHelper = buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
       if (returnCount) {
         processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
-          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz), replyHandler);
+          totaledResults -> processResults(totaledResults.set, totaledResults.total, queryHelper.offset, queryHelper.limit, clazz), replyHandler);
       } else {
         processQuery(connection, queryHelper, null, GET_STAT_METHOD,
-          totaledResults -> processResults(totaledResults.set, totaledResults.total, clazz), replyHandler);
+          totaledResults -> processResults(totaledResults.set, totaledResults.total, queryHelper.offset, queryHelper.limit, clazz), replyHandler);
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1722,8 +1726,7 @@ public class PostgresClient {
         }
         ResultInfo resultInfo = new ResultInfo();
         resultInfo.setTotalRecords(countQueryResult.result().iterator().next().getInteger(0));
-        doStreamGetQuery(connection, queryHelper.selectQuery, resultInfo,
-          clazz, facets, replyHandler);
+        doStreamGetQuery(connection, queryHelper, resultInfo, clazz, facets, replyHandler);
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1731,21 +1734,21 @@ public class PostgresClient {
     }
   }
 
-  <T> void doStreamGetQuery(SqlConnection connection, String selectQuery,
+  <T> void doStreamGetQuery(SqlConnection connection, QueryHelper queryHelper,
     ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    connection.prepare(selectQuery, ar1 -> {
-      if (ar1.failed()) {
-        log.error(ar1.cause().getMessage(), ar1.cause());
-        replyHandler.handle(Future.failedFuture(ar1.cause()));
+    connection.prepare(queryHelper.selectQuery, prepareRes -> {
+      if (prepareRes.failed()) {
+        log.error(prepareRes.cause().getMessage(), prepareRes.cause());
+        replyHandler.handle(Future.failedFuture(prepareRes.cause()));
         return;
       }
-      PreparedQuery pq = ar1.result();
+      PreparedQuery pq = prepareRes.result();
       Transaction tx = connection.begin();
       RowStream<Row> stream = pq.createStream(50, Tuple.tuple());
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
-      doStreamRowResults(stream, clazz, facets, tx, streamResult, replyHandler);
+      doStreamRowResults(stream, clazz, facets, tx, resultInfo, queryHelper, streamResult, replyHandler);
     });
   }
 
@@ -1761,15 +1764,15 @@ public class PostgresClient {
   }
 
   <T> void doStreamRowResults(RowStream<Row> sqlRowStream, Class<T> clazz,
-                            List<FacetField> facets, Transaction tx,
-                            PostgresClientStreamResult<T> streamResult,
-                            Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+    List<FacetField> facets, Transaction tx, ResultInfo resultInfo, QueryHelper queryHelper,
+    PostgresClientStreamResult<T> streamResult,
+    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    ResultInfo resultInfo = streamResult.resultInto();
     Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
     ResultsHelper<T> resultsHelper = new ResultsHelper<>(clazz);
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
     Map<String, Method> externalColumnSetters = new HashMap<>();
+    AtomicInteger resultCount = new AtomicInteger();
     sqlRowStream.handler(r -> {
       try {
         // for first row, get column names
@@ -1787,6 +1790,7 @@ public class PostgresClient {
           resultsHelper.facet = true;
         } else {
           objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, r);
+          resultCount.incrementAndGet();
         }
         if (!resultsHelper.facet) {
           if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
@@ -1809,6 +1813,10 @@ public class PostgresClient {
       }
     }).endHandler(v2 -> {
       tx.commit();
+      resultInfo.setTotalRecords(
+        getTotalRecords(resultCount.get(),
+          resultInfo.getTotalRecords(),
+          queryHelper.offset, queryHelper.limit));
       try {
         if (!promise.future().isComplete()) {
           promise.complete(streamResult);
@@ -1877,6 +1885,8 @@ public class PostgresClient {
     if (offset != -1) {
       queryHelper.offset = offset;
     }
+    int limit = wrapper.getLimit().get();
+    queryHelper.limit = limit != -1 ? limit : Integer.MAX_VALUE;
     return queryHelper;
   }
 
@@ -2418,7 +2428,7 @@ public class PostgresClient {
    * @param clazz
    * @return
    */
-  <T> Results<T> processResults(RowSet<Row> rs, Integer total, Class<T> clazz) {
+  <T> Results<T> processResults(RowSet<Row> rs, Integer total, int offset, int limit, Class<T> clazz) {
     long start = System.nanoTime();
 
     if (total == null) {
@@ -2432,7 +2442,9 @@ public class PostgresClient {
 
     ResultInfo resultInfo = new ResultInfo();
     resultsHelper.facets.forEach((k , v) -> resultInfo.getFacets().add(v));
-    resultInfo.setTotalRecords(resultsHelper.total);
+    Integer totalRecords = getTotalRecords(getResultListRowCounts(resultsHelper.list),
+        resultsHelper.total, offset, limit);
+    resultInfo.setTotalRecords(totalRecords);
 
     Results<T> results = new Results<>();
     results.setResults(resultsHelper.list);
@@ -2440,6 +2452,18 @@ public class PostgresClient {
 
     statsTracker(PROCESS_RESULTS_STAT_METHOD, clazz.getSimpleName(), start);
     return results;
+  }
+
+  /**
+   * @return number of list entries excluding the Facet count and total count entries
+   */
+  @SuppressWarnings("rawtypes")
+  private <T> int getResultListRowCounts(List<T> list) {
+    return (int) list.stream()
+        .filter(e -> !(e instanceof Facet) &&
+                     !((e instanceof Map) &&
+                         ((Map) e).size() == 1 && ((Map) e).containsKey(COUNT_FIELD)))
+        .count();
   }
 
   /**
@@ -3670,5 +3694,33 @@ public class PostgresClient {
   String getSchemaName() {
     return schemaName;
   }
+
+  /**
+   * Function to correct estimated result count:
+   * If the resultsCount is equal to 0, the result should be not more than offset
+   * If the resultsCount is equal to limit, the result should be not less than offset + limit
+   * Otherwise it should be equal to offset + resultsCount
+   *
+   * @param resultsCount the count of rows, that are returned from database
+   * @param estimateCount the estimate result count from returned by database
+   * @param offset database offset
+   * @param limit database limit
+   * @return corrected results count
+   */
+  static Integer getTotalRecords(int resultsCount, Integer estimateCount, int offset, int limit) {
+    if (estimateCount == null) {
+      return null;
+    }
+    if (limit == 0) {
+      return estimateCount;
+    }
+    if (resultsCount == 0) {
+      return Math.min(offset, estimateCount);
+    } else if (resultsCount == limit) {
+      return Math.max(offset + limit, estimateCount);
+    }
+    return offset + resultsCount;
+  }
+
 
 }
