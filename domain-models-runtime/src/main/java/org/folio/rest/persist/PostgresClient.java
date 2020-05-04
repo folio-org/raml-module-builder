@@ -3544,7 +3544,7 @@ public class PostgresClient {
         }
       }
     }, done -> {
-      logTimer("execute", "" + Arrays.hashCode(sql), s);
+      logTimer(EXECUTE_STAT_METHOD, "" + Arrays.hashCode(sql), s);
       replyHandler.handle(Future.succeededFuture(results));
     });
   }
