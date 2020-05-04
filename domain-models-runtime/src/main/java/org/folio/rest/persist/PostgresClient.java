@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -133,6 +132,8 @@ public class PostgresClient {
   private static final String    SAVE_STAT_METHOD = "save";
   private static final String    UPDATE_STAT_METHOD = "update";
   private static final String    DELETE_STAT_METHOD = "delete";
+  private static final String    EXECUTE_STAT_METHOD = "execute";
+
   private static final String    PROCESS_RESULTS_STAT_METHOD = "processResults";
 
   private static final String    SPACE = " ";
@@ -1223,8 +1224,8 @@ public class PostgresClient {
           if (query.failed()) {
             log.error(query.cause().getMessage(), query.cause());
           }
-          replyHandler.handle(query);
           statsTracker(UPDATE_STAT_METHOD, table, start);
+          replyHandler.handle(query);
         });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
@@ -1290,13 +1291,13 @@ public class PostgresClient {
             log.debug("update query = " + q);
             connection.query(q, query -> {
               connection.close();
+              statsTracker(UPDATE_STAT_METHOD, table, start);
               if (query.failed()) {
                 log.error(query.cause().getMessage(), query.cause());
                 replyHandler.handle(Future.failedFuture(query.cause()));
               } else {
                 replyHandler.handle(Future.succeededFuture(query.result()));
               }
-              statsTracker(UPDATE_STAT_METHOD, table, start);
             });
           } catch (Exception e) {
             if(connection != null){
@@ -3051,17 +3052,17 @@ public class PostgresClient {
         return;
       }
       SqlConnection connection = conn.result().conn;
-      long s = System.nanoTime();
+      long start = System.nanoTime();
       // more than optimization.. preparedQuery does not work for multiple SQL statements
       if (params.size() == 0) {
         connection.query(sql, query -> {
+          statsTracker(EXECUTE_STAT_METHOD, sql, start);
           replyHandler.handle(query);
-          logTimer("execute", sql, s);
         });
       } else {
         connection.preparedQuery(legacySql(sql, params), legacyArguments(params), query -> {
+          statsTracker(EXECUTE_STAT_METHOD, sql, start);
           replyHandler.handle(query);
-          logTimer("execute", sql, s);
         });
       }
     } catch (Exception e) {
@@ -3119,7 +3120,6 @@ public class PostgresClient {
       replyHandler.handle(Future.failedFuture(e));
     }
   }
-
 
   /**
    * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
@@ -3221,12 +3221,12 @@ public class PostgresClient {
         connection.query(q,
             query -> {
               connection.close();
+              statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start);
               if (query.failed()) {
                 replyHandler.handle(Future.failedFuture(query.cause()));
               } else {
                 replyHandler.handle(Future.succeededFuture(query.result().rowCount()));
               }
-              statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start);
             });
       } catch (Exception e) {
         if(connection != null){
@@ -3246,12 +3246,12 @@ public class PostgresClient {
         try {
           connection.query("DROP TABLE " + schemaName + DOT + cacheName, query -> {
             connection.close();
+            statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
             if (query.failed()) {
               replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
               replyHandler.handle(Future.succeededFuture(query.result().rowCount()));
             }
-            statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
           });
         } catch (Exception e) {
           if(connection != null){
