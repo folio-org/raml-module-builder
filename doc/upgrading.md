@@ -31,9 +31,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `PostgresClient.getClient()` is no longer public. If you need a
     connection, use PostgresClient.startTx(). If you don't have
     transactions, you don't need access to SQLConnection.
-  * Exceptions thrown by new client is io.vertx.pgclient.PgException.
+  * Exceptions thrown by new client is `io.vertx.pgclient.PgException`.
     Was com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException
     before. The getMessage() only contains message! Not details, code.
+  * `PgExceptionFacade.getTable` removed.
+  * `PgExceptionFacade.getIndex` removed.
 
 ## Version 29.5
 

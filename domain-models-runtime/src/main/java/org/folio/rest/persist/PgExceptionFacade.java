@@ -61,20 +61,6 @@ public class PgExceptionFacade {
   }
 
   /**
-   * @return the table ('t' field), or empty String if not available or unknown
-   */
-  public String getTable() {
-    return fields.getOrDefault('t', "");
-  }
-
-  /**
-   * @return the index ('n' field), or empty String if not available or unknown
-   */
-  public String getIndex() {
-    return fields.getOrDefault('n', "");
-  }
-
-  /**
    * @return whether the sql state is "23503 foreign_key_violation"
    */
   public boolean isForeignKeyViolation() {
