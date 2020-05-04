@@ -352,7 +352,7 @@ public class TenantLoading {
           return p.future();
         });
       }
-      future.setHandler(x -> {
+      future.onComplete(x -> {
         if (x.failed()) {
           res.handle(Future.failedFuture(x.cause().getLocalizedMessage()));
         } else {

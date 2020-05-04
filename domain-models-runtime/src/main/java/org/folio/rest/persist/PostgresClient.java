@@ -21,6 +21,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 
 import org.apache.commons.collections4.map.HashedMap;
@@ -435,9 +436,9 @@ public class PostgresClient {
     List<Future> list = new ArrayList<>(connectionPool.size());
     // copy of values() because closeClient will delete them from connectionPool
     for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
-      Future<Object> future = Future.future();
-      list.add(future);
-      client.closeClient(f -> future.complete());
+      Promise<Object> promise = Promise.promise();
+      list.add(promise.future());
+      client.closeClient(f -> promise.complete());
     }
 
     CompositeFuture.join(list);
