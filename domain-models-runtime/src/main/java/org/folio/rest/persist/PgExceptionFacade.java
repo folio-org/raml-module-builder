@@ -1,10 +1,7 @@
 package org.folio.rest.persist;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-
-import io.vertx.pgclient.PgException;
 
 /**
  * Easy access to
@@ -12,21 +9,16 @@ import io.vertx.pgclient.PgException;
  * fields.
  */
 public class PgExceptionFacade {
-  private final Map<Character,String> fields;
+  private Map<Character,String> fields;
 
   /**
    * @param throwable a GenericDatabaseException; any other Throwable is handled gracefully
    */
   public PgExceptionFacade(Throwable throwable) {
-    if (!(throwable instanceof PgException)) {
+    fields = PgExceptionUtil.getBadRequestFields(throwable);
+    if (fields == null) {
       fields = Collections.emptyMap();
-      return;
     }
-
-    fields = new HashMap<>();
-    fields.put('M', ((PgException) throwable).getMessage());
-    fields.put('D', ((PgException) throwable).getDetail());
-    fields.put('C', ((PgException) throwable).getCode());
   }
 
   /**
