@@ -242,6 +242,11 @@ public class SchemaMakerIT extends PostgresClientITBase {
   }
 
   @Test
+  public void f_unaccent_combining_character(TestContext context) {
+    assertSchemaSelectSingle(context, "SELECT f_unaccent(E'a\\u0308 and a\\u0308')", "a and a");
+  }
+
+  @Test
   public void concat_array_object_values(TestContext context) {
     assertSchemaSelectSingle(context, String.format(
         "SELECT concat_array_object_values('%s'::jsonb, 'f')",
@@ -307,6 +312,23 @@ public class SchemaMakerIT extends PostgresClientITBase {
   }
 
   @Test
+  public void indexRename(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "indexKeepAccents.json");
+    assertThat(countCasetableIndexes(context), is(5));
+    executeSuperuser(context, "CREATE INDEX casetable_i_idx_p        ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "CREATE INDEX casetable_u_idx_unique_p ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "CREATE INDEX casetable_l_idx_like_p   ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "CREATE INDEX casetable_g_idx_gin_p    ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "CREATE INDEX casetable_f_idx_ft_p     ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "INSERT INTO " + schema + ".rmb_internal_index "
+        + "SELECT name || '_p', def, remove FROM " + schema + ".rmb_internal_index");
+    assertThat(countCasetableIndexes(context), is(10));
+
+    runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
+    assertThat(countCasetableIndexes(context), is(5));
+  }
+
+  @Test
   public void indexDelete(TestContext context) {
     runSchema(context, TenantOperation.CREATE, "indexKeepAccents.json");
     assertThat(countCasetableIndexes(context), is(5));
@@ -338,6 +360,6 @@ public class SchemaMakerIT extends PostgresClientITBase {
     runSqlFileAsSuperuser(context, sql);
     assertThat("indexdef before suppressed update", indexdef(context, "foo"), is(indexdef));
     runSchema(context, TenantOperation.UPDATE, "schema.json");
-    assertThat("indexdef after suppresseed update", indexdef(context, "foo"), is(indexdef));
+    assertThat("indexdef after suppressed update", indexdef(context, "foo"), is(indexdef));
   }
 }

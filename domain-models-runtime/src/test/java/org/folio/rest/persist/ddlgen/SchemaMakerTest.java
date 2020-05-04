@@ -79,8 +79,8 @@ public class SchemaMakerTest {
     assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tablea_ftfield_idx_ft"));
     assertThat(result, containsString("concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')"));
 
-    assertThat(result,containsString("((lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'user','firstName') , concat_array_object_values(tablea.jsonb->'user','lastName')))) gin_trgm_ops)"));
-    assertThat(result,containsString("((lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'user'->'info','firstName') , concat_array_object_values(tablea.jsonb->'user'->'info','lastName')))) gin_trgm_ops)"));
+    assertThat(result,containsString("((lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'user','firstName') , concat_array_object_values(tablea.jsonb->'user','lastName')))) public.gin_trgm_ops)"));
+    assertThat(result,containsString("((lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'user'->'info','firstName') , concat_array_object_values(tablea.jsonb->'user'->'info','lastName')))) public.gin_trgm_ops)"));
     assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','firstName') , concat_array_object_values(tablea.jsonb->'field2','lastName'))) )"));
     assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->'info','firstName') , concat_array_object_values(tablea.jsonb->'field2'->'info','lastName'))) )"));
   }
@@ -313,7 +313,7 @@ public class SchemaMakerTest {
     assertThat(ddl, containsString("(left(lower(f_unaccent(jsonb->>'title')),600))"));  // index
     assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'name')))"));             // unique index
     assertThat(ddl, containsString("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
-    assertThat(ddl, containsString("GIN ' || $rmb$((lower(f_unaccent(jsonb->>'title')))gin_trgm_ops)"));
+    assertThat(ddl, containsString("GIN ' || $rmb$((lower(f_unaccent(jsonb->>'title')))public.gin_trgm_ops)"));
     assertThat(ddl, containsString("GIN ' || $rmb$(to_tsvector('simple', f_unaccent(jsonb->>'title')))"));
     assertThat(ddl, containsString("GIN ' || $rmb$(to_tsvector('simple',(jsonb->>'author')))"));
   }

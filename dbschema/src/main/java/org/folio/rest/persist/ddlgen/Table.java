@@ -3,6 +3,8 @@ package org.folio.rest.persist.ddlgen;
 import java.util.Collections;
 import java.util.List;
 
+import org.folio.cql2pgjson.util.SqlUtil;
+
 /**
  * @author shale
  *
@@ -46,7 +48,12 @@ public class Table extends Versioned {
     return tableName;
   }
 
+  /**
+   * @param tableName
+   * @throws IllegalArgumentException on invalid tableName, see {@link SqlUtil#validateSqlIdentifier(String)}
+   */
   public void setTableName(String tableName) {
+    SqlUtil.validateSqlIdentifier(tableName);
     this.tableName = tableName;
   }
 

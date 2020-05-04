@@ -308,15 +308,14 @@ public class PostgresClientIT {
   private PostgresClient createTable(TestContext context,
       String tenant, String table, String tableDefinition) {
     String schema = PostgresClient.convertToPsqlStandard(tenant);
-    execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
     execute(context, "DROP SCHEMA IF EXISTS " + schema + " CASCADE;");
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
-    execute(context, "CREATE TABLE " + schema + "." + table + " (" + tableDefinition + ");");
-    execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
     PostgresClient postgresClient = postgresClient(tenant);
     LoadGeneralFunctions.loadFuncs(context, postgresClient, "");
+    execute(context, "CREATE TABLE " + schema + "." + table + " (" + tableDefinition + ");");
+    execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
     return postgresClient;
   }
 
@@ -2561,7 +2560,7 @@ public class PostgresClientIT {
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
     postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, resultInfo,
-      streamResult, context.asyncAssertSuccess(sr -> {
+      new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
         });
