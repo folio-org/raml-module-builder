@@ -397,7 +397,7 @@ public class PgUtilIT {
   public void getByIdInvalidUuid(TestContext testContext) {
     PgUtil.getById("users", User.class, "invalidUuid", okapiHeaders, vertx.getOrCreateContext(),
         Users.GetUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 404, "Invalid UUID string: invalidUuid"));
+        asyncAssertSuccess(testContext, 404, "Invalid UUID"));
   }
 
   @Test
