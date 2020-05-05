@@ -2468,7 +2468,7 @@ public class PostgresClientIT {
       postgresClient.selectStream(trans, "SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i",
           context.asyncAssertSuccess(select -> {
             intsAsString(select, context.asyncAssertSuccess(string -> {
-              // postgresClient.endTx(trans, context.asyncAssertSuccess());
+              postgresClient.endTx(trans, context.asyncAssertSuccess());
               context.assertEquals("21, 23", string);
             }));
           }));
