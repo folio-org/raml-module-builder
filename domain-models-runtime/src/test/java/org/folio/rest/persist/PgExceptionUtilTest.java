@@ -5,12 +5,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
-import java.util.Collections;
+import io.vertx.pgclient.PgException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-
-import io.vertx.pgclient.PgException;
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.Test;
 
@@ -87,6 +85,21 @@ public class PgExceptionUtilTest {
     } catch (Exception ex) {
       String actual = PgExceptionUtil.badRequestMessage(ex);
       assertThat(actual, is("Invalid UUID string: bad-uid"));
+    }
+  }
+
+  @Test
+  public void testCreatePgExceptionFromMap() {
+    Map<Character, String> fields1 = new HashMap<>();
+    fields1.put('M', "valueM");
+    fields1.put('D', "ValueD");
+    fields1.put('C', "ValueC");
+
+    Exception e = PgExceptionUtil.createPgExceptionFromMap(fields1);
+    Map<Character, String> fields2 = PgExceptionUtil.getBadRequestFields(e);
+
+    for (Character k : fields1.keySet()) {
+      assertThat(fields1.get(k), is(fields2.get(k)));
     }
   }
 
