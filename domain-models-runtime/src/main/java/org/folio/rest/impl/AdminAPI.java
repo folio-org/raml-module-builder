@@ -236,8 +236,8 @@ public class AdminAPI implements Admin {
   public void getAdminPostgresActiveSessions(String dbname, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    PostgresClient.getInstance(vertxContext.owner(), "public").select("SELECT pid , usename, "
-        + "application_name, client_addr, client_hostname, "
+    PostgresClient.getInstance(vertxContext.owner()).select("SELECT pid , usename, "
+        + "application_name, client_addr::text, client_hostname, "
         + "query, state from pg_stat_activity where datname='"+dbname+"'", reply -> {
 
           if(reply.succeeded()){
@@ -267,7 +267,7 @@ public class AdminAPI implements Admin {
             vertxContext.owner().setTimer(10000, new Handler<Long>() {
               @Override
               public void handle(Long timerID) {
-                PostgresClient.getInstance(vertxContext.owner(), "public").select(
+                PostgresClient.getInstance(vertxContext.owner()).select(
                     "SELECT numbackends as CONNECTIONS, xact_commit as TX_COMM, xact_rollback as "
                     + "TX_RLBCK, blks_read + blks_hit as READ_TOTAL, "
                     + "blks_hit * 100 / (blks_read + blks_hit) "
@@ -299,11 +299,14 @@ public class AdminAPI implements Admin {
   public void getAdminPostgresTableAccessStats(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    PostgresClient.getInstance(vertxContext.owner()).select(
-        "SELECT schemaname,relname,seq_scan,idx_scan,cast(idx_scan "
-        + "AS numeric) / (idx_scan + seq_scan) AS idx_scan_pct "
-        + "FROM pg_stat_user_tables WHERE (idx_scan + seq_scan)>0 "
-        + "ORDER BY idx_scan_pct;", reply -> {
+    String sql =
+        "SELECT schemaname,relname,seq_scan,idx_scan,"
+        + "     cast(idx_scan AS numeric) / (idx_scan + seq_scan) AS idx_scan_pct "
+        + "FROM (SELECT schemaname, relname, COALESCE(seq_scan, 0) seq_scan, COALESCE(idx_scan, 0) idx_scan "
+        + "      FROM pg_stat_user_tables) x "
+        + "WHERE idx_scan + seq_scan > 0 "
+        + "ORDER BY idx_scan_pct;";
+    PostgresClient.getInstance(vertxContext.owner()).select(sql, reply -> {
 
           if(reply.succeeded()){
 
@@ -384,8 +387,10 @@ public class AdminAPI implements Admin {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
-      "SELECT relname, 100 * idx_scan / (seq_scan + idx_scan) percent_of_times_index_used, n_live_tup rows_in_table "+
-      "FROM pg_stat_user_tables "+
+      "SELECT schemaname, relname, 100 * idx_scan / NULLIF(seq_scan + idx_scan, 0) percent_of_times_index_used, "+
+      "       n_live_tup rows_in_table "+
+      "FROM (SELECT schemaname, relname, COALESCE(seq_scan, 0) seq_scan, COALESCE(idx_scan, 0) idx_scan, n_live_tup "+
+      "      FROM pg_stat_user_tables) x "+
       "ORDER BY n_live_tup DESC;", reply -> {
         if(reply.succeeded()){
 
@@ -409,7 +414,7 @@ public class AdminAPI implements Admin {
     try {
       PostgresClient.getInstance(vertxContext.owner()).select(
         "SELECT sum(heap_blks_read) as heap_read, sum(heap_blks_hit)  as heap_hit,"
-        + " (sum(heap_blks_hit) - sum(heap_blks_read)) / sum(heap_blks_hit) as ratio "
+        + " (sum(heap_blks_hit) - sum(heap_blks_read)) / NULLIF(sum(heap_blks_hit),0) as ratio "
         + "FROM pg_statio_user_tables;", reply -> {
           if(reply.succeeded()){
 
@@ -470,21 +475,23 @@ public class AdminAPI implements Admin {
   @Override
   public void getAdminModuleStats(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
-    //vertx.http.servers.open-connections
-    //vertx.eventbus
-    //vertx.event-loop-size
-    //vertx.pools
-    JsonObject o = StatsTracker.spillAllStats();
-    JsonObject metrics = RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.net.servers" /* vertxContext.owner() */);
-    if(metrics != null) {
-      metrics.mergeIn(RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.pools"));
-      o.mergeIn(metrics);
+    try {
+      //vertx.http.servers.open-connections
+      //vertx.eventbus
+      //vertx.event-loop-size
+      //vertx.pools
+      JsonObject o = StatsTracker.spillAllStats();
+      JsonObject metrics = RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.net.servers" /* vertxContext.owner() */);
+      if(metrics != null) {
+        metrics.mergeIn(RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.pools"));
+        o.mergeIn(metrics);
+      }
+      asyncResultHandler.handle(
+        io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.respond200WithTextPlain(
+          o.encodePrettily())));
+    } catch (Exception e) {
+      asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
-    asyncResultHandler.handle(
-      io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.respond200WithTextPlain(
-        o.encodePrettily())));
-
   }
 
   @Validate
