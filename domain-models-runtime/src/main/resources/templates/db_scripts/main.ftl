@@ -170,7 +170,8 @@ BEGIN
 END $$;
 
 -- Fix functions calls with "public." in indexes https://issues.folio.org/browse/RMB-583
--- All functions have been moved from public schema into ${myuniversity}_${mymodule} schema.
+-- All functions (except functions of Postgres extensions) have been moved
+-- from public schema into ${myuniversity}_${mymodule} schema.
 -- https://github.com/folio-org/raml-module-builder/commit/872c1f80da4c8d49e6836ca9221f637dc5e7420b
 DO $$
 DECLARE
@@ -187,8 +188,9 @@ BEGIN
   LOOP
     newindexdef := regexp_replace(i.indexdef,
       -- \m = beginning of a word, \M = end of a word
-      '\mpublic.(f_unaccent|gin_trgm_ops|concat_space_sql|concat_array_object_values|concat_array_object)\M',
-      '${myuniversity}_${mymodule}.\1');
+      '\mpublic\.(f_unaccent|concat_space_sql|concat_array_object_values|concat_array_object)\M',
+      '${myuniversity}_${mymodule}.\1',
+      'g');
     IF newindexdef <> i.indexdef THEN
       EXECUTE format('DROP INDEX %I.%I', i.schemaname, i.indexname);
       EXECUTE newindexdef;
