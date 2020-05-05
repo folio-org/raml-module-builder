@@ -495,7 +495,6 @@ public final class PgUtil {
         itemString = OBJECT_MAPPER.writeValueAsString(res);
       } catch (JsonProcessingException ex) {
         logger.error(ex.getMessage(), ex);
-        logger.error(ex.getMessage(), ex);
         throw new IllegalArgumentException(ex.getCause());
       }
       if (first.get()) {
