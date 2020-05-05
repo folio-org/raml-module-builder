@@ -3,6 +3,7 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
@@ -304,11 +305,10 @@ public class PostgresClientIT {
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
-    PostgresClient postgresClient = postgresClient(tenant);
-    LoadGeneralFunctions.loadFuncs(context, postgresClient, "");
+    LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
     execute(context, "CREATE TABLE " + schema + "." + table + " (" + tableDefinition + ");");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
-    return postgresClient;
+    return postgresClient(tenant);
   }
 
   /** create table a (i INTEGER) */
