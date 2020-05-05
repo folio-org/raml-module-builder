@@ -47,7 +47,7 @@ import junit.framework.AssertionFailedError;
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
   @Rule
-  public Timeout timeoutRule = Timeout.seconds(10);
+  public Timeout timeoutRule = Timeout.seconds(20);
 
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
