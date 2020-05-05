@@ -1,7 +1,5 @@
 package org.folio.rest.persist;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
@@ -52,7 +50,7 @@ public class PgUtilIT {
   static Logger log = LoggerFactory.getLogger(PgUtilIT.class);
 
   @Rule
-  public Timeout timeoutRule = Timeout.seconds(10);
+  public Timeout timeoutRule = Timeout.seconds(20);
 
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
