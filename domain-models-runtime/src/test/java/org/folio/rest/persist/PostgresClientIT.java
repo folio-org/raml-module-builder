@@ -960,8 +960,8 @@ public class PostgresClientIT {
     }));
   }
 
-  // @Test
-  public void transFailed(TestContext context) {
+  @Test
+  public void endTxTransFailed(TestContext context) {
     postgresClient = postgresClient(TENANT);
     Promise<SQLConnection> promise = Promise.promise();
     promise.fail("failure");
@@ -969,13 +969,22 @@ public class PostgresClientIT {
 
     postgresClient.endTx(trans, context.asyncAssertFailure(res ->
         context.assertEquals("failure", res.getMessage())));
+  }
+
+  @Test
+  public void rollbackTransFailed(TestContext context) {
+    postgresClient = postgresClient(TENANT);
+    Promise<SQLConnection> promise = Promise.promise();
+    promise.fail("failure");
+    AsyncResult<SQLConnection> trans = promise.future();
 
     postgresClient.rollbackTx(trans, context.asyncAssertFailure(res ->
         context.assertEquals("failure", res.getMessage())));
   }
 
-  // @Test
-  public void transNullConnection(TestContext context) {
+
+  @Test
+  public void endTxNullConnection(TestContext context) {
     postgresClient = createFoo(context);
     Promise<SQLConnection> promise = Promise.promise();
 
@@ -984,6 +993,32 @@ public class PostgresClientIT {
       SQLConnection conn = new SQLConnection(null, trans1.tx);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertSuccess());
+    }));
+  }
+
+  @Test
+  public void endTxNullTransaction(TestContext context) {
+    postgresClient = createFoo(context);
+    Promise<SQLConnection> promise = Promise.promise();
+
+    postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
+      Promise<SQLConnection> trans2 = Promise.promise();
+      SQLConnection conn = new SQLConnection(trans1.conn, null);
+      trans2.complete(conn);
+      postgresClient.endTx(trans2.future(), context.asyncAssertFailure());
+    }));
+  }
+
+  @Test
+  public void rollbackTxNullTransaction(TestContext context) {
+    postgresClient = createFoo(context);
+    Promise<SQLConnection> promise = Promise.promise();
+
+    postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
+      Promise<SQLConnection> trans2 = Promise.promise();
+      SQLConnection conn = new SQLConnection(trans1.conn, null);
+      trans2.complete(conn);
+      postgresClient.rollbackTx(trans2.future(), context.asyncAssertFailure());
     }));
   }
 
