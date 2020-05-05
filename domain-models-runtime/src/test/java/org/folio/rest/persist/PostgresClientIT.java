@@ -28,6 +28,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.streams.ReadStream;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -2891,66 +2892,47 @@ public class PostgresClientIT {
         x -> context.assertEquals("connection error", x.getMessage())));
   }
 
-  /* DISABLED
-  class MySQLRowStream implements SQLRowStream {
+  class MySQLRowStream implements RowStream<Row> {
 
     @Override
-    public SQLRowStream exceptionHandler(Handler<Throwable> hndlr) {
-      vertx.runOnContext(x -> hndlr.handle(new Throwable("SQLRowStream exception")));
+    public RowStream<Row> exceptionHandler(Handler<Throwable> handler) {
+      vertx.runOnContext(x -> handler.handle(new Throwable("SQLRowStream exception")));
       return this;
     }
 
     @Override
-    public SQLRowStream handler(Handler<JsonArray> hndlr) {
+    public RowStream<Row> handler(Handler<Row> handler) {
       return this;
     }
 
     @Override
-    public SQLRowStream pause() {
+    public RowStream<Row> pause() {
       return this;
     }
 
     @Override
-    public SQLRowStream resume() {
+    public RowStream<Row> resume() {
+      return null;
+    }
+
+    @Override
+    public ReadStream<Row> fetch(long l) {
       return this;
     }
 
     @Override
-    public SQLRowStream endHandler(Handler<Void> hndlr) {
+    public RowStream<Row> endHandler(Handler<Void> handler) {
       return this;
-    }
-
-    @Override
-    public int column(String string) {
-      throw new UnsupportedOperationException("column");
-    }
-
-    @Override
-    public List<String> columns() {
-      return Arrays.asList("jsonb", "id");
-    }
-
-    @Override
-    public SQLRowStream resultSetClosedHandler(Handler<Void> hndlr) {
-      return this;
-    }
-
-    @Override
-    public void moreResults() {
     }
 
     @Override
     public void close() {
+
     }
 
     @Override
-    public void close(Handler<AsyncResult<Void>> hndlr) {
-      hndlr.handle(Future.succeededFuture());
-    }
+    public void close(Handler<AsyncResult<Void>> handler) {
 
-    @Override
-    public ReadStream<JsonArray> fetch(long l) {
-      throw new UnsupportedOperationException("fetch");
     }
   }
 
@@ -2962,11 +2944,12 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     ResultInfo resultInfo = new ResultInfo();
     context.assertNotNull(vertx);
-    SQLRowStream sqlRowStream = new MySQLRowStream();
+    RowStream<Row> sqlRowStream = new MySQLRowStream();
     StringBuilder events = new StringBuilder();
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
-    postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, resultInfo,
+    Transaction tx = null;
+    postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, tx,
       new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -2984,7 +2967,7 @@ public class PostgresClientIT {
     async.await(1000);
     context.assertEquals("[exception]", events.toString());
   }
-*/
+
 
   @Test
   public void streamGetExceptionInEndHandler(TestContext context) throws IOException, FieldException {
