@@ -986,8 +986,6 @@ public class PostgresClientIT {
   @Test
   public void endTxNullConnection(TestContext context) {
     postgresClient = createFoo(context);
-    Promise<SQLConnection> promise = Promise.promise();
-
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
       SQLConnection conn = new SQLConnection(null, trans1.tx);
@@ -999,8 +997,6 @@ public class PostgresClientIT {
   @Test
   public void endTxNullTransaction(TestContext context) {
     postgresClient = createFoo(context);
-    Promise<SQLConnection> promise = Promise.promise();
-
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
       SQLConnection conn = new SQLConnection(trans1.conn, null);
@@ -1012,8 +1008,6 @@ public class PostgresClientIT {
   @Test
   public void rollbackTxNullTransaction(TestContext context) {
     postgresClient = createFoo(context);
-    Promise<SQLConnection> promise = Promise.promise();
-
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
       SQLConnection conn = new SQLConnection(trans1.conn, null);

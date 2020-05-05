@@ -130,11 +130,11 @@ public class PostgresClientTest {
   public void testPgConnectOptionsEmpty() {
     JsonObject conf = new JsonObject();
     PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
-    Assert.assertEquals("localhost", options.getHost());
-    Assert.assertEquals(5432, options.getPort());
-    Assert.assertEquals("user", options.getUser());
-    Assert.assertEquals("pass", options.getPassword());
-    Assert.assertEquals("db", options.getDatabase());
+    assertThat("localhost", is(options.getHost()));
+    assertThat(5432, is(options.getPort()));
+    assertThat("user", is(options.getUser()));
+    assertThat("pass", is(options.getPassword()));
+    assertThat("db", is(options.getDatabase()));
   }
 
   @Test
@@ -147,11 +147,11 @@ public class PostgresClientTest {
         .put("database", "mydatabase");
 
     PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
-    Assert.assertEquals("myhost", options.getHost());
-    Assert.assertEquals(5433, options.getPort());
-    Assert.assertEquals("myuser", options.getUser());
-    Assert.assertEquals("mypassword", options.getPassword());
-    Assert.assertEquals("mydatabase", options.getDatabase());
+    assertThat("myhost", is(options.getHost()));
+    assertThat(5433, is(options.getPort()));
+    assertThat("myuser", is(options.getUser()));
+    assertThat("mypassword", is(options.getPassword()));
+    assertThat("mydatabase", is(options.getDatabase()));
   }
 
   /* DISABLED

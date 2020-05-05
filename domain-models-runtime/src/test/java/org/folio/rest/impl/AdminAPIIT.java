@@ -13,7 +13,6 @@ import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import io.vertx.core.json.pointer.JsonPointerIterator;
 import org.folio.HttpStatus;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.VertxUtils;
