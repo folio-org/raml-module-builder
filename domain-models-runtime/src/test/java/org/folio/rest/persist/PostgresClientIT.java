@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -373,42 +374,6 @@ public class PostgresClientIT {
     c1.closeClient(context.asyncAssertSuccess());
     c2.closeClient(context.asyncAssertSuccess());
   }
-
-/*  @Test
-  public void parallel(TestContext context) {
-    *//** number of parallel queries *//*
-    int n = 20;
-    *//** sleep time in milliseconds *//*
-    double sleep = 150;
-    String selectSleep = "select pg_sleep(" + sleep/1000 + ")";
-    *//** maximum duration in milliseconds for the completion of all parallel queries
-     * NOTE: seems like current embedded postgres does not run in parallel, only one concur connection?
-     * this works fine when on a regular postgres, for not added the x4 *//*
-    long maxDuration = (long) (n * sleep) * 4;
-     create n queries in parallel, each sleeping for some time.
-     * If vert.x properly processes them in parallel it finishes
-     * in less than half of the time needed for sequential processing.
-
-    Async async = context.async();
-    PostgresClient client = PostgresClient.getInstance(vertx);
-
-    List<Future> futures = new ArrayList<>(n);
-    for (int i=0; i<n; i++) {
-      Future<ResultSet> future = Future.future();
-      client.select(selectSleep, future.completer());
-      futures.add(future);
-    }
-    long start = System.currentTimeMillis();
-    CompositeFuture.all(futures).setHandler(handler -> {
-      long duration = System.currentTimeMillis() - start;
-      client.closeClient(whenDone -> {});
-      context.assertTrue(handler.succeeded());
-      context.assertTrue(duration < maxDuration,
-          "duration must be less than " + maxDuration + " ms, it is " + duration + " ms");
-      async.complete();
-    });
-  }
-*/
 
   public static class StringPojo {
     public String id;
@@ -992,6 +957,33 @@ public class PostgresClientIT {
           }));
         }));
       }));
+    }));
+  }
+
+  // @Test
+  public void transFailed(TestContext context) {
+    postgresClient = postgresClient(TENANT);
+    Promise<SQLConnection> promise = Promise.promise();
+    promise.fail("failure");
+    AsyncResult<SQLConnection> trans = promise.future();
+
+    postgresClient.endTx(trans, context.asyncAssertFailure(res ->
+        context.assertEquals("failure", res.getMessage())));
+
+    postgresClient.rollbackTx(trans, context.asyncAssertFailure(res ->
+        context.assertEquals("failure", res.getMessage())));
+  }
+
+  // @Test
+  public void transNullConnection(TestContext context) {
+    postgresClient = createFoo(context);
+    Promise<SQLConnection> promise = Promise.promise();
+
+    postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
+      Promise<SQLConnection> trans2 = Promise.promise();
+      SQLConnection conn = new SQLConnection(null, trans1.tx);
+      trans2.complete(conn);
+      postgresClient.endTx(trans2.future(), context.asyncAssertSuccess());
     }));
   }
 

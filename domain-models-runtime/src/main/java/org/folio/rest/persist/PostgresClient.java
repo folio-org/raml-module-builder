@@ -570,17 +570,6 @@ public class PostgresClient {
     log.info("postgreSQLClientConfig = " + passwordRedacted.encode());
   }
 
-  /**
-   * The PostgreSQL connection info to create the connection, see
-   * <a href="http://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration">configuration
-   * documentation</a>.
-   *
-   * @return the configuration
-   */
-  public JsonObject getConnectionConfig(){
-    return postgreSQLClientConfig;
-  }
-
   public static JsonObject pojo2JsonObject(Object entity) throws JsonProcessingException {
     if (entity == null) {
       throw new IllegalArgumentException("Entity can not be null");
@@ -643,11 +632,15 @@ public class PostgresClient {
    */
   //@Timer
   public void rollbackTx(AsyncResult<SQLConnection> trans, Handler<AsyncResult<Void>> done) {
-    if (trans.failed()) {
-      done.handle(Future.failedFuture(trans.cause()));
-      return;
+    try {
+      if (trans.failed()) {
+        done.handle(Future.failedFuture(trans.cause()));
+        return;
+      }
+      trans.result().tx.rollback(res -> finalizeTx(res, trans.result().conn, done));
+    } catch (Exception e) {
+      done.handle(Future.failedFuture(e));
     }
-    trans.result().tx.rollback(res -> finalizeTx(res, trans.result().conn, done));
   }
 
   /**
@@ -659,11 +652,15 @@ public class PostgresClient {
    */
   //@Timer
   public void endTx(AsyncResult<SQLConnection> trans, Handler<AsyncResult<Void>> done) {
-    if (trans.failed()) {
-      done.handle(Future.failedFuture(trans.cause()));
-      return;
+    try {
+      if (trans.failed()) {
+        done.handle(Future.failedFuture(trans.cause()));
+        return;
+      }
+      trans.result().tx.commit(res -> finalizeTx(res, trans.result().conn, done));
+    } catch (Exception e) {
+      done.handle(Future.failedFuture(e));
     }
-    trans.result().tx.commit(res -> finalizeTx(res, trans.result().conn, done));
   }
 
   /**
