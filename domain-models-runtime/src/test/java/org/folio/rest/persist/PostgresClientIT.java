@@ -1018,6 +1018,24 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void endTxNormal(TestContext context) {
+    Async async = context.async();
+    postgresClient = createFoo(context);
+    postgresClient.startTx(trans -> {
+      context.assertTrue(trans.succeeded());
+      postgresClient.endTx(trans, context.asyncAssertSuccess(x -> async.complete()));
+    });
+  }
+
+  @Test
+  public void testFinalizeTx(TestContext context) {
+    Promise<Void> promise = Promise.promise();
+    promise.fail("transaction error");
+    PostgresClient.finalizeTx(promise.future(), null,
+        context.asyncAssertFailure(x -> context.assertEquals("transaction error", x.getMessage())));
+  }
+
+  @Test
   public void saveBatchXTrans2(TestContext context) {
     List<Object> list = new LinkedList<>();
     list.add(context);

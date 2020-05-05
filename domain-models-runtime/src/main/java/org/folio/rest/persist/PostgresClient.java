@@ -613,7 +613,7 @@ public class PostgresClient {
     });
   }
 
-  private void finalizeTx(AsyncResult<Void> txResult, SqlConnection conn, Handler<AsyncResult<Void>> done ) {
+  static void finalizeTx(AsyncResult<Void> txResult, SqlConnection conn, Handler<AsyncResult<Void>> done ) {
     if (conn != null) {
       conn.close();
     }
