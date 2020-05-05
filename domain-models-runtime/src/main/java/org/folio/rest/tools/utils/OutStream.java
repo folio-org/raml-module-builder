@@ -1,5 +1,7 @@
 package org.folio.rest.tools.utils;
 
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
@@ -21,13 +23,19 @@ public class OutStream implements javax.ws.rs.core.StreamingOutput {
   }
 
   public OutStream(RowSet<Row> result) {
+    JsonArray ar = new JsonArray();
     RowIterator<Row> it = result.iterator();
-    StringBuilder s = new StringBuilder();
     while (it.hasNext()) {
-      s.append(it.next().toString());
+      Row row = it.next();
+      JsonObject o = new JsonObject();
+      for (int i = 0; i < row.size(); i++) {
+        o.put(row.getColumnName(i), row.getValue(i));
+      }
+      ar.add(o);
     }
-    data = s.toString();
+    data = ar.encode();
   }
+
   @Override
   public void write(OutputStream output) throws IOException {
     // use UTF_8, do not use Charset.getDefaultCharset()

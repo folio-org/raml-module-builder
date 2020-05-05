@@ -17,10 +17,6 @@ public class RTFConsts {
 
   public static final String IMPORT_MODULE        = "IMPORTS";
 
-  public static final String JOB_CONF_COLLECTION    = "job_confs";
-  public static final String JOBS_COLLECTION        = "jobs";
-  public static final String BULKS_COLLECTION       = "bulks";
-
   public static final String SCHEDULE_TYPE_SCHEDULED = "SCHEDULED";
   public static final String SCHEDULE_TYPE_MANUAL    = "MANUAL";
 
