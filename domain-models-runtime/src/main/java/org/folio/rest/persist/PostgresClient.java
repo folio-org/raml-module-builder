@@ -2956,17 +2956,6 @@ public class PostgresClient {
   /**
    * Execute an INSERT, UPDATE or DELETE statement.
    * @param sql - the sql to run
-   * @param replyHandler - the result handler with UpdateResult converted toString().
-   * @deprecated use {@link #execute(String, Handler)} instead.
-   */
-  @Deprecated
-  public void mutate(String sql, Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> mutate(conn, sql, closeAndHandleResult(conn, replyHandler)));
-  }
-
-  /**
-   * Execute an INSERT, UPDATE or DELETE statement.
-   * @param sql - the sql to run
    * @param replyHandler - the result handler with UpdateResult
    */
   public void execute(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
@@ -2991,31 +2980,6 @@ public class PostgresClient {
    */
   public void execute(String sql, JsonArray params, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
-  }
-
-  /**
-   * send a query to update within a transaction
-   *
-   * <p>Example:
-   * <pre>
-   *  postgresClient.startTx(beginTx -> {
-   *        try {
-   *          postgresClient.mutate(beginTx, sql, reply -> {...
-   * </pre>
-   * @param conn - connection - see {@link #startTx(Handler)}
-   * @param sql - the sql to run
-   * @param replyHandler
-   * @deprecated use execute(AsyncResult<SQLConnection>, String, Handler<AsyncResult<UpdateResult>>) instead
-   */
-  @Deprecated
-  public void mutate(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<String>> replyHandler) {
-    execute(conn, sql, res -> {
-      if (res.failed()) {
-        replyHandler.handle(Future.failedFuture(res.cause()));
-        return;
-      }
-      replyHandler.handle(Future.succeededFuture(res.result().toString()));
-    });
   }
 
   /**

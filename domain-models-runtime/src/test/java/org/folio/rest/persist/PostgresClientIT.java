@@ -2343,33 +2343,6 @@ public class PostgresClientIT {
     postgresClient().execute(Future.failedFuture("failed"), "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
-  @Test
-  public void mutateOK(TestContext context) {
-    Async async = context.async();
-    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
-    insertXAndSingleQuotePojo(context, ids)
-        .mutate("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'", res -> {
-          assertSuccess(context, res);
-          async.complete();
-        });
-    async.await(1000);
-  }
-
-  @Test
-  public void mutateSyntaxError(TestContext context) {
-    postgresClient().mutate("'", context.asyncAssertFailure());
-  }
-
-  @Test
-  public void mutateParamGetConnectionFails(TestContext context) throws Exception {
-    postgresClientGetConnectionFails().mutate("SELECT 1", context.asyncAssertFailure());
-  }
-
-  @Test
-  public void mutateParamNullConnection(TestContext context) throws Exception {
-    postgresClientNullConnection().mutate("SELECT 1", context.asyncAssertFailure());
-  }
-
   // see RunSQLIT.java for more tests
   @Test
   public void runSQLNull(TestContext context) throws Exception {
