@@ -15,14 +15,22 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collector;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.impl.RowImpl;
+import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlConnection;
+import io.vertx.sqlclient.SqlResult;
+import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.folio.rest.persist.helpers.FakeRowSet;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -246,11 +254,109 @@ public class PostgresClientTest {
     PostgresClient testClient = PostgresClient.testClient();
     String setterMethodName = testClient.databaseFieldToPojoSetter("test_field");
     assertThat(setterMethodName, is("setTestField"));
+
+
   }
 
-  /* DISABLED
+  public class FakeSqlConnection implements SqlConnection {
+    final AsyncResult<RowSet<Row>> asyncResult;
+    FakeSqlConnection(AsyncResult<RowSet<Row>> result) {
+      this.asyncResult = result;
+    }
+    @Override
+    public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public SqlConnection exceptionHandler(Handler<Throwable> handler) {
+      return this;
+    }
+
+    @Override
+    public SqlConnection closeHandler(Handler<Void> handler) {
+      return null;
+    }
+
+    @Override
+    public Transaction begin() {
+      return null;
+    }
+
+    @Override
+    public boolean isSSL() {
+      return false;
+    }
+
+    @Override
+    public void close() {
+
+    }
+
+    @Override
+    public SqlConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public <R> SqlConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
+      if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
+        List<String> columnNames = new LinkedList<>();
+        columnNames.add("COUNT");
+        RowDesc rowDesc = new RowDesc(columnNames);
+        Row row = new RowImpl(rowDesc);
+        row.addInteger(asyncResult.result().size());
+        List<Row> rows = new LinkedList<>();
+        rows.add(row);
+        RowSet rowSet = new FakeRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
+        handler.handle(Future.succeededFuture(rowSet));
+      } else {
+        handler.handle(asyncResult);
+      }
+      return this;
+    }
+
+    @Override
+    public <R> SqlConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public SqlConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public <R> SqlConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public SqlConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public <R> SqlConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+  }
+
   @Test
-  public void testProcessQueryWithCount() throws IOException, TemplateException {
+  public void testProcessQueryWithCount()  {
     PostgresClient testClient = PostgresClient.testClient();
     QueryHelper queryHelper = new QueryHelper("test_pojo");
     queryHelper.selectQuery = "SELECT * FROM test_pojo";
@@ -258,27 +364,7 @@ public class PostgresClientTest {
 
     int total = 10;
 
-    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
-      @Override
-      public SQLOperations querySingle(String sql, Handler<AsyncResult<JsonArray>> handler) {
-        handler.handle(Future.succeededFuture(new JsonArray().add(total)));
-        return null;
-      }
-      @Override
-      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
-        ResultSet rs = getMockTestPojoResultSet(total);
-        handler.handle(Future.succeededFuture(rs));
-        return this;
-      }
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        handler.handle(Future.succeededFuture());
-      }
-      @Override
-      public void close() {
-        // nothing to do
-      }
-    };
+    SqlConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)));
 
     testClient.processQueryWithCount(connection, queryHelper, "get",
       totaledResults -> {
@@ -293,7 +379,7 @@ public class PostgresClientTest {
     );
 
   }
-
+/*
   @Test
   public void testProcessQuery() {
     PostgresClient testClient = PostgresClient.testClient();
