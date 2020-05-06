@@ -16,11 +16,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.folio.rest.tools.utils.NetworkUtils;

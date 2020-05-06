@@ -2824,7 +2824,7 @@ public class PostgresClient {
     return ar;
   }
 
-  private static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<JsonArray>> replyHandler) {
+  static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<JsonArray>> replyHandler) {
     if (res.failed()) {
       replyHandler.handle(Future.failedFuture(res.cause()));
       return;

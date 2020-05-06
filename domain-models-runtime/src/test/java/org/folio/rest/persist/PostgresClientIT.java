@@ -34,6 +34,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.pgclient.PgPool;
+import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
@@ -43,6 +44,7 @@ import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
+import io.vertx.sqlclient.impl.RowDesc;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -56,6 +58,7 @@ import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.helpers.FakeRowSet;
 import org.folio.rest.persist.helpers.SimplePojo;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
@@ -3703,6 +3706,40 @@ public class PostgresClientIT {
             }
         ));
   }
+
+  @Test
+  public void selectReturnFail(TestContext context) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    promise.complete(null);
+    PostgresClient.selectReturn(promise.future(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectReturnEmptySet(TestContext context) {
+    RowSet rowSet = new FakeRowSet(0);
+    Promise<RowSet<Row>> promise = Promise.promise();
+    promise.complete(rowSet);
+    PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
+      context.assertEquals(0, res.size())));
+  }
+
+  @Test
+  public void selectReturnOneRow(TestContext context) {
+    List<String> columns = new LinkedList<>();
+    columns.add("field");
+    RowDesc rowDesc = new RowDesc(columns);
+    List<Row> rows = new LinkedList<>();
+    Row row = new RowImpl(rowDesc);
+    row.addString("value");
+    rows.add(row);
+    RowSet rowSet = new FakeRowSet(1).withColumns(columns).withRows(rows);
+
+    Promise<RowSet<Row>> promise = Promise.promise();
+    promise.complete(rowSet);
+    PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
+        context.assertEquals("value", res.getString(0))));
+  }
+
 
   @Test
   public void getTotalRecordsTest() {
