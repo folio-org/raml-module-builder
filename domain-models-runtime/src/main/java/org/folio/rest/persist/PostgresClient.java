@@ -2801,7 +2801,7 @@ public class PostgresClient {
     StringBuilder preparedSql = new StringBuilder();
     int pos = 1;
     for (int i = 0; i < sql.length(); i++) {
-      if (sql.charAt(i) =='?' && (i == sql.length() -1 || sql.charAt(i+1) != '?')) {
+      if (sql.charAt(i) =='?') {
         preparedSql.append("$" + pos);
         pos++;
       } else {
