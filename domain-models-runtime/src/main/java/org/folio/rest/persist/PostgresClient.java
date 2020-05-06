@@ -889,8 +889,8 @@ public class PostgresClient {
    */
   @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
   public void save(AsyncResult<SQLConnection> sqlConnection, String table, String id, Object entity,
-      boolean returnId, boolean upsert, boolean convertEntity,
-      Handler<AsyncResult<String>> replyHandler) {
+                   boolean returnId, boolean upsert, boolean convertEntity,
+                   Handler<AsyncResult<String>> replyHandler) {
 
     if (log.isDebugEnabled()) {
       log.debug("save (with connection and id) called on " + table);
@@ -913,14 +913,9 @@ public class PostgresClient {
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
         } else {
-          try {
-            RowSet<Row> result = query.result();
-            String res = result.iterator().next().getValue(0).toString();
-            replyHandler.handle(Future.succeededFuture(res));
-          } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            replyHandler.handle(Future.failedFuture(e));
-          }
+          RowSet<Row> result = query.result();
+          String res = result.iterator().next().getValue(0).toString();
+          replyHandler.handle(Future.succeededFuture(res));
         }
       });
     } catch (Exception e) {
@@ -1205,30 +1200,28 @@ public class PostgresClient {
       replyHandler.handle(Future.failedFuture(conn.cause()));
       return;
     }
-    vertx.runOnContext(v -> {
-      long start = System.nanoTime();
-      StringBuilder sb = new StringBuilder();
-      sb.append(whereClause);
-      StringBuilder returning = new StringBuilder();
-      if (returnUpdatedIds) {
-        returning.append(RETURNING_ID);
-      }
-      try {
-        String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = $1::jsonb " + whereClause
+    long start = System.nanoTime();
+    StringBuilder sb = new StringBuilder();
+    sb.append(whereClause);
+    StringBuilder returning = new StringBuilder();
+    if (returnUpdatedIds) {
+      returning.append(RETURNING_ID);
+    }
+    try {
+      String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = $1::jsonb " + whereClause
           + SPACE + returning;
-        log.debug("update query = " + q);
-        conn.result().conn.preparedQuery(q, Tuple.of(pojo2JsonObject(entity)), query -> {
-          if (query.failed()) {
-            log.error(query.cause().getMessage(), query.cause());
-          }
-          statsTracker(UPDATE_STAT_METHOD, table, start);
-          replyHandler.handle(query);
-        });
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
-      }
-    });
+      log.debug("update query = " + q);
+      conn.result().conn.preparedQuery(q, Tuple.of(pojo2JsonObject(entity)), query -> {
+        if (query.failed()) {
+          log.error(query.cause().getMessage(), query.cause());
+        }
+        statsTracker(UPDATE_STAT_METHOD, table, start);
+        replyHandler.handle(query);
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
@@ -1272,42 +1265,40 @@ public class PostgresClient {
    *
    */
   public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
-      Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+                     Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     long start = System.nanoTime();
-    vertx.runOnContext(v -> {
-      client.getConnection(res -> {
-        if (res.succeeded()) {
-          SqlConnection connection = res.result();
-          try {
-            String value = section.getValue().replace("'", "''");
-            String where = when == null ? "" : when.toString();
-            String returning = returnUpdatedIdsCount ? RETURNING_ID : "";
-            String q = UPDATE + schemaName + DOT + table + SET + DEFAULT_JSONB_FIELD_NAME
-                + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
-                + section.getFieldsString() + ", '" + value + "', false) " + where + returning;
-            log.debug("update query = " + q);
-            connection.query(q, query -> {
-              connection.close();
-              statsTracker(UPDATE_STAT_METHOD, table, start);
-              if (query.failed()) {
-                log.error(query.cause().getMessage(), query.cause());
-                replyHandler.handle(Future.failedFuture(query.cause()));
-              } else {
-                replyHandler.handle(Future.succeededFuture(query.result()));
-              }
-            });
-          } catch (Exception e) {
-            if(connection != null){
-              connection.close();
+    client.getConnection(res -> {
+      if (res.succeeded()) {
+        SqlConnection connection = res.result();
+        try {
+          String value = section.getValue().replace("'", "''");
+          String where = when == null ? "" : when.toString();
+          String returning = returnUpdatedIdsCount ? RETURNING_ID : "";
+          String q = UPDATE + schemaName + DOT + table + SET + DEFAULT_JSONB_FIELD_NAME
+              + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
+              + section.getFieldsString() + ", '" + value + "', false) " + where + returning;
+          log.debug("update query = " + q);
+          connection.query(q, query -> {
+            connection.close();
+            statsTracker(UPDATE_STAT_METHOD, table, start);
+            if (query.failed()) {
+              log.error(query.cause().getMessage(), query.cause());
+              replyHandler.handle(Future.failedFuture(query.cause()));
+            } else {
+              replyHandler.handle(Future.succeededFuture(query.result()));
             }
-            log.error(e.getMessage(), e);
-            replyHandler.handle(Future.failedFuture(e));
+          });
+        } catch (Exception e) {
+          if (connection != null){
+            connection.close();
           }
-        } else {
-          log.error(res.cause().getMessage(), res.cause());
-          replyHandler.handle(Future.failedFuture(res.cause()));
+          log.error(e.getMessage(), e);
+          replyHandler.handle(Future.failedFuture(e));
         }
-      });
+      } else {
+        log.error(res.cause().getMessage(), res.cause());
+        replyHandler.handle(Future.failedFuture(res.cause()));
+      }
     });
   }
 
@@ -1348,8 +1339,7 @@ public class PostgresClient {
    * @param table table name without schema
    * @param cql which records to delete
    */
-  public void delete(String table, CQLWrapper cql,
-      Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+  public void delete(String table, CQLWrapper cql, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     getSQLConnection(conn -> delete(conn, table, cql, closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -3127,10 +3117,17 @@ public class PostgresClient {
    * @param filter
    * @param replyHandler
    */
-  public void persistentlyCacheResult(String cacheName, String tableName, CQLWrapper filter, Handler<AsyncResult<Integer>> replyHandler){
+  public void persistentlyCacheResult(String cacheName, String tableName,
+                                      CQLWrapper filter, Handler<AsyncResult<Integer>> replyHandler) {
     String where = "";
-    if (filter != null){
-      where = filter.toString();
+    if (filter != null) {
+      try {
+        where = filter.toString();
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
+        return;
+      }
     }
     String q = "SELECT * FROM " + schemaName + DOT + tableName + SPACE + where;
     persistentlyCacheResult(cacheName, q, replyHandler);
@@ -3145,7 +3142,8 @@ public class PostgresClient {
    * @param filter
    * @param replyHandler
    */
-  public void persistentlyCacheResult(String cacheName, String tableName, Criterion filter, Handler<AsyncResult<Integer>> replyHandler){
+  public void persistentlyCacheResult(String cacheName, String tableName,
+                                      Criterion filter, Handler<AsyncResult<Integer>> replyHandler) {
     String where = "";
     if (filter != null) {
       where = filter.toString();

@@ -662,6 +662,14 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void getByIdBadUUID(TestContext context) {
+    postgresClient = createFoo(context);
+      postgresClient.getById(FOO, "bad-uid", context.asyncAssertFailure(res -> {
+        context.assertTrue(res.getMessage().contains("Invalid UUID"));
+      }));
+  }
+
+  @Test
   public void save3(TestContext context) {
     postgresClient = createFoo(context);
     postgresClient.save(FOO, xPojo, context.asyncAssertSuccess(save -> {
@@ -3563,7 +3571,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void testCacheResultCQL1(TestContext context) throws IOException, FieldException {
+  public void testCacheResultCQLOK(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
@@ -3576,7 +3584,18 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void testCacheResultCQL2(TestContext context) throws IOException, FieldException {
+  public void testCacheResultCQLSyntaxError(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=");
+    postgresClient.persistentlyCacheResult("cache_polines", MOCK_POLINES_TABLE, wrapper,
+        context.asyncAssertFailure(res ->
+            context.assertTrue(res.getMessage().contains("expected index or term"))));
+  }
+
+  @Test
+  public void testCacheResultCQLNull(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
