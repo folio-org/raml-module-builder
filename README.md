@@ -56,6 +56,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [RAMLs API](#ramls-api)
 * [JSON Schemas API](#json-schemas-api)
 * [Query Syntax](#query-syntax)
+* [Estimated totalRecords](#estimated-totalrecords)
 * [Metadata](#metadata)
 * [Facet Support](#facet-support)
 * [JSON Schema fields](#json-schema-fields)
@@ -1567,7 +1568,7 @@ RMB provides these variables:
 * `${newVersion}` the new version that currently gets installed (`CREATE` mode) or is upgraded to (`UPDATE` mode),
   for example `mod-inventory-storage-18.1.0` or `18.1.0`.
 * `${rmbVersion}` the RMB version that the module currently uses, for example `29.3.2`.
-* `${exactCount}` the `exactCount` number from schema.json or the default.
+* `${exactCount}` the `exactCount` number from schema.json or the default (1000).
 
 In addition the `tables`, `views` and `scripts` sections of schema.json are available.
 
@@ -1576,11 +1577,8 @@ it also uses the `${}` syntax. Disable maven's filtering for the SQL script file
 otherwise it replaces for example `${version}` by a wrong value (the current module version from pom.xml).
 
 The **exactCount** section is optional and the value of the property is
-a simple integer with a default value of 1000. Hit counts returned by
-get-familify of methods will use an exact hit count up to that value; beyond
-that, an estimated hit count is returned. However, for cases when query
-parameter is omitted (filter is null), an exact count is still returned.
-
+a simple integer with a default value of 1000 for the
+[estimated totalRecords](#estimated-totalrecords) hit count calculation.
 
 The tables / views will be generated in the schema named tenantid_modulename
 
@@ -1762,6 +1760,40 @@ A CQL querying example:
 ```sh
 http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20sortBy%20enabled
 ```
+
+## Estimated totalRecords
+
+RMB adds a `totalRecords` field to result sets. It contains an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited.
+
+It uses this algorithm:
+
+1. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
+2. If this is greater than 4*1000 return it and stop.
+3. Run "SELECT COUNT(*) FROM query LIMIT 1000".
+4. If this is less than 1000 return it (this is the exact number) and stop.
+5. If the result from 1. is less than 1000 return 1000 and stop.
+6. Return result from 1. (this is a value between 1000 and 4*1000).
+
+Step 2. contains the factor 4 that should be adjusted when there is empirical data for a better number.
+Step 3. may take long for full text queries with many hits, therefore we need steps 1.-2.
+
+1000 is configurable, see the [Post Tenant API](#the-post-tenant-api) how to set `exactCount` in schema.json.
+
+RMB adjusts `totalRecords` when the number of returned records in the current result set and the paging parameters `offset` and `limit` proves it wrong:
+
+* If no record is returned and `totalRecords > offset` then adjust `totalRecords = offset`.
+* If the number of records returned equals `limit` and `totalRecords < offset + limit` then adjust `totalRecords = offset + limit`.
+* If the number of records is at least one but less than `limit` then adjust `totalRecords = offset +` number of records returned (this is the exact number).
+
+Note that clients should **continue on the next page when `totalRecords = offset + limit`** because there may be more records.
+
+This is the exact count guarantee:
+
+If a result set has a `totalRecords` value that is less than 1000 then it is the exact count; if it is 1000 or more it may be an estimate.
+
+If the exact count is less than 1000 then `totalRecords` almost always contains the exact count; only when PostgreSQL estimates it to be more than 4*1000 then it contains that overestimation.
+
+Replace 1000 by `exactCount` if configured differently.
 
 ## Metadata
 

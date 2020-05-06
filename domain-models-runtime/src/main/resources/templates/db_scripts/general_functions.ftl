@@ -37,10 +37,11 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 
--- In order not to calculate possibly unnecessary precise count, primarily estimate the count by
--- explain select (see: count_estimate_smart2). If the approximate count is more than desirable
--- exact records counts multiplied by 4 (empiric constant) return it. Otherwise return precise
--- count if it is less than desirable exact records. Otherwise return approximate count.
+-- count_estimate(query) returns an estimate for the number of records that query returns.
+-- It uses "EXPLAIN SELECT" to quickly get an estimation from Postgres (see count_estimate_smart2).
+-- It uses "SELECT COUNT(*) FROM query LIMIT ${exactCount}" to get an exact count when the
+-- exact count is smaller than ${exactCount}, this query may take long if using full text query.
+-- For details see https://github.com/folio-org/raml-module-builder#estimated-totalrecords
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.count_estimate(query text) RETURNS bigint AS $$
 DECLARE
   count bigint;
@@ -55,6 +56,9 @@ BEGIN
   EXECUTE q INTO count;
   IF count < ${exactCount} THEN
     RETURN count;
+  END IF;
+  IF est_count < ${exactCount} THEN
+    RETURN ${exactCount};
   END IF;
   RETURN est_count;
 END;
