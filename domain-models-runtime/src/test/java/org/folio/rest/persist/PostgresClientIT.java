@@ -3563,7 +3563,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void testCacheResultCQL(TestContext context) throws IOException, FieldException {
+  public void testCacheResultCQL1(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
@@ -3576,12 +3576,37 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void testCacheResultCriterion(TestContext context) throws IOException, FieldException {
+  public void testCacheResultCQL2(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = null;
+    postgresClient.persistentlyCacheResult("cache_polines", MOCK_POLINES_TABLE, wrapper,
+        context.asyncAssertSuccess(res ->
+            postgresClient.removePersistentCacheResult("cache_polines",
+                context.asyncAssertSuccess())
+        ));
+  }
+
+  @Test
+  public void testCacheResultCriterion1(TestContext context) throws IOException, FieldException {
     createNumbers(context, 1, 2, 3);
 
     Criterion criterion = new Criterion();
     criterion.addCriterion(new Criteria().addField("i").setOperation("=").setVal("2").setJSONB(false));
 
+    postgresClient.persistentlyCacheResult("cache_numbers", "numbers", criterion,
+        context.asyncAssertSuccess(res ->
+            postgresClient.removePersistentCacheResult("cache_numbers",
+                context.asyncAssertSuccess())
+        ));
+  }
+
+  @Test
+  public void testCacheResultCriterion2(TestContext context) throws IOException, FieldException {
+    createNumbers(context, 1, 2, 3);
+
+    Criterion criterion = null;
     postgresClient.persistentlyCacheResult("cache_numbers", "numbers", criterion,
         context.asyncAssertSuccess(res ->
             postgresClient.removePersistentCacheResult("cache_numbers",
@@ -3616,9 +3641,7 @@ public class PostgresClientIT {
 
     postgresClientGetConnectionFails().removePersistentCacheResult("cache_numbers",
         context.asyncAssertFailure());
-
   }
-
 
   private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);

@@ -3129,7 +3129,7 @@ public class PostgresClient {
    */
   public void persistentlyCacheResult(String cacheName, String tableName, CQLWrapper filter, Handler<AsyncResult<Integer>> replyHandler){
     String where = "";
-    if(filter != null){
+    if (filter != null){
       where = filter.toString();
     }
     String q = "SELECT * FROM " + schemaName + DOT + tableName + SPACE + where;
@@ -3147,7 +3147,7 @@ public class PostgresClient {
    */
   public void persistentlyCacheResult(String cacheName, String tableName, Criterion filter, Handler<AsyncResult<Integer>> replyHandler){
     String where = "";
-    if(filter != null){
+    if (filter != null) {
       where = filter.toString();
     }
     String q = "SELECT * FROM " + schemaName + DOT + tableName + SPACE + where;
@@ -3172,64 +3172,61 @@ public class PostgresClient {
    * @param sql2cache - the sql query to use to populate the table
    * @param replyHandler
    */
-  public void persistentlyCacheResult(String cacheName, String sql2cache, Handler<AsyncResult<Integer>> replyHandler){
-    long start = System.nanoTime();
-    client.getConnection(res -> {
-      if (res.failed()) {
-        replyHandler.handle(Future.failedFuture(res.cause()));
-        return;
-      }
-      SqlConnection connection = res.result();
-      try {
-        String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
-            + schemaName + DOT + cacheName +" AS " + sql2cache;
-        log.info(q);
-        connection.query(q,
-            query -> {
-              connection.close();
-              statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start);
-              if (query.failed()) {
-                replyHandler.handle(Future.failedFuture(query.cause()));
-              } else {
-                replyHandler.handle(Future.succeededFuture(query.result().rowCount()));
-              }
-            });
-      } catch (Exception e) {
-        if(connection != null){
-          connection.close();
-        }
-        log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
-      }
-    });
+  public void persistentlyCacheResult(String cacheName, String sql2cache, Handler<AsyncResult<Integer>> replyHandler) {
+    getSQLConnection(conn -> persistentlyCacheResult(conn, cacheName, sql2cache, closeAndHandleResult(conn, replyHandler)));
   }
 
-  public void removePersistentCacheResult(String cacheName, Handler<AsyncResult<Integer>> replyHandler){
-    long start = System.nanoTime();
-    client.getConnection(res -> {
-      if (res.succeeded()) {
-        SqlConnection connection = res.result();
-        try {
-          connection.query("DROP TABLE " + schemaName + DOT + cacheName, query -> {
-            connection.close();
-            statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
+  private void persistentlyCacheResult(AsyncResult<SQLConnection> conn, String cacheName, String sql2cache, Handler<AsyncResult<Integer>> replyHandler) {
+    try {
+      if (conn.failed()) {
+        replyHandler.handle(Future.failedFuture(conn.cause()));
+        return;
+      }
+      long start = System.nanoTime();
+      SqlConnection connection = conn.result().conn;
+      String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
+          + schemaName + DOT + cacheName +" AS " + sql2cache;
+      log.info(q);
+      connection.query(q,
+          query -> {
+            statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start);
             if (query.failed()) {
               replyHandler.handle(Future.failedFuture(query.cause()));
             } else {
               replyHandler.handle(Future.succeededFuture(query.result().rowCount()));
             }
           });
-        } catch (Exception e) {
-          if(connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      } else {
-        replyHandler.handle(Future.failedFuture(res.cause()));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
+  }
+
+  public void removePersistentCacheResult(String cacheName, Handler<AsyncResult<Integer>> replyHandler) {
+    getSQLConnection(conn -> removePersistentCacheResult(conn, cacheName, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  private void removePersistentCacheResult(AsyncResult<SQLConnection> conn, String cacheName,
+                                           Handler<AsyncResult<Integer>> replyHandler){
+    try {
+      if (conn.failed()) {
+        replyHandler.handle(Future.failedFuture(conn.cause()));
+        return;
       }
-    });
+      long start = System.nanoTime();
+      SqlConnection connection = conn.result().conn;
+      connection.query("DROP TABLE " + schemaName + DOT + cacheName, query -> {
+        statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
+        if (query.failed()) {
+          replyHandler.handle(Future.failedFuture(query.cause()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(query.result().rowCount()));
+        }
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      replyHandler.handle(Future.failedFuture(e));
+    }
   }
 
   /**
