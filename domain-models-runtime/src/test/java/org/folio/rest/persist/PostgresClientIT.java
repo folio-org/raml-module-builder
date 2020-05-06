@@ -3545,6 +3545,81 @@ public class PostgresClientIT {
     }));
   }
 
+  @Test
+  public void testCacheResultOK(TestContext context) {
+    createNumbers(context, 1, 2, 3);
+
+    postgresClient.removePersistentCacheResult("cache_numbers_does_not_exist",
+        context.asyncAssertFailure());
+
+    postgresClient.persistentlyCacheResult("cache_numbers",
+        "SELECT i FROM numbers WHERE i IN (1, 3, 5) ORDER BY i", context.asyncAssertSuccess(
+            res -> {
+              context.assertEquals(2, res);
+              postgresClient.removePersistentCacheResult("cache_numbers",
+                  context.asyncAssertSuccess());
+            }
+        ));
+  }
+
+  @Test
+  public void testCacheResultCQL(TestContext context) throws IOException, FieldException {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.persistentlyCacheResult("cache_polines", MOCK_POLINES_TABLE, wrapper,
+        context.asyncAssertSuccess(res ->
+            postgresClient.removePersistentCacheResult("cache_polines",
+                  context.asyncAssertSuccess())
+        ));
+  }
+
+  @Test
+  public void testCacheResultCriterion(TestContext context) throws IOException, FieldException {
+    createNumbers(context, 1, 2, 3);
+
+    Criterion criterion = new Criterion();
+    criterion.addCriterion(new Criteria().addField("i").setOperation("=").setVal("2").setJSONB(false));
+
+    postgresClient.persistentlyCacheResult("cache_numbers", "numbers", criterion,
+        context.asyncAssertSuccess(res ->
+            postgresClient.removePersistentCacheResult("cache_numbers",
+                context.asyncAssertSuccess())
+        ));
+  }
+
+  @Test
+  public void testCacheResultFailure(TestContext context) {
+    createNumbers(context, 1, 2, 3);
+
+    postgresClient.persistentlyCacheResult("cache_numbers",
+        "SELECT i FROM", context.asyncAssertFailure());
+
+    postgresClient.persistentlyCacheResult(null,
+        "SELECT i FROM", context.asyncAssertFailure());
+
+    postgresClientNullConnection().persistentlyCacheResult("cache_numbers",
+        "SELECT i FROM", context.asyncAssertFailure());
+
+    postgresClientGetConnectionFails().persistentlyCacheResult("cache_numbers",
+        "SELECT i FROM", context.asyncAssertFailure());
+
+    postgresClient.removePersistentCacheResult("cache_numbers_does_not_exist",
+        context.asyncAssertFailure());
+
+    postgresClient.removePersistentCacheResult(null,
+        context.asyncAssertFailure());
+
+    postgresClientNullConnection().removePersistentCacheResult("cache_numbers",
+        context.asyncAssertFailure());
+
+    postgresClientGetConnectionFails().removePersistentCacheResult("cache_numbers",
+        context.asyncAssertFailure());
+
+  }
+
+
   private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     String polines = getMockData("mockdata/poLines.json");
@@ -3568,6 +3643,23 @@ public class PostgresClientIT {
         return sb.toString();
       }
     }
+  }
+
+  @Test
+  public void testCacheResultCQLWrapper(TestContext context) {
+    createNumbers(context, 1, 2, 3);
+
+    postgresClient.removePersistentCacheResult("cache_numbers_does_not_exist",
+        context.asyncAssertFailure());
+
+    postgresClient.persistentlyCacheResult("cache_numbers",
+        "SELECT i FROM numbers WHERE i IN (1, 3, 5) ORDER BY i", context.asyncAssertSuccess(
+            res -> {
+              context.assertEquals(2, res);
+              postgresClient.removePersistentCacheResult("cache_numbers",
+                  context.asyncAssertSuccess());
+            }
+        ));
   }
 
   @Test
