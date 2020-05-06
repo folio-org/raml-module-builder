@@ -201,4 +201,11 @@ public class AdminAPIIT {
     }), vertx.getOrCreateContext());
   }
 
+  @Test
+  public void deleteAdminKillQuery(TestContext context) {
+    new AdminAPI().deleteAdminKillQuery("99999999", okapiHeaders, context.asyncAssertSuccess(response -> {
+      assertThat(response.getStatus(), is(HttpStatus.HTTP_NOT_FOUND.toInt()));
+      assertThat(response.getMediaType(), is(MediaType.TEXT_PLAIN));
+    }), vertx.getOrCreateContext());
+  }
 }
