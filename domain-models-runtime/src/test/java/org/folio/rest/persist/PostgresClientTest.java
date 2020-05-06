@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
@@ -25,6 +24,7 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.impl.RowDesc;
+import org.folio.rest.persist.helpers.FakeRowSet;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.ResourceUtil;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
@@ -157,13 +157,12 @@ public class PostgresClientTest {
     assertThat("mydatabase", is(options.getDatabase()));
   }
 
-  /* DISABLED
   @Test
   public void testProcessResults() {
     PostgresClient testClient = PostgresClient.testClient();
 
     int total = 15;
-    ResultSet rs = getMockTestPojoResultSet(total);
+    RowSet<Row> rs = getMockTestPojoResultSet(total);
 
     List<TestPojo> results = testClient.processResults(rs, total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class).getResults();
 
@@ -175,7 +174,7 @@ public class PostgresClientTest {
     PostgresClient testClient = PostgresClient.testClient();
 
     int total = 25;
-    ResultSet rs = getMockTestPojoResultSet(total);
+    RowSet<Row> rs = getMockTestPojoResultSet(total);
     PostgresClient.ResultsHelper<TestPojo> resultsHelper = new PostgresClient.ResultsHelper<>(rs, total, TestPojo.class);
 
     testClient.deserializeResults(resultsHelper);
@@ -183,7 +182,6 @@ public class PostgresClientTest {
     assertTestPojoResults(resultsHelper.list, total);
   }
 
-*/
   @Test
   public void testIsAuditFlavored() {
     PostgresClient testClient = PostgresClient.testClient();
@@ -391,31 +389,24 @@ public class PostgresClientTest {
     );
   }
 
-  /* DISABLED
-  private ResultSet getMockTestPojoResultSet(int total) {
+  private RowSet<Row> getMockTestPojoResultSet(int total) {
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
     }));
-
-    List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
-      "This", "is", "a", "test"
-    }));
-
-    List<JsonArray> list = new ArrayList<JsonArray>();
-
-    for(int i = 0; i < total; i++) {
-      list.add(new JsonArray()
-        .add(UUID.randomUUID().toString())
-        .add("foo " + i)
-        .add("bar " + i)
-        .add((double) i)
-        .add(baz)
-      );
+    RowDesc rowDesc = new RowDesc(columnNames);
+    List<Row> rows = new LinkedList<>();
+    for (int i = 0; i < total; i++) {
+      Row row = new RowImpl(rowDesc);
+      row.addUUID(UUID.randomUUID());
+      row.addString("foo " + i);
+      row.addString("bar " + i);
+      row.addDouble((double) i);
+      row.addStringArray(new String[] { "This", "is", "a", "test" } );
+      rows.add(row);
     }
-
-    return new ResultSet(columnNames, list, null);
+    return new FakeRowSet(total).withColumns(columnNames).withRows(rows);
   }
-*/
+
   private void assertTestPojoResults(List<TestPojo> results, int total) {
     assertThat(results.size(), is(total));
 
@@ -431,33 +422,29 @@ public class PostgresClientTest {
     }
   }
 
-  /* DISABLED
-  private ResultSet getMockTestJsonbPojoResultSet(int total) {
+  private RowSet<Row> getMockTestJsonbPojoResultSet(int total) {
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "jsonb"
     }));
-
+    RowDesc rowDesc = new RowDesc(columnNames);
     List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
-      "This", "is", "a", "test"
+        "This", "is", "a", "test"
     }));
-
-    List<JsonArray> list = new ArrayList<JsonArray>();
-
-    for(int i = 0; i < total; i++) {
-      list.add(new JsonArray()
-        .add(new JsonObject()
+    List<Row> rows = new LinkedList<>();
+    for (int i = 0; i < total; i++) {
+      Row row = new RowImpl(rowDesc);
+      row.addValue(new JsonObject()
           .put("id", UUID.randomUUID().toString())
           .put("foo", "foo " + i)
           .put("bar", "bar " + i)
           .put("biz", (double) i)
           .put("baz", baz)
-        )
       );
+      rows.add(row);
     }
-
-    return new ResultSet(columnNames, list, null);
+    return new FakeRowSet(total).withColumns(columnNames).withRows(rows);
   }
-*/
+
   private void assertTestJsonbPojoResults(List<TestJsonbPojo> results, int total) {
     assertThat(results.size(), is(total));
 
