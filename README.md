@@ -1785,11 +1785,11 @@ RMB adjusts `totalRecords` when the number of returned records in the current re
 * If the number of records returned equals `limit` and `totalRecords < offset + limit` then adjust `totalRecords = offset + limit`.
 * If the number of records is at least one but less than `limit` then adjust `totalRecords = offset +` number of records returned (this is the exact number).
 
-Note that clients should continue on the next page when `totalRecords = offset + limit` because there may be more records.
+Note that clients should **continue on the next page when `totalRecords = offset + limit`** because there may be more records.
 
 This is the exact count guarantee:
 
-If a result set has a `totalRecords` value that is less than 1000 then it is the exact count.
+If a result set has a `totalRecords` value that is less than 1000 then it is the exact count; if it is 1000 or more it may be an estimate.
 
 If the exact count is less than 1000 then `totalRecords` almost always contains the exact count; only when PostgreSQL estimates it to be more than 4*1000 then it contains that overestimation.
 
