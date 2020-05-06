@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -2496,7 +2497,7 @@ public class PostgresClient {
   <T> Object deserializeRow(
     ResultsHelper<T> resultsHelper, Map<String, Method> externalColumnSetters,
     boolean isAuditFlavored, Row row
-  ) throws IOException, InstantiationException, IllegalAccessException {
+  ) throws IOException, InstantiationException, IllegalAccessException, InvocationTargetException {
 
     Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
     Object o = null;
@@ -2599,20 +2600,17 @@ public class PostgresClient {
    * @param o
    * @param row
    */
-  void populateExternalColumns(Map<String, Method> externalColumnSetters, Object o, Row row) {
+  void populateExternalColumns(Map<String, Method> externalColumnSetters, Object o, Row row)
+      throws InvocationTargetException, IllegalAccessException {
     for (Map.Entry<String, Method> entry : externalColumnSetters.entrySet()) {
       String columnName = entry.getKey();
       Method method = entry.getValue();
-      try {
         String[] stringArray = row.getStringArray(columnName);
         if (stringArray != null) {
           method.invoke(o, Arrays.asList(stringArray));
           continue;
         }
         method.invoke(o, row.getValue(columnName));
-      } catch (Exception e) {
-        log.warn("Unable to populate field " + columnName + " for object of type " + o.getClass().getName(), e);
-      }
     }
   }
 

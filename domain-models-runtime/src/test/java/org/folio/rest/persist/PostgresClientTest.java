@@ -6,6 +6,7 @@ import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -204,7 +205,7 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void testPopulateExternalColumns() {
+  public void testPopulateExternalColumns() throws InvocationTargetException, IllegalAccessException {
     PostgresClient testClient = PostgresClient.testClient();
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
