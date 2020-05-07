@@ -403,14 +403,14 @@ public class PostgresClient {
   }
 
   /**
-   * @return this instance's AsyncSQLClient that can connect to Postgres
+   * @return this instance's PgPool that allows connections to be made
    */
   PgPool getClient() {
     return client;
   }
 
   /**
-   * Set this instance's AsyncSQLClient that can connect to Postgres.
+   * Set this instance's PgPool that can connect to Postgres.
    * @param client  the new client
    */
   void setClient(PgPool client) {
@@ -596,7 +596,6 @@ public class PostgresClient {
    *
    * @param done - the result is the current connection
    */
-  //@Timer
   public void startTx(Handler<AsyncResult<SQLConnection>> done) {
     client.getConnection(res -> {
       if (res.failed()) {
