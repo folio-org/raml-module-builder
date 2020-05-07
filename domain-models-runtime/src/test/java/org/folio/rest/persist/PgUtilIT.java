@@ -50,7 +50,7 @@ public class PgUtilIT {
   static Logger log = LoggerFactory.getLogger(PgUtilIT.class);
 
   @Rule
-  public Timeout timeoutRule = Timeout.seconds(20);
+  public Timeout timeoutRule = Timeout.seconds(30);
 
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
