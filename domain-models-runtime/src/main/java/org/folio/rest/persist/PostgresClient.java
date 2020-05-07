@@ -597,7 +597,7 @@ public class PostgresClient {
    * @param done - the result is the current connection
    */
   public void startTx(Handler<AsyncResult<SQLConnection>> done) {
-    client.getConnection(res -> {
+    getConnection(res -> {
       if (res.failed()) {
         log.error(res.cause().getMessage(), res.cause());
         done.handle(Future.failedFuture(res.cause()));
@@ -1267,7 +1267,7 @@ public class PostgresClient {
   public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
                      Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     long start = System.nanoTime();
-    client.getConnection(res -> {
+    getConnection(res -> {
       if (res.succeeded()) {
         SqlConnection connection = res.result();
         try {
@@ -2213,7 +2213,7 @@ public class PostgresClient {
   private <R> void getById(String table, String id,
                            FunctionWithException<String, R, Exception> function,
                            Handler<AsyncResult<R>> replyHandler) {
-    client.getConnection(res -> {
+    getConnection(res -> {
       if (res.failed()) {
         replyHandler.handle(Future.failedFuture(res.cause()));
         return;
@@ -2298,7 +2298,7 @@ public class PostgresClient {
       replyHandler.handle(Future.succeededFuture(Collections.emptyMap()));
       return;
     }
-    client.getConnection(res -> {
+    getConnection(res -> {
       if (res.failed()) {
         replyHandler.handle(Future.failedFuture(res.cause()));
         return;
@@ -2946,8 +2946,16 @@ public class PostgresClient {
     execute(sql, new JsonArray(), replyHandler);
   }
 
+  /**
+   * Get vertx-pg-client connection
+   * @param replyHandler
+   */
+  public void getConnection(Handler<AsyncResult<SqlConnection>> replyHandler) {
+    client.getConnection(replyHandler::handle);
+  }
+
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
-    client.getConnection(res -> {
+    getConnection(res -> {
       if (res.failed()) {
         handler.handle(Future.failedFuture(res.cause()));
         return;
