@@ -32,6 +32,7 @@ import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
+import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.FakeRowSet;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.ResourceUtil;
@@ -260,8 +261,11 @@ public class PostgresClientTest {
 
   public class FakeSqlConnection implements SqlConnection {
     final AsyncResult<RowSet<Row>> asyncResult;
-    FakeSqlConnection(AsyncResult<RowSet<Row>> result) {
+    final boolean failExplain;
+
+    FakeSqlConnection(AsyncResult<RowSet<Row>> result, boolean failExplain) {
       this.asyncResult = result;
+      this.failExplain = failExplain;
     }
     @Override
     public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
@@ -308,7 +312,9 @@ public class PostgresClientTest {
 
     @Override
     public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-      if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
+      if (s.startsWith("EXPLAIN") && failExplain) {
+        handler.handle(Future.failedFuture("failExplain"));
+      } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
         List<String> columnNames = new LinkedList<>();
         columnNames.add("COUNT");
         RowDesc rowDesc = new RowDesc(columnNames);
@@ -364,7 +370,7 @@ public class PostgresClientTest {
 
     int total = 10;
 
-    SqlConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)));
+    SqlConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), false);
 
     testClient.processQueryWithCount(connection, queryHelper, "get",
       totaledResults -> {
@@ -379,7 +385,7 @@ public class PostgresClientTest {
     );
 
   }
-/*
+
   @Test
   public void testProcessQuery() {
     PostgresClient testClient = PostgresClient.testClient();
@@ -393,29 +399,7 @@ public class PostgresClientTest {
 
     int total = 30;
 
-    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
-      @Override
-      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
-        // provoke explain query failure
-        if (sql.startsWith("EXPLAIN ")) {
-          handler.handle(Future.failedFuture("explain"));
-          return this;
-        }
-        ResultSet rs = getMockTestJsonbPojoResultSet(total);
-        handler.handle(Future.succeededFuture(rs));
-        return this;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        handler.handle(Future.succeededFuture());
-      }
-
-      @Override
-      public void close() {
-        // nothing to do
-      }
-    };
+    SqlConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), true);
 
     testClient.processQuery(connection, queryHelper, total, "get",
       totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
@@ -434,21 +418,7 @@ public class PostgresClientTest {
     QueryHelper queryHelper = new QueryHelper("test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT foo";
 
-    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
-      @Override
-      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
-        handler.handle(Future.failedFuture("Bad query"));
-        return this;
-      }
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        handler.handle(Future.succeededFuture());
-      }
-      @Override
-      public void close() {
-        // nothing to do
-      }
-    };
+    SqlConnection connection = new FakeSqlConnection(Future.failedFuture("Bad query"), false);
 
     testClient.processQuery(connection, queryHelper, 30, "get",
       totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
@@ -458,7 +428,7 @@ public class PostgresClientTest {
       }
     );
   }
-*/
+
   @Test
   public void testProcessQueryException() {
     PostgresClient testClient = PostgresClient.testClient();
