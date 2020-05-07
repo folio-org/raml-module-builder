@@ -27,7 +27,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     `RowSet<Row>`. From that result, the number of rows affacted by
     SQL is `rowCount()`. The size() method returns number of rows
     returned. An iterator to go through rows is obtained by calling
-    `iterator`.
+    `iterator`. JSONB is returned as JsonObject, the old client returned
+    it as a String.
   * `PostgresClient.getClient()` is no longer public. If you need a
     connection, use PostgresClient.startTx(). For modules that wish to use
     vertx-pg-client directly, PostgresClient.getConnection is offered -
