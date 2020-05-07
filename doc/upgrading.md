@@ -29,8 +29,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     returned. An iterator to go through rows is obtained by calling
     `iterator`.
   * `PostgresClient.getClient()` is no longer public. If you need a
-    connection, use PostgresClient.startTx(). If you don't have
-    transactions, you don't need access to SQLConnection.
+    connection, use PostgresClient.startTx(). For modules that wish to use
+    vertx-pg-client directly, PostgresClient.getConnection is offered -
+    it returns SqlConnection from the pool that is managed by PostgresClient.
   * Exceptions thrown by new client is `io.vertx.pgclient.PgException`.
     Was com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException
     before. The getMessage() only contains message! Not details, code.
