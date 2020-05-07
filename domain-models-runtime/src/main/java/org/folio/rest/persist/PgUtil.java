@@ -1208,12 +1208,12 @@ public final class PgUtil {
     String wrappedColumn =
       "lower(f_unaccent(jsonb->>'" + column + "')) ";
     String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
-    String countSql = "(" + preparedCql.getSchemaName()
+    String countSql = preparedCql.getSchemaName()
       + ".count_estimate('"
       + "  SELECT " + StringEscapeUtils.escapeSql(wrappedColumn) + " AS data_column "
       + "  FROM " + tableName + " "
       + "  WHERE " + StringEscapeUtils.escapeSql(where)
-      + "')) AS count";
+      + "')";
     String sql =
       " WITH "
         + " headrecords AS ("
@@ -1232,12 +1232,13 @@ public final class PgUtil {
         + "   SELECT jsonb, " + wrappedColumn + " AS data_column FROM " + tableName
         + "   WHERE (" + where + ")"
         + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
-        + " )"
-        + " SELECT jsonb, data_column, " + countSql
+        + " ),"
+        + " totalCount AS (SELECT " + countSql + " AS count)"
+        + " SELECT jsonb, data_column, (SELECT count FROM totalCount)"
         + "   FROM headrecords"
         + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
         + " UNION"
-        + " (SELECT jsonb, data_column, " + countSql
+        + " (SELECT jsonb, data_column, (SELECT count FROM totalCount)"
         + "   FROM allrecords"
         + "   ORDER BY data_column " + ascDesc
         + "   LIMIT " + limit + " OFFSET " + offset
