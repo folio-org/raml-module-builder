@@ -2964,7 +2964,7 @@ public class PostgresClient {
     });
   }
 
-  /** HERE
+  /**
    * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
    * @param sql  The SQL statement to run.
    * @param params The parameters for the placeholders in sql.
