@@ -65,6 +65,8 @@ END;
 $$ LANGUAGE plpgsql STABLE STRICT;
 
 
+-- f_unaccent(text)
+--
 -- Convert accented string into unaccented string.
 -- For Postgres versions below 12 we additionally need to remove
 -- these Unicode combining characters:
