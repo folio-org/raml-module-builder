@@ -2,7 +2,7 @@ package org.folio.rest.persist.ddlgen;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -270,11 +270,11 @@ public class SchemaMakerIT extends PostgresClientITBase {
   @Test
   public void indexUpgrade(TestContext context) {
     runSchema(context, TenantOperation.CREATE, "indexRemoveAccents.json");
-    assertThat(indexdef(context, "casetable_i_idx"),        containsString("lower(f_unaccent((jsonb ->> 'i'::text)))"));
-    assertThat(indexdef(context, "casetable_u_idx_unique"), containsString("lower(f_unaccent((jsonb ->> 'u'::text)))"));
-    assertThat(indexdef(context, "casetable_l_idx_like"),   containsString("lower(f_unaccent((jsonb ->> 'l'::text)))"));
-    assertThat(indexdef(context, "casetable_g_idx_gin"),    containsString("lower(f_unaccent((jsonb ->> 'g'::text)))"));
-    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString(    ", f_unaccent((jsonb ->> 'f'::text)))"));
+    assertThat(indexdef(context, "casetable_i_idx"),        containsString("lower(public.f_unaccent((jsonb ->> 'i'::text)))"));
+    assertThat(indexdef(context, "casetable_u_idx_unique"), containsString("lower(public.f_unaccent((jsonb ->> 'u'::text)))"));
+    assertThat(indexdef(context, "casetable_l_idx_like"),   containsString("lower(public.f_unaccent((jsonb ->> 'l'::text)))"));
+    assertThat(indexdef(context, "casetable_g_idx_gin"),    containsString("lower(public.f_unaccent((jsonb ->> 'g'::text)))"));
+    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString(    ", public.f_unaccent((jsonb ->> 'f'::text)))"));
 
     runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
     assertThat(indexdef(context, "casetable_i_idx"),        containsString("lower((jsonb ->> 'i'::text))"));
@@ -302,16 +302,15 @@ public class SchemaMakerIT extends PostgresClientITBase {
   }
 
   @Test
-  public void publicSchemaFunctions(TestContext context) throws InterruptedException {
+  public void publicFunaccent(TestContext context) throws InterruptedException {
     runSchema(context, TenantOperation.CREATE, "schema.json");
-    String indexdef = "CREATE INDEX foo ON " + schema + ".test_tenantapi USING btree (f_unaccent((jsonb ->> 'foo'::text)))";
-    String sql = "CREATE OR REPLACE FUNCTION public.f_unaccent(text) RETURNS text AS 'SELECT $1' LANGUAGE sql;"
-        + "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"29.1.0\"}'::jsonb;"
+    String indexdef = "CREATE INDEX foo ON " + schema + ".test_tenantapi USING btree (public.f_unaccent((jsonb ->> 'foo'::text)))";
+    String sql = "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"29.1.0\"}'::jsonb;"
         + indexdef;
     runSqlFileAsSuperuser(context, sql);
     assertThat("indexdef before update", indexdef(context, "foo"), is(indexdef));
 
     runSchema(context, TenantOperation.UPDATE, "schema.json");
-    assertThat("indexdef after update", indexdef(context, "foo"), is(indexdef.replace("public.", "")));
+    assertThat("indexdef after update", indexdef(context, "foo"), is(indexdef));
   }
 }
