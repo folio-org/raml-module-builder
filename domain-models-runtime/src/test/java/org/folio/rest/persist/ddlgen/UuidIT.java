@@ -38,8 +38,8 @@ public class UuidIT extends PostgresClientITBase {
     Async async = context.async();
     String sql = "SELECT " + schema + ".min(uuid), " + schema + ".max(uuid) FROM " + t;
     getClient().selectSingle(sql, context.asyncAssertSuccess(result -> {
-      context.assertEquals(expectedMin, result.getString(0), "min");
-      context.assertEquals(expectedMax, result.getString(1), "max");
+      context.assertEquals(expectedMin, result.getUUID(0) != null ? result.getUUID(0).toString() : null, "min");
+      context.assertEquals(expectedMax, result.getUUID(1) != null ? result.getUUID(1).toString() : null, "max");
       async.complete();
     }));
     async.await(timeoutMillis);
@@ -95,7 +95,7 @@ public class UuidIT extends PostgresClientITBase {
 
   private void nextUuid(TestContext context, String uuid, String nextUuid) {
     getClient().selectSingle("SELECT " + schema + ".next_uuid('" + uuid +  "')", context.asyncAssertSuccess(result -> {
-      context.assertEquals(nextUuid, result.getString(0), "next_uuid(" + uuid + ") = " + nextUuid);
+      context.assertEquals(nextUuid, result.getUUID(0).toString(), "next_uuid(" + uuid + ") = " + nextUuid);
     }));
   }
 

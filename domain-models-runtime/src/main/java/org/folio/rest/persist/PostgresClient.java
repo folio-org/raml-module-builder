@@ -19,8 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -36,6 +38,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
+import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.RowIterator;
@@ -45,6 +48,7 @@ import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import io.vertx.sqlclient.impl.RowDesc;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
@@ -67,6 +71,7 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
@@ -77,11 +82,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 
 import freemarker.template.TemplateException;
-
-import java.util.Optional;
-import java.util.UUID;
-
-import org.folio.rest.tools.utils.NetworkUtils;
 
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -2729,13 +2729,13 @@ public class PostgresClient {
   /**
    * Run a parameterized/prepared select query.
    *
-   * <p>To update see {@link #execute(String, JsonArray, Handler)}.
+   * <p>To update see {@link #execute(String, Tuple, Handler)}.
    *
    * @param sql  The sql query to run.
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
    */
-  public void select(String sql, JsonArray params, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+  public void select(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     getSQLConnection(conn -> select(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -2744,21 +2744,21 @@ public class PostgresClient {
    *
    * <p>This never closes the connection conn.
    *
-   * <p>To update see {@link #execute(AsyncResult, String, JsonArray, Handler)}.
+   * <p>To update see {@link #execute(AsyncResult, String, Tuple, Handler)}.
    *
    * @param conn  The connection on which to execute the query on.
    * @param sql  The sql query to run.
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
    */
-  public void select(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
+  public void select(AsyncResult<SQLConnection> conn, String sql, Tuple params,
       Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     try {
       if (conn.failed()) {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      conn.result().conn.preparedQuery(legacySql(sql, params), Tuple.wrap(params.getList()), replyHandler);
+      conn.result().conn.preparedQuery(sql, params, replyHandler);
     } catch (Exception e) {
       log.error("select sql: " + e.getMessage() + " - " + sql, e);
       replyHandler.handle(Future.failedFuture(e));
@@ -2773,7 +2773,7 @@ public class PostgresClient {
    * @param sql  The sql query to run.
    * @param replyHandler  The query result or the failure.
    */
-  public void selectSingle(String sql, Handler<AsyncResult<JsonArray>> replyHandler) {
+  public void selectSingle(String sql, Handler<AsyncResult<Row>> replyHandler) {
     getSQLConnection(conn -> selectSingle(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -2788,8 +2788,8 @@ public class PostgresClient {
    * @param sql  The sql query to run.
    * @param replyHandler  The query result or the failure.
    */
-  public void selectSingle(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<JsonArray>> replyHandler) {
-    selectSingle(conn, sql, new JsonArray(), replyHandler);
+  public void selectSingle(AsyncResult<SQLConnection> conn, String sql, Handler<AsyncResult<Row>> replyHandler) {
+    selectSingle(conn, sql, Tuple.tuple(), replyHandler);
   }
 
   /**
@@ -2801,60 +2801,22 @@ public class PostgresClient {
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
    */
-  public void selectSingle(String sql, JsonArray params, Handler<AsyncResult<JsonArray>> replyHandler) {
+  public void selectSingle(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
     getSQLConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
   }
 
-  private static String legacySql(String sql, JsonArray params) {
-    if (params.isEmpty()) {
-      return sql;
-    }
-    StringBuilder preparedSql = new StringBuilder();
-    int pos = 1;
-    for (int i = 0; i < sql.length(); i++) {
-      if (sql.charAt(i) =='?') {
-        preparedSql.append("$" + pos);
-        pos++;
-      } else {
-        preparedSql.append(sql.charAt(i));
-      }
-    }
-    return preparedSql.toString();
-  }
-
-  private static Tuple legacyArguments(JsonArray params) {
-    Tuple tuple = Tuple.tuple();
-    for (int i = 0; i < params.size(); i++) {
-      tuple.addUUID(UUID.fromString(params.getString(i)));
-    }
-    return tuple;
-  }
-
-  private static JsonArray rowSetToJsonArray(RowSet<Row> rowSet) {
-    RowIterator<Row> iterator = rowSet.iterator();
-    JsonArray ar = new JsonArray();
-    if (iterator.hasNext()) {
-      Row row = iterator.next();
-      for (int i = 0; i < row.size(); i++) {
-        Object obj = row.getValue(i);
-        if (obj instanceof java.util.UUID) {
-          ar.add(obj.toString());
-        } else {
-          ar.add(obj);
-        }
-      }
-    }
-    return ar;
-  }
-
-  static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<JsonArray>> replyHandler) {
+  static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<Row>> replyHandler) {
     if (res.failed()) {
       replyHandler.handle(Future.failedFuture(res.cause()));
       return;
     }
     try {
-      JsonArray ar = rowSetToJsonArray(res.result());
-      replyHandler.handle(Future.succeededFuture(ar));
+      if (!res.result().iterator().hasNext()) {
+        Row emptyRow = new RowImpl(new RowDesc(Collections.EMPTY_LIST));
+        replyHandler.handle(Future.succeededFuture(emptyRow));
+        return;
+      }
+      replyHandler.handle(Future.succeededFuture(res.result().iterator().next()));
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
@@ -2873,8 +2835,8 @@ public class PostgresClient {
      * @param params  The parameters for the placeholders in sql.
      * @param replyHandler  The query result or the failure.
      */
-  public void selectSingle(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
-                           Handler<AsyncResult<JsonArray>> replyHandler) {
+  public void selectSingle(AsyncResult<SQLConnection> conn, String sql, Tuple params,
+                           Handler<AsyncResult<Row>> replyHandler) {
     try {
       if (conn.failed()) {
         replyHandler.handle(Future.failedFuture(conn.cause()));
@@ -2883,7 +2845,7 @@ public class PostgresClient {
       if (params.size() == 0) {
         conn.result().conn.query(sql, res -> selectReturn(res, replyHandler));
       } else {
-        conn.result().conn.preparedQuery(legacySql(sql, params), Tuple.wrap(params.getList()),
+        conn.result().conn.preparedQuery(sql, params,
           res -> selectReturn(res, replyHandler));
       }
     } catch (Exception e) {
@@ -2913,7 +2875,7 @@ public class PostgresClient {
    */
   public void selectStream(AsyncResult<SQLConnection> conn, String sql,
       Handler<AsyncResult<RowStream<Row>>> replyHandler) {
-    selectStream(conn, sql, new JsonArray(), replyHandler);
+    selectStream(conn, sql, Tuple.tuple(), replyHandler);
   }
 
   /**
@@ -2923,7 +2885,7 @@ public class PostgresClient {
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
    */
-  public void selectStream(String sql, JsonArray params, Handler<AsyncResult<RowStream<Row>>> replyHandler) {
+  public void selectStream(String sql, Tuple params, Handler<AsyncResult<RowStream<Row>>> replyHandler) {
     getSQLConnection(conn -> selectStream(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -2937,7 +2899,7 @@ public class PostgresClient {
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
    */
-  public void selectStream(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
+  public void selectStream(AsyncResult<SQLConnection> conn, String sql, Tuple params,
       Handler<AsyncResult<RowStream<Row>>> replyHandler) {
     try {
       if (conn.failed()) {
@@ -2945,14 +2907,14 @@ public class PostgresClient {
         return;
       }
       SqlConnection connection = conn.result().conn;
-      connection.prepare(legacySql(sql, params), res -> {
+      connection.prepare(sql, res -> {
         if (res.failed()) {
           log.error(res.cause().getMessage(), res.cause());
           replyHandler.handle(Future.failedFuture(res.cause()));
           return;
         }
         PreparedQuery pq = res.result();
-        RowStream<Row> rowStream = pq.createStream(50, Tuple.wrap(params.getList()));
+        RowStream<Row> rowStream = pq.createStream(50, params);
         replyHandler.handle(Future.succeededFuture(rowStream));
       });
     } catch (Exception e) {
@@ -2967,7 +2929,7 @@ public class PostgresClient {
    * @param replyHandler - the result handler with UpdateResult
    */
   public void execute(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
-    execute(sql, new JsonArray(), replyHandler);
+    execute(sql, Tuple.tuple(), replyHandler);
   }
 
   /**
@@ -2996,7 +2958,7 @@ public class PostgresClient {
    * @param params The parameters for the placeholders in sql.
    * @param replyHandler
    */
-  public void execute(String sql, JsonArray params, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
+  public void execute(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -3015,7 +2977,7 @@ public class PostgresClient {
    */
   public void execute(AsyncResult<SQLConnection> conn, String sql,
                       Handler<AsyncResult<RowSet<Row>>> replyHandler){
-    execute(conn, sql, new JsonArray(), replyHandler);
+    execute(conn, sql, Tuple.tuple(), replyHandler);
   }
 
   /**
@@ -3031,7 +2993,7 @@ public class PostgresClient {
    * @param sql - the sql to run
    * @param replyHandler - reply handler with UpdateResult
    */
-  public void execute(AsyncResult<SQLConnection> conn, String sql, JsonArray params,
+  public void execute(AsyncResult<SQLConnection> conn, String sql, Tuple params,
                       Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     try {
       if (conn.failed()) {
@@ -3047,7 +3009,7 @@ public class PostgresClient {
           replyHandler.handle(query);
         });
       } else {
-        connection.preparedQuery(legacySql(sql, params), legacyArguments(params), query -> {
+        connection.preparedQuery(sql, params, query -> {
           statsTracker(EXECUTE_STAT_METHOD, sql, start);
           replyHandler.handle(query);
         });
@@ -3073,7 +3035,7 @@ public class PostgresClient {
    * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
    * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
    */
-  public void execute(AsyncResult<SQLConnection> conn, String sql, List<JsonArray> params,
+  public void execute(AsyncResult<SQLConnection> conn, String sql, List<Tuple> params,
                       Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
     try {
       if (conn.failed()) {
@@ -3082,7 +3044,7 @@ public class PostgresClient {
       }
       SqlConnection sqlConnection = conn.result().conn;
       List<RowSet<Row>> results = new ArrayList<>(params.size());
-      Iterator<JsonArray> iterator = params.iterator();
+      Iterator<Tuple> iterator = params.iterator();
       Runnable task = new Runnable() {
         @Override
         public void run() {
@@ -3090,8 +3052,8 @@ public class PostgresClient {
             replyHandler.handle(Future.succeededFuture(results));
             return;
           }
-          JsonArray params1 = iterator.next();
-          sqlConnection.preparedQuery(legacySql(sql, params1), legacyArguments(params1), query -> {
+          Tuple params1 = iterator.next();
+          sqlConnection.preparedQuery(sql, params1, query -> {
             if (query.failed()) {
               replyHandler.handle(Future.failedFuture(query.cause()));
               return;
@@ -3116,7 +3078,7 @@ public class PostgresClient {
    * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
    * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
    */
-  public void execute(String sql, List<JsonArray> params, Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
+  public void execute(String sql, List<Tuple> params, Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
 
     startTx(res -> {
       if (res.failed()) {
@@ -3546,7 +3508,7 @@ public class PostgresClient {
   }
 
   /**
-   * Start an embedded PostgreSQL using the configuration of {@link #getConnectionConfig()}.
+   * Start an embedded PostgreSQL}.
    * doesn't change the configuration.
    *
    * @throws IOException  when starting embedded PostgreSQL fails

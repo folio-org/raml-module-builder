@@ -2194,7 +2194,7 @@ public class PostgresClientIT {
     Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=?", new JsonArray().add(ids.getString(0)), res -> {
+    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))), res -> {
       assertSuccess(context, res);
       context.assertEquals(1, res.result().rowCount());
       async.complete();
@@ -2203,22 +2203,22 @@ public class PostgresClientIT {
 
   @Test
   public void executeParamSyntaxError(TestContext context) {
-    postgresClient().execute("'", new JsonArray(), context.asyncAssertFailure());
+    postgresClient().execute("'", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
   public void executeParamGetConnectionFails(TestContext context) throws Exception {
-    postgresClientGetConnectionFails().execute("SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClientGetConnectionFails().execute("SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
   public void executeParamNullConnection(TestContext context) throws Exception {
-    postgresClientNullConnection().execute("SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClientNullConnection().execute("SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
   public void executeParamConnectionException(TestContext context) throws Exception {
-    postgresClientConnectionThrowsException().execute("SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClientConnectionThrowsException().execute("SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
@@ -2288,7 +2288,8 @@ public class PostgresClientIT {
     postgresClient = insertXAndSingleQuotePojo(context, ids);
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
-      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id=?", new JsonArray().add(ids.getString(1)), res -> {
+      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id=$1",
+          Tuple.of(UUID.fromString(ids.getString(1))), res -> {
         assertSuccess(context, res);
         postgresClient.rollbackTx(trans, rollback -> {
           assertSuccess(context, rollback);
@@ -2301,8 +2302,8 @@ public class PostgresClientIT {
     Async async2 = context.async();
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
-      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id=?",
-          new JsonArray().add(ids.getString(0)), res -> {
+      postgresClient.execute(trans, "DELETE FROM tenant_raml_module_builder.foo WHERE id=$1",
+          Tuple.of(UUID.fromString(ids.getString(0))), res -> {
         assertSuccess(context, res);
         postgresClient.endTx(trans, end -> {
           assertSuccess(context, end);
@@ -2327,7 +2328,7 @@ public class PostgresClientIT {
   public void executeTransParamSyntaxError(TestContext context) {
     postgresClient = createFoo(context);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.execute(trans, "'", new JsonArray(), context.asyncAssertFailure(execute -> {
+      postgresClient.execute(trans, "'", Tuple.tuple(), context.asyncAssertFailure(execute -> {
         postgresClient.rollbackTx(trans, context.asyncAssertSuccess());
       }));
     }));
@@ -2338,7 +2339,7 @@ public class PostgresClientIT {
     Async async = context.async();
     postgresClient = postgresClient();
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.execute(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure(execute -> {
+      postgresClient.execute(null, "SELECT 1", Tuple.tuple(), context.asyncAssertFailure(execute -> {
         postgresClient.rollbackTx(trans, rollback -> async.complete());
       }));
       // TODO: When updated to vertx 3.6.1 with this fix
@@ -2351,10 +2352,10 @@ public class PostgresClientIT {
   public void executeList(TestContext context) {
     Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
-    List<JsonArray> list = new ArrayList<>(2);
-    list.add(new JsonArray().add(ids.getString(0)));
-    list.add(new JsonArray().add(ids.getString(1)));
-    insertXAndSingleQuotePojo(context, ids).execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=?", list, res -> {
+    List<Tuple> list = new ArrayList<>(2);
+    list.add(Tuple.of(UUID.fromString(ids.getString(0))));
+    list.add(Tuple.of(UUID.fromString(ids.getString(1))));
+    insertXAndSingleQuotePojo(context, ids).execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", list, res -> {
       assertSuccess(context, res);
       List<RowSet<Row>> result = res.result();
       context.assertEquals(2, result.size());
@@ -2365,8 +2366,8 @@ public class PostgresClientIT {
   }
 
   /** @return List containg one empty JsonArray() */
-  private List<JsonArray> list1JsonArray() {
-    return Collections.singletonList(new JsonArray());
+  private List<Tuple> list1JsonArray() {
+    return Collections.singletonList(Tuple.tuple());
   }
 
   @Test
@@ -2463,8 +2464,8 @@ public class PostgresClientIT {
   @Test
   public void selectParam(TestContext context) {
     createNumbers(context, 7, 8, 9)
-    .select("SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
-        new JsonArray().add(7).add(9).add(11), context.asyncAssertSuccess(select -> {
+    .select("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+        Tuple.of(7, 9, 11), context.asyncAssertSuccess(select -> {
           context.assertEquals("7, 9",  intsAsString(select));
         }));
   }
@@ -2473,8 +2474,8 @@ public class PostgresClientIT {
   public void selectParamTrans(TestContext context) {
     postgresClient = createNumbers(context, 11, 12, 13);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.select(trans, "SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
-          new JsonArray().add(11).add(13).add(15), context.asyncAssertSuccess(select -> {
+      postgresClient.select(trans, "SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+          Tuple.of(11, 13, 15), context.asyncAssertSuccess(select -> {
             postgresClient.endTx(trans, context.asyncAssertSuccess());
             context.assertEquals("11, 13",  intsAsString(select));
           }));
@@ -2508,8 +2509,8 @@ public class PostgresClientIT {
   @Test
   public void selectStreamParam(TestContext context) {
     createNumbers(context, 25, 26, 27)
-    .selectStream("SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
-        new JsonArray().add(25).add(27).add(29),
+    .selectStream("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+        Tuple.of(25, 27, 29),
         context.asyncAssertSuccess(select -> {
           intsAsString(select, context.asyncAssertSuccess(string -> {
             context.assertEquals("25, 27", string);
@@ -2521,8 +2522,8 @@ public class PostgresClientIT {
   public void selectStreamParamTrans(TestContext context) {
     postgresClient = createNumbers(context, 31, 32, 33);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.selectStream(trans, "SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
-          new JsonArray().add(31).add(33).add(35),
+      postgresClient.selectStream(trans, "SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+          Tuple.of(31, 33, 35),
           context.asyncAssertSuccess(select -> {
             intsAsString(select, context.asyncAssertSuccess(string -> {
               postgresClient.endTx(trans, context.asyncAssertSuccess());
@@ -2536,7 +2537,7 @@ public class PostgresClientIT {
   public void selectStreamParamSyntaxError(TestContext context) {
     postgresClient = createNumbers(context, 31, 32, 33);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.selectStream(trans, "SELECT (", new JsonArray(),
+      postgresClient.selectStream(trans, "SELECT (", Tuple.tuple(),
           context.asyncAssertFailure(select -> {
             postgresClient.endTx(trans, context.asyncAssertSuccess());
           }));
@@ -2567,8 +2568,8 @@ public class PostgresClientIT {
   @Test
   public void selectSingleParam(TestContext context) {
     postgresClient = createNumbers(context, 51, 52, 53);
-    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
-        new JsonArray().add(51).add(53).add(55),
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+        Tuple.of(51, 53, 55),
         context.asyncAssertSuccess(select -> {
           context.assertEquals(51, select.getInteger(0));
         }));
@@ -2578,15 +2579,15 @@ public class PostgresClientIT {
   public void selectSingleParamSyntaxError(TestContext context) {
     postgresClient = createNumbers(context, 51, 52, 53);
     postgresClient.selectSingle("SELECT (",
-        new JsonArray(), context.asyncAssertFailure());
+        Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
   public void selectSingleParamTrans(TestContext context) {
     postgresClient = createNumbers(context, 55, 56, 57);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
-      postgresClient.selectSingle(trans, "SELECT i FROM numbers WHERE i IN (?, ?, ?) ORDER BY i",
-          new JsonArray().add(51).add(53).add(55),
+      postgresClient.selectSingle(trans, "SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+          Tuple.of(51, 53, 55),
           context.asyncAssertSuccess(select -> {
               postgresClient.endTx(trans, context.asyncAssertSuccess());
               context.assertEquals(55, select.getInteger(0));
@@ -2601,7 +2602,7 @@ public class PostgresClientIT {
 
   @Test
   public void selectParamTxException(TestContext context) {
-    postgresClient().select(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClient().select(null, "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
@@ -2611,7 +2612,7 @@ public class PostgresClientIT {
 
   @Test
   public void selectSingleParamTxException(TestContext context) {
-    postgresClient().selectSingle(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClient().selectSingle(null, "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
@@ -2621,12 +2622,12 @@ public class PostgresClientIT {
 
   @Test
   public void selectStreamParamTxException(TestContext context) {
-    postgresClient().selectStream(null, "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClient().selectStream(null, "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
   public void selectStreamParamTxSqlError(TestContext context) {
-    postgresClient().selectStream("sql", new JsonArray(), context.asyncAssertFailure());
+    postgresClient().selectStream("sql", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
@@ -2636,7 +2637,7 @@ public class PostgresClientIT {
 
   @Test
   public void selectParamTxFailed(TestContext context) {
-    postgresClient().select(Future.failedFuture("failed"), "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClient().select(Future.failedFuture("failed"), "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
@@ -2646,7 +2647,7 @@ public class PostgresClientIT {
 
   @Test
   public void selectSingleParamTxFailed(TestContext context) {
-    postgresClient().selectSingle(Future.failedFuture("failed"), "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClient().selectSingle(Future.failedFuture("failed"), "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
@@ -2656,7 +2657,7 @@ public class PostgresClientIT {
 
   @Test
   public void selectStreamParamTxFailed(TestContext context) {
-    postgresClient().selectStream(Future.failedFuture("failed"), "SELECT 1", new JsonArray(), context.asyncAssertFailure());
+    postgresClient().selectStream(Future.failedFuture("failed"), "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
@@ -3739,7 +3740,6 @@ public class PostgresClientIT {
     PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
         context.assertEquals("value", res.getString(0))));
   }
-
 
   @Test
   public void getTotalRecordsTest() {

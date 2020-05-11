@@ -29,6 +29,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     returned. An iterator to go through rows is obtained by calling
     `iterator`. JSONB is returned as JsonObject, the old client returned
     it as a String.
+  * `PostgresClient.selectSingle` returns Row rather than `JsonArray`.
+  * SQL parameters changed from `JsonArray` to `Tuple`.
   * `PostgresClient.getClient()` is no longer public. If you need a
     connection, use PostgresClient.startTx(). For modules that wish to use
     vertx-pg-client directly, PostgresClient.getConnection is offered -
