@@ -50,7 +50,7 @@ public class PgUtilIT {
   static Logger log = LoggerFactory.getLogger(PgUtilIT.class);
 
   @Rule
-  public Timeout timeoutRule = Timeout.seconds(30);
+  public Timeout timeoutRule = Timeout.seconds(40);
 
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
@@ -331,7 +331,7 @@ public class PgUtilIT {
         ResponseImpl.class, asyncAssertSuccess(testContext, 201, post -> {
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
   }
 
   @Test
@@ -908,7 +908,7 @@ public class PgUtilIT {
     assertThat(val, is(9));
 
     // limit=9
-     c = searchForData("username=foo sortBy username", 0, 9, testContext);
+    c = searchForData("username=foo sortBy username", 0, 9, testContext);
     val = c.getUsers().size();
     assertThat(val, is(9));
     for (int i=0; i<5; i++) {
@@ -1040,7 +1040,7 @@ public class PgUtilIT {
           }
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataWithNo400(String cql, int offset, int limit, TestContext testContext) {
@@ -1058,7 +1058,7 @@ public class PgUtilIT {
 
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimized(String cql, int offset, int limit, TestContext testContext) {
@@ -1078,7 +1078,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimizedNoClass(String cql, int offset, int limit, TestContext testContext) {
@@ -1098,7 +1098,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimizedNo500(String cql, int offset, int limit, TestContext testContext) {
@@ -1118,7 +1118,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
@@ -1138,7 +1138,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataNoClass(String cql, int offset, int limit, TestContext testContext) {
@@ -1156,7 +1156,7 @@ public class PgUtilIT {
 
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private String searchForDataExpectFailure(String cql, int offset, int limit, TestContext testContext) {
@@ -1175,7 +1175,7 @@ public class PgUtilIT {
           responseString.concat(c);
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return responseString;
   }
   private String searchForDataNullHeadersExpectFailure(String cql, int offset, int limit, TestContext testContext) {
@@ -1194,7 +1194,7 @@ public class PgUtilIT {
           responseString.concat(c);
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return responseString;
   }
 
