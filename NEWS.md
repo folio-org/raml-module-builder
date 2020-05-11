@@ -4,7 +4,7 @@
    to the existing indexes. This takes some time, but this time is saved when upgrading the module
    to RMB >= 29.4 (Goldenrod). Upgrade to RMB 29.3.3 to create these indexes in advance, for
    example at night a few days before the module upgrade to Goldenrod.
-   The new indexes have the _p name suffix and are updated on CRUD operations of the the underlying data.
+   The new indexes have the \_p name suffix and are updated on CRUD operations of the the underlying data.
    When upgrading to RMB >= 29.4 the old index is deleted and replaced by the new index, this is a fast
    index rename without index recreation.
 
