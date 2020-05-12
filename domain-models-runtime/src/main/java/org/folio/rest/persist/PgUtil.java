@@ -554,11 +554,19 @@ public final class PgUtil {
     String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
     Context vertxContext) {
 
+   streamGet(table,clazz,cql,offset,limit,facets,element,routingContext,okapiHeaders,vertxContext,0);
+  }
+
+   public static <T> void streamGet(String table, Class<T> clazz,
+    String cql, int offset, int limit, List<String> facets,
+    String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
+    Context vertxContext, int limitRequestExecutionTime) {
+
     HttpServerResponse response = routingContext.response();
     try {
       List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
       CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset);
-      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext);
+      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext,limitRequestExecutionTime);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       response.setStatusCode(500);
@@ -583,7 +591,7 @@ public final class PgUtil {
   public static <T> void streamGet(String table, Class<T> clazz,
     CQLWrapper filter, List<FacetField> facetList, String element,
     RoutingContext routingContext, Map<String, String> okapiHeaders,
-    Context vertxContext) {
+    Context vertxContext, int limitRequestExecutionTime) {
 
     HttpServerResponse response = routingContext.response();
     PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
@@ -601,7 +609,7 @@ public final class PgUtil {
           return;
         }
         streamGetResult(reply.result(), element, response);
-      });
+      }, limitRequestExecutionTime);
   }
 
   /**
@@ -1033,7 +1041,7 @@ public final class PgUtil {
    * @param asyncResultHandler
    */
   public static <T, C> void getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
-      String sortField, String cql, int offset, int limit,
+      String sortField, String cql, int offset, int limit, int limitRequestExecutionTime,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
@@ -1088,7 +1096,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
           return;
         }
-      });
+      }, limitRequestExecutionTime);
     } catch (FieldException | QueryValidationException e) {
       logger.error(e.getMessage(), e);
       asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));

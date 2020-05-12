@@ -93,6 +93,8 @@ public class PostgresClientIT {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
 
+  private int EXECUTION_TIME_LIMIT = 0;
+
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
@@ -1000,7 +1002,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(null, trans1.tx);
+      SQLConnection conn = new SQLConnection(null, trans1.tx, EXECUTION_TIME_LIMIT);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertSuccess());
     }));
@@ -1011,7 +1013,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null);
+      SQLConnection conn = new SQLConnection(trans1.conn, null, EXECUTION_TIME_LIMIT);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertFailure());
     }));
@@ -1022,7 +1024,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null);
+      SQLConnection conn = new SQLConnection(trans1.conn, null, EXECUTION_TIME_LIMIT);
       trans2.complete(conn);
       postgresClient.rollbackTx(trans2.future(), context.asyncAssertFailure());
     }));
@@ -2834,7 +2836,7 @@ public class PostgresClientIT {
           context.assertEquals(3, objectCount.get());
           async.complete();
         });
-      }));
+      }), EXECUTION_TIME_LIMIT);
     async.awaitSuccess();
   }
 
@@ -2859,7 +2861,7 @@ public class PostgresClientIT {
           context.assertEquals(0, objectCount.get());
           async.complete();
         });
-      }));
+      }), EXECUTION_TIME_LIMIT);
     async.awaitSuccess();
   }
 
@@ -2872,7 +2874,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
-      badFacets, context.asyncAssertFailure());
+      badFacets, context.asyncAssertFailure(), EXECUTION_TIME_LIMIT);
   }
 
   @Test

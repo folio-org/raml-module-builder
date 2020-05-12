@@ -1,5 +1,31 @@
 package org.folio.rest.persist;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import freemarker.template.TemplateException;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.PoolOptions;
+import io.vertx.sqlclient.PreparedQuery;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.RowStream;
+import io.vertx.sqlclient.SqlConnection;
+import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.Tuple;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -17,36 +43,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.UUID;
-
 import javax.crypto.SecretKey;
-
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.pgclient.PgPool;
-import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.PreparedQuery;
-import io.vertx.sqlclient.RowIterator;
-import io.vertx.sqlclient.RowStream;
-import io.vertx.sqlclient.SqlConnection;
-import io.vertx.sqlclient.Transaction;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.Tuple;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
@@ -74,13 +78,6 @@ import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-
-import freemarker.template.TemplateException;
-
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
@@ -94,6 +91,7 @@ public class PostgresClient {
 
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
+  private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
 
   static Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
@@ -149,6 +147,8 @@ public class PostgresClient {
   private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
+
+  private static CopyOnWriteArraySet<SQLConnection> activeConnections;
 
   private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
@@ -489,6 +489,23 @@ public class PostgresClient {
     }
 
     client = createPgPool(vertx, postgreSQLClientConfig);
+
+     activeConnections = new CopyOnWriteArraySet<>();
+
+     vertx.setPeriodic(CHECK_FOR_QUERY_TIMEOUT_INTERVAL, timerId -> {
+       for (SQLConnection conn : activeConnections) {
+         if (System.currentTimeMillis() - conn.acquiringTime > conn.executionTimeLimit) {
+           ((PgConnection) conn.conn).cancelRequest(ar -> {
+             if (ar.succeeded()) {
+               System.out.println("Cancelling request has been sent");
+             } else {
+               System.out.println("Failed to send cancelling request");
+             }
+           });
+         }
+       }
+     });
+
   }
 
   static PgPool createPgPool(Vertx vertx, JsonObject configuration) {
@@ -606,7 +623,8 @@ public class PostgresClient {
         return;
       }
       try {
-        SQLConnection pgTransaction = new SQLConnection(res.result(), res.result().begin());
+        SQLConnection pgTransaction = new SQLConnection(res.result(), res.result().begin(), 0
+        );
         done.handle(Future.succeededFuture(pgTransaction));
       } catch (Exception e) {
         log.error(e.getMessage(), e);
@@ -1632,7 +1650,16 @@ public class PostgresClient {
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
-      null, replyHandler);
+      null, replyHandler, 0);
+  }
+
+  public <T> void streamGet(String table, Class<T> clazz, String fieldName,
+      CQLWrapper filter, boolean returnIdField, String distinctOn,
+      Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler,
+      int limitRequestExecutionTime) {
+
+    streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
+      null, replyHandler, limitRequestExecutionTime);
   }
 
   /**
@@ -1645,16 +1672,18 @@ public class PostgresClient {
    * @param returnIdField must be true if facets are in passed
    * @param distinctOn may be null
    * @param facets for no facets: null or Collections.emptyList()
-   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
+   * @param executionTimeLimit
    */
   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
-    CQLWrapper filter, boolean returnIdField, String distinctOn,
-    List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+      CQLWrapper filter, boolean returnIdField, String distinctOn,
+      List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler,
+      int executionTimeLimit) {
 
     getSQLConnection(conn ->
       doStreamGet(conn, table, clazz, fieldName, filter, returnIdField,
-        distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
+        distinctOn, facets, closeAndHandleResult(conn, replyHandler)), executionTimeLimit);
   }
 
   /**
@@ -2645,6 +2674,20 @@ public class PostgresClient {
     getSQLConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
+    /**
+   * Run a select query.
+   *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql - the sql query to run
+   * @param replyHandler  the query result or the failure
+   */
+    public void select(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler,
+        int limitRequestExecutionTime) {
+      getSQLConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)),
+          limitRequestExecutionTime);
+    }
+
   static void queryAndAnalyze(SqlConnection conn, String sql, String statMethod,
     Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
@@ -2917,13 +2960,22 @@ public class PostgresClient {
     getClient().getConnection(replyHandler::handle);
   }
 
+
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
+    getSQLConnection(handler,0);
+  }
+
+  void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler, int executionTimeLimit) {
     getConnection(res -> {
       if (res.failed()) {
         handler.handle(Future.failedFuture(res.cause()));
         return;
       }
-      handler.handle(Future.succeededFuture(new SQLConnection(res.result(), null)));
+      SQLConnection sqlConnection = new SQLConnection(res.result(), null, executionTimeLimit);
+      if (executionTimeLimit > 0) {
+         activeConnections.add(sqlConnection);
+      }
+      handler.handle(Future.succeededFuture(sqlConnection));
     });
   }
 
