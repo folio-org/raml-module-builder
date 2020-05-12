@@ -2207,8 +2207,8 @@ The full constructor takes the following parameters
  - cacheTO - cache of endpoint results timeout (in minutes, default: 30)
 
 ```
-    HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
-    Response response = hc.request("/groups");
+    HttpModuleClient2 hc = new HttpModuleClient2("localhost", 8083, "myuniversity_new2", false);
+    Response response = hc.request("/groups").get(5, TimeUNIT.SECONDS);
 ```
 
 It is recommended to use the `HttpClientFactory` to get an instance of the `HttpModuleClient2`.
@@ -2233,8 +2233,9 @@ The `HttpModuleClient2 request` function can receive the following parameters:
  - `cachable` - Whether to cache the response
  - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
 `
-Response userResponse =
+CompletableFuture<Response> cf =
 hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
+Response userResponse = cf.get(5, TimeUnit.SECONDS);
 `
 This will create a query string with all values from the JSON found in the path `usergroups[*].id` and will generate a CQL query string which will look something like this:
 `?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
