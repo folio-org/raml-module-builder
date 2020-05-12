@@ -155,6 +155,8 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
   </#list>
 </#if>
 
+<#include "prepare-f_unaccent-indexes.ftl">
+
 -- Drop all indexes that schema.json no longer defines but had been defined by schema.json before.
 DO $$
 DECLARE
