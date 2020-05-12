@@ -170,9 +170,7 @@ public class PostgresClient {
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
   private final Messages messages           = Messages.getInstance();
-  private PgPool client;
-  private boolean pgPoolActivity = false;
-  private long activityTimerId = 0;
+  private PgPoolWithExpiry client;
   private final String tenantId;
   private final String schemaName;
 
@@ -182,6 +180,7 @@ public class PostgresClient {
     this.schemaName = convertToPsqlStandard(tenantId);
     init();
   }
+
 
   /**
    * test constructor for unit testing
@@ -405,7 +404,10 @@ public class PostgresClient {
    * @return this instance's PgPool that allows connections to be made
    */
   PgPool getClient() {
-    return client;
+    if (client == null) {
+      return null;
+    }
+    return client.get();
   }
 
   /**
@@ -413,7 +415,7 @@ public class PostgresClient {
    * @param client  the new client
    */
   void setClient(PgPool client) {
-    this.client = client;
+    this.client.set(client);
   }
 
   /**
@@ -426,9 +428,7 @@ public class PostgresClient {
       whenDone.handle(Future.succeededFuture());
       return;
     }
-    PgPool clientToClose = client;
-    log.debug("Cancel timer = " + activityTimerId + " for tenant " + tenantId);
-    vertx.cancelTimer(activityTimerId);
+    PgPoolWithExpiry clientToClose = client;
     client = null;
     connectionPool.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
     clientToClose.close();
@@ -476,20 +476,6 @@ public class PostgresClient {
     return pgConnectOptions;
   }
 
-  private void startPool() {
-    if (client != null) {
-      return;
-    }
-    PgConnectOptions connectOptions = createPgConnectOptions(postgreSQLClientConfig);
-
-    PoolOptions poolOptions = new PoolOptions();
-    Integer maxPoolSize = postgreSQLClientConfig.getInteger(MAX_POOL_SIZE);
-    if (maxPoolSize != null) {
-      poolOptions.setMaxSize(maxPoolSize);
-    }
-    client = PgPool.pool(vertx, connectOptions, poolOptions);
-  }
-
   private void init() throws Exception {
 
     /** check if in pom.xml this prop is declared in order to work with encrypted
@@ -507,19 +493,17 @@ public class PostgresClient {
       startEmbeddedPostgres();
     }
 
-    client = null;
-    startPool();
+    client = createPgPoolWithExpiry(vertx, postgreSQLClientConfig);
+  }
 
-    log.debug("Setup timer = " + activityTimerId + " for tenant " + tenantId);
-    activityTimerId = vertx.setPeriodic(postgreSQLClientConfig.getInteger(CONNECTION_RELEASE_DELAY), res -> {
-      log.debug("expire timer for tenant " + tenantId);
-      if (!pgPoolActivity && client != null) {
-        log.debug("Expire pool for tenant " + tenantId);
-        client.close();
-        client = null;
-      }
-      pgPoolActivity = false;
-    });
+  static PgPoolWithExpiry createPgPoolWithExpiry(Vertx vertx, JsonObject configuration) {
+    PgConnectOptions connectOptions = createPgConnectOptions(configuration);
+
+    PoolOptions poolOptions = new PoolOptions();
+    poolOptions.setMaxSize(configuration.getInteger(MAX_POOL_SIZE, 4));
+
+    return new PgPoolWithExpiry(vertx, connectOptions, poolOptions,
+        configuration.getInteger(CONNECTION_RELEASE_DELAY));
   }
 
   /**
@@ -2937,9 +2921,7 @@ public class PostgresClient {
    * @param replyHandler
    */
   public void getConnection(Handler<AsyncResult<SqlConnection>> replyHandler) {
-    pgPoolActivity = true;
-    startPool();
-    client.getConnection(replyHandler::handle);
+    getClient().getConnection(replyHandler::handle);
   }
 
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
@@ -3505,6 +3487,10 @@ public class PostgresClient {
 
   private static void rememberEmbeddedPostgres() {
      embeddedPostgres = new EmbeddedPostgres(Version.Main.V10);
+  }
+
+  JsonObject getPostgreSQLClientConfig() {
+    return postgreSQLClientConfig;
   }
 
   /**
