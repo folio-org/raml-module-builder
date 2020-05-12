@@ -3482,10 +3482,6 @@ public class PostgresClient {
      embeddedPostgres = new EmbeddedPostgres(Version.Main.V10);
   }
 
-  JsonObject getPostgreSQLClientConfig() {
-    return postgreSQLClientConfig;
-  }
-
   /**
    * Start an embedded PostgreSQL}.
    * doesn't change the configuration.
