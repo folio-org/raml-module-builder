@@ -1683,7 +1683,8 @@ The RAMLs API is a multiple interface which affords RMB modules to expose their 
   "handlers" : [
     {
       "methods" : [ "GET" ],
-      "pathPattern" : "/_/ramls"
+      "pathPattern" : "/_/ramls",
+      "permissionsRequired" : [ ]
     }
   ]
 }
@@ -1707,7 +1708,8 @@ The JSON Schemas API is a multiple interface which affords RMB modules to expose
   "handlers" : [
     {
       "methods" : [ "GET" ],
-      "pathPattern" : "/_/jsonSchemas"
+      "pathPattern" : "/_/jsonSchemas",
+      "permissionsRequired" : [ ]
     }
   ]
 }
