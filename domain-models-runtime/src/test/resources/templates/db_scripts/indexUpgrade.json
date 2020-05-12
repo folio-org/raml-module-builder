@@ -1,6 +1,18 @@
 {
   "tables": [
     {
+      "tableName": "test_tenantapi",
+      "fromModuleVersion": "18.2.5",
+      "foreignKeys": [
+        {
+          "fieldName": "refField",
+          "targetTable":      "ref",
+          "targetTableAlias": "ref",
+          "tableAlias": "ref"
+        }
+      ]
+    },
+    {
       "tableName": "tablea",
       "index": [
         {

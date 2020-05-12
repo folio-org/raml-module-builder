@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.ws.rs.core.Response;
 
@@ -31,6 +32,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.sqlclient.Row;
 
 /**
  * @author shale
@@ -186,6 +188,41 @@ public class TenantAPI implements Tenant {
     });
   }
 
+  /**
+   * @return previous Schema from rmb_internal.jsonb->>'schemaJson', or null if not exist.
+   */
+  Future<Schema> previousSchema(Context context, String tenantId, boolean tenantExists) {
+    Promise<Schema> promise = Promise.promise();
+
+    if (! tenantExists) {
+      promise.complete(null);
+      return promise.future();
+    }
+
+    String sql = "SELECT jsonb->>'schemaJson' " +
+        "FROM " + PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_internal";
+    postgresClient(context).selectSingle(sql, select -> {
+      if (select.failed()) {
+        promise.fail(select.cause());
+        return;
+      }
+      try {
+        Row row = select.result();
+        String schemaString = row == null ? null : row.getString(0);
+        if (schemaString == null) {
+          promise.complete(null);
+          return;
+        }
+        Schema schema = ObjectMapperTool.getMapper().readValue(schemaString, Schema.class);
+        promise.complete(schema);
+      } catch (Exception e) {
+        promise.fail(e);
+        return;
+      }
+    });
+    return promise.future();
+  }
+
   String getTablePath() {
     return TABLE_JSON;
   }
@@ -196,12 +233,13 @@ public class TenantAPI implements Tenant {
   /**
    * @param tenantExists false for initial installation, true for upgrading
    * @param tenantAttributes parameters like module version that may influence generated SQL
+   * @param previousSchema schema to upgrade from, may be null if unknown and on initial install
    * @return the SQL commands to create or upgrade the tenant's schema
    * @throws NoSchemaJsonException when templates/db_scripts/schema.json doesn't exist
    * @throws TemplateException when processing templates/db_scripts/schema.json fails
    */
-  public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes tenantAttributes)
-      throws IOException, TemplateException {
+  public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes tenantAttributes,
+      Schema previousSchema) throws IOException, TemplateException {
 
     InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(getTablePath());
     if (tableInput == null) {
@@ -226,40 +264,75 @@ public class TenantAPI implements Tenant {
     sMaker.setSchemaJson(tableInputStr);
     Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
     sMaker.setSchema(schema);
+    sMaker.setPreviousSchema(previousSchema);
     String sqlFile = sMaker.generateDDL();
     log.debug("GENERATED SCHEMA " + sqlFile);
     return sqlFile;
   }
 
-  @Validate
-  @Override
-  public void postTenant(TenantAttributes entity, Map<String, String> headers,
-      Handler<AsyncResult<Response>> handlers, Context context)  {
+  private Future<String> sqlFile(Context context, String tenantId, TenantAttributes tenantAttributes,
+      boolean tenantExists) {
 
-    String tenantId = TenantTool.tenantId(headers);
-    log.info("sending... postTenant for " + tenantId);
-    if (entity != null) {
-      log.debug("upgrade from " + entity.getModuleFrom() + " to " + entity.getModuleTo());
-    }
-
-    Future<Boolean> tenantExistsFuture = tenantExists(context, tenantId);
-    tenantExistsFuture.compose(tenantExists -> {
+    return previousSchema(context, tenantId, tenantExists)
+    .compose(previousSchema -> {
       try {
-        String sqlFile = sqlFile(tenantId, tenantExists, entity);
-        PostgresClient pc = postgresClient(context);
-        return pc.runSQLFile(sqlFile, true);
+        String sqlFile = sqlFile(tenantId, tenantExists, tenantAttributes, previousSchema);
+        return Future.succeededFuture(sqlFile);
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       } catch (TemplateException e) {  // checked exception from main.tpl parsing
         throw new IllegalArgumentException(e);
       }
-    })
+    });
+  }
+
+  /**
+   * @param tenantAttributes parameters like module version that may influence generated SQL
+   * @return the SQL commands to create or upgrade the tenant's schema
+   * @throws NoSchemaJsonException when templates/db_scripts/schema.json doesn't exist
+   * @throws TemplateException when processing templates/db_scripts/schema.json fails
+   */
+  public Future<String> sqlFile(Context context, String tenantId, TenantAttributes tenantAttributes) {
+    AtomicBoolean tenantExists = new AtomicBoolean();
+
+    return tenantExists(context, tenantId)
+    .compose(tenantExistsResult -> {
+      tenantExists.set(tenantExistsResult);
+      return previousSchema(context, tenantId, tenantExists.get());
+    }).compose(previousSchema -> {
+      try {
+        String sqlFile = sqlFile(tenantId, tenantExists.get(), tenantAttributes, previousSchema);
+        return Future.succeededFuture(sqlFile);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      } catch (TemplateException e) {  // checked exception from main.tpl parsing
+        throw new IllegalArgumentException(e);
+      }
+    });
+  }
+
+  @Validate
+  @Override
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+      Handler<AsyncResult<Response>> handlers, Context context)  {
+
+    String tenantId = TenantTool.tenantId(headers);
+    log.info("sending... postTenant for " + tenantId);
+    if (tenantAttributes != null) {
+      log.debug("upgrade from " + tenantAttributes.getModuleFrom() + " to " + tenantAttributes.getModuleTo());
+    }
+
+    Future<Boolean> tenantExistsFuture = tenantExists(context, tenantId);
+    tenantExistsFuture
+    .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists))
+    .compose(sqlFile -> postgresClient(context).runSQLFile(sqlFile, true))
     .map(failedStatements -> {
       String jsonListOfFailures = new JsonArray(failedStatements).encodePrettily();
       if (! failedStatements.isEmpty()) {
         return PostTenantResponse.respond400WithTextPlain(jsonListOfFailures);
       }
-      return tenantExistsFuture.result().booleanValue()
+      boolean tenantExists = tenantExistsFuture.result();
+      return tenantExists
               ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
               : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
     })
