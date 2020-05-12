@@ -38,7 +38,6 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
-import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.RowIterator;
@@ -48,7 +47,6 @@ import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
-import io.vertx.sqlclient.impl.RowDesc;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
@@ -170,7 +168,7 @@ public class PostgresClient {
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
   private final Messages messages           = Messages.getInstance();
-  private PgPoolWithExpiry client;
+  private PgPool client;
   private final String tenantId;
   private final String schemaName;
 
@@ -404,10 +402,7 @@ public class PostgresClient {
    * @return this instance's PgPool that allows connections to be made
    */
   PgPool getClient() {
-    if (client == null) {
-      return null;
-    }
-    return client.get();
+    return client;
   }
 
   /**
@@ -415,7 +410,7 @@ public class PostgresClient {
    * @param client  the new client
    */
   void setClient(PgPool client) {
-    this.client.set(client);
+    this.client = client;
   }
 
   /**
@@ -428,7 +423,7 @@ public class PostgresClient {
       whenDone.handle(Future.succeededFuture());
       return;
     }
-    PgPoolWithExpiry clientToClose = client;
+    PgPool clientToClose = client;
     client = null;
     connectionPool.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
     clientToClose.close();
@@ -493,17 +488,16 @@ public class PostgresClient {
       startEmbeddedPostgres();
     }
 
-    client = createPgPoolWithExpiry(vertx, postgreSQLClientConfig);
+    client = createPgPool(vertx, postgreSQLClientConfig);
   }
 
-  static PgPoolWithExpiry createPgPoolWithExpiry(Vertx vertx, JsonObject configuration) {
+  static PgPool createPgPool(Vertx vertx, JsonObject configuration) {
     PgConnectOptions connectOptions = createPgConnectOptions(configuration);
 
     PoolOptions poolOptions = new PoolOptions();
     poolOptions.setMaxSize(configuration.getInteger(MAX_POOL_SIZE, 4));
 
-    return new PgPoolWithExpiry(vertx, connectOptions, poolOptions,
-        configuration.getInteger(CONNECTION_RELEASE_DELAY));
+    return PgPool.pool(vertx, connectOptions, poolOptions);
   }
 
   /**
