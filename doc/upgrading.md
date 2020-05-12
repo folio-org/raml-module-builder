@@ -16,9 +16,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 30.0
 
-* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to vertx-pg-client.
-  * Class `SQLConnection` is now provided by RMB. But it was part of
-    old SQL client. `io.vertx.ext.sql.SQLConnection` ->
+* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to 
+    [vertx-pg-client](https://vertx.io/docs/vertx-pg-client/java/).
+  * Class `SQLConnection` is now provided by RMB. The same class name 
+    was used for the SQL client. `io.vertx.ext.sql.SQLConnection` ->
     `org.folio.rest.persist.SQLConnection`.
   * All functions that previusly returned `UpdateResult` now returns
     `RowSet<Row>`. From that result the number of rows affacted by
