@@ -28,16 +28,16 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     SQL is `rowCount()`. The size() method returns number of rows
     returned. An iterator to go through rows is obtained by calling
     `iterator`. JSONB is returned as JsonObject, the old client returned
-    it as a String.
+    it as String.
   * `PostgresClient.selectSingle` returns Row rather than `JsonArray`.
   * SQL parameters changed from `JsonArray` to `Tuple`.
   * `PostgresClient.getClient()` is no longer public. If you need a
-    connection, use PostgresClient.startTx(). For modules that wish to use
-    vertx-pg-client directly, PostgresClient.getConnection is offered -
-    it returns SqlConnection from the pool that is managed by PostgresClient.
+    connection, use `PostgresClient.startTx()`. For modules that wish to use
+    vertx-pg-client directly, `PostgresClient.getConnection`  is offered -
+    it returns `SqlConnection` from the pool that is managed by `PostgresClient`.
   * Exceptions thrown by new client is `io.vertx.pgclient.PgException`.
-    Was com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException
-    before. The getMessage() only contains message! Not details, code.
+    Was `com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException`
+    before. The `getMessage()` only contains message! Not details, code.
   * `PgExceptionFacade.getTable` removed.
   * `PgExceptionFacade.getIndex` removed.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
