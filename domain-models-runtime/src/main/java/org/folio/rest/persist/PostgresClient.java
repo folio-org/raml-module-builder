@@ -91,12 +91,13 @@ public class PostgresClient {
 
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
-  private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
 
   static Logger log = LoggerFactory.getLogger(PostgresClient.class);
 
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
+
+  private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
 
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
