@@ -1109,7 +1109,7 @@ public final class PgUtil {
       Row row = iterator.next();
       String jsonb = row.getValue(JSON_COLUMN).toString();
       recordList.add(OBJECT_MAPPER.readValue(jsonb, clazz));
-      totalRecords = row.getInteger("count");
+      totalRecords = row.getInteger(PostgresClient.COUNT_FIELD);
     }
     totalRecords = PostgresClient.getTotalRecords(resultSize, totalRecords, offset, limit);
     return collection(collectionClazz, recordList, totalRecords);

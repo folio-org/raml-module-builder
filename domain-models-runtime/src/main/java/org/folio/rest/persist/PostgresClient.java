@@ -100,6 +100,8 @@ public class PostgresClient {
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
 
+  static final String COUNT_FIELD = "count";
+
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
 
@@ -141,7 +143,6 @@ public class PostgresClient {
   private static final String    COMMA = ",";
   private static final String    SEMI_COLON = ";";
 
-  private static final String    COUNT_FIELD = "count";
 
   private static EmbeddedPostgres embeddedPostgres;
   private static boolean         embeddedMode             = false;
