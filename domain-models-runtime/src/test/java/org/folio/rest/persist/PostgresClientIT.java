@@ -3721,7 +3721,7 @@ public class PostgresClientIT {
     Promise<RowSet<Row>> promise = Promise.promise();
     promise.complete(rowSet);
     PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
-      context.assertEquals(0, res.size())));
+      context.assertEquals(null, res)));
   }
 
   @Test

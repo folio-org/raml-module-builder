@@ -2796,8 +2796,7 @@ public class PostgresClient {
     }
     try {
       if (!res.result().iterator().hasNext()) {
-        Row emptyRow = new RowImpl(new RowDesc(Collections.emptyList()));
-        replyHandler.handle(Future.succeededFuture(emptyRow));
+        replyHandler.handle(Future.succeededFuture(null));
         return;
       }
       replyHandler.handle(Future.succeededFuture(res.result().iterator().next()));
