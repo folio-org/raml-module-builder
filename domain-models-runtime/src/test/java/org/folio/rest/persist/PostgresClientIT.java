@@ -1617,7 +1617,7 @@ public class PostgresClientIT {
 
       @Override
       public void begin(Handler<AsyncResult<Transaction>> handler) {
-
+        handler.handle(Future.succeededFuture(null));
       }
 
       @Override
@@ -2563,6 +2563,16 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectStreamChunkSize(TestContext context) {
+    createNumbers(context, 15, 16, 17)
+        .selectStream("SELECT i FROM numbers WHERE i IN (15, 16, 17) ORDER BY i", Tuple.tuple(), 1, context.asyncAssertSuccess(select -> {
+          intsAsString(select, context.asyncAssertSuccess(string -> {
+            context.assertEquals("15, 16, 17", string);
+          }));
+        }));
+  }
+
+  @Test
   public void selectStreamTrans(TestContext context) {
     postgresClient = createNumbers(context, 21, 22, 23);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2575,6 +2585,21 @@ public class PostgresClientIT {
           }));
     }));
   }
+
+  @Test
+  public void selectStreamTransChunkSize(TestContext context) {
+    postgresClient = createNumbers(context, 21, 22, 23);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.selectStream(trans, "SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i",
+          Tuple.tuple(), 1, context.asyncAssertSuccess(select -> {
+            intsAsString(select, context.asyncAssertSuccess(string -> {
+              postgresClient.endTx(trans, context.asyncAssertSuccess());
+              context.assertEquals("21, 23", string);
+            }));
+          }));
+    }));
+  }
+
 
   @Test
   public void selectStreamParam(TestContext context) {

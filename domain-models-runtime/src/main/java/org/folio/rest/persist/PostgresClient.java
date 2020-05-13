@@ -112,6 +112,8 @@ public class PostgresClient {
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
+  private static final int       STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
+
   private static final String    SELECT = "SELECT ";
   private static final String    UPDATE = "UPDATE ";
   private static final String    DELETE = "DELETE ";
@@ -1725,20 +1727,27 @@ public class PostgresClient {
   }
 
   <T> void doStreamGetQuery(PgConnection connection, QueryHelper queryHelper,
-    ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
-    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+                            ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
+                            Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    connection.prepare(queryHelper.selectQuery, prepareRes -> {
-      if (prepareRes.failed()) {
-        log.error(prepareRes.cause().getMessage(), prepareRes.cause());
-        replyHandler.handle(Future.failedFuture(prepareRes.cause()));
+    getClient().begin(res -> {
+      if (res.failed()) {
+        log.error(res.cause().getMessage(), res.cause());
+        replyHandler.handle(Future.failedFuture(res.cause()));
         return;
       }
-      PreparedQuery pq = prepareRes.result();
-      Transaction tx = connection.begin();
-      RowStream<Row> stream = pq.createStream(50, Tuple.tuple());
-      PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
-      doStreamRowResults(stream, clazz, facets, tx, queryHelper, streamResult, replyHandler);
+      Transaction transaction = res.result();
+      transaction.prepare(queryHelper.selectQuery, prepareRes -> {
+        if (prepareRes.failed()) {
+          log.error(prepareRes.cause().getMessage(), prepareRes.cause());
+          replyHandler.handle(Future.failedFuture(prepareRes.cause()));
+          return;
+        }
+        PreparedQuery pq = prepareRes.result();
+        RowStream<Row> stream = pq.createStream(STREAM_GET_DEFAULT_CHUNK_SIZE, Tuple.tuple());
+        PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
+        doStreamRowResults(stream, clazz, facets, transaction, queryHelper, streamResult, replyHandler);
+      });
     });
   }
 
@@ -2867,6 +2876,10 @@ public class PostgresClient {
     getSQLConnection(conn -> selectStream(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
   }
 
+  void selectStream(String sql, Tuple params, int chunkSize, Handler<AsyncResult<RowStream<Row>>> replyHandler) {
+    getSQLConnection(conn -> selectStream(conn, sql, params, chunkSize, closeAndHandleResult(conn, replyHandler)));
+  }
+
   /**
    * Run a parameterized/prepared select query returning with an SQLRowStream.
    *
@@ -2878,22 +2891,28 @@ public class PostgresClient {
    * @param replyHandler  The query result or the failure.
    */
   public void selectStream(AsyncResult<SQLConnection> conn, String sql, Tuple params,
+                           Handler<AsyncResult<RowStream<Row>>> replyHandler) {
+     selectStream(conn, sql, params, STREAM_GET_DEFAULT_CHUNK_SIZE, replyHandler);
+  }
+
+  void selectStream(AsyncResult<SQLConnection> conn, String sql, Tuple params, int chunkSize,
       Handler<AsyncResult<RowStream<Row>>> replyHandler) {
     try {
       if (conn.failed()) {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      PgConnection connection = conn.result().conn;
-      connection.prepare(sql, res -> {
-        if (res.failed()) {
-          log.error(res.cause().getMessage(), res.cause());
-          replyHandler.handle(Future.failedFuture(res.cause()));
+      if (conn.result().tx != null) {
+        selectStream(conn.result().tx, sql, params, chunkSize, replyHandler);
+        return;
+      }
+      getClient().begin(txRes -> {
+        if (txRes.failed()) {
+          replyHandler.handle(Future.failedFuture(conn.cause()));
           return;
         }
-        PreparedQuery pq = res.result();
-        RowStream<Row> rowStream = pq.createStream(50, params);
-        replyHandler.handle(Future.succeededFuture(rowStream));
+        Transaction tx = txRes.result();
+        selectStream(tx, sql, params, chunkSize, replyHandler);
       });
     } catch (Exception e) {
       log.error("select stream sql: " + e.getMessage() + " - " + sql, e);
@@ -2901,11 +2920,24 @@ public class PostgresClient {
     }
   }
 
-  /**
-   * Execute an INSERT, UPDATE or DELETE statement.
-   * @param sql - the sql to run
-   * @param replyHandler - the result handler with UpdateResult
-   */
+  void selectStream(Transaction tx, String sql, Tuple params, int chunkSize,
+                    Handler<AsyncResult<RowStream<Row>>> replyHandler) {
+    tx.prepare(sql, res -> {
+      if (res.failed()) {
+        log.error(res.cause().getMessage(), res.cause());
+        replyHandler.handle(Future.failedFuture(res.cause()));
+        return;
+      }
+      PreparedQuery pq = res.result();
+      RowStream<Row> rowStream = pq.createStream(chunkSize, params);
+      replyHandler.handle(Future.succeededFuture(rowStream));
+    });
+  }
+    /**
+     * Execute an INSERT, UPDATE or DELETE statement.
+     * @param sql - the sql to run
+     * @param replyHandler - the result handler with UpdateResult
+     */
   public void execute(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     execute(sql, Tuple.tuple(), replyHandler);
   }
