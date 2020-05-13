@@ -37,12 +37,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowStream;
-import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
@@ -616,7 +616,7 @@ public class PostgresClient {
     });
   }
 
-  static void finalizeTx(AsyncResult<Void> txResult, SqlConnection conn, Handler<AsyncResult<Void>> done ) {
+  static void finalizeTx(AsyncResult<Void> txResult, PgConnection conn, Handler<AsyncResult<Void>> done ) {
     if (conn != null) {
       conn.close();
     }
@@ -1031,7 +1031,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
-      SqlConnection connection = sqlConnection.result().conn;
+      PgConnection connection = sqlConnection.result().conn;
 
       connection.preparedBatch(sql.toString(), batch, queryRes -> {
         if (queryRes.failed()) {
@@ -1272,7 +1272,7 @@ public class PostgresClient {
     long start = System.nanoTime();
     getConnection(res -> {
       if (res.succeeded()) {
-        SqlConnection connection = res.result();
+        PgConnection connection = res.result();
         try {
           String value = section.getValue().replace("'", "''");
           String where = when == null ? "" : when.toString();
@@ -1562,7 +1562,7 @@ public class PostgresClient {
       replyHandler.handle(Future.failedFuture(conn.cause()));
       return;
     }
-    SqlConnection connection = conn.result().conn;
+    PgConnection connection = conn.result().conn;
     try {
       QueryHelper queryHelper = buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
       if (returnCount) {
@@ -1700,7 +1700,7 @@ public class PostgresClient {
    * @param replyHandler
    */
   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
-  private <T> void doStreamGetCount(SqlConnection connection,
+  private <T> void doStreamGetCount(PgConnection connection,
     String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
     boolean returnIdField, String distinctOn, List<FacetField> facets,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
@@ -1724,7 +1724,7 @@ public class PostgresClient {
     }
   }
 
-  <T> void doStreamGetQuery(SqlConnection connection, QueryHelper queryHelper,
+  <T> void doStreamGetQuery(PgConnection connection, QueryHelper queryHelper,
     ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
@@ -1880,7 +1880,7 @@ public class PostgresClient {
   }
 
   <T> void processQueryWithCount(
-    SqlConnection connection, QueryHelper queryHelper, String statMethod,
+    PgConnection connection, QueryHelper queryHelper, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
     long start = System.nanoTime();
 
@@ -1916,7 +1916,7 @@ public class PostgresClient {
 }
 
   <T> void processQuery(
-    SqlConnection connection, QueryHelper queryHelper, Integer total, String statMethod,
+    PgConnection connection, QueryHelper queryHelper, Integer total, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) {
     try {
@@ -2221,7 +2221,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(res.cause()));
         return;
       }
-      SqlConnection connection = res.result();
+      PgConnection connection = res.result();
       String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
           + FROM + schemaName + DOT + table
           + WHERE + ID_FIELD + "= $1";
@@ -2311,7 +2311,7 @@ public class PostgresClient {
         list.addUUID(UUID.fromString(ids.getString(i)));
       }
 
-      SqlConnection connection = res.result();
+      PgConnection connection = res.result();
       StringBuilder sql = new StringBuilder()
           .append(SELECT).append(ID_FIELD).append(", ").append(DEFAULT_JSONB_FIELD_NAME)
           .append(FROM).append(schemaName).append(DOT).append(table)
@@ -2646,7 +2646,7 @@ public class PostgresClient {
     getSQLConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
-  static void queryAndAnalyze(SqlConnection conn, String sql, String statMethod,
+  static void queryAndAnalyze(PgConnection conn, String sql, String statMethod,
     Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
     long start = System.nanoTime();
@@ -2884,7 +2884,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      SqlConnection connection = conn.result().conn;
+      PgConnection connection = conn.result().conn;
       connection.prepare(sql, res -> {
         if (res.failed()) {
           log.error(res.cause().getMessage(), res.cause());
@@ -2914,8 +2914,14 @@ public class PostgresClient {
    * Get vertx-pg-client connection
    * @param replyHandler
    */
-  public void getConnection(Handler<AsyncResult<SqlConnection>> replyHandler) {
-    getClient().getConnection(replyHandler::handle);
+  public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
+    getClient().getConnection(x -> {
+      if (x.failed()) {
+        replyHandler.handle(Future.failedFuture(x.cause()));
+        return;
+      }
+     replyHandler.handle(Future.succeededFuture((PgConnection) x.result()));
+    });
   }
 
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
@@ -2976,7 +2982,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      SqlConnection connection = conn.result().conn;
+      PgConnection connection = conn.result().conn;
       long start = System.nanoTime();
       // more than optimization.. preparedQuery does not work for multiple SQL statements
       if (params.size() == 0) {
@@ -3018,7 +3024,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      SqlConnection sqlConnection = conn.result().conn;
+      PgConnection sqlConnection = conn.result().conn;
       List<RowSet<Row>> results = new ArrayList<>(params.size());
       Iterator<Tuple> iterator = params.iterator();
       Runnable task = new Runnable() {
@@ -3150,7 +3156,7 @@ public class PostgresClient {
         return;
       }
       long start = System.nanoTime();
-      SqlConnection connection = conn.result().conn;
+      PgConnection connection = conn.result().conn;
       String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
           + schemaName + DOT + cacheName +" AS " + sql2cache;
       log.info(q);
@@ -3181,7 +3187,7 @@ public class PostgresClient {
         return;
       }
       long start = System.nanoTime();
-      SqlConnection connection = conn.result().conn;
+      PgConnection connection = conn.result().conn;
       connection.query("DROP TABLE " + schemaName + DOT + cacheName, query -> {
         statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
         if (query.failed()) {

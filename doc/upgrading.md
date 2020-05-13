@@ -35,7 +35,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `PostgresClient.getClient()` is no longer public. If you need a
     connection, use `PostgresClient.startTx()`. For modules that wish to use
     vertx-pg-client directly, `PostgresClient.getConnection`  is offered -
-    it returns `SqlConnection` from the pool that is managed by `PostgresClient`.
+    it returns `PgConnection` from the pool that is managed by `PostgresClient`.
   * Exceptions thrown by new client is `io.vertx.pgclient.PgException`.
     Was `com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException`
     before. The `getMessage()` only contains message! Not details, code.

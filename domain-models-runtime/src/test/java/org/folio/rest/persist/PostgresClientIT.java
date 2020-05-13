@@ -14,7 +14,14 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
@@ -33,6 +40,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PreparedQuery;
@@ -1699,19 +1708,39 @@ public class PostgresClientIT {
    * throws an RuntimeException.
    */
   private PostgresClient postgresClientConnectionThrowsException() {
-    SqlConnection sqlConnection = new SqlConnection() {
+    PgConnection pgConnection = new PgConnection() {
       @Override
-      public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+      public PgConnection notificationHandler(Handler<PgNotification> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public SqlConnection exceptionHandler(Handler<Throwable> handler) {
+      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public int processId() {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public int secretKey() {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
 
       @Override
-      public SqlConnection closeHandler(Handler<Void> handler) {
+      public PgConnection closeHandler(Handler<Void> handler) {
         return null;
       }
 
@@ -1731,42 +1760,42 @@ public class PostgresClientIT {
       }
 
       @Override
-      public SqlConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public <R> SqlConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public <R> SqlConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public SqlConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public <R> SqlConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public SqlConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public <R> SqlConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         throw new RuntimeException();
       }
     };
@@ -1814,7 +1843,7 @@ public class PostgresClientIT {
 
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(sqlConnection));
+        handler.handle(Future.succeededFuture(pgConnection));
       }
 
       @Override
@@ -1841,20 +1870,41 @@ public class PostgresClientIT {
    * SQLConnection::queryWithParams will report a failure via the resultHandler.
    */
   private PostgresClient postgresClientQueryFails() {
-    SqlConnection sqlConnection = new SqlConnection() {
+    PgConnection pgConnection = new PgConnection() {
       @Override
-      public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+      public PgConnection notificationHandler(Handler<PgNotification> handler) {
+        return this;
+      }
+
+      @Override
+      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.failedFuture("cancelRequestFails"));
+        return this;
+      }
+
+      @Override
+      public int processId() {
+        return 0;
+      }
+
+      @Override
+      public int secretKey() {
+        return 0;
+      }
+
+      @Override
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
         handler.handle(Future.failedFuture("preparedFails"));
         return this;
       }
 
       @Override
-      public SqlConnection exceptionHandler(Handler<Throwable> handler) {
+      public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
 
       @Override
-      public SqlConnection closeHandler(Handler<Void> handler) {
+      public PgConnection closeHandler(Handler<Void> handler) {
         return null;
       }
 
@@ -1874,49 +1924,49 @@ public class PostgresClientIT {
       }
 
       @Override
-      public SqlConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
         handler.handle(Future.failedFuture("preparedQueryFails"));
         return this;
       }
 
       @Override
-      public <R> SqlConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         handler.handle(Future.failedFuture("preparedQueryFails"));
         return this;
       }
 
       @Override
-      public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
         handler.handle(Future.failedFuture("queryFails"));
         return this;
       }
 
       @Override
-      public <R> SqlConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         handler.handle(Future.failedFuture("queryFails"));
         return this;
       }
 
       @Override
-      public SqlConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
         handler.handle(Future.failedFuture("preparedQueryFails"));
         return this;
       }
 
       @Override
-      public <R> SqlConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         handler.handle(Future.failedFuture("preparedQueryFails"));
         return this;
       }
 
       @Override
-      public SqlConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
         handler.handle(Future.failedFuture("preparedBatchFails"));
         return this;
       }
 
       @Override
-      public <R> SqlConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         handler.handle(Future.failedFuture("preparedBatchFails"));
         return this;
       }
@@ -1965,7 +2015,7 @@ public class PostgresClientIT {
 
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(sqlConnection));
+        handler.handle(Future.succeededFuture(pgConnection));
       }
 
       @Override
@@ -1991,20 +2041,40 @@ public class PostgresClientIT {
    * @return a PostgresClient where invoking SQLConnection::queryWithParams will return null ResultSet
    */
   private PostgresClient postgresClientQueryReturnBadResults() {
-    SqlConnection sqlConnection = new SqlConnection() {
+    PgConnection pgConnection = new PgConnection() {
       @Override
-      public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+      public PgConnection notificationHandler(Handler<PgNotification> handler) {
+        return null;
+      }
+
+      @Override
+      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
+        return this;
+      }
+
+      @Override
+      public int processId() {
+        return 0;
+      }
+
+      @Override
+      public int secretKey() {
+        return 0;
+      }
+
+      @Override
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
         handler.handle(Future.failedFuture("preparedFails"));
         return this;
       }
 
       @Override
-      public SqlConnection exceptionHandler(Handler<Throwable> handler) {
+      public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
 
       @Override
-      public SqlConnection closeHandler(Handler<Void> handler) {
+      public PgConnection closeHandler(Handler<Void> handler) {
         return null;
       }
 
@@ -2024,49 +2094,49 @@ public class PostgresClientIT {
       }
 
       @Override
-      public SqlConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
         handler.handle(Future.failedFuture("preparedQueryFails"));
         return this;
       }
 
       @Override
-      public <R> SqlConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         handler.handle(Future.failedFuture("preparedQueryFails"));
         return this;
       }
 
       @Override
-      public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
         handler.handle(Future.failedFuture("queryFails"));
         return this;
       }
 
       @Override
-      public <R> SqlConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         handler.handle(Future.failedFuture("queryFails"));
         return this;
       }
 
       @Override
-      public SqlConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
         handler.handle(Future.failedFuture("preparedQueryFails"));
         return this;
       }
 
       @Override
-      public <R> SqlConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         handler.handle(Future.failedFuture("preparedQueryFails"));
         return this;
       }
 
       @Override
-      public SqlConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
+      public PgConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
         handler.handle(Future.failedFuture("preparedBatchFails"));
         return this;
       }
 
       @Override
-      public <R> SqlConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
+      public <R> PgConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
         handler.handle(Future.failedFuture("preparedBatchFails"));
         return this;
       }
@@ -2114,7 +2184,7 @@ public class PostgresClientIT {
 
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(sqlConnection));
+        handler.handle(Future.succeededFuture(pgConnection));
       }
 
       @Override
