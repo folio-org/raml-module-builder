@@ -16,9 +16,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 30.0
 
-* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to 
+* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to
     [vertx-pg-client](https://vertx.io/docs/vertx-pg-client/java/).
-  * Class `SQLConnection` is now provided by RMB. The same class name 
+  * Class `SQLConnection` is now provided by RMB. The same class name
     was used for the SQL client. `io.vertx.ext.sql.SQLConnection` ->
     `org.folio.rest.persist.SQLConnection`.
   * All functions that previusly returned `UpdateResult` now returns
