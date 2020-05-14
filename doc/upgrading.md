@@ -41,6 +41,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     before. The `getMessage()` only contains message! Not details, code.
   * `PgExceptionFacade.getTable` removed.
   * `PgExceptionFacade.getIndex` removed.
+  * `PgExceptionFacade.selectStream` without SQLConnection has been
+     removed. Streams must be executed within a transaction.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
 
 ## Version 29.5

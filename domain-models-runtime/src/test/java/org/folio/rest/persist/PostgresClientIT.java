@@ -2553,26 +2553,6 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void selectStream(TestContext context) {
-    createNumbers(context, 15, 16, 17)
-    .selectStream("SELECT i FROM numbers WHERE i IN (15, 17, 19) ORDER BY i", context.asyncAssertSuccess(select -> {
-      intsAsString(select, context.asyncAssertSuccess(string -> {
-        context.assertEquals("15, 17", string);
-      }));
-    }));
-  }
-
-  @Test
-  public void selectStreamChunkSize(TestContext context) {
-    createNumbers(context, 15, 16, 17)
-        .selectStream("SELECT i FROM numbers WHERE i IN (15, 16, 17) ORDER BY i", Tuple.tuple(), 1, context.asyncAssertSuccess(select -> {
-          intsAsString(select, context.asyncAssertSuccess(string -> {
-            context.assertEquals("15, 16, 17", string);
-          }));
-        }));
-  }
-
-  @Test
   public void selectStreamTrans(TestContext context) {
     postgresClient = createNumbers(context, 21, 22, 23);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2597,19 +2577,6 @@ public class PostgresClientIT {
               context.assertEquals("21, 23", string);
             }));
           }));
-    }));
-  }
-
-
-  @Test
-  public void selectStreamParam(TestContext context) {
-    createNumbers(context, 25, 26, 27)
-    .selectStream("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
-        Tuple.of(25, 27, 29),
-        context.asyncAssertSuccess(select -> {
-          intsAsString(select, context.asyncAssertSuccess(string -> {
-            context.assertEquals("25, 27", string);
-      }));
     }));
   }
 
@@ -2722,7 +2689,10 @@ public class PostgresClientIT {
 
   @Test
   public void selectStreamParamTxSqlError(TestContext context) {
-    postgresClient().selectStream("sql", Tuple.tuple(), context.asyncAssertFailure());
+    postgresClient = createNumbers(context, 55, 56, 57);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient().selectStream(trans, "sql", Tuple.tuple(), context.asyncAssertFailure());
+    }));
   }
 
   @Test
@@ -3012,7 +2982,7 @@ public class PostgresClientIT {
     List<FacetField> facets = new ArrayList<FacetField>();
     AsyncResult<SQLConnection> connResult = Future.failedFuture("connection error");
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.doStreamGet(connResult, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true,
+    postgresClient.streamGet(connResult, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true,
       null, facets, context.asyncAssertFailure(
         x -> context.assertEquals("connection error", x.getMessage())));
   }
@@ -3073,8 +3043,8 @@ public class PostgresClientIT {
     StringBuilder events = new StringBuilder();
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
-    Transaction tx = null;
-    postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, tx,
+    PgConnection pgConnection = null;
+    postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, pgConnection,
       new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -3234,6 +3204,50 @@ public class PostgresClientIT {
           async.complete();
         });
       }));
+    async.await(1000);
+  }
+
+  @Test
+  public void streamGetPlain(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+        false, null, context.asyncAssertSuccess(sr -> {
+          context.assertEquals(3, sr.resultInto().getTotalRecords());
+          sr.handler(streamHandler -> objectCount.incrementAndGet());
+          sr.endHandler(x -> {
+            context.assertEquals(3, objectCount.get());
+            async.complete();
+          });
+        }));
+    async.await(1000);
+  }
+
+  @Test
+  public void streamGetWithTransaction(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.startTx(trans -> {
+      postgresClient.streamGet(trans, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+          false, null, null, context.asyncAssertSuccess(sr -> {
+            context.assertEquals(3, sr.resultInto().getTotalRecords());
+            sr.handler(streamHandler -> objectCount.incrementAndGet());
+            sr.endHandler(x -> {
+              context.assertEquals(3, objectCount.get());
+              postgresClient.endTx(trans, y -> async.complete());
+            });
+
+      }));
+    });
     async.await(1000);
   }
 
