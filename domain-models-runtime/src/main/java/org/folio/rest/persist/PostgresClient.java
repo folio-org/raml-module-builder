@@ -1032,18 +1032,14 @@ public class PostgresClient {
     try {
       long start = System.nanoTime();
       log.info("starting: saveBatch size=" + batch.size());
-      StringBuilder sql = new StringBuilder()
-          .append(INSERT_CLAUSE)
-          .append(schemaName).append(DOT).append(table)
-          .append(" (id, jsonb) VALUES ($1, $2)");
-      sql.append(RETURNING_ID);
+      String sql = INSERT_CLAUSE + schemaName + DOT + table + " (id, jsonb) VALUES ($1, $2)" + RETURNING_ID;
       if (sqlConnection.failed()) {
         replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
       PgConnection connection = sqlConnection.result().conn;
 
-      connection.preparedBatch(sql.toString(), batch, queryRes -> {
+      connection.preparedBatch(sql, batch, queryRes -> {
         if (queryRes.failed()) {
           log.error("saveBatch size=" + batch.size()
                   + SPACE
