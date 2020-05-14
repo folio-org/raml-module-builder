@@ -683,11 +683,6 @@ public class PostgresClient {
    */
   static <T> Handler<AsyncResult<T>> closeAndHandleResult(
       AsyncResult<SQLConnection> conn, Handler<AsyncResult<T>> handler) {
-    return closeAndHandleResult(conn, true, handler);
-  }
-
-  static <T> Handler<AsyncResult<T>> closeAndHandleResult(
-      AsyncResult<SQLConnection> conn, boolean close, Handler<AsyncResult<T>> handler) {
 
     return ar -> {
       if (conn.failed()) {
@@ -695,11 +690,9 @@ public class PostgresClient {
         handler.handle(ar);
         return;
       }
-      if (close) {
-        SQLConnection sqlConnection = conn.result();
-        if (sqlConnection.conn != null) {
-          sqlConnection.conn.close();
-        }
+      SQLConnection sqlConnection = conn.result();
+      if (sqlConnection.conn != null) {
+        sqlConnection.conn.close();
       }
       handler.handle(ar);
     };
