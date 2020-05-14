@@ -130,7 +130,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
               postgresClient.endTx(tx2, context.asyncAssertSuccess(endTx2 -> {
                 String sql3 = "SELECT * FROM " + table.replace(".", ".audit_");
                 postgresClient.select(sql3, context.asyncAssertSuccess(result -> {
-                  context.assertEquals(4, result.getNumRows());
+                  context.assertEquals(4, result.rowCount());
                   async.complete();
                 }));
               }));
@@ -198,7 +198,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
     String sql = "SELECT id, jsonb->>'id' FROM " + schema + ".test_tenantapi";
     postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
-      context.assertEquals(id       , result.getString(0), "id");
+      context.assertEquals(id       , result.getUUID(0).toString(), "id");
       context.assertEquals(idInJsonb, result.getString(1), "jsonb->>'id'");
       async.complete();
     }));

@@ -1,12 +1,12 @@
 package org.folio.rest.persist;
 
-import io.vertx.ext.asyncsql.AsyncSQLClient;
+import io.vertx.pgclient.PgPool;
 
 public final class PostgresClientHelper {
   /**
    * For testing only circumvent the private visibility of PostgresClient.getClient().
    */
-  public static final AsyncSQLClient getClient(PostgresClient postgresClient) {
+  public static final PgPool getClient(PostgresClient postgresClient) {
     return postgresClient.getClient();
   }
 }

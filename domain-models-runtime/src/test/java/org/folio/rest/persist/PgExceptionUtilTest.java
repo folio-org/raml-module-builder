@@ -5,16 +5,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
-import java.util.Collections;
+import io.vertx.pgclient.PgException;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.UUID;
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.Test;
-
-import com.github.jasync.sql.db.exceptions.DatabaseException;
-import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
 
 public class PgExceptionUtilTest {
   @Test
@@ -29,14 +25,12 @@ public class PgExceptionUtilTest {
 
   @Test
   public void databaseException() {
-    assertThat(PgExceptionUtil.badRequestMessage(new DatabaseException("")), is(nullValue()));
+    assertThat(PgExceptionUtil.badRequestMessage(new PgException("", null, "", "")), is(nullValue()));
   }
 
   @Test
   public void noField() {
-    @SuppressWarnings("unchecked")
-    ErrorMessage m = new ErrorMessage(Collections.EMPTY_MAP);
-    assertThat(PgExceptionUtil.badRequestMessage(new GenericDatabaseException(m)), is(nullValue()));
+    assertThat(PgExceptionUtil.badRequestMessage(new PgException("", null, "", "")), is(nullValue()));
   }
 
   @Test
@@ -61,39 +55,52 @@ public class PgExceptionUtilTest {
 
   @Test
   public void isForeignKeyViolation() {
-    assertThat(PgExceptionUtil.isForeignKeyViolation(genericDatabaseException('C', "23503")), is(true));
-    assertThat(PgExceptionUtil.isForeignKeyViolation(genericDatabaseException('C', "22P02")), is(false));
-    assertThat(PgExceptionUtil.isForeignKeyViolation(genericDatabaseException()), is(false));
+    assertThat(PgExceptionUtil.isForeignKeyViolation(new PgException("", null, "23503", "")), is(true));
+    assertThat(PgExceptionUtil.isForeignKeyViolation(new PgException("", null, "22P02", "")), is(false));
+    assertThat(PgExceptionUtil.isForeignKeyViolation(new PgException("", null, "", "")), is(false));
     assertThat(PgExceptionUtil.isForeignKeyViolation(null), is(false));
   }
 
   @Test
   public void isUniqueViolation() {
-    assertThat(PgExceptionUtil.isUniqueViolation(genericDatabaseException('C', "23505")), is(true));
-    assertThat(PgExceptionUtil.isUniqueViolation(genericDatabaseException('C', "23503")), is(false));
+    assertThat(PgExceptionUtil.isUniqueViolation(new PgException("", null, "23505", "")), is(true));
+    assertThat(PgExceptionUtil.isUniqueViolation(new PgException("", null, "23503", "")), is(false));
   }
 
   @Test
   public void isInvalidTextRepresentationn() {
-    assertThat(PgExceptionUtil.isInvalidTextRepresentation(genericDatabaseException('C', "22P02")), is(true));
-    assertThat(PgExceptionUtil.isInvalidTextRepresentation(genericDatabaseException('C', "23503")), is(false));
-  }
-
-  /**
-   * @return GenericDatabaseException with ErrorMessage with the key value pairs listed in arguments, for example
-   *   {@code genericDatabaseException('C', sqlstate, 'D', detail, 'M', message)}
-   */
-  static GenericDatabaseException genericDatabaseException(Object ... arguments) {
-    Map<Character, String> map = new HashMap<>();
-    for (int i=0; i<arguments.length; i+=2) {
-      map.put((Character) arguments[i], (String) arguments[i+1]);
-    }
-    return new GenericDatabaseException(new ErrorMessage(map));
+    assertThat(PgExceptionUtil.isInvalidTextRepresentation(new PgException("", null, "22P02", "")), is(true));
+    assertThat(PgExceptionUtil.isInvalidTextRepresentation(new PgException("", null, "23503", "")), is(false));
   }
 
   private void assertString(String sqlstate, String detail, String message, String expected) {
-    String actual = PgExceptionUtil.badRequestMessage(genericDatabaseException('C', sqlstate, 'D', detail, 'M', message));
+    String actual = PgExceptionUtil.badRequestMessage(new PgException(message, null, sqlstate, detail));
     assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void testBadUUID() {
+    try {
+      UUID t = UUID.fromString("bad-uid");
+    } catch (Exception ex) {
+      String actual = PgExceptionUtil.badRequestMessage(ex);
+      assertThat(actual, is("Invalid UUID string: bad-uid"));
+    }
+  }
+
+  @Test
+  public void testCreatePgExceptionFromMap() {
+    Map<Character, String> fields1 = new HashMap<>();
+    fields1.put('M', "valueM");
+    fields1.put('D', "ValueD");
+    fields1.put('C', "ValueC");
+
+    Exception e = PgExceptionUtil.createPgExceptionFromMap(fields1);
+    Map<Character, String> fields2 = PgExceptionUtil.getBadRequestFields(e);
+
+    for (Character k : fields1.keySet()) {
+      assertThat(fields1.get(k), is(fields2.get(k)));
+    }
   }
 
 }

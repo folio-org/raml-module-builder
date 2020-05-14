@@ -2,18 +2,30 @@ package org.folio.rest.persist;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.Json;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
+import io.vertx.sqlclient.RowSet;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.io.IOException;
-
 import javax.ws.rs.core.Response;
-
 import org.apache.commons.lang.StringEscapeUtils;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
@@ -29,19 +41,6 @@ import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.jaxrs.model.Diagnostic;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.json.Json;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.ResultSet;
-import io.vertx.ext.web.RoutingContext;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
@@ -240,7 +239,7 @@ public final class PgUtil {
       Errors errors = ValidationHelper.createValidationErrorMessage(key, value, message);
       Response response = (Response) response422Method.invoke(null, errors);
       return Future.succeededFuture(response);
-    } catch (IllegalAccessException | InvocationTargetException e) {
+    } catch (IllegalAccessException | InvocationTargetException | NullPointerException e) {
       throw new IllegalArgumentException(e);
     }
   }
@@ -418,7 +417,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
-        int deleted = reply.result().getUpdated();
+        int deleted = reply.result().rowCount();
         if (deleted == 0) {
           asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
           return;
@@ -919,7 +918,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
-        int updated = reply.result().getUpdated();
+        int updated = reply.result().rowCount();
         if (updated == 0) {
           asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
           return;
@@ -1099,50 +1098,21 @@ public final class PgUtil {
     }
   }
 
-  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, ResultSet resultSet,
-    int offset, int limit)
+  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, RowSet<Row> resultSet, int offset, int limit)
       throws ReflectiveOperationException, IOException {
 
-    List<JsonObject> jsonList = resultSet.getRows();
-    int resultSize = jsonList.size();
+    int totalRecords = 0;
+    int resultSize = resultSet.size();
     List<T> recordList = new ArrayList<>(resultSize);
-    Integer totalRecords = 0;
-    for (JsonObject object : jsonList) {
-      String jsonb = object.getString(JSON_COLUMN);
+    RowIterator<Row> iterator = resultSet.iterator();
+    while (iterator.hasNext()) {
+      Row row = iterator.next();
+      String jsonb = row.getValue(JSON_COLUMN).toString();
       recordList.add(OBJECT_MAPPER.readValue(jsonb, clazz));
-      totalRecords = object.getInteger("count");
+      totalRecords = row.getInteger(PostgresClient.COUNT_FIELD);
     }
-
-    totalRecords = getTotalRecords(resultSize, totalRecords, offset, limit);
-
+    totalRecords = PostgresClient.getTotalRecords(resultSize, totalRecords, offset, limit);
     return collection(collectionClazz, recordList, totalRecords);
-  }
-
-  /**
-   * Function to correct estimated result count:
-   * If the resultsCount is equal to 0, the result should be not more than offset
-   * If the resultsCount is equal to limit, the result should be not less than offset + limit
-   * Otherwise it should be equal to offset + resultsCount
-   *
-   * @param resultsCount the count of rows, that are returned from database
-   * @param estimateCount the estimate result count from returned by database
-   * @param offset database offset
-   * @param limit database limit
-   * @return corrected results count
-   */
-  static Integer getTotalRecords(int resultsCount, Integer estimateCount, int offset, int limit) {
-    if (estimateCount == null) {
-      return null;
-    }
-    if (limit == 0) {
-      return estimateCount;
-    }
-    if (resultsCount == 0) {
-      return Math.min(offset, estimateCount);
-    } else if (resultsCount == limit) {
-      return Math.max(offset + limit, estimateCount);
-    }
-    return offset + resultsCount;
   }
 
   /**

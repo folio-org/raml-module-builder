@@ -187,7 +187,7 @@ public class AdminAPIIT {
       assertThat(jsonObject.getString("relname"), is(notNullValue()));
       // Each value has always been a String, this includes a numbers
       // buffers_percent rounded to 1 decimal
-      assertThat(jsonObject.getString("buffers_percent"), matchesRegex("^\\d*\\.\\d$"));
+      assertThat(jsonObject.getDouble("buffers_percent").toString(), matchesRegex("^\\d*\\.\\d$"));
     }), vertx.getOrCreateContext());
   }
 
@@ -201,4 +201,11 @@ public class AdminAPIIT {
     }), vertx.getOrCreateContext());
   }
 
+  @Test
+  public void deleteAdminKillQuery(TestContext context) {
+    new AdminAPI().deleteAdminKillQuery("99999999", okapiHeaders, context.asyncAssertSuccess(response -> {
+      assertThat(response.getStatus(), is(HttpStatus.HTTP_NOT_FOUND.toInt()));
+      assertThat(response.getMediaType(), is(MediaType.TEXT_PLAIN_TYPE));
+    }), vertx.getOrCreateContext());
+  }
 }

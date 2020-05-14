@@ -199,7 +199,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
   @Override
   public CompletableFuture<Response> request(HttpMethod method, Object pojo, String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(method, Buffer.buffer(PostgresClient.pojo2json(pojo)), endpoint, headers, null, false, null);
+    return request(method, Buffer.buffer(PostgresClient.pojo2JsonObject(pojo).encode()), endpoint, headers, null, false, null);
   }
 
   @Override

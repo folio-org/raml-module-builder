@@ -3,6 +3,7 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 30.0](#version-30)
 * [Version 29.5](#version-295)
 * [Version 29.2](#version-292)
 * [Version 29](#version-29)
@@ -12,6 +13,39 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 30.0
+
+* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to
+    [vertx-pg-client](https://vertx.io/docs/vertx-pg-client/java/).
+  * Class `SQLConnection` is now provided by RMB. The same class name
+    was used for the SQL client. `io.vertx.ext.sql.SQLConnection` ->
+    `org.folio.rest.persist.SQLConnection`.
+  * All functions that previusly returned `UpdateResult` now returns
+    `RowSet<Row>`. From that result the number of rows affacted by
+    SQL was `getUpdated()` it is now `rowCount()`.
+  * All functions that previusly returned `ResultSet` now returns
+    `RowSet<Row>`. From that result, the number of rows affected by
+    SQL is `rowCount()`. The size() method returns number of rows
+    returned. An iterator to go through rows is obtained by calling
+    `iterator`
+  * JSONB is returned as JsonObject, the old client returned it as String.
+  * `id` and other UUID columns are returned as UUID and must be
+    sent as UUID, old client used String.
+  * `PostgresClient.selectSingle` returns Row rather than `JsonArray`.
+  * SQL parameters changed from `JsonArray` to `Tuple`.
+  * `PostgresClient.getClient()` is no longer public. If you need a
+    connection, use `PostgresClient.startTx()`. For modules that wish to use
+    vertx-pg-client directly, `PostgresClient.getConnection`  is offered -
+    it returns `PgConnection` from the pool that is managed by `PostgresClient`.
+  * Exceptions thrown by new client is `io.vertx.pgclient.PgException`. Was
+    `com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException`
+    before. The `getMessage()` only contains message! Not details, code.
+  * `PgExceptionFacade.getTable` removed.
+  * `PgExceptionFacade.getIndex` removed.
+  * `PgExceptionFacade.selectStream` without SQLConnection has been
+     removed. Streams must be executed within a transaction.
+  * `PostgresClient.mutate` removed (deprecated since Oct 2018).
 
 ## Version 29.5
 

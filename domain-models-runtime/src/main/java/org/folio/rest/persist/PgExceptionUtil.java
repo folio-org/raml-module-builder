@@ -1,9 +1,9 @@
 package org.folio.rest.persist;
 
-import java.util.Map;
+import io.vertx.pgclient.PgException;
 
-import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class PgExceptionUtil {
   // https://www.postgresql.org/docs/current/static/errcodes-appendix.html
@@ -17,12 +17,11 @@ public final class PgExceptionUtil {
 
   /**
    * Return the value for key in the
-   * {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage} map of the
-   * {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}.
+   *   {@link io.vertx.pgclient.PgException PgException}
    * @param throwable a Throwable or null
-   * @param key the {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage} key
+   * @param key
    * @return the value if throwable is a
-   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
+   *   {@link io.vertx.pgclient.PgException PgException}
    *   and the key exists, null otherwise.
    */
   public static String get(Throwable throwable, Character key) {
@@ -37,9 +36,7 @@ public final class PgExceptionUtil {
    * Check for foreign key violation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
-   *   containing an
-   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link io.vertx.pgclient.PgException PgException}
    *   that reports a foreign key violation, false otherwise.
    */
   public static boolean isForeignKeyViolation(Throwable throwable) {
@@ -50,9 +47,7 @@ public final class PgExceptionUtil {
    * Check for unique violation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
-   *   containing an
-   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link io.vertx.pgclient.PgException PgException}
    *   that reports a unique violation, false otherwise.
    */
   public static boolean isUniqueViolation(Throwable throwable) {
@@ -63,9 +58,7 @@ public final class PgExceptionUtil {
    * Check for invalid text representation.
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException GenericDatabaseException}
-   *   containing an
-   *   {@link com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage ErrorMessage}
+   *   {@link io.vertx.pgclient.PgException PgException}
    *   that reports an invalid text representation, false otherwise.
    */
   public static boolean isInvalidTextRepresentation(Throwable throwable) {
@@ -74,26 +67,27 @@ public final class PgExceptionUtil {
 
   /**
    * If this throwable is an Exception thrown because of some PostgreSQL data
-   * restriction (foreign key violation, invalid uuid, duplicate key) then
-   * return some detail text of that Exception, otherwise return null.
+   * restriction (foreign key violation, invalid uuid, duplicate key) or a user error
+   * Eg invalid UUID, then return some detail text of that Exception, otherwise return null.
    *
    * @param throwable - where to read the text from
-   * @return detail text of the violation, or null if some other Exception
+   * @return detail text of the violation if user error, or null if some other Exception (server error)
    */
   public static String badRequestMessage(Throwable throwable) {
-    if (!(throwable instanceof GenericDatabaseException)) {
+    if (throwable instanceof IllegalArgumentException) {
+      return throwable.getMessage();
+    }
+    Map<Character,String> fields = getBadRequestFields(throwable);
+    if (fields == null) {
       return null;
     }
-
-    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).getErrorMessage();
-    Map<Character,String> fields = errorMessage.getFields();
     String sqlstate = fields.get('C');
     if (sqlstate == null) {
       return null;
     }
-
     String detail = fields.getOrDefault('D', "");
     String message = fields.getOrDefault('M', "");
+
     switch (sqlstate) {
     case FOREIGN_KEY_VIOLATION:
       // insert or update on table "item" violates foreign key constraint "item_permanentloantypeid_fkey":
@@ -109,12 +103,23 @@ public final class PgExceptionUtil {
     }
   }
 
-  public static Map<Character,String> getBadRequestFields(Throwable throwable) {
-    if (!(throwable instanceof GenericDatabaseException)) {
+  public static Map<Character, String> getBadRequestFields(Throwable throwable) {
+    if (!(throwable instanceof PgException)) {
       return null;
     }
+    Map<Character, String> map = new HashMap<>();
+    map.put('M', ((PgException) throwable).getMessage());
+    map.put('D', ((PgException) throwable).getDetail());
+    map.put('C', ((PgException) throwable).getCode());
+    return map;
+  }
 
-    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).getErrorMessage();
-    return errorMessage.getFields();
+  /**
+   * Constructor for PgException similar to the old postgres driver
+   * @param map map of message, detail, code
+   * @return
+   */
+  public static PgException createPgExceptionFromMap(Map<Character, String> map) {
+    return new PgException(map.get('M'), null, map.get('C'), map.get('D'));
   }
 }

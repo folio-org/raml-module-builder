@@ -3,28 +3,22 @@ package org.folio.rest.persist;
 import java.util.Collections;
 import java.util.Map;
 
-import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
-
 /**
  * Easy access to
- * {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException}
+ * {@link io.vertx.pgclient.PgException PgException}
  * fields.
  */
 public class PgExceptionFacade {
-  private final Map<Character,String> fields;
+  private Map<Character,String> fields;
 
   /**
    * @param throwable a GenericDatabaseException; any other Throwable is handled gracefully
    */
   public PgExceptionFacade(Throwable throwable) {
-    if (!(throwable instanceof GenericDatabaseException)) {
+    fields = PgExceptionUtil.getBadRequestFields(throwable);
+    if (fields == null) {
       fields = Collections.emptyMap();
-      return;
     }
-
-    ErrorMessage errorMessage = ((GenericDatabaseException) throwable).getErrorMessage();
-    fields = errorMessage.getFields();
   }
 
   /**
@@ -56,20 +50,6 @@ public class PgExceptionFacade {
    */
   public String getMessage() {
     return fields.getOrDefault('M', "");
-  }
-
-  /**
-   * @return the table ('t' field), or empty String if not available or unknown
-   */
-  public String getTable() {
-    return fields.getOrDefault('t', "");
-  }
-
-  /**
-   * @return the index ('n' field), or empty String if not available or unknown
-   */
-  public String getIndex() {
-    return fields.getOrDefault('n', "");
   }
 
   /**
