@@ -243,7 +243,9 @@ public class SchemaMakerIT extends PostgresClientITBase {
 
   @Test
   public void f_unaccent_combining_character(TestContext context) {
-    assertSchemaSelectSingle(context, "SELECT f_unaccent(E'a\\u0308 and a\\u0308')", "a and a");
+    runSchema(context, TenantOperation.CREATE, "schema.json");
+    assertSelectSingle(context, "SELECT f_unaccent(E'a\\u0308 and a\\u0308')", "a and a");
+    assertSelectSingle(context, "SELECT f_unaccent(E'b\\u20e2c\\u20e3d\\u20e4')", "bcd");
   }
 
   @Test
