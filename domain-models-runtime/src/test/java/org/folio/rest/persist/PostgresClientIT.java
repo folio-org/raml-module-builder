@@ -67,7 +67,7 @@ import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.helpers.FakeRowSet;
+import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.helpers.SimplePojo;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
@@ -1075,7 +1075,7 @@ public class PostgresClientIT {
   @Test
   public void saveBatchNullList(TestContext context) {
     createFoo(context).saveBatch(BAR, (List<Object>)null, context.asyncAssertSuccess(save -> {
-      context.assertNull(save);
+      context.assertEquals(0, save.size());
     }));
   }
 
@@ -1083,7 +1083,7 @@ public class PostgresClientIT {
   public void saveBatchEmptyList(TestContext context) {
     List<Object> list = Collections.emptyList();
     createFoo(context).saveBatch(FOO, list, context.asyncAssertSuccess(save -> {
-      context.assertNull(save);
+      context.assertEquals(0, save.size());
     }));
   }
 
@@ -1138,14 +1138,14 @@ public class PostgresClientIT {
   @Test
   public void saveBatchJsonNullArray(TestContext context) {
     createFoo(context).saveBatch(FOO, (JsonArray)null, context.asyncAssertSuccess(save -> {
-      context.assertNull(save);
+      context.assertEquals(0, save.size());
     }));
   }
 
   @Test
   public void saveBatchJsonEmptyArray(TestContext context) {
     createFoo(context).saveBatch(FOO, new JsonArray(), context.asyncAssertSuccess(save -> {
-      context.assertNull(save);
+      context.assertEquals(0, save.size());
     }));
   }
 
@@ -1313,7 +1313,8 @@ public class PostgresClientIT {
     List<Object> list = Collections.emptyList();
     createFoo(context).saveBatch(FOO, list, res -> {
       assertSuccess(context, res);
-      context.assertEquals(null, res.result());
+      context.assertEquals(0, res.result().size());
+      context.assertEquals("id", res.result().columnsNames().get(0));
       async.complete();
     });
   }
@@ -2236,7 +2237,6 @@ public class PostgresClientIT {
       context.assertEquals(1, res.result().rowCount());
       async.complete();
     });
-    async.await(1000);
   }
 
   @Test
@@ -2435,7 +2435,7 @@ public class PostgresClientIT {
     });
   }
 
-  /** @return List containg one empty JsonArray() */
+  /** @return List containing one empty Tuple */
   private List<Tuple> list1JsonArray() {
     return Collections.singletonList(Tuple.tuple());
   }
@@ -2816,7 +2816,6 @@ public class PostgresClientIT {
           async.complete();
         });
       }));
-    async.await();
   }
 
   @Test
@@ -3826,7 +3825,7 @@ public class PostgresClientIT {
 
   @Test
   public void selectReturnEmptySet(TestContext context) {
-    RowSet rowSet = new FakeRowSet(0);
+    RowSet rowSet = new LocalRowSet(0);
     Promise<RowSet<Row>> promise = Promise.promise();
     promise.complete(rowSet);
     PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
@@ -3842,7 +3841,7 @@ public class PostgresClientIT {
     Row row = new RowImpl(rowDesc);
     row.addString("value");
     rows.add(row);
-    RowSet rowSet = new FakeRowSet(1).withColumns(columns).withRows(rows);
+    RowSet rowSet = new LocalRowSet(1).withColumns(columns).withRows(rows);
 
     Promise<RowSet<Row>> promise = Promise.promise();
     promise.complete(rowSet);
@@ -3850,21 +3849,5 @@ public class PostgresClientIT {
         context.assertEquals("value", res.getString(0))));
   }
 
-  @Test
-  public void getTotalRecordsTest() {
-    assertNull(PostgresClient.getTotalRecords(10, null, 0, 0));
-
-    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 0));
-
-    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 10));
-
-    assertEquals((Integer)10, PostgresClient.getTotalRecords(0, 20, 10, 20));
-
-    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 30, 10, 20));
-
-    assertEquals((Integer)30, PostgresClient.getTotalRecords(10, 20, 20, 10));
-
-    assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
-  }
 
 }

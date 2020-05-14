@@ -9,21 +9,21 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-public class FakeRowSet implements RowSet<Row> {
+public class LocalRowSet implements RowSet<Row> {
   final int rowCount;
   List<Row> rows = new LinkedList<>();
   List<String> columns = new LinkedList<>();
 
-  public FakeRowSet(int rowCount) {
+  public LocalRowSet(int rowCount) {
     this.rowCount = rowCount;
   }
 
-  public FakeRowSet withRows(List<Row> rows) {
+  public LocalRowSet withRows(List<Row> rows) {
     this.rows = rows;
     return this;
   }
 
-  public FakeRowSet withColumns(List<String> columns) {
+  public LocalRowSet withColumns(List<String> columns) {
     this.columns = columns;
     return this;
   }

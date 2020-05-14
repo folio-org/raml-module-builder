@@ -5,6 +5,8 @@ import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,7 +36,7 @@ import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.helpers.FakeRowSet;
+import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.ResourceUtil;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
@@ -206,7 +208,7 @@ public class PostgresClientTest {
       "foo", "bar", "biz", "baz"
     }));
     Map<String, Method> externalColumnSetters = new HashMap<>();
-    testClient.getExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
+    testClient.collectExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
     assertThat(externalColumnSetters.size(), is(4));
     assertThat(externalColumnSetters.get("foo"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("foo"), String.class)));
     assertThat(externalColumnSetters.get("bar"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("bar"), String.class)));
@@ -220,8 +222,8 @@ public class PostgresClientTest {
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
     }));
-    Map<String, Method> externalColumnSettters = new HashMap<>();
-    testClient.getExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSettters);
+    Map<String, Method> externalColumnSetters = new HashMap<>();
+    testClient.collectExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
     TestPojo o = new TestPojo();
     String foo = "Hello";
     String bar = "World";
@@ -240,7 +242,7 @@ public class PostgresClientTest {
     row.addDouble(biz);
     row.addStringArray(baz);
 
-    testClient.populateExternalColumns(externalColumnSettters, o, row);
+    testClient.populateExternalColumns(externalColumnSetters, o, row);
     assertThat(o.getFoo(), is(foo));
     assertThat(o.getBar(), is(bar));
     assertThat(o.getBiz(), is(biz));
@@ -256,8 +258,6 @@ public class PostgresClientTest {
     PostgresClient testClient = PostgresClient.testClient();
     String setterMethodName = testClient.databaseFieldToPojoSetter("test_field");
     assertThat(setterMethodName, is("setTestField"));
-
-
   }
 
   public class FakeSqlConnection implements PgConnection {
@@ -345,7 +345,7 @@ public class PostgresClientTest {
         row.addInteger(asyncResult.result().size());
         List<Row> rows = new LinkedList<>();
         rows.add(row);
-        RowSet rowSet = new FakeRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
+        RowSet rowSet = new LocalRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
         handler.handle(Future.succeededFuture(rowSet));
       } else {
         handler.handle(asyncResult);
@@ -483,7 +483,7 @@ public class PostgresClientTest {
       row.addStringArray(new String[] { "This", "is", "a", "test" } );
       rows.add(row);
     }
-    return new FakeRowSet(total).withColumns(columnNames).withRows(rows);
+    return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
   }
 
   private void assertTestPojoResults(List<TestPojo> results, int total) {
@@ -521,7 +521,7 @@ public class PostgresClientTest {
       );
       rows.add(row);
     }
-    return new FakeRowSet(total).withColumns(columnNames).withRows(rows);
+    return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
   }
 
   private void assertTestJsonbPojoResults(List<TestJsonbPojo> results, int total) {
@@ -684,5 +684,21 @@ public class PostgresClientTest {
     PostgresClient.pojo2JsonObject(this);
   }
 
+  @Test
+  public void getTotalRecordsTest() {
+    assertNull(PostgresClient.getTotalRecords(10, null, 0, 0));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 0));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 10));
+
+    assertEquals((Integer)10, PostgresClient.getTotalRecords(0, 20, 10, 20));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 30, 10, 20));
+
+    assertEquals((Integer)30, PostgresClient.getTotalRecords(10, 20, 20, 10));
+
+    assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
+  }
 
 }

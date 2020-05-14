@@ -61,6 +61,7 @@ import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
+import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.PomReader;
@@ -1043,7 +1044,11 @@ public class PostgresClient {
           return;
         }
         statsTracker("saveBatch", table, start);
-        replyHandler.handle(Future.succeededFuture(queryRes.result()));
+        if (queryRes.result() != null) {
+          replyHandler.handle(Future.succeededFuture(queryRes.result()));
+        } else {
+          replyHandler.handle(Future.succeededFuture(new LocalRowSet(0)));
+        }
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1081,7 +1086,9 @@ public class PostgresClient {
     try {
       List<Tuple> batch = new ArrayList<>();
       if (entities == null || entities.isEmpty()) {
-        replyHandler.handle(Future.succeededFuture(null));
+
+        RowSet<Row> rowSet = new LocalRowSet(0).withColumns(Arrays.asList("id"));
+        replyHandler.handle(Future.succeededFuture(rowSet));
         return;
       }
       // We must use reflection, the POJOs don't have a interface/superclass in common.
@@ -1777,7 +1784,7 @@ public class PostgresClient {
         // for first row, get column names
         if (resultsHelper.offset == 0) {
           List<String> columnNames = getColumnNames(r);
-          getExternalColumnSetters(columnNames,
+          collectExternalColumnSetters(columnNames,
               resultsHelper.clazz, isAuditFlavored, externalColumnSetters);
         }
 
@@ -2482,7 +2489,7 @@ public class PostgresClient {
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
 
     Map<String, Method> externalColumnSetters = new HashMap<>();
-    getExternalColumnSetters(
+    collectExternalColumnSetters(
         resultsHelper.resultSet.columnsNames(),
         resultsHelper.clazz,
         isAuditFlavored,
@@ -2585,10 +2592,9 @@ public class PostgresClient {
    * @param clazz
    * @param isAuditFlavored
    * @param externalColumnSetters
-   * @return
    */
-  <T> void getExternalColumnSetters(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored,
-                                    Map<String, Method> externalColumnSetters) {
+  <T> void collectExternalColumnSetters(List<String> columnNames, Class<T> clazz, boolean isAuditFlavored,
+                                        Map<String, Method> externalColumnSetters) {
     for (String columnName : columnNames) {
       if ((isAuditFlavored || !columnName.equals(DEFAULT_JSONB_FIELD_NAME)) && !columnName.equals(ID_FIELD)) {
         String methodName = databaseFieldToPojoSetter(columnName);
@@ -2618,12 +2624,12 @@ public class PostgresClient {
     for (Map.Entry<String, Method> entry : externalColumnSetters.entrySet()) {
       String columnName = entry.getKey();
       Method method = entry.getValue();
-        String[] stringArray = row.getStringArray(columnName);
-        if (stringArray != null) {
-          method.invoke(o, Arrays.asList(stringArray));
-          continue;
-        }
+      String[] stringArray = row.getStringArray(columnName);
+      if (stringArray != null) {
+        method.invoke(o, Arrays.asList(stringArray));
+      } else {
         method.invoke(o, row.getValue(columnName));
+      }
     }
   }
 
@@ -2915,7 +2921,11 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(x.cause()));
         return;
       }
-     replyHandler.handle(Future.succeededFuture((PgConnection) x.result()));
+      try {
+        replyHandler.handle(Future.succeededFuture((PgConnection) x.result()));
+      } catch (Exception e) {
+        replyHandler.handle(Future.failedFuture(e));
+      }
     });
   }
 
