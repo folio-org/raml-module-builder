@@ -495,14 +495,17 @@ public class PostgresClient {
 
      vertx.setPeriodic(CHECK_FOR_QUERY_TIMEOUT_INTERVAL, timerId -> {
        for (SQLConnection conn : activeConnections) {
-         if (System.currentTimeMillis() - conn.acquiringTime > conn.executionTimeLimit) {
+         long elapsedTime = System.currentTimeMillis() - conn.acquiringTime;
+         if (elapsedTime > conn.executionTimeLimit) {
            ((PgConnection) conn.conn).cancelRequest(ar -> {
              if (ar.succeeded()) {
-               System.out.println("Cancelling request has been sent");
+               log.warn(
+                   String.format("Cancelling request due to timeout after : %d ms", elapsedTime));
              } else {
-               System.out.println("Failed to send cancelling request");
+               log.warn("Failed to send cancelling request");
              }
            });
+           activeConnections.remove(conn);
          }
        }
      });
@@ -709,6 +712,7 @@ public class PostgresClient {
       if (sqlConnection.conn != null) {
         sqlConnection.conn.close();
       }
+      activeConnections.remove(sqlConnection);
       handler.handle(ar);
     };
   }
@@ -2977,6 +2981,7 @@ public class PostgresClient {
          activeConnections.add(sqlConnection);
       }
       handler.handle(Future.succeededFuture(sqlConnection));
+      activeConnections.remove(sqlConnection);
     });
   }
 
