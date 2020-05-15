@@ -3,7 +3,10 @@ package org.folio.rest.persist.ddlgen;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -29,6 +32,7 @@ public class SchemaMaker {
   private String newVersion;
   private String rmbVersion;
   private Schema schema;
+  private Schema previousSchema;
   private String schemaJson = "{}";
 
   /**
@@ -96,7 +100,7 @@ public class SchemaMaker {
 
     this.schema.setup();
 
-    templateInput.put("tables", this.schema.getTables());
+    templateInput.put("tables", tables());
 
     templateInput.put("views", this.schema.getViews());
 
@@ -120,6 +124,49 @@ public class SchemaMaker {
     Template tableTemplate = cfg.getTemplate("delete.ftl");
     tableTemplate.process(templateInput, writer);
     return writer.toString();
+  }
+
+  /**
+   * @return the tables of schema plus tables to delete (tables that exist in previousSchema but not in schema);
+   *   add foreign keys to delete (those that exist in previousSchema but not in schema).
+   *   Nothing to do for indexes because rmb_internal_index handles them.
+   */
+  List<Table> tables() {
+    if (previousSchema == null || previousSchema.getTables() == null) {
+      return schema.getTables();
+    }
+    Map<String,Table> tableForName = new HashMap<>();
+    schema.getTables().forEach(table -> tableForName.put(table.getTableName(), table));
+    List<Table> list = new ArrayList<>(schema.getTables());
+    previousSchema.getTables().forEach(oldTable -> {
+      Table newTable = tableForName.get(oldTable.getTableName());
+      if (newTable == null) {
+        oldTable.setMode("delete");
+        oldTable.setup();
+        list.add(oldTable);
+        return;
+      }
+
+      List<ForeignKeys> oldForeignKeys = oldTable.getForeignKeys();
+      if (oldForeignKeys == null || oldForeignKeys.isEmpty()) {
+        return;
+      }
+      List<ForeignKeys> newForeignKeys =
+          newTable.getForeignKeys() == null ? Collections.emptyList() : newTable.getForeignKeys();
+      List<ForeignKeys> allForeignKeys = new ArrayList<>(newForeignKeys);
+      oldForeignKeys.forEach(oldForeignKey -> {
+        if (newForeignKeys.stream().anyMatch(newForeignKey ->
+            oldForeignKey.getFieldName().equals(newForeignKey.getFieldName()))) {
+          // an entry for oldForeignKey exists in newForeignKeys, nothing to do
+          return;
+        }
+        oldForeignKey.settOps(TableOperation.DELETE);
+        oldForeignKey.setup();
+        allForeignKeys.add(oldForeignKey);
+      });
+      newTable.setForeignKeys(allForeignKeys);
+    });
+    return list;
   }
 
   public String getTenant() {
@@ -152,6 +199,14 @@ public class SchemaMaker {
 
   public void setSchema(Schema schema) {
     this.schema = schema;
+  }
+
+  public Schema getPreviousSchema() {
+    return previousSchema;
+  }
+
+  public void setPreviousSchema(Schema previousSchema) {
+    this.previousSchema = previousSchema;
   }
 
   public String getSchemaJson() {
