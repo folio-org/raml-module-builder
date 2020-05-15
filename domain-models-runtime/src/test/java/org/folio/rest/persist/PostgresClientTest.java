@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collector;
 
 import io.vertx.core.AsyncResult;
@@ -36,9 +37,7 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
-import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
-import org.drools.core.rule.QueryImpl;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -47,7 +46,6 @@ import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -326,7 +324,38 @@ public class PostgresClientTest {
 
     @Override
     public Query<RowSet<Row>> query(String s) {
-      return null;
+
+      return new Query<RowSet<Row>>() {
+
+        @Override
+        public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
+          if (s.startsWith("EXPLAIN") && failExplain) {
+            handler.handle(Future.failedFuture("failExplain"));
+          } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
+            List<String> columnNames = new LinkedList<>();
+            columnNames.add("COUNT");
+            RowDesc rowDesc = new RowDesc(columnNames);
+            Row row = new RowImpl(rowDesc);
+            row.addInteger(asyncResult.result().size());
+            List<Row> rows = new LinkedList<>();
+            rows.add(row);
+            RowSet rowSet = new LocalRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
+            handler.handle(Future.succeededFuture(rowSet));
+          } else {
+            handler.handle(asyncResult);
+          }
+        }
+
+        @Override
+        public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
+          return null;
+        }
+
+        @Override
+        public <U> Query<RowSet<U>> mapping(Function<Row, U> function) {
+          return null;
+        }
+      };
     }
 
     @Override
@@ -339,7 +368,6 @@ public class PostgresClientTest {
     }
   }
 
-  @Ignore
   @Test
   public void testProcessQueryWithCount()  {
     PostgresClient testClient = PostgresClient.testClient();
@@ -365,7 +393,6 @@ public class PostgresClientTest {
 
   }
 
-  @Ignore
   @Test
   public void testProcessQuery() {
     PostgresClient testClient = PostgresClient.testClient();
@@ -392,7 +419,6 @@ public class PostgresClientTest {
 
   }
 
-  @Ignore
   @Test
   public void testProcessQueryFails() {
     PostgresClient testClient = PostgresClient.testClient();

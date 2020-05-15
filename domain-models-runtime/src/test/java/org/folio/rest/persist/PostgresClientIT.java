@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
@@ -73,7 +74,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -529,7 +529,6 @@ public class PostgresClientIT {
     }));
   }
 
-  @Ignore
   @Test
   public void deleteByCriterionDeleteFails(TestContext context) {
     postgresClientQueryFails().delete(FOO, new Criterion(), context.asyncAssertFailure(fail -> {
@@ -1866,8 +1865,25 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Query<RowSet<Row>> query(String s) {
-        return null;
+      public Query<RowSet<Row>> query(String s)
+      {
+        return new Query<RowSet<Row>> () {
+
+          @Override
+          public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
+            handler.handle(Future.failedFuture("queryFails"));
+          }
+
+          @Override
+          public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
+            return null;
+          }
+
+          @Override
+          public <U> Query<RowSet<U>> mapping(Function<Row, U> function) {
+            return null;
+          }
+        };
       }
 
       @Override
