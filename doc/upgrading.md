@@ -47,6 +47,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `PgExceptionFacade.selectStream` without SQLConnection has been
      removed. Streams must be executed within a transaction.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
+* [RMB-619](https://issues.folio.org/browse/RMB-619) Update to Vert.x 3.9.0
+  * See Vert.x
+   [3.9.0 release message](https://vertx.io/blog/eclipse-vert-x-3-9-0-released/) for more information.
+
+
 
 ## Version 29.5
 
