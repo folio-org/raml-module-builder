@@ -18,7 +18,7 @@
  * RMB-607 ${myuniversity}_${mymodule}.gin_trgm_ops
  * RMB-612 PostgresClientIT can not be executed in isolation
  * RMB-246 migrate to reactive postgres client (vertx-pg-client)
-￼* RMB-600 PostgresClient.upsertBatch
+ * RMB-600 PostgresClient.upsertBatch
  * RMB-619 Update Vert.x to 3.9.0
  * RMB-622 PgExceptionUtil.getMessage: Compose a message of all
    PgException fields.
