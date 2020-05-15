@@ -46,6 +46,13 @@ public class PgExceptionFacade {
   }
 
   /**
+   * @return the severity ('S' field), or empty String if not available or unknown
+   */
+  public String getSeverity() {
+    return fields.getOrDefault('S', "");
+  }
+
+  /**
    * @return the error message ('M' field), or empty String if not available or unknown
    */
   public String getMessage() {

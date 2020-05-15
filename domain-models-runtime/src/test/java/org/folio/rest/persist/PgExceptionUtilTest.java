@@ -3,7 +3,7 @@ package org.folio.rest.persist;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.vertx.pgclient.PgException;
 import java.util.HashMap;
@@ -81,7 +81,7 @@ public class PgExceptionUtilTest {
   @Test
   public void testBadUUID() {
     try {
-      UUID t = UUID.fromString("bad-uid");
+      UUID.fromString("bad-uid");
     } catch (Exception ex) {
       String actual = PgExceptionUtil.badRequestMessage(ex);
       assertThat(actual, is("Invalid UUID string: bad-uid"));
@@ -89,9 +89,23 @@ public class PgExceptionUtilTest {
   }
 
   @Test
+  public void getMessageOther() {
+    assertThat(PgExceptionUtil.getMessage(new RuntimeException("foo")), is("foo"));
+  }
+
+  @Test
+  public void getMessagePgException() {
+    PgException e = new PgException("my message", "my severity", "00742", "error sits in front of the screen");
+    assertThat(PgExceptionUtil.getMessage(e),
+        is("ErrorMessage(fields=[(Severity, my severity), (SQLSTATE, 00742), " +
+            "(Message, my message), (Detail, error sits in front of the screen)])"));
+  }
+
+  @Test
   public void testCreatePgExceptionFromMap() {
     Map<Character, String> fields1 = new HashMap<>();
     fields1.put('M', "valueM");
+    fields1.put('S', "valueS");
     fields1.put('D', "ValueD");
     fields1.put('C', "ValueC");
 
