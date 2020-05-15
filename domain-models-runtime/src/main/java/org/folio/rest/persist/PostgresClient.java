@@ -41,7 +41,6 @@ import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowStream;
