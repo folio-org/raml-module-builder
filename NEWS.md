@@ -1,3 +1,32 @@
+## 30.0.0 2020-05-15
+
+ * RMB-552 smart index recreation on module upgrade
+ * RMB-583 move f_unaccent and concat* from public to schema, fix search_path
+ * RMB-164 Incorrect moduleVersion and rmbVersion in rmb_internal table
+ * RMB-491 Migrate deprecated/removed Future calls in preparation for
+   vert.x4 migration
+ * RMB-575 Add "sqlExpressionQuery" parameter
+ * RMB-587 Do not use public schema, remove it from search_path
+ * RMB-588 investigate wrong value passed from "module_from" to ${version}
+ * RMB-594 Random and changing order of GenerateRunner class generation
+ * RMB-565 Review if all CQL to SQL generation code is using masking
+ * RMB-590 Persist schema.json in rmb_internal
+ * RMB-591 Remove or harmonize 'optimizedSql' execution path
+ * RMB-580 Unit tests in Jenkins fail which seem related to streamGet
+ * RMB-605 Combining characters (diacritics, umlauts) not found
+ * RMB-606 HridSettingsIncreaseMaxValueMigrationTest has stopped working
+ * RMB-607 ${myuniversity}_${mymodule}.gin_trgm_ops
+ * RMB-612 PostgresClientIT can not be executed in isolation
+ * RMB-246 migrate to reactive postgres client (vertx-pg-client)
+￼* RMB-600 PostgresClient.upsertBatch
+ * RMB-619 Update Vert.x to 3.9.0
+ * RMB-622 PgExceptionUtil.getMessage: Compose a message of all
+   PgException fields.
+ * RMB-569 Drop fromModuleVersion and tOps from table section, use
+   schema.json comparison instead
+ * RMB-610 Remove JobAPI code
+ * RMB-616 Update readme to specify permissionsRequired
+
 ## 29.3.0 2020-02-27
 
  * RMB-499 add "normalizeDigits" function
