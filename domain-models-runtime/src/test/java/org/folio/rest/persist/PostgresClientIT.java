@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
@@ -42,6 +43,8 @@ import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PreparedQuery;
+import io.vertx.sqlclient.PreparedStatement;
+import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
@@ -1633,48 +1636,18 @@ public class PostgresClientIT {
   private PostgresClient postgresClientNullConnection() {
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
         handler.handle(Future.succeededFuture(null));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override
@@ -1702,48 +1675,18 @@ public class PostgresClientIT {
   private PostgresClient postgresClientGetConnectionFails() {
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
         handler.handle(Future.failedFuture("postgresClientGetConnectionFails"));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override
@@ -1792,7 +1735,7 @@ public class PostgresClientIT {
       }
 
       @Override
-      public PgConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
         throw new RuntimeException();
       }
 
@@ -1817,95 +1760,36 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Query<RowSet<Row>> query(String s) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        throw new RuntimeException();
+      }
+
+      @Override
       public void close() {
 
       }
 
-      @Override
-      public PgConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public <R> PgConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public PgConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public <R> PgConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public PgConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public <R> PgConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public PgConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public <R> PgConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        throw new RuntimeException();
-      }
     };
 
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
         handler.handle(Future.succeededFuture(pgConnection));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override
@@ -1955,9 +1839,9 @@ public class PostgresClientIT {
       }
 
       @Override
-      public PgConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
         handler.handle(Future.failedFuture("preparedFails"));
-        return this;
+        return null;
       }
 
       @Override
@@ -1981,103 +1865,51 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Query<RowSet<Row>> query(String s)
+      {
+        return new Query<RowSet<Row>> () {
+
+          @Override
+          public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
+            handler.handle(Future.failedFuture("queryFails"));
+          }
+
+          @Override
+          public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
+            return null;
+          }
+
+          @Override
+          public <U> Query<RowSet<U>> mapping(Function<Row, U> function) {
+            return null;
+          }
+        };
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
+      }
+
+      @Override
       public void close() {
-
-      }
-
-      @Override
-      public PgConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> PgConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public PgConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("queryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> PgConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("queryFails"));
-        return this;
-      }
-
-      @Override
-      public PgConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> PgConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public PgConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedBatchFails"));
-        return this;
-      }
-
-      @Override
-      public <R> PgConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedBatchFails"));
-        return this;
       }
     };
 
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
         handler.handle(Future.succeededFuture(pgConnection));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override
@@ -2125,9 +1957,8 @@ public class PostgresClientIT {
       }
 
       @Override
-      public PgConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
-        handler.handle(Future.failedFuture("preparedFails"));
-        return this;
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
+        return null;
       }
 
       @Override
@@ -2151,102 +1982,35 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
+      }
+
+      @Override
       public void close() {
 
       }
 
-      @Override
-      public PgConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> PgConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public PgConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("queryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> PgConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("queryFails"));
-        return this;
-      }
-
-      @Override
-      public PgConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> PgConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public PgConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedBatchFails"));
-        return this;
-      }
-
-      @Override
-      public <R> PgConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedBatchFails"));
-        return this;
-      }
     };
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
         handler.handle(Future.succeededFuture(pgConnection));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override

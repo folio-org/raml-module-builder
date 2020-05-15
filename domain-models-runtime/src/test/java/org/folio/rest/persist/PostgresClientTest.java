@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collector;
 
 import io.vertx.core.AsyncResult;
@@ -30,11 +31,12 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PreparedQuery;
+import io.vertx.sqlclient.PreparedStatement;
+import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
-import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
@@ -295,7 +297,7 @@ public class PostgresClientTest {
     }
 
     @Override
-    public PgConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+    public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
       handler.handle(Future.failedFuture("not implemented"));
       return this;
     }
@@ -321,70 +323,48 @@ public class PostgresClientTest {
     }
 
     @Override
+    public Query<RowSet<Row>> query(String s) {
+
+      return new Query<RowSet<Row>>() {
+
+        @Override
+        public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
+          if (s.startsWith("EXPLAIN") && failExplain) {
+            handler.handle(Future.failedFuture("failExplain"));
+          } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
+            List<String> columnNames = new LinkedList<>();
+            columnNames.add("COUNT");
+            RowDesc rowDesc = new RowDesc(columnNames);
+            Row row = new RowImpl(rowDesc);
+            row.addInteger(asyncResult.result().size());
+            List<Row> rows = new LinkedList<>();
+            rows.add(row);
+            RowSet rowSet = new LocalRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
+            handler.handle(Future.succeededFuture(rowSet));
+          } else {
+            handler.handle(asyncResult);
+          }
+        }
+
+        @Override
+        public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
+          return null;
+        }
+
+        @Override
+        public <U> Query<RowSet<U>> mapping(Function<Row, U> function) {
+          return null;
+        }
+      };
+    }
+
+    @Override
+    public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+      return null;
+    }
+
+    @Override
     public void close() {
-
-    }
-
-    @Override
-    public PgConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public <R> PgConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public PgConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-      if (s.startsWith("EXPLAIN") && failExplain) {
-        handler.handle(Future.failedFuture("failExplain"));
-      } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
-        List<String> columnNames = new LinkedList<>();
-        columnNames.add("COUNT");
-        RowDesc rowDesc = new RowDesc(columnNames);
-        Row row = new RowImpl(rowDesc);
-        row.addInteger(asyncResult.result().size());
-        List<Row> rows = new LinkedList<>();
-        rows.add(row);
-        RowSet rowSet = new LocalRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
-        handler.handle(Future.succeededFuture(rowSet));
-      } else {
-        handler.handle(asyncResult);
-      }
-      return this;
-    }
-
-    @Override
-    public <R> PgConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public PgConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public <R> PgConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public PgConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public <R> PgConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
     }
   }
 

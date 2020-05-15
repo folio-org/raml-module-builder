@@ -41,7 +41,7 @@ import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.PreparedQuery;
+import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Transaction;
@@ -913,7 +913,7 @@ public class PostgresClient {
           + " (id, jsonb) VALUES ($1, " + (convertEntity ? "$2" : "$2::text") + ")"
           + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb=EXCLUDED.jsonb" : "")
           + " RETURNING " + (returnId ? "id" : "''");
-      sqlConnection.result().conn.preparedQuery(sql, Tuple.of(
+      sqlConnection.result().conn.preparedQuery(sql).execute(Tuple.of(
           id == null ? UUID.randomUUID() : UUID.fromString(id),
           convertEntity ? pojo2JsonObject(entity) : ((JsonArray)entity).getString(0)
       ), query -> {
@@ -957,7 +957,7 @@ public class PostgresClient {
       String sql = INSERT_CLAUSE + schemaName + DOT + table
           + " (id, jsonb) VALUES ($1, $2) RETURNING jsonb";
 
-      sqlConnection.result().conn.preparedQuery(sql,
+      sqlConnection.result().conn.preparedQuery(sql).execute(
           Tuple.of(id == null ? UUID.randomUUID() : UUID.fromString(id),
           pojo2JsonObject(entity)), query -> {
         statsTracker(SAVE_STAT_METHOD, table, start);
@@ -1071,7 +1071,7 @@ public class PostgresClient {
       }
       PgConnection connection = sqlConnection.result().conn;
 
-      connection.preparedBatch(sql, batch, queryRes -> {
+      connection.preparedQuery(sql).executeBatch(batch, queryRes -> {
         if (queryRes.failed()) {
           log.error("saveBatch size=" + batch.size()
                   + SPACE
@@ -1292,7 +1292,7 @@ public class PostgresClient {
       String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = $1::jsonb " + whereClause
           + SPACE + returning;
       log.debug("update query = " + q);
-      conn.result().conn.preparedQuery(q, Tuple.of(pojo2JsonObject(entity)), query -> {
+      conn.result().conn.preparedQuery(q).execute(Tuple.of(pojo2JsonObject(entity)), query -> {
         if (query.failed()) {
           log.error(query.cause().getMessage(), query.cause());
         }
@@ -1359,7 +1359,7 @@ public class PostgresClient {
               + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
               + section.getFieldsString() + ", '" + value + "', false) " + where + returning;
           log.debug("update query = " + q);
-          connection.query(q, query -> {
+          connection.query(q).execute(query -> {
             connection.close();
             statsTracker(UPDATE_STAT_METHOD, table, start);
             if (query.failed()) {
@@ -1408,8 +1408,8 @@ public class PostgresClient {
         return;
       }
       connection.result().conn.preparedQuery(
-          "DELETE FROM " + schemaName + DOT + table + WHERE + ID_FIELD + "=$1",
-          Tuple.of(UUID.fromString(id)), replyHandler);
+          "DELETE FROM " + schemaName + DOT + table + WHERE + ID_FIELD + "=$1")
+          .execute(Tuple.of(UUID.fromString(id)), replyHandler);
     } catch (Exception e) {
       replyHandler.handle(Future.failedFuture(e));
     }
@@ -1487,7 +1487,7 @@ public class PostgresClient {
       }
       String sql = DELETE + FROM + schemaName + DOT + table + WHERE + DEFAULT_JSONB_FIELD_NAME + "@>$1";
       log.debug("delete by entity, query = " + sql + "; $1=" + entity);
-      connection.result().conn.preparedQuery(sql, Tuple.of(pojo2JsonObject(entity)), delete -> {
+      connection.result().conn.preparedQuery(sql).execute(Tuple.of(pojo2JsonObject(entity)), delete -> {
         statsTracker(DELETE_STAT_METHOD, table, start);
         if (delete.failed()) {
           log.error(delete.cause().getMessage(), delete.cause());
@@ -1511,7 +1511,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(connection.cause()));
         return;
       }
-      connection.result().conn.query(sql, query -> {
+      connection.result().conn.query(sql).execute(query -> {
         statsTracker(DELETE_STAT_METHOD, table, start);
         if (query.failed()) {
           log.error(query.cause().getMessage(), query.cause());
@@ -1787,7 +1787,7 @@ public class PostgresClient {
       QueryHelper queryHelper = buildQueryHelper(table,
         fieldName, wrapper, returnIdField, facets, distinctOn);
 
-      connection.conn.query(queryHelper.countQuery, countQueryResult -> {
+      connection.conn.query(queryHelper.countQuery).execute(countQueryResult -> {
         if (countQueryResult.failed()) {
           replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
           return;
@@ -1817,7 +1817,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(prepareRes.cause()));
         return;
       }
-      PreparedQuery pq = prepareRes.result();
+      PreparedStatement pq = prepareRes.result();
       RowStream<Row> stream = pq.createStream(STREAM_GET_DEFAULT_CHUNK_SIZE, Tuple.tuple());
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
       doStreamRowResults(stream, clazz, facets, closeConnection, queryHelper,
@@ -1975,7 +1975,7 @@ public class PostgresClient {
     long start = System.nanoTime();
 
     log.debug("Attempting count query: " + queryHelper.countQuery);
-    connection.query(queryHelper.countQuery, countQueryResult -> {
+    connection.query(queryHelper.countQuery).execute(countQueryResult -> {
       try {
         if (countQueryResult.failed()) {
           log.error("query with count: " + countQueryResult.cause().getMessage()
@@ -2316,7 +2316,7 @@ public class PostgresClient {
           + FROM + schemaName + DOT + table
           + WHERE + ID_FIELD + "= $1";
       try {
-        connection.preparedQuery(sql, Tuple.of(UUID.fromString(id)), query -> {
+        connection.preparedQuery(sql).execute(Tuple.of(UUID.fromString(id)), query -> {
           connection.close();
           if (query.failed()) {
             replyHandler.handle(Future.failedFuture(query.cause()));
@@ -2410,7 +2410,7 @@ public class PostgresClient {
         sql.append(", $" + i);
       }
       sql.append(")");
-      connection.preparedQuery(sql.toString(), list, query -> {
+      connection.preparedQuery(sql.toString()).execute(list, query -> {
         connection.close();
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
@@ -2739,7 +2739,7 @@ public class PostgresClient {
     Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
     long start = System.nanoTime();
-    conn.query(sql, res -> {
+    conn.query(sql).execute(res -> {
       long queryTime = (System.nanoTime() - start);
       StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
       if (res.failed()) {
@@ -2750,7 +2750,7 @@ public class PostgresClient {
       }
       if (queryTime >= explainQueryThreshold * 1000000) {
         final String explainQuery = "EXPLAIN ANALYZE " + sql;
-        conn.query(explainQuery, explain -> {
+        conn.query(explainQuery).execute(explain -> {
           replyHandler.handle(res); // not before, so we have conn if it gets closed
           if (explain.failed()) {
             log.warn(explainQuery + ": ", explain.cause().getMessage(), explain.cause());
@@ -2826,7 +2826,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      conn.result().conn.preparedQuery(sql, params, replyHandler);
+      conn.result().conn.preparedQuery(sql).execute(params, replyHandler);
     } catch (Exception e) {
       log.error("select sql: " + e.getMessage() + " - " + sql, e);
       replyHandler.handle(Future.failedFuture(e));
@@ -2910,10 +2910,9 @@ public class PostgresClient {
         return;
       }
       if (params.size() == 0) {
-        conn.result().conn.query(sql, res -> selectReturn(res, replyHandler));
+        conn.result().conn.query(sql).execute(res -> selectReturn(res, replyHandler));
       } else {
-        conn.result().conn.preparedQuery(sql, params,
-          res -> selectReturn(res, replyHandler));
+        conn.result().conn.preparedQuery(sql).execute(params, res -> selectReturn(res, replyHandler));
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -2964,7 +2963,7 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(res.cause()));
           return;
         }
-        PreparedQuery pq = res.result();
+        PreparedStatement pq = res.result();
         RowStream<Row> rowStream = pq.createStream(chunkSize, params);
         replyHandler.handle(Future.succeededFuture(rowStream));
       });
@@ -3063,12 +3062,12 @@ public class PostgresClient {
       long start = System.nanoTime();
       // more than optimization.. preparedQuery does not work for multiple SQL statements
       if (params.size() == 0) {
-        connection.query(sql, query -> {
+        connection.query(sql).execute(query -> {
           statsTracker(EXECUTE_STAT_METHOD, sql, start);
           replyHandler.handle(query);
         });
       } else {
-        connection.preparedQuery(sql, params, query -> {
+        connection.preparedQuery(sql).execute(params, query -> {
           statsTracker(EXECUTE_STAT_METHOD, sql, start);
           replyHandler.handle(query);
         });
@@ -3112,7 +3111,7 @@ public class PostgresClient {
             return;
           }
           Tuple params1 = iterator.next();
-          sqlConnection.preparedQuery(sql, params1, query -> {
+          sqlConnection.preparedQuery(sql).execute(params1, query -> {
             if (query.failed()) {
               replyHandler.handle(Future.failedFuture(query.cause()));
               return;
@@ -3237,7 +3236,7 @@ public class PostgresClient {
       String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
           + schemaName + DOT + cacheName +" AS " + sql2cache;
       log.info(q);
-      connection.query(q,
+      connection.query(q).execute(
           query -> {
             statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start);
             if (query.failed()) {
@@ -3265,7 +3264,7 @@ public class PostgresClient {
       }
       long start = System.nanoTime();
       PgConnection connection = conn.result().conn;
-      connection.query("DROP TABLE " + schemaName + DOT + cacheName, query -> {
+      connection.query("DROP TABLE " + schemaName + DOT + cacheName).execute(query -> {
         statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
