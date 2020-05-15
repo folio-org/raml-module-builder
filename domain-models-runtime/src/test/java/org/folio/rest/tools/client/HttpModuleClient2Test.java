@@ -1,5 +1,8 @@
 package org.folio.rest.tools.client;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
@@ -131,6 +134,7 @@ public class HttpModuleClient2Test {
 
     CompletableFuture<Response> cf = httpModuleClient2.request("/test");
     Response response = cf.get(5, TimeUnit.SECONDS);
-    context.assertTrue(response.error.getString("errorMessage").startsWith("Connection refused"));
+    // don't compare against locale dependent error message
+    assertThat(response.getError().encodePrettily(), containsString("" + port2));
   }
 }

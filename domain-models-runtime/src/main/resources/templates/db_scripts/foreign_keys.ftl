@@ -16,8 +16,8 @@
   </#if>
 
   <#-- Create / Drop foreign keys function which pulls data from json into the created foreign key columns -->
-  <#if table.foreignKeys??>
-    <#-- foreign key list has at least one entry, create / re-create the function with the current keys -->
+  <#if (table.foreignKeys!)?filter(key -> key.fieldName?? && key.tOps.name() == "ADD")?size gt 0>
+    <#-- foreign key list has at least one "ADD" entry, create / re-create the function with the current keys -->
     CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.update_${table.tableName}_references()
     RETURNS TRIGGER AS $$
     BEGIN
@@ -37,7 +37,7 @@
       FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.update_${table.tableName}_references();
 
   <#else>
-    <#-- foreign key list is empty attempt to drop trigger and then function -->
+    <#-- foreign key list is empty, attempt to drop trigger and then function -->
     DROP TRIGGER IF EXISTS update_${table.tableName}_references ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
     DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.update_${table.tableName}_references();
   </#if>

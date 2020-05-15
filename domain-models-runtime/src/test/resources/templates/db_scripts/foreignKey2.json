@@ -1,0 +1,46 @@
+{
+  "tables": [
+    {
+      "tableName": "fka",
+      "fromModuleVersion": "18.2.5",
+      "foreignKeys": [
+        {
+          "fieldName":        "refb",
+          "targetTable":      "ref",
+          "targetTableAlias": "ref",
+          "tableAlias":       "ref"
+        },
+        {
+          "fieldName":        "refc",
+          "targetTable":      "ref",
+          "targetTableAlias": "ref",
+          "tableAlias":       "ref"
+        }
+      ]
+    },
+    {
+      "tableName": "fkb",
+      "fromModuleVersion": "18.2.5",
+      "foreignKeys": [
+        {
+          "fieldName":        "refd",
+          "targetTable":      "ref",
+          "targetTableAlias": "ref",
+          "tableAlias":       "ref"
+        },
+        {
+          "fieldName":        "refe",
+          "targetTable":      "ref",
+          "targetTableAlias": "ref",
+          "tableAlias":       "ref"
+        },
+        {
+          "fieldName":        "reff",
+          "targetTable":      "ref",
+          "targetTableAlias": "ref",
+          "tableAlias":       "ref"
+        }
+      ]
+    }
+  ]
+}

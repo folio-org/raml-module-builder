@@ -2159,13 +2159,16 @@ public class PostgresClientIT {
 
   @Test
   public void executeTransSyntaxError(TestContext context) {
-    postgresClient = postgresClient();
+    Async async = context.async();
+    postgresClient = createFoo(context);
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
-      postgresClient.execute(trans, "'", exec -> {
-        context.assertTrue(exec.failed());
-        postgresClient.rollbackTx(trans, context.asyncAssertFailure());
-      });
+      postgresClient.execute(trans, "'",
+          context.asyncAssertFailure(exec -> {
+                context.assertTrue(exec.getMessage().contains("unterminated quoted string"));
+                postgresClient.rollbackTx(trans, context.asyncAssertSuccess(e -> async.complete()));
+              }
+          ));
     });
   }
 
