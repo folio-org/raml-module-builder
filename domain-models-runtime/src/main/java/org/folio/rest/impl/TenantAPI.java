@@ -5,8 +5,6 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
@@ -217,7 +215,6 @@ public class TenantAPI implements Tenant {
         promise.complete(schema);
       } catch (Exception e) {
         promise.fail(e);
-        return;
       }
     });
     return promise.future();
@@ -293,22 +290,8 @@ public class TenantAPI implements Tenant {
    * @throws TemplateException when processing templates/db_scripts/schema.json fails
    */
   public Future<String> sqlFile(Context context, String tenantId, TenantAttributes tenantAttributes) {
-    AtomicBoolean tenantExists = new AtomicBoolean();
-
     return tenantExists(context, tenantId)
-    .compose(tenantExistsResult -> {
-      tenantExists.set(tenantExistsResult);
-      return previousSchema(context, tenantId, tenantExists.get());
-    }).compose(previousSchema -> {
-      try {
-        String sqlFile = sqlFile(tenantId, tenantExists.get(), tenantAttributes, previousSchema);
-        return Future.succeededFuture(sqlFile);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      } catch (TemplateException e) {  // checked exception from main.tpl parsing
-        throw new IllegalArgumentException(e);
-      }
-    });
+    .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists));
   }
 
   @Validate
