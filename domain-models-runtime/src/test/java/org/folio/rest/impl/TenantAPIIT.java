@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.CoreMatchers;
 import org.junit.AfterClass;
@@ -315,7 +316,7 @@ public class TenantAPIIT {
   private void postWithSqlFileException(TestContext context, Class<? extends Exception> exceptionClass) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity)
+      public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
           throws IOException, TemplateException {
         switch (exceptionClass.getName()) {
         case "java.io.IOException": throw new IOException();

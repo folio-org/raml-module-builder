@@ -87,7 +87,11 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
       FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_id_in_jsonb();
   <#else>
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+    <#if table.auditingTableName??>
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.auditingTableName} CASCADE;
+    </#if>
+    -- drop function that updates foreign key fields
+    DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.update_${table.tableName}_references();
   </#if>
 
   <#if table.mode != "delete">
