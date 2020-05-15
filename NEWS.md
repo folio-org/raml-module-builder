@@ -26,6 +26,7 @@
    schema.json comparison instead
  * RMB-610 Remove JobAPI code
  * RMB-616 Update readme to specify permissionsRequired
+ * RMB-620 Configure idle timeout with connectionReleaseDelay
 
 ## 29.3.0 2020-02-27
 
