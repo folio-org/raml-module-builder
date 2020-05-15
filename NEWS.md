@@ -15,7 +15,7 @@
  * [RMB-580](https://issues.folio.org/browse/RMB-580) Unit tests in Jenkins fail which seem related to streamGet
  * [RMB-605](https://issues.folio.org/browse/RMB-605) Combining characters (diacritics, umlauts) not found
  * [RMB-606](https://issues.folio.org/browse/RMB-606) HridSettingsIncreaseMaxValueMigrationTest has stopped working
- * [RMB-607](https://issues.folio.org/browse/RMB-607) ${myuniversity}_${mymodule}.gin_trgm_ops
+ * [RMB-607](https://issues.folio.org/browse/RMB-607) `${myuniversity}_${mymodule}.gin_trgm_ops`
  * [RMB-612](https://issues.folio.org/browse/RMB-612) PostgresClientIT can not be executed in isolation
  * [RMB-246](https://issues.folio.org/browse/RMB-246) migrate to reactive postgres client (vertx-pg-client)
  * [RMB-600](https://issues.folio.org/browse/RMB-600) PostgresClient.upsertBatch
