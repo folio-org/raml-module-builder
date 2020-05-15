@@ -1,5 +1,7 @@
 ## 30.0.0 2020-05-15
 
+ See [upgrade notes](doc/upgrading.md#version-300)
+
  * [RMB-552](https://issues.folio.org/browse/RMB-552) smart index recreation on module upgrade
  * [RMB-583](https://issues.folio.org/browse/RMB-583) move f_unaccent and concat* from public to schema, fix search_path
  * [RMB-164](https://issues.folio.org/browse/RMB-164) Incorrect moduleVersion and rmbVersion in rmb_internal table
