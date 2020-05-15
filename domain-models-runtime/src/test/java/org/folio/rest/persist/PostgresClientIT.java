@@ -5,9 +5,6 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
@@ -952,7 +949,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void saveBatchX(TestContext context) {
+  public void saveBatch(TestContext context) {
     String id1 = randomUuid();
     List<StringPojo> list = new ArrayList<>();
     list.add(xPojo);
@@ -965,6 +962,38 @@ public class PostgresClientIT {
       }));
       postgresClient.getById(FOO, id1, context.asyncAssertSuccess(get -> {
         context.assertEquals("v", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
+  public void upsertBatch(TestContext context) {
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    String id3 = randomUuid();
+    String id4 = randomUuid();
+    List<StringPojo> a = new ArrayList<>();
+    a.add(new StringPojo("a1", id1));
+    a.add(new StringPojo("a2", id2));
+    a.add(new StringPojo("a3", id3));
+    List<StringPojo> b = new ArrayList<>();
+    b.add(new StringPojo("b1", id1));
+    b.add(new StringPojo("b3", id3));
+    b.add(new StringPojo("b4", id4));
+    b.add(new StringPojo("b5"));
+    postgresClient = createFoo(context);
+    postgresClient.saveBatch(FOO, a, context.asyncAssertSuccess(save -> {
+      postgresClient.upsertBatch(FOO, b, context.asyncAssertSuccess(upsert -> {
+        String id5 = upsert.next().next().next().iterator().next().getValue(0).toString();
+        postgresClient.getById(FOO, id1, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b1", get.getString("key"));
+        }));
+        postgresClient.getById(FOO, id4, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b4", get.getString("key"));
+        }));
+        postgresClient.getById(FOO, id5, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b5", get.getString("key"));
+        }));
       }));
     }));
   }
@@ -1127,6 +1156,38 @@ public class PostgresClientIT {
       context.assertEquals(id, row.getValue("id").toString());
       postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
         context.assertEquals("z", get.getString("y"));
+      }));
+    }));
+  }
+
+  @Test
+  public void upsertBatchJson(TestContext context) {
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    String id3 = randomUuid();
+    String id4 = randomUuid();
+    List<StringPojo> a = new ArrayList<>();
+    a.add(new StringPojo("a1", id1));
+    a.add(new StringPojo("a2", id2));
+    a.add(new StringPojo("a3", id3));
+    JsonArray b = new JsonArray()
+        .add("{ \"key\" : \"b1\", \"id\": \"" + id1 + "\" }")
+        .add("{ \"key\" : \"b3\", \"id\": \"" + id3 + "\" }")
+        .add("{ \"key\" : \"b4\", \"id\": \"" + id4 + "\" }")
+        .add("{ \"key\" : \"b5\"                          }");
+    postgresClient = createFoo(context);
+    postgresClient.saveBatch(FOO, a, context.asyncAssertSuccess(save -> {
+      postgresClient.upsertBatch(FOO, b, context.asyncAssertSuccess(upsert -> {
+        String id5 = upsert.next().next().next().iterator().next().getValue(0).toString();
+        postgresClient.getById(FOO, id1, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b1", get.getString("key"));
+        }));
+        postgresClient.getById(FOO, id4, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b4", get.getString("key"));
+        }));
+        postgresClient.getById(FOO, id5, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b5", get.getString("key"));
+        }));
       }));
     }));
   }
