@@ -47,11 +47,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `PgExceptionFacade.selectStream` without SQLConnection has been
      removed. Streams must be executed within a transaction.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
-* [RMB-619](https://issues.folio.org/browse/RMB-619) Update to Vert.x 3.9.0
-  * See Vert.x
-   [3.9.0 release message](https://vertx.io/blog/eclipse-vert-x-3-9-0-released/) for more information.
-
-
+* [RMB-619](https://issues.folio.org/browse/RMB-619)
+  [Deprecation due to upgrading to Vert.x 3.9](https://github.com/vert-x3/wiki/wiki/3.9.0-Deprecations-and-breaking-changes):
+  * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
+    `Verticle#start(Promise<Void>)` and `Verticle#stop(Promise<Void>)`
+  * Replace `Future.setHandler(ar -> …)` by `Future.onComplete(ar -> …)`
 
 ## Version 29.5
 
