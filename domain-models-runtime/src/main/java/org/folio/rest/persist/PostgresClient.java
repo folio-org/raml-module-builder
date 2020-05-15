@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.Optional;
@@ -472,6 +473,9 @@ public class PostgresClient {
     if (database != null) {
       pgConnectOptions.setDatabase(database);
     }
+    Integer connectionReleaseDelay = sqlConfig.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
+    pgConnectOptions.setIdleTimeout(connectionReleaseDelay);
+    pgConnectOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
     return pgConnectOptions;
   }
 
@@ -555,9 +559,6 @@ public class PostgresClient {
       //passed in port as well. useful when multiple modules start up an embedded postgres
       //in a single server.
       config.put(PORT, embeddedPort);
-    }
-    if (! config.containsKey(CONNECTION_RELEASE_DELAY)) {
-      config.put(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
     }
     return config;
   }

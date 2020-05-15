@@ -17,6 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collector;
 
 import io.vertx.core.AsyncResult;
@@ -86,7 +87,6 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(6000));
     assertThat(config.getString("username"), is("username"));
-    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -99,7 +99,6 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(port));
     assertThat(config.getString("username"), is("barschema"));
-    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -150,6 +149,8 @@ public class PostgresClientTest {
     assertThat("user", is(options.getUser()));
     assertThat("pass", is(options.getPassword()));
     assertThat("db", is(options.getDatabase()));
+    assertThat(60000, is(options.getIdleTimeout()));
+    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
   }
 
   @Test
@@ -159,7 +160,8 @@ public class PostgresClientTest {
         .put("port", 5433)
         .put("username", "myuser")
         .put("password", "mypassword")
-        .put("database", "mydatabase");
+        .put("database", "mydatabase")
+        .put("connectionReleaseDelay", 1000);
 
     PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
     assertThat("myhost", is(options.getHost()));
@@ -167,6 +169,8 @@ public class PostgresClientTest {
     assertThat("myuser", is(options.getUser()));
     assertThat("mypassword", is(options.getPassword()));
     assertThat("mydatabase", is(options.getDatabase()));
+    assertThat(1000, is(options.getIdleTimeout()));
+    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
   }
 
   @Test
