@@ -3,7 +3,7 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
-* [Version 30.0](#version-30)
+* [Version 30.0](#version-300)
 * [Version 29.5](#version-295)
 * [Version 29.2](#version-292)
 * [Version 29](#version-29)
@@ -38,9 +38,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     connection, use `PostgresClient.startTx()`. For modules that wish to use
     vertx-pg-client directly, `PostgresClient.getConnection`  is offered -
     it returns `PgConnection` from the pool that is managed by `PostgresClient`.
-  * Exceptions thrown by new client is `io.vertx.pgclient.PgException`. Was
-    `com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException`
-    before. The `getMessage()` only contains message! Not details, code.
+  * Replace `exception.getMessage` by `PgExceptionUtil.getMessage(exception)`
+    to mimic the old `GenericDatabaseException.getMessage(e)` because the
+    new `PgException.getMessage(e)` returns the message field only, no SQL error code,
+    no detail.
   * `PgExceptionFacade.getTable` removed.
   * `PgExceptionFacade.getIndex` removed.
   * `PgExceptionFacade.selectStream` without SQLConnection has been
