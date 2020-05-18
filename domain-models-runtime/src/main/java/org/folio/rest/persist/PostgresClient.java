@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -508,7 +509,7 @@ public class PostgresClient {
       for (SQLConnection conn : activeConnections) {
         long elapsedTime = System.currentTimeMillis() - conn.acquiringTime;
         if (elapsedTime > conn.executionTimeLimit) {
-          ((PgConnection) conn.conn).cancelRequest(ar -> {
+          conn.conn.cancelRequest(ar -> {
             if (ar.succeeded()) {
               log.warn(
                   String.format("Cancelling request due to timeout after : %d ms", elapsedTime));
@@ -3051,7 +3052,11 @@ public class PostgresClient {
     });
   }
 
-  void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
+   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
+    getSQLConnection(handler, 0);
+   }
+
+  void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler, int executionTimeLimit) {
     getConnection(res -> {
       if (res.failed()) {
         handler.handle(Future.failedFuture(res.cause()));
