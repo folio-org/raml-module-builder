@@ -103,9 +103,9 @@ public class PostgresClient {
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
 
-  private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
-
   static final String COUNT_FIELD = "count";
+
+  private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
 
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
@@ -1748,6 +1748,28 @@ public class PostgresClient {
 
     streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
       null, replyHandler, limitRequestExecutionTime);
+  }
+
+    /**
+   * Stream GET with CQLWrapper and facets {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param filter
+   * @param returnIdField must be true if facets are in passed
+   * @param distinctOn may be null
+   * @param facets for no facets: null or Collections.emptyList()
+   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
+   */
+  @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
+  public <T> void streamGet(String table, Class<T> clazz, String fieldName,
+    CQLWrapper filter, boolean returnIdField, String distinctOn,
+    List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+
+    getSQLConnection(conn ->
+        streamGet(conn, table, clazz, fieldName, filter, returnIdField,
+            distinctOn, facets, replyHandler), 0);
   }
 
   /**
