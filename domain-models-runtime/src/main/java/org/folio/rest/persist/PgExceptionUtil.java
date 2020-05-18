@@ -103,6 +103,39 @@ public final class PgExceptionUtil {
     }
   }
 
+  /**
+   * Compose a message of all PgException fields.
+   *
+   * <p>Example output:
+   *
+   * <p>{@code ErrorMessage(fields=[(Severity, ERROR), (SQLSTATE, 23505),
+   *     (Message, duplicate key value violates unique constraint "t_text_key"),
+   *     (Detail, Key (text)=(a) already exists.)]}
+   *
+   * <p>This is similar to {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException#getMessage()
+   * GenericDatabaseException#getMessage()} that returns
+   *
+   * <p>{@code ErrorMessage(fields=[(Severity, ERROR), (V, ERROR), (SQLSTATE, 23505),
+   *     (Message, duplicate key value violates unique constraint "t_text_key"),
+   *     (Detail, Key (text)=(a) already exists.), (s, public), (t, t), (n, t_text_key),
+   *     (File, nbtinsert.c), (Line, 427), (Routine, _bt_check_unique)])}
+   *
+   * <p>Use this method where PgException.getMessage() returning the message field only is not sufficient.
+   *
+   * @return all PgException fields if throwable is a PgException, throwable.getMessage() otherwise
+   */
+  public static String getMessage(Throwable throwable) {
+    if (!(throwable instanceof PgException)) {
+      return throwable.getMessage();
+    }
+    PgException e = (PgException) throwable;
+    return "ErrorMessage(fields=["
+        + "(Severity, " + e.getSeverity() + "), "
+        + "(SQLSTATE, " + e.getCode() + "), "
+        + "(Message, " + e.getMessage() + "), "
+        + "(Detail, " + e.getDetail() + ")])";
+  }
+
   public static Map<Character, String> getBadRequestFields(Throwable throwable) {
     if (!(throwable instanceof PgException)) {
       return null;
@@ -110,6 +143,7 @@ public final class PgExceptionUtil {
     Map<Character, String> map = new HashMap<>();
     map.put('M', ((PgException) throwable).getMessage());
     map.put('D', ((PgException) throwable).getDetail());
+    map.put('S', ((PgException) throwable).getSeverity());
     map.put('C', ((PgException) throwable).getCode());
     return map;
   }
@@ -120,6 +154,6 @@ public final class PgExceptionUtil {
    * @return
    */
   public static PgException createPgExceptionFromMap(Map<Character, String> map) {
-    return new PgException(map.get('M'), null, map.get('C'), map.get('D'));
+    return new PgException(map.get('M'), map.get('S'), map.get('C'), map.get('D'));
   }
 }

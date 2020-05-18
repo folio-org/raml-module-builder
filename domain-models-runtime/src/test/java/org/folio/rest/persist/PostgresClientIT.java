@@ -5,17 +5,22 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
@@ -33,9 +38,13 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PreparedQuery;
+import io.vertx.sqlclient.PreparedStatement;
+import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
@@ -58,7 +67,7 @@ import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.helpers.FakeRowSet;
+import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.helpers.SimplePojo;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
@@ -92,8 +101,6 @@ public class PostgresClientIT {
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
-
-  private int EXECUTION_TIME_LIMIT = 0;
 
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
@@ -941,7 +948,7 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void saveBatchX(TestContext context) {
+  public void saveBatch(TestContext context) {
     String id1 = randomUuid();
     List<StringPojo> list = new ArrayList<>();
     list.add(xPojo);
@@ -954,6 +961,38 @@ public class PostgresClientIT {
       }));
       postgresClient.getById(FOO, id1, context.asyncAssertSuccess(get -> {
         context.assertEquals("v", get.getString("key"));
+      }));
+    }));
+  }
+
+  @Test
+  public void upsertBatch(TestContext context) {
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    String id3 = randomUuid();
+    String id4 = randomUuid();
+    List<StringPojo> a = new ArrayList<>();
+    a.add(new StringPojo("a1", id1));
+    a.add(new StringPojo("a2", id2));
+    a.add(new StringPojo("a3", id3));
+    List<StringPojo> b = new ArrayList<>();
+    b.add(new StringPojo("b1", id1));
+    b.add(new StringPojo("b3", id3));
+    b.add(new StringPojo("b4", id4));
+    b.add(new StringPojo("b5"));
+    postgresClient = createFoo(context);
+    postgresClient.saveBatch(FOO, a, context.asyncAssertSuccess(save -> {
+      postgresClient.upsertBatch(FOO, b, context.asyncAssertSuccess(upsert -> {
+        String id5 = upsert.next().next().next().iterator().next().getValue(0).toString();
+        postgresClient.getById(FOO, id1, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b1", get.getString("key"));
+        }));
+        postgresClient.getById(FOO, id4, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b4", get.getString("key"));
+        }));
+        postgresClient.getById(FOO, id5, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b5", get.getString("key"));
+        }));
       }));
     }));
   }
@@ -1002,7 +1041,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(null, trans1.tx, EXECUTION_TIME_LIMIT);
+      SQLConnection conn = new SQLConnection(null, trans1.tx);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertSuccess());
     }));
@@ -1013,7 +1052,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null, EXECUTION_TIME_LIMIT);
+      SQLConnection conn = new SQLConnection(trans1.conn, null);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertFailure());
     }));
@@ -1024,7 +1063,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null, EXECUTION_TIME_LIMIT);
+      SQLConnection conn = new SQLConnection(trans1.conn, null);
       trans2.complete(conn);
       postgresClient.rollbackTx(trans2.future(), context.asyncAssertFailure());
     }));
@@ -1068,7 +1107,7 @@ public class PostgresClientIT {
   @Test
   public void saveBatchNullList(TestContext context) {
     createFoo(context).saveBatch(BAR, (List<Object>)null, context.asyncAssertSuccess(save -> {
-      context.assertNull(save);
+      context.assertEquals(0, save.size());
     }));
   }
 
@@ -1076,7 +1115,7 @@ public class PostgresClientIT {
   public void saveBatchEmptyList(TestContext context) {
     List<Object> list = Collections.emptyList();
     createFoo(context).saveBatch(FOO, list, context.asyncAssertSuccess(save -> {
-      context.assertNull(save);
+      context.assertEquals(0, save.size());
     }));
   }
 
@@ -1121,6 +1160,38 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void upsertBatchJson(TestContext context) {
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    String id3 = randomUuid();
+    String id4 = randomUuid();
+    List<StringPojo> a = new ArrayList<>();
+    a.add(new StringPojo("a1", id1));
+    a.add(new StringPojo("a2", id2));
+    a.add(new StringPojo("a3", id3));
+    JsonArray b = new JsonArray()
+        .add("{ \"key\" : \"b1\", \"id\": \"" + id1 + "\" }")
+        .add("{ \"key\" : \"b3\", \"id\": \"" + id3 + "\" }")
+        .add("{ \"key\" : \"b4\", \"id\": \"" + id4 + "\" }")
+        .add("{ \"key\" : \"b5\"                          }");
+    postgresClient = createFoo(context);
+    postgresClient.saveBatch(FOO, a, context.asyncAssertSuccess(save -> {
+      postgresClient.upsertBatch(FOO, b, context.asyncAssertSuccess(upsert -> {
+        String id5 = upsert.next().next().next().iterator().next().getValue(0).toString();
+        postgresClient.getById(FOO, id1, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b1", get.getString("key"));
+        }));
+        postgresClient.getById(FOO, id4, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b4", get.getString("key"));
+        }));
+        postgresClient.getById(FOO, id5, context.asyncAssertSuccess(get -> {
+          context.assertEquals("b5", get.getString("key"));
+        }));
+      }));
+    }));
+  }
+
+  @Test
   public void saveBatchJsonFail(TestContext context) {
     JsonArray array = new JsonArray()
         .add("{ \"x\" : \"a\" }")
@@ -1131,14 +1202,14 @@ public class PostgresClientIT {
   @Test
   public void saveBatchJsonNullArray(TestContext context) {
     createFoo(context).saveBatch(FOO, (JsonArray)null, context.asyncAssertSuccess(save -> {
-      context.assertNull(save);
+      context.assertEquals(0, save.size());
     }));
   }
 
   @Test
   public void saveBatchJsonEmptyArray(TestContext context) {
     createFoo(context).saveBatch(FOO, new JsonArray(), context.asyncAssertSuccess(save -> {
-      context.assertNull(save);
+      context.assertEquals(0, save.size());
     }));
   }
 
@@ -1306,7 +1377,8 @@ public class PostgresClientIT {
     List<Object> list = Collections.emptyList();
     createFoo(context).saveBatch(FOO, list, res -> {
       assertSuccess(context, res);
-      context.assertEquals(null, res.result());
+      context.assertEquals(0, res.result().size());
+      context.assertEquals("id", res.result().columnsNames().get(0));
       async.complete();
     });
   }
@@ -1564,53 +1636,23 @@ public class PostgresClientIT {
   private PostgresClient postgresClientNullConnection() {
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
         handler.handle(Future.succeededFuture(null));
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
 
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
+      }
+
+      @Override
+      public void begin(Handler<AsyncResult<Transaction>> handler) {
+        handler.handle(Future.succeededFuture(null));
       }
 
       @Override
@@ -1633,48 +1675,18 @@ public class PostgresClientIT {
   private PostgresClient postgresClientGetConnectionFails() {
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
         handler.handle(Future.failedFuture("postgresClientGetConnectionFails"));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override
@@ -1701,19 +1713,39 @@ public class PostgresClientIT {
    * throws an RuntimeException.
    */
   private PostgresClient postgresClientConnectionThrowsException() {
-    SqlConnection sqlConnection = new SqlConnection() {
+    PgConnection pgConnection = new PgConnection() {
       @Override
-      public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+      public PgConnection notificationHandler(Handler<PgNotification> handler) {
         throw new RuntimeException();
       }
 
       @Override
-      public SqlConnection exceptionHandler(Handler<Throwable> handler) {
+      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public int processId() {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public int secretKey() {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
 
       @Override
-      public SqlConnection closeHandler(Handler<Void> handler) {
+      public PgConnection closeHandler(Handler<Void> handler) {
         return null;
       }
 
@@ -1728,95 +1760,36 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Query<RowSet<Row>> query(String s) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        throw new RuntimeException();
+      }
+
+      @Override
       public void close() {
 
       }
 
-      @Override
-      public SqlConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public <R> SqlConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public <R> SqlConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public SqlConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public <R> SqlConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public SqlConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public <R> SqlConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        throw new RuntimeException();
-      }
     };
 
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(sqlConnection));
+        handler.handle(Future.succeededFuture(pgConnection));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override
@@ -1843,20 +1816,41 @@ public class PostgresClientIT {
    * SQLConnection::queryWithParams will report a failure via the resultHandler.
    */
   private PostgresClient postgresClientQueryFails() {
-    SqlConnection sqlConnection = new SqlConnection() {
+    PgConnection pgConnection = new PgConnection() {
       @Override
-      public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
-        handler.handle(Future.failedFuture("preparedFails"));
+      public PgConnection notificationHandler(Handler<PgNotification> handler) {
         return this;
       }
 
       @Override
-      public SqlConnection exceptionHandler(Handler<Throwable> handler) {
+      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
+        handler.handle(Future.failedFuture("cancelRequestFails"));
+        return this;
+      }
+
+      @Override
+      public int processId() {
+        return 0;
+      }
+
+      @Override
+      public int secretKey() {
+        return 0;
+      }
+
+      @Override
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
+        handler.handle(Future.failedFuture("preparedFails"));
         return null;
       }
 
       @Override
-      public SqlConnection closeHandler(Handler<Void> handler) {
+      public PgConnection exceptionHandler(Handler<Throwable> handler) {
+        return null;
+      }
+
+      @Override
+      public PgConnection closeHandler(Handler<Void> handler) {
         return null;
       }
 
@@ -1871,103 +1865,51 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Query<RowSet<Row>> query(String s)
+      {
+        return new Query<RowSet<Row>> () {
+
+          @Override
+          public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
+            handler.handle(Future.failedFuture("queryFails"));
+          }
+
+          @Override
+          public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
+            return null;
+          }
+
+          @Override
+          public <U> Query<RowSet<U>> mapping(Function<Row, U> function) {
+            return null;
+          }
+        };
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
+      }
+
+      @Override
       public void close() {
-
-      }
-
-      @Override
-      public SqlConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> SqlConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("queryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> SqlConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("queryFails"));
-        return this;
-      }
-
-      @Override
-      public SqlConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> SqlConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public SqlConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedBatchFails"));
-        return this;
-      }
-
-      @Override
-      public <R> SqlConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedBatchFails"));
-        return this;
       }
     };
 
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(sqlConnection));
+        handler.handle(Future.succeededFuture(pgConnection));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override
@@ -1993,20 +1935,39 @@ public class PostgresClientIT {
    * @return a PostgresClient where invoking SQLConnection::queryWithParams will return null ResultSet
    */
   private PostgresClient postgresClientQueryReturnBadResults() {
-    SqlConnection sqlConnection = new SqlConnection() {
+    PgConnection pgConnection = new PgConnection() {
       @Override
-      public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
-        handler.handle(Future.failedFuture("preparedFails"));
-        return this;
-      }
-
-      @Override
-      public SqlConnection exceptionHandler(Handler<Throwable> handler) {
+      public PgConnection notificationHandler(Handler<PgNotification> handler) {
         return null;
       }
 
       @Override
-      public SqlConnection closeHandler(Handler<Void> handler) {
+      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
+        return this;
+      }
+
+      @Override
+      public int processId() {
+        return 0;
+      }
+
+      @Override
+      public int secretKey() {
+        return 0;
+      }
+
+      @Override
+      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
+        return null;
+      }
+
+      @Override
+      public PgConnection exceptionHandler(Handler<Throwable> handler) {
+        return null;
+      }
+
+      @Override
+      public PgConnection closeHandler(Handler<Void> handler) {
         return null;
       }
 
@@ -2021,102 +1982,35 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
+      }
+
+      @Override
       public void close() {
 
       }
 
-      @Override
-      public SqlConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> SqlConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("queryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> SqlConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("queryFails"));
-        return this;
-      }
-
-      @Override
-      public SqlConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public <R> SqlConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedQueryFails"));
-        return this;
-      }
-
-      @Override
-      public SqlConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        handler.handle(Future.failedFuture("preparedBatchFails"));
-        return this;
-      }
-
-      @Override
-      public <R> SqlConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        handler.handle(Future.failedFuture("preparedBatchFails"));
-        return this;
-      }
     };
     PgPool client = new PgPool() {
       @Override
-      public PgPool preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
-      public PgPool preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-        return null;
-      }
-
-      @Override
-      public <R> PgPool preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-        return null;
-      }
-
-      @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(sqlConnection));
+        handler.handle(Future.succeededFuture(pgConnection));
+      }
+
+      @Override
+      public Query<RowSet<Row>> query(String s) {
+        return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+        return null;
       }
 
       @Override
@@ -2168,7 +2062,6 @@ public class PostgresClientIT {
       context.assertEquals(1, res.result().rowCount());
       async.complete();
     });
-    async.await(1000);
   }
 
   @Test
@@ -2266,13 +2159,16 @@ public class PostgresClientIT {
 
   @Test
   public void executeTransSyntaxError(TestContext context) {
-    postgresClient = postgresClient();
+    Async async = context.async();
+    postgresClient = createFoo(context);
     postgresClient.startTx(trans -> {
       assertSuccess(context, trans);
-      postgresClient.execute(trans, "'", exec -> {
-        context.assertTrue(exec.failed());
-        postgresClient.rollbackTx(trans, context.asyncAssertFailure());
-      });
+      postgresClient.execute(trans, "'",
+          context.asyncAssertFailure(exec -> {
+                context.assertTrue(exec.getMessage().contains("unterminated quoted string"));
+                postgresClient.rollbackTx(trans, context.asyncAssertSuccess(e -> async.complete()));
+              }
+          ));
     });
   }
 
@@ -2367,7 +2263,7 @@ public class PostgresClientIT {
     });
   }
 
-  /** @return List containg one empty JsonArray() */
+  /** @return List containing one empty Tuple */
   private List<Tuple> list1JsonArray() {
     return Collections.singletonList(Tuple.tuple());
   }
@@ -2485,16 +2381,6 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void selectStream(TestContext context) {
-    createNumbers(context, 15, 16, 17)
-    .selectStream("SELECT i FROM numbers WHERE i IN (15, 17, 19) ORDER BY i", context.asyncAssertSuccess(select -> {
-      intsAsString(select, context.asyncAssertSuccess(string -> {
-        context.assertEquals("15, 17", string);
-      }));
-    }));
-  }
-
-  @Test
   public void selectStreamTrans(TestContext context) {
     postgresClient = createNumbers(context, 21, 22, 23);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2509,14 +2395,16 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void selectStreamParam(TestContext context) {
-    createNumbers(context, 25, 26, 27)
-    .selectStream("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
-        Tuple.of(25, 27, 29),
-        context.asyncAssertSuccess(select -> {
-          intsAsString(select, context.asyncAssertSuccess(string -> {
-            context.assertEquals("25, 27", string);
-      }));
+  public void selectStreamTransChunkSize(TestContext context) {
+    postgresClient = createNumbers(context, 21, 22, 23);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.selectStream(trans, "SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i",
+          Tuple.tuple(), 1, context.asyncAssertSuccess(select -> {
+            intsAsString(select, context.asyncAssertSuccess(string -> {
+              postgresClient.endTx(trans, context.asyncAssertSuccess());
+              context.assertEquals("21, 23", string);
+            }));
+          }));
     }));
   }
 
@@ -2629,7 +2517,10 @@ public class PostgresClientIT {
 
   @Test
   public void selectStreamParamTxSqlError(TestContext context) {
-    postgresClient().selectStream("sql", Tuple.tuple(), context.asyncAssertFailure());
+    postgresClient = createNumbers(context, 55, 56, 57);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient().selectStream(trans, "sql", Tuple.tuple(), context.asyncAssertFailure());
+    }));
   }
 
   @Test
@@ -2753,7 +2644,6 @@ public class PostgresClientIT {
           async.complete();
         });
       }));
-    async.await();
   }
 
   @Test
@@ -2836,7 +2726,7 @@ public class PostgresClientIT {
           context.assertEquals(3, objectCount.get());
           async.complete();
         });
-      }), EXECUTION_TIME_LIMIT);
+      }));
     async.awaitSuccess();
   }
 
@@ -2861,7 +2751,7 @@ public class PostgresClientIT {
           context.assertEquals(0, objectCount.get());
           async.complete();
         });
-      }), EXECUTION_TIME_LIMIT);
+      }));
     async.awaitSuccess();
   }
 
@@ -2874,7 +2764,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
-      badFacets, context.asyncAssertFailure(), EXECUTION_TIME_LIMIT);
+      badFacets, context.asyncAssertFailure());
   }
 
   @Test
@@ -2919,7 +2809,7 @@ public class PostgresClientIT {
     List<FacetField> facets = new ArrayList<FacetField>();
     AsyncResult<SQLConnection> connResult = Future.failedFuture("connection error");
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.doStreamGet(connResult, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true,
+    postgresClient.streamGet(connResult, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true,
       null, facets, context.asyncAssertFailure(
         x -> context.assertEquals("connection error", x.getMessage())));
   }
@@ -2980,8 +2870,8 @@ public class PostgresClientIT {
     StringBuilder events = new StringBuilder();
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
-    Transaction tx = null;
-    postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, tx,
+    PgConnection pgConnection = null;
+    postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, pgConnection,
       new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -3141,6 +3031,50 @@ public class PostgresClientIT {
           async.complete();
         });
       }));
+    async.await(1000);
+  }
+
+  @Test
+  public void streamGetPlain(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+        false, null, context.asyncAssertSuccess(sr -> {
+          context.assertEquals(3, sr.resultInto().getTotalRecords());
+          sr.handler(streamHandler -> objectCount.incrementAndGet());
+          sr.endHandler(x -> {
+            context.assertEquals(3, objectCount.get());
+            async.complete();
+          });
+        }));
+    async.await(1000);
+  }
+
+  @Test
+  public void streamGetWithTransaction(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    postgresClient.startTx(trans -> {
+      postgresClient.streamGet(trans, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+          false, null, null, context.asyncAssertSuccess(sr -> {
+            context.assertEquals(3, sr.resultInto().getTotalRecords());
+            sr.handler(streamHandler -> objectCount.incrementAndGet());
+            sr.endHandler(x -> {
+              context.assertEquals(3, objectCount.get());
+              postgresClient.endTx(trans, y -> async.complete());
+            });
+
+      }));
+    });
     async.await(1000);
   }
 
@@ -3719,7 +3653,7 @@ public class PostgresClientIT {
 
   @Test
   public void selectReturnEmptySet(TestContext context) {
-    RowSet rowSet = new FakeRowSet(0);
+    RowSet rowSet = new LocalRowSet(0);
     Promise<RowSet<Row>> promise = Promise.promise();
     promise.complete(rowSet);
     PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
@@ -3735,7 +3669,7 @@ public class PostgresClientIT {
     Row row = new RowImpl(rowDesc);
     row.addString("value");
     rows.add(row);
-    RowSet rowSet = new FakeRowSet(1).withColumns(columns).withRows(rows);
+    RowSet rowSet = new LocalRowSet(1).withColumns(columns).withRows(rows);
 
     Promise<RowSet<Row>> promise = Promise.promise();
     promise.complete(rowSet);
@@ -3743,21 +3677,5 @@ public class PostgresClientIT {
         context.assertEquals("value", res.getString(0))));
   }
 
-  @Test
-  public void getTotalRecordsTest() {
-    assertNull(PostgresClient.getTotalRecords(10, null, 0, 0));
-
-    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 0));
-
-    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 10));
-
-    assertEquals((Integer)10, PostgresClient.getTotalRecords(0, 20, 10, 20));
-
-    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 30, 10, 20));
-
-    assertEquals((Integer)30, PostgresClient.getTotalRecords(10, 20, 20, 10));
-
-    assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
-  }
 
 }

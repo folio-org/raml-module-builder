@@ -129,7 +129,7 @@ public class PgUtilIT {
   private static void execute(TestContext context, String sql) {
     StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
     Async async = context.async();
-    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql, reply -> {
+    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
       if (reply.failed()) {
         Throwable throwable = new AssertionFailedError(reply.cause().getMessage() + ": " + sql);
         throwable.setStackTrace(stackTrace);
@@ -142,7 +142,7 @@ public class PgUtilIT {
 
   private static void executeIgnore(TestContext context, String sql) {
     Async async = context.async();
-    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql, reply -> {
+    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
       async.complete();
     });
     async.awaitSuccess();

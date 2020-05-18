@@ -5,6 +5,8 @@ import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -15,6 +17,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collector;
 
 import io.vertx.core.AsyncResult;
@@ -23,17 +27,19 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PreparedQuery;
+import io.vertx.sqlclient.PreparedStatement;
+import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
-import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.helpers.FakeRowSet;
+import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.ResourceUtil;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
@@ -83,7 +89,6 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(6000));
     assertThat(config.getString("username"), is("username"));
-    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -96,7 +101,6 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(port));
     assertThat(config.getString("username"), is("barschema"));
-    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -147,6 +151,8 @@ public class PostgresClientTest {
     assertThat("user", is(options.getUser()));
     assertThat("pass", is(options.getPassword()));
     assertThat("db", is(options.getDatabase()));
+    assertThat(60000, is(options.getIdleTimeout()));
+    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
   }
 
   @Test
@@ -156,7 +162,8 @@ public class PostgresClientTest {
         .put("port", 5433)
         .put("username", "myuser")
         .put("password", "mypassword")
-        .put("database", "mydatabase");
+        .put("database", "mydatabase")
+        .put("connectionReleaseDelay", 1000);
 
     PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
     assertThat("myhost", is(options.getHost()));
@@ -164,6 +171,8 @@ public class PostgresClientTest {
     assertThat("myuser", is(options.getUser()));
     assertThat("mypassword", is(options.getPassword()));
     assertThat("mydatabase", is(options.getDatabase()));
+    assertThat(1000, is(options.getIdleTimeout()));
+    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
   }
 
   @Test
@@ -205,7 +214,7 @@ public class PostgresClientTest {
       "foo", "bar", "biz", "baz"
     }));
     Map<String, Method> externalColumnSetters = new HashMap<>();
-    testClient.getExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
+    testClient.collectExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
     assertThat(externalColumnSetters.size(), is(4));
     assertThat(externalColumnSetters.get("foo"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("foo"), String.class)));
     assertThat(externalColumnSetters.get("bar"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("bar"), String.class)));
@@ -219,8 +228,8 @@ public class PostgresClientTest {
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
     }));
-    Map<String, Method> externalColumnSettters = new HashMap<>();
-    testClient.getExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSettters);
+    Map<String, Method> externalColumnSetters = new HashMap<>();
+    testClient.collectExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
     TestPojo o = new TestPojo();
     String foo = "Hello";
     String bar = "World";
@@ -239,7 +248,7 @@ public class PostgresClientTest {
     row.addDouble(biz);
     row.addStringArray(baz);
 
-    testClient.populateExternalColumns(externalColumnSettters, o, row);
+    testClient.populateExternalColumns(externalColumnSetters, o, row);
     assertThat(o.getFoo(), is(foo));
     assertThat(o.getBar(), is(bar));
     assertThat(o.getBiz(), is(biz));
@@ -255,11 +264,9 @@ public class PostgresClientTest {
     PostgresClient testClient = PostgresClient.testClient();
     String setterMethodName = testClient.databaseFieldToPojoSetter("test_field");
     assertThat(setterMethodName, is("setTestField"));
-
-
   }
 
-  public class FakeSqlConnection implements SqlConnection {
+  public class FakeSqlConnection implements PgConnection {
     final AsyncResult<RowSet<Row>> asyncResult;
     final boolean failExplain;
 
@@ -267,19 +274,41 @@ public class PostgresClientTest {
       this.asyncResult = result;
       this.failExplain = failExplain;
     }
+
     @Override
-    public SqlConnection prepare(String s, Handler<AsyncResult<PreparedQuery>> handler) {
+    public PgConnection notificationHandler(Handler<PgNotification> handler) {
+      return this;
+    }
+
+    @Override
+    public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
       handler.handle(Future.failedFuture("not implemented"));
       return this;
     }
 
     @Override
-    public SqlConnection exceptionHandler(Handler<Throwable> handler) {
+    public int processId() {
+      return 0;
+    }
+
+    @Override
+    public int secretKey() {
+      return 0;
+    }
+
+    @Override
+    public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
       return this;
     }
 
     @Override
-    public SqlConnection closeHandler(Handler<Void> handler) {
+    public PgConnection exceptionHandler(Handler<Throwable> handler) {
+      return this;
+    }
+
+    @Override
+    public PgConnection closeHandler(Handler<Void> handler) {
       return null;
     }
 
@@ -294,70 +323,48 @@ public class PostgresClientTest {
     }
 
     @Override
+    public Query<RowSet<Row>> query(String s) {
+
+      return new Query<RowSet<Row>>() {
+
+        @Override
+        public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
+          if (s.startsWith("EXPLAIN") && failExplain) {
+            handler.handle(Future.failedFuture("failExplain"));
+          } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
+            List<String> columnNames = new LinkedList<>();
+            columnNames.add("COUNT");
+            RowDesc rowDesc = new RowDesc(columnNames);
+            Row row = new RowImpl(rowDesc);
+            row.addInteger(asyncResult.result().size());
+            List<Row> rows = new LinkedList<>();
+            rows.add(row);
+            RowSet rowSet = new LocalRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
+            handler.handle(Future.succeededFuture(rowSet));
+          } else {
+            handler.handle(asyncResult);
+          }
+        }
+
+        @Override
+        public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
+          return null;
+        }
+
+        @Override
+        public <U> Query<RowSet<U>> mapping(Function<Row, U> function) {
+          return null;
+        }
+      };
+    }
+
+    @Override
+    public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+      return null;
+    }
+
+    @Override
     public void close() {
-
-    }
-
-    @Override
-    public SqlConnection preparedQuery(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public <R> SqlConnection preparedQuery(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public SqlConnection query(String s, Handler<AsyncResult<RowSet<Row>>> handler) {
-      if (s.startsWith("EXPLAIN") && failExplain) {
-        handler.handle(Future.failedFuture("failExplain"));
-      } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
-        List<String> columnNames = new LinkedList<>();
-        columnNames.add("COUNT");
-        RowDesc rowDesc = new RowDesc(columnNames);
-        Row row = new RowImpl(rowDesc);
-        row.addInteger(asyncResult.result().size());
-        List<Row> rows = new LinkedList<>();
-        rows.add(row);
-        RowSet rowSet = new FakeRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
-        handler.handle(Future.succeededFuture(rowSet));
-      } else {
-        handler.handle(asyncResult);
-      }
-      return this;
-    }
-
-    @Override
-    public <R> SqlConnection query(String s, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public SqlConnection preparedQuery(String s, Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public <R> SqlConnection preparedQuery(String s, Tuple tuple, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public SqlConnection preparedBatch(String s, List<Tuple> list, Handler<AsyncResult<RowSet<Row>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public <R> SqlConnection preparedBatch(String s, List<Tuple> list, Collector<Row, ?, R> collector, Handler<AsyncResult<SqlResult<R>>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
     }
   }
 
@@ -370,7 +377,7 @@ public class PostgresClientTest {
 
     int total = 10;
 
-    SqlConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), false);
+    PgConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), false);
 
     testClient.processQueryWithCount(connection, queryHelper, "get",
       totaledResults -> {
@@ -399,7 +406,7 @@ public class PostgresClientTest {
 
     int total = 30;
 
-    SqlConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), true);
+    PgConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), true);
 
     testClient.processQuery(connection, queryHelper, total, "get",
       totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
@@ -418,7 +425,7 @@ public class PostgresClientTest {
     QueryHelper queryHelper = new QueryHelper("test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT foo";
 
-    SqlConnection connection = new FakeSqlConnection(Future.failedFuture("Bad query"), false);
+    PgConnection connection = new FakeSqlConnection(Future.failedFuture("Bad query"), false);
 
     testClient.processQuery(connection, queryHelper, 30, "get",
       totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
@@ -435,7 +442,7 @@ public class PostgresClientTest {
     QueryHelper queryHelper = new QueryHelper("test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT foo";
 
-    SqlConnection connection = null;
+    PgConnection connection = null;
     testClient.processQuery(connection, queryHelper, 30, "get",
       totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
@@ -460,7 +467,7 @@ public class PostgresClientTest {
       row.addStringArray(new String[] { "This", "is", "a", "test" } );
       rows.add(row);
     }
-    return new FakeRowSet(total).withColumns(columnNames).withRows(rows);
+    return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
   }
 
   private void assertTestPojoResults(List<TestPojo> results, int total) {
@@ -498,7 +505,7 @@ public class PostgresClientTest {
       );
       rows.add(row);
     }
-    return new FakeRowSet(total).withColumns(columnNames).withRows(rows);
+    return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
   }
 
   private void assertTestJsonbPojoResults(List<TestJsonbPojo> results, int total) {
@@ -661,5 +668,21 @@ public class PostgresClientTest {
     PostgresClient.pojo2JsonObject(this);
   }
 
+  @Test
+  public void getTotalRecordsTest() {
+    assertNull(PostgresClient.getTotalRecords(10, null, 0, 0));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 0));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 10));
+
+    assertEquals((Integer)10, PostgresClient.getTotalRecords(0, 20, 10, 20));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 30, 10, 20));
+
+    assertEquals((Integer)30, PostgresClient.getTotalRecords(10, 20, 20, 10));
+
+    assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
+  }
 
 }

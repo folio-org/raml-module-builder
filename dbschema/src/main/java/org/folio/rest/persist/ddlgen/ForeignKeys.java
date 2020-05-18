@@ -129,7 +129,8 @@ public class ForeignKeys extends Field {
     return "ForeignKeys [tableAlias=" + tableAlias + ", targetTable=" + targetTable
         + ", targetTableAlias=" + targetTableAlias
         + ", fieldName=" + fieldName
-        + (targetPath == null ? "" : "targetPath=" + targetPath)
+        + (targetPath == null ? "" : ", targetPath=" + targetPath)
+        + ", tOps=" + gettOps()
         + "]";
   }
 

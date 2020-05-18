@@ -3,7 +3,7 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
-* [Version 30.0](#version-30)
+* [Version 30.0](#version-300)
 * [Version 29.5](#version-295)
 * [Version 29.2](#version-292)
 * [Version 29](#version-29)
@@ -16,31 +16,42 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 30.0
 
-* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to vertx-pg-client.
-  * Class `SQLConnection` is now provided by RMB. But it was part of
-    old SQL client. `io.vertx.ext.sql.SQLConnection` ->
+* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to
+    [vertx-pg-client](https://vertx.io/docs/vertx-pg-client/java/).
+  * Class `SQLConnection` is now provided by RMB. The same class name
+    was used for the SQL client. `io.vertx.ext.sql.SQLConnection` ->
     `org.folio.rest.persist.SQLConnection`.
   * All functions that previusly returned `UpdateResult` now returns
     `RowSet<Row>`. From that result the number of rows affacted by
     SQL was `getUpdated()` it is now `rowCount()`.
   * All functions that previusly returned `ResultSet` now returns
-    `RowSet<Row>`. From that result, the number of rows affacted by
+    `RowSet<Row>`. From that result, the number of rows affected by
     SQL is `rowCount()`. The size() method returns number of rows
     returned. An iterator to go through rows is obtained by calling
-    `iterator`. JSONB is returned as JsonObject, the old client returned
-    it as String.
+    `iterator`
+  * JSONB is returned as JsonObject, the old client returned it as String.
+  * `id` and other UUID columns are returned as UUID and must be
+    sent as UUID, old client used String.
   * `PostgresClient.selectSingle` returns Row rather than `JsonArray`.
   * SQL parameters changed from `JsonArray` to `Tuple`.
   * `PostgresClient.getClient()` is no longer public. If you need a
     connection, use `PostgresClient.startTx()`. For modules that wish to use
     vertx-pg-client directly, `PostgresClient.getConnection`  is offered -
-    it returns `SqlConnection` from the pool that is managed by `PostgresClient`.
-  * Exceptions thrown by new client is `io.vertx.pgclient.PgException`.
-    Was `com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException`
-    before. The `getMessage()` only contains message! Not details, code.
+    it returns `PgConnection` from the pool that is managed by `PostgresClient`.
+  * Replace `exception.getMessage` by `PgExceptionUtil.getMessage(exception)`
+    to mimic the old `GenericDatabaseException.getMessage(e)` because the
+    new `PgException.getMessage(e)` returns the message field only, no SQL error code,
+    no detail.
   * `PgExceptionFacade.getTable` removed.
   * `PgExceptionFacade.getIndex` removed.
+  * `PgExceptionFacade.selectStream` without SQLConnection has been
+     removed. Streams must be executed within a transaction.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
+* [RMB-619](https://issues.folio.org/browse/RMB-619)
+  [Deprecation due to upgrading to Vert.x 3.9](https://github.com/vert-x3/wiki/wiki/3.9.0-Deprecations-and-breaking-changes):
+  * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
+    `Verticle#start(Promise<Void>)` and `Verticle#stop(Promise<Void>)`
+  * Replace `Future.setHandler(ar -> …)` by `Future.onComplete(ar -> …)`
 
 ## Version 29.5
 
