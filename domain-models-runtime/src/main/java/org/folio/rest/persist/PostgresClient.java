@@ -1760,7 +1760,7 @@ public class PostgresClient {
    * @param returnIdField must be true if facets are in passed
    * @param distinctOn may be null
    * @param facets for no facets: null or Collections.emptyList()
-   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
+   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
    * @param executionTimeLimit
    */
   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
@@ -3038,7 +3038,7 @@ public class PostgresClient {
    * Get vertx-pg-client connection
    * @param replyHandler
    */
- public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
+  public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
     getClient().getConnection(x -> {
       if (x.failed()) {
         replyHandler.handle(Future.failedFuture(x.cause()));
