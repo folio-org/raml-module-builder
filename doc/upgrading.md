@@ -52,6 +52,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
     `Verticle#start(Promise<Void>)` and `Verticle#stop(Promise<Void>)`
   * Replace `Future.setHandler(ar -> …)` by `Future.onComplete(ar -> …)`
+* [RMB-624](https://issues.folio.org/browse/RMB-624) Fix invalid RAML sample
+  JSON files, otherwise GenerateRunner/SchemaDereferencer will fail with
+  InvocationTargetException/DecodeException "Failed to decode".
+  Hint: Use `for i in *; do jq empty $i || echo $i; done` to list invalid JSONs.
 
 ## Version 29.5
 
