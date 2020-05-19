@@ -1107,7 +1107,6 @@ public class RestVerticle extends AbstractVerticle {
 
   private void cmdProcessing() throws IOException {
     String importDataPath = null;
-    String droolsPath = null;
     // TODO need to add a normal command line parser
     List<String> cmdParams = processArgs();
 
@@ -1118,10 +1117,6 @@ public class RestVerticle extends AbstractVerticle {
         if (param.startsWith("-Dhttp.port=")) {
           port = Integer.parseInt(param.split("=")[1]);
           LogUtil.formatLogMessage(className, "cmdProcessing", "port to listen on " + port);
-        }
-        else if (param.startsWith("drools_dir=")) {
-          droolsPath = param.split("=")[1];
-          LogUtil.formatLogMessage(className, "cmdProcessing", "Drools rules file dir set to " + droolsPath);
         }
         else if (param.startsWith("debug_log_package=")) {
           String debugPackage = param.split("=")[1];
