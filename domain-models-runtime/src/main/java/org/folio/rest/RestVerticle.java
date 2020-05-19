@@ -60,9 +60,6 @@ import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.rest.tools.utils.VertxUtils;
-import org.folio.rulez.Rules;
-import org.kie.api.runtime.KieSession;
-import org.kie.api.runtime.rule.FactHandle;
 import org.apache.log4j.MDC;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -127,8 +124,8 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
+  private static final String       HTTP_PORT_SETTING               = "http.port";
   private static MetricsService     serverMetrics                   = null;
-  private static KieSession         droolsSession;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
@@ -144,7 +141,6 @@ public class RestVerticle extends AbstractVerticle {
   private static String             deploymentId                     = "";
 
   private final Messages            messages                        = Messages.getInstance();
-  private int                       port                            = -1;
 
   private EventBus eventBus;
 
@@ -296,9 +292,15 @@ public class RestVerticle extends AbstractVerticle {
         // http://localhost:8181/apidocs/index.html?raml=raml/_patrons.raml
         router.route("/apidocs/*").handler(StaticHandler.create("apidocs"));
         // startup http server on port 8181 to serve documentation
-        if (port == -1) {
+
+        String portS = System.getProperty(HTTP_PORT_SETTING);
+        int port;
+        if (portS != null) {
+          port = Integer.parseInt(portS);
+          config().put(HTTP_PORT_SETTING, port);
+        } else {
           // we are here if port was not passed via cmd line
-          port = config().getInteger("http.port", 8081);
+          port = config().getInteger(HTTP_PORT_SETTING, 8081);
         }
 
         //check if mock mode requested and set sys param so that http client factory
@@ -307,11 +309,6 @@ public class RestVerticle extends AbstractVerticle {
         if(mockMode != null){
           System.setProperty(HttpClientMock2.MOCK_MODE, mockMode);
         }
-
-        // in anycase set the port so it is available to others via the config()
-        config().put("http.port", port);
-
-        Integer p = port;
 
         //if client includes an Accept-Encoding header which includes
         //the supported compressions - deflate or gzip.
@@ -323,14 +320,14 @@ public class RestVerticle extends AbstractVerticle {
         // router object (declared in the beginning of the atrt function accepts request and will pass to next handler for
         // specified path
 
-        .listen(p,
+        .listen(port,
           // Retrieve the port from the configuration file - file needs to
           // be passed as arg to command line,
           // for example: -conf src/main/conf/my-application-conf.json
           // default to 8181.
           result -> {
             if (result.failed()) {
-              startPromise.fail(new RuntimeException("Listening on port " + p, result.cause()));
+              startPromise.fail(new RuntimeException("Listening on port " + port, result.cause()));
             } else {
               try {
                 runPostDeployHook( res2 -> {
@@ -341,9 +338,8 @@ public class RestVerticle extends AbstractVerticle {
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
               }
-              LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + p + ".");
-              LogUtil.formatLogMessage(className, "start", "Documentation available at: " + "http://localhost:" + Integer.toString(p)
-                + "/apidocs/");
+              LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + port + ".");
+              LogUtil.formatLogMessage(className, "start", "Documentation available at: " + "http://localhost:" + port + "/apidocs/");
               startPromise.complete();
             }
           });
@@ -1002,9 +998,6 @@ public class RestVerticle extends AbstractVerticle {
   @Override
   public void stop(Promise<Void> stopPromise) throws Exception {
     super.stop();
-    try {
-      droolsSession.dispose();
-    } catch (Exception e) {/*ignore*/}
     // removes the .lck file associated with the log file
     LogUtil.closeLogger();
     runShutdownHook(v -> {
@@ -1112,9 +1105,8 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  private void cmdProcessing() throws Exception {
+  private void cmdProcessing() throws IOException {
     String importDataPath = null;
-    String droolsPath = null;
     // TODO need to add a normal command line parser
     List<String> cmdParams = processArgs();
 
@@ -1122,15 +1114,7 @@ public class RestVerticle extends AbstractVerticle {
       for (Iterator iterator = cmdParams.iterator(); iterator.hasNext();) {
         String param = (String) iterator.next();
 
-        if (param.startsWith("-Dhttp.port=")) {
-          port = Integer.parseInt(param.split("=")[1]);
-          LogUtil.formatLogMessage(className, "cmdProcessing", "port to listen on " + port);
-        }
-        else if (param.startsWith("drools_dir=")) {
-          droolsPath = param.split("=")[1];
-          LogUtil.formatLogMessage(className, "cmdProcessing", "Drools rules file dir set to " + droolsPath);
-        }
-        else if (param.startsWith("debug_log_package=")) {
+        if (param.startsWith("debug_log_package=")) {
           String debugPackage = param.split("=")[1];
           if(debugPackage != null && debugPackage.length() > 0){
             LogUtil.formatLogMessage(className, "cmdProcessing", "Setting package " + debugPackage + " to debug");
@@ -1184,12 +1168,6 @@ public class RestVerticle extends AbstractVerticle {
         System.out.println("Import DB file....  " + importDataPath);
         PostgresClient.getInstance(vertx).importFileEmbedded(importDataPath);
       }
-    }
-
-    try {
-      droolsSession = new Rules(droolsPath).buildSession();
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
     }
   }
 
@@ -1316,32 +1294,6 @@ public class RestVerticle extends AbstractVerticle {
                 validRequest[0] = false;
                 sendResponse(rc, arr, 0, null);
                 return;
-              }
-              // complex rules validation here (drools) - after simpler validation rules pass -
-              Error error = new Error();
-              FactHandle handle = null;
-              FactHandle handleError = null;
-              try {
-                // if no /rules exist then drools session will be null
-                if (droolsSession != null && paramArray[order] != null && validRequest[0]) {
-                  // add object to validate to session
-                  handle = droolsSession.insert(paramArray[order]);
-                  handleError = droolsSession.insert(error);
-                  // run all rules in session on object
-                  droolsSession.fireAllRules();
-                }
-              } catch (Exception e) {
-                error.setCode("-1");
-                error.setType(RTFConsts.VALIDATION_FIELD_ERROR);
-                errorResp.getErrors().add(error);
-                endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp), validRequest);
-              }
-              finally {
-                // remove the object from the session
-                if(handle != null){
-                  droolsSession.delete(handle);
-                  droolsSession.delete(handleError);
-                }
               }
               populateMetaData(paramArray[order], okapiHeaders, rc.request().path());
             }
@@ -1479,13 +1431,13 @@ public class RestVerticle extends AbstractVerticle {
 
   /**
    * return whether the request is valid [0] and a cleaned up version of the object [1]
-   * cleaned up meaning,
-   * @param errorResp
-   * @param paramArray
    * @param rc
+   * @param content
+   * @param errorResp
    * @param validRequest
- * @param entityClazz
-   *
+   * @param singleField
+   * @param entityClazz
+   * @return
    */
   private Object[] isValidRequest(RoutingContext rc, Object content, Errors errorResp, boolean[] validRequest, List<String> singleField, Class<?> entityClazz) {
     Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(content);
@@ -1626,10 +1578,6 @@ public class RestVerticle extends AbstractVerticle {
     public void setStatus(int status) {
       this.status = status;
     }
-  }
-
-  public static void updateDroolsSession(KieSession s) {
-    droolsSession = s;
   }
 
   public static String getDeploymentId(){

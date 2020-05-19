@@ -117,11 +117,6 @@
       <version>${postgresql-embedded-version}</version>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>rules</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
