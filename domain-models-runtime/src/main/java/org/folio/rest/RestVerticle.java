@@ -140,7 +140,6 @@ public class RestVerticle extends AbstractVerticle {
   private static String             deploymentId                     = "";
 
   private final Messages            messages                        = Messages.getInstance();
-  private int                       port                            = -1;
 
   private EventBus eventBus;
 
@@ -292,7 +291,13 @@ public class RestVerticle extends AbstractVerticle {
         // http://localhost:8181/apidocs/index.html?raml=raml/_patrons.raml
         router.route("/apidocs/*").handler(StaticHandler.create("apidocs"));
         // startup http server on port 8181 to serve documentation
-        if (port == -1) {
+
+        String portS = System.getProperty("http.port");
+        int port;
+        if (portS != null) {
+          port = Integer.parseInt(portS);
+          config().put("http.port", port);
+        } else {
           // we are here if port was not passed via cmd line
           port = config().getInteger("http.port", 8081);
         }
@@ -304,11 +309,6 @@ public class RestVerticle extends AbstractVerticle {
           System.setProperty(HttpClientMock2.MOCK_MODE, mockMode);
         }
 
-        // in anycase set the port so it is available to others via the config()
-        config().put("http.port", port);
-
-        Integer p = port;
-
         //if client includes an Accept-Encoding header which includes
         //the supported compressions - deflate or gzip.
         HttpServerOptions serverOptions = new HttpServerOptions();
@@ -319,14 +319,14 @@ public class RestVerticle extends AbstractVerticle {
         // router object (declared in the beginning of the atrt function accepts request and will pass to next handler for
         // specified path
 
-        .listen(p,
+        .listen(port,
           // Retrieve the port from the configuration file - file needs to
           // be passed as arg to command line,
           // for example: -conf src/main/conf/my-application-conf.json
           // default to 8181.
           result -> {
             if (result.failed()) {
-              startPromise.fail(new RuntimeException("Listening on port " + p, result.cause()));
+              startPromise.fail(new RuntimeException("Listening on port " + port, result.cause()));
             } else {
               try {
                 runPostDeployHook( res2 -> {
@@ -337,9 +337,8 @@ public class RestVerticle extends AbstractVerticle {
               } catch (Exception e) {
                 log.error(e.getMessage(), e);
               }
-              LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + p + ".");
-              LogUtil.formatLogMessage(className, "start", "Documentation available at: " + "http://localhost:" + Integer.toString(p)
-                + "/apidocs/");
+              LogUtil.formatLogMessage(className, "start", "http server for apis and docs started on port " + port + ".");
+              LogUtil.formatLogMessage(className, "start", "Documentation available at: " + "http://localhost:" + port + "/apidocs/");
               startPromise.complete();
             }
           });
@@ -1114,11 +1113,7 @@ public class RestVerticle extends AbstractVerticle {
       for (Iterator iterator = cmdParams.iterator(); iterator.hasNext();) {
         String param = (String) iterator.next();
 
-        if (param.startsWith("-Dhttp.port=")) {
-          port = Integer.parseInt(param.split("=")[1]);
-          LogUtil.formatLogMessage(className, "cmdProcessing", "port to listen on " + port);
-        }
-        else if (param.startsWith("debug_log_package=")) {
+        if (param.startsWith("debug_log_package=")) {
           String debugPackage = param.split("=")[1];
           if(debugPackage != null && debugPackage.length() > 0){
             LogUtil.formatLogMessage(className, "cmdProcessing", "Setting package " + debugPackage + " to debug");
