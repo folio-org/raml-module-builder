@@ -1105,7 +1105,7 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  private void cmdProcessing() throws Exception {
+  private void cmdProcessing() throws IOException {
     String importDataPath = null;
     String droolsPath = null;
     // TODO need to add a normal command line parser
