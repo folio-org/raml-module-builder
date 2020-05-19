@@ -60,9 +60,6 @@ import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.rest.tools.utils.VertxUtils;
-import org.folio.rulez.Rules;
-import org.kie.api.runtime.KieSession;
-import org.kie.api.runtime.rule.FactHandle;
 import org.apache.log4j.MDC;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -128,7 +125,6 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static MetricsService     serverMetrics                   = null;
-  private static KieSession         droolsSession;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
@@ -1002,9 +998,6 @@ public class RestVerticle extends AbstractVerticle {
   @Override
   public void stop(Promise<Void> stopPromise) throws Exception {
     super.stop();
-    try {
-      droolsSession.dispose();
-    } catch (Exception e) {/*ignore*/}
     // removes the .lck file associated with the log file
     LogUtil.closeLogger();
     runShutdownHook(v -> {
@@ -1185,12 +1178,6 @@ public class RestVerticle extends AbstractVerticle {
         PostgresClient.getInstance(vertx).importFileEmbedded(importDataPath);
       }
     }
-
-    try {
-      droolsSession = new Rules(droolsPath).buildSession();
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-    }
   }
 
   /**
@@ -1316,32 +1303,6 @@ public class RestVerticle extends AbstractVerticle {
                 validRequest[0] = false;
                 sendResponse(rc, arr, 0, null);
                 return;
-              }
-              // complex rules validation here (drools) - after simpler validation rules pass -
-              Error error = new Error();
-              FactHandle handle = null;
-              FactHandle handleError = null;
-              try {
-                // if no /rules exist then drools session will be null
-                if (droolsSession != null && paramArray[order] != null && validRequest[0]) {
-                  // add object to validate to session
-                  handle = droolsSession.insert(paramArray[order]);
-                  handleError = droolsSession.insert(error);
-                  // run all rules in session on object
-                  droolsSession.fireAllRules();
-                }
-              } catch (Exception e) {
-                error.setCode("-1");
-                error.setType(RTFConsts.VALIDATION_FIELD_ERROR);
-                errorResp.getErrors().add(error);
-                endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp), validRequest);
-              }
-              finally {
-                // remove the object from the session
-                if(handle != null){
-                  droolsSession.delete(handle);
-                  droolsSession.delete(handleError);
-                }
               }
               populateMetaData(paramArray[order], okapiHeaders, rc.request().path());
             }
@@ -1479,13 +1440,13 @@ public class RestVerticle extends AbstractVerticle {
 
   /**
    * return whether the request is valid [0] and a cleaned up version of the object [1]
-   * cleaned up meaning,
-   * @param errorResp
-   * @param paramArray
    * @param rc
+   * @param content
+   * @param errorResp
    * @param validRequest
- * @param entityClazz
-   *
+   * @param singleField
+   * @param entityClazz
+   * @return
    */
   private Object[] isValidRequest(RoutingContext rc, Object content, Errors errorResp, boolean[] validRequest, List<String> singleField, Class<?> entityClazz) {
     Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(content);
@@ -1626,10 +1587,6 @@ public class RestVerticle extends AbstractVerticle {
     public void setStatus(int status) {
       this.status = status;
     }
-  }
-
-  public static void updateDroolsSession(KieSession s) {
-    droolsSession = s;
   }
 
   public static String getDeploymentId(){
