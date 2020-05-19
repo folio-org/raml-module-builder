@@ -124,6 +124,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
+  private static final String       HTTP_PORT_SETTING               = "http.port";
   private static MetricsService     serverMetrics                   = null;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
@@ -292,14 +293,14 @@ public class RestVerticle extends AbstractVerticle {
         router.route("/apidocs/*").handler(StaticHandler.create("apidocs"));
         // startup http server on port 8181 to serve documentation
 
-        String portS = System.getProperty("http.port");
+        String portS = System.getProperty(HTTP_PORT_SETTING);
         int port;
         if (portS != null) {
           port = Integer.parseInt(portS);
-          config().put("http.port", port);
+          config().put(HTTP_PORT_SETTING, port);
         } else {
           // we are here if port was not passed via cmd line
-          port = config().getInteger("http.port", 8081);
+          port = config().getInteger(HTTP_PORT_SETTING, 8081);
         }
 
         //check if mock mode requested and set sys param so that http client factory
