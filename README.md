@@ -61,7 +61,6 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Facet Support](#facet-support)
 * [JSON Schema fields](#json-schema-fields)
 * [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
-* [Drools integration](#drools-integration)
 * [Messages](#messages)
 * [Documentation of the APIs](#documentation-of-the-apis)
 * [Logging](#logging)
@@ -256,9 +255,6 @@ or `org.folio.rest.RestVerticle` for a specific class.)
   - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
     "username":"postgres","password":"mysecretpassword", "database":"postgres",
     "charset":"windows-1252", "queryTimeout" : 10000}`
-
-- `drools_dir=[path]` (Optional -- path to an external drools file. By default,
-  `*.drl` files in the `resources/rules` directory are loaded)
 
 - Other module-specific arguments can be passed via the command line in the format key=value. These will be accessible to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
 
@@ -1898,67 +1894,6 @@ Note that `DEFAULTVALUE` only allows string values. `SIZE` requires a range ex. 
 
 example:
 `domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.json`
-
-## Drools integration
-
-The RMB framework automatically scans the `/resources/rules` path in an implemented project for
-`*.drl` files. A directory can also be passed via the command line `drools_dir`. The rule files are loaded and are applied automatically to all objects passed in the body (post,
-put) by the runtime framework. This works in the following manner:
- - A POST / PUT request comes in with a body
- - The body for the request is mapped to a generated POJO
- - The POJO is inserted into the RMB's Drools session
- - All rules are run against the POJO
-
-This allows for more complex validation of objects.
-
-- For example, two specific fields can logically be null, but not at the
-  same time. That can easily be implemented with a Drool, as those types of
-  validations are harder to create in a RAML file.
-
-- The `rules` project also exposes the drools session and allows validation
-  within the implemented APIs. See the `tests` in the `rules` project.
-
-For example: (Sample.drl)
-
-```
-package com.sample
-
-import org.folio.rest.jaxrs.model.Patron;
-
-rule "Patron needs one ID at the least"
-
-    no-loop
-
-    when
-        p : Patron( patronBarcode  == null, patronLocalId == null )
-    then
-        throw new java.lang.Exception("Patron needs one ID field populated at the least");
-end
-```
-
-It is also possible to create a Drools session in your code, and load rules into the session in a more dynamic way.
-For example:
-
-```java
-import org.folio.rulez.Rules;
-...
-List<String> ruleList = generateDummyRule();
-Rules rules = new Rules(ruleList);
-ksession = rules.buildSession();
-...
-Messages message = new Messages();
-ksession.insert(message);
-ksession.fireAllRules();
-Assert.assertEquals("THIS IS A TEST", message.getMessage());
-```
-
-An additional option to use the Drools framework in the RMB is to load rules dynamically. For example, a module may decide to store Drool `.drl` files in a database. This enables a module to allow admin users to update rules in the database and then load them into the RMB validation mechanism for use at runtime.
-
-```java
-      Rules rules = new Rules(List<String> rulesLoaded);
-      ksession = rules.buildSession();
-      RestVerticle.updateDroolsSession(ksession);
-```
 
 ## Messages
 
