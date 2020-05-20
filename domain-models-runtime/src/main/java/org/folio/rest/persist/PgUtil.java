@@ -567,7 +567,7 @@ public final class PgUtil {
     try {
       List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
       CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset);
-      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext,limitRequestExecutionTime);
+      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext, limitRequestExecutionTime);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       response.setStatusCode(500);
