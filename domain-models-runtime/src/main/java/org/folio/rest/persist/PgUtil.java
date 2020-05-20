@@ -554,7 +554,8 @@ public final class PgUtil {
     String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
     Context vertxContext) {
 
-   streamGet(table,clazz,cql,offset,limit,facets,element,routingContext,okapiHeaders,vertxContext,0);
+   streamGet(table, clazz, cql, offset, limit, facets, element, routingContext,
+     okapiHeaders, vertxContext, 0);
   }
 
    public static <T> void streamGet(String table, Class<T> clazz,
