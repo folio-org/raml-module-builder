@@ -1793,7 +1793,7 @@ public class PostgresClient {
 
     getSQLConnection(conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, replyHandler),executionTimeLimit);
+            distinctOn, facets, replyHandler), executionTimeLimit);
   }
 
   /**
