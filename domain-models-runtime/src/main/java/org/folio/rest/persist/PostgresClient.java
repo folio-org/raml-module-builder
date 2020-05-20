@@ -105,6 +105,7 @@ public class PostgresClient {
 
   static final String COUNT_FIELD = "count";
 
+  /** queries timeout checking interval in milliseconds */
   private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
 
   private static final String    ID_FIELD                 = "id";
@@ -158,7 +159,7 @@ public class PostgresClient {
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
 
-  private static CopyOnWriteArraySet<SQLConnection> activeConnections;
+  private static CopyOnWriteArraySet<SQLConnection> activeConnections = new CopyOnWriteArraySet<>();
 
   private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
@@ -503,26 +504,26 @@ public class PostgresClient {
 
     client = createPgPool(vertx, postgreSQLClientConfig);
 
-    activeConnections = new CopyOnWriteArraySet<>();
 
-    vertx.setPeriodic(CHECK_FOR_QUERY_TIMEOUT_INTERVAL, timerId -> {
-      for (SQLConnection conn : activeConnections) {
-        long elapsedTime = System.currentTimeMillis() - conn.acquiringTime;
-        if (elapsedTime > conn.executionTimeLimit) {
-          conn.conn.cancelRequest(ar -> {
-            if (ar.succeeded()) {
-              log.warn(
-                  String.format("Cancelling request due to timeout after : %d ms", elapsedTime));
-            } else {
-              log.warn("Failed to send cancelling request");
-            }
-          });
-          activeConnections.remove(conn);
-        }
+    vertx.setPeriodic(CHECK_FOR_QUERY_TIMEOUT_INTERVAL, PostgresClient::checkStaleConnections);
+
+  }
+
+  private static void checkStaleConnections(Long timerId) {
+    for (SQLConnection conn : activeConnections) {
+      if (conn.timeoutTime >= System.currentTimeMillis()) {
+        conn.conn.cancelRequest(ar -> {
+          if (ar.succeeded()) {
+            log.warn(
+                String.format("Cancelling request due to timeout after : %d ms",
+                    conn.timeoutTime - System.currentTimeMillis()));
+          } else {
+            log.warn("Failed to send cancelling request");
+          }
+        });
+        activeConnections.remove(conn);
       }
-    });
-
-
+    }
   }
 
   static PgPool createPgPool(Vertx vertx, JsonObject configuration) {
@@ -1738,16 +1739,29 @@ public class PostgresClient {
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
-      null, replyHandler, 0);
+      null, 0, replyHandler);
   }
 
+   /**
+   * Stream GET with CQLWrapper, no facets {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param filter
+   * @param returnIdField
+   * @param distinctOn may be null
+   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param queryTimeout query timeout in milliseconds
+   */
+   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
       CQLWrapper filter, boolean returnIdField, String distinctOn,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler,
-      int limitRequestExecutionTime) {
+      int queryTimeout) {
 
     streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
-      null, replyHandler, limitRequestExecutionTime);
+      null, queryTimeout, replyHandler);
   }
 
     /**
@@ -1767,9 +1781,9 @@ public class PostgresClient {
     CQLWrapper filter, boolean returnIdField, String distinctOn,
     List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    getSQLConnection(conn ->
+    getSQLConnection(0, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, replyHandler), 0);
+            distinctOn, facets, replyHandler));
   }
 
   /**
@@ -1782,18 +1796,18 @@ public class PostgresClient {
    * @param returnIdField must be true if facets are in passed
    * @param distinctOn may be null
    * @param facets for no facets: null or Collections.emptyList()
-   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
-   * @param executionTimeLimit
+   * @param queryTimeout query timeout in milliseconds
+   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
    */
   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
-    CQLWrapper filter, boolean returnIdField, String distinctOn,
-    List<FacetField> facets, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler,
-      int executionTimeLimit) {
+      CQLWrapper filter, boolean returnIdField, String distinctOn,
+      List<FacetField> facets, int queryTimeout,
+      Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    getSQLConnection(conn ->
+    getSQLConnection(queryTimeout, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, replyHandler),executionTimeLimit);
+            distinctOn, facets, replyHandler));
   }
 
   /**
@@ -2805,8 +2819,9 @@ public class PostgresClient {
    */
     public void select(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler,
         int limitRequestExecutionTime) {
-      getSQLConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)),
-          limitRequestExecutionTime);
+      getSQLConnection(limitRequestExecutionTime,
+          conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler))
+      );
     }
 
   static void queryAndAnalyze(PgConnection conn, String sql, String statMethod,
@@ -3075,10 +3090,10 @@ public class PostgresClient {
   }
 
    void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
-    getSQLConnection(handler, 0);
+    getSQLConnection(0, handler);
    }
 
-  void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler, int executionTimeLimit) {
+  void getSQLConnection(int executionTimeLimit, Handler<AsyncResult<SQLConnection>> handler) {
     getConnection(res -> {
       if (res.failed()) {
         handler.handle(Future.failedFuture(res.cause()));

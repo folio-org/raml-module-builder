@@ -6,8 +6,7 @@ import io.vertx.sqlclient.Transaction;
 public class SQLConnection {
 
   final PgConnection conn;
-  final int executionTimeLimit;
-  final long acquiringTime;
+  final long timeoutTime;
   final Transaction tx;
 
   public SQLConnection(PgConnection conn, Transaction tx) {
@@ -15,11 +14,10 @@ public class SQLConnection {
   }
 
 
-  public SQLConnection(PgConnection conn, Transaction tx, int executionTimeLimit) {
+  public SQLConnection(PgConnection conn, Transaction tx, int queryTimeout) {
     this.conn = conn;
     this.tx = tx;
-    this.executionTimeLimit = executionTimeLimit;
-    acquiringTime = System.currentTimeMillis();
+    timeoutTime = System.currentTimeMillis() + queryTimeout;
 
   }
 }

@@ -557,16 +557,35 @@ public final class PgUtil {
    streamGet(table,clazz,cql,offset,limit,facets,element,routingContext,okapiHeaders,vertxContext,0);
   }
 
+
+  /**
+   * Streaming GET with query. This produces a HTTP with JSON content with
+   * properties {@code totalRecords}, {@code resultInfo} and custom element.
+   * The custom element is array type which POJO that is of type clazz.
+   *
+   * @param table
+   * @param clazz
+   * @param cql
+   * @param offset
+   * @param limit
+   * @param facets
+   * @param element
+   * @param routingContext
+   * @param okapiHeaders
+   * @param vertxContext
+   * @param queryTimeout query timeout in milliseconds
+   * @param <T>
+   */
    public static <T> void streamGet(String table, Class<T> clazz,
     String cql, int offset, int limit, List<String> facets,
     String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
-    Context vertxContext, int limitRequestExecutionTime) {
+    Context vertxContext, int queryTimeout) {
 
     HttpServerResponse response = routingContext.response();
     try {
       List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
       CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset);
-      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext,limitRequestExecutionTime);
+      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext,queryTimeout);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       response.setStatusCode(500);
@@ -596,7 +615,7 @@ public final class PgUtil {
     HttpServerResponse response = routingContext.response();
     PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
     postgresClient.streamGet(table, clazz, JSON_COLUMN, filter, true, null,
-      facetList, reply -> {
+      facetList, limitRequestExecutionTime, reply -> {
         if (reply.failed()) {
           String message = PgExceptionUtil.badRequestMessage(reply.cause());
           if (message == null) {
@@ -609,7 +628,7 @@ public final class PgUtil {
           return;
         }
         streamGetResult(reply.result(), element, response);
-      }, limitRequestExecutionTime);
+      });
   }
 
   /**
