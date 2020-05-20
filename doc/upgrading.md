@@ -47,6 +47,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `PgExceptionFacade.selectStream` without SQLConnection has been
      removed. Streams must be executed within a transaction.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
+  * Replace '?' signs in prepared queries with '$1', '$2' and so on.
 * [RMB-619](https://issues.folio.org/browse/RMB-619)
   [Deprecation due to upgrading to Vert.x 3.9](https://github.com/vert-x3/wiki/wiki/3.9.0-Deprecations-and-breaking-changes):
   * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
