@@ -3074,9 +3074,9 @@ public class PostgresClient {
     });
   }
 
-   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
+  void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLConnection(handler, 0);
-   }
+  }
 
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler, int executionTimeLimit) {
     getConnection(res -> {
