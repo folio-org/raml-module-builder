@@ -161,4 +161,24 @@ class IndexTest {
     idx.setMultiFieldNames("test1,test2.test3");
     assertEquals("lower(concat_space_sql(test_table.jsonb->>'test1' , test_table.jsonb->'test2'->>'test3'))",idx.getFinalSqlExpression("test_table"));
   }
+
+  @Test
+  void indexStringTypeTrue() {
+    Index idx = new Index();
+    idx.setFieldName("testField");
+    idx.setStringType(true);
+    idx.setupIndex();
+    assertEquals("left(lower(f_unaccent(jsonb->>'testField')),600)",idx.getFinalTruncatedSqlExpression("test_table"));
+  }
+
+  @Test
+  void indexStringTypeFalse() {
+    Index idx = new Index();
+    idx.setFieldName("testField");
+    idx.setStringType(false);
+    idx.setupIndex();
+    assertEquals("(jsonb->'testField')",idx.getFinalTruncatedSqlExpression("test_table"));
+  }
+
+
 }
