@@ -518,7 +518,7 @@ public class PostgresClient {
                 String.format("Cancelling request due to timeout after : %d ms",
                     conn.timeoutTime - System.currentTimeMillis()));
           } else {
-            log.warn("Failed to send cancelling request");
+            log.warn("Failed to send cancelling request", ar.cause());
           }
         });
         activeConnections.remove(conn);
@@ -3089,9 +3089,9 @@ public class PostgresClient {
     });
   }
 
-   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
+  void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLConnection(0, handler);
-   }
+  }
 
   void getSQLConnection(int executionTimeLimit, Handler<AsyncResult<SQLConnection>> handler) {
     getConnection(res -> {
