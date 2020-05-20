@@ -20,6 +20,5 @@ public class SQLConnection {
     this.tx = tx;
     this.executionTimeLimit = executionTimeLimit;
     acquiringTime = System.currentTimeMillis();
-
   }
 }
