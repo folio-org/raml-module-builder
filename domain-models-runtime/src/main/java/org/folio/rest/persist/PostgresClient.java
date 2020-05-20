@@ -514,7 +514,7 @@ public class PostgresClient {
               log.warn(
                   String.format("Cancelling request due to timeout after : %d ms", elapsedTime));
             } else {
-              log.warn("Failed to send cancelling request");
+              log.warn("Failed to send cancelling request", ar.cause());
             }
           });
           activeConnections.remove(conn);
