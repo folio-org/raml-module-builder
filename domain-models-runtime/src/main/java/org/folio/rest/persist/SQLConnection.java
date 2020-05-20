@@ -14,7 +14,6 @@ public class SQLConnection {
    this(conn,tx,0);
   }
 
-
   public SQLConnection(PgConnection conn, Transaction tx, int executionTimeLimit) {
     this.conn = conn;
     this.tx = tx;
