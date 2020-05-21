@@ -505,18 +505,19 @@ public class PostgresClient {
     client = createPgPool(vertx, postgreSQLClientConfig);
 
 
-    vertx.setPeriodic(CHECK_FOR_QUERY_TIMEOUT_INTERVAL, PostgresClient::checkStaleConnections);
+    vertx.setPeriodic(CHECK_FOR_QUERY_TIMEOUT_INTERVAL, PostgresClient::checkStaleRequests);
 
   }
 
   private static void checkStaleRequests(Long timerId) {
+    long now = System.currentTimeMillis();
     for (SQLConnection conn : activeConnections) {
-      if (conn.timeoutTime >= System.currentTimeMillis()) {
+      if (now >= conn.timeoutTime) {
         conn.conn.cancelRequest(ar -> {
           if (ar.succeeded()) {
             log.warn(
                 String.format("Cancelling request due to timeout after : %d ms",
-                    conn.timeoutTime - System.currentTimeMillis()));
+                    conn.timeoutTime - now));
           } else {
             log.warn("Failed to send cancelling request", ar.cause());
           }

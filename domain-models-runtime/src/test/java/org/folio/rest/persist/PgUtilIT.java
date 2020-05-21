@@ -55,7 +55,7 @@ public class PgUtilIT {
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
-  private int EXECUTION_TIME_LIMIT = 0;
+  private int QUERY_TIMEOUT = 0;
 
   @Rule
   public final ExpectedException exception = ExpectedException.none();
@@ -996,7 +996,7 @@ public class PgUtilIT {
   @Test
   public void optimizedSQLwithNo500(TestContext testContext) {
     PgUtil.getWithOptimizedSql("users", User.class, UserdataCollection.class, "title", "username=a sortBy title",
-        0, 10, EXECUTION_TIME_LIMIT, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, response -> {
+        0, 10, QUERY_TIMEOUT, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, response -> {
 
           testContext.assertTrue( response.cause() instanceof NullPointerException);
         });
@@ -1032,7 +1032,8 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, EXECUTION_TIME_LIMIT, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -1049,7 +1050,8 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, EXECUTION_TIME_LIMIT, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseWithout400.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -1127,7 +1129,8 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, EXECUTION_TIME_LIMIT, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 200) {
             testContext.fail("Expected status 200, got "
@@ -1147,7 +1150,7 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, Object.class, "username", cql, offset, limit, EXECUTION_TIME_LIMIT, okapiHeaders,
+        "users", User.class, Object.class, "username", cql, offset, limit, QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -1166,7 +1169,7 @@ public class PgUtilIT {
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
         "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
-        EXECUTION_TIME_LIMIT, okapiHeaders,
+        QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 400) {
             testContext.fail("Expected status 400, got "
@@ -1185,7 +1188,8 @@ public class PgUtilIT {
     String responseString = new String();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, EXECUTION_TIME_LIMIT, null,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, null,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
