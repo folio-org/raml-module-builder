@@ -159,7 +159,7 @@ public class PostgresClient {
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
 
-  private static CopyOnWriteArraySet<SQLConnection> activeConnections = new CopyOnWriteArraySet<>();
+  static CopyOnWriteArraySet<SQLConnection> activeConnections = new CopyOnWriteArraySet<>();
 
   private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
@@ -517,7 +517,7 @@ public class PostgresClient {
           if (ar.succeeded()) {
             log.warn(
                 String.format("Cancelling request due to timeout after : %d ms",
-                    conn.timeoutTime - now));
+                    now - conn.timeoutTime));
           } else {
             log.warn("Failed to send cancelling request", ar.cause());
           }

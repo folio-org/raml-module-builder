@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
@@ -654,6 +655,24 @@ public class PostgresClientIT {
         client.selectSingle(conn, "SELECT 1, pg_sleep(2);", context.asyncAssertSuccess());
         client.selectSingle(conn, "SELECT 1, pg_sleep(2);", context.asyncAssertFailure());
       });
+  }
+
+  @Test
+  public void connectionIsRemoved(TestContext context) throws InterruptedException {
+      PostgresClient client = postgresClient();
+      Object mutex = new Object();
+      AtomicReference<SQLConnection> connection = new AtomicReference<>();
+      client.getSQLConnection(1500, conn -> {
+        connection.set(conn.result());
+        context.assertTrue(PostgresClient.activeConnections.contains(connection.get()));
+        synchronized (mutex) {
+          mutex.notify();
+        }
+      });
+      synchronized (mutex) {
+        mutex.wait(5000);
+        context.assertFalse(PostgresClient.activeConnections.contains(connection.get()));
+      }
   }
 
   @Test
