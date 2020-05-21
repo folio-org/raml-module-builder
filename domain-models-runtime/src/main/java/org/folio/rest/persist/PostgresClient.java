@@ -509,7 +509,7 @@ public class PostgresClient {
 
   }
 
-  private static void checkStaleConnections(Long timerId) {
+  private static void checkStaleRequests(Long timerId) {
     for (SQLConnection conn : activeConnections) {
       if (conn.timeoutTime >= System.currentTimeMillis()) {
         conn.conn.cancelRequest(ar -> {
