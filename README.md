@@ -504,6 +504,10 @@ public class InitAPIs implements InitAPI {
 }
 ```
 
+The init call is executed as parts of the start method of Verticle.
+The context is different from the context used when the Verticle is running, eg
+for normal API calls. See
+[Introduction to the Vert.x Context Object](https://vertx.io/blog/an-introduction-to-the-vert-x-context-object/).
 
 ## Adding code to run periodically
 
