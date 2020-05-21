@@ -131,11 +131,11 @@ public class Index extends TableIndexes {
     if (this.getSqlExpression() != null) {
       return this.getSqlExpression();
     }
-    if (this.getMultiFieldNames() != null) {
-      return "left(" + getFinalSqlExpression(tableLoc) + ",600)";
-    }
     if (!this.isStringType()) {
       return this.fieldPath;
+    }
+    if (this.getMultiFieldNames() != null) {
+      return "left(" + getFinalSqlExpression(tableLoc) + ",600)";
     }
     if (this.fieldName.contains(",")) {
       // "left(jsonb->>'a', jsonb->>'b', 600)" fails with "function left(text, text, integer) does not exist"
