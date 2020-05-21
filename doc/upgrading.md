@@ -48,6 +48,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
      removed. Streams must be executed within a transaction.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
   * Replace '?' signs in prepared queries with '$1', '$2' and so on.
+  * Use `JsonObject` instead String-representation as a parameter to execute a prepared statement with the parameter that is an object.
 * [RMB-619](https://issues.folio.org/browse/RMB-619)
   [Deprecation due to upgrading to Vert.x 3.9](https://github.com/vert-x3/wiki/wiki/3.9.0-Deprecations-and-breaking-changes):
   * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
