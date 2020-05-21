@@ -2815,11 +2815,12 @@ public class PostgresClient {
    * <p>To update see {@link #execute(String, Handler)}.
    *
    * @param sql - the sql query to run
-   * @param replyHandler  the query result or the failure
+   * @param replyHandler the query result or the failure
+   * @param queryTimeout query timeout in milliseconds
    */
     public void select(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler,
-        int limitRequestExecutionTime) {
-      getSQLConnection(limitRequestExecutionTime,
+        int queryTimeout) {
+      getSQLConnection(queryTimeout,
           conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler))
       );
     }
@@ -3093,14 +3094,14 @@ public class PostgresClient {
     getSQLConnection(0, handler);
   }
 
-  void getSQLConnection(int executionTimeLimit, Handler<AsyncResult<SQLConnection>> handler) {
+  void getSQLConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
     getConnection(res -> {
       if (res.failed()) {
         handler.handle(Future.failedFuture(res.cause()));
         return;
       }
-      SQLConnection sqlConnection = new SQLConnection(res.result(), null, executionTimeLimit);
-      if (executionTimeLimit > 0) {
+      SQLConnection sqlConnection = new SQLConnection(res.result(), null, queryTimeout);
+      if (queryTimeout > 0) {
          activeConnections.add(sqlConnection);
       }
       handler.handle(Future.succeededFuture(sqlConnection));

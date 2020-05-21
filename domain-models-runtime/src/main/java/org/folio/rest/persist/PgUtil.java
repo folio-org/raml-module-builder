@@ -554,8 +554,9 @@ public final class PgUtil {
     String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
     Context vertxContext) {
 
-   streamGet(table, clazz, cql, offset, limit, facets, element, routingContext,
-     okapiHeaders, vertxContext, 0);
+   streamGet(table, clazz, cql, offset, limit, facets, element, 0, okapiHeaders, vertxContext,
+       routingContext
+   );
   }
 
 
@@ -564,6 +565,7 @@ public final class PgUtil {
    * properties {@code totalRecords}, {@code resultInfo} and custom element.
    * The custom element is array type which POJO that is of type clazz.
    *
+   * @param <T>
    * @param table
    * @param clazz
    * @param cql
@@ -571,22 +573,23 @@ public final class PgUtil {
    * @param limit
    * @param facets
    * @param element
-   * @param routingContext
+   * @param queryTimeout query timeout in milliseconds
    * @param okapiHeaders
    * @param vertxContext
-   * @param queryTimeout query timeout in milliseconds
-   * @param <T>
+   * @param routingContext
    */
+  @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
    public static <T> void streamGet(String table, Class<T> clazz,
-    String cql, int offset, int limit, List<String> facets,
-    String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
-    Context vertxContext, int queryTimeout) {
+       String cql, int offset, int limit, List<String> facets,
+       String element, int queryTimeout, Map<String, String> okapiHeaders,
+       Context vertxContext, RoutingContext routingContext) {
 
     HttpServerResponse response = routingContext.response();
     try {
       List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
       CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset);
-      streamGet(table, clazz, wrapper, facetList, element, routingContext, okapiHeaders, vertxContext, queryTimeout);
+      streamGet(table, clazz, wrapper, facetList, element, queryTimeout, okapiHeaders, vertxContext,
+          routingContext);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       response.setStatusCode(500);
@@ -603,20 +606,21 @@ public final class PgUtil {
    * @param filter
    * @param facetList
    * @param element
-   * @param routingContext
+   * @param queryTimeout query timeout in milliseconds
    * @param okapiHeaders
    * @param vertxContext
+   * @param routingContext
    */
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
-    CQLWrapper filter, List<FacetField> facetList, String element,
-    RoutingContext routingContext, Map<String, String> okapiHeaders,
-    Context vertxContext, int limitRequestExecutionTime) {
+      CQLWrapper filter, List<FacetField> facetList, String element,
+      int queryTimeout, Map<String, String> okapiHeaders, Context vertxContext,
+      RoutingContext routingContext) {
 
     HttpServerResponse response = routingContext.response();
     PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
     postgresClient.streamGet(table, clazz, JSON_COLUMN, filter, true, null,
-      facetList, limitRequestExecutionTime, reply -> {
+      facetList, queryTimeout, reply -> {
         if (reply.failed()) {
           String message = PgExceptionUtil.badRequestMessage(reply.cause());
           if (message == null) {
@@ -646,6 +650,7 @@ public final class PgUtil {
    *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by the responseDelegateClass
    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
       String cql, int offset, int limit,
       Map<String, String> okapiHeaders, Context vertxContext,
@@ -1057,11 +1062,12 @@ public final class PgUtil {
    * @param cql
    * @param okapiHeaders
    * @param vertxContext
+   * @param queryTimeout query timeout in milliseconds
    * @param responseDelegateClass
    * @param asyncResultHandler
    */
   public static <T, C> void getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
-      String sortField, String cql, int offset, int limit, int limitRequestExecutionTime,
+      String sortField, String cql, int offset, int limit, int queryTimeout,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
@@ -1116,7 +1122,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
           return;
         }
-      }, limitRequestExecutionTime);
+      }, queryTimeout);
     } catch (FieldException | QueryValidationException e) {
       logger.error(e.getMessage(), e);
       asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
