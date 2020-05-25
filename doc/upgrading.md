@@ -18,22 +18,25 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 * [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to
     [vertx-pg-client](https://vertx.io/docs/vertx-pg-client/java/).
+  * All functions that previously returned `UpdateResult` now return
+    `RowSet<Row>`. From that result, the number of rows affected by
+    SQL was `getUpdated()`, it is now `rowCount()`.
+  * All functions that previously returned `ResultSet` now return
+    `RowSet<Row>`. From that result, the number of rows affected by
+    SQL is `rowCount()`. The `size()` method returns number of rows
+    returned. An iterator to go through rows is obtained by calling
+    `iterator()`.
+  * `PostgresClient.selectSingle` returns `Row` rather than `JsonArray`.
+  * PostgreSQL `JSONB` type was previously represented by Java `String`,
+    now by Java `JsonObject` (return type and parameter type).
+  * PostgreSQL `UUID` type (used for `id` and foreign keys columns) was
+    previously represented by Java `String`, now by Java `UUID`
+    (return type and parameter type).
+  * In prepared/parameterized queries replace '?' signs by '$1', '$2' and so on
+    and the parameters argument type `JsonArray` by `Tuple`.
   * Class `SQLConnection` is now provided by RMB. The same class name
     was used for the SQL client. `io.vertx.ext.sql.SQLConnection` ->
     `org.folio.rest.persist.SQLConnection`.
-  * All functions that previusly returned `UpdateResult` now returns
-    `RowSet<Row>`. From that result the number of rows affacted by
-    SQL was `getUpdated()` it is now `rowCount()`.
-  * All functions that previusly returned `ResultSet` now returns
-    `RowSet<Row>`. From that result, the number of rows affected by
-    SQL is `rowCount()`. The size() method returns number of rows
-    returned. An iterator to go through rows is obtained by calling
-    `iterator`
-  * JSONB is returned as JsonObject, the old client returned it as String.
-  * `id` and other UUID columns are returned as UUID and must be
-    sent as UUID, old client used String.
-  * `PostgresClient.selectSingle` returns Row rather than `JsonArray`.
-  * SQL parameters changed from `JsonArray` to `Tuple`.
   * `PostgresClient.getClient()` is no longer public. If you need a
     connection, use `PostgresClient.startTx()`. For modules that wish to use
     vertx-pg-client directly, `PostgresClient.getConnection`  is offered -
@@ -47,8 +50,6 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `PgExceptionFacade.selectStream` without SQLConnection has been
      removed. Streams must be executed within a transaction.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
-  * Replace '?' signs in prepared queries with '$1', '$2' and so on.
-  * Use `JsonObject` instead String-representation as a parameter to execute a prepared statement with the parameter that is an object.
 * [RMB-619](https://issues.folio.org/browse/RMB-619)
   [Deprecation due to upgrading to Vert.x 3.9](https://github.com/vert-x3/wiki/wiki/3.9.0-Deprecations-and-breaking-changes):
   * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
