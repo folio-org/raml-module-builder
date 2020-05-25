@@ -2545,7 +2545,7 @@ public class PostgresClient {
     return (int) list.stream()
         .filter(e -> !(e instanceof Facet) &&
                      !((e instanceof Map) &&
-                         ((Map) e).size() == 1 && ((Map) e).containsKey(COUNT_FIELD)))
+                      ((Map) e).size() == 1 && ((Map) e).containsKey(COUNT_FIELD)))
         .count();
   }
 
@@ -2571,7 +2571,10 @@ public class PostgresClient {
     while (iterator.hasNext()) {
       Row row = iterator.next();
       try {
-        resultsHelper.list.add((T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));
+        T objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
+        if (!resultsHelper.facet) {
+          resultsHelper.list.add(objRow);
+        }
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         resultsHelper.list.add(null);
@@ -2613,8 +2616,8 @@ public class PostgresClient {
         try {
           o = mapper.readValue(jo.toString(), resultsHelper.clazz);
         } catch (UnrecognizedPropertyException upe) {
-          // this is a facet query , and this is the count entry {"count": 11}
-          resultsHelper.total = new JsonObject(row.getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
+          // this is a facet query , and this is the count entry
+          resultsHelper.total = new JsonObject(jo.toString()).getInteger(COUNT_FIELD);
           finished = true;
         }
       }
