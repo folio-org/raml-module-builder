@@ -648,11 +648,18 @@ public class PostgresClientIT {
     }));
   }
 
-  @Test
-  public void selectWithTimeout(TestContext context) {
+    @Test
+  public void selectWithTimeoutSuccess(TestContext context) {
       PostgresClient client = postgresClient();
-      client.getSQLConnection(2500, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(2);", context.asyncAssertSuccess());
+      client.getSQLConnection(2000, conn -> {
+        client.selectSingle(conn, "SELECT 1, pg_sleep(1);", context.asyncAssertSuccess());
+      });
+  }
+
+  @Test
+  public void selectWithTimeoutFailure(TestContext context) {
+      PostgresClient client = postgresClient();
+      client.getSQLConnection(1000, conn -> {
         client.selectSingle(conn, "SELECT 1, pg_sleep(2);", context.asyncAssertFailure());
       });
   }
