@@ -34,6 +34,7 @@ import org.folio.rest.jaxrs.model.Metadata;
     "claims",
     "collection",
     "cost",
+    "count",
     "description",
     "details",
     "donor",
@@ -99,6 +100,8 @@ public class Poline {
     private Boolean collection;
     @JsonProperty("cost")
     private String cost;
+    @JsonProperty("count")
+    private Integer count;
     @JsonProperty("description")
     private String description;
     @JsonProperty("details")
@@ -383,7 +386,22 @@ public class Poline {
         return this;
     }
 
-    @JsonProperty("description")
+    @JsonProperty("count")
+    public Integer getCount() {
+    return count;
+  }
+
+    @JsonProperty("count")
+    public void setCost(Integer count) {
+    this.count = count;
+  }
+
+    public Poline withCost(Integer count) {
+      this.count = count;
+      return this;
+   }
+
+   @JsonProperty("description")
     public String getDescription() {
         return description;
     }
