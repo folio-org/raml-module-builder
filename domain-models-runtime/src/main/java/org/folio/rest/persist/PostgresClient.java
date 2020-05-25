@@ -1792,7 +1792,7 @@ public class PostgresClient {
         }
         ResultInfo resultInfo = new ResultInfo();
         resultInfo.setTotalRecords(countQueryResult.result().iterator().next().getInteger(0));
-        doStreamGetQuery(connection, queryHelper, resultInfo, clazz, facets, replyHandler);
+        doStreamGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler);
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1801,7 +1801,7 @@ public class PostgresClient {
   }
 
   <T> void doStreamGetQuery(SQLConnection connection, QueryHelper queryHelper,
-                            ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
+                            ResultInfo resultInfo, Class<T> clazz,
                             Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
     // decide if we need to close transaction+connection ourselves
     final PgConnection closeConnection = connection.tx == null ? connection.conn : null;
