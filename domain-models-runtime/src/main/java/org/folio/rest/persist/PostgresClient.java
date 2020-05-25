@@ -53,7 +53,6 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.util.Cql2PgUtil;
-import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -79,7 +78,6 @@ import org.postgresql.core.BaseConnection;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 
 import freemarker.template.TemplateException;
 
@@ -1820,7 +1818,7 @@ public class PostgresClient {
       PreparedStatement pq = prepareRes.result();
       RowStream<Row> stream = pq.createStream(STREAM_GET_DEFAULT_CHUNK_SIZE, Tuple.tuple());
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
-      doStreamRowResults(stream, clazz, facets, closeConnection, queryHelper,
+      doStreamRowResults(stream, clazz, closeConnection, queryHelper,
           streamResult, replyHandler);
     });
   }
@@ -1841,7 +1839,7 @@ public class PostgresClient {
   }
 
   <T> void doStreamRowResults(RowStream<Row> sqlRowStream, Class<T> clazz,
-    List<FacetField> facets, PgConnection pgConnection, QueryHelper queryHelper,
+    PgConnection pgConnection, QueryHelper queryHelper,
     PostgresClientStreamResult<T> streamResult,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
