@@ -3241,9 +3241,8 @@ public class PostgresClientIT {
           context.assertEquals(1, resultInfo.getTotalRecords());
           List<Object> objs = handler.result().getResults();
           ObjectMapper mapper = new ObjectMapper();
-          context.assertEquals("{\"count\":1}", mapper.writeValueAsString(objs.get(0)));
           context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
-            new JsonObject(mapper.writeValueAsString(objs.get(1))).getString("id"));
+            new JsonObject(mapper.writeValueAsString(objs.get(0))).getString("id"));
 
           List<Facet> retFacets = resultInfo.getFacets();
           context.assertEquals(1, retFacets.size());
@@ -3497,12 +3496,10 @@ public class PostgresClientIT {
             context.assertEquals("edition", retFacets.get(0).getType());
             context.assertEquals(1, retFacets.get(0).getFacetValues().get(0).getCount());
             context.assertEquals("First edition", retFacets.get(0).getFacetValues().get(0).getValue().toString());
-            /* because we're dealing using Object.class, the count object will be part of results */
-            context.assertEquals(2, objs.size()); // one count + one record
+            context.assertEquals(1, objs.size());
             try {
-              context.assertEquals("{\"count\":1}", mapper.writeValueAsString(objs.get(0)));
               context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
-                  new JsonObject(mapper.writeValueAsString(objs.get(1))).getString("id"));
+                  new JsonObject(mapper.writeValueAsString(objs.get(0))).getString("id"));
             } catch (JsonProcessingException e) {
               context.fail(e);
             }

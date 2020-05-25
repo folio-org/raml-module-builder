@@ -1859,18 +1859,9 @@ public class PostgresClient {
           collectExternalColumnSetters(columnNames,
               resultsHelper.clazz, isAuditFlavored, externalColumnSetters);
         }
-
-        T objRow = null;
-        // deserializeRow can not determine if count or user object
-        // in case where user T=Object
-        // skip the initial count result when facets are in use
-        if (resultsHelper.offset == 0 && facets != null && !facets.isEmpty()) {
-          resultsHelper.facet = true;
-        } else {
-          objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, r);
-          resultCount.incrementAndGet();
-        }
+        T objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, r);
         if (!resultsHelper.facet) {
+          resultCount.incrementAndGet();
           if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
             resultsHelper.facets.forEach((k, v) -> resultInfo.getFacets().add(v));
             promise.complete(streamResult);
@@ -2525,7 +2516,7 @@ public class PostgresClient {
 
     ResultInfo resultInfo = new ResultInfo();
     resultsHelper.facets.forEach((k , v) -> resultInfo.getFacets().add(v));
-    Integer totalRecords = getTotalRecords(getResultListRowCounts(resultsHelper.list),
+    Integer totalRecords = getTotalRecords(resultsHelper.list.size(),
         resultsHelper.total, offset, limit);
     resultInfo.setTotalRecords(totalRecords);
 
@@ -2535,18 +2526,6 @@ public class PostgresClient {
 
     statsTracker(PROCESS_RESULTS_STAT_METHOD, clazz.getSimpleName(), start);
     return results;
-  }
-
-  /**
-   * @return number of list entries excluding the Facet count and total count entries
-   */
-  @SuppressWarnings("rawtypes")
-  private <T> int getResultListRowCounts(List<T> list) {
-    return (int) list.stream()
-        .filter(e -> !(e instanceof Facet) &&
-                     !((e instanceof Map) &&
-                      ((Map) e).size() == 1 && ((Map) e).containsKey(COUNT_FIELD)))
-        .count();
   }
 
   /**
@@ -2599,7 +2578,6 @@ public class PostgresClient {
     resultsHelper.facet = false;
 
     if (!isAuditFlavored && jo != null) {
-      boolean finished = false;
       try {
         // is this a facet entry - if so process it, otherwise will throw an exception
         // and continue trying to map to the pojos
@@ -2611,19 +2589,10 @@ public class PostgresClient {
         } else {
           facet.getFacetValues().add(of.getFacetValues().get(0));
         }
-        finished = true;
-      } catch (Exception e) {
-        try {
-          o = mapper.readValue(jo.toString(), resultsHelper.clazz);
-        } catch (UnrecognizedPropertyException upe) {
-          // this is a facet query , and this is the count entry
-          resultsHelper.total = new JsonObject(jo.toString()).getInteger(COUNT_FIELD);
-          finished = true;
-        }
-      }
-      if (finished) {
         resultsHelper.facet = true;
         return o;
+      } catch (Exception e) {
+        o = mapper.readValue(jo.toString(), resultsHelper.clazz);
       }
     } else {
       o = resultsHelper.clazz.newInstance();
