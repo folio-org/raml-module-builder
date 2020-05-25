@@ -123,12 +123,16 @@ public class Index extends TableIndexes {
    * <p>
    * Special case: getSqlExpression() is returned unchanged, the sqlExpression developer must take care
    * of the 2712 by limit.
+   * Also, stringType=false does not truncate
    * <p>
    * PostgreSQL indexes have a 2712 byte limit, 600 multi-byte characters are within this limit.
    */
   public String getFinalTruncatedSqlExpression(String tableLoc) {
     if (this.getSqlExpression() != null) {
       return this.getSqlExpression();
+    }
+    if (!this.isStringType()) {
+      return this.fieldPath;
     }
     if (this.getMultiFieldNames() != null) {
       return "left(" + getFinalSqlExpression(tableLoc) + ",600)";

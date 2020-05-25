@@ -47,11 +47,17 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `PgExceptionFacade.selectStream` without SQLConnection has been
      removed. Streams must be executed within a transaction.
   * `PostgresClient.mutate` removed (deprecated since Oct 2018).
+  * Replace '?' signs in prepared queries with '$1', '$2' and so on.
+  * Use `JsonObject` instead String-representation as a parameter to execute a prepared statement with the parameter that is an object.
 * [RMB-619](https://issues.folio.org/browse/RMB-619)
   [Deprecation due to upgrading to Vert.x 3.9](https://github.com/vert-x3/wiki/wiki/3.9.0-Deprecations-and-breaking-changes):
   * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
     `Verticle#start(Promise<Void>)` and `Verticle#stop(Promise<Void>)`
   * Replace `Future.setHandler(ar -> …)` by `Future.onComplete(ar -> …)`
+* [RMB-624](https://issues.folio.org/browse/RMB-624) Fix invalid RAML sample
+  JSON files, otherwise GenerateRunner/SchemaDereferencer will fail with
+  InvocationTargetException/DecodeException "Failed to decode".
+  Hint: Use `for i in *; do jq empty $i || echo $i; done` to list invalid JSONs.
 
 ## Version 29.5
 
