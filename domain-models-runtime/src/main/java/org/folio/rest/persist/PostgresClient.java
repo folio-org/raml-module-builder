@@ -1797,7 +1797,7 @@ public class PostgresClient {
    * @param returnIdField must be true if facets are in passed
    * @param distinctOn may be null
    * @param facets for no facets: null or Collections.emptyList()
-   * @param queryTimeout query timeout in milliseconds
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
    */
   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
