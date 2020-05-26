@@ -606,7 +606,7 @@ public final class PgUtil {
    * @param filter
    * @param facetList
    * @param element
-   * @param queryTimeout query timeout in milliseconds
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param okapiHeaders
    * @param vertxContext
    * @param routingContext
