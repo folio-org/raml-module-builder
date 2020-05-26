@@ -651,9 +651,9 @@ public class PostgresClientIT {
     @Test
   public void selectWithTimeoutSuccess(TestContext context) {
       PostgresClient client = postgresClient();
-      client.getSQLConnection(2000, conn -> {
+      client.getSQLConnection(2000, asyncAssertTx(context, conn -> {
         client.selectSingle(conn, "SELECT 1, pg_sleep(1);", context.asyncAssertSuccess());
-      });
+      }));
   }
 
   @Test
