@@ -2817,7 +2817,7 @@ public class PostgresClient {
    *
    * @param sql - the sql query to run
    * @param replyHandler the query result or the failure
-   * @param queryTimeout query timeout in milliseconds
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    */
     public void select(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler,
         int queryTimeout) {
