@@ -578,7 +578,7 @@ public final class PgUtil {
    * @param vertxContext
    * @param routingContext
    */
-  @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
+   @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
    public static <T> void streamGet(String table, Class<T> clazz,
        String cql, int offset, int limit, List<String> facets,
        String element, int queryTimeout, Map<String, String> okapiHeaders,
