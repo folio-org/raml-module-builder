@@ -53,7 +53,6 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.util.Cql2PgUtil;
-import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -79,7 +78,6 @@ import org.postgresql.core.BaseConnection;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 
 import freemarker.template.TemplateException;
 
@@ -1794,7 +1792,7 @@ public class PostgresClient {
         }
         ResultInfo resultInfo = new ResultInfo();
         resultInfo.setTotalRecords(countQueryResult.result().iterator().next().getInteger(0));
-        doStreamGetQuery(connection, queryHelper, resultInfo, clazz, facets, replyHandler);
+        doStreamGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler);
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1803,7 +1801,7 @@ public class PostgresClient {
   }
 
   <T> void doStreamGetQuery(SQLConnection connection, QueryHelper queryHelper,
-                            ResultInfo resultInfo, Class<T> clazz, List<FacetField> facets,
+                            ResultInfo resultInfo, Class<T> clazz,
                             Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
     // decide if we need to close transaction+connection ourselves
     final PgConnection closeConnection = connection.tx == null ? connection.conn : null;
@@ -1820,7 +1818,7 @@ public class PostgresClient {
       PreparedStatement pq = prepareRes.result();
       RowStream<Row> stream = pq.createStream(STREAM_GET_DEFAULT_CHUNK_SIZE, Tuple.tuple());
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
-      doStreamRowResults(stream, clazz, facets, closeConnection, queryHelper,
+      doStreamRowResults(stream, clazz, closeConnection, queryHelper,
           streamResult, replyHandler);
     });
   }
@@ -1841,7 +1839,7 @@ public class PostgresClient {
   }
 
   <T> void doStreamRowResults(RowStream<Row> sqlRowStream, Class<T> clazz,
-    List<FacetField> facets, PgConnection pgConnection, QueryHelper queryHelper,
+    PgConnection pgConnection, QueryHelper queryHelper,
     PostgresClientStreamResult<T> streamResult,
     Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
@@ -1859,18 +1857,9 @@ public class PostgresClient {
           collectExternalColumnSetters(columnNames,
               resultsHelper.clazz, isAuditFlavored, externalColumnSetters);
         }
-
-        T objRow = null;
-        // deserializeRow can not determine if count or user object
-        // in case where user T=Object
-        // skip the initial count result when facets are in use
-        if (resultsHelper.offset == 0 && facets != null && !facets.isEmpty()) {
-          resultsHelper.facet = true;
-        } else {
-          objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, r);
-          resultCount.incrementAndGet();
-        }
+        T objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, r);
         if (!resultsHelper.facet) {
+          resultCount.incrementAndGet();
           if (!promise.future().isComplete()) { // end of facets (if any) .. produce result
             resultsHelper.facets.forEach((k, v) -> resultInfo.getFacets().add(v));
             promise.complete(streamResult);
@@ -2525,7 +2514,7 @@ public class PostgresClient {
 
     ResultInfo resultInfo = new ResultInfo();
     resultsHelper.facets.forEach((k , v) -> resultInfo.getFacets().add(v));
-    Integer totalRecords = getTotalRecords(getResultListRowCounts(resultsHelper.list),
+    Integer totalRecords = getTotalRecords(resultsHelper.list.size(),
         resultsHelper.total, offset, limit);
     resultInfo.setTotalRecords(totalRecords);
 
@@ -2535,18 +2524,6 @@ public class PostgresClient {
 
     statsTracker(PROCESS_RESULTS_STAT_METHOD, clazz.getSimpleName(), start);
     return results;
-  }
-
-  /**
-   * @return number of list entries excluding the Facet count and total count entries
-   */
-  @SuppressWarnings("rawtypes")
-  private <T> int getResultListRowCounts(List<T> list) {
-    return (int) list.stream()
-        .filter(e -> !(e instanceof Facet) &&
-                     !((e instanceof Map) &&
-                         ((Map) e).size() == 1 && ((Map) e).containsKey(COUNT_FIELD)))
-        .count();
   }
 
   /**
@@ -2571,7 +2548,10 @@ public class PostgresClient {
     while (iterator.hasNext()) {
       Row row = iterator.next();
       try {
-        resultsHelper.list.add((T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row));
+        T objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, row);
+        if (!resultsHelper.facet) {
+          resultsHelper.list.add(objRow);
+        }
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         resultsHelper.list.add(null);
@@ -2596,7 +2576,6 @@ public class PostgresClient {
     resultsHelper.facet = false;
 
     if (!isAuditFlavored && jo != null) {
-      boolean finished = false;
       try {
         // is this a facet entry - if so process it, otherwise will throw an exception
         // and continue trying to map to the pojos
@@ -2608,19 +2587,10 @@ public class PostgresClient {
         } else {
           facet.getFacetValues().add(of.getFacetValues().get(0));
         }
-        finished = true;
-      } catch (Exception e) {
-        try {
-          o = mapper.readValue(jo.toString(), resultsHelper.clazz);
-        } catch (UnrecognizedPropertyException upe) {
-          // this is a facet query , and this is the count entry {"count": 11}
-          resultsHelper.total = new JsonObject(row.getString(DEFAULT_JSONB_FIELD_NAME)).getInteger(COUNT_FIELD);
-          finished = true;
-        }
-      }
-      if (finished) {
         resultsHelper.facet = true;
         return o;
+      } catch (Exception e) {
+        o = mapper.readValue(jo.toString(), resultsHelper.clazz);
       }
     } else {
       o = resultsHelper.clazz.newInstance();
