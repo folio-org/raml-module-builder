@@ -1062,7 +1062,7 @@ public final class PgUtil {
    * @param cql
    * @param okapiHeaders
    * @param vertxContext
-   * @param queryTimeout query timeout in milliseconds
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param responseDelegateClass
    * @param asyncResultHandler
    */
