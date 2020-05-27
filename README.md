@@ -951,6 +951,9 @@ Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
 
+The `==` exact string match operator is always case sensitive and respects accents. If an index should speed up the search
+it must be a b-tree `"index"` or `"uniqueIndex"` with `"caseSensitive": true` and `"removeAccents": false`.
+
 Refer to further explanation of [CQL string matching](https://dev.folio.org/faqs/explain-cql/)
 for the "Exact match operator" and "Word match operators".
 
