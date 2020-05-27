@@ -59,6 +59,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   JSON files, otherwise GenerateRunner/SchemaDereferencer will fail with
   InvocationTargetException/DecodeException "Failed to decode".
   Hint: Use `for i in *; do jq empty $i || echo $i; done` to list invalid JSONs.
+* Update Vert.x to 3.9.1, consider using
+  [Bill of Materials (Maven BOM)](https://github.com/vert-x3/vertx-stack#bills-of-materials-maven-bom)
+  for io.vertx, com.fasterxml.jackson.core and com.fasterxml.jackson.dataformat dependencies. Remove jackson-databind
+  dependency from pom.xml if module doesn't use it directly.
 
 ## Version 29.5
 

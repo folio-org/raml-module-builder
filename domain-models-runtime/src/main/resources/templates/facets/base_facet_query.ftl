@@ -33,7 +33,5 @@ ret_records as (
   (SELECT '00000000-0000-0000-0000-000000000000'::uuid as ${idField}, jsonb FROM lst${facet_index + 1} limit ${facet.topFacets2return?c})
   <#sep> UNION </#sep>
  </#list>
-  UNION
-  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as ${idField},  jsonb_build_object('count' , count) FROM count_on)
   UNION ALL
   (select ${idField} as ${idField}, jsonb from ret_records <#if limitClause??>${limitClause}</#if> <#if offsetClause??>${offsetClause}</#if>);
