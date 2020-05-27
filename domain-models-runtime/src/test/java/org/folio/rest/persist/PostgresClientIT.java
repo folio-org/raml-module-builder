@@ -68,6 +68,7 @@ import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
+import org.folio.rest.persist.helpers.Poline;
 import org.folio.rest.persist.helpers.SimplePojo;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
@@ -2707,7 +2708,7 @@ public class PostgresClientIT {
     facets.add(new FacetField("jsonb->>'title'"));
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Poline.class, "jsonb", wrapper, true, null,
       facets, context.asyncAssertSuccess(sr -> {
         ResultInfo resultInfo = sr.resultInto();
         context.assertEquals(3, resultInfo.getTotalRecords());
@@ -2728,6 +2729,33 @@ public class PostgresClientIT {
         });
       }));
     async.awaitSuccess();
+  }
+
+  @Test
+  public void normalGetWithFacetsAndFilter(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    List<FacetField> facets = new ArrayList<FacetField>();
+    facets.add(new FacetField("jsonb->>'edition'"));
+    facets.add(new FacetField("jsonb->>'title'"));
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+
+    postgresClient.get(MOCK_POLINES_TABLE, Poline.class, new String[]{"jsonb"}, wrapper, true, true, facets, context.asyncAssertSuccess(sr -> {
+      ResultInfo resultInfo = sr.getResultInfo();
+      context.assertEquals(3, resultInfo.getTotalRecords());
+      context.assertEquals(2, resultInfo.getFacets().size());
+      context.assertEquals("edition", resultInfo.getFacets().get(0).getType());
+      context.assertEquals(1, resultInfo.getFacets().get(0).getFacetValues().size());
+      context.assertEquals("First edition", resultInfo.getFacets().get(0).getFacetValues().get(0).getValue());
+      context.assertEquals(3, resultInfo.getFacets().get(0).getFacetValues().get(0).getCount());
+      context.assertEquals("title", resultInfo.getFacets().get(1).getType());
+      context.assertEquals(3, resultInfo.getFacets().get(1).getFacetValues().size());
+      context.assertEquals(1, resultInfo.getFacets().get(1).getFacetValues().get(0).getCount());
+      context.assertEquals(1, resultInfo.getFacets().get(1).getFacetValues().get(1).getCount());
+      context.assertEquals(1, resultInfo.getFacets().get(1).getFacetValues().get(2).getCount());
+    }));
   }
 
   @Test
@@ -2871,7 +2899,7 @@ public class PostgresClientIT {
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
     PgConnection pgConnection = null;
-    postgresClient.doStreamRowResults(sqlRowStream, Object.class, facets, pgConnection,
+    postgresClient.doStreamRowResults(sqlRowStream, Object.class, pgConnection,
       new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -3213,14 +3241,15 @@ public class PostgresClientIT {
           context.assertEquals(1, resultInfo.getTotalRecords());
           List<Object> objs = handler.result().getResults();
           ObjectMapper mapper = new ObjectMapper();
-          context.assertEquals("{\"count\":1}", mapper.writeValueAsString(objs.get(0)));
-          context.assertEquals("{\"facetValues\":[{\"count\":1,\"value\":\"First edition\"}],\"type\":\"edition\"}",
-            mapper.writeValueAsString(objs.get(1)));
           context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
-            new JsonObject(mapper.writeValueAsString(objs.get(2))).getString("id"));
+            new JsonObject(mapper.writeValueAsString(objs.get(0))).getString("id"));
 
           List<Facet> retFacets = resultInfo.getFacets();
           context.assertEquals(1, retFacets.size());
+          context.assertEquals("edition", retFacets.get(0).getType());
+          context.assertEquals(1, retFacets.get(0).getFacetValues().size());
+          context.assertEquals(1, retFacets.get(0).getFacetValues().get(0).getCount());
+          context.assertEquals("First edition", retFacets.get(0).getFacetValues().get(0).getValue());
         } catch (Exception ex) {
           context.fail(ex);
         }
@@ -3455,26 +3484,48 @@ public class PostgresClientIT {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "order_format==Other");
       Async async = context.async();
       postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, true, true, facets, distinctOn, handler -> {
-          context.assertTrue(handler.succeeded());
-
-          try {
-            ResultInfo resultInfo = handler.result().getResultInfo();
+          cqlWrapper, true, true, facets, distinctOn,
+          context.asyncAssertSuccess(res -> {
+            ResultInfo resultInfo = res.getResultInfo();
             context.assertEquals(1, resultInfo.getTotalRecords());
-            List<Object> objs = handler.result().getResults();
+            List<Object> objs = res.getResults();
             ObjectMapper mapper = new ObjectMapper();
-            context.assertEquals("{\"count\":1}", mapper.writeValueAsString(objs.get(0)));
-            context.assertEquals("{\"facetValues\":[{\"count\":1,\"value\":\"First edition\"}],\"type\":\"edition\"}",
-              mapper.writeValueAsString(objs.get(1)));
-            context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
-              new JsonObject(mapper.writeValueAsString(objs.get(2))).getString("id"));
             List<Facet> retFacets = resultInfo.getFacets();
+
             context.assertEquals(1, retFacets.size());
-          } catch (Exception ex) {
-            context.fail(ex);
-          }
-          async.complete();
-        });
+            context.assertEquals("edition", retFacets.get(0).getType());
+            context.assertEquals(1, retFacets.get(0).getFacetValues().get(0).getCount());
+            context.assertEquals("First edition", retFacets.get(0).getFacetValues().get(0).getValue().toString());
+            context.assertEquals(1, objs.size());
+            try {
+              context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
+                  new JsonObject(mapper.writeValueAsString(objs.get(0))).getString("id"));
+            } catch (JsonProcessingException e) {
+              context.fail(e);
+            }
+            async.complete();
+          }));
+      async.awaitSuccess();
+    }
+    {
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "order_format==Other");
+      Async async = context.async();
+      postgresClient.get(MOCK_POLINES_TABLE, Poline.class, "*",
+          cqlWrapper, true, true, facets, distinctOn,
+          context.asyncAssertSuccess(res -> {
+            ResultInfo resultInfo = res.getResultInfo();
+            context.assertEquals(1, resultInfo.getTotalRecords());
+            List<Poline> objs = res.getResults();
+            List<Facet> retFacets = resultInfo.getFacets();
+
+            context.assertEquals(1, retFacets.size());
+            context.assertEquals("edition", retFacets.get(0).getType());
+            context.assertEquals(1, retFacets.get(0).getFacetValues().get(0).getCount());
+            context.assertEquals("First edition", retFacets.get(0).getFacetValues().get(0).getValue().toString());
+            context.assertEquals(1, objs.size());
+            context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1", objs.get(0).getId());
+            async.complete();
+          }));
       async.awaitSuccess();
     }
   }
