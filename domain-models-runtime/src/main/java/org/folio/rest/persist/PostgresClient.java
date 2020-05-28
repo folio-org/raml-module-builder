@@ -1733,7 +1733,7 @@ public class PostgresClient {
    * @param returnIdField
    * @param distinctOn may be null
    * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
-   * @param queryTimeout query timeout in milliseconds
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    */
    @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,

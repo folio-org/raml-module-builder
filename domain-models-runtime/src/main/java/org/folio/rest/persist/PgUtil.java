@@ -578,7 +578,7 @@ public final class PgUtil {
    * @param vertxContext
    * @param routingContext
    */
-  @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
+   @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
    public static <T> void streamGet(String table, Class<T> clazz,
        String cql, int offset, int limit, List<String> facets,
        String element, int queryTimeout, Map<String, String> okapiHeaders,
@@ -606,7 +606,7 @@ public final class PgUtil {
    * @param filter
    * @param facetList
    * @param element
-   * @param queryTimeout query timeout in milliseconds
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param okapiHeaders
    * @param vertxContext
    * @param routingContext
@@ -1062,7 +1062,7 @@ public final class PgUtil {
    * @param cql
    * @param okapiHeaders
    * @param vertxContext
-   * @param queryTimeout query timeout in milliseconds
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param responseDelegateClass
    * @param asyncResultHandler
    */
