@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -105,7 +105,7 @@ public class PostgresClient {
 
   static final String COUNT_FIELD = "count";
 
-  static CopyOnWriteArraySet<SQLConnection> activeConnections = new CopyOnWriteArraySet<>();
+  private static final Map<SQLConnection, Long> activeConnectionsTimers = new ConcurrentHashMap<>();
 
   /** queries timeout checking interval in milliseconds */
   private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
@@ -505,27 +505,7 @@ public class PostgresClient {
     client = createPgPool(vertx, postgreSQLClientConfig);
 
 
-    vertx.setPeriodic(CHECK_FOR_QUERY_TIMEOUT_INTERVAL, PostgresClient::checkStaleRequests);
-
-  }
-
-  private static void checkStaleRequests(Long timerId) {
-    long now = System.currentTimeMillis();
-    for (SQLConnection conn : activeConnections) {
-      if (now >= conn.timeoutTime) {
-        conn.conn.cancelRequest(ar -> {
-          if (ar.succeeded()) {
-            log.warn(
-                String.format("Cancelling request due to timeout after : %d ms",
-                    now - conn.timeoutTime));
-          } else {
-            log.warn("Failed to send cancelling request", ar.cause());
-          }
-        });
-        activeConnections.remove(conn);
-      }
-    }
-  }
+   }
 
   static PgPool createPgPool(Vertx vertx, JsonObject configuration) {
     PgConnectOptions connectOptions = createPgConnectOptions(configuration);
@@ -711,7 +691,7 @@ public class PostgresClient {
    * @param handler  where to pass on the input AsyncResult
    * @return the Handler
    */
-  static <T> Handler<AsyncResult<T>> closeAndHandleResult(
+   <T> Handler<AsyncResult<T>> closeAndHandleResult(
       AsyncResult<SQLConnection> conn, Handler<AsyncResult<T>> handler) {
 
     return ar -> {
@@ -724,7 +704,7 @@ public class PostgresClient {
       if (sqlConnection.conn != null) {
         sqlConnection.conn.close();
       }
-      activeConnections.remove(sqlConnection);
+      cancelConnectionTimeoutTimer(sqlConnection);
       handler.handle(ar);
     };
   }
@@ -3103,11 +3083,28 @@ public class PostgresClient {
       }
       SQLConnection sqlConnection = new SQLConnection(res.result(), null, queryTimeout);
       if (queryTimeout > 0) {
-         activeConnections.add(sqlConnection);
+        long timerId = vertx.setTimer(queryTimeout, id -> sqlConnection.conn.cancelRequest(ar -> {
+          if (ar.succeeded()) {
+            log.warn(
+                String.format("Cancelling request due to timeout after : %d ms",
+                    queryTimeout));
+          } else {
+            log.warn("Failed to send cancelling request", ar.cause());
+          }
+        }));
+        activeConnectionsTimers.put(sqlConnection, timerId);
       }
       handler.handle(Future.succeededFuture(sqlConnection));
-      activeConnections.remove(sqlConnection);
     });
+  }
+
+  private void cancelConnectionTimeoutTimer(SQLConnection sqlConnection) {
+    Long timerId = activeConnectionsTimers.remove(sqlConnection);
+    if (timerId != null) {
+      vertx.cancelTimer(timerId);
+    } else {
+      log.warn("Cannot cancel timer: " + timerId);
+    }
   }
 
   /**

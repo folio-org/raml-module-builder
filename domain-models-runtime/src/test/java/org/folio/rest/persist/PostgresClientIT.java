@@ -659,30 +659,12 @@ public class PostgresClientIT {
   @Test
   public void selectWithTimeoutFailure(TestContext context) {
       PostgresClient client = postgresClient();
-      client.getSQLConnection(1000, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(2);", context.asyncAssertFailure(e -> {
+      client.getSQLConnection(500, asyncAssertTx(context, conn -> {
+        client.selectSingle(conn, "SELECT 1, pg_sleep(3);", context.asyncAssertFailure(e -> {
           String sqlState = new PgExceptionFacade(e).getSqlState();
           assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
         }));
       }));
-  }
-
-  @Test
-  public void connectionIsRemoved(TestContext context) throws InterruptedException {
-      PostgresClient client = postgresClient();
-      Object mutex = new Object();
-      AtomicReference<SQLConnection> connection = new AtomicReference<>();
-      client.getSQLConnection(1500, conn -> {
-        connection.set(conn.result());
-        context.assertTrue(PostgresClient.activeConnections.contains(connection.get()));
-        synchronized (mutex) {
-          mutex.notify();
-        }
-      });
-      synchronized (mutex) {
-        mutex.wait(5000);
-        context.assertFalse(PostgresClient.activeConnections.contains(connection.get()));
-      }
   }
 
   @Test
