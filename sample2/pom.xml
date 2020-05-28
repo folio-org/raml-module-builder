@@ -18,7 +18,7 @@
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <vertx-version>3.8.5</vertx-version>
+    <vertx-version>3.9.1</vertx-version>
   </properties>
 
   <repositories>

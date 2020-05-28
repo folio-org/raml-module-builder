@@ -504,10 +504,6 @@ public class InitAPIs implements InitAPI {
 }
 ```
 
-The init call is executed as parts of the start method of Verticle.
-The context is different from the context used when the Verticle is running, eg
-for normal API calls. See
-[Introduction to the Vert.x Context Object](https://vertx.io/blog/an-introduction-to-the-vert-x-context-object/).
 
 ## Adding code to run periodically
 
@@ -950,6 +946,9 @@ Only these relations have been implemented yet:
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
+
+The `==` exact string match operator is always case sensitive and respects accents. If an index should speed up the search
+it must be a b-tree `"index"` or `"uniqueIndex"` with `"caseSensitive": true` and `"removeAccents": false`.
 
 Refer to further explanation of [CQL string matching](https://dev.folio.org/faqs/explain-cql/)
 for the "Exact match operator" and "Word match operators".
