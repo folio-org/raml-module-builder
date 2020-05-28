@@ -103,8 +103,6 @@ public class PostgresClient {
 
   static final String COUNT_FIELD = "count";
 
-  private static final Map<SQLConnection, Long> activeConnectionsTimers = new ConcurrentHashMap<>();
-
   /** queries timeout checking interval in milliseconds */
   private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
 
@@ -158,6 +156,8 @@ public class PostgresClient {
   private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
+
+  private static Map<SQLConnection, Long> activeConnectionsTimers = new ConcurrentHashMap<>();
 
   private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
