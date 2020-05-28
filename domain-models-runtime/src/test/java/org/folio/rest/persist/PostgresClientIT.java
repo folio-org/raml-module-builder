@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
@@ -1066,7 +1065,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(null, trans1.tx, QUERY_TIMEOUT);
+      SQLConnection conn = new SQLConnection(null, trans1.tx);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertSuccess());
     }));
@@ -1077,7 +1076,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null, QUERY_TIMEOUT);
+      SQLConnection conn = new SQLConnection(trans1.conn, null);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertFailure());
     }));
@@ -1088,7 +1087,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null, QUERY_TIMEOUT);
+      SQLConnection conn = new SQLConnection(trans1.conn, null);
       trans2.complete(conn);
       postgresClient.rollbackTx(trans2.future(), context.asyncAssertFailure());
     }));
