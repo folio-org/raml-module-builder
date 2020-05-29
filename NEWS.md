@@ -1,3 +1,16 @@
+## 30.0.1 2020-05-28
+
+ * [RMB-627](https://issues.folio.org/browse/RMB-627) Fix stringType false seems to produce invalid SQL
+ * [RMB-525](https://issues.folio.org/browse/RMB-525) Removes drools validation
+ * [RMB-625](https://issues.folio.org/browse/RMB-625) Remove PostgresRunner; not in use anywhere
+ * [RMB-624](https://issues.folio.org/browse/RMB-624) GenerateRunner/SchemaDereferencer fails with
+   InvocationTargetException/DecodeException "Failed to decode"
+ * Upgrade to Vert.x 3.9.1.
+   [Release Notes](https://github.com/vert-x3/wiki/wiki/3.9.1-Release-Notes) and
+   [Deprecations and breaking changes](https://github.com/vert-x3/wiki/wiki/3.9.1-Deprecations-and-breaking-changes)
+ * [RMB-629](https://issues.folio.org/browse/RMB-629) Fix null pointer exception in deserializeRow
+ * Various fixes and clean up to upgrading notes
+
 ## 30.0.0 2020-05-15
 
  See [upgrade notes](doc/upgrading.md#version-300)
