@@ -1,6 +1,6 @@
-## 30.0.1 2020-05-28
+## 30.0.1 2020-05-30
 
- * [RMB-627](https://issues.folio.org/browse/RMB-627) Fix stringType false seems to produce invalid SQL
+ * [RMB-627](https://issues.folio.org/browse/RMB-627) Generate valid SQL for index with "stringType" false
  * [RMB-525](https://issues.folio.org/browse/RMB-525) Removes drools validation
  * [RMB-625](https://issues.folio.org/browse/RMB-625) Remove PostgresRunner; not in use anywhere
  * [RMB-624](https://issues.folio.org/browse/RMB-624) GenerateRunner/SchemaDereferencer fails with
