@@ -105,13 +105,11 @@ public class PostgresClientIT {
 
   private int QUERY_TIMEOUT = 0;
 
-/*
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
   }
-*/
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
