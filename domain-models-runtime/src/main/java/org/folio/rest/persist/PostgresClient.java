@@ -3041,6 +3041,7 @@ public class PostgresClient {
         handler.handle(Future.failedFuture(res.cause()));
         return;
       }
+
       SQLConnection sqlConnection = new SQLConnection(res.result(), null);
       if (queryTimeout > 0) {
         long timerId = vertx.setTimer(queryTimeout, id -> sqlConnection.conn.cancelRequest(ar -> {
