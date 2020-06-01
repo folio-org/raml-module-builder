@@ -1107,7 +1107,7 @@ public final class PgUtil {
       logger.info("Optimized SQL generated. Source CQL: " + cql);
 
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
-      postgresClient.select(sql, reply -> {
+      postgresClient.select(sql, queryTimeout, reply -> {
         try {
           if (reply.failed()) {
             Throwable cause = reply.cause();
@@ -1122,7 +1122,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
           return;
         }
-      }, queryTimeout);
+      });
     } catch (FieldException | QueryValidationException e) {
       logger.error(e.getMessage(), e);
       asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));

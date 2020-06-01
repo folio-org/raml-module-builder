@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -102,9 +101,6 @@ public class PostgresClient {
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
 
   static final String COUNT_FIELD = "count";
-
-  /** queries timeout checking interval in milliseconds */
-  private static final long CHECK_FOR_QUERY_TIMEOUT_INTERVAL = 1000;
 
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
@@ -499,8 +495,6 @@ public class PostgresClient {
     }
 
     client = createPgPool(vertx, postgreSQLClientConfig);
-
-
    }
 
   static PgPool createPgPool(Vertx vertx, JsonObject configuration) {
@@ -2762,13 +2756,11 @@ public class PostgresClient {
    * Run a select query.
    *
    * <p>To update see {@link #execute(String, Handler)}.
-   *
-   * @param sql - the sql query to run
-   * @param replyHandler the query result or the failure
+   *  @param sql - the sql query to run
    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
-   */
-    public void select(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler,
-        int queryTimeout) {
+     * @param replyHandler the query result or the failure
+     */
+    public void select(String sql, int queryTimeout, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
       getSQLConnection(queryTimeout,
           conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler))
       );
