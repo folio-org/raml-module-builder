@@ -157,8 +157,6 @@ public class PostgresClient {
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
 
-  private static Map<SQLConnection, Long> activeConnectionsTimers = new ConcurrentHashMap<>();
-
   private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
@@ -3062,18 +3060,16 @@ public class PostgresClient {
             log.warn("Failed to send cancelling request", ar.cause());
           }
         }));
-        activeConnectionsTimers.put(sqlConnection, timerId);
+        sqlConnection.setTimeId(timerId);
       }
       handler.handle(Future.succeededFuture(sqlConnection));
     });
   }
 
   private void cancelConnectionTimeoutTimer(SQLConnection sqlConnection) {
-    Long timerId = activeConnectionsTimers.remove(sqlConnection);
-    if (timerId != null) {
-      vertx.cancelTimer(timerId);
-    } else {
-      log.warn("Cannot cancel timer: " + timerId);
+    Long timeId = sqlConnection.getTimeId();
+    if (timeId != null) {
+      vertx.cancelTimer(timeId);
     }
   }
 
