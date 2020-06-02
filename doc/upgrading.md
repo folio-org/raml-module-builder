@@ -55,6 +55,12 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
     `Verticle#start(Promise<Void>)` and `Verticle#stop(Promise<Void>)`
   * Replace `Future.setHandler(ar -> …)` by `Future.onComplete(ar -> …)`
+* Vert.x 4 will split `Future` into `Future` and `Promise`
+  * Vert.x 3 `Future<T>` extends `AsyncResult<T>` _and_ `Handler<AsyncResult<T>>`
+  * Vert.x 4 `Future<T>` extends `AsyncResult<T>` _only_
+  * Vert.x 4 `Promise<T>` extends `Handler<AsyncResult<T>>` _only_
+  * When writing or changing code and a `Handler<AsyncResult<T>>` is needed
+    use `promise`, not `promise.future()`, to be prepared for Vert.x 4.
 * [RMB-624](https://issues.folio.org/browse/RMB-624) Fix invalid RAML sample
   JSON files, otherwise GenerateRunner/SchemaDereferencer will fail with
   InvocationTargetException/DecodeException "Failed to decode".
