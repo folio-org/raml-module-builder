@@ -1063,7 +1063,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(null, trans1.tx);
+      SQLConnection conn = new SQLConnection(null, trans1.tx, null);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertSuccess());
     }));
@@ -1074,7 +1074,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null);
+      SQLConnection conn = new SQLConnection(trans1.conn, null, null);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertFailure());
     }));
@@ -1085,7 +1085,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null);
+      SQLConnection conn = new SQLConnection(trans1.conn, null, null);
       trans2.complete(conn);
       postgresClient.rollbackTx(trans2.future(), context.asyncAssertFailure());
     }));

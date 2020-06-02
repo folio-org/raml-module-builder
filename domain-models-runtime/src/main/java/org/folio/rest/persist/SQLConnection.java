@@ -7,18 +7,11 @@ public class SQLConnection {
 
   final PgConnection conn;
   final Transaction tx;
-  private Long timeId;
+  final Long timerId;
 
-  public SQLConnection(PgConnection conn, Transaction tx) {
+  public SQLConnection(PgConnection conn, Transaction tx, Long timerId) {
     this.conn = conn;
     this.tx = tx;
-  }
-
-  public void setTimeId(Long timeId) {
-    this.timeId = timeId;
-  }
-
-  public Long getTimeId() {
-    return timeId;
+    this.timerId = timerId;
   }
 }

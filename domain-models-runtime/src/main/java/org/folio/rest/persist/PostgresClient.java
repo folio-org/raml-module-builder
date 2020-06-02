@@ -1,5 +1,29 @@
 package org.folio.rest.persist;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import freemarker.template.TemplateException;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.PoolOptions;
+import io.vertx.sqlclient.PreparedStatement;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.RowStream;
+import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.Tuple;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -17,37 +41,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.UUID;
-
 import javax.crypto.SecretKey;
-
-import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgPool;
-import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.PreparedStatement;
-import io.vertx.sqlclient.RowIterator;
-import io.vertx.sqlclient.RowStream;
-import io.vertx.sqlclient.Transaction;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.Tuple;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
@@ -75,12 +76,6 @@ import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import freemarker.template.TemplateException;
-
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
@@ -483,7 +478,7 @@ public class PostgresClient {
      * passwords for postgres embedded - this is a dev mode only feature */
     String secretKey = System.getProperty("postgres_secretkey_4_embeddedmode");
 
-    if(secretKey != null){
+    if (secretKey != null) {
       AES.setSecretKey(secretKey);
     }
 
@@ -495,7 +490,7 @@ public class PostgresClient {
     }
 
     client = createPgPool(vertx, postgreSQLClientConfig);
-   }
+  }
 
   static PgPool createPgPool(Vertx vertx, JsonObject configuration) {
     PgConnectOptions connectOptions = createPgConnectOptions(configuration);
@@ -609,7 +604,8 @@ public class PostgresClient {
         return;
       }
       try {
-        SQLConnection pgTransaction = new SQLConnection(res.result(), res.result().begin());
+        SQLConnection pgTransaction = new SQLConnection(res.result(),
+            res.result().begin(), null);
         done.handle(Future.succeededFuture(pgTransaction));
       } catch (Exception e) {
         log.error(e.getMessage(), e);
@@ -3042,25 +3038,30 @@ public class PostgresClient {
         return;
       }
 
-      SQLConnection sqlConnection = new SQLConnection(res.result(), null);
-      if (queryTimeout > 0) {
-        long timerId = vertx.setTimer(queryTimeout, id -> sqlConnection.conn.cancelRequest(ar -> {
-          if (ar.succeeded()) {
-            log.warn(
-                String.format("Cancelling request due to timeout after : %d ms",
-                    queryTimeout));
-          } else {
-            log.warn("Failed to send cancelling request", ar.cause());
-          }
-        }));
-        sqlConnection.setTimeId(timerId);
+      PgConnection pgConnection = res.result();
+
+      if (queryTimeout == 0) {
+        handler.handle(Future.succeededFuture(new SQLConnection(pgConnection, null, null)));
+        return;
       }
+
+      long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
+        if (ar.succeeded()) {
+          log.warn(
+              String.format("Cancelling request due to timeout after : %d ms",
+                  queryTimeout));
+        } else {
+          log.warn("Failed to send cancelling request", ar.cause());
+        }
+      }));
+
+      SQLConnection sqlConnection = new SQLConnection(pgConnection, null, timerId);
       handler.handle(Future.succeededFuture(sqlConnection));
     });
   }
 
   private void cancelConnectionTimeoutTimer(SQLConnection sqlConnection) {
-    Long timeId = sqlConnection.getTimeId();
+    Long timeId = sqlConnection.timerId;
     if (timeId != null) {
       vertx.cancelTimer(timeId);
     }
