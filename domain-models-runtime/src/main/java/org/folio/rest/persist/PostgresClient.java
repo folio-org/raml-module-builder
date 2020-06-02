@@ -1711,21 +1711,20 @@ public class PostgresClient {
 
    /**
    * Stream GET with CQLWrapper, no facets {@link org.folio.rest.persist.PostgresClientStreamResult}
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param filter
-   * @param returnIdField
-   * @param distinctOn may be null
-   * @param replyHandler AsyncResult; on success with result {@link org.folio.rest.persist.PostgresClientStreamResult}
-   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
-   */
+    * @param <T>
+    * @param table
+    * @param clazz
+    * @param fieldName
+    * @param filter
+    * @param returnIdField
+    * @param distinctOn may be null
+    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+    * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
+    */
    @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
-      CQLWrapper filter, boolean returnIdField, String distinctOn,
-      Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler,
-      int queryTimeout) {
+       CQLWrapper filter, boolean returnIdField, String distinctOn,
+       int queryTimeout, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
       null, queryTimeout, replyHandler);
