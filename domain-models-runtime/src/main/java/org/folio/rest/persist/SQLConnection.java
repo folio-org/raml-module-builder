@@ -7,8 +7,11 @@ public class SQLConnection {
 
   final PgConnection conn;
   final Transaction tx;
-  public SQLConnection(PgConnection conn, Transaction tx) {
+  final Long timerId;
+
+  public SQLConnection(PgConnection conn, Transaction tx, Long timerId) {
     this.conn = conn;
     this.tx = tx;
+    this.timerId = timerId;
   }
 }

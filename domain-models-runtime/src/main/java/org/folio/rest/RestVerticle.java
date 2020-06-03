@@ -931,7 +931,7 @@ public class RestVerticle extends AbstractVerticle {
     newArray[params.length - (size-(pos+1))] = resultHandler;
 
     //inject vertx context into each function
-    newArray[params.length - (size-(pos+2))] = getVertx().getOrCreateContext();
+    newArray[params.length - (size-(pos+2))] = context;
 
 /*    if(tenantId[0] == null){
       headers.put(OKAPI_HEADER_TENANT, DEFAULT_SCHEMA);
@@ -1021,7 +1021,7 @@ public class RestVerticle extends AbstractVerticle {
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("init", paramArray);
-        method.invoke(aClass.get(i).newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
+        method.invoke(aClass.get(i).newInstance(), vertx, context, resultHandler);
         LogUtil.formatLogMessage(getClass().getName(), "runHook",
           "One time hook called with implemented class " + "named " + aClass.get(i).getName());
       }
@@ -1051,7 +1051,7 @@ public class RestVerticle extends AbstractVerticle {
             try {
               Class<?>[] paramArray1 = new Class[] { Vertx.class, Context.class };
               Method method1 = aClass.get(j).getMethod("run", paramArray1);
-              method1.invoke(aClass.get(j).newInstance(), vertx, vertx.getOrCreateContext());
+              method1.invoke(aClass.get(j).newInstance(), vertx, context);
             } catch (Exception e) {
               log.error(e.getMessage(), e);
             }
@@ -1074,7 +1074,7 @@ public class RestVerticle extends AbstractVerticle {
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("init", paramArray);
-        method.invoke(aClass.get(i).newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
+        method.invoke(aClass.get(i).newInstance(), vertx, context, resultHandler);
         LogUtil.formatLogMessage(getClass().getName(), "runHook",
           "Post Deploy Hook called with implemented class " + "named " + aClass.get(i).getName());
       }
@@ -1095,7 +1095,7 @@ public class RestVerticle extends AbstractVerticle {
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("shutdown", paramArray);
-        method.invoke(aClass.get(i).newInstance(), vertx, vertx.getOrCreateContext(), resultHandler);
+        method.invoke(aClass.get(i).newInstance(), vertx, context, resultHandler);
         LogUtil.formatLogMessage(getClass().getName(), "runShutdownHook",
           "shutdown hook called with implemented class " + "named " + aClass.get(i).getName());
       }

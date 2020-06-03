@@ -103,6 +103,8 @@ public class PostgresClientIT {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
 
+  private int QUERY_TIMEOUT = 0;
+
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
@@ -649,6 +651,25 @@ public class PostgresClientIT {
     }));
   }
 
+    @Test
+  public void selectWithTimeoutSuccess(TestContext context) {
+      PostgresClient client = postgresClient();
+      client.getSQLConnection(2000, asyncAssertTx(context, conn -> {
+        client.selectSingle(conn, "SELECT 1, pg_sleep(1);", context.asyncAssertSuccess());
+      }));
+  }
+
+  @Test
+  public void selectWithTimeoutFailure(TestContext context) {
+      PostgresClient client = postgresClient();
+      client.getSQLConnection(500, asyncAssertTx(context, conn -> {
+        client.selectSingle(conn, "SELECT 1, pg_sleep(3);", context.asyncAssertFailure(e -> {
+          String sqlState = new PgExceptionFacade(e).getSqlState();
+          assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
+        }));
+      }));
+  }
+
   @Test
   public void updateSectionCriterion(TestContext context) {
     // update key=z where key='
@@ -1047,7 +1068,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(null, trans1.tx);
+      SQLConnection conn = new SQLConnection(null, trans1.tx, null);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertSuccess());
     }));
@@ -1058,7 +1079,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null);
+      SQLConnection conn = new SQLConnection(trans1.conn, null, null);
       trans2.complete(conn);
       postgresClient.endTx(trans2.future(), context.asyncAssertFailure());
     }));
@@ -1069,7 +1090,7 @@ public class PostgresClientIT {
     postgresClient = createFoo(context);
     postgresClient.startTx(context.asyncAssertSuccess(trans1 -> {
       Promise<SQLConnection> trans2 = Promise.promise();
-      SQLConnection conn = new SQLConnection(trans1.conn, null);
+      SQLConnection conn = new SQLConnection(trans1.conn, null, null);
       trans2.complete(conn);
       postgresClient.rollbackTx(trans2.future(), context.asyncAssertFailure());
     }));
@@ -2714,7 +2735,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Poline.class, "jsonb", wrapper, true, null,
-      facets, context.asyncAssertSuccess(sr -> {
+      facets, QUERY_TIMEOUT, context.asyncAssertSuccess(sr -> {
         ResultInfo resultInfo = sr.resultInto();
         context.assertEquals(3, resultInfo.getTotalRecords());
         context.assertEquals(2, resultInfo.getFacets().size());
@@ -2775,7 +2796,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
-      facets, context.asyncAssertSuccess(sr -> {
+      facets, QUERY_TIMEOUT, context.asyncAssertSuccess(sr -> {
         ResultInfo resultInfo = sr.resultInto();
         context.assertEquals(0, resultInfo.getTotalRecords());
         context.assertEquals(0, resultInfo.getFacets().size());
@@ -2797,7 +2818,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
-      badFacets, context.asyncAssertFailure());
+      badFacets, QUERY_TIMEOUT, context.asyncAssertFailure());
   }
 
   @Test
