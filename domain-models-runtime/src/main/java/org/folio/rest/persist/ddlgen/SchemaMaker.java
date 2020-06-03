@@ -127,6 +127,14 @@ public class SchemaMaker {
   }
 
   /**
+   * @return fieldName is the same and not null, or fieldPath is the same and not null
+   */
+  static boolean sameForeignKey(ForeignKeys a, ForeignKeys b) {
+    return (a.getFieldName() != null && a.getFieldName().equals(b.getFieldName())) ||
+        (a.getFieldPath() != null && a.getFieldPath().equals(b.getFieldPath()));
+  }
+
+  /**
    * @return the tables of schema plus tables to delete (tables that exist in previousSchema but not in schema);
    *   add foreign keys to delete (those that exist in previousSchema but not in schema).
    *   Nothing to do for indexes because rmb_internal_index handles them.
@@ -155,8 +163,8 @@ public class SchemaMaker {
           newTable.getForeignKeys() == null ? Collections.emptyList() : newTable.getForeignKeys();
       List<ForeignKeys> allForeignKeys = new ArrayList<>(newForeignKeys);
       oldForeignKeys.forEach(oldForeignKey -> {
-        if (newForeignKeys.stream().anyMatch(newForeignKey ->
-            oldForeignKey.getFieldName().equals(newForeignKey.getFieldName()))) {
+        if (newForeignKeys.stream()
+            .anyMatch(newForeignKey -> sameForeignKey(oldForeignKey, newForeignKey))) {
           // an entry for oldForeignKey exists in newForeignKeys, nothing to do
           return;
         }

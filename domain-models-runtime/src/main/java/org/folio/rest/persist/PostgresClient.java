@@ -571,6 +571,22 @@ public class PostgresClient {
     log.info("postgreSQLClientConfig = " + passwordRedacted.encode());
   }
 
+  /**
+   * Get connection configuration.
+   * The following properties are returned (some of which are optional):
+   * username, password, host, port, database, connectionReleaseDelay, maxPoolSize.
+   * Originally based on driver
+   * <a href="https://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration">
+   *   Configuration
+   *   </a>.
+   * which is no longer in actual use.
+   *
+   * @return
+   */
+  public JsonObject getConnectionConfig(){
+    return postgreSQLClientConfig;
+  }
+
   public static JsonObject pojo2JsonObject(Object entity) throws JsonProcessingException {
     if (entity == null) {
       throw new IllegalArgumentException("Entity can not be null");
@@ -3622,7 +3638,7 @@ public class PostgresClient {
   }
 
   /**
-   * Start an embedded PostgreSQL}.
+   * Start an embedded PostgreSQL.
    * doesn't change the configuration.
    *
    * @throws IOException  when starting embedded PostgreSQL fails
