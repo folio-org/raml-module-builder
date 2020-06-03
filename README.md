@@ -1138,7 +1138,7 @@ For the identifiers example we could define things in schema.json with:
 This will allow you to perform searches, such as:
 
     identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
-	
+
 ### CQL2PgJSON: Multi Field Index
 
 CQL2PGjson allows generating and querying indexes that contain multiple columns. The index json object now has support for the following properties:
@@ -1146,9 +1146,9 @@ CQL2PGjson allows generating and querying indexes that contain multiple columns.
 	Allows the user to explicitly define the expression they wish to use in the index
 	```
         "fieldName": "address",
-        "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",	
+        "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",
 	```
-	
+
 * multiFieldNames
 	This is a comma-separated list of json fields that are to be concatenated together via concat_ws with a space character.
 	example:
@@ -1798,7 +1798,7 @@ Replace 1000 by `exactCount` if configured differently.
 
 ## Metadata
 
-RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed-in JSON's schema declares a reference to the metadata schema. If so, RMB will populate the JSON with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
+RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT / PATCH) comes into an RMB module, RMB will check if the passed-in JSON's schema declares a reference to the metadata schema. If so, RMB will populate the JSON with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
 
 ## Facet Support
 
@@ -2347,7 +2347,7 @@ Query parameters and header validation
 ## Additional Tools
 
 #### De-Serializers
-At runtime RMB will serialize/deserialize the received JSON in the request body of PUT and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
+At runtime RMB will serialize/deserialize the received JSON in the request body of PUT, PATCH and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
 ```
 ObjectMapperTool.registerDeserializer(User.class, new UserDeserializer());
 

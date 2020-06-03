@@ -251,12 +251,13 @@ public class RestVerticle extends AbstractVerticle {
     final BodyHandler handler = BodyHandler.create();
 
     // IMPORTANT!!!
-    // the body of the request will be read into memory for ALL PUT requests
+    // the body of the request will be read into memory for ALL PUT, ALL PATCH requests
     // and for POST requests with the content-types below ONLY!!!
     // multipart, for example will not be read by the body handler as vertx saves
     // multiparts and www-encoded to disk - hence multiparts will be handled differently
     // see uploadHandler further down
     router.put().handler(handler);
+    router.patch().handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_API_DEF).handler(handler);
     router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);

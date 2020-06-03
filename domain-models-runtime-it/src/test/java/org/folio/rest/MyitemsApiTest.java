@@ -98,6 +98,58 @@ public class MyitemsApiTest extends ApiTestBase {
   }
 
   @Test
+  void patch() {
+    String id = randomUuid();
+    given(r).body(new JsonObject().put("id", id).put("name", "Puttgarden").encode()).
+        when().post("/myitems").
+        then()
+        .statusCode(201);
+
+    Map<Object,String> metadata1 =
+        given(r).
+            when().get("/myitems/" + id).
+            then().
+            statusCode(200).
+            body("id", equalTo(id)).
+            body("name", equalTo("Puttgarden")).
+            extract().path("metadata");
+
+    given(r).body(new JsonObject().put("name", "Putnam").encode()).
+        when().patch("/myitems/" + id).
+        then().
+        statusCode(204);
+
+    given(r).
+        when().get("/myitems/" + id).
+        then().
+        statusCode(200).
+        body("id", equalTo(id)).
+        body("name", equalTo("Putnam")).
+        body("metadata.createdDate", is(metadata1.get("createdDate"))).
+        body("metadata.updatedDate", is(greaterThan(metadata1.get("createdDate")))).
+        body("metadata.createdByUserId", is(nullValue())).
+        body("metadata.updatedByUserId", is(nullValue()));
+
+    given(r).
+        header(RestVerticle.OKAPI_USERID_HEADER, "hal").
+        body(new JsonObject().put("name", "Pusta").encode()).
+        when().patch("/myitems/" + id).
+        then().
+        statusCode(204);
+
+    given(r).
+        when().get("/myitems/" + id).
+        then().
+        statusCode(200).
+        body("id", equalTo(id)).
+        body("name", equalTo("Pusta")).
+        body("metadata.createdDate", is(metadata1.get("createdDate"))).
+        body("metadata.updatedDate", is(greaterThan(metadata1.get("createdDate")))).
+        body("metadata.createdByUserId", is(nullValue())).
+        body("metadata.updatedByUserId", is("hal"));
+  }
+
+  @Test
   void delete() {
     String xyzId =
         given(r).body(new JsonObject().put("name", "Xyz").encode()).

@@ -44,6 +44,13 @@ resourceTypes:
       collection-item:
         exampleItem: !include examples/myitem.json
         schema: myitem
+    patch:
+      body:
+        application/json:
+          type: myitem
+      responses:
+        204:
+          description: Accepted
 /myitemsaudit:
   type:
     get-only:
