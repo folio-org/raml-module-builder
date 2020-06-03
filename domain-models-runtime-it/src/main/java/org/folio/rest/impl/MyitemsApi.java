@@ -49,4 +49,11 @@ public class MyitemsApi implements org.folio.rest.jaxrs.resource.Myitems {
     PgUtil.put(TABLE, entity, id, okapiHeaders, vertxContext,
         PutMyitemsByMyitemIdResponse.class, asyncResultHandler);
   }
+
+  @Override
+  public void patchMyitemsByMyitemId(String id, Myitem entity, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    PgUtil.put(TABLE, entity, id, okapiHeaders, vertxContext,
+        PutMyitemsByMyitemIdResponse.class, asyncResultHandler);
+  }
 }
