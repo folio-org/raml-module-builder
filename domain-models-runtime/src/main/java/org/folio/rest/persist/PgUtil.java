@@ -608,6 +608,7 @@ public final class PgUtil {
    * @param vertxContext
    * @param routingContext
    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
                                    CQLWrapper filter, List<FacetField> facetList, String element,
                                    RoutingContext routingContext, Map<String, String> okapiHeaders,
@@ -1083,6 +1084,7 @@ public final class PgUtil {
    * @param responseDelegateClass
    * @param asyncResultHandler
    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T, C> void getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
                                                 String sortField, String cql, int offset, int limit,
                                                 Map<String, String> okapiHeaders, Context vertxContext,
