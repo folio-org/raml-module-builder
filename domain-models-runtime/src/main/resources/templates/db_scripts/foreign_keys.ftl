@@ -7,6 +7,7 @@
           ADD COLUMN IF NOT EXISTS ${key.fieldName} UUID REFERENCES ${myuniversity}_${mymodule}.${key.targetTable};
         CREATE INDEX IF NOT EXISTS ${table.tableName}_${key.fieldName}_idx
           ON ${myuniversity}_${mymodule}.${table.tableName} (${key.fieldName});
+        INSERT INTO rmb_internal_analyze VALUES ('${table.tableName}');
       <#else>
         ALTER TABLE ${myuniversity}_${mymodule}.${table.tableName}
           DROP COLUMN IF EXISTS ${key.fieldName} CASCADE;

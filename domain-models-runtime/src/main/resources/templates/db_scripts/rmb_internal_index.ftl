@@ -2,7 +2,9 @@
 -- drop it and replace by the replacement if a prepared replacement index exists,
 -- drop it if tops = 'DELETE'.
 -- Update its entry in table rmb_internal_index.
-CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.rmb_internal_index(aname text, tops text, newdef text) RETURNS void AS
+-- Add an entry in table rmb_internal_analyze if ALTER INDEX or CREATE INDEX was executed.
+CREATE OR REPLACE FUNCTION rmb_internal_index(
+  atable text, aname text, tops text, newdef text) RETURNS void AS
 $$
 DECLARE
   olddef text;
@@ -21,9 +23,11 @@ BEGIN
     EXECUTE format('DROP INDEX IF EXISTS %s', aname);
     EXECUTE format('ALTER INDEX IF EXISTS %s RENAME TO %s', namep, aname);
     EXECUTE 'DELETE FROM rmb_internal_index WHERE name = $1' USING namep;
+    EXECUTE 'INSERT INTO rmb_internal_analyze VALUES ($1)' USING atable;
   ELSIF olddef IS DISTINCT FROM newdef THEN
     EXECUTE format('DROP INDEX IF EXISTS %s', aname);
     EXECUTE newdef;
+    EXECUTE 'INSERT INTO rmb_internal_analyze VALUES ($1)' USING atable;
   END IF;
   EXECUTE 'INSERT INTO ${myuniversity}_${mymodule}.rmb_internal_index VALUES ($1, $2, FALSE) '
           'ON CONFLICT (name) DO UPDATE SET def = EXCLUDED.def, remove = EXCLUDED.remove' USING aname, newdef;
