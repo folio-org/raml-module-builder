@@ -554,9 +554,8 @@ public final class PgUtil {
     String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
     Context vertxContext) {
 
-   streamGet(table, clazz, cql, offset, limit, facets, element, 0, okapiHeaders, vertxContext,
-       routingContext
-   );
+   streamGet(table, clazz, cql, offset, limit, facets, element, 0, routingContext, okapiHeaders,
+       vertxContext);
   }
 
 
@@ -581,15 +580,15 @@ public final class PgUtil {
    @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
    public static <T> void streamGet(String table, Class<T> clazz,
        String cql, int offset, int limit, List<String> facets,
-       String element, int queryTimeout, Map<String, String> okapiHeaders,
-       Context vertxContext, RoutingContext routingContext) {
+       String element, int queryTimeout, RoutingContext routingContext, Map<String, String> okapiHeaders,
+       Context vertxContext) {
 
     HttpServerResponse response = routingContext.response();
     try {
       List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
       CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset);
-      streamGet(table, clazz, wrapper, facetList, element, queryTimeout, okapiHeaders, vertxContext,
-          routingContext);
+      streamGet(table, clazz, wrapper, facetList, element, queryTimeout, routingContext, okapiHeaders,
+          vertxContext);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       response.setStatusCode(500);
@@ -614,8 +613,8 @@ public final class PgUtil {
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
       CQLWrapper filter, List<FacetField> facetList, String element,
-      int queryTimeout, Map<String, String> okapiHeaders, Context vertxContext,
-      RoutingContext routingContext) {
+      int queryTimeout, RoutingContext routingContext, Map<String, String> okapiHeaders,
+      Context vertxContext) {
 
     HttpServerResponse response = routingContext.response();
     PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
