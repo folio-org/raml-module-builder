@@ -23,12 +23,18 @@ insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersi
 
 </#if>
 
+-- List of all indexes maintained by RMB
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
   name text PRIMARY KEY,
   def text NOT NULL,
   remove boolean NOT NULL
 );
 UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
+
+-- Collect all tables where we need to run ANALYZE
+CREATE TABLE IF NOT EXISTS rmb_internal_analyze (
+  tablename text
+);
 
 <#if mode.name() == "CREATE">
   <#include "uuid.ftl">
@@ -198,9 +204,23 @@ BEGIN
     IF newindexdef <> i.indexdef THEN
       EXECUTE format('DROP INDEX %I.%I', i.schemaname, i.indexname);
       EXECUTE newindexdef;
+      EXECUTE 'INSERT INTO rmb_internal_analyze VALUES ($1)' USING i.tablename;
     END IF;
   END LOOP;
 END $$;
+
+-- For each table where we have created an index run ANALYZE to collect statistic about the new index.
+-- PostgreSQL does not automatically do it: https://issues.folio.org/browse/FOLIO-2625
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOR t IN SELECT DISTINCT tablename FROM rmb_internal_analyze
+  LOOP
+    EXECUTE format('ANALYZE %I', t);
+  END LOOP;
+END $$;
+TRUNCATE rmb_internal_analyze;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};
 
