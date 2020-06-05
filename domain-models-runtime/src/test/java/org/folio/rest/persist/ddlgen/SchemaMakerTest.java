@@ -11,7 +11,8 @@ import java.io.IOException;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
 import org.junit.jupiter.api.Test;
-
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
@@ -217,7 +218,6 @@ public class SchemaMakerTest {
       "select * from file_start;"));
   }
 
-
   @Test
   public void delete() throws IOException, TemplateException {
 
@@ -363,5 +363,34 @@ public class SchemaMakerTest {
     assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refd")));
     assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refe")));
     assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS reff")));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "a,  , a,  , true",
+    " , b,  , b, true",
+    "a, b, a, b, true",
+    "a, b, c, d, false",
+    "a, a, b, b, false",
+    "a, b, b, a, false",
+    " ,  ,  ,  , false",
+  })
+  public void sameForeignKeyNullsString(String fieldNameA, String fieldPathA,
+                                        String fieldNameB, String fieldPathB, boolean expected) {
+    ForeignKeys a = new ForeignKeys();
+    if (fieldNameA != null) {
+      a.setFieldName(fieldNameA);
+    }
+    if (fieldPathA != null) {
+      a.setFieldPath(fieldPathA);
+    }
+    ForeignKeys b = new ForeignKeys();
+    if (fieldNameB != null) {
+      b.setFieldName(fieldNameB);
+    }
+    if (fieldPathB != null) {
+      b.setFieldPath(fieldPathB);
+    }
+    assertThat(SchemaMaker.sameForeignKey(a, b), is(expected));
   }
 }
