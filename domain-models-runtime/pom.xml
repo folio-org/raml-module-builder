@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>27.2.0-SNAPSHOT</version>
+    <version>30.1.0-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -56,6 +56,16 @@
       <artifactId>guava</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest-library</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
       <scope>test</scope>
@@ -63,33 +73,11 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.12</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-junit</artifactId>
-      <version>2.0.0.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.platform</groupId>
-      <artifactId>junit-platform-engine</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -129,19 +117,13 @@
       <version>${postgresql-embedded-version}</version>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>rules</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-mysql-postgresql-client-jasync</artifactId>
-      <version>3.8.2-FOLIO-2</version><!--$NO-MVN-MAN-VER$-->
+      <artifactId>vertx-pg-client</artifactId>
     </dependency>
     <dependency>
       <groupId>xerces</groupId>
@@ -179,12 +161,6 @@
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
-      <artifactId>postgres-runner</artifactId>
-      <version>${project.parent.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
       <artifactId>testing</artifactId>
       <version>${project.parent.version}</version>
       <scope>test</scope>
@@ -200,36 +176,25 @@
       <version>2.9.1</version>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>1.7.25</version>
-    </dependency>
-    <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-api</artifactId>
       <version>2.9.1</version>
     </dependency>
     <dependency>
-      <groupId>com.github.jsqlparser</groupId>
-      <artifactId>jsqlparser</artifactId>
-      <version>1.1</version>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-1.2-api</artifactId>
+      <version>2.9.1</version>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
-      <version>2.23.4</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
 
 
   <build>
-    <resources>
-      <resource>
-        <directory>src/main/resources</directory>
-        <filtering>true</filtering>
-      </resource>
-    </resources>
+
     <plugins>
 
       <plugin>
@@ -272,50 +237,6 @@
               </systemProperties>
             </configuration>
           </execution>
-          <execution>
-            <id>start-postgres</id>
-            <phase>pre-integration-test</phase>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-            <configuration>
-              <!-- For the <skip> we only support -Dmaven.test.skip=true, not -DskipTests and not -DskipITs
-                   to avoid complicated configuration using profiles -->
-              <skip>${maven.test.skip}</skip>
-              <executable>java</executable>
-              <async>true</async>
-              <classpathScope>test</classpathScope>
-              <arguments>
-                <argument>-classpath</argument>
-                <classpath />
-                <argument>org.folio.rest.persist.PostgresRunner</argument>
-              </arguments>
-            </configuration>
-          </execution>
-          <execution>
-            <id>wait-for-postgres</id>
-            <phase>pre-integration-test</phase>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <skip>${maven.test.skip}</skip>
-              <classpathScope>test</classpathScope>
-              <mainClass>org.folio.rest.persist.PostgresWaiter</mainClass>
-            </configuration>
-          </execution>
-          <execution>
-            <id>stop-postgres</id>
-            <phase>post-integration-test</phase>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <skip>${maven.test.skip}</skip>
-              <classpathScope>test</classpathScope>
-              <mainClass>org.folio.rest.persist.PostgresStopper</mainClass>
-            </configuration>
-          </execution>
         </executions>
       </plugin>
 
@@ -342,7 +263,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.9</version>
+        <version>1.11</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
@@ -368,7 +289,19 @@
               <goal>test-compile</goal>
             </goals>
           </execution>
-        </executions>
+         </executions>
+         <dependencies>
+           <dependency>
+             <groupId>org.aspectj</groupId>
+             <artifactId>aspectjrt</artifactId>
+             <version>${aspectj.version}</version>
+           </dependency>
+           <dependency>
+             <groupId>org.aspectj</groupId>
+             <artifactId>aspectjtools</artifactId>
+             <version>${aspectj.version}</version>
+           </dependency>
+         </dependencies>
       </plugin>
 
       <plugin>

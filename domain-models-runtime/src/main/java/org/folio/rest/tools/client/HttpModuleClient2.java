@@ -32,8 +32,6 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -52,7 +50,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
   private static final String X_OKAPI_HEADER = "x-okapi-tenant";
   private static final Pattern TAG_REGEX = Pattern.compile("\\{(.+?)\\}");
 
-  private static final Logger log = LoggerFactory.getLogger(HttpModuleClient.class);
+  private static final Logger log = LoggerFactory.getLogger(HttpModuleClient2.class);
 
   private String tenantId;
   private HttpClientOptions options;
@@ -201,7 +199,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
   @Override
   public CompletableFuture<Response> request(HttpMethod method, Object pojo, String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(method, Buffer.buffer(PostgresClient.pojo2json(pojo)), endpoint, headers, null, false, null);
+    return request(method, Buffer.buffer(PostgresClient.pojo2JsonObject(pojo).encode()), endpoint, headers, null, false, null);
   }
 
   @Override
@@ -420,98 +418,4 @@ public class HttpModuleClient2 implements HttpClientInterface {
           });
     }
   }
-
-  public static void main(String args[]) throws Exception {
-
-/*    JsonObject j11 = new JsonObject(
-      IOUtils.toString(JsonPathParser.class.getClassLoader().
-        getResourceAsStream("pathTest.json"), "UTF-8"));
-
-    JsonObject j12 = new JsonObject(
-      IOUtils.toString(JsonPathParser.class.getClassLoader().
-        getResourceAsStream("pathTest.json"), "UTF-8"));
-
-    Response test11 = new Response();
-    test11.setBody(j11);
-    Response test12 = new Response();
-    test12.setBody(j12);
-
-    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr[1]").getBody());
-
-    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr", false).getBody());
-
-
-    System.out.println(test11.joinOn("c.a1", test12, "a", "c.arr[0].a3").getBody());*/
-
-    HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "trigger_test2", false);
-
-    JsonObject j = new JsonObject();
-    JsonArray j22 = new JsonArray();
-    JsonArray j33 = new JsonArray();
-
-    j.put("arr", j22);
-    j.put("arr2", j33);
-
-    j22.add("librarian3");
-    j22.add("librarian2");
-
-    JsonObject j44 = new JsonObject();
-    j44.put("o", new JsonObject("{\"bbb\":\"aaa\"}"));
-    j33.add(j44);
-    Response rr = new Response();
-    rr.setBody(j);
-
-    Response bb0 = hc.request("/groups", false, new BuildCQL(rr, "arr2[0]", "group"));
-    System.out.println(bb0.body);
-    Response bb = hc.request("/groups", false, new BuildCQL(rr, "arr", "group"));
-    System.out.println(bb.body);
-    Response bb1 = hc.request("/groups", false, new BuildCQL(rr, "arr[0]", "group"));
-    System.out.println(bb1.body);
-    Response bb2 = hc.request("/groups", false, new BuildCQL(rr, "arr[*]", "group"));
-    System.out.println(bb2.body);
-
-
-    for (int i = 0; i < 2; i++) {
-      boolean cache = true;
-      if(i==1){
-        cache = false;
-      }
-      Response a = hc.request("/users", cache);
-      System.out.println(a.body);
-      Response b = hc.request("/groups", cache, new BuildCQL(a, "users[*].patron_group", "group"));
-      a.joinOn("users[*].patron_group", b, "usergroups[*].id", "group");
-      hc.request("/users").joinOn("users[*].patron_group", hc.request("/groups"), "usergroups[*].id");
-    }
-
-    Response a = hc.request("/users");
-    Response b = hc.request("/groups");
-    a.joinOn("users[*].patron_group2", b, "usergroups[*].id2", "group2");
-
-    Response a1 = hc.request("/users");
-    Response b1 = hc.request("/abc", new RollBackURL("/users", HttpMethod.GET));
-    a1.joinOn("users[*].patron_group", b1, "usergroups[*].id", "group");
-    hc.closeClient();
-
-    JsonObject j1 = new JsonObject();
-    j1.put("a", "1");
-    j1.put("b", "2");
-    JsonObject jo = new JsonObject();
-    jo.put("a1", "1");
-    j1.put("c", jo);
-    JsonObject j2 = new JsonObject();
-    j2.put("z", "1");
-    j2.put("zz", "2");
-    Response test1 = new Response();
-    test1.body = j1;
-    Response test2 = new Response();
-    test2.body = j2;
-    Response end = test1.joinOn("c.a1", test2, "z", "zz");
-    System.out.println(end.getBody());
-    j2.put("z", "2");
-    Response end3 = test1.joinOn("c.a1", test2, "z", "zz");
-    System.out.println(end3.getBody());
-    Response end2 = test1.joinOn("c.a1", test2, "z");
-    System.out.println(end2.getBody());
-  }
-
 }

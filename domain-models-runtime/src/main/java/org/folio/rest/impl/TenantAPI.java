@@ -1,9 +1,10 @@
 package org.folio.rest.impl;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
@@ -20,13 +21,16 @@ import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 
+import freemarker.template.TemplateException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
+import io.vertx.sqlclient.Row;
 
 /**
  * @author shale
@@ -34,10 +38,13 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class TenantAPI implements Tenant {
 
-  public static final String       TABLE_JSON = "templates/db_scripts/schema.json";
-  public static final String       DELETE_JSON = "templates/db_scripts/delete.json";
+  public static final String TABLE_JSON = "templates/db_scripts/schema.json";
 
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
+
+  PostgresClient postgresClient(Context context) {
+    return PostgresClient.getInstance(context.owner());
+  }
 
   @Validate
   @Override
@@ -72,13 +79,6 @@ public class TenantAPI implements Tenant {
 
             String sqlFile = null;
             try {
-/*              InputStream is = TenantAPI.class.getClassLoader().getResourceAsStream(DELETE_JSON);
-              if(is == null){
-                log.info("No delete json to use for deleting tenant " + tenantId);
-                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.withNoContent()));
-                return;
-              }
-              sqlFile = IOUtils.toString(is);*/
               SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), TenantOperation.DELETE, null, PomReader.INSTANCE.getRmbVersion());
               sqlFile = sMaker.generateDDL();
 
@@ -91,7 +91,7 @@ public class TenantAPI implements Tenant {
             log.info("Attempting to run delete script for: " + tenantId);
             log.debug("GENERATED SCHEMA " + sqlFile);
             /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-            PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, true,
+            postgresClient(context).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
                     String res = "";
@@ -128,14 +128,20 @@ public class TenantAPI implements Tenant {
     });
   }
 
+  Future<Boolean> tenantExists(Context context, String tenantId) {
+    Promise<Boolean> promise = Promise.promise();
+    tenantExists(context, tenantId, promise.future());
+    return promise.future();
+  }
+
   void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
     /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-    PostgresClient.getInstance(context.owner()).select(
+    postgresClient(context).select(
       "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '"+ PostgresClient.convertToPsqlStandard(tenantId) +"');",
         reply -> {
           try {
             if(reply.succeeded()){
-              handler.handle(io.vertx.core.Future.succeededFuture(reply.result().getResults().get(0).getBoolean(0)));
+              handler.handle(io.vertx.core.Future.succeededFuture(reply.result().iterator().next().getBoolean(0)));
             }
             else {
               log.error(reply.cause().getMessage(), reply.cause());
@@ -157,7 +163,7 @@ public class TenantAPI implements Tenant {
       try {
 
         String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-        log.info("sending... postTenant for " + tenantId);
+        log.info("sending... getTenant for " + tenantId);
 
         tenantExists(context, tenantId, res -> {
           boolean exists = false;
@@ -180,116 +186,147 @@ public class TenantAPI implements Tenant {
     });
   }
 
+  /**
+   * @return previous Schema from rmb_internal.jsonb->>'schemaJson', or null if not exist.
+   */
+  Future<Schema> previousSchema(Context context, String tenantId, boolean tenantExists) {
+    Promise<Schema> promise = Promise.promise();
+
+    if (! tenantExists) {
+      promise.complete(null);
+      return promise.future();
+    }
+
+    String sql = "SELECT jsonb->>'schemaJson' " +
+        "FROM " + PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_internal";
+    postgresClient(context).selectSingle(sql, select -> {
+      if (select.failed()) {
+        promise.fail(select.cause());
+        return;
+      }
+      try {
+        Row row = select.result();
+        String schemaString = row == null ? null : row.getString(0);
+        if (schemaString == null) {
+          promise.complete(null);
+          return;
+        }
+        Schema schema = ObjectMapperTool.getMapper().readValue(schemaString, Schema.class);
+        promise.complete(schema);
+      } catch (Exception e) {
+        promise.fail(e);
+      }
+    });
+    return promise.future();
+  }
+
+  String getTablePath() {
+    return TABLE_JSON;
+  }
+
+  public static class NoSchemaJsonException extends RuntimeException {
+  }
+
+  /**
+   * @param tenantExists false for initial installation, true for upgrading
+   * @param tenantAttributes parameters like module version that may influence generated SQL
+   * @param previousSchema schema to upgrade from, may be null if unknown and on initial install
+   * @return the SQL commands to create or upgrade the tenant's schema
+   * @throws NoSchemaJsonException when templates/db_scripts/schema.json doesn't exist
+   * @throws TemplateException when processing templates/db_scripts/schema.json fails
+   */
+  public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes tenantAttributes,
+      Schema previousSchema) throws IOException, TemplateException {
+
+    InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(getTablePath());
+    if (tableInput == null) {
+      log.info("Could not find templates/db_scripts/schema.json , "
+          + " RMB will not run any scripts for " + tenantId);
+      throw new NoSchemaJsonException();
+    }
+
+    TenantOperation op = TenantOperation.CREATE;
+    String previousVersion = null;
+    String newVersion = tenantAttributes == null ? null : tenantAttributes.getModuleTo();
+    if (tenantExists) {
+      op = TenantOperation.UPDATE;
+      if (tenantAttributes != null) {
+        previousVersion = tenantAttributes.getModuleFrom();
+      }
+    }
+
+    SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
+
+    String tableInputStr = IOUtils.toString(tableInput, StandardCharsets.UTF_8);
+    sMaker.setSchemaJson(tableInputStr);
+    Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+    sMaker.setSchema(schema);
+    sMaker.setPreviousSchema(previousSchema);
+    String sqlFile = sMaker.generateDDL();
+    log.debug("GENERATED SCHEMA " + sqlFile);
+    return sqlFile;
+  }
+
+  private Future<String> sqlFile(Context context, String tenantId, TenantAttributes tenantAttributes,
+      boolean tenantExists) {
+
+    return previousSchema(context, tenantId, tenantExists)
+    .compose(previousSchema -> {
+      try {
+        String sqlFile = sqlFile(tenantId, tenantExists, tenantAttributes, previousSchema);
+        return Future.succeededFuture(sqlFile);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      } catch (TemplateException e) {  // checked exception from main.tpl parsing
+        throw new IllegalArgumentException(e);
+      }
+    });
+  }
+
+  /**
+   * @param tenantAttributes parameters like module version that may influence generated SQL
+   * @return the SQL commands to create or upgrade the tenant's schema
+   * @throws NoSchemaJsonException when templates/db_scripts/schema.json doesn't exist
+   * @throws TemplateException when processing templates/db_scripts/schema.json fails
+   */
+  public Future<String> sqlFile(Context context, String tenantId, TenantAttributes tenantAttributes) {
+    return tenantExists(context, tenantId)
+    .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists));
+  }
 
   @Validate
   @Override
-  public void postTenant(TenantAttributes entity, Map<String, String> headers,
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
       Handler<AsyncResult<Response>> handlers, Context context)  {
 
-    /**
-     * http://host:port/tenant
-     * Validation by rmb means the entity is either properly populated on is null
-     * depending on whether this is an upgrade or a create tenant
-     *
-     * Modules that are not DB bound but are still RMB modules should override this API and do
-     * any tenant bootstrapping they need
-     */
+    String tenantId = TenantTool.tenantId(headers);
+    log.info("sending... postTenant for " + tenantId);
+    if (tenantAttributes != null) {
+      log.debug("upgrade from " + tenantAttributes.getModuleFrom() + " to " + tenantAttributes.getModuleTo());
+    }
 
-    context.runOnContext(v -> {
-      String tenantId = TenantTool.calculateTenantId(headers.get(ClientGenerator.OKAPI_HEADER_TENANT));
-      log.info("sending... postTenant for " + tenantId);
-      try {
-        //body is optional so that the TenantAttributes
-        if(entity != null){
-          log.debug("upgrade from " + entity.getModuleFrom() + " to " + entity.getModuleTo());
-        }
-
-        tenantExists(context, tenantId,
-          h -> {
-            try {
-              if (h.failed()) {
-                handlers.handle(io.vertx.core.Future.failedFuture(h.cause().getMessage()));
-                log.error(h.cause().getMessage(), h.cause());
-                return;
-              }
-              final boolean tenantExists = h.result();
-              InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(
-                TABLE_JSON);
-
-              if(tableInput == null) {
-                handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-                  .respond204()));
-                log.info("Could not find templates/db_scripts/schema.json , "
-                    + " RMB will not run any scripts for " + tenantId);
-                return;
-              }
-
-              TenantOperation op = TenantOperation.CREATE;
-              String previousVersion = null;
-              String newVersion = null;
-              if (tenantExists) {
-                op = TenantOperation.UPDATE;
-                previousVersion = entity.getModuleFrom();
-                newVersion = entity.getModuleTo();
-              }
-
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
-
-              String tableInputStr = IOUtils.toString(tableInput, StandardCharsets.UTF_8);
-              Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
-              sMaker.setSchema(schema);
-
-              String sqlFile = sMaker.generateDDL();
-              log.debug("GENERATED SCHEMA " + sqlFile);
-              /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-              PostgresClient.getInstance(context.owner()).runSQLFile(sqlFile, true,
-                reply -> {
-                  try {
-                    StringBuffer res = new StringBuffer();
-                    if (reply.succeeded()) {
-                      boolean failuresExist = false;
-                      if(reply.result().size() > 0){
-                        failuresExist = true;
-                      }
-                      res.append(new JsonArray(reply.result()).encodePrettily());
-                      if (failuresExist){
-                        handlers.handle(io.vertx.core.Future.succeededFuture(
-                          PostTenantResponse.respond400WithTextPlain(res.toString())));
-                      } else {
-                        OutStream os = new OutStream();
-                        os.setData(res);
-                        if (tenantExists) {
-                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond200WithApplicationJson(os)));
-                        } else {
-                          handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(os)));
-                        }
-                      }
-                    } else {
-                      log.error(reply.cause().getMessage(), reply.cause());
-                      handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                        respond500WithTextPlain(reply.cause().getMessage())));
-                    }
-                  } catch (Exception e) {
-                    log.error(e.getMessage(), e);
-                    handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                      respond500WithTextPlain(e.getMessage())));
-                  }
-                });
-            } catch (Exception e) {
-              log.error(e.getMessage(), e);
-              handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-                respond500WithTextPlain(e.getMessage())));
-            }
-          });
-      } catch (Exception e) {
-        if(e.getMessage() != null){
-          //if no db connection, the caught exception is a NPE which has a null for a message
-          //which will print an NPE trace to the log which we dont want
-          log.error(e.getMessage(), e);
-        }
-        handlers.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse.
-          respond500WithTextPlain(e.getMessage())));
+    Future<Boolean> tenantExistsFuture = tenantExists(context, tenantId);
+    tenantExistsFuture
+    .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists))
+    .compose(sqlFile -> postgresClient(context).runSQLFile(sqlFile, true))
+    .map(failedStatements -> {
+      String jsonListOfFailures = new JsonArray(failedStatements).encodePrettily();
+      if (! failedStatements.isEmpty()) {
+        return PostTenantResponse.respond400WithTextPlain(jsonListOfFailures);
       }
-    });
+      boolean tenantExists = tenantExistsFuture.result();
+      return tenantExists
+              ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
+              : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
+    })
+    .onFailure(e -> {
+      if (e instanceof NoSchemaJsonException) {
+        handlers.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+        return;
+      }
+      log.error(e.getMessage(), e);
+      handlers.handle(Future.succeededFuture(PostTenantResponse.respond500WithTextPlain(e.getMessage())));
+    })
+    .onSuccess(response -> handlers.handle(Future.succeededFuture(response)));
   }
 }

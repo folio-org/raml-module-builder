@@ -2,6 +2,7 @@ package org.folio.rest.tools.utils;
 
 import io.vertx.core.json.JsonObject;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public enum Envs {
@@ -18,12 +19,26 @@ public enum Envs {
 
   private static Map<String, String> env = System.getenv();
 
-  static void setEnv(Map<String,String> env) {
+  @SuppressWarnings("squid:S3066")  // suppress "enum fields should not be publicly mutable"
+  public static void setEnv(Map<String,String> env) {
     Envs.env = env;
   }
 
   public static String getEnv(Envs key){
     return env.get(key.name());
+  }
+
+  /**
+   * Set DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD and DB_DATABASE, unset all other variables.
+   */
+  public static void setEnv(String host, int port, String username, String password, String database) {
+    Map<String,String> envs = new HashMap<>();
+    envs.put("DB_HOST", host);
+    envs.put("DB_PORT", port + "");
+    envs.put("DB_USERNAME", username);
+    envs.put("DB_PASSWORD", password);
+    envs.put("DB_DATABASE", database);
+    setEnv(envs);
   }
 
   private static String configKey(Envs envs) {

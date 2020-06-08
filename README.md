@@ -1,7 +1,7 @@
 
 # Raml-Module-Builder
 
-Copyright (C) 2016-2019 The Open Library Foundation
+Copyright (C) 2016-2020 The Open Library Foundation
 
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
@@ -47,6 +47,7 @@ See the file ["LICENSE"](LICENSE) for more information.
     * [CQL: Matching undefined or empty values](#cql-matching-undefined-or-empty-values)
     * [CQL: Matching array elements](#cql-matching-array-elements)
     * [CQL: @-relation modifiers for array searches](#cql--relation-modifiers-for-array-searches)
+    * [CQL2PgJSON: Multi Field Index](#cql2pgjson-multi-field-index)
     * [CQL2PgJSON: Foreign key cross table index queries](#cql2pgjson-foreign-key-cross-table-index-queries)
     * [CQL2PgJSON: Foreign key tableAlias and targetTableAlias](#cql2pgjson-foreign-key-tablealias-and-targettablealias)
     * [CQL2PgJSON: Exceptions](#cql2pgjson-exceptions)
@@ -55,11 +56,11 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [RAMLs API](#ramls-api)
 * [JSON Schemas API](#json-schemas-api)
 * [Query Syntax](#query-syntax)
+* [Estimated totalRecords](#estimated-totalrecords)
 * [Metadata](#metadata)
 * [Facet Support](#facet-support)
 * [JSON Schema fields](#json-schema-fields)
 * [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
-* [Drools integration](#drools-integration)
 * [Messages](#messages)
 * [Documentation of the APIs](#documentation-of-the-apis)
 * [Logging](#logging)
@@ -129,10 +130,8 @@ The framework consists of a number of tools:
 
 ## Upgrading
 
-See separate [upgrading notes](doc/upgrading.md).
-
-Note: This version of the README is for RMB v20+ version.
-If still using older versions, then see the [branch b19](https://github.com/folio-org/raml-module-builder/tree/b19) README.
+See separate [upgrading notes](doc/upgrading.md) how to upgrade an RMB based module to
+a new RMB version.
 
 ## Overview
 
@@ -257,9 +256,6 @@ or `org.folio.rest.RestVerticle` for a specific class.)
     "username":"postgres","password":"mysecretpassword", "database":"postgres",
     "charset":"windows-1252", "queryTimeout" : 10000}`
 
-- `drools_dir=[path]` (Optional -- path to an external drools file. By default,
-  `*.drl` files in the `resources/rules` directory are loaded)
-
 - Other module-specific arguments can be passed via the command line in the format key=value. These will be accessible to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
 
 - Optional JVM arguments can be passed before the `-jar` argument, e.g.
@@ -296,9 +292,9 @@ Postgres itself, but is a value - in milliseconds - that triggers query
 execution analysis. If a single query exceeds this threshold, it will be
 analyzed by using `EXPLAIN ANALYZE`. Note that this in turn further adds
 time to the query, so this should only be executed for slow queries that
-needs further attention. The enalysis can effectively be turned off by setting
-it to a high value (eg 300000 ~ 5 minutes). Like the DB-environment
-variables this pertains per RMB-module (process). The default
+needs further attention. The analysis can effectively be turned off by setting
+it to a high value (e.g. 300000 ~ 5 minutes). Like the DB-environment
+variables, this pertains per RMB-module (process). The default
 value of `DB_EXPLAIN_QUERY_THRESHOLD` is 1000 (1 second).
 
 The EXPLAIN ANALYZE - is only performed for PostgresClient.get,
@@ -342,7 +338,7 @@ Adjust the POM file to match your project, e.g. artifactID, version, etc.
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>20.0.0</version>
+      <version>29.0.0</version>
     </dependency>
     ...
     ...
@@ -433,7 +429,7 @@ The end-points that share the same first path segment must go into the same .ram
 because the first path segment determines the name of the resource .java interface, for example
 `/foo/bar` and `/foo/baz` should go into foo.raml, and foo.raml will generate
 `org/folio/rest/jaxrs/resource/Foo.java`. However, you may
-(overrule the convention for the resource interface name)[https://github.com/mulesoft-labs/raml-for-jax-rs/issues/111]
+[overrule the convention for the resource interface name](https://github.com/mulesoft-labs/raml-for-jax-rs/issues/111)
 by implementing a GeneratorExtension.
 
 Add the shared suite of [RAML utility](https://github.com/folio-org/raml) files
@@ -448,10 +444,11 @@ Create JSON schemas indicating the objects exposed by the module.
 Use the `description` field alongside the `type` field to explain the content and
 usage and to add documentation.
 
-Use `"javaType": "org.folio.rest.jaxrs.model.MyEntity"` to change the name of the
-generated Java type.
+Use `"javaType": "org.folio.rest.jaxrs.model.MyEntity"` to set the class name of the
+generated Java type to prevent a duplicate name where the second class overwrites the first class
+or to avoid a misleading name. Otherwise the field name in the .json schema file is used as class name.
 
-See (jsonschema2pojo Reference)[https://github.com/joelittlejohn/jsonschema2pojo/wiki/Reference]
+See [jsonschema2pojo Reference](https://github.com/joelittlejohn/jsonschema2pojo/wiki/Reference)
 for JSON schema details.
 
 The GenerateRunner automatically dereferences the schema files and places them into the
@@ -740,13 +737,14 @@ for chunks of 10000 records each.
 
 The PostgreSQL connection parameters locations are searched in this order:
 
+- org.folio.rest.tools.utils.Envs.setEnv, useful for https://www.testcontainers.org/modules/databases/postgres/
 - [DB_* environment variables](#environment-variables)
 - Configuration file, defaults to `resources/postgres-conf.json` but can be set via [command-line options](#command-line-options)
 - Embedded PostgreSQL using [default credentials](#credentials)
 
-By default an embedded PostgreSQL is included in the runtime, but it is only run if neither DB_* environment variables
+By default an embedded PostgreSQL is included in the runtime, but it is only run if neither Envs nor DB_* environment variables
 nor a postgres configuration file are present. To start an embedded PostgreSQL using connection parameters from the
-environment variables or the configuration file add `embed_postgres=true` to the command line
+Envs or environment variables or the configuration file add `embed_postgres=true` to the command line
 (`java -jar mod-notify-fat.jar embed_postgres=true`). Use PostgresClient.setEmbeddedPort(int) to overwrite the port.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
@@ -845,11 +843,11 @@ public class InitConfigService implements PostDeployVerticle {
 
 ### Foreign keys constraint
 
-An `foreignKeys` entry in schema.json of the Tenant API automatically creates the following columns, triggers and indexes for the foreign key.
+A `foreignKeys` entry in schema.json of the Tenant API automatically creates the following columns, triggers and indexes for the foreign key.
 
 This additional column is needed because PostgreSQL does not directly support a foreign key constraint (referential integrity) of a field inside the JSONB.
 
-Example, similar to the SQL produced by an `foreignKeys` entry:
+Example, similar to the SQL produced by a `foreignKeys` entry:
 
 ```sql
 CREATE TABLE item (
@@ -936,17 +934,24 @@ Only these relations have been implemented yet:
 
 * `=` (this is `==` for number matching and `adj` for a string matching.
        Examples 1: `height =/number 3.4` Example 2: `title = Potter`)
-* `==` (exact match, for example `barcode == 883746123` or exact substring match `title == "Harry Potter*"`;
+* `==` (exact field match, for example `barcode == 883746123` or exact prefix match `title == "Harry Pott*"`
+        matching "Harry Potter and the chamber of secrets" but not "Science of Harry Potter";
         `==/number` matches any form: 3.4 = 3.400 = 0.34e1)
 * `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
 * `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
 * `adj` (substring phrase match: all words of the query string exist consecutively in that order, there may be any
-          whitespace and punctuation in between, `title adj "Harry Potter"` matches "Harry - . - Potter")
+          whitespace and punctuation in between, `title adj "Harry Potter"` matches "The Harry - . - Potter Story")
 * `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
+
+The `==` exact string match operator is always case sensitive and respects accents. If an index should speed up the search
+it must be a b-tree `"index"` or `"uniqueIndex"` with `"caseSensitive": true` and `"removeAccents": false`.
+
+Refer to further explanation of [CQL string matching](https://dev.folio.org/faqs/explain-cql/)
+for the "Exact match operator" and "Word match operators".
 
 ### CQL: Modifiers
 
@@ -989,6 +994,10 @@ CQL `field adj "bar"` matches `bar`, `bar-baz`, `foo-bar-baz`.
 CQL `field adj "bar baz"` matches `bar baz`, `bar-baz`, `foo-bar-baz`, `foo-bar baz`, `bar-baz-foo`.
 
 CQL `field adj "bar-baz"` matches `bar-baz`, but neither `bar baz` nor `foo-bar-baz` nor `foo-bar baz` nor `bar-baz-foo`.
+
+CQL `field adj "123 456"` matches `123 456`, but not `123-456`.
+
+CQL `field adj "123-456"` matches `123-456`, but not `123 456`.
 
 `foo/bar/baz` is a single word, while `foo//bar//baz`, `foo///bar///baz`, `foo////bar////baz`, etc.
 are split into the three words `foo`, `/bar`, and `/baz` (always reduced to a single slash).
@@ -1105,7 +1114,7 @@ And to match any of the sub properties type1, type2, you could use:
 
 In schema.json two new properties, `arraySubfield` and `arrayModifiers`,
 specifies the subfield and the list of modifiers respectively.
-This can be applied to `ginIndex` and `fullTextIndex`.
+This can be applied to `ginIndex` or `fullTextIndex`.
 schema.json example:
 
     {
@@ -1129,7 +1138,7 @@ For the identifiers example we could define things in schema.json with:
 This will allow you to perform searches, such as:
 
     identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
-	
+
 ### CQL2PgJSON: Multi Field Index
 
 CQL2PGjson allows generating and querying indexes that contain multiple columns. The index json object now has support for the following properties:
@@ -1137,17 +1146,17 @@ CQL2PGjson allows generating and querying indexes that contain multiple columns.
 	Allows the user to explicitly define the expression they wish to use in the index
 	```
         "fieldName": "address",
-        "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",	
+        "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",
 	```
-	
+
 * multiFieldNames
-	This is a comma seperated list of json fields that are to be concatenated together via concat_ws with a space character. 
+	This is a comma-separated list of json fields that are to be concatenated together via concat_ws with a space character.
 	example:
 	```
 		"fieldName": "address",
 		"multiFieldNames": "city,state",
 	```
-these 2 examples are equivalent and would be queried by using the fieldName such as:
+These 2 examples are equivalent and would be queried by using the fieldName such as:
 
 ```
 address = Boston MA
@@ -1159,7 +1168,7 @@ These fields are optional but mutually exclusive, you only need one of them.
 ### CQL2PgJSON: Foreign key cross table index queries
 
 CQL2PgJSON supports cross table joins via subquery based on foreign keys.
-This allows arbitrary depth relationships in both child-to-parent and parent-to-child direction.
+This allows arbitrary depth relationships in both child-to-parent (many-to-one) and parent-to-child (one-to-many) direction.
 
 Example relationship: item → holdings_record → instance
 
@@ -1169,12 +1178,14 @@ Join conditions of this example:
 
 The field in the child table points to the primary key `id` field of the parent table; the parent table is also called the target table.
 
-* Precede the index you want to search with the table name in camelCase, e.g. `instance.title = "bee"`.
-* There is no change with child table fields, use them in the regular way without table name prefix.
+* Precede the index you want to search, with the table name in camelCase, e.g. `instance.title = "bee"`.
+* There is no change with child table fields. Use them in the regular way without table name prefix.
 * The `foreignKey` entry in schema.json automatically creates an index on the foreign key field.
-* For fast queries declare an index on any other searched field like `title` in the schema.json file.
-* For a multi-table join use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
+* For fast queries, declare an index on any other searched field like `title` in the schema.json file.
+* For a multi-table join, use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
+  It must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance.
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
+* The sortBy clause doesn't support foreign table fields. Use the API endpoint of the records with the field you want to sort on.
 * The schema for the above example:
 ```
 {
@@ -1417,18 +1428,20 @@ An example can be found here:
 
  - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example.json
 
+The top level properties in schema.json (some of which are optional) are `scripts`, `tables`, `views` and `exactCount`.
+
 Entries in the json file to be aware of:
 
-For each **table**:
+For each **table** in `tables` property:
 
-1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code
+1. `tableName` - name of the table that will be generated - this is the table that should be referenced from the code. Maximum length is 49 characters.
 2. `generateId` - No longer supported.  This functionality is not stable in Pgpool-II see https://www.pgpool.net/docs/latest/en/html/restrictions.html.  The solution is to generate a UUID in java in the same manner as https://github.com/folio-org/raml-module-builder/blob/v23.11.0/domain-models-runtime/src/main/java/org/folio/rest/persist/PgUtil.java#L358
 3. `fromModuleVersion` - this field indicates the version in which the table was created / updated in. When a tenant update is requested - only versions older than the indicated version will generate the declared table. This ensures that if a module upgrades from an older version, the needed tables will be generated for it, however, subsequent upgrades from versions equal or later than the version indicated for the table will not re-generate the table.
     * Note that this is enforced for all tables, views, indexes, FK, triggers, etc. (via the `IF NOT EXISTS` sql Postgres statement)
 4. `mode` - should be used only to indicate `delete`
 5. `withMetadata` - will generate the needed triggers to populate the metadata section in the json on update / insert
 6. `likeIndex` - indicate which fields in the json will be queried using the `LIKE`. Needed for fields that will be faceted on.
-    * `fieldName` the field name in the json for which to create the index
+    * `fieldName` the field name in the json for which to create the index, maximum name length is 49 characters.
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `caseSensitive` allows you to create case insensitive indexes (boolean true / false), if you have a string field that may have different casings and you want the value to be unique no matter the case. Defaults to false.
     *  `removeAccents` - normalize accents or leave accented chars as is. Defaults to true.
@@ -1436,16 +1449,21 @@ For each **table**:
     * `stringType` - defaults to true - if this is set to false than the assumption is that the field is not of type text therefore ignoring the removeAccents and caseSensitive parameters.
     * `arrayModifiers` - specifies array relation modifiers supported for some index. The modifiers must exactly match the name of the property in the JSON object within the array.
     * `arraySubfield` - is the key of the object that is used for the primary term when array relation modifiers are in use. This is typically also defined when `arrayModifiers` are also defined.
-    * Do not manually add an index for an `id` field or a foreign key field, they get indexed automatically.
+    * `multiFieldNames` - see [CQL2PgJSON: Multi Field Index](#cql2pgjson-multi-field-index) above
+    * `sqlExpression` - see [CQL2PgJSON: Multi Field Index](#cql2pgjson-multi-field-index) above
+    * `sqlExpressionQuery` - How to wrap the query string $ before matching against the index expression. This overwrites any `caseSensitive` and `removeAccents` wrapping. Example that manually implements case insensitive matching: `"sqlExpression": "lower(jsonb->>'name')", "sqlExpressionQuery": "lower($)"`
+    * Do not manually add an index for an `id` field or a foreign key field. They get indexed automatically.
 7. `ginIndex` - generate an inverted index on the JSON using the `gin_trgm_ops` extension. Allows for left and right truncation LIKE queries and regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the full field match (SQL `=` operator and CQL `==` operator without wildcards). See the `likeIndex` for available options.
 8. `uniqueIndex` - create a unique index on a field in the JSON
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
+    * Adding a record will fail if the b-tree index byte size limit of 2712 is exceeded. Consider enforcing a length limit on the field, for example by adding a 600 character limit (multi-byte characters) to the RAML specification.
     * See additional options in the likeIndex section above
 9. `index` - create a btree index on a field in the JSON
     * the `tOps` indicates the table operation - ADD means to create this index, DELETE indicates this index should be removed
     * the `whereClause` allows you to create partial indexes, for example:  "whereClause": "WHERE (jsonb->>'enabled')::boolean = true"
     * See additional options in the likeIndex section above
+    * The expression is wrapped into left(..., 600) to prevent exceeding the b-tree byte size limit of 2712. Special case: sqlExpression is not wrapped.
 10. `fullTextIndex` - create a full text index using the tsvector features of postgres.
     * `removeAccents` can be used, the default `caseSensitive: false` cannot be changed because tsvector always converts to lower case.
     * See [CQL: Matching full text](#cql-matching-full-text) to learn how word splitting works.
@@ -1536,32 +1554,59 @@ The fields in the **script** section include:
 3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.
 4. `fromModuleVersion` - same as `fromModuleVersion` for table
 
+A `snippetPath` SQL file (but not a `snippet` SQL statement) can make use of
+[FreeMarker template engine](https://freemarker.apache.org) that runs and evaluates on runtime. For examples, see RMB's
+[db_scripts directory](https://github.com/folio-org/raml-module-builder/tree/master/domain-models-runtime/src/main/resources/templates/db_scripts).
+RMB provides these variables:
+
+* `${myuniversity}` tenant id, for example `diku`
+* `${mymodule}` module name, for example `mod-inventory-storage`
+* `${mode}` either `CREATE`, `UPDATE`, or `DELETE`
+* `${version}` the previous module version on update (for example `mod-inventory-storage-18.0.0` or `18.0.0`),
+  or `0.0` if not available (not provided by Okapi or in `CREATE` mode).
+* `${newVersion}` the new version that currently gets installed (`CREATE` mode) or is upgraded to (`UPDATE` mode),
+  for example `mod-inventory-storage-18.1.0` or `18.1.0`.
+* `${rmbVersion}` the RMB version that the module currently uses, for example `29.3.2`.
+* `${exactCount}` the `exactCount` number from schema.json or the default (1000).
+
+In addition the `tables`, `views` and `scripts` sections of schema.json are available.
+
+Maven's pom.xml file may contain `<filtering>true</filtering>` to replace variables at build time,
+it also uses the `${}` syntax. Disable maven's filtering for the SQL script files or exclude them from filtering,
+otherwise it replaces for example `${version}` by a wrong value (the current module version from pom.xml).
+
+The **exactCount** section is optional and the value of the property is
+a simple integer with a default value of 1000 for the
+[estimated totalRecords](#estimated-totalrecords) hit count calculation.
 
 The tables / views will be generated in the schema named tenantid_modulename
 
 The x-okapi-tenant header passed in to the API call will be used to get the tenant id.
 The value used for the module name is the artifactId found in the pom.xml (the parent artifactId is used if one is found).
 
-#### Important information
-Right now all indexes on string fields in the jsonb should be declared as case in-sensitive and lower cased. This is how the [CQL to Postgres converter](#cql-contextual-query-language) generates SQL queries, so in order for the indexes generated to be used during query time, the indexes must be declared in a similar manner
-```
+#### Removing an index
+
+When upgrading a module via the Tenant API, an index is deleted if either `"tOps": "DELETE"` is set or the complete index entry is removed. Note that indexes are the only elements where removing the entry in schema.json removes them from the database.
+
+"tOps" example:
+
+```JSON
+"index": [
   {
     "fieldName": "title",
-    "tOps": "ADD",
+    "tOps": "DELETE",
     "caseSensitive": false,
     "removeAccents": true
   }
+]
 ```
-
-Behind the scenes, the CQL to Postgres query converter will generate regex queries for `=` queries.
-For example: `?query=fieldA=ABC` will generate an SQL regex query, which will require a gin index to perform on large tables.
-
-The converter will generate LIKE queries for `==` queries. For example `?query=fieldA==ABC` will generate an SQL LIKE query that will use a btree index (if it exists). For queries that only look up specific ids, etc... the preferred approach would be to query with two equals `==` and hence, declare a regular btree (index).
-
 
 ##### Posting information
 
-Posting a new tenant can optionally include a body. The body should contain a JSON conforming to the https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema schema. The `module_to` entry is mandatory if a body is included in the request, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
+Posting a new tenant must include a body. The body should contain a JSON conforming to the [moduleInfoSchema](https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema) schema. The `module_to` entry is mandatory, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
+
+The body may also hold a `parameters` property to specify per-tenant
+actions/info to be done during tenant creation/update.
 
 ##### Encrypting Tenant passwords
 
@@ -1637,7 +1682,8 @@ The RAMLs API is a multiple interface which affords RMB modules to expose their 
   "handlers" : [
     {
       "methods" : [ "GET" ],
-      "pathPattern" : "/_/ramls"
+      "pathPattern" : "/_/ramls",
+      "permissionsRequired" : [ ]
     }
   ]
 }
@@ -1661,7 +1707,8 @@ The JSON Schemas API is a multiple interface which affords RMB modules to expose
   "handlers" : [
     {
       "methods" : [ "GET" ],
-      "pathPattern" : "/_/jsonSchemas"
+      "pathPattern" : "/_/jsonSchemas",
+      "permissionsRequired" : [ ]
     }
   ]
 }
@@ -1715,9 +1762,43 @@ A CQL querying example:
 http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20sortBy%20enabled
 ```
 
+## Estimated totalRecords
+
+RMB adds a `totalRecords` field to result sets. It contains an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited.
+
+It uses this algorithm:
+
+1. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
+2. If this is greater than 4*1000 return it and stop.
+3. Run "SELECT COUNT(*) FROM query LIMIT 1000".
+4. If this is less than 1000 return it (this is the exact number) and stop.
+5. If the result from 1. is less than 1000 return 1000 and stop.
+6. Return result from 1. (this is a value between 1000 and 4*1000).
+
+Step 2. contains the factor 4 that should be adjusted when there is empirical data for a better number.
+Step 3. may take long for full text queries with many hits, therefore we need steps 1.-2.
+
+1000 is configurable, see the [Post Tenant API](#the-post-tenant-api) how to set `exactCount` in schema.json.
+
+RMB adjusts `totalRecords` when the number of returned records in the current result set and the paging parameters `offset` and `limit` proves it wrong:
+
+* If no record is returned and `totalRecords > offset` then adjust `totalRecords = offset`.
+* If the number of records returned equals `limit` and `totalRecords < offset + limit` then adjust `totalRecords = offset + limit`.
+* If the number of records is at least one but less than `limit` then adjust `totalRecords = offset +` number of records returned (this is the exact number).
+
+Note that clients should **continue on the next page when `totalRecords = offset + limit`** because there may be more records.
+
+This is the exact count guarantee:
+
+If a result set has a `totalRecords` value that is less than 1000 then it is the exact count; if it is 1000 or more it may be an estimate.
+
+If the exact count is less than 1000 then `totalRecords` almost always contains the exact count; only when PostgreSQL estimates it to be more than 4*1000 then it contains that overestimation.
+
+Replace 1000 by `exactCount` if configured differently.
+
 ## Metadata
 
-RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT) comes into an RMB module, RMB will check if the passed-in JSON's schema declares a reference to the metadata schema. If so, RMB will populate the JSON with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
+RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT / PATCH) comes into an RMB module, RMB will check if the passed-in JSON's schema declares a reference to the metadata schema. If so, RMB will populate the JSON with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
 
 ## Facet Support
 
@@ -1816,67 +1897,6 @@ Note that `DEFAULTVALUE` only allows string values. `SIZE` requires a range ex. 
 
 example:
 `domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.json`
-
-## Drools integration
-
-The RMB framework automatically scans the `/resources/rules` path in an implemented project for
-`*.drl` files. A directory can also be passed via the command line `drools_dir`. The rule files are loaded and are applied automatically to all objects passed in the body (post,
-put) by the runtime framework. This works in the following manner:
- - A POST / PUT request comes in with a body
- - The body for the request is mapped to a generated POJO
- - The POJO is inserted into the RMB's Drools session
- - All rules are run against the POJO
-
-This allows for more complex validation of objects.
-
-- For example, two specific fields can logically be null, but not at the
-  same time. That can easily be implemented with a Drool, as those types of
-  validations are harder to create in a RAML file.
-
-- The `rules` project also exposes the drools session and allows validation
-  within the implemented APIs. See the `tests` in the `rules` project.
-
-For example: (Sample.drl)
-
-```
-package com.sample
-
-import org.folio.rest.jaxrs.model.Patron;
-
-rule "Patron needs one ID at the least"
-
-    no-loop
-
-    when
-        p : Patron( patronBarcode  == null, patronLocalId == null )
-    then
-        throw new java.lang.Exception("Patron needs one ID field populated at the least");
-end
-```
-
-It is also possible to create a Drools session in your code, and load rules into the session in a more dynamic way.
-For example:
-
-```java
-import org.folio.rulez.Rules;
-...
-List<String> ruleList = generateDummyRule();
-Rules rules = new Rules(ruleList);
-ksession = rules.buildSession();
-...
-Messages message = new Messages();
-ksession.insert(message);
-ksession.fireAllRules();
-Assert.assertEquals("THIS IS A TEST", message.getMessage());
-```
-
-An additional option to use the Drools framework in the RMB is to load rules dynamically. For example, a module may decide to store Drool `.drl` files in a database. This enables a module to allow admin users to update rules in the database and then load them into the RMB validation mechanism for use at runtime.
-
-```java
-      Rules rules = new Rules(List<String> rulesLoaded);
-      ksession = rules.buildSession();
-      RestVerticle.updateDroolsSession(ksession);
-```
 
 ## Messages
 
@@ -2127,8 +2147,8 @@ The full constructor takes the following parameters
  - cacheTO - cache of endpoint results timeout (in minutes, default: 30)
 
 ```
-    HttpModuleClient hc = new HttpModuleClient("localhost", 8083, "myuniversity_new2", false);
-    Response response = hc.request("/groups");
+    HttpModuleClient2 hc = new HttpModuleClient2("localhost", 8083, "myuniversity_new2", false);
+    Response response = hc.request("/groups").get(5, TimeUNIT.SECONDS);
 ```
 
 It is recommended to use the `HttpClientFactory` to get an instance of the `HttpModuleClient2`.
@@ -2153,8 +2173,9 @@ The `HttpModuleClient2 request` function can receive the following parameters:
  - `cachable` - Whether to cache the response
  - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
 `
-Response userResponse =
+CompletableFuture<Response> cf =
 hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
+Response userResponse = cf.get(5, TimeUnit.SECONDS);
 `
 This will create a query string with all values from the JSON found in the path `usergroups[*].id` and will generate a CQL query string which will look something like this:
 `?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
@@ -2326,7 +2347,7 @@ Query parameters and header validation
 ## Additional Tools
 
 #### De-Serializers
-At runtime RMB will serialize/deserialize the received JSON in the request body of PUT and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
+At runtime RMB will serialize/deserialize the received JSON in the request body of PUT, PATCH and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
 ```
 ObjectMapperTool.registerDeserializer(User.class, new UserDeserializer());
 
@@ -2486,6 +2507,9 @@ http://localhost:8080/patrons
 Other [RMB documentation](doc/) (e.g. DB schema migration, Upgrading notes).
 
 Other [modules](https://dev.folio.org/source-code/#server-side).
+
+Dedicated [FOLIO Slack](https://wiki.folio.org/display/COMMUNITY/FOLIO+Communication+Spaces#FOLIOCommunicationSpaces-slackSlack)
+channel [#raml-module-builder](https://folio-project.slack.com/archives/CC0PHKEMT).
 
 See project [RMB](https://issues.folio.org/browse/RMB)
 at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).

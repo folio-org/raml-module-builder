@@ -1,0 +1,28 @@
+{
+  "tables": [
+    {
+      "tableName": "fka",
+      "fromModuleVersion": "18.2.5",
+      "foreignKeys": [
+        {
+          "fieldName":        "refa",
+          "targetTable":      "ref",
+          "targetTableAlias": "ref",
+          "tableAlias":       "ref"
+        }
+      ]
+    },
+    {
+      "tableName": "fkb",
+      "fromModuleVersion": "18.2.5",
+      "foreignKeys": [
+        {
+          "fieldName":        "reff",
+          "targetTable":      "ref",
+          "targetTableAlias": "ref",
+          "tableAlias":       "ref"
+        }
+      ]
+    }
+  ]
+}

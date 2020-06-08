@@ -7,7 +7,7 @@
           "fieldName": "prefix",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": false
+          "removeAccents": true
         }
       ]
     },
@@ -34,7 +34,7 @@
           "fieldName": "prefix",
           "tOps": "ADD",
           "caseSensitive": false,
-          "removeAccents": false
+          "removeAccents": true
         },
         {
           "fieldName": "otherindex",
@@ -48,6 +48,12 @@
           "fieldName": "tableaId",
           "targetTable":      "tablea",
           "targetTableAlias": "tablea",
+          "tableAlias": "tableb"
+        },
+        {
+          "fieldName": "tablefId",
+          "targetTable":      "tablef",
+          "targetTableAlias": "tablef",
           "tableAlias": "tableb"
         }
       ]
@@ -77,6 +83,9 @@
           "targetTable": "tablec"
         }
       ]
+    },
+    {
+      "tableName": "tablef"
     }
   ]
 }

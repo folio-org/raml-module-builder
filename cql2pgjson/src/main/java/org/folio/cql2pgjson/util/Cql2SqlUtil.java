@@ -7,11 +7,6 @@ import org.folio.cql2pgjson.exception.QueryValidationException;
  * Functions that convert some CQL string the equivalent SQL string.
  */
 public final class Cql2SqlUtil {
-
-  private static final String ESC_SLASH = Pattern.quote("\\\\");
-  private static final String ESC_STAR = Pattern.quote("\\*");
-  private static final String ESC_QUEST = Pattern.quote("\\?");
-
   /**
    * Postgres number, see spec at
    * <a href="https://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-CONSTANTS-NUMERIC">
@@ -205,6 +200,64 @@ public final class Cql2SqlUtil {
   }
 
   /**
+   * Convert a CQL string into a single quoted SQL string suitable for to_tsquery and append it to t.
+   *
+   * @param s CQL string without leading or trailing double quote
+   * @throws QueryValidationException if s contains an unmasked wildcard question mark or an unmasked
+   *                                  star that is not at the of the string or before a space
+   */
+  @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
+  public static void appendCql2tsquery(StringBuilder t, CharSequence s) throws QueryValidationException {
+    t.append("'");
+    /** whether the previous character is a masking backslash */
+    boolean backslash = false;
+
+    final int length = s.length();
+    for (int i=0; i<length; i++) {
+      char c = s.charAt(i);
+      switch (c) {
+      case '\\':
+        if (backslash) {
+          t.append("\\\\");
+        }
+        backslash = ! backslash;
+        break;
+      case '*':
+        if (! backslash && i + 1 < length && s.charAt(i + 1) != ' ') {
+          throw new QueryValidationException(
+              "* right truncation wildcard must be followed by space or end of string, but found " + s.charAt(i + 1));
+        }
+        t.append('*');
+        break;
+      case '?':
+        if (! backslash) {
+          throw new QueryValidationException("? wildcard not allowed in full text query string");
+        }
+        t.append(c);
+        backslash = false;
+        break;
+      case '\'':
+        t.append("''");
+        backslash = false;
+        break;
+      default:
+        t.append(c);
+        backslash = false;
+        break;
+      }
+    }
+    t.append("'");
+  }
+
+  /**
+   * @return true if s has " " or "\\ " (one backslash, one space) at pos, false otherwise.
+   */
+  private static boolean isSpace(String s, int pos) {
+    return (s.length() > pos && s.charAt(pos) == ' ')
+        || (s.length() > pos + 1 && s.charAt(pos) == '\\' && s.charAt(pos + 1) == ' ');
+  }
+
+  /**
    * Convert a CQL string to an SQL tsquery where each word matches in any order.
    *
    * @param s CQL string without leading or trailing double quote
@@ -226,7 +279,20 @@ public final class Cql2SqlUtil {
     boolean star = false;
 
     final int length = s.length();
-    for (int i=0; i<length; i++) {
+    int i = 0;
+    // skip space and backslashed space
+    for ( ; i<length; i++) {
+      char c = s.charAt(i);
+      if (c == ' ') {
+        // skip space
+        backslash = false;
+      } else if (c == '\\') {
+        backslash = true;
+      } else {
+        break;
+      }
+    }
+    for ( ; i<length; i++) {
       char c = s.charAt(i);
       switch (c) {
       case '\\':
@@ -256,8 +322,13 @@ public final class Cql2SqlUtil {
         backslash = false;
         break;
       case ' ':
-        if (i>0 && s.charAt(i-1) == ' ') {
-          // skip space if previous character already was a space
+        backslash = false;
+        if (isSpace(s, i + 1)) {
+          // skip until the last space
+          break;
+        }
+        if (i + 1 == length) {
+          // don't create new empty word at the end
           break;
         }
         if (star) {
@@ -268,11 +339,26 @@ public final class Cql2SqlUtil {
         }
         t.append(removeAccents ? "&& to_tsquery('simple', f_unaccent('''"
                                : "&& to_tsquery('simple', ('''");
+        break;
+      case '&':   // Replace & by , so that we can replace all tsquery & by <-> for phrase search.
+        // Replace regular single quote and all other characters that f_unaccent converts into
+        // a regular single quote. This avoids masking the single quote (sql injection).
+        // How to find these characters:
+        // select * from (select chr(generate_series(1,       55295))) x(s) where f_unaccent(s) LIKE '%''%'
+        // select * from (select chr(generate_series(57344, 1114111))) x(s) where f_unaccent(s) LIKE '%''%'
+        // Or search on
+        // https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=contrib/unaccent/unaccent.rules;hb=HEAD
+      case '\'':  // a regular single quote
+      case '‘':
+      case '’':
+      case '‛':
+      case '′':
+      case '＇':
+        t.append(',');  // replace by comma to avoid masking and sql injection
         backslash = false;
         break;
-      case '&':   // replace & so that we can replace all tsquery & by <-> for phrase search
-      case '\'':  // replace single quote to avoid single quote masking
-        t.append(',');
+      case 'ŉ':  // f_unaccent('ŉ') = regular single quote + n, see comment above
+        t.append(",n");  // replace single quote by comma to avoid masking and sql injection
         backslash = false;
         break;
       default:
@@ -348,14 +434,35 @@ public final class Cql2SqlUtil {
   }
 
   /**
-   * Test if term has CQL wildcard characters: * or ?
+   * Test if term contains a CQL wildcard character (* or ?) that is not masked by \
    *
-   * @param term
-   * @return
+   * @param term the non-null String
+   * @return true if found, false otherwise
+   * @deprecated use {@link #hasCqlWildCard(CharSequence)} instead
    */
+  @Deprecated
   public static boolean hasCqlWildCardd(String term) {
-    String s = ("" + term).replaceAll(ESC_SLASH, "").replaceAll(ESC_STAR, "").replaceAll(ESC_QUEST, "");
-    return s.contains("*") || s.contains("?");
+    return hasCqlWildCard(term);
   }
 
+  /**
+   * Test if term contains a CQL wildcard character (* or ?) that is not masked by \
+   *
+   * @param term the non-null CharSequence
+   * @return true if found, false otherwise
+   */
+  public static boolean hasCqlWildCard(final CharSequence term) {
+    final int length = term.length();
+    for (int i = 0; i < length; i++) {
+      final char c = term.charAt(i);
+      if (c == '\\') {
+        i++;  // skip the character that the backslash masks
+        continue;
+      }
+      if (c == '*' || c == '?') {
+        return true;
+      }
+    }
+    return false;
+  }
 }

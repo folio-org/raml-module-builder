@@ -105,6 +105,7 @@ public class RamlsAPIIT {
     async.awaitSuccess();
   }
 
+  // test.raml is a result from a unit test in domain-models-interface-extensions
   @Test
   public void testReplaceReferences(TestContext context) throws IOException {
     RamlsAPI ramlsAPI = new RamlsAPI();

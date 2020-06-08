@@ -1,7 +1,8 @@
 package org.folio.rest.persist.ddlgen;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,7 +37,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
       SchemaMaker schemaMaker = new SchemaMaker(tenant, PostgresClient.getModuleName(),
           tenantOperation, "mod-foo-18.2.3", "mod-foo-18.2.4");
       String json = ResourceUtil.asString("templates/db_scripts/" + filename);
-        schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
+      schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
       runSqlFileAsSuperuser(context, schemaMaker.generateDDL());
     } catch (Exception e) {
       context.fail(e);
@@ -55,6 +56,18 @@ public class SchemaMakerIT extends PostgresClientITBase {
 
     async.awaitSuccess(5000);
     return i.get();
+  }
+
+  private String selectText(TestContext context, String sql) {
+    String s [] = new String [1];
+    Async async = context.async();
+    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
+    postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
+      s[0] = result.getString(0);
+      async.complete();
+    }));
+    async.awaitSuccess(5000);
+    return s[0];
   }
 
   private void auditedTableCanInsertUpdateDelete(TestContext context, String table, String field) {
@@ -117,7 +130,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
               postgresClient.endTx(tx2, context.asyncAssertSuccess(endTx2 -> {
                 String sql3 = "SELECT * FROM " + table.replace(".", ".audit_");
                 postgresClient.select(sql3, context.asyncAssertSuccess(result -> {
-                  context.assertEquals(4, result.getNumRows());
+                  context.assertEquals(4, result.rowCount());
                   async.complete();
                 }));
               }));
@@ -185,7 +198,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
     String sql = "SELECT id, jsonb->>'id' FROM " + schema + ".test_tenantapi";
     postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
-      context.assertEquals(id       , result.getString(0), "id");
+      context.assertEquals(id       , result.getUUID(0).toString(), "id");
       context.assertEquals(idInJsonb, result.getString(1), "jsonb->>'id'");
       async.complete();
     }));
@@ -214,5 +227,142 @@ public class SchemaMakerIT extends PostgresClientITBase {
   @Test
   public void foreignKey(TestContext context) {
     runSchema(context, TenantOperation.CREATE, "schemaInstanceItem.json");
+  }
+
+  private void assertSelectSingle(TestContext context, String sql, String expected) {
+    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
+    postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
+      context.assertEquals(expected, result.getString(0));
+    }));
+  }
+
+  private void assertSchemaSelectSingle(TestContext context, String sql, String expected) {
+    runSchema(context, TenantOperation.CREATE, "schema.json");
+    assertSelectSingle(context, sql, expected);
+  }
+
+  @Test
+  public void f_unaccent_combining_character(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "schema.json");
+    assertSelectSingle(context, "SELECT f_unaccent(E'a\\u0308 and a\\u0308')", "a and a");
+    assertSelectSingle(context, "SELECT f_unaccent(E'b\\u20e2c\\u20e3d\\u20e4')", "bcd");
+  }
+
+  @Test
+  public void concat_array_object_values(TestContext context) {
+    assertSchemaSelectSingle(context, String.format(
+        "SELECT concat_array_object_values('%s'::jsonb, 'f')",
+        "[{},{'k':'v','f':'1'},{'k':'v'},{'f':'2'},{'k':'v','f':'3'}]".replace('\'', '"')),
+        "1 2 3");
+  }
+
+  @Test
+  public void concat_array_object_values_filter(TestContext context) {
+    assertSchemaSelectSingle(context, String.format(
+        "SELECT concat_array_object_values('%s'::jsonb, 'f', 'k', 'v')",
+        "[{},{'k':'v','f':'1'},{'k':'v'},{'f':'2'},{'k':'v','f':'3'}]".replace('\'', '"')),
+        "1 3");
+  }
+
+  @Test
+  public void first_array_object_values_filter(TestContext context) {
+    assertSchemaSelectSingle(context, String.format(
+        "SELECT first_array_object_value('%s'::jsonb, 'f', 'k', 'v')",
+        "[{},{'k':'v','f':'1'},{'k':'v'},{'f':'2'},{'k':'v','f':'3'}]".replace('\'', '"')),
+        "1");
+  }
+
+  @Test
+  public void concat_array_object(TestContext context) {
+    assertSchemaSelectSingle(context, String.format(
+        "SELECT concat_array_object('%s'::jsonb)",
+        "[{},3,'foo',{'a': 'b', 'c': 'd'}]".replace('\'', '"')),
+        "{} 3 foo {'a': 'b', 'c': 'd'}".replace('\'', '"'));
+  }
+
+  private String indexdef(TestContext context, String indexname) {
+    return selectText(context, "SELECT indexdef FROM pg_catalog.pg_indexes "
+        + "WHERE indexname = '" + indexname + "' AND schemaname='" + schema + "'");
+  }
+
+  private int countCasetableIndexes(TestContext context) {
+    return selectInteger(context, "SELECT count(*) FROM pg_catalog.pg_indexes "
+        + "WHERE indexname LIKE 'casetable___idx%' AND schemaname='" + schema + "'");
+  }
+
+  @Test
+  public void indexUpgrade(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "indexRemoveAccents.json");
+    assertThat(indexdef(context, "casetable_i_idx"),        containsString("lower(f_unaccent((jsonb ->> 'i'::text)))"));
+    assertThat(indexdef(context, "casetable_u_idx_unique"), containsString("lower(f_unaccent((jsonb ->> 'u'::text)))"));
+    assertThat(indexdef(context, "casetable_l_idx_like"),   containsString("lower(f_unaccent((jsonb ->> 'l'::text)))"));
+    assertThat(indexdef(context, "casetable_g_idx_gin"),    containsString("lower(f_unaccent((jsonb ->> 'g'::text)))"));
+    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString(    ", f_unaccent((jsonb ->> 'f'::text)))"));
+
+    runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
+    assertThat(indexdef(context, "casetable_i_idx"),        containsString("lower((jsonb ->> 'i'::text))"));
+    assertThat(indexdef(context, "casetable_u_idx_unique"), containsString("lower((jsonb ->> 'u'::text))"));
+    assertThat(indexdef(context, "casetable_l_idx_like"),   containsString("lower((jsonb ->> 'l'::text))"));
+    assertThat(indexdef(context, "casetable_g_idx_gin"),    containsString("lower((jsonb ->> 'g'::text))"));
+    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString(    ", (jsonb ->> 'f'::text))"));
+
+    // no indexes get recreated when schema doesn't change.
+    execute(context, "DROP INDEX "
+        + "casetable_i_idx, casetable_u_idx_unique, casetable_l_idx_like, casetable_g_idx_gin, casetable_f_idx_ft");
+    runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
+    assertThat(countCasetableIndexes(context), is(0));
+  }
+
+  @Test
+  public void indexRename(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "indexKeepAccents.json");
+    assertThat(countCasetableIndexes(context), is(5));
+    executeSuperuser(context, "CREATE INDEX casetable_i_idx_p        ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "CREATE INDEX casetable_u_idx_unique_p ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "CREATE INDEX casetable_l_idx_like_p   ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "CREATE INDEX casetable_g_idx_gin_p    ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "CREATE INDEX casetable_f_idx_ft_p     ON " + schema + ".casetable (('x'::text))");
+    executeSuperuser(context, "INSERT INTO " + schema + ".rmb_internal_index "
+        + "SELECT name || '_p', def, remove FROM " + schema + ".rmb_internal_index");
+    assertThat(countCasetableIndexes(context), is(10));
+
+    runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
+    assertThat(countCasetableIndexes(context), is(5));
+  }
+
+  @Test
+  public void indexDelete(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "indexKeepAccents.json");
+    assertThat(countCasetableIndexes(context), is(5));
+
+    // delete two indexes using "tOps": "DELETE"
+    // and delete two indexes by completely removing their entries from schema
+    runSchema(context, TenantOperation.UPDATE, "indexDelete.json");
+    assertThat(countCasetableIndexes(context), is(1));
+  }
+
+  @Test
+  public void replacePublicSchemaFunctions(TestContext context) throws InterruptedException {
+    runSchema(context, TenantOperation.CREATE, "schema.json");
+    String indexdef = "CREATE INDEX foo ON " + schema + ".test_tenantapi USING btree "
+        + "(COALESCE(public.f_unaccent((jsonb ->> 'foo'::text)), public.f_unaccent((jsonb ->> 'bar'::text))))";
+    String sql = "CREATE OR REPLACE FUNCTION public.f_unaccent(text) RETURNS text AS 'SELECT $1' LANGUAGE sql;"
+        + "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"29.1.0\"}'::jsonb;"
+        + indexdef;
+    runSqlFileAsSuperuser(context, sql);
+    assertThat("indexdef before update", indexdef(context, "foo"), is(indexdef));
+
+    runSchema(context, TenantOperation.UPDATE, "schema.json");
+    // has "public.f_unaccent" been changed to "f_unaccent"?
+    assertThat("indexdef after update", indexdef(context, "foo"), is(indexdef.replace("public.", "")));
+
+    // run upgrade where rmbVersion suppresses index upgrade.
+    sql = "DROP INDEX " + schema + ".foo;"
+        + "UPDATE " + schema + ".rmb_internal SET jsonb = jsonb || '{\"rmbVersion\": \"X\"}'::jsonb;"
+        + indexdef;
+    runSqlFileAsSuperuser(context, sql);
+    assertThat("indexdef before suppressed update", indexdef(context, "foo"), is(indexdef));
+    runSchema(context, TenantOperation.UPDATE, "schema.json");
+    assertThat("indexdef after suppressed update", indexdef(context, "foo"), is(indexdef));
   }
 }

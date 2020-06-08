@@ -1,5 +1,7 @@
 package org.folio.rest.tools.utils;
 
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import java.util.List;
 import org.junit.Test;
 import java.util.HashMap;
@@ -84,7 +86,7 @@ public class TenantLoadingTest {
     ids.clear();
     HttpServerOptions so = new HttpServerOptions().setHandle100ContinueAutomatically(true);
     vertx.createHttpServer(so)
-      .requestHandler(router::accept)
+      .requestHandler(router)
       .listen(
         port,
         result -> {
@@ -257,7 +259,6 @@ public class TenantLoadingTest {
 
   @Test
   public void testPutFailure(TestContext context) {
-    Async async = context.async();
     List<Parameter> parameters = new LinkedList<>();
     parameters.add(new Parameter().withKey("loadRef").withValue("true"));
     TenantAttributes tenantAttributes = new TenantAttributes()
@@ -268,16 +269,12 @@ public class TenantLoadingTest {
 
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
-    putStatus = 422;
-    tl.perform(tenantAttributes, headers, vertx, res -> {
-      context.assertTrue(res.failed());
-      async.complete();
-    });
+    putStatus = 500;
+    tl.perform(tenantAttributes, headers, vertx, context.asyncAssertFailure());
   }
 
   @Test
-  public void testOkStatusCode(TestContext context) {
-    Async async = context.async();
+  public void testokWithAcceptStatus(TestContext context) {
     List<Parameter> parameters = new LinkedList<>();
     parameters.add(new Parameter().withKey("loadRef").withValue("true"));
     TenantAttributes tenantAttributes = new TenantAttributes()
@@ -288,12 +285,25 @@ public class TenantLoadingTest {
 
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
-    tl.withAcceptStatus(422);
+    putStatus = 500;
+    tl.withAcceptStatus(500);
+    tl.perform(tenantAttributes, headers, vertx, context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void testOkStatus422(TestContext context) {
+    List<Parameter> parameters = new LinkedList<>();
+    parameters.add(new Parameter().withKey("loadRef").withValue("true"));
+    TenantAttributes tenantAttributes = new TenantAttributes()
+      .withModuleTo("mod-1.0.0")
+      .withParameters(parameters);
+    Map<String, String> headers = new HashMap<String, String>();
+    headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
+
+    TenantLoading tl = new TenantLoading();
+    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
     putStatus = 422;
-    tl.perform(tenantAttributes, headers, vertx, res -> {
-      context.assertTrue(res.succeeded());
-      async.complete();
-    });
+    tl.perform(tenantAttributes, headers, vertx, context.asyncAssertSuccess());
   }
 
   @Test
@@ -367,7 +377,6 @@ public class TenantLoadingTest {
 
   @Test
   public void testBadUriPath(TestContext context) {
-    Async async = context.async();
     List<Parameter> parameters = new LinkedList<>();
     parameters.add(new Parameter().withKey("loadRef").withValue("true"));
     TenantAttributes tenantAttributes = new TenantAttributes()
@@ -378,10 +387,7 @@ public class TenantLoadingTest {
 
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data1");
-    tl.perform(tenantAttributes, headers, vertx, res -> {
-      context.assertTrue(res.failed());
-      async.complete();
-    });
+    tl.perform(tenantAttributes, headers, vertx, context.asyncAssertFailure());
   }
 
   @Test
@@ -466,7 +472,6 @@ public class TenantLoadingTest {
 
   @Test
   public void testFailNoIdInData(TestContext context) {
-    Async async = context.async();
     List<Parameter> parameters = new LinkedList<>();
     parameters.add(new Parameter().withKey("loadRef").withValue("true"));
     TenantAttributes tenantAttributes = new TenantAttributes()
@@ -477,10 +482,7 @@ public class TenantLoadingTest {
 
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data-w-id", "data");
-    tl.perform(tenantAttributes, headers, vertx, res -> {
-      context.assertTrue(res.failed());
-      async.complete();
-    });
+    tl.perform(tenantAttributes, headers, vertx, context.asyncAssertFailure());
   }
 
   @Test
@@ -558,6 +560,28 @@ public class TenantLoadingTest {
       context.assertTrue(res.failed());
       async.complete();
     });
+  }
+
+  private void assertGetIdBase(TestContext context, String path, String expectedBase) {
+    Future<Void> future = Promise.<Void>promise().future();
+    context.assertEquals(expectedBase, TenantLoading.getIdBase(path, future));
+    context.assertFalse(future.isComplete());
+  }
+
+  private void assertGetIdBaseFail(TestContext context, String path) {
+    Future<Void> future = Promise.<Void>promise().future();
+    context.assertEquals(null, TenantLoading.getIdBase(path, future));
+    context.assertTrue(future.failed());
+    context.assertEquals("No basename for " + path, future.cause().getMessage());
+  }
+
+  @Test
+  public void testGetIdBase(TestContext context) {
+    assertGetIdBase(context, "/path/a.json", "/a");
+    assertGetIdBase(context, "/path/a", "/a");
+    assertGetIdBase(context, "/a.b/c", "/c");
+    assertGetIdBaseFail(context, "a.json");
+    assertGetIdBaseFail(context, "a");
   }
 
   @Test

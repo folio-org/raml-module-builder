@@ -2,10 +2,47 @@
   "tables": [
     {
       "tableName": "tablea",
+      "index": [
+        {
+          "fieldName": "keys",
+          "multiFieldNames": "key1,key2",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "uniqueIndex": [
+        {
+          "fieldName": "barcode",
+          "multiFieldNames": "department,staffnumber",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
       "ginIndex": [
         {
           "fieldName": "fullname",
           "multiFieldNames": "firstName,lastName",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ginfieldstar",
+          "multiFieldNames": "field1[*].city,field2[*].state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ginfielddotstar",
+          "multiFieldNames": "field3.info[*].city,field3.info[*].state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ginfielddotstarplain",
+          "multiFieldNames": "field3.info[*],field3.data[*]",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
@@ -15,6 +52,27 @@
         {
           "fieldName": "ftfield",
           "multiFieldNames": "field1,field2",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ftfieldstar",
+          "multiFieldNames": "field1[*].city,field2[*].state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ftfielddotstar",
+          "multiFieldNames": "field3.info[*].city,field3.info[*].state",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "ftfielddotstarplain",
+          "multiFieldNames": "field3.info[*],field3.data[*]",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
@@ -30,12 +88,28 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false
+        },
+        {
+          "fieldName": "cityWithoutVocals",
+          "sqlExpression": "translate(jsonb->>'city', 'aeiouAEIOU', '')",
+          "sqlExpressionQuery": "translate($, 'aeiouAEIOU', '')",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
         }
       ],
       "fullTextIndex": [
         {
           "fieldName": "ftfield",
           "sqlExpression": "lower(concat_space_sql(jsonb->>'field1', jsonb->>'field2'))",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "stateReverse",
+          "sqlExpression": "reverse(jsonb->>'state')",
+          "sqlExpressionQuery": "reverse($)",
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": false

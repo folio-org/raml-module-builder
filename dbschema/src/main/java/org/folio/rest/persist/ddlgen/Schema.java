@@ -12,7 +12,7 @@ public class Schema {
   private List<Table> tables = new ArrayList<>();
   private List<View> views = new ArrayList<>();
   private List<Script> scripts = new ArrayList<>();
-  private int exactCount = 20000;
+  private int exactCount = 1000;
 
   public List<Table> getTables() {
     return tables;
@@ -39,5 +39,17 @@ public class Schema {
 
   public void setExactCount(int exactCount) {
     this.exactCount = exactCount;
+  }
+
+  /**
+   * Call setup() for each table, field, index and view.
+   */
+  public void setup() {
+    if (tables != null) {
+      tables.forEach(Table::setup);
+    }
+    if (views != null) {
+      views.forEach(view -> view.setup(tables));
+    }
   }
 }

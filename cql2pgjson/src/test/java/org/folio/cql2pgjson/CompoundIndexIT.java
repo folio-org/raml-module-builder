@@ -1,11 +1,12 @@
 package org.folio.cql2pgjson;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.List;
 
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.hamcrest.collection.IsEmptyCollection;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -16,10 +17,12 @@ public class CompoundIndexIT extends DatabaseTestBase {
   private CQL2PgJSON cql2pgJsonTableb;
   private CQL2PgJSON cql2pgJsonTablec;
   private CQL2PgJSON cql2pgJsonTabled;
+
   @BeforeClass
   static public void setUpDatabase()  {
     setupDatabase();
     runSqlFile("compoundIndex.sql");
+    runGeneralFunctions();
   }
 
   @AfterClass
@@ -76,6 +79,16 @@ public class CompoundIndexIT extends DatabaseTestBase {
   }
 
   @Test
+  public void multiFieldNamesNonUniqueIndex() throws Exception {
+    assertThat(cqla("keys == \"K1 K2\""), containsInAnyOrder("Karin"));
+  }
+
+  @Test
+  public void multiFieldNamesUniqueIndex() throws Exception {
+    assertThat(cqla("barcode == \"SALES 6\""), containsInAnyOrder("Daisy"));
+  }
+
+  @Test
   public void multiFieldNamesGIN() throws Exception {
     assertThat(cqla("fullname == \"Tom Jones\""), containsInAnyOrder("Tom"));
   }
@@ -113,4 +126,30 @@ public class CompoundIndexIT extends DatabaseTestBase {
   public void multiFieldNamesMultipartindexpathFT() throws Exception {
     assertThat( cqld("tabledftindex = \"Chicago IL\""),  containsInAnyOrder("Bob"));
   }
+
+  @Test
+  public void multiFieldNamesDotStarGIN() throws Exception {
+    assertThat( cqla("ginfielddotstar == \"Boston\""),  IsEmptyCollection.empty());
+  }
+
+  @Test
+  public void multiFieldNamesDotStarFTAll() throws Exception {
+    assertThat( cqla("ftfielddotstar all \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike"));
+  }
+
+  @Test
+  public void multiFieldNamesDotStarGINPlain() throws Exception {
+    assertThat( cqla("ginfielddotstarplain == \"Boston\""),  IsEmptyCollection.empty());
+  }
+
+  @Test
+  public void multiFieldNamesDotStarFTAllPlain() throws Exception {
+    assertThat( cqla("ftfielddotstarplain all \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike"));
+  }
+
+  @Test
+  public void multiFieldNamesDotStarFTAny() throws Exception {
+    assertThat( cqla("ftfielddotstar any \"Philadelphia PA\""),  containsInAnyOrder("Lucy", "Mike", "Mary"));
+  }
+
 }

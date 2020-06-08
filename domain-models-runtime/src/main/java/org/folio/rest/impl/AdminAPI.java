@@ -9,12 +9,14 @@ import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.text.DecimalFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
 import javax.ws.rs.core.Response;
 
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
+import io.vertx.sqlclient.RowSet;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
@@ -42,7 +44,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.ResultSet;
 
 public class AdminAPI implements Admin {
 
@@ -236,19 +237,14 @@ public class AdminAPI implements Admin {
   public void getAdminPostgresActiveSessions(String dbname, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    PostgresClient.getInstance(vertxContext.owner(), "public").select("SELECT pid , usename, "
-        + "application_name, client_addr, client_hostname, "
+    PostgresClient.getInstance(vertxContext.owner()).select("SELECT pid , usename, "
+        + "application_name, client_addr::text, client_hostname, "
         + "query, state from pg_stat_activity where datname='"+dbname+"'", reply -> {
 
-          if(reply.succeeded()){
-
-            OutStream stream = new OutStream();
-            stream.setData(reply.result().getRows());
-
+          if (reply.succeeded()){
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresActiveSessionsResponse.
-              respond200WithApplicationJson(stream)));
-          }
-          else{
+              respond200WithApplicationJson(new OutStream(reply.result()))));
+          } else {
             log.error(reply.cause().getMessage(), reply.cause());
             asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
           }
@@ -262,23 +258,20 @@ public class AdminAPI implements Admin {
 
     PostgresClient.getInstance(vertxContext.owner()).select("SELECT pg_stat_reset()", reply -> {
 
-          if(reply.succeeded()){
+          if (reply.succeeded()){
             /* wait 10 seconds for stats to gather and then query stats table for info */
             vertxContext.owner().setTimer(10000, new Handler<Long>() {
               @Override
               public void handle(Long timerID) {
-                PostgresClient.getInstance(vertxContext.owner(), "public").select(
+                PostgresClient.getInstance(vertxContext.owner()).select(
                     "SELECT numbackends as CONNECTIONS, xact_commit as TX_COMM, xact_rollback as "
                     + "TX_RLBCK, blks_read + blks_hit as READ_TOTAL, "
-                    + "blks_hit * 100 / (blks_read + blks_hit) "
+                    + "blks_hit * 100 / (1 + blks_read + blks_hit) "
                     + "as BUFFER_HIT_PERCENT FROM pg_stat_database WHERE datname = '"+dbname+"'", reply2 -> {
-                  if(reply2.succeeded()){
-                    OutStream stream = new OutStream();
-                    stream.setData(reply2.result().getRows());
+                  if (reply2.succeeded()) {
                     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresLoadResponse.
-                      respond200WithApplicationJson(stream)));
-                  }
-                  else{
+                      respond200WithApplicationJson(new OutStream(reply2.result()))));
+                  } else {
                     log.error(reply2.cause().getMessage(), reply2.cause());
                     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresLoadResponse.
                       respond500WithTextPlain(reply2.cause().getMessage())));
@@ -299,21 +292,19 @@ public class AdminAPI implements Admin {
   public void getAdminPostgresTableAccessStats(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    PostgresClient.getInstance(vertxContext.owner()).select(
-        "SELECT schemaname,relname,seq_scan,idx_scan,cast(idx_scan "
-        + "AS numeric) / (idx_scan + seq_scan) AS idx_scan_pct "
-        + "FROM pg_stat_user_tables WHERE (idx_scan + seq_scan)>0 "
-        + "ORDER BY idx_scan_pct;", reply -> {
+    String sql =
+        "SELECT schemaname,relname,seq_scan,idx_scan,"
+        + "     cast(idx_scan AS numeric) / (idx_scan + seq_scan) AS idx_scan_pct "
+        + "FROM (SELECT schemaname, relname, COALESCE(seq_scan, 0) seq_scan, COALESCE(idx_scan, 0) idx_scan "
+        + "      FROM pg_stat_user_tables) x "
+        + "WHERE idx_scan + seq_scan > 0 "
+        + "ORDER BY idx_scan_pct;";
+    PostgresClient.getInstance(vertxContext.owner()).select(sql, reply -> {
 
-          if(reply.succeeded()){
-
-            OutStream stream = new OutStream();
-            stream.setData(reply.result().getRows());
-
+          if (reply.succeeded()){
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresTableAccessStatsResponse.
-              respond200WithApplicationJson(stream)));
-          }
-          else{
+              respond200WithApplicationJson(new OutStream(reply.result()))));
+          } else {
             log.error(reply.cause().getMessage(), reply.cause());
             asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
           }
@@ -329,13 +320,9 @@ public class AdminAPI implements Admin {
       "SELECT relname as \"Table\", pg_size_pretty(pg_relation_size(relid)) As \" Table Size\","
       + " pg_size_pretty(pg_total_relation_size(relid) - pg_relation_size(relid)) as \"Index Size\""
       + " FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC;", reply -> {
-        if(reply.succeeded()){
-
-          OutStream stream = new OutStream();
-          stream.setData(reply.result().getRows());
-
+        if (reply.succeeded()){
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminPostgresTableAccessStatsResponse.
-            respond200WithApplicationJson(stream)));
+            respond200WithApplicationJson(new OutStream(reply.result()))));
         }
         else{
           log.error(reply.cause().getMessage(), reply.cause());
@@ -384,13 +371,14 @@ public class AdminAPI implements Admin {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
-      "SELECT relname, 100 * idx_scan / (seq_scan + idx_scan) percent_of_times_index_used, n_live_tup rows_in_table "+
-      "FROM pg_stat_user_tables "+
+      "SELECT schemaname, relname, 100 * idx_scan / NULLIF(seq_scan + idx_scan, 0) percent_of_times_index_used, "+
+      "       n_live_tup rows_in_table "+
+      "FROM (SELECT schemaname, relname, COALESCE(seq_scan, 0) seq_scan, COALESCE(idx_scan, 0) idx_scan, n_live_tup "+
+      "      FROM pg_stat_user_tables) x "+
       "ORDER BY n_live_tup DESC;", reply -> {
         if(reply.succeeded()){
 
-          OutStream stream = new OutStream();
-          stream.setData(reply.result().getRows());
+          OutStream stream = new OutStream(reply.result());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminTableIndexUsageResponse.
             respond200WithApplicationJson(stream)));
@@ -409,12 +397,11 @@ public class AdminAPI implements Admin {
     try {
       PostgresClient.getInstance(vertxContext.owner()).select(
         "SELECT sum(heap_blks_read) as heap_read, sum(heap_blks_hit)  as heap_hit,"
-        + " (sum(heap_blks_hit) - sum(heap_blks_read)) / sum(heap_blks_hit) as ratio "
+        + " (sum(heap_blks_hit) - sum(heap_blks_read)) / NULLIF(sum(heap_blks_hit),0) as ratio "
         + "FROM pg_statio_user_tables;", reply -> {
           if(reply.succeeded()){
 
-            OutStream stream = new OutStream();
-            stream.setData(reply.result().getRows());
+            OutStream stream = new OutStream(reply.result());
 
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminCacheHitRatesResponse.
               respond200WithApplicationJson(stream)));
@@ -444,8 +431,7 @@ public class AdminAPI implements Admin {
       "ORDER BY runtime DESC;", reply -> {
         if(reply.succeeded()){
 
-          OutStream stream = new OutStream();
-          stream.setData(reply.result().getRows());
+          OutStream stream = new OutStream(reply.result());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminSlowQueriesResponse.
             respond200WithApplicationJson(stream)));
@@ -470,21 +456,23 @@ public class AdminAPI implements Admin {
   @Override
   public void getAdminModuleStats(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
-    //vertx.http.servers.open-connections
-    //vertx.eventbus
-    //vertx.event-loop-size
-    //vertx.pools
-    JsonObject o = StatsTracker.spillAllStats();
-    JsonObject metrics = RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.net.servers" /* vertxContext.owner() */);
-    if(metrics != null) {
-      metrics.mergeIn(RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.pools"));
-      o.mergeIn(metrics);
+    try {
+      //vertx.http.servers.open-connections
+      //vertx.eventbus
+      //vertx.event-loop-size
+      //vertx.pools
+      JsonObject o = StatsTracker.spillAllStats();
+      JsonObject metrics = RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.net.servers" /* vertxContext.owner() */);
+      if(metrics != null) {
+        metrics.mergeIn(RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.pools"));
+        o.mergeIn(metrics);
+      }
+      asyncResultHandler.handle(
+        io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.respond200WithTextPlain(
+          o.encodePrettily())));
+    } catch (Exception e) {
+      asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
     }
-    asyncResultHandler.handle(
-      io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.respond200WithTextPlain(
-        o.encodePrettily())));
-
   }
 
   @Validate
@@ -495,8 +483,7 @@ public class AdminAPI implements Admin {
       "select pg_size_pretty(pg_database_size('"+dbname+"')) as db_size", reply -> {
         if(reply.succeeded()){
 
-          OutStream stream = new OutStream();
-          stream.setData(reply.result().getRows());
+          OutStream stream = new OutStream(reply.result());
 
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminTotalDbSizeResponse.
             respond200WithApplicationJson(stream)));
@@ -513,7 +500,7 @@ public class AdminAPI implements Admin {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     PostgresClient.getInstance(vertxContext.owner()).select(
-      "CREATE EXTENSION IF NOT EXISTS \"pg_buffercache\"", reply1 -> {
+      "CREATE EXTENSION IF NOT EXISTS \"pg_buffercache\" WITH SCHEMA public", reply1 -> {
         if(reply1.succeeded()){
           PostgresClient.getInstance(vertxContext.owner()).select(
             "SELECT c.relname, pg_size_pretty(count(*) * 8192) as buffered, round(100.0 * count(*) / "+
@@ -522,15 +509,10 @@ public class AdminAPI implements Admin {
                 "INNER JOIN pg_buffercache b ON b.relfilenode = c.relfilenode INNER JOIN pg_database d "+
                 "ON (b.reldatabase = d.oid AND d.datname = current_database()) GROUP BY c.oid,c.relname "+
                 "ORDER BY 3 DESC LIMIT 20;", reply2 -> {
-              if(reply2.succeeded()){
-
-                OutStream stream = new OutStream();
-                stream.setData(reply2.result().getRows());
-
+              if (reply2.succeeded()){
                 asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminDbCacheSummaryResponse.
-                  respond200WithApplicationJson(stream)));
-              }
-              else{
+                  respond200WithApplicationJson(new OutStream(reply2.result()))));
+              } else {
                 log.error(reply2.cause().getMessage(), reply2.cause());
                 asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply2.cause().getMessage()));
               }
@@ -556,14 +538,9 @@ public class AdminAPI implements Admin {
       + "JOIN pg_stat_activity blockingq ON blocking.pid = blockingq.pid "
       + "WHERE NOT blocked.granted AND blockingq.datname='"+dbname+"';",
       reply -> {
-        if(reply.succeeded()){
-
-          OutStream stream = new OutStream();
-          stream.setData(reply.result().getResults());
-          System.out.println("locking q -> " + new io.vertx.core.json.JsonArray( reply.result().getResults() ).encode());
-
+        if (reply.succeeded()){
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminListLockingQueriesResponse.
-            respond200WithApplicationJson(stream)));
+            respond200WithApplicationJson(new OutStream(reply.result()))));
         }
         else{
           log.error(reply.cause().getMessage(), reply.cause());
@@ -580,9 +557,7 @@ public class AdminAPI implements Admin {
     PostgresClient.getInstance(vertxContext.owner()).select(
       "SELECT pg_terminate_backend('"+pid+"');", reply -> {
         if(reply.succeeded()){
-          System.out.println("locking q -> " + reply.result().getResults().get(0).getBoolean(0));
-
-          if(false == (reply.result().getResults().get(0).getBoolean(0))){
+          if (!Boolean.TRUE.equals(reply.result().iterator().next().getBoolean(0))) {
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(DeleteAdminKillQueryResponse.respond404WithTextPlain(pid)));
           }
           else{
@@ -594,7 +569,6 @@ public class AdminAPI implements Admin {
           asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
         }
     });
-
   }
 
   @Validate
@@ -622,15 +596,10 @@ public class AdminAPI implements Admin {
     }
     try{
       PostgresClient.getInstance(vertxContext.owner()).select(query, reply -> {
-        if(reply.succeeded()){
-
-          OutStream stream = new OutStream();
-          stream.setData(reply.result().getRows());
-
+        if (reply.succeeded()){
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminPostgresMaintenanceResponse.
-            respond201WithApplicationJson(stream)));
-        }
-        else{
+            respond201WithApplicationJson(new OutStream(reply.result()))));
+        } else {
           log.error(reply.cause().getMessage(), reply.cause());
           asyncResultHandler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
         }
@@ -662,11 +631,12 @@ public class AdminAPI implements Admin {
       PostgresClient.getInstance(vertxContext.owner()).select(query, reply -> {
         if(reply.succeeded()){
           int indexes2delete[] = new int[]{ 0 };
-          ResultSet rs = reply.result();
-          List<JsonArray> rows = rs.getResults();
+          RowSet<Row> rs = reply.result();
           StringBuilder concatIndexNames = new StringBuilder();
-          for( int i=0; i< rows.size(); i++)  {
-            String indexName = rows.get(i).getString(0);
+          RowIterator<Row> iterator = rs.iterator();
+          while (iterator.hasNext()) {
+            Row row = iterator.next();
+            String indexName = row.getString(0);
             if(!indexName.endsWith("_pkey")){
               indexes2delete[0]++;
               if(concatIndexNames.length() > 0){

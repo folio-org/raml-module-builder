@@ -22,8 +22,14 @@ import org.folio.rest.persist.PostgresClient;
  * returns "(jsonb->'rush') IS TRUE  ".
  *
  * <p>Note: For best performance do not use
- * {@code new Criteria().addField("'id'").setOperation("=").setVal(someId)}.
- * Use PostgresClient.getById or PgUtil.getById (or any of the other primary key id taking methods) instead.
+ * {@code new Criteria().addField("'id'").setOperation("=").setVal(someId)} because it
+ * accesses {@code table.jsonb->>'id'}.
+ * Use PostgresClient.getById or PgUtil.getById (or any of the other primary key id taking methods)
+ * instead, or use
+ * <pre>
+ * {@code new Criteria().addField("id").setJSONB(false).setOperation("=").setVal(someId)}
+ * </pre>
+ * to access the primary key field {@code table.id}.
  */
 public class Criteria {
 
@@ -274,20 +280,6 @@ public class Criteria {
 
   public Criteria setArray(boolean isArray) {
     this.isArray = isArray;
-    return this;
-  }
-
-  public boolean isJoinON() {
-    return joinON;
-  }
-
-  /**
-   * if set to true, this criteria is being used to create a criteria to compare
-   * to another criteria to join on in this generate an ON instead of a WHERE
-   *
-   */
-  public Criteria setJoinON(boolean joinON) {
-    this.joinON = joinON;
     return this;
   }
 

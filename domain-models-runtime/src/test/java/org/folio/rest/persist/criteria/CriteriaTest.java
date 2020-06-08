@@ -2,7 +2,7 @@ package org.folio.rest.persist.criteria;
 
 import static org.folio.rest.persist.criteria.CriteriaTest.CriteriaMatcher.isSql;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.stream.Stream;
@@ -59,6 +59,12 @@ public class CriteriaTest {
     assertThat(nb, isSql("(transaction->'status') =  'rollbackComplete'"));
     assertThat(nb.getSelect().getSnippet(), is("transaction"));
     assertThat(nb.getFrom().getSnippet(), is("jsonb_array_elements(jsonb->'transaction')"));
+  }
+
+  @Test
+  void setJSONB() {
+    Criteria criteria = new Criteria().addField("id").setJSONB(false).setOperation("=").setVal("123");
+    assertThat(criteria, isSql("id = '123'"));
   }
 
   @ParameterizedTest

@@ -3,17 +3,114 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 30.0](#version-300)
+* [Version 29.5](#version-295)
+* [Version 29.2](#version-292)
+* [Version 29](#version-29)
 * [Version 28](#version-28)
 * [Version 27.1](#version-271)
 * [Version 27](#version-27)
+* [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
+## Version 30.0
+
+* [RMB-246](https://issues.folio.org/browse/RMB-246) Switch to
+    [vertx-pg-client](https://vertx.io/docs/vertx-pg-client/java/).
+  * All functions that previously returned `UpdateResult` now return
+    `RowSet<Row>`. From that result, the number of rows affected by
+    SQL was `getUpdated()`, it is now `rowCount()`.
+  * All functions that previously returned `ResultSet` now return
+    `RowSet<Row>`. From that result, the number of rows affected by
+    SQL is `rowCount()`. The `size()` method returns number of rows
+    returned. An iterator to go through rows is obtained by calling
+    `iterator()`.
+  * `PostgresClient.selectSingle` returns `Row` rather than `JsonArray`.
+  * PostgreSQL `JSONB` type was previously represented by Java `String`,
+    now by Java `JsonObject` (return type and parameter type).
+  * PostgreSQL `UUID` type (used for `id` and foreign keys columns) was
+    previously represented by Java `String`, now by Java `UUID`
+    (return type and parameter type).
+  * In prepared/parameterized queries replace '?' signs by '$1', '$2' and so on
+    and the parameters argument type `JsonArray` by `Tuple`.
+  * Class `SQLConnection` is now provided by RMB. The same class name
+    was used for the SQL client. `io.vertx.ext.sql.SQLConnection` ->
+    `org.folio.rest.persist.SQLConnection`.
+  * `PostgresClient.getClient()` is no longer public. If you need a
+    connection, use `PostgresClient.startTx()`. For modules that wish to use
+    vertx-pg-client directly, `PostgresClient.getConnection`  is offered -
+    it returns `PgConnection` from the pool that is managed by `PostgresClient`.
+  * Replace `exception.getMessage` by `PgExceptionUtil.getMessage(exception)`
+    to mimic the old `GenericDatabaseException.getMessage(e)` because the
+    new `PgException.getMessage(e)` returns the message field only, no SQL error code,
+    no detail.
+  * `PgExceptionFacade.getTable` removed.
+  * `PgExceptionFacade.getIndex` removed.
+  * `PgExceptionFacade.selectStream` without SQLConnection has been
+     removed. Streams must be executed within a transaction.
+  * `PostgresClient.mutate` removed (deprecated since Oct 2018).
+* [RMB-619](https://issues.folio.org/browse/RMB-619)
+  [Deprecation due to upgrading to Vert.x 3.9](https://github.com/vert-x3/wiki/wiki/3.9.0-Deprecations-and-breaking-changes):
+  * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
+    `Verticle#start(Promise<Void>)` and `Verticle#stop(Promise<Void>)`
+  * Replace `Future.setHandler(ar -> …)` by `Future.onComplete(ar -> …)`
+* Vert.x 4 will split `Future` into `Future` and `Promise`
+  * Vert.x 3 `Future<T>` extends `AsyncResult<T>` _and_ `Handler<AsyncResult<T>>`
+  * Vert.x 4 `Future<T>` extends `AsyncResult<T>` _only_
+  * Vert.x 4 `Promise<T>` extends `Handler<AsyncResult<T>>` _only_
+  * When writing or changing code and a `Handler<AsyncResult<T>>` is needed
+    use `promise`, not `promise.future()`, to be prepared for Vert.x 4.
+* [RMB-624](https://issues.folio.org/browse/RMB-624) Fix invalid RAML sample
+  JSON files, otherwise GenerateRunner/SchemaDereferencer will fail with
+  InvocationTargetException/DecodeException "Failed to decode".
+  Hint: Use `for i in *; do jq empty $i || echo $i; done` to list invalid JSONs.
+* Update Vert.x to 3.9.1, consider using
+  [Bill of Materials (Maven BOM)](https://github.com/vert-x3/vertx-stack#bills-of-materials-maven-bom)
+  for io.vertx, com.fasterxml.jackson.core and com.fasterxml.jackson.dataformat dependencies. Remove jackson-databind
+  dependency from pom.xml if module doesn't use it directly.
+
+## Version 29.5
+
+* [RMB-587](https://issues.folio.org/browse/RMB-587) Write access to `public` schema has been removed, it is no longer in `search_path` and should be used for Postgres extensions only, prepend `public.` when calling their methods and operators. Example: RMB replaces `gin_trgm_ops` by `public.gin_trgm_ops` in indexes that RMB maintains.
+* [RMB-588](https://issues.folio.org/browse/RMB-588) Consider removing
+  `<directory>src/main/resources</directory> <filtering>true</filtering>`
+  from pom.xml (or use a more specific directory tree). For details see [FOLIO-2548](https://issues.folio.org/browse/FOLIO-2548).
+* [RMB-594](https://issues.folio.org/browse/RMB-594) RMB no longer uses a random order, but a fixed order to generate the .java classes from the .raml and .json files. This may consistently fail the build if two classes with the same name are generated. To prevent the second from overwriting the first, set a different class name using "javaType": "org.folio.rest.jaxrs.model.Bar". For example for link-field "folio:isVirtual" annotations for mod-graphql.
+
+## Version 29.2
+
+* [RMB-532](https://issues.folio.org/browse/RMB-532) Use PostgresClient.get without the unused and deprecated setId parameter.
+
+## Version 29
+
+* [RMB-529](https://issues.folio.org/browse/RMB-529) The update to Vert.x 3.8.4 deprecates several elements,
+  including Json#mapper, Json#prettyMapper and Json#decodeValue:
+  [3.8.2 Deprecations](https://github.com/vert-x3/wiki/wiki/3.8.2-Deprecations-and-breaking-changes),
+  [3.8.3 Deprecations](https://github.com/vert-x3/wiki/wiki/3.8.3-Deprecations-and-breaking-changes)
+* [RMB-510](https://issues.folio.org/browse/RMB-510) Tenant POST `/_/tenant` must include a body. Client that
+  used an empty request must now include a body with at least:
+  `{"module_to":"module-id"}`. This means that for modules that are using
+  `org.folio.rest.client.TenantClient` that previously passed `null` as for
+  `org.folio.rest.jaxrs.model.TenantAttributes` must now create
+  `TenantAttributes` with `moduleTo` property.
+* [RMB-497](https://issues.folio.org/browse/RMB-497) removed PostgresClient.join methods. It also deprecates all
+  PostgresClient.get methods taking where-clause strings. Module users
+  should use Criterion or CQLWrapper instead to construct queries:
+
+    * Remove Criterion.selects2String, Criterion.from2String
+    * Remove Criteria.setJoinON, Criteria.isJoinON
+    * CQLWrapper.toString no longer returns leading blank/space
+
+* [RMB-514](https://issues.folio.org/browse/RMB-514) Update aspectj-maven-plugin to version 11 and
+  its aspectjrt and aspectjtools versions to 1.9.4 in pom.xml ([example](https://github.com/folio-org/raml-module-builder/blob/a77786a4b118a523b753a26d2f10aa51e276a4da/sample2/pom.xml#L180-L221))
+  to avoid "bad version" warnings.
+
 ## Version 28
 
-* RMB-485 changed the postgresql driver . Namespace prefix change
+* [RMB-485](https://issues.folio.org/browse/RMB-485) changed the postgresql driver. Namespace prefix change
    `com.github.mauricio.async.db.postgresql` to
-   `com.github.jasync.sql.db.postgresql`.
+   `com.github.jasync.sql.db.postgresql`
 
     * `org.folio.rest.persist.PgExceptionFacade.getFields` returns
       `Map<Character.String>` rather than `Map<Object,String>`
@@ -21,12 +118,38 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     * `org.folio.rest.persist.PgExceptionUtil.getBadRequestFields` returns
       `Map<Character,String>` rather than `Map<Object,String>`
 
-* RMB-462 removed suport for `fullText` property in `schema.json`.
+* [RMB-462](https://issues.folio.org/browse/RMB-462) removed support for `fullText defaultDictionary` property (`simple`, `english`, `german`, etc.) in `schema.json`
 
 ## Version 27.1
 
-* Remove all foreign keys fields and the primary key field `id` from the all index sections of schema.json. These btree indexes are created automatically.
-* Upgrade to Vert.x 3.8.1 (same as RMB)
+* Remove each foreign key field index and each primary key field `id` index and uniqueIndex, by setting `"tOps": "DELETE"` in schema.json. These btree indexes are created automatically.
+* Each fullTextIndex that was created with a dictionary different than 'simple' (for example using `to_tsvector('english', jsonb->>'foo')`)
+  needs to be dropped. Then RMB will recreate the index with 'simple'.
+  [Example](https://github.com/folio-org/mod-circulation-storage/blob/a8cbed7d32861ec92295a67f93335780e4034e7b/src/main/resources/templates/db_scripts/schema.json):
+```
+  "scripts": [
+    {
+      "run": "before",
+      "fromModuleVersion": "10.0.1",
+      "snippet": "DROP INDEX IF EXISTS loan_userid_idx_ft;"
+    }
+  ]
+```
+* Breaking change due to [upgrading to Vert.x 3.8.1](https://github.com/vert-x3/wiki/wiki/3.8.0-Deprecations-and-breaking-changes#blocking-tasks)
+    * old: `vertx.executeBlocking(future  -> …, result -> …);`
+    * new: `vertx.executeBlocking(promise -> …, result -> …);`
+    * old: `vertx.executeBlocking((Future <String> future ) -> …, result -> …);`
+    * new: `vertx.executeBlocking((Promise<String> promise) -> …, result -> …);`
+* Deprecation changes due to [upgrading to Vert.x 3.8.1](https://github.com/vert-x3/wiki/wiki/3.8.0-Deprecations-and-breaking-changes#future-creation-and-completion)
+    * old: `Future <String> fut     = Future.future();   … return fut;`
+    * new: `Promise<String> promise = Promise.promise(); … return promise.future();`
+    * old: AbstractVerticle `start(Future <Void> fut)`
+    * new: AbstractVerticle `start(Promise<Void> fut)`
+    * old: `future.compose(res -> …, anotherFuture);`
+    * new: `future.compose(res -> { …; return anotherFuture; });`
+* Deprecation changes due to [upgrading to Vert.x 3.8.1 > 3.6.2](https://github.com/vert-x3/wiki/wiki/3.6.2-Deprecations)
+    * old: `HttpClient` request/response methods with `Handler<HttpClientResponse>`
+    * new: `WebClient` request/response methods with `Handler<AsyncResult<HttpClientResponse>>`
 
 ## Version 27
 
@@ -34,6 +157,14 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     * Hint: `cd ramls/raml-util; git fetch; git checkout 69f6074; cd ../..; git add ramls/raml-util`
     * Note that pom.xml may revert any submodule update that hasn't been staged or committed!
       (See [notes](https://dev.folio.org/guides/developer-setup/#update-git-submodules).)
+
+## Version 26
+
+* The audit (history) table changed to a new incompatible schema. New audit configuration options are required in schema.json. See [README.md](../README.md#the-post-tenant-api) for details.
+* PostgresClient constructor now, by default, starts Embedded Postgres.
+  This means that if you have unit tests that do not start Embedded Postgres
+  explicitly, you might need to terminate Embedded Postgres by calling
+  `PostgresClient.stopEmbeddedPostgres`
 
 ## Version 25
 

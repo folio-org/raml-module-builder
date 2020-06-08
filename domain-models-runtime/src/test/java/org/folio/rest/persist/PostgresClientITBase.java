@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.TenantOperation;
@@ -23,6 +25,7 @@ public class PostgresClientITBase {
   protected static Map<String,String> okapiHeaders;
   protected static String schema;
   protected static Vertx vertx;
+  static Logger log = LoggerFactory.getLogger(PostgresClientITBase.class);
 
   static {
     setTenant("sometenant");
@@ -41,6 +44,7 @@ public class PostgresClientITBase {
         "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN",
         "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema,
         "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
+    LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
   }
 
   @BeforeClass
@@ -111,7 +115,7 @@ public class PostgresClientITBase {
   public static void executeSuperuser(TestContext context, String ... sqlStatements) {
     for (String sql : sqlStatements) {
       Async async = context.async();
-      PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
+      PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
         if (reply.failed()) {
           context.fail(new RuntimeException(reply.cause().getMessage() + ". SQL: " + sql, reply.cause()));
         }
@@ -127,7 +131,7 @@ public class PostgresClientITBase {
   public static void executeSuperuserIgnore(TestContext context, String ... sqlStatements) {
     for (String sql : sqlStatements) {
       Async async = context.async();
-      PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
+      PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
         async.complete();
       });
       async.await();
@@ -144,7 +148,7 @@ public class PostgresClientITBase {
         async.complete();
         return;
       }
-      context.fail(new RuntimeException(result.get(0) + ". SQL File: " + sqlFile));
+      context.fail(new RuntimeException(result.get(0) + "\n### SQL File: ###\n" + sqlFile + "\n### end of SQL File ###"));
     }));
     async.awaitSuccess();
   }

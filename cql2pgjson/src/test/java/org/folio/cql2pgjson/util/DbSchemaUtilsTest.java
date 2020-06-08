@@ -53,33 +53,41 @@ public class DbSchemaUtilsTest {
   @Test
   public void testGetDbIndexForName() {
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(table, "name");
-    assertTrue(dbIndex.isFt());
-    assertTrue(dbIndex.isGin());
-    assertTrue(dbIndex.isOther());
+    assertTrue(dbIndex.hasFullTextIndex());
+    assertTrue(dbIndex.hasGinIndex());
+    assertTrue(dbIndex.hasIndex());
+    assertFalse(dbIndex.hasUniqueIndex());
+    assertFalse(dbIndex.hasLikeIndex());
   }
 
   @Test
   public void testGetDbIndexForEmail() {
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(table, "email");
-    assertFalse(dbIndex.isFt());
-    assertFalse(dbIndex.isGin());
-    assertTrue(dbIndex.isOther());
+    assertFalse(dbIndex.hasFullTextIndex());
+    assertFalse(dbIndex.hasGinIndex());
+    assertFalse(dbIndex.hasIndex());
+    assertTrue(dbIndex.hasUniqueIndex());
+    assertFalse(dbIndex.hasLikeIndex());
   }
 
   @Test
   public void testGetDbIndexForAddress() {
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(table, "address");
-    assertFalse(dbIndex.isFt());
-    assertFalse(dbIndex.isGin());
-    assertTrue(dbIndex.isOther());
+    assertFalse(dbIndex.hasFullTextIndex());
+    assertFalse(dbIndex.hasGinIndex());
+    assertFalse(dbIndex.hasIndex());
+    assertFalse(dbIndex.hasUniqueIndex());
+    assertTrue(dbIndex.hasLikeIndex());
   }
 
   @Test
   public void testGetDbIndexForNullTable() {
     DbIndex dbIndex = DbSchemaUtils.getDbIndex(null, "address");
-    assertFalse(dbIndex.isFt());
-    assertFalse(dbIndex.isGin());
-    assertFalse(dbIndex.isOther());
+    assertFalse(dbIndex.hasFullTextIndex());
+    assertFalse(dbIndex.hasGinIndex());
+    assertFalse(dbIndex.hasIndex());
+    assertFalse(dbIndex.hasUniqueIndex());
+    assertFalse(dbIndex.hasLikeIndex());
   }
 
   private Schema schema(String schemaPath) {

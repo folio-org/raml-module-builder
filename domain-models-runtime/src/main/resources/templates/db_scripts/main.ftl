@@ -7,6 +7,13 @@ CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER N
 GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
 CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
 
+</#if>
+
+ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "$user";
+SET search_path TO ${myuniversity}_${mymodule};
+
+<#if mode.name() == "CREATE">
+
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
       id SERIAL PRIMARY KEY,
       jsonb JSONB NOT NULL
@@ -14,11 +21,27 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
 
 insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
 
--- rmb version ${rmbVersion}
-
 </#if>
 
-SET search_path TO ${myuniversity}_${mymodule},  public;
+-- List of all indexes maintained by RMB
+CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
+  name text PRIMARY KEY,
+  def text NOT NULL,
+  remove boolean NOT NULL
+);
+UPDATE ${myuniversity}_${mymodule}.rmb_internal_index SET remove = TRUE;
+
+-- Collect all tables where we need to run ANALYZE
+CREATE TABLE IF NOT EXISTS rmb_internal_analyze (
+  tablename text
+);
+
+<#if mode.name() == "CREATE">
+  <#include "uuid.ftl">
+</#if>
+
+<#include "general_functions.ftl">
+<#include "rmb_internal_index.ftl">
 
 <#if scripts??>
   <#list scripts as script>
@@ -37,13 +60,8 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
   </#list>
 </#if>
 
-SET search_path TO public, ${myuniversity}_${mymodule};
-
-<#if mode.name() == "CREATE">
-  <#include "uuid.ftl">
-</#if>
-
-<#include "general_functions.ftl">
+REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>
@@ -75,7 +93,11 @@ SET search_path TO public, ${myuniversity}_${mymodule};
       FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_id_in_jsonb();
   <#else>
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+    <#if table.auditingTableName??>
     DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.auditingTableName} CASCADE;
+    </#if>
+    -- drop function that updates foreign key fields
+    DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.update_${table.tableName}_references();
   </#if>
 
   <#if table.mode != "delete">
@@ -121,12 +143,13 @@ SET search_path TO public, ${myuniversity}_${mymodule};
       <#include table.customSnippetPath>
     </#if>
   </#if>
+<#else>
+    <#-- The table has not changed, but we always check all its indexes because they may have changed. -->
+    <#include "indexes.ftl">
 </#if>
 </#list>
 
 <#include "views.ftl">
-
-SET search_path TO ${myuniversity}_${mymodule},  public;
 
 <#if scripts??>
   <#list scripts as script>
@@ -145,4 +168,64 @@ SET search_path TO ${myuniversity}_${mymodule},  public;
   </#list>
 </#if>
 
+-- Drop all indexes that schema.json no longer defines but had been defined by schema.json before.
+DO $$
+DECLARE
+  aname TEXT;
+BEGIN
+  FOR aname IN SELECT name FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE remove = TRUE
+  LOOP
+    EXECUTE format('DROP INDEX IF EXISTS %s', aname);
+  END LOOP;
+END $$;
+
+-- Fix functions calls with "public." in indexes https://issues.folio.org/browse/RMB-583
+-- All functions (except functions of Postgres extensions) have been moved
+-- from public schema into ${myuniversity}_${mymodule} schema.
+-- https://github.com/folio-org/raml-module-builder/commit/872c1f80da4c8d49e6836ca9221f637dc5e7420b
+DO $$
+DECLARE
+  version TEXT;
+  i RECORD;
+  newindexdef TEXT;
+BEGIN
+  SELECT jsonb->>'rmbVersion' INTO version FROM ${myuniversity}_${mymodule}.rmb_internal;
+  IF version !~ '^(\d\.|1\d\.|2[0-8]\.|29\.[0-3]\.)' THEN
+    -- skip this upgrade if last install/upgrade was made by RMB >= 29.4.x
+    RETURN;
+  END IF;
+  FOR i IN SELECT * FROM pg_catalog.pg_indexes WHERE schemaname = '${myuniversity}_${mymodule}'
+  LOOP
+    newindexdef := regexp_replace(i.indexdef,
+      -- \m = beginning of a word, \M = end of a word
+      '\mpublic\.(f_unaccent|concat_space_sql|concat_array_object_values|concat_array_object)\M',
+      '${myuniversity}_${mymodule}.\1',
+      'g');
+    IF newindexdef <> i.indexdef THEN
+      EXECUTE format('DROP INDEX %I.%I', i.schemaname, i.indexname);
+      EXECUTE newindexdef;
+      EXECUTE 'INSERT INTO rmb_internal_analyze VALUES ($1)' USING i.tablename;
+    END IF;
+  END LOOP;
+END $$;
+
+-- For each table where we have created an index run ANALYZE to collect statistic about the new index.
+-- PostgreSQL does not automatically do it: https://issues.folio.org/browse/FOLIO-2625
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOR t IN SELECT DISTINCT tablename FROM rmb_internal_analyze
+  LOOP
+    EXECUTE format('ANALYZE %I', t);
+  END LOOP;
+END $$;
+TRUNCATE rmb_internal_analyze;
+
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};
+
+UPDATE ${myuniversity}_${mymodule}.rmb_internal
+  SET jsonb = jsonb || jsonb_build_object(
+    'rmbVersion', '${rmbVersion}',
+    'moduleVersion', '${newVersion}',
+    'schemaJson', $mainftl$${schemaJson}$mainftl$);

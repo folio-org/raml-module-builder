@@ -13,6 +13,9 @@ import java.util.UUID;
 
 import javax.ws.rs.core.Response;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.pgclient.PgException;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Referencing;
@@ -22,11 +25,11 @@ import org.folio.rest.jaxrs.model.Users;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
-import org.hamcrest.junit.ExpectedException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnit;
@@ -44,11 +47,15 @@ import junit.framework.AssertionFailedError;
 
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
+  static Logger log = LoggerFactory.getLogger(PgUtilIT.class);
+
   @Rule
-  public Timeout timeoutRule = Timeout.seconds(10);
+  public Timeout timeoutRule = Timeout.seconds(40);
 
   @Rule
   public MockitoRule mockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
+
+  private int QUERY_TIMEOUT = 0;
 
   @Rule
   public final ExpectedException exception = ExpectedException.none();
@@ -95,6 +102,7 @@ public class PgUtilIT {
   }
 
   private static final String DUMMY_VAL = "dummy value set by trigger";
+
   private static void createUserTable(TestContext context) {
     execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
     execute(context, "CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
@@ -102,8 +110,6 @@ public class PgUtilIT {
     executeIgnore(context, "CREATE ROLE " + schema + " PASSWORD 'testtenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;");
     execute(context, "CREATE SCHEMA " + schema + " AUTHORIZATION " + schema);
     execute(context, "GRANT ALL PRIVILEGES ON SCHEMA " + schema + " TO " + schema);
-    execute(context, "CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $func$ "
-                     + "SELECT public.unaccent('public.unaccent', $1) $func$ LANGUAGE sql IMMUTABLE;");
     execute(context, "CREATE TABLE " + schema + ".users       (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);");
     execute(context, "CREATE TABLE " + schema + ".duplicateid (id UUID, jsonb JSONB NOT NULL);");
     execute(context, "CREATE TABLE " + schema + ".referencing (id UUID PRIMARY KEY, jsonb jsonb, "
@@ -117,18 +123,18 @@ public class PgUtilIT {
     execute(context, "CREATE TRIGGER idusername BEFORE INSERT OR UPDATE ON " + schema + ".users "
                      + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".dummy();");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
+    LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
   }
 
   private static void execute(TestContext context, String sql) {
     StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
     Async async = context.async();
-    PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
+    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
       if (reply.failed()) {
         Throwable throwable = new AssertionFailedError(reply.cause().getMessage() + ": " + sql);
         throwable.setStackTrace(stackTrace);
         context.fail(throwable);
       }
-
       async.complete();
     });
     async.awaitSuccess();
@@ -136,7 +142,7 @@ public class PgUtilIT {
 
   private static void executeIgnore(TestContext context, String sql) {
     Async async = context.async();
-    PostgresClient.getInstance(vertx).getClient().querySingle(sql, reply -> {
+    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
       async.complete();
     });
     async.awaitSuccess();
@@ -318,7 +324,7 @@ public class PgUtilIT {
   public void deleteByIdNonexistingTable(TestContext testContext) {
     PgUtil.deleteById("otherTable", randomUuid(), okapiHeaders, vertx.getOrCreateContext(),
         Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 500, "42P01"));
+        asyncAssertSuccess(testContext, 500, "does not exist"));
   }
 
   private void insertReferencing(TestContext testContext, String id, String userId) {
@@ -327,7 +333,7 @@ public class PgUtilIT {
         ResponseImpl.class, asyncAssertSuccess(testContext, 201, post -> {
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
   }
 
   @Test
@@ -393,7 +399,7 @@ public class PgUtilIT {
   public void getByIdInvalidUuid(TestContext testContext) {
     PgUtil.getById("users", User.class, "invalidUuid", okapiHeaders, vertx.getOrCreateContext(),
         Users.GetUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 404, "Invalid UUID format"));
+        asyncAssertSuccess(testContext, 404, "Invalid UUID"));
   }
 
   @Test
@@ -780,7 +786,7 @@ public class PgUtilIT {
 
   @Test
   public void responseForeignKeyViolationNoMatch400(TestContext testContext) throws Exception {
-    Exception genericDatabaseException = PgExceptionUtilTest.genericDatabaseException('D', "barMessage");
+    Exception genericDatabaseException = new PgException("", null, "", "barMessage");
     PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
     Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
     Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
@@ -792,7 +798,7 @@ public class PgUtilIT {
 
   @Test
   public void responseForeignKeyViolationNoMatch422(TestContext testContext) throws Exception {
-    Exception genericDatabaseException = PgExceptionUtilTest.genericDatabaseException('D', "bazMessage");
+    Exception genericDatabaseException = new PgException("", null, "", "bazMessage");
     PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
     Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
     Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
@@ -813,7 +819,7 @@ public class PgUtilIT {
 
   @Test
   public void responseUniqueViolationNoMatch400(TestContext testContext) throws Exception {
-    Exception genericDatabaseException = PgExceptionUtilTest.genericDatabaseException('D', "fooMessage");
+    Exception genericDatabaseException = new PgException("", null, "", "fooMessage");
     PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
     Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
     Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
@@ -825,7 +831,7 @@ public class PgUtilIT {
 
   @Test
   public void responseUniqueViolationNoMatch422(TestContext testContext) throws Exception {
-    Exception genericDatabaseException = PgExceptionUtilTest.genericDatabaseException('D', "fooMessage");
+    Exception genericDatabaseException = new PgException("", null, "", "fooMessage");
     PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
     Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
     Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
@@ -904,7 +910,7 @@ public class PgUtilIT {
     assertThat(val, is(9));
 
     // limit=9
-     c = searchForData("username=foo sortBy username", 0, 9, testContext);
+    c = searchForData("username=foo sortBy username", 0, 9, testContext);
     val = c.getUsers().size();
     assertThat(val, is(9));
     for (int i=0; i<5; i++) {
@@ -972,7 +978,7 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (4 - i)));
     }
-    searchForDataExpectFailure("username=foo sortBy username&%$sort.descending", 6, 3, testContext);
+    searchForData("username=foo sortBy username&%$sort.descending", 6, 3, testContext);
     exception.expect(NullPointerException.class);
     searchForDataNullHeadersExpectFailure("username=foo sortBy username/sort.descending", 6, 3, testContext);
     searchForDataNoClass("username=foo sortBy username/sort.descending",6, 3, testContext);
@@ -990,7 +996,7 @@ public class PgUtilIT {
   @Test
   public void optimizedSQLwithNo500(TestContext testContext) {
     PgUtil.getWithOptimizedSql("users", User.class, UserdataCollection.class, "title", "username=a sortBy title",
-        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, response -> {
+        0, 10, QUERY_TIMEOUT, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, response -> {
 
           testContext.assertTrue( response.cause() instanceof NullPointerException);
         });
@@ -1026,7 +1032,8 @@ public class PgUtilIT {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -1036,14 +1043,15 @@ public class PgUtilIT {
           }
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataWithNo400(String cql, int offset, int limit, TestContext testContext) {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseWithout400.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -1054,7 +1062,7 @@ public class PgUtilIT {
 
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimized(String cql, int offset, int limit, TestContext testContext) {
@@ -1074,7 +1082,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimizedNoClass(String cql, int offset, int limit, TestContext testContext) {
@@ -1094,7 +1102,7 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataUnoptimizedNo500(String cql, int offset, int limit, TestContext testContext) {
@@ -1114,14 +1122,15 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 200) {
             testContext.fail("Expected status 200, got "
@@ -1134,14 +1143,14 @@ public class PgUtilIT {
           userdataCollection.setUsers(c.getUsers());
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private UserdataCollection searchForDataNoClass(String cql, int offset, int limit, TestContext testContext) {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, Object.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, Object.class, "username", cql, offset, limit, QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -1152,14 +1161,15 @@ public class PgUtilIT {
 
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
   private String searchForDataExpectFailure(String cql, int offset, int limit, TestContext testContext) {
     String responseString = new String();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, okapiHeaders,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, okapiHeaders,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 400) {
             testContext.fail("Expected status 400, got "
@@ -1171,14 +1181,15 @@ public class PgUtilIT {
           responseString.concat(c);
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return responseString;
   }
   private String searchForDataNullHeadersExpectFailure(String cql, int offset, int limit, TestContext testContext) {
     String responseString = new String();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
-        "users", User.class, UserdataCollection.class, "username", cql, offset, limit, null,
+        "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
+        QUERY_TIMEOUT, null,
         vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
           if (response.getStatus() != 500) {
             testContext.fail("Expected status 500, got "
@@ -1190,7 +1201,7 @@ public class PgUtilIT {
           responseString.concat(c);
           async.complete();
     }));
-    async.awaitSuccess(5000 /* ms */);
+    async.awaitSuccess(10000 /* ms */);
     return responseString;
   }
 
@@ -1205,7 +1216,7 @@ public class PgUtilIT {
         " SELECT md5(username)::uuid, json_build_object('username', username, 'id', md5(username)::uuid)" +
         "  FROM (SELECT '" + prefix + " ' || generate_series(1, " + n + ") AS username) AS subquery";
     pg.execute(sql, testContext.asyncAssertSuccess(updated -> {
-        testContext.assertEquals(n, updated.getUpdated());
+        testContext.assertEquals(n, updated.rowCount());
         async.complete();
       }));
     async.awaitSuccess(10000 /* ms */);

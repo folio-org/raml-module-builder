@@ -11,6 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -25,6 +26,7 @@ import org.folio.cql2pgjson.model.DbFkInfo;
 import org.folio.cql2pgjson.model.DbIndex;
 import org.folio.cql2pgjson.model.IndexTextAndJsonValues;
 import org.folio.cql2pgjson.model.SqlSelect;
+import org.folio.cql2pgjson.util.Cql2PgUtil;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
 import org.folio.rest.persist.ddlgen.Index;
@@ -125,7 +127,7 @@ public class CQL2PgJSON {
       throw new FieldException( "fields list must not be empty" );
     this.jsonFields = new ArrayList<>();
     for (String field : fields) {
-      this.jsonFields.add(trimNotEmpty(field));
+      this.jsonFields.add(trimValidateFieldName(field));
     }
     if (this.jsonFields.size() == 1) {
       this.jsonField = this.jsonFields.get(0);
@@ -202,7 +204,7 @@ public class CQL2PgJSON {
   }
 
   private void doInit(String field, String dbSchemaPath) throws FieldException {
-    jsonField = trimNotEmpty(field);
+    jsonField = trimValidateFieldName(field);
     loadDbSchema(dbSchemaPath);
   }
 
@@ -237,20 +239,22 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Return field.trim(). Throw FieldException if field is null or
-   * field.trim() is empty.
+   * Validate and return field.trim().
    *
    * @param field  the field name to trim
    * @return trimmed field
-   * @throws FieldException  if field is null or the trimmed field name is empty
+   * @throws FieldException  if field is null or the trimmed field name is empty or contains a single quote.
    */
-  private String trimNotEmpty(String field) throws FieldException {
+  private String trimValidateFieldName(String field) throws FieldException {
     if (field == null) {
       throw new FieldException("a field name must not be null");
     }
     String fieldTrimmed = field.trim();
     if (fieldTrimmed.isEmpty()) {
       throw new FieldException("a field name must not be empty");
+    }
+    if (fieldTrimmed.indexOf('\'') != -1) {
+      throw new FieldException("a field name must not contain a single quote");
     }
     return fieldTrimmed;
   }
@@ -260,7 +264,10 @@ public class CQL2PgJSON {
    * @param cql  CQL expression to convert
    * @return SQL WHERE clause, without leading "WHERE ", may contain "ORDER BY" clause
    * @throws QueryValidationException  when parsing or validating cql fails
+   *
+   * @deprecated use toSql instead
    */
+  @Deprecated
   public String cql2pgJson(String cql) throws QueryValidationException {
     try {
       CQLParser parser = new CQLParser();
@@ -312,21 +319,6 @@ public class CQL2PgJSON {
     return new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
-  private static String wrapInLowerUnaccent(String term, boolean lower, boolean unaccent) {
-    if (lower) {
-      if (unaccent) {
-        return "lower(f_unaccent(" + term + "))";
-      } else {
-        return "lower(" + term + ")";
-      }
-    } else {
-      if (unaccent) {
-        return "f_unaccent(" + term + ")";
-      } else {
-        return term;
-      }
-    }
-  }
 
   /**
    * Return $term, lower($term), f_unaccent($term) or lower(f_unaccent($term))
@@ -337,7 +329,7 @@ public class CQL2PgJSON {
    * @return wrapped term
    */
   private static String wrapInLowerUnaccent(String term, CqlModifiers cqlModifiers) {
-    return wrapInLowerUnaccent(term,
+    return Cql2PgUtil.wrapInLowerUnaccent(term,
         cqlModifiers.getCqlCase() != CqlCase.RESPECT_CASE,
         cqlModifiers.getCqlAccents() != CqlAccents.RESPECT_ACCENTS);
   }
@@ -349,14 +341,32 @@ public class CQL2PgJSON {
    * @param index  where to get the modifiers from
    * @return wrapped term
    */
-  private static String wrapInLowerUnaccent(String term, Index index) {
+  private static String wrapIndexExpression(String term, Index index) {
     if (index == null) {
-      return wrapInLowerUnaccent(term, true, true);
-    } else {
-      return wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
+      return Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
     }
+    return Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
   }
 
+  /**
+   * Return $term, lower($term), f_unaccent($term), lower(f_unaccent($term)) or $term wrapped
+   * using custom sqlExpressionQuery wrapper according to the modifiers of index.
+   * @param term  the String to wrap
+   * @param index  where to get the modifiers from
+   * @return wrapped term
+   */
+  private static String wrapQueryExpression(String term, Index index) {
+    if (index == null) {
+      return Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
+    }
+    String wrapper = index.getSqlExpressionQuery();
+    if (wrapper == null) {
+      return Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
+    }
+    return wrapper.replace("$", term);
+  }
+
+  @SuppressWarnings("squid:S135")  // suppress "reduce to one continue in for loop"
   private SqlSelect toSql(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
     String where = pg(node.getSubtree());
@@ -391,7 +401,8 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
+      order.append(wrapForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers))).append(desc).append(", ")
+      .append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
@@ -438,83 +449,33 @@ public class CQL2PgJSON {
         + " (" + pg(node.getRightOperand()) + isNotTrue + ")";
   }
 
-  /**
-   * Convert index name to SQL term of type text.
-   * Examples:
-   * <p>index2sqlText("json", "foo") = "json->>'foo'"
-   * <p>index2sqlText("table.json", "foo.bar.baz") = "table.json->'foo'->'bar'->>'baz'"
-   * @param jsonField
-   * @param index name to convert
-   *
-   * @return SQL term
-   */
-  static String index2sqlText(String jsonField, String index) throws QueryValidationException {
-    StringBuilder res = new StringBuilder();
-    String[] comp = index.split("\\.");
-    res.append(jsonField);
-    for (int j = 0; j < comp.length; j++) {
-      if (j < comp.length - 1) {
-        res.append("->");
-      } else {
-        res.append("->>");
-      }
-      res.append("\'");
-      res.append(Cql2SqlUtil.cql2string(comp[j]));
-      res.append("\'");
-    }
-    return res.toString();
-  }
-
-  /**
-   * Convert index name to SQL term of type json.
-   * Example result for field=user and index=foo.bar:
-   * user->'foo'->'bar'
-   * @param jsonField
-   * @param index name to convert
-   *
-   * @return SQL term
-   */
-  private static String index2sqlJson(String jsonField, String index) throws QueryValidationException {
-    StringBuilder res = new StringBuilder();
-    String[] comp = index.split("\\.");
-    res.append(jsonField);
-    for (int j = 0; j < comp.length; j++) {
-      res.append("->");
-      res.append("\'");
-      res.append(Cql2SqlUtil.cql2string(comp[j]));
-      res.append("\'");
-    }
-    return res.toString();
-  }
-
-  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
-      throws QueryValidationException {
+  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index) {
     if (jsonFields != null && jsonFields.size() > 1) {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    vals.setIndexJson(index2sqlJson(this.jsonField, index));
-    vals.setIndexText(index2sqlText(this.jsonField, index));
+    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(this.jsonField, index));
+    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(this.jsonField, index));
     return vals;
   }
 
-  private IndexTextAndJsonValues multiFieldProcessing(String index ) throws QueryValidationException {
+  private IndexTextAndJsonValues multiFieldProcessing(String index ) {
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
 
     // processing for case where index is prefixed with json field name
     for (String f : jsonFields) {
       if (index.startsWith(f+'.')) {
         String indexTermWithinField = index.substring(f.length()+1);
-        vals.setIndexJson(index2sqlJson(f, indexTermWithinField));
-        vals.setIndexText(index2sqlText(f, indexTermWithinField));
+        vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(f, indexTermWithinField));
+        vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(f, indexTermWithinField));
         return vals;
       }
     }
 
     // if no json field name prefix is found, the default field name gets applied.
     String defaultJsonField = this.jsonFields.get(0);
-    vals.setIndexJson(index2sqlJson(defaultJsonField, index));
-    vals.setIndexText(index2sqlText(defaultJsonField, index));
+    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(defaultJsonField, index));
+    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(defaultJsonField, index));
     return vals;
   }
 
@@ -591,8 +552,8 @@ public class CQL2PgJSON {
     String foreignTableJsonb = targetTable.getTableName() + "." + JSONB_COLUMN_NAME;
 
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    vals.setIndexJson(index2sqlJson(foreignTableJsonb, foreignTarget[1]));
-    vals.setIndexText(index2sqlText(foreignTableJsonb, foreignTarget[1]));
+    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(foreignTableJsonb, foreignTarget[1]));
+    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(foreignTableJsonb, foreignTarget[1]));
 
     CqlModifiers cqlModifiers = new CqlModifiers(node);
     String indexField = foreignTarget[1];
@@ -716,7 +677,7 @@ public class CQL2PgJSON {
           sqlOr.append(" or ");
         }
         IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-        vals.setIndexText(index2sqlText("t.c", foundModifier));
+        vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText("t.c", foundModifier));
         sqlOr.append(indexNode(index, this.dbTable, node, vals, modifiers));
       } else {
         final String comparator = relationModifier.getComparison();
@@ -724,7 +685,7 @@ public class CQL2PgJSON {
           throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + relationModifier.getType());
         }
         sqlAnd.append(" and ");
-        sqlAnd.append(queryByFt(index2sqlText("t.c", foundModifier), modifierValue,
+        sqlAnd.append(queryByFt(Cql2PgUtil.cqlNameAsSqlText("t.c", foundModifier), modifierValue,
           comparator, schemaIndex, targetTable));
       }
     }
@@ -739,7 +700,7 @@ public class CQL2PgJSON {
         throw new QueryValidationException("CQL: No arraySubfield defined for index " + index);
       }
       IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-      vals.setIndexText(index2sqlText("t.c", modifiersSubfield));
+      vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText("t.c", modifiersSubfield));
       sqlOr.append(indexNode(index, this.dbTable, node, vals, modifiers));
     }
     return "id in (select t.id"
@@ -772,7 +733,12 @@ public class CQL2PgJSON {
       return pgId(node, index);
     }
 
-    DbIndex dbIndex = dbIndexMap.computeIfAbsent(index, i -> DbSchemaUtils.getDbIndex(dbTable, i));
+    DbIndex dbIndex;
+    if (targetTable == null || dbTable.equals(targetTable)) {
+      dbIndex = dbIndexMap.computeIfAbsent(index              , i -> DbSchemaUtils.getDbIndex(dbTable, index));
+    } else {  // foreign table
+      dbIndex = dbIndexMap.computeIfAbsent(vals.getIndexJson(), i -> DbSchemaUtils.getDbIndex(targetTable, index));
+    }
 
     if (dbIndex.isForeignKey()) {
       return pgId(node, index);
@@ -783,30 +749,26 @@ public class CQL2PgJSON {
     switch (comparator) {
     case "=":
       if (CqlTermFormat.NUMBER == modifiers.getCqlTermFormat()) {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+        return queryBySql(dbIndex, vals, node, comparator, modifiers);
       } else {
-        return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
+        return queryByFt(index, dbIndex, vals, node, comparator, modifiers, targetTable);
       }
     case "adj":
     case "all":
     case "any":
-      return queryByFt(index, dbIndex.isFt(), vals, node, comparator, modifiers, targetTable);
+      return queryByFt(index, dbIndex, vals, node, comparator, modifiers, targetTable);
     case "==":
     case "<>":
       if (CqlTermFormat.STRING == modifiers.getCqlTermFormat()) {
-        boolean hasIndex = dbIndex.isGin();
-        if (!Cql2SqlUtil.hasCqlWildCardd(node.getTerm())) {
-          hasIndex = hasIndex || dbIndex.isOther();
-        }
-        return queryByLike(index, hasIndex, vals, node, comparator, modifiers, targetTable);
+        return queryByLike(index, dbIndex, vals, node, comparator, modifiers, targetTable);
       } else {
-        return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+        return queryBySql(dbIndex, vals, node, comparator, modifiers);
       }
     case "<" :
     case ">" :
     case "<=" :
     case ">=" :
-      return queryBySql(dbIndex.isOther(), vals, node, comparator, modifiers);
+      return queryBySql(dbIndex, vals, node, comparator, modifiers);
     default:
       throw new CQLFeatureUnsupportedException("Relation " + comparator
           + " not implemented yet: " + node.toString());
@@ -824,7 +786,7 @@ public class CQL2PgJSON {
    * @return
    * @throws QueryValidationException
    */
-  private String queryByFt(String index, boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator,
+  private String queryByFt(String index, DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator,
       CqlModifiers modifiers,Table targetTable) throws QueryValidationException {
     final String indexText = vals.getIndexText();
 
@@ -854,12 +816,39 @@ public class CQL2PgJSON {
       throw new CQLFeatureUnsupportedException("full text index does not support case sensitive: " + index);
     }
 
-    if (!hasFtIndex) {
+    if (! dbIndex.hasFullTextIndex() && ! "true".equals(sql)) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing FT search without index for {0}", s);
     }
 
     return sql;
+  }
+
+  /**
+   * Append template to sb and replace each $ in template by cql converted to an sql string suitable for to_tsquery.
+   */
+  private void appendTemplate(StringBuilder sb, String template, String cql) throws QueryValidationException {
+    for (int i=0; i<template.length(); i++) {
+      char c = template.charAt(i);
+      if (c == '$') {
+        Cql2SqlUtil.appendCql2tsquery(sb, cql);
+      } else {
+        sb.append(c);
+      }
+    }
+  }
+
+  /**
+   * Convert cql into sql suitable for to_tsquery, wrap into f_unaccent if removeAccents == true, and append to sb.
+   */
+  private void appendCql2tsquery(StringBuilder sb, String cql, boolean removeAccents) throws QueryValidationException {
+    if (removeAccents) {
+      sb.append("f_unaccent(");
+    }
+    Cql2SqlUtil.appendCql2tsquery(sb, cql);
+    if (removeAccents) {
+      sb.append(')');
+    }
   }
 
   String queryByFt(String indexText, String term, String comparator, Index schemaIndex, Table targettable)
@@ -873,30 +862,36 @@ public class CQL2PgJSON {
     }
 
     boolean removeAccents = schemaIndex == null || schemaIndex.isRemoveAccents();
-    StringBuilder tsTerm;
+    StringBuilder tsTerm = new StringBuilder();
     switch (comparator) {
       case "=":
       case "adj":
-        tsTerm = Cql2SqlUtil.cql2tsqueryPhrase(term, removeAccents);
+        tsTerm.append("tsquery_phrase(");
         break;
       case "any":
-        tsTerm = Cql2SqlUtil.cql2tsqueryOr(term, removeAccents);
+        tsTerm.append("tsquery_or(");
         break;
       case "all":
-        tsTerm = Cql2SqlUtil.cql2tsqueryAnd(term, removeAccents);
+        tsTerm.append("tsquery_and(");
         break;
       default:
         throw new QueryValidationException("CQL: Unknown full text comparator '" + comparator + "'");
     }
-    if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-      indexText = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targettable.getTableName()),  /* lower */ false, removeAccents);
-    } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
+    if (schemaIndex != null && schemaIndex.getSqlExpressionQuery() != null) {
+      appendTemplate(tsTerm, schemaIndex.getSqlExpressionQuery(), term);
+    } else {
+      appendCql2tsquery(tsTerm, term, removeAccents);
+    }
+    tsTerm.append(')');
+    // Never apply lower for Fulltext.
+    if (schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
+      indexText = schemaIndex.getFinalSqlExpression(targettable.getTableName(), /*lower*/ false);
+    } else if (schemaIndex != null && schemaIndex.getSqlExpression() != null) {
       indexText = schemaIndex.getSqlExpression();
     } else {
-      indexText = wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
+      indexText = Cql2PgUtil.wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
     }
-    String sql = "to_tsvector('simple', " + indexText + ") "
-      + "@@ " + tsTerm;
+    String sql = "to_tsvector('simple', " + indexText + ") " + "@@ " + tsTerm.toString();
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
     return sql;
@@ -912,36 +907,47 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryByLike(String index, boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node,
+  private String queryByLike(String index, DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node,
     String comparator, CqlModifiers modifiers, Table targetTable) throws QueryValidationException {
 
-    String indexText = vals.getIndexText();
+    final String indexText = vals.getIndexText();
+    final Index schemaIndex = ObjectUtils.firstNonNull(
+        dbIndex.getGinIndex(), dbIndex.getLikeIndex(), dbIndex.getUniqueIndex(), dbIndex.getIndex());
     String sql = null;
-
     List<Modifier> relationModifiers = modifiers.getRelationModifiers();
+
     if (!relationModifiers.isEmpty()) {
-      final Index schemaIndex = DbSchemaUtils.getIndex(index, this.dbTable.getGinIndex());
       sql = arrayNode(index, node, modifiers, relationModifiers, schemaIndex, vals, targetTable);
     } else {
-      Index schemaIndex = null;
-      if (targetTable != null) {
-        schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getGinIndex());
-      }
-      String likeOperator = comparator.equals("<>") ? " NOT LIKE " : " LIKE ";
-      String like = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
-      if(schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
-        sql = wrapInLowerUnaccent(schemaIndex.getFinalSqlExpression(targetTable.getTableName()), schemaIndex);
-      } else if(schemaIndex != null && schemaIndex.getSqlExpression() != null) {
-        sql = schemaIndex.getSqlExpression();
+      String likeOperator = comparator.equals("<>") ? "NOT LIKE" : "LIKE";
+      String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
+      String indexMod;
+
+      if (schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
+        indexMod = schemaIndex.getFinalSqlExpression(targetTable.getTableName());
+      } else if (schemaIndex != null && schemaIndex.getSqlExpression() != null) {
+        indexMod = schemaIndex.getSqlExpression();
       } else {
-        sql = wrapInLowerUnaccent(indexText, schemaIndex);
+        indexMod = wrapIndexExpression(indexText, schemaIndex);
       }
-      sql = sql +  likeOperator + wrapInLowerUnaccent(like, schemaIndex);
+
+      if (schemaIndex != null && schemaIndex == dbIndex.getIndex()) {
+        sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
+      } else {
+        sql = indexMod + " " + likeOperator + " " + wrapQueryExpression(term, schemaIndex);
+      }
     }
 
-    if (!hasIndex) {
-      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
-      logger.log(Level.WARNING, "Doing LIKE search without index for {0}", s);
+    if (Cql2SqlUtil.hasCqlWildCard(node.getTerm())) {  // FIXME: right truncation "abc*" works with index/uniqueIndex
+      if (! dbIndex.hasGinIndex() && ! dbIndex.hasLikeIndex()) {
+        String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
+        logger.log(Level.WARNING, "Doing wildcard LIKE search without index for {0}", s);
+      }
+    } else {
+      if (schemaIndex == null) {
+        String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
+        logger.log(Level.WARNING, "Doing LIKE search without index for {0}", s);
+      }
     }
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexText, sql});
@@ -958,26 +964,72 @@ public class CQL2PgJSON {
    * @param modifiers
    * @return
    */
-  private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
-    String index = vals.getIndexText();
-
+  private String queryBySql(DbIndex dbIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
+    String indexMod = vals.getIndexText();
     if (comparator.equals("==")) {
       comparator = "=";
     }
+    Index schemaIndex = dbIndex.getIndex();
+    String sql;
     String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     if (CqlTermFormat.NUMBER.equals(modifiers.getCqlTermFormat())) {
-      index = "(" + index + ")::numeric";
-      term = node.getTerm();
+      sql = "(" + indexMod + ")::numeric " + comparator + term;
+    } else if(schemaIndex != null) {
+      sql = createSQLLengthCase(comparator, indexMod, term,schemaIndex);
+    } else {
+      sql = indexMod + " " + comparator + term;
     }
-    String sql = index + " " + comparator + term;
 
-    if (!hasIndex) {
-      String s = String.format("%s, CQL >>> SQL: %s >>> %s", index, node.toCQL(), sql);
+    if (! dbIndex.hasIndex() && ! dbIndex.hasFullTextIndex() && ! dbIndex.hasLikeIndex()) {
+      String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexMod, node.toCQL(), sql);
       logger.log(Level.WARNING, "Doing SQL query without index for {0}", s);
     }
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {index, sql});
+    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexMod, sql});
     return sql;
   }
 
+  private String createSQLLengthCase(String comparator, String index, String term, Index schemaIndex) {
+    String lengthCaseComparator = lengtCaseComparator(comparator);
+    return  "CASE WHEN length(" + wrapQueryExpression(term, schemaIndex) + ") <= 600"
+        + " THEN " + wrapForLength(wrapIndexExpression(index, schemaIndex)) + " " + comparator + " "
+                   + wrapQueryExpression(term, schemaIndex)
+        + " ELSE "
+        + wrapForLength(wrapIndexExpression(index, schemaIndex)) + " " + comparator + " "
+        + wrapForLength(wrapQueryExpression(term, schemaIndex))
+        + " AND "
+        + wrapIndexExpression(index, schemaIndex) + " " + lengthCaseComparator + " "
+        + wrapQueryExpression(term, schemaIndex)
+        + " END";
+  }
+
+  private String createLikeLengthCase(String comparator, String indexText, Index schemaIndex, String likeOperator, String term) {
+    String joiner = comparator.equals("<>") ? " OR " : " AND ";
+    return "CASE WHEN length(" + wrapQueryExpression(term, schemaIndex) + ") <= 600"
+        + " THEN "
+        + wrapForLength(indexText) + " " + likeOperator + " "
+        + wrapQueryExpression(term, schemaIndex)
+        + " ELSE "
+        + wrapForLength(indexText) + " " + likeOperator + " "
+        + wrapForLength(wrapQueryExpression(term, schemaIndex))
+        + joiner
+        + indexText + " " + likeOperator + " "
+        + wrapQueryExpression(term, schemaIndex)
+        + " END";
+  }
+
+  private String lengtCaseComparator(String comparator) {
+    switch(comparator) {
+    case "<":
+      return "<=";
+    case ">":
+      return ">=";
+    default:
+     return comparator;
+    }
+  }
+
+  private static String wrapForLength(String term) {
+    return "left(" + term + ",600)";
+  }
 }

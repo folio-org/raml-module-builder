@@ -33,4 +33,22 @@ class ForeignKeysTest {
     assertTrue(result.contains("targetTable=b"));
     assertTrue(result.contains("targetTableAlias=c"));
   }
+
+  @Test
+  void constructors() {
+    ForeignKeys foreignKeys2 = new ForeignKeys("other", "bee");
+    ForeignKeys foreignKeys3 = new ForeignKeys("ref", "honey", TableOperation.DELETE);
+    assertEquals("other", foreignKeys2.getFieldPath());
+    assertEquals("ref", foreignKeys3.getFieldPath());
+    assertEquals("bee", foreignKeys2.getTargetTable());
+    assertEquals("honey", foreignKeys3.getTargetTable());
+    assertEquals(TableOperation.ADD, foreignKeys2.gettOps());
+    assertEquals(TableOperation.DELETE, foreignKeys3.gettOps());
+  }
+
+  @Test
+  void targetTableQuote() {
+    assertThrows(IllegalArgumentException.class, () -> new ForeignKeys("otherId", "bee's"));
+    assertThrows(IllegalArgumentException.class, () -> new ForeignKeys("otherId", "rock'n'roll", TableOperation.ADD));
+  }
 }

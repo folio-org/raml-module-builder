@@ -1,17 +1,32 @@
 package org.folio.rest.persist;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.Json;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
+import io.vertx.sqlclient.RowSet;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.io.IOException;
-
 import javax.ws.rs.core.Response;
-
+import org.apache.commons.lang.StringEscapeUtils;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -23,14 +38,10 @@ import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.ResultSet;
+import org.folio.rest.jaxrs.model.Diagnostic;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.facets.FacetManager;
+import org.folio.rest.jaxrs.model.ResultInfo;
 import org.z3950.zing.cql.CQLDefaultNodeVisitor;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -38,8 +49,6 @@ import org.z3950.zing.cql.CQLParser;
 import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Helper methods for using PostgresClient.
@@ -230,7 +239,7 @@ public final class PgUtil {
       Errors errors = ValidationHelper.createValidationErrorMessage(key, value, message);
       Response response = (Response) response422Method.invoke(null, errors);
       return Future.succeededFuture(response);
-    } catch (IllegalAccessException | InvocationTargetException e) {
+    } catch (IllegalAccessException | InvocationTargetException | NullPointerException e) {
       throw new IllegalArgumentException(e);
     }
   }
@@ -408,7 +417,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
-        int deleted = reply.result().getUpdated();
+        int deleted = reply.result().rowCount();
         if (deleted == 0) {
           asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
           return;
@@ -458,6 +467,174 @@ public final class PgUtil {
     setTotalRecords.invoke(collection, totalRecords);
     return collection;
   }
+
+  private static void streamTrailer(HttpServerResponse response, ResultInfo resultInfo) {
+    response.write(String.format("],%n  \"totalRecords\": %d,%n", resultInfo.getTotalRecords()));
+    response.end(String.format(" \"resultInfo\": %s%n}", Json.encode(resultInfo)));
+  }
+
+  private static <T> void streamGetResult(PostgresClientStreamResult<T> result,
+    String element, HttpServerResponse response) {
+    response.setStatusCode(200);
+    response.setChunked(true);
+    response.putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+    response.write("{\n");
+    response.write(String.format("  \"%s\": [%n", element));
+    AtomicBoolean first = new AtomicBoolean(true);
+    result.exceptionHandler(res -> {
+      String message = res.getMessage();
+      List<Diagnostic> diag = new ArrayList<>();
+      diag.add(new Diagnostic().withCode("500").withMessage(message));
+      result.resultInto().setDiagnostics(diag);
+      streamTrailer(response, result.resultInto());
+    });
+    result.endHandler(res -> streamTrailer(response, result.resultInto()));
+    result.handler(res -> {
+      String itemString = null;
+      try {
+        itemString = OBJECT_MAPPER.writeValueAsString(res);
+      } catch (JsonProcessingException ex) {
+        logger.error(ex.getMessage(), ex);
+        throw new IllegalArgumentException(ex.getCause());
+      }
+      if (first.get()) {
+        first.set(false);
+      } else {
+        response.write(String.format(",%n"));
+      }
+      response.write(itemString);
+    });
+  }
+
+  /**
+   * Streaming GET with query. This produces a HTTP with JSON content with
+   * properties {@code totalRecords}, {@code resultInfo} and custom element.
+   * The custom element is array type which POJO that is of type clazz.
+   * The JSON schema looks as follows:
+   *
+   * <pre>{@code
+   * "properties": {
+   *   "element": {
+   *     "description": "the custom element array wrapper",
+   *     "type": "array",
+   *     "items": {
+   *       "description": "The clazz",
+   *       "type": "object",
+   *       "$ref": "clazz.schema"
+   *     }
+   *   },
+   *   "totalRecords": {
+   *     "type": "integer"
+   *   },
+   *   "resultInfo": {
+   *     "$ref": "raml-util/schemas/resultInfo.schema",
+   *     "readonly": true
+   *   }
+   * },
+   * "required": [
+   *   "instances",
+   *   "totalRecords"
+   * ]
+   *</pre>
+   * @param <T> Class for each item returned
+   * @param table SQL table
+   * @param clazz The item class
+   * @param cql CQL query
+   * @param offset offset >= 0; < 0 for no offset
+   * @param limit  limit >= 0 ; <0 for no limit
+   * @param facets facets (empty or null for  no facets)
+   * @param element wrapper JSON element for list of items (eg books / users)
+   * @param routingContext routing context from which a HTTP response is made
+   * @param okapiHeaders
+   * @param vertxContext
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T> void streamGet(String table, Class<T> clazz,
+    String cql, int offset, int limit, List<String> facets,
+    String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
+    Context vertxContext) {
+
+   streamGet(table, clazz, cql, offset, limit, facets, element, 0, routingContext, okapiHeaders,
+       vertxContext);
+  }
+
+
+  /**
+   * Streaming GET with query. This produces a HTTP with JSON content with
+   * properties {@code totalRecords}, {@code resultInfo} and custom element.
+   * The custom element is array type which POJO that is of type clazz.
+   *
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param cql
+   * @param offset
+   * @param limit
+   * @param facets
+   * @param element
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+   * @param okapiHeaders
+   * @param vertxContext
+   * @param routingContext
+   */
+   @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
+   public static <T> void streamGet(String table, Class<T> clazz,
+       String cql, int offset, int limit, List<String> facets,
+       String element, int queryTimeout, RoutingContext routingContext, Map<String, String> okapiHeaders,
+       Context vertxContext) {
+
+    HttpServerResponse response = routingContext.response();
+    try {
+      List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
+      CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset);
+      streamGet(table, clazz, wrapper, facetList, element, queryTimeout, routingContext, okapiHeaders,
+          vertxContext);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      response.setStatusCode(500);
+      response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
+      response.end(e.toString());
+    }
+  }
+
+  /**
+   * streamGet that takes CQLWrapper and FacetField List
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param filter
+   * @param facetList
+   * @param element
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+   * @param okapiHeaders
+   * @param vertxContext
+   * @param routingContext
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T> void streamGet(String table, Class<T> clazz,
+      CQLWrapper filter, List<FacetField> facetList, String element,
+      int queryTimeout, RoutingContext routingContext, Map<String, String> okapiHeaders,
+      Context vertxContext) {
+
+    HttpServerResponse response = routingContext.response();
+    PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+    postgresClient.streamGet(table, clazz, JSON_COLUMN, filter, true, null,
+      facetList, queryTimeout, reply -> {
+        if (reply.failed()) {
+          String message = PgExceptionUtil.badRequestMessage(reply.cause());
+          if (message == null) {
+            message = reply.cause().getMessage();
+          }
+          logger.error(message, reply.cause());
+          response.setStatusCode(400);
+          response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
+          response.end(message);
+          return;
+        }
+        streamGetResult(reply.result(), element, response);
+      });
+  }
+
   /**
    * Get records by CQL.
    * @param table  the table that contains the records
@@ -472,6 +649,7 @@ public final class PgUtil {
    *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by the responseDelegateClass
    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
       String cql, int offset, int limit,
       Map<String, String> okapiHeaders, Context vertxContext,
@@ -772,7 +950,7 @@ public final class PgUtil {
           asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           return;
         }
-        int updated = reply.result().getUpdated();
+        int updated = reply.result().rowCount();
         if (updated == 0) {
           asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
           return;
@@ -871,7 +1049,8 @@ public final class PgUtil {
    * <p>
    * PostgreSQL has no statistics about a field within a JSONB resulting in bad performance.
    * <p>
-   * This method requires both a b-tree index and a full text index for the field used for sorting.
+   * This method requires that the sortField has a b-tree index (non-unique) and caseSensitive=false
+   * and removeAccents=true, and that the cql query is supported by a full text index.
    * <p>
    * This method starts a full table scan until getOptimizedSqlSize() records have been scanned.
    * Then it assumes that there are only a few result records and uses the full text match.
@@ -882,11 +1061,12 @@ public final class PgUtil {
    * @param cql
    * @param okapiHeaders
    * @param vertxContext
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param responseDelegateClass
    * @param asyncResultHandler
    */
   public static <T, C> void getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
-      String sortField, String cql, int offset, int limit,
+      String sortField, String cql, int offset, int limit, int queryTimeout,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
@@ -926,7 +1106,7 @@ public final class PgUtil {
       logger.info("Optimized SQL generated. Source CQL: " + cql);
 
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
-      postgresClient.select(sql, reply -> {
+      postgresClient.select(sql, queryTimeout, reply -> {
         try {
           if (reply.failed()) {
             Throwable cause = reply.cause();
@@ -934,7 +1114,7 @@ public final class PgUtil {
             asyncResultHandler.handle(response(cause.getMessage(), respond500, respond500));
             return;
           }
-          C collection = collection(clazz, collectionClazz, reply.result(), limit);
+          C collection = collection(clazz, collectionClazz, reply.result(), offset, limit);
           asyncResultHandler.handle(response(collection, respond200, respond500));
         } catch (Exception e) {
           logger.error(e.getMessage(), e);
@@ -951,42 +1131,30 @@ public final class PgUtil {
     }
   }
 
-  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, ResultSet resultSet, int limit)
+  private static <T, C> C collection(Class<T> clazz, Class<C> collectionClazz, RowSet<Row> resultSet, int offset, int limit)
       throws ReflectiveOperationException, IOException {
 
-    List<JsonObject> jsonList = resultSet.getRows();
-    List<T> recordList = new ArrayList<>(jsonList.size());
     int totalRecords = 0;
-    for (JsonObject object : jsonList) {
-      String jsonb = object.getString(JSON_COLUMN);
+    int resultSize = resultSet.size();
+    List<T> recordList = new ArrayList<>(resultSize);
+    RowIterator<Row> iterator = resultSet.iterator();
+    while (iterator.hasNext()) {
+      Row row = iterator.next();
+      String jsonb = row.getValue(JSON_COLUMN).toString();
       recordList.add(OBJECT_MAPPER.readValue(jsonb, clazz));
-      totalRecords = object.getInteger("count");
+      totalRecords = row.getInteger(PostgresClient.COUNT_FIELD);
     }
-
-    // full table scan was stopped without total records calculation.
-    if (totalRecords == 0 && jsonList.size() == limit) {
-      totalRecords = 999999999;  // unknown total
-    }
-
+    totalRecords = PostgresClient.getTotalRecords(resultSize, totalRecords, offset, limit);
     return collection(collectionClazz, recordList, totalRecords);
   }
 
   /**
-   * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
-   *
-   * @param column the column that has an index to be used for sorting
-   * @param preparedCql the cql query
-   * @param tenantId the tenant used to generate schema location
-   * @param offset start index of objects to return
-   * @param limit max number of objects to return
-   * @param size the number of rows that determines which method will be used to generate the ultimate result
-   * @throws QueryValidationException
-   * @return the generated SQL string, or null if the CQL query is not suitable for optimization.
+   * Anticipate whether {@link #getWithOptimizedSql} will optimize for query
+   * @param cql CQL query string
+   * @param column sorting criteria to check for (eg "title")
+   * @return null if not eligible; CQL sort node it would be optimized
    */
-  static String generateOptimizedSql(String column, PreparedCQL preparedCql,
-      int offset, int limit) throws QueryValidationException {
-
-    String cql = preparedCql.getCqlWrapper().getQuery();
+  public static CQLSortNode checkOptimizedCQL(String cql, String column) {
     CQLSortNode cqlSortNode = getSortNode(cql);
     if (cqlSortNode == null) {
       return null;
@@ -999,6 +1167,28 @@ public final class PgUtil {
     if (! modifierSet.getBase().equals(column)) {
       return null;
     }
+    return cqlSortNode;
+  }
+  /**
+   * Generate optimized sql given a specific cql query, tenant, index column name hint and configurable size to hinge the optimization on.
+   *
+   * @param column the column that has an index to be used for sorting
+   * @param preparedCql the cql query
+   * @param offset start index of objects to return
+   * @param limit max number of objects to return
+   * @throws QueryValidationException
+   * @return the generated SQL string, or null if the CQL query is not suitable for optimization.
+   */
+  static String generateOptimizedSql(String column, PreparedCQL preparedCql,
+      int offset, int limit) throws QueryValidationException {
+
+    String cql = preparedCql.getCqlWrapper().getQuery();
+    CQLSortNode cqlSortNode = checkOptimizedCQL(cql, column);
+    if (cqlSortNode == null) {
+      return null;
+    }
+    List<ModifierSet> sortIndexes = cqlSortNode.getSortIndexes();
+    ModifierSet modifierSet = sortIndexes.get(0);
     String ascDesc = getAscDesc(modifierSet);
     cql = cqlSortNode.getSubtree().toCQL();
     String lessGreater = "";
@@ -1009,44 +1199,54 @@ public final class PgUtil {
     }
     String tableName = preparedCql.getFullTableName();
     String where = preparedCql.getCqlWrapper().getField().toSql(cql).getWhere();
-    // If there are many matches use a full table scan in title sort order
-    // using the title index, but stop this scan after OPTIMIZED_SQL_SIZE index entries.
+    // If there are many matches use a full table scan in data_column sort order
+    // using the data_column index, but stop this scan after OPTIMIZED_SQL_SIZE index entries.
     // Otherwise use full text matching because there are only a few matches.
     //
     // "headrecords" are the matching records found within the first OPTIMIZED_SQL_SIZE records
-    // by stopping at the title from "OFFSET OPTIMIZED_SQL_SIZE LIMIT 1".
+    // by stopping at the data_column from "OFFSET OPTIMIZED_SQL_SIZE LIMIT 1".
     // If "headrecords" are enough to return the requested "LIMIT" number of records we are done.
     // Otherwise use the full text index to create "allrecords" with all matching
     // records and do sorting and LIMIT afterwards.
+    String wrappedColumn =
+      "lower(f_unaccent(jsonb->>'" + column + "')) ";
+    String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
+    String countSql = preparedCql.getSchemaName()
+      + ".count_estimate('"
+      + "  SELECT " + StringEscapeUtils.escapeSql(wrappedColumn) + " AS data_column "
+      + "  FROM " + tableName + " "
+      + "  WHERE " + StringEscapeUtils.escapeSql(where)
+      + "')";
     String sql =
-        " WITH "
-      + " headrecords AS ("
-      + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
-      + "   WHERE (" + where + ")"
-      + "     AND lower(f_unaccent(jsonb->>'" + column + "'))" + lessGreater
-      + "             ( SELECT lower(f_unaccent(jsonb->>'" + column + "'))"
-      + "               FROM " + tableName
-      + "               ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
-      + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
-      + "             )"
-      + "   ORDER BY lower(f_unaccent(jsonb->>'" + column + "')) " + ascDesc
-      + "   LIMIT " + limit + " OFFSET " + offset
-      + " ), "
-      + " allrecords AS ("
-      + "   SELECT jsonb, lower(f_unaccent(jsonb->>'" + column + "')) AS title FROM " + tableName
-      + "   WHERE (" + where + ")"
-      + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
-      + " )"
-      + " SELECT jsonb, title,  0                                 AS count"
-      + "   FROM headrecords"
-      + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
-      + " UNION"
-      + " (SELECT jsonb, title, (SELECT COUNT(*) FROM allrecords) AS count"
-      + "   FROM allrecords"
-      + "   ORDER BY title " + ascDesc
-      + "   LIMIT " + limit + " OFFSET " + offset
-      + " )"
-      + " ORDER BY title " + ascDesc;
+      " WITH "
+        + " headrecords AS ("
+        + "   SELECT jsonb, (" + wrappedColumn + ") AS data_column FROM " + tableName
+        + "   WHERE (" + where + ")"
+        + "     AND " + cutWrappedColumn + lessGreater
+        + "             ( SELECT " + cutWrappedColumn
+        + "               FROM " + tableName
+        + "               ORDER BY " + cutWrappedColumn + ascDesc
+        + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
+        + "             )"
+        + "   ORDER BY " + cutWrappedColumn + ascDesc
+        + "   LIMIT " + limit + " OFFSET " + offset
+        + " ), "
+        + " allrecords AS ("
+        + "   SELECT jsonb, " + wrappedColumn + " AS data_column FROM " + tableName
+        + "   WHERE (" + where + ")"
+        + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
+        + " ),"
+        + " totalCount AS (SELECT " + countSql + " AS count)"
+        + " SELECT jsonb, data_column, (SELECT count FROM totalCount)"
+        + "   FROM headrecords"
+        + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
+        + " UNION"
+        + " (SELECT jsonb, data_column, (SELECT count FROM totalCount)"
+        + "   FROM allrecords"
+        + "   ORDER BY data_column " + ascDesc
+        + "   LIMIT " + limit + " OFFSET " + offset
+        + " )"
+        + " ORDER BY data_column " + ascDesc;
 
     logger.info("optimized SQL generated from CQL: " + sql);
     return sql;
@@ -1056,19 +1256,28 @@ public final class PgUtil {
     private final String tableName;
     private final String fullTableName;
     private final CQLWrapper cqlWrapper;
+    private final String schemaName;
 
     public PreparedCQL(String tableName, CQLWrapper cqlWrapper, Map<String, String> okapiHeaders) {
       String tenantId = TenantTool.tenantId(okapiHeaders);
       this.tableName = tableName;
-      this.fullTableName = PostgresClient.convertToPsqlStandard(tenantId) + "." + tableName;
       this.cqlWrapper = cqlWrapper;
+      schemaName = PostgresClient.convertToPsqlStandard(tenantId);
+      fullTableName = schemaName + "." + tableName;
     }
 
     public String getTableName() {
       return tableName;
     }
 
-    /** @return full table name including schema, for example tenant_mymodule.users */
+    public String getSchemaName() {
+      return schemaName;
+    }
+
+    /**
+     * @return full table name including schema, for example
+     * tenant_mymodule.users
+     */
     public String getFullTableName() {
       return fullTableName;
     }

@@ -1,6 +1,9 @@
 package org.folio.rest.persist.ddlgen;
 
+import java.util.Collections;
 import java.util.List;
+
+import org.folio.cql2pgjson.util.SqlUtil;
 
 /**
  * @author shale
@@ -14,10 +17,24 @@ public class Table extends Versioned {
   private String tableName;
   private boolean withMetadata;
   private boolean withAuditing;
+  /**
+   * indexes using text_pattern_ops
+   * @see <a href="https://www.postgresql.org/docs/current/indexes-opclass.html">https://www.postgresql.org/docs/current/indexes-opclass.html</a>
+   */
   private List<Index> likeIndex;
+  /** unique btree indexes */
   private List<Index> uniqueIndex;
+  /** non-unique btree indexes */
   private List<Index> index;
+  /**
+   * indexes using gin_trgm_ops trigram matching
+   * @see <a href="https://www.postgresql.org/docs/current/pgtrgm.html#id-1.11.7.40.7">https://www.postgresql.org/docs/current/pgtrgm.html#id-1.11.7.40.7</a>
+   */
   private List<Index> ginIndex;
+  /**
+   * indexes using to_tsvector full text search
+   * @see <a href="https://www.postgresql.org/docs/current/textsearch-indexes.html">https://www.postgresql.org/docs/current/textsearch-indexes.html</a>
+   */
   private List<Index> fullTextIndex;
   private List<ForeignKeys> foreignKeys;
   private String customSnippetPath;
@@ -31,7 +48,12 @@ public class Table extends Versioned {
     return tableName;
   }
 
+  /**
+   * @param tableName
+   * @throws IllegalArgumentException on invalid tableName, see {@link SqlUtil#validateSqlIdentifier(String)}
+   */
   public void setTableName(String tableName) {
+    SqlUtil.validateSqlIdentifier(tableName);
     this.tableName = tableName;
   }
 
@@ -175,4 +197,45 @@ public class Table extends Versioned {
     this.fullTextIndex = fullTextIndex;
   }
 
+  /**
+   * Return an empty list if l is null, otherwise return l.
+   */
+  private <T> List<T> list(List<T> l) {
+    if (l == null) {
+      return Collections.emptyList();
+    }
+    return l;
+  }
+
+  /**
+   * Set mode to "new" if null. Set fieldName using FieldName for each field.
+   */
+  public void setup() {
+    if (getMode() == null) {
+      //the only relevant mode that the templates take into account is delete
+      //otherwise update and new will always create if does not exist
+      //so can set to either new or update , doesnt matter, leave the option
+      //in case we do need to differentiate in the future between the two
+      setMode("new");
+    }
+
+    list(getDeleteFields()) .forEach(Field::setup);
+    list(getAddFields())    .forEach(Field::setup);
+    list(getForeignKeys())  .forEach(ForeignKeys::setup);
+    list(getIndex())        .forEach(Index::setupIndex);
+    list(getLikeIndex())    .forEach(Index::setupLikeIndex);
+    list(getUniqueIndex())  .forEach(Index::setupUniqueIndex);
+    list(getGinIndex())     .forEach(Index::setupGinIndex);
+    list(getFullTextIndex()).forEach(Index::setupFullTextIndex);
+    if (isWithAuditing()) {
+      if (getAuditingTableName() == null) {
+        throw new IllegalArgumentException(
+            "auditingTableName missing for table " + getTableName() + " having \"withAuditing\": true");
+      }
+      if (getAuditingFieldName() == null) {
+        throw new IllegalArgumentException(
+            "auditingFieldName missing for table " + getTableName() + " having \"withAuditing\": true");
+      }
+    }
+  }
 }

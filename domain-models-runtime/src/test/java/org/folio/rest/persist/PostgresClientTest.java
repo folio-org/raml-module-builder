@@ -1,87 +1,58 @@
 package org.folio.rest.persist;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertThat;
-import java.io.IOException;
+import static org.hamcrest.collection.ArrayMatching.arrayContaining;
+import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.facets.ParsedQuery;
-import org.folio.rest.tools.utils.NetworkUtils;
-import org.folio.rest.persist.PostgresClient.QueryHelper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collector;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonArray;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
-import io.vertx.ext.asyncsql.impl.PostgreSQLConnectionImpl;
-import io.vertx.ext.sql.ResultSet;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.SQLOperations;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.pgclient.PgNotification;
+import io.vertx.pgclient.impl.RowImpl;
+import io.vertx.sqlclient.PreparedQuery;
+import io.vertx.sqlclient.PreparedStatement;
+import io.vertx.sqlclient.Query;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlResult;
+import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.impl.RowDesc;
+import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.helpers.LocalRowSet;
+import org.folio.rest.tools.utils.Envs;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.util.ResourceUtil;
+import org.folio.rest.persist.PostgresClient.QueryHelper;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
-import freemarker.template.TemplateException;
-
-import net.sf.jsqlparser.JSQLParserException;
 
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
-
-  private static final String notTrue = "AND \\\\(\\\\(\\\\(FALSE\\\\)\\\\)\\\\)";
-  private static final String isTrue = "AND \\\\(\\\\(\\\\(TRUE\\\\)\\\\)\\\\)";
-
-  String []queries = new String[]{
-  //"SELECT * FROM table WHERE items_mt_view.jsonb->>' ORDER BY items_mt_view.jsonb->>\\'aaa\\'  ORDER BY items2_mt_view.jsonb' ORDER BY items_mt_view.jsonb->>'aaa limit' OFFSET 31 limit 10",
-  "SELECT * FROM table WHERE items_mt_view.jsonb->>'title' LIKE '%12345%' ORDER BY items_mt_view.jsonb->>'title' DESC OFFSET 30 limit 10",
-  "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb@>'{\"barcode\":4}' order by jsonb->'a'  asc",
-  "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb @> '{\"barcode\":4}' limit 100 offset 0",
-  "select jsonb FROM counter_mod_inventory_storage.item  WHERE jsonb @> '{\" AND IS TRUE \":4}' limit 100 offset 0",
-  //"SELECT * FROM table WHERE items0_mt_view.jsonb->>' ORDER BY items1_mt_view.jsonb->>''aaa'' ' ORDER BY items2_mt_view.jsonb->>' ORDER BY items3_mt_view.jsonb->>''aaa'' '",
-  "SELECT id FROM test_tenant_mod_inventory_storage.material_type  WHERE jsonb@>'{\"id\":\"af6c5503-71e7-4b1f-9810-5c9f1af7c570\"}' LIMIT 1 OFFSET 0 ",
-  "select * from diku999_circulation_storage.audit_loan WHERE audit_loan.jsonb->>'id' = 'cf23adf0-61ba-4887-bf82-956c4aae2260 order by created_date LIMIT 10 OFFSET 0' order by created_date LIMIT 10 OFFSET 0 ",
-  "select * from slowtest99_mod_inventory_storage.item where (item.jsonb->'barcode') = to_jsonb('1000000'::int)  order by a LIMIT 30;",
-  "SELECT  * FROM slowtest_cql5_mod_inventory_storage.item  WHERE lower(f_unaccent(item.jsonb->>'default')) LIKE lower(f_unaccent('true')) ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC LIMIT 10 OFFSET 0",
-  //"SELECT * FROM harvard_mod_configuration.config_data  WHERE ((true) AND ( (config_data.jsonb->>'userId' ~ '') IS NOT TRUE)) ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC, item.jsonb->>'code' DESC LIMIT 10 OFFSET 0",
-  //"SELECT * FROM harvard_mod_configuration.config_data  WHERE ((true) AND ( (config_data.jsonb->>'userId' ~ '') IS TRUE)) OR (lower(f_unaccent(config_data.jsonb->>'userId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]])joeshmoe($|[[:punct:]]|[[:space:]])')))  ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC, item.jsonb->>'code' DESC LIMIT 10 OFFSET 0",
-  "SELECT * FROM t WHERE TRUE AND lower(f_unaccent(item.jsonb->>'default')) IS NOT NULL ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC",
-  "SELECT * FROM t WHERE TRUE AND lower(f_unaccent(item.jsonb->>'default')) IS NOT TRUE ORDER BY lower(f_unaccent(item.jsonb->>'code')) DESC",
-  "SELECT * FROM harvard5_mod_inventory_storage.material_type  where (jsonb->>'test'  ~ '') IS NOT TRUE limit 10",
-  "SELECT * FROM harvard5_mod_inventory_storage.material_type  where (jsonb->>'test'  ~ '') IS TRUE limit 10",
-  "SELECT * FROM harvard5_mod_inventory_storage.material_type  where (jsonb->>'test'  ~ '') IS TRUE AND (jsonb->>'test'  ~ '') IS NOT TRUE limit 10",
-  "SELECT * FROM t WHERE ((((true) AND ( (instance_holding_item_view.ho_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE))",
-  "SELECT * FROM t WHERE (((lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) ~ lower(f_unaccent('(^\\|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]])).*($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'contributors')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\\\"name\\\":([[:punct:]]|[[:space:]]) \\\".*\\\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'identifiers')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\\\"value\\\":([[:punct:]]|[[:space:]]) \\\".*\\\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))",
-  "SELECT * FROM t WHERE (((lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]])).*($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'contributors')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\"name\":([[:punct:]]|[[:space:]]) \".*\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) OR (lower(f_unaccent(instance_holding_item_view.jsonb->>'identifiers')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))\"value\":([[:punct:]]|[[:space:]]) \".*\"($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))) AND ((((((((true) AND ( (instance_holding_item_view.ho_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))) OR ((((true) AND ( (instance_holding_item_view.it_jsonb->>'permanentLocationId' ~ '') IS NOT TRUE)) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.ho_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))))) OR (((true) AND ( (instance_holding_item_view.it_jsonb->>'temporaryLocationId' ~ '') IS NOT TRUE)) AND ((lower(f_unaccent(instance_holding_item_view.it_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.it_jsonb->>'permanentLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))')))))) OR ((lower(f_unaccent(instance_holding_item_view.it_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))53cf956f-c1df-410b-8bea-27f712cca7c0($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))) OR (lower(f_unaccent(instance_holding_item_view.it_jsonb->>'temporaryLocationId')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))fcd64ce1-6995-48f0-840e-89ffa2288371($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))))) ORDER BY lower(f_unaccent(instance_holding_item_view.jsonb->>'title')) LIMIT 30 OFFSET 0"};
-
-  @Test
-  public void parseQuery() throws JSQLParserException {
-    for (int i = 0; i < queries.length; i++) {
-      ParsedQuery pQ = PostgresClient.parseQuery(queries[i]);
-
-      assertThat(pQ.getQueryWithoutLimOff(),
-        not(either(containsString(notTrue)).or(
-          containsString(isTrue))));
-
-      assertThat(pQ.getCountQuery(),
-        not(either(containsString(notTrue)).or(
-          containsString(isTrue))));
-
-      assertThat(pQ.getWhereClause(),
-        not(either(containsString(notTrue)).or(
-          containsString(isTrue))));
-   }
- }
 
   private Logger oldLogger;
   private String oldConfigFilePath;
@@ -89,6 +60,10 @@ public class PostgresClientTest {
   private int oldEmbeddedPort;
   /** empty = no environment variables */
   private JsonObject empty = new JsonObject();
+
+  private static final int DEFAULT_OFFSET = 0;
+
+  private static final int DEFAULT_LIMIT = 10;
 
   @Before
   public void initConfig() {
@@ -116,7 +91,6 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(6000));
     assertThat(config.getString("username"), is("username"));
-    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -129,7 +103,6 @@ public class PostgresClientTest {
     assertThat(config.getString("host"), is("127.0.0.1"));
     assertThat(config.getInteger("port"), is(port));
     assertThat(config.getString("username"), is("barschema"));
-    assertThat(config.getInteger("connectionReleaseDelay"), is(60000));
   }
 
   @Test
@@ -172,13 +145,62 @@ public class PostgresClientTest {
   }
 
   @Test
+  public void getConnectionConfig() throws Exception {
+    try {
+      Envs.setEnv("somehost", 10001, "someusername", "somepassword", "somedatabase");
+      JsonObject json = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      assertThat(json.getString("host"), is("somehost"));
+      assertThat(json.getInteger("port"), is(10001));
+      assertThat(json.getString("username"), is("someusername"));
+      assertThat(json.getString("password"), is("somepassword"));
+      assertThat(json.getString("database"), is("somedatabase"));
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testPgConnectOptionsEmpty() {
+    JsonObject conf = new JsonObject();
+    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+    assertThat("localhost", is(options.getHost()));
+    assertThat(5432, is(options.getPort()));
+    assertThat("user", is(options.getUser()));
+    assertThat("pass", is(options.getPassword()));
+    assertThat("db", is(options.getDatabase()));
+    assertThat(60000, is(options.getIdleTimeout()));
+    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
+  }
+
+  @Test
+  public void testPgConnectOptionsFull() {
+    JsonObject conf = new JsonObject()
+        .put("host", "myhost")
+        .put("port", 5433)
+        .put("username", "myuser")
+        .put("password", "mypassword")
+        .put("database", "mydatabase")
+        .put("connectionReleaseDelay", 1000);
+
+    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+    assertThat("myhost", is(options.getHost()));
+    assertThat(5433, is(options.getPort()));
+    assertThat("myuser", is(options.getUser()));
+    assertThat("mypassword", is(options.getPassword()));
+    assertThat("mydatabase", is(options.getDatabase()));
+    assertThat(1000, is(options.getIdleTimeout()));
+    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
+  }
+
+  @Test
   public void testProcessResults() {
     PostgresClient testClient = PostgresClient.testClient();
 
     int total = 15;
-    ResultSet rs = getMockTestPojoResultSet(total);
+    RowSet<Row> rs = getMockTestPojoResultSet(total);
 
-    List<TestPojo> results = testClient.processResults(rs, total, TestPojo.class, false).getResults();
+    List<TestPojo> results = testClient.processResults(rs, total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class).getResults();
 
     assertTestPojoResults(results, total);
   }
@@ -188,8 +210,8 @@ public class PostgresClientTest {
     PostgresClient testClient = PostgresClient.testClient();
 
     int total = 25;
-    ResultSet rs = getMockTestPojoResultSet(total);
-    PostgresClient.ResultsHelper<TestPojo> resultsHelper = new PostgresClient.ResultsHelper<>(rs, total, TestPojo.class, false);
+    RowSet<Row> rs = getMockTestPojoResultSet(total);
+    PostgresClient.ResultsHelper<TestPojo> resultsHelper = new PostgresClient.ResultsHelper<>(rs, total, TestPojo.class);
 
     testClient.deserializeResults(resultsHelper);
 
@@ -209,42 +231,50 @@ public class PostgresClientTest {
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "foo", "bar", "biz", "baz"
     }));
-    Map<String, Method> externalColumnSettters = testClient.getExternalColumnSetters(columnNames, TestPojo.class, false);
-    assertThat(externalColumnSettters.size(), is(4));
-    assertThat(externalColumnSettters.get("foo"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("foo"), String.class)));
-    assertThat(externalColumnSettters.get("bar"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("bar"), String.class)));
-    assertThat(externalColumnSettters.get("biz"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("biz"), Double.class)));
-    assertThat(externalColumnSettters.get("baz"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("baz"), List.class)));
+    Map<String, Method> externalColumnSetters = new HashMap<>();
+    testClient.collectExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
+    assertThat(externalColumnSetters.size(), is(4));
+    assertThat(externalColumnSetters.get("foo"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("foo"), String.class)));
+    assertThat(externalColumnSetters.get("bar"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("bar"), String.class)));
+    assertThat(externalColumnSetters.get("biz"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("biz"), Double.class)));
+    assertThat(externalColumnSetters.get("baz"), is(TestPojo.class.getMethod(testClient.databaseFieldToPojoSetter("baz"), List.class)));
   }
 
   @Test
-  public void testPopulateExternalColumns() {
+  public void testPopulateExternalColumns() throws InvocationTargetException, IllegalAccessException {
     PostgresClient testClient = PostgresClient.testClient();
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
     }));
-    Map<String, Method> externalColumnSettters = testClient.getExternalColumnSetters(columnNames, TestPojo.class, false);
+    Map<String, Method> externalColumnSetters = new HashMap<>();
+    testClient.collectExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
     TestPojo o = new TestPojo();
     String foo = "Hello";
     String bar = "World";
     Double biz = 1.0;
-    List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
-      "This", "is", "a", "test"
-    }));
-    JsonObject row = new JsonObject()
-        .put("foo", foo)
-        .put("bar", bar)
-        .put("biz", biz)
-        .put("baz", baz);
-    testClient.populateExternalColumns(externalColumnSettters, o, row);
+    String [] baz = new String[] { "This", "is", "a", "test" };
+
+    List<String> rowColumns = new LinkedList<>();
+    rowColumns.add("foo");
+    rowColumns.add("bar");
+    rowColumns.add("biz");
+    rowColumns.add("baz");
+    RowDesc desc = new RowDesc(rowColumns);
+    Row row = new RowImpl(desc);
+    row.addString(foo);
+    row.addString(bar);
+    row.addDouble(biz);
+    row.addStringArray(baz);
+
+    testClient.populateExternalColumns(externalColumnSetters, o, row);
     assertThat(o.getFoo(), is(foo));
     assertThat(o.getBar(), is(bar));
     assertThat(o.getBiz(), is(biz));
-    assertThat(o.getBaz().size(), is(baz.size()));
-    assertThat(o.getBaz().get(0), is(baz.get(0)));
-    assertThat(o.getBaz().get(1), is(baz.get(1)));
-    assertThat(o.getBaz().get(2), is(baz.get(2)));
-    assertThat(o.getBaz().get(3), is(baz.get(3)));
+    assertThat(o.getBaz().size(), is(baz.length));
+    assertThat(o.getBaz().get(0), is(baz[0]));
+    assertThat(o.getBaz().get(1), is(baz[1]));
+    assertThat(o.getBaz().get(2), is(baz[2]));
+    assertThat(o.getBaz().get(3), is(baz[3]));
   }
 
   @Test
@@ -254,40 +284,123 @@ public class PostgresClientTest {
     assertThat(setterMethodName, is("setTestField"));
   }
 
+  public class FakeSqlConnection implements PgConnection {
+    final AsyncResult<RowSet<Row>> asyncResult;
+    final boolean failExplain;
+
+    FakeSqlConnection(AsyncResult<RowSet<Row>> result, boolean failExplain) {
+      this.asyncResult = result;
+      this.failExplain = failExplain;
+    }
+
+    @Override
+    public PgConnection notificationHandler(Handler<PgNotification> handler) {
+      return this;
+    }
+
+    @Override
+    public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public int processId() {
+      return 0;
+    }
+
+    @Override
+    public int secretKey() {
+      return 0;
+    }
+
+    @Override
+    public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
+      handler.handle(Future.failedFuture("not implemented"));
+      return this;
+    }
+
+    @Override
+    public PgConnection exceptionHandler(Handler<Throwable> handler) {
+      return this;
+    }
+
+    @Override
+    public PgConnection closeHandler(Handler<Void> handler) {
+      return null;
+    }
+
+    @Override
+    public Transaction begin() {
+      return null;
+    }
+
+    @Override
+    public boolean isSSL() {
+      return false;
+    }
+
+    @Override
+    public Query<RowSet<Row>> query(String s) {
+
+      return new Query<RowSet<Row>>() {
+
+        @Override
+        public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
+          if (s.startsWith("EXPLAIN") && failExplain) {
+            handler.handle(Future.failedFuture("failExplain"));
+          } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
+            List<String> columnNames = new LinkedList<>();
+            columnNames.add("COUNT");
+            RowDesc rowDesc = new RowDesc(columnNames);
+            Row row = new RowImpl(rowDesc);
+            row.addInteger(asyncResult.result().size());
+            List<Row> rows = new LinkedList<>();
+            rows.add(row);
+            RowSet rowSet = new LocalRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
+            handler.handle(Future.succeededFuture(rowSet));
+          } else {
+            handler.handle(asyncResult);
+          }
+        }
+
+        @Override
+        public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
+          return null;
+        }
+
+        @Override
+        public <U> Query<RowSet<U>> mapping(Function<Row, U> function) {
+          return null;
+        }
+      };
+    }
+
+    @Override
+    public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+      return null;
+    }
+
+    @Override
+    public void close() {
+    }
+  }
+
   @Test
-  public void testProcessQueryWithCount() throws IOException, TemplateException {
+  public void testProcessQueryWithCount()  {
     PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper(false, "test_pojo", new ArrayList<FacetField>());
+    QueryHelper queryHelper = new QueryHelper("test_pojo");
     queryHelper.selectQuery = "SELECT * FROM test_pojo";
+    queryHelper.countQuery = "COUNT (*) FROM test_pojo";
 
     int total = 10;
 
-    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
-      @Override
-      public SQLOperations querySingle(String sql, Handler<AsyncResult<JsonArray>> handler) {
-        handler.handle(Future.succeededFuture(new JsonArray().add(total)));
-        return null;
-      }
-      @Override
-      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
-        ResultSet rs = getMockTestPojoResultSet(total);
-        handler.handle(Future.succeededFuture(rs));
-        return this;
-      }
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        handler.handle(Future.succeededFuture());
-      }
-      @Override
-      public void close() {
-        // nothing to do
-      }
-    };
+    PgConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), false);
 
     testClient.processQueryWithCount(connection, queryHelper, "get",
       totaledResults -> {
         assertThat(totaledResults.total, is(total));
-        return testClient.processResults(totaledResults.set, totaledResults.total, TestPojo.class, false);
+        return testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class);
       },
       reply -> {
         List<TestPojo> results = reply.result().getResults();
@@ -299,142 +412,6 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void testPrepareCountQueryWithoutFacets() throws IOException, TemplateException {
-    PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper(false, "test_pojo", new ArrayList<FacetField>());
-    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_pojo LIMIT 10 OFFSET 1";
-    testClient.prepareCountQuery(queryHelper);
-
-    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_pojo"));
-  }
-
-  @Test
-  public void testPrepareCountQueryWithFacets() throws IOException, TemplateException {
-    PostgresClient testClient = PostgresClient.testClient();
-    List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb->>'biz'"));
-    }};
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
-    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 10 OFFSET 1";
-    testClient.prepareCountQuery(queryHelper);
-
-    assertThat(queryHelper.selectQuery.replace("\r\n", "\n"), is(
-      "with facets as (\n" +
-      "    SELECT id, foo, bar FROM test_jsonb_pojo  \n" +
-      "     LIMIT 10000 \n" +
-      " )\n" +
-      " ,\n" +
-      " count_on as (\n" +
-      "    SELECT\n" +
-      "      test_raml_module_builder.count_estimate_smart2(count(*) , 10000, 'SELECT COUNT(*) FROM test_jsonb_pojo') AS count\n" +
-      "    FROM facets\n" +
-      " )\n" +
-      " ,\n" +
-      " grouped_by as (\n" +
-      "    SELECT\n" +
-      "        jsonb->>'biz' as biz,\n" +
-      "      count(*) as count\n" +
-      "    FROM facets\n" +
-      "    GROUP BY GROUPING SETS (\n" +
-      "        jsonb->>'biz'    )\n" +
-      " )\n" +
-      " ,\n" +
-      "   lst1 as(\n" +
-      "     SELECT\n" +
-      "        jsonb_build_object(\n" +
-      "            'type' , 'biz',\n" +
-      "            'facetValues',\n" +
-      "            json_build_array(\n" +
-      "                jsonb_build_object(\n" +
-      "                'value', biz,\n" +
-      "                'count', count)\n" +
-      "            )\n" +
-      "        ) AS jsonb,\n" +
-      "        count as count\n" +
-      "    FROM grouped_by\n" +
-      "     where biz is not null\n" +
-      "     group by biz, count\n" +
-      "     order by count desc\n" +
-      "     )\n" +
-      ",\n" +
-      "ret_records as (\n" +
-      "       select id as id, jsonb  FROM facets\n" +
-      "       )\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id, jsonb FROM lst1 limit 5)\n" +
-      "  \n" +
-      "  UNION\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id,  jsonb_build_object('count' , count) FROM count_on)\n" +
-      "  UNION ALL\n" +
-      "  (select id as id, jsonb from ret_records  LIMIT 10  OFFSET 1);\n")
-    );
-    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_jsonb_pojo"));
-  }
-
-  @Test
-  public void testPrepareCountQueryWithFacetsAndWhereClause() throws IOException, TemplateException {
-    PostgresClient testClient = PostgresClient.testClient();
-    List<FacetField> facets = new ArrayList<FacetField>() {{
-      add(new FacetField("jsonb->>'biz'"));
-    }};
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
-    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo WHERE jsonb->>'my' LIMIT 10 OFFSET 1";
-    testClient.prepareCountQuery(queryHelper);
-
-    // The string argument to count_estimate_smart2 is correctly escaped..
-    // But the LIMIT 10 OFFSET 1 is gone!
-    assertThat(queryHelper.selectQuery.replace("\r\n", "\n"), is(
-      "with facets as (\n" +
-      "    SELECT id, foo, bar FROM test_jsonb_pojo WHERE jsonb->>'my'  \n" +
-      "     LIMIT 10000 \n" +
-      " )\n" +
-      " ,\n" +
-      " count_on as (\n" +
-      "    SELECT\n" +
-      "      test_raml_module_builder.count_estimate_smart2(count(*) , 10000, 'SELECT COUNT(*) FROM test_jsonb_pojo WHERE jsonb->>''my''') AS count\n" +
-      "    FROM facets\n" +
-      " )\n" +
-      " ,\n" +
-      " grouped_by as (\n" +
-      "    SELECT\n" +
-      "        jsonb->>'biz' as biz,\n" +
-      "      count(*) as count\n" +
-      "    FROM facets\n" +
-      "    GROUP BY GROUPING SETS (\n" +
-      "        jsonb->>'biz'    )\n" +
-      " )\n" +
-      " ,\n" +
-      "   lst1 as(\n" +
-      "     SELECT\n" +
-      "        jsonb_build_object(\n" +
-      "            'type' , 'biz',\n" +
-      "            'facetValues',\n" +
-      "            json_build_array(\n" +
-      "                jsonb_build_object(\n" +
-      "                'value', biz,\n" +
-      "                'count', count)\n" +
-      "            )\n" +
-      "        ) AS jsonb,\n" +
-      "        count as count\n" +
-      "    FROM grouped_by\n" +
-      "     where biz is not null\n" +
-      "     group by biz, count\n" +
-      "     order by count desc\n" +
-      "     )\n" +
-      ",\n" +
-      "ret_records as (\n" +
-      "       select id as id, jsonb  FROM facets\n" +
-      "       )\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id, jsonb FROM lst1 limit 5)\n" +
-      "  \n" +
-      "  UNION\n" +
-      "  (SELECT '00000000-0000-0000-0000-000000000000'::uuid as id,  jsonb_build_object('count' , count) FROM count_on)\n" +
-      "  UNION ALL\n" +
-      "  (select id as id, jsonb from ret_records  );\n")
-    );
-    assertThat(queryHelper.countQuery, is("SELECT COUNT(*) FROM test_jsonb_pojo WHERE jsonb->>'my'"));
-  }
-
-  @Test
   public void testProcessQuery() {
     PostgresClient testClient = PostgresClient.testClient();
     List<FacetField> facets = new ArrayList<FacetField>() {
@@ -442,37 +419,15 @@ public class PostgresClientTest {
         add(new FacetField("jsonb->>'biz'"));
       }
     };
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", facets);
+    QueryHelper queryHelper = new QueryHelper("test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 30 OFFSET 1";
 
     int total = 30;
 
-    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
-      @Override
-      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
-        // provoke explain query failure
-        if (sql.startsWith("EXPLAIN ")) {
-          handler.handle(Future.failedFuture("explain"));
-          return this;
-        }
-        ResultSet rs = getMockTestJsonbPojoResultSet(total);
-        handler.handle(Future.succeededFuture(rs));
-        return this;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        handler.handle(Future.succeededFuture());
-      }
-
-      @Override
-      public void close() {
-        // nothing to do
-      }
-    };
+    PgConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), true);
 
     testClient.processQuery(connection, queryHelper, total, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
         List<TestJsonbPojo> results = reply.result().getResults();
 
@@ -485,27 +440,13 @@ public class PostgresClientTest {
   @Test
   public void testProcessQueryFails() {
     PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", null);
+    QueryHelper queryHelper = new QueryHelper("test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT foo";
 
-    SQLConnection connection = new PostgreSQLConnectionImpl(null, null, null) {
-      @Override
-      public SQLConnection query(String sql, Handler<AsyncResult<ResultSet>> handler) {
-        handler.handle(Future.failedFuture("Bad query"));
-        return this;
-      }
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        handler.handle(Future.succeededFuture());
-      }
-      @Override
-      public void close() {
-        // nothing to do
-      }
-    };
+    PgConnection connection = new FakeSqlConnection(Future.failedFuture("Bad query"), false);
 
     testClient.processQuery(connection, queryHelper, 30, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
         assertThat(reply.failed(), is(true));
         assertThat(reply.cause().getMessage(), is("Bad query"));
@@ -516,12 +457,12 @@ public class PostgresClientTest {
   @Test
   public void testProcessQueryException() {
     PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper(false, "test_jsonb_pojo", null);
+    QueryHelper queryHelper = new QueryHelper("test_jsonb_pojo");
     queryHelper.selectQuery = "SELECT foo";
 
-    SQLConnection connection = null;
+    PgConnection connection = null;
     testClient.processQuery(connection, queryHelper, 30, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, TestJsonbPojo.class, false),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
         assertThat(reply.failed(), is(true));
         assertThat(reply.cause() instanceof NullPointerException, is(true));
@@ -529,28 +470,22 @@ public class PostgresClientTest {
     );
   }
 
-  private ResultSet getMockTestPojoResultSet(int total) {
+  private RowSet<Row> getMockTestPojoResultSet(int total) {
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
     }));
-
-    List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
-      "This", "is", "a", "test"
-    }));
-
-    List<JsonArray> list = new ArrayList<JsonArray>();
-
-    for(int i = 0; i < total; i++) {
-      list.add(new JsonArray()
-        .add(UUID.randomUUID().toString())
-        .add("foo " + i)
-        .add("bar " + i)
-        .add((double) i)
-        .add(baz)
-      );
+    RowDesc rowDesc = new RowDesc(columnNames);
+    List<Row> rows = new LinkedList<>();
+    for (int i = 0; i < total; i++) {
+      Row row = new RowImpl(rowDesc);
+      row.addUUID(UUID.randomUUID());
+      row.addString("foo " + i);
+      row.addString("bar " + i);
+      row.addDouble((double) i);
+      row.addStringArray(new String[] { "This", "is", "a", "test" } );
+      rows.add(row);
     }
-
-    return new ResultSet(columnNames, list, null);
+    return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
   }
 
   private void assertTestPojoResults(List<TestPojo> results, int total) {
@@ -568,30 +503,27 @@ public class PostgresClientTest {
     }
   }
 
-  private ResultSet getMockTestJsonbPojoResultSet(int total) {
+  private RowSet<Row> getMockTestJsonbPojoResultSet(int total) {
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "jsonb"
     }));
-
+    RowDesc rowDesc = new RowDesc(columnNames);
     List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
-      "This", "is", "a", "test"
+        "This", "is", "a", "test"
     }));
-
-    List<JsonArray> list = new ArrayList<JsonArray>();
-
-    for(int i = 0; i < total; i++) {
-      list.add(new JsonArray()
-        .add(new JsonObject()
+    List<Row> rows = new LinkedList<>();
+    for (int i = 0; i < total; i++) {
+      Row row = new RowImpl(rowDesc);
+      row.addValue(new JsonObject()
           .put("id", UUID.randomUUID().toString())
           .put("foo", "foo " + i)
           .put("bar", "bar " + i)
           .put("biz", (double) i)
           .put("baz", baz)
-        )
       );
+      rows.add(row);
     }
-
-    return new ResultSet(columnNames, list, null);
+    return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
   }
 
   private void assertTestJsonbPojoResults(List<TestJsonbPojo> results, int total) {
@@ -676,76 +608,6 @@ public class PostgresClientTest {
     }
   }
 
-  @Test
-  public void parseQueryWithDoubleAt() {
-    String whereFromCQLtoPG = "id in (select t.id from (select id as id, "
-      + "jsonb_array_elements(instance.jsonb->'contributors') as c) as t "
-      + "where to_tsvector('simple', f_unaccent(t.c->>'name')) @@ to_tsquery('simple', f_unaccent('novik')) "
-      + "and to_tsvector('simple', f_unaccent(t.c->>'contributorNameTypeId')) @@ to_tsquery('simple', f_unaccent('personal')))";
-    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 10 OFFSET 0";
-    String selectClause = "SELECT jsonb,id FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
-  }
-
-  @Test
-  public void parseQueryWithDoubleColon() {
-    String where = "tsvector @@ replace(to_tsquery('simple', '''foo''')::text, '&', '<->')::tsquery";
-    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
-  }
-
-  @Test
-  public void parseQueryWithDoubleAnd() {
-    String where = "to_tsvector() @@ (to_tsquery('''cool''') && to_tsquery('''water'''))";
-    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
-  }
-
-  @Test
-  public void parseQueryWithDoublePipe() {
-    String where = "to_tsvector() @@ (to_tsquery('''cool''') || to_tsquery('''water'''))";
-    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
-  }
-
-  @Test
-  public void parseQueryWithDoubleArrow() {
-    String where = "to_tsvector() @@ (to_tsquery('''cool''') <-> to_tsquery('''water'''))";
-    parseQueryWithoutErrorLogging("SELECT * FROM t WHERE " + where, where);
-  }
-
-  @Test
-  public void parseQueryWithUuid() {
-    String whereFromCQLtoPG = "id = '68b6a052-5e73-4f04-90ab-273694d125bd'";
-    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
-    String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
-  }
-
-  @Test
-  public void parseQueryWithIsTrueIsNotTrue() {
-    String whereFromCQLtoPG = "foo IS TRUE OR baz IS NOT TRUE OR baz IS TRUE OR bug IS NOT TRUE";
-    String whereClause = "WHERE " + whereFromCQLtoPG + " LIMIT 1 OFFSET 0";
-    String selectClause = "SELECT * FROM test_tenant_mod_inventory_storage.instance " + whereClause;
-    parseQueryWithoutErrorLogging(selectClause, whereFromCQLtoPG);
-  }
-
-  /**
-   * Assert that parsQuery(String) returns a result where both .getWhereClause() and .getCountQuery()
-   * contain where, and assert that parsing doesn't cause an exception (that is logged as an error but ignored).
-   * @param select
-   * @param where
-   */
-  public void parseQueryWithoutErrorLogging(String select, String where) {
-    PostgresClient.log = new Logger(oldLogger.getDelegate()) {
-      @Override
-      public void error(Object message, Throwable e) {
-        // no not ignore this exception but fail the test.
-        throw new RuntimeException(message == null ? null : message.toString(), e);
-      }
-    };
-    ParsedQuery parsedQuery = PostgresClient.parseQuery(select);
-    assertThat(parsedQuery.getWhereClause().toLowerCase(), containsString(where.toLowerCase()));
-    assertThat(parsedQuery.getCountQuery() .toLowerCase(), containsString(where.toLowerCase()));
-  }
-
   @Before
   public void saveLogger() {
     oldLogger = PostgresClient.log;
@@ -755,4 +617,90 @@ public class PostgresClientTest {
   public void restoreLogger() {
     PostgresClient.log = oldLogger;
   }
+
+  @Test
+  public void splitSqlStatementsSingleLine() {
+    assertThat(PostgresClient.splitSqlStatements("foo bar"),
+        is(arrayContaining("foo bar")));
+  }
+
+  @Test
+  public void splitSqlStatementsLines() {
+    assertThat(PostgresClient.splitSqlStatements("foo\nbar\rbaz\r\nend"),
+        is(arrayContaining("foo", "bar", "baz", "end")));
+  }
+
+  @Test
+  public void splitSqlStatementsDollarQuoting() {
+    assertThat(PostgresClient.splitSqlStatements("foo\nbar $$\rbaz\r\n$$ end"),
+        is(arrayContaining("foo", "bar $$\rbaz\r\n$$ end", "")));
+  }
+
+  @Test
+  public void splitSqlStatementsNestedDollarQuoting() {
+    assertThat(PostgresClient.splitSqlStatements(
+        "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;\r\nSELECT $$12$xyz$34$xyz$56$$;\nSELECT $$12$$;"),
+        is(arrayContaining(
+            "",
+            "DO $xyz$ SELECT\n$xyzabc$Rock 'n' Roll$xyzabc$;\n$xyz$;",
+            "SELECT $$12$xyz$34$xyz$56$$;",
+            "SELECT $$12$$;",
+            "")));
+  }
+
+  @Test
+  public void preprocessSqlStatements() throws Exception {
+    String sqlFile = ResourceUtil.asString("import.sql");
+    assertThat(PostgresClient.preprocessSqlStatements(sqlFile), hasItemInArray(stringContainsInOrder(
+        "COPY test.po_line", "24\t")));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void pojo2JsonObjectNull() throws Exception {
+    PostgresClient.pojo2JsonObject(null);
+  }
+
+  @Test
+  public void pojo2JsonObjectJson() throws Exception {
+    JsonObject j = new JsonObject().put("a", "b");
+    Assert.assertEquals(j.encode(), PostgresClient.pojo2JsonObject(j).encode());
+  }
+
+  @Test
+  public void pojo2JsonObjectMap() throws Exception {
+    Map<String,String> m = new HashMap<>();
+    m.put("a", "b");
+    Assert.assertEquals("{\"a\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
+  }
+
+  @Test
+  public void pojo2JsonObjectMap2() throws Exception {
+    UUID id = UUID.randomUUID();
+    Map<UUID,String> m = new HashMap<>();
+    m.put(id, "b");
+    Assert.assertEquals("{\"" + id.toString() + "\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
+  }
+
+  @Test(expected = Exception.class)
+  public void pojo2JsonObjectBadMap() throws Exception {
+    PostgresClient.pojo2JsonObject(this);
+  }
+
+  @Test
+  public void getTotalRecordsTest() {
+    assertNull(PostgresClient.getTotalRecords(10, null, 0, 0));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 0));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 20, 0, 10));
+
+    assertEquals((Integer)10, PostgresClient.getTotalRecords(0, 20, 10, 20));
+
+    assertEquals((Integer)20, PostgresClient.getTotalRecords(10, 30, 10, 20));
+
+    assertEquals((Integer)30, PostgresClient.getTotalRecords(10, 20, 20, 10));
+
+    assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
+  }
+
 }

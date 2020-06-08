@@ -1,8 +1,0 @@
-{
-  "bulk_id": 1,
-  "error_count": 8,
-  "success_count": 9,
-  "error_ids": "1,2,3,4,5,6,7,8",
-  "inst_id": "my_inst",
-  "job_id": "76543331"
-}

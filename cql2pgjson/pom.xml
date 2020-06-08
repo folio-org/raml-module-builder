@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>27.2.0-SNAPSHOT</version>
+    <version>30.1.0-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -45,11 +45,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-      </dependency>
-
-    <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
       <version>20180813</version>
@@ -63,10 +58,26 @@
 
     <!-- test dependencies -->
 
+    <!-- Eclipse users can avoid "SecurityException: class "org.hamcrest.Matchers"'s signer information does not match"
+         by configuring Build Path / Configure Build Path ... / Libraries / Add External Jars ...
+         ~/m2/repository/org/hamcrest/hamcrest/2.2/hamcrest-2.2.jar,
+         Order and Export / Up until hamcrest-2.2.jar is above JUnit 5
+    -->
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest-library</artifactId>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.12</version>
       <scope>test</scope>
     </dependency>
 
@@ -74,13 +85,6 @@
       <groupId>pl.pragmatists</groupId>
       <artifactId>JUnitParams</artifactId>
       <version>1.1.1</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>java-hamcrest</artifactId>
-      <version>2.0.0.0</version>
       <scope>test</scope>
     </dependency>
 
@@ -138,6 +142,31 @@
           <target>1.8</target>
           <compilerArgument>-Xlint:unchecked</compilerArgument>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>copy-general-functions-ftl</id>
+            <phase>process-test-resources</phase>
+            <goals>
+              <goal>testResources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${basedir}/target/test-classes</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>../domain-models-runtime/src/main/resources</directory>
+                  <includes>
+                    <include>templates/db_scripts/general_functions.ftl</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

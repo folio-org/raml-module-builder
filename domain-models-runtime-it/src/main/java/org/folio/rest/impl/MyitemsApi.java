@@ -49,4 +49,13 @@ public class MyitemsApi implements org.folio.rest.jaxrs.resource.Myitems {
     PgUtil.put(TABLE, entity, id, okapiHeaders, vertxContext,
         PutMyitemsByMyitemIdResponse.class, asyncResultHandler);
   }
+
+  @Override
+  public void patchMyitemsByMyitemId(String id, Myitem entity, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    // We test PATCH support of RAML and RestVerticle only.
+    // PgUtil doesn't support patch yet, so we use put for the time being.
+    PgUtil.put(TABLE, entity, id, okapiHeaders, vertxContext,
+        PutMyitemsByMyitemIdResponse.class, asyncResultHandler);
+  }
 }

@@ -2,6 +2,8 @@ package org.folio.rest.persist.ddlgen;
 
 import java.util.List;
 
+import org.folio.cql2pgjson.util.SqlUtil;
+
 /**
  * A foreign key relation from the current table (= child table) to a target table (=parent table).
  */
@@ -19,14 +21,14 @@ public class ForeignKeys extends Field {
   public ForeignKeys(String fieldPath, String targetTable) {
     super();
     super.fieldPath = fieldPath;
-    this.targetTable = targetTable;
+    setTargetTable(targetTable);
   }
 
   public ForeignKeys(String fieldPath, String targetTable, TableOperation tOps) {
     super();
     super.fieldPath = fieldPath;
-    this.targetTable = targetTable;
     this.tOps = tOps;
+    setTargetTable(targetTable);
   }
 
   /**
@@ -38,8 +40,10 @@ public class ForeignKeys extends Field {
 
   /**
    * @param targetTable the name ("tableName") of the parent table
+   * @throws IllegalArgumentException on invalid targetTable, see {@link SqlUtil#validateSqlIdentifier(String)}
    */
   public void setTargetTable(String targetTable) {
+    SqlUtil.validateSqlIdentifier(targetTable);
     this.targetTable = targetTable;
   }
 
@@ -105,12 +109,28 @@ public class ForeignKeys extends Field {
     this.targetPath = targetPath;
   }
 
+  /**
+   * Set fieldPath using fieldName. Normalize fieldName.
+   */
+  @Override
+  public void setup() {
+    if (getFieldName() == null) {  // e.g. "targetPath"
+      return;
+    }
+    //NOTE , FK are created on fields without the lowercasing / unaccenting
+    //meaning, there needs to be an index created without lowercasing / unaccenting
+    //otherwise no index will be used
+    setFieldPath(convertDotPath2PostgresNotation("NEW", getFieldName(), true , null, false));
+    setFieldName(normalizeFieldName(getFieldName()));
+  }
+
   @Override
   public String toString() {
     return "ForeignKeys [tableAlias=" + tableAlias + ", targetTable=" + targetTable
         + ", targetTableAlias=" + targetTableAlias
         + ", fieldName=" + fieldName
-        + (targetPath == null ? "" : "targetPath=" + targetPath)
+        + (targetPath == null ? "" : ", targetPath=" + targetPath)
+        + ", tOps=" + gettOps()
         + "]";
   }
 

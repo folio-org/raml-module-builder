@@ -58,7 +58,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
                   context.fail(reply2.cause());
                 }
                 try {
-                  String name = reply2.result().getResults().get(0).getString(0);
+                  String name = reply2.result().iterator().next().getString(0);
                   context.assertEquals("d", name, "Name property should not have been changed");
                 } catch (Exception e) {
                   e.printStackTrace();
@@ -74,7 +74,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
                       }
                       else{
                         try {
-                          String name = selectReply.result().getResults().get(0).getString(0);
+                          String name = selectReply.result().iterator().next().getString(0);
                           context.assertEquals("me", name, "Name property should have been changed");
                          } catch (Exception e) {
                            e.printStackTrace();
@@ -122,7 +122,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
                     }
                     else{
                       try {
-                        String name = reply2.result().getResults().get(0).getString(0);
+                        String name = reply2.result().iterator().next().getString(0);
                         context.assertEquals("me", name, "Name property should not have been changed");
                       } catch (Exception e) {
                          e.printStackTrace();
@@ -198,7 +198,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
                                 }
                                 else{
                                   try {
-                                    int size3 = selectReply.result().getResults().size();
+                                    int size3 = selectReply.result().size();
                                     context.assertEquals(0, size3);
                                    } catch (Exception e) {
                                      e.printStackTrace();

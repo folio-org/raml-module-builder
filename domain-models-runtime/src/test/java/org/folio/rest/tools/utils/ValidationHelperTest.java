@@ -1,15 +1,10 @@
 package org.folio.rest.tools.utils;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException;
-import com.github.jasync.sql.db.postgresql.messages.backend.ErrorMessage;
-
+import io.vertx.pgclient.PgException;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -28,8 +23,8 @@ public class ValidationHelperTest {
   @Test
   public void uuidTest(TestContext context) {
     Async async = context.async();
-    ErrorMessage em = createErrorMessage("22P02", null, "invalid input syntax for uuid: \"1234567\"");
-    Throwable t = new GenericDatabaseException(em);
+    Throwable t = new PgException("invalid input syntax for uuid: \"1234567\"", null, "22P02", null);
+
     ValidationHelper.handleError(t, r -> {
       context.assertEquals(422, r.result().getStatus());
       async.complete();
@@ -39,9 +34,8 @@ public class ValidationHelperTest {
   @Test
   public void dupTest(TestContext context) {
     Async async = context.async();
-    ErrorMessage em = createErrorMessage("23505", "Key (_id)=(55835c7c-2885-44f4-96ac-f03525b8e608) already exists.",
-      "duplicate key value violates unique constraint \"123456\"");
-    Throwable t = new GenericDatabaseException(em);
+    Throwable t = new PgException("duplicate key value violates unique constraint \"123456\"", null, "23505",
+      "Key (_id)=(55835c7c-2885-44f4-96ac-f03525b8e608) already exists.");
     ValidationHelper.handleError(t, r -> {
       context.assertEquals(422, r.result().getStatus());
       async.complete();
@@ -51,10 +45,11 @@ public class ValidationHelperTest {
   @Test
   public void fkTest(TestContext context) {
     Async async = context.async();
-    ErrorMessage em = createErrorMessage("23503",
-      "Key (permanentloantypeid)=(2b94c631-fca9-4892-a730-03ee529ffe27) is not present in table \"loan_type\".",
-      "insert or update on table \"item\" violates foreign key constraint \"item_permanentloantypeid_fkey\"");
-    Throwable t = new GenericDatabaseException(em);
+    Throwable t = new PgException(
+        "insert or update on table \"item\" violates foreign key constraint \"item_permanentloantypeid_fkey\"",
+        null,
+        "23503",
+    "Key (permanentloantypeid)=(2b94c631-fca9-4892-a730-03ee529ffe27) is not present in table \"loan_type\".");
     ValidationHelper.handleError(t, r -> {
       context.assertEquals(422, r.result().getStatus());
       async.complete();
@@ -107,23 +102,12 @@ public class ValidationHelperTest {
   @Test
   public void authTest(TestContext context) {
     Async async = context.async();
-    ErrorMessage em = createErrorMessage("28P01",
-      null,
-      "password authentication failed for user \"harvard9_mod_configuration\"");
-    Throwable t = new GenericDatabaseException(em);
+    Throwable t = new PgException(
+        "password authentication failed for user \"harvard9_mod_configuration\"",
+        null, "28P01", null);
     ValidationHelper.handleError(t, r -> {
       context.assertEquals(401, r.result().getStatus());
       async.complete();
     });
-  }
-
-
-  private ErrorMessage createErrorMessage(String sqlstate, String detail, String message){
-      Map<Character, String> javaMap = new HashMap<>();
-      javaMap.put('C', sqlstate);
-      javaMap.put('D', detail);
-      javaMap.put('M', message);
-      ErrorMessage errorMessage = new ErrorMessage(javaMap);
-      return errorMessage;
   }
 }

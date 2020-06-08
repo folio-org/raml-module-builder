@@ -2,7 +2,7 @@ package org.folio.cql2pgjson.util;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -171,6 +171,23 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     assertThat(Cql2SqlUtil.cql2regexp(cql), is(sql));
   }
 
+  @Test(expected = QueryValidationException.class)
+  public void appendCql2tsqueryQuestionmark() throws QueryValidationException {
+    Cql2SqlUtil.appendCql2tsquery(new StringBuilder(), "abc d?f");
+  }
+
+  @Test(expected = QueryValidationException.class)
+  public void appendCql2tsqueryInnerStar() throws QueryValidationException {
+    Cql2SqlUtil.appendCql2tsquery(new StringBuilder(), "abc d*f");
+  }
+
+  @Test
+  public void appendCql2tsqueryMasking() throws QueryValidationException {
+    StringBuilder sb = new StringBuilder();
+    Cql2SqlUtil.appendCql2tsquery(sb, "abc d\\*f g\\?i j\\kl");
+    assertThat(sb.toString(), is("'abc d*f g?i jkl'"));
+  }
+
   private String selectTsvector(String field, boolean removeAccents) {
     return removeAccents ? "SELECT to_tsvector('simple', f_unaccent('" + field.replace("'", "''") + "')) @@ "
                          : "SELECT to_tsvector('simple', '" + field.replace("'", "''") + "') @@ ";
@@ -215,13 +232,18 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     assertCql2tsqueryPhrase(field, query, false, result);
   }
 
-  String [] cql2tsqueryParams() {
-    return new String [] {
+  List<String> cql2tsqueryParams() {
+    return Arrays.asList(
         "abc",
         "abc*",
         " abc ",
         "  abc  ",
         "   abc   ",
+        "\\ abc\\ ",
+        "\\ \\ abc\\ \\ ",
+        "\\ \\ \\ abc\\ \\ \\ ",
+        "\\  abc\\  ",
+        " \\ abc \\ ",
         "abc  xyz",
         "abc   xyz",
         "a b c",
@@ -234,19 +256,21 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
         "abc-def-ghi",     // 'abc-def-ghi' & 'abc' & 'def' & 'ghi'
         "abc-def-ghi*",    // 'abc-def-ghi':* & 'abc':* & 'def':* & 'ghi':*
         "abc-def ghi-jkl", // 'abc-def' & 'abc' & 'def' & 'ghi-jkl' & 'ghi' & 'jkl'
+        "-abc def",        // 'abc' & 'def'
+        "abc- def",        // 'abc' & 'def'
+        "abc -def",        // 'abc' & 'def'
+        "abc def-",        // 'abc' & 'def'
         "abc - def",       // minus as a word, RMB-439
         "abc/def",         // 'abc/def'
         "abc//def",        // 'abc' & '/def'
         "abc///def",       // 'abc' & '/def'
-        "abc'def",         // single quote masking, RMB-432
-        "abc''def",
-        "abc'''def",
         "abc\\?def",       // masked ? wildcard
         "abc\\?\\?def",
         "abc\\*def",       // masked * wildcard
         "abc\\*\\*def",
+        "abc\\\\def",      // masked \ backslash
         "abc<->def"        // quoting of <-> phrase operator
-    };
+    );
   }
 
   @Test
@@ -265,6 +289,38 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
   @Parameters(method = "cql2tsqueryParams")
   public void cql2tsqueryPhrase(String term) {
     assertCql2tsqueryPhrase(term, term, "t");
+  }
+
+  @Test
+  @Parameters({
+    // single quote masking, RMB-432
+    "abc'def",
+    "abc''def",
+    "abc'''def",
+    // f_unaccent converts these other single quotes into a regular single quote, RMB-537
+    "abc‘def",
+    "abc‘‘def",
+    "abc‘‘‘def",
+    "abcŉdef",  // f_unaccent('ŉ') = regular single quote + n
+    "abcŉŉdef",
+    "abcŉŉŉdef",
+    "abc’def",
+    "abc’’def",
+    "abc’’’def",
+    "abc‛def",
+    "abc‛‛def",
+    "abc‛‛‛def",
+    "abc′def",
+    "abc′′def",
+    "abc′′′def",
+    "abc＇def",
+    "abc＇＇def",
+    "abc＇＇＇def",
+  })
+  public void cql2tsquerySingleQuote(String term) {
+    assertCql2tsqueryAnd   (term, term, true, "t");
+    assertCql2tsqueryOr    (term, term, true, "t");
+    assertCql2tsqueryPhrase(term, term, true, "t");
   }
 
   @Test
@@ -391,8 +447,8 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     assertCql2tsqueryPhrase(field, query, result);
   }
 
-  String [] cql2tsqueryExceptionParams() {
-    return new String [] {
+  List<String> cql2tsqueryExceptionParams() {
+    return Arrays.asList(
       "?",
       "? abc",
       "?abc",
@@ -404,7 +460,7 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
       "*abc",
       "ab*c",
       "abc *."
-    };
+    );
   }
 
   @Test(expected = QueryValidationException.class)
@@ -467,28 +523,36 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
   }
 
   @Test
-  @Parameters({
+  @Parameters({       // without double backslash required for Java String
+    "?",
+    "*",
     "abc?",
     "abc*",
     "abc?*",
-    "abc\\\\*",
-    "abc\\\\?",
-    "abc\\\\*\\\\?",
-    "abc\\*\\\\?",
-    "abc\\\\*\\?",
-    "abc\\*\\?*",
-    "abc\\*\\??",
+    "abc\\\\*",       // abc\\*
+    "abc\\\\?",       // abc\\?
+    "abc\\\\*\\\\?",  // abc\\*\\?
+    "abc\\*\\\\?",    // abc\*\\?
+    "abc\\\\*\\?",    // abc\\*\?
+    "abc\\*\\?*",     // abc\*\?*
+    "abc\\*\\??",     // abc\*\??
   })
   public void hasCqlWildCard(String term) {
     assertThat(Cql2SqlUtil.hasCqlWildCardd(term), is(true));
   }
 
   @Test
-  @Parameters({
-    "abc",
-    "abc\\?",
-    "abc\\*",
-    "abc\\*\\?",
+  @Parameters({        // without double backslash required for Java String
+    "\\?",             // \?
+    "\\*",             // \*
+    "abc",             // abc
+    "abc\\?",          // abc\?
+    "abc\\*",          // abc\*
+    "abc\\\\\\?",      // abc\\\?
+    "abc\\\\\\*",      // abc\\\*
+    "abc\\\\\\\\\\?",  // abc\\\\\?
+    "abc\\\\\\\\\\*",  // abc\\\\\*
+    "abc\\*\\?",       // abc\*\?
   })
   public void hasNoCqlWildCard(String term) {
     assertThat(Cql2SqlUtil.hasCqlWildCardd(term), is(false));
