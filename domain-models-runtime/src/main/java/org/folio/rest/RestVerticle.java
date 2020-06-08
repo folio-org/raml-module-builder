@@ -124,8 +124,6 @@ public class RestVerticle extends AbstractVerticle {
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
 
-  // private static final String       DEFAULT_SCHEMA                  = "public";
-
   /**
    * Minimum java version used for runtime check.
    *
@@ -939,9 +937,6 @@ public class RestVerticle extends AbstractVerticle {
     //inject vertx context into each function
     newArray[params.length - (size-(pos+2))] = context;
 
-    /*if(tenantId[0] == null){
-      headers.put(OKAPI_HEADER_TENANT, DEFAULT_SCHEMA);
-    }*/
     newArray[params.length - (size-pos)] = headers;
 
     try {
@@ -1119,7 +1114,7 @@ public class RestVerticle extends AbstractVerticle {
 
     if (cmdParams != null) {
       for (Iterator<String> iterator = cmdParams.iterator(); iterator.hasNext();) {
-        String param = (String) iterator.next();
+        String param = iterator.next();
 
         if (param.startsWith("debug_log_package=")) {
           String debugPackage = param.split("=")[1];
