@@ -66,9 +66,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   InvocationTargetException/DecodeException "Failed to decode".
   Hint: Use `for i in *; do jq empty $i || echo $i; done` to list invalid JSONs.
 * Update Vert.x to 3.9.1, consider using
-  [Bill of Materials (Maven BOM)](https://github.com/vert-x3/vertx-stack#bills-of-materials-maven-bom)
-  for io.vertx, com.fasterxml.jackson.core and com.fasterxml.jackson.dataformat dependencies. Remove jackson-databind
-  dependency from pom.xml if module doesn't use it directly.
+  [Vert.x Bill of Materials (Maven BOM)](https://github.com/vert-x3/vertx-stack#bills-of-materials-maven-bom)
+  (content: [vertx-dependencies pom.xml](https://github.com/vert-x3/vertx-dependencies/blob/3.9.1/pom.xml#L49-L54))
+  for io.vertx:\*, com.fasterxml.jackson.core:\* and com.fasterxml.jackson.dataformat:\* dependencies.
+  Remove jackson-databind dependency from pom.xml if module doesn't use it directly.
 
 ## Version 29.5
 
