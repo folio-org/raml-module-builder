@@ -100,22 +100,22 @@ public class DemoRamlRestTest {
   }
 
   @Test
-  public void year(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=&author=me", 400);
+  public void date(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=&author=me", 400);
   }
 
   @Test
-  public void yearx(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=x&author=me", 400);
+  public void datex(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=x&author=me", 400);
   }
 
   @Test
-  public void year1(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1&author=me", 400);
+  public void date1(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1&author=me", 400);
   }
 
   @Test
-  public void withoutYearParameter(TestContext context) {
+  public void withoutDateParameter(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/books?author=me", 400);
   }
 
@@ -131,7 +131,7 @@ public class DemoRamlRestTest {
 
   @Test
   public void getOk(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1900&author=me&rating=1.2", 200);
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2", 200);
   }
 
   @Test
