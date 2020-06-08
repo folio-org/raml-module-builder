@@ -5,7 +5,7 @@ import static org.hamcrest.Matchers.*;
 
 import org.junit.jupiter.api.Test;
 
-public class WrappedBooleanApiTest extends ApiTestBase {
+class WrappedBooleanApiTest extends ApiTestBase {
 
   @Test
   void getWithValueTrue() {
