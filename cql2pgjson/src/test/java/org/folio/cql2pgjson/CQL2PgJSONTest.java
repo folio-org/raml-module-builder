@@ -94,20 +94,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     }
     String sql = null;
     try {
-      String blob = "user_data";
-      String tablename = "users";
-      // Dirty hack, the tests had the table name and blob name hard coded,
-      // but the instances test uses different ones. Some day we may clean
-      // this mess up
-      if ("instances.jsonb".equals(aCql2pgJson.getjsonField())) {
-        blob = "jsonb";
-        tablename = "instances";
-      }
-      SqlSelect sqlSelect = aCql2pgJson.toSql(cql);
+      String jsonFields = aCql2pgJson.getjsonField();
+      logger.severe("XXX " + jsonFields);
+
+      String blob = jsonFields.split("\\.")[1];
+      String tablename = jsonFields.split("\\.")[0];
+      SqlSelect sqlSelect = aCql2pgJson.toSql(cql, 0, 100);
       if (rejectLower) {
         assertThat(sqlSelect.getWhere().toLowerCase(Locale.ROOT), not(containsString("lower")));
       }
-      sql = "select " + blob + "->'name' from " + tablename + " " + sqlSelect;
+      sql = sqlSelect.getFullQuery();
+      if (sql == null) {
+        sql = "select " + blob + "->'name' from " + tablename + " " + sqlSelect;
+      }
       logger.info("select: CQL --> SQL: " + cql + " --> " + sql);
       runSqlFile(sqlFile);
       logger.fine("select: sqlfile done");
