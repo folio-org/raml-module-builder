@@ -558,25 +558,24 @@ public final class PgUtil {
        vertxContext);
   }
 
-
-  /**
-   * Streaming GET with query. This produces a HTTP with JSON content with
-   * properties {@code totalRecords}, {@code resultInfo} and custom element.
-   * The custom element is array type which POJO that is of type clazz.
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param cql
-   * @param offset
-   * @param limit
-   * @param facets
-   * @param element
-   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
-   * @param okapiHeaders
-   * @param vertxContext
-   * @param routingContext
-   */
+    /**
+     * Streaming GET with query. This produces a HTTP with JSON content with
+     * properties {@code totalRecords}, {@code resultInfo} and custom element.
+     * The custom element is array type which POJO that is of type clazz.
+     *
+     * @param <T>
+     * @param table
+     * @param clazz
+     * @param cql
+     * @param offset
+     * @param limit
+     * @param facets
+     * @param element
+     * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+     * @param okapiHeaders
+     * @param vertxContext
+     * @param routingContext
+     */
    @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
    public static <T> void streamGet(String table, Class<T> clazz,
        String cql, int offset, int limit, List<String> facets,
@@ -605,11 +604,32 @@ public final class PgUtil {
    * @param filter
    * @param facetList
    * @param element
-   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param okapiHeaders
    * @param vertxContext
    * @param routingContext
    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T> void streamGet(String table, Class<T> clazz,
+                                   CQLWrapper filter, List<FacetField> facetList, String element,
+                                   RoutingContext routingContext, Map<String, String> okapiHeaders,
+                                   Context vertxContext) {
+    streamGet(table, clazz, filter, facetList, element, 0, routingContext, okapiHeaders,
+        vertxContext);
+  }
+
+    /**
+     * streamGet that takes CQLWrapper and FacetField List
+     * @param <T>
+     * @param table
+     * @param clazz
+     * @param filter
+     * @param facetList
+     * @param element
+     * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+     * @param okapiHeaders
+     * @param vertxContext
+     * @param routingContext
+     */
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
       CQLWrapper filter, List<FacetField> facetList, String element,
@@ -1061,10 +1081,40 @@ public final class PgUtil {
    * @param cql
    * @param okapiHeaders
    * @param vertxContext
-   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param responseDelegateClass
    * @param asyncResultHandler
    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T, C> void getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
+                                                String sortField, String cql, int offset, int limit,
+                                                Map<String, String> okapiHeaders, Context vertxContext,
+                                                Class<? extends ResponseDelegate> responseDelegateClass,
+                                                Handler<AsyncResult<Response>> asyncResultHandler) {
+    getWithOptimizedSql(table, clazz, collectionClazz, sortField, cql, offset, limit, 0,
+        okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
+  }
+
+    /**
+     * Run the cql query using optimized SQL (if possible) or standard SQL.
+     * <p>
+     * PostgreSQL has no statistics about a field within a JSONB resulting in bad performance.
+     * <p>
+     * This method requires that the sortField has a b-tree index (non-unique) and caseSensitive=false
+     * and removeAccents=true, and that the cql query is supported by a full text index.
+     * <p>
+     * This method starts a full table scan until getOptimizedSqlSize() records have been scanned.
+     * Then it assumes that there are only a few result records and uses the full text match.
+     * If the requested number of records have been found it stops immediately.
+     *
+     * @param table
+     * @param clazz
+     * @param cql
+     * @param okapiHeaders
+     * @param vertxContext
+     * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+     * @param responseDelegateClass
+     * @param asyncResultHandler
+     */
   public static <T, C> void getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
       String sortField, String cql, int offset, int limit, int queryTimeout,
       Map<String, String> okapiHeaders, Context vertxContext,
