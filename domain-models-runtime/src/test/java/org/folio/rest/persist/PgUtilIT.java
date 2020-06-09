@@ -996,7 +996,7 @@ public class PgUtilIT {
   @Test
   public void optimizedSQLwithNo500(TestContext testContext) {
     PgUtil.getWithOptimizedSql("users", User.class, UserdataCollection.class, "title", "username=a sortBy title",
-        0, 10, QUERY_TIMEOUT, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, response -> {
+        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, response -> {
 
           testContext.assertTrue( response.cause() instanceof NullPointerException);
         });
