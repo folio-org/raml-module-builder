@@ -14,11 +14,14 @@ import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
 import org.folio.SlimBook;
+import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.resource.Rmbtests;
 import org.folio.rest.persist.PgUtil;
+import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.tools.utils.OutStream;
 
 /**
@@ -80,6 +83,14 @@ public class BooksDemoAPI implements Rmbtests {
       case "slim=true":
         PgUtil.streamGet(TABLE, SlimBook.class, null, 0, 10, new LinkedList<String>(), "books",
           routingContext, okapiHeaders, vertxContext);
+        break;
+      case "wrapper=true":
+        try {
+          CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "cql.allRecords=true");
+          PgUtil.streamGet(TABLE, Book.class, wrapper, null, "books", routingContext, okapiHeaders, vertxContext);
+        } catch (FieldException e) {
+          GetRmbtestsTestResponse.respond500WithTextPlain(e.getMessage());
+        }
         break;
       default:
         PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<String>(), "books",

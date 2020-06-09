@@ -241,6 +241,10 @@ public class DemoRamlRestTest {
     sb = jo.getJsonArray("books").getJsonObject(1).mapTo(SlimBook.class);
     context.assertEquals(0, sb.getStatus());
     context.assertNotNull(sb.getId());
+
+    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=wrapper%3Dtrue", 200);
+    books = Json.decodeValue(buf, Books.class);
+    context.assertEquals(2, books.getTotalRecords());
   }
 
   @Test
