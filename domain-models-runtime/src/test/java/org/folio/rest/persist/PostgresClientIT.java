@@ -254,12 +254,7 @@ public class PostgresClientIT {
     c1.closeClient(context.asyncAssertSuccess());
     c2.closeClient(context.asyncAssertSuccess());
     context.assertEquals(c1, c2, "same instance");
-
-    JsonObject config1 = c1.getConnectionConfig();
-    context.assertEquals("{\"username\":\"tenant_raml_module_builder\",\"password\":\"tenant\","
-        +"\"host\":\"127.0.0.1\",\"port\":6000,\"database\":\"postgres\"}", config1.encode());
   }
-
 
   @Test
   public void getNewInstance(TestContext context) {

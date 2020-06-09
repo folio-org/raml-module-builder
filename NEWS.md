@@ -1,3 +1,9 @@
+## 30.0.2 2020-06-05
+
+ * [RMB-632](https://issues.folio.org/browse/RMB-632) Tenant upgrade fails on foreignKey targetPath
+ * [RMB-634](https://issues.folio.org/browse/RMB-634) PostgresClient does not provide access to db connection configs
+ * [RMB-637](https://issues.folio.org/browse/RMB-637) Run ANALYZE after index (re-)creation
+
 ## 30.0.1 2020-05-30
 
  * [RMB-627](https://issues.folio.org/browse/RMB-627) Generate valid SQL for index with "stringType" false

@@ -24,6 +24,7 @@ import java.util.stream.Collector;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
@@ -40,6 +41,7 @@ import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
+import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.ResourceUtil;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
@@ -140,6 +142,22 @@ public class PostgresClientTest {
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("mySchemaName"));
     assertThat(config.getInteger("connectionReleaseDelay"), is(30000));
+  }
+
+  @Test
+  public void getConnectionConfig() throws Exception {
+    try {
+      Envs.setEnv("somehost", 10001, "someusername", "somepassword", "somedatabase");
+      JsonObject json = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      assertThat(json.getString("host"), is("somehost"));
+      assertThat(json.getInteger("port"), is(10001));
+      assertThat(json.getString("username"), is("someusername"));
+      assertThat(json.getString("password"), is("somepassword"));
+      assertThat(json.getString("database"), is("somedatabase"));
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
   }
 
   @Test
