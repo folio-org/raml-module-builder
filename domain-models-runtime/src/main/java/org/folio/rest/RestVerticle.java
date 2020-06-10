@@ -1331,7 +1331,7 @@ public class RestVerticle extends AbstractVerticle {
                 if (defaultVal != null) {
                   paramArray[order] = Integer.valueOf((String) defaultVal);
                 } else {
-                  paramArray[order] = 0;
+                  paramArray[order] = valueType.equals("int") ? 0 : null;
                 }
               }
               else if("".equals(param)) {
