@@ -1993,18 +1993,21 @@ public class PostgresClient {
       + FROM + schemaName + DOT + table + SPACE + wrapper.toString();
     queryHelper.countQuery = SELECT + "COUNT(" + countOn + ")"
       + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereClause();
-    String mainQuery = SELECT + distinctOnClause + fieldName + addIdField
-      + FROM + schemaName + DOT + table + SPACE + wrapper.getWithoutLimOff();
 
     if (facets != null && !facets.isEmpty()) {
+      String mainQuery = SELECT + distinctOnClause + fieldName + addIdField
+          + FROM + schemaName + DOT + table + SPACE + wrapper.getWithoutLimOff();
+
       FacetManager facetManager = buildFacetManager(wrapper, queryHelper, mainQuery, facets);
       // this method call invokes freemarker templating
       queryHelper.selectQuery = facetManager.generateFacetQuery();
     }
     if (!wrapper.getWhereClause().isEmpty()) {
       // only do estimation when filter is in use (such as CQL).
+      String estQuery = SELECT + distinctOnClause + fieldName + addIdField
+          + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereClause();
       queryHelper.countQuery = SELECT + "count_estimate('"
-        + org.apache.commons.lang.StringEscapeUtils.escapeSql(mainQuery)
+        + org.apache.commons.lang.StringEscapeUtils.escapeSql(estQuery)
         + "')";
     }
     int offset = wrapper.getOffset().get();
