@@ -1901,7 +1901,7 @@ example:
 
 ## Boxed types
 
-RAML parameter types can be boxed primatives using a plugin. i.e. `boolean` to be a `Boolean`.
+RAML parameter types can be boxed primitives using a plugin. i.e. `boolean` to be a `Boolean`.
 
 Here is an example of a [boxed boolean](https://github.com/folio-org/raml-module-builder/blob/8089d463e2d029d50b12213c9028e0787a68494c/domain-models-runtime-it/ramls/wrappedboolean.raml).
 
