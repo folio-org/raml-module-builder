@@ -1924,7 +1924,7 @@ Then can apply plugin to a type:
 ```
 
 **Caveat**
-> Currently RMB only supports Boolean and Integer Boxed type query parameters. Boolean will become null is parameter not present, but Integer will be 1. To add additional type support, see [RestVerticle.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java#L1318).
+> Currently RMB only supports Boolean and Integer Boxed type query parameters. Boolean will become null if parameter not present, but Integer will be 1. To add additional type support, see [RestVerticle.java](https://github.com/folio-org/raml-module-builder/blob/v30.0.2/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java#L1317).
 
 ## Messages
 
