@@ -6,6 +6,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import io.vertx.core.json.JsonObject;
+import org.junit.Rule;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.z3950.zing.cql.ModifierSet;
 
@@ -43,6 +46,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   private static CQL2PgJSON cql2pgjsonRespectBoth;
   private static Logger logger = Logger.getLogger(CQL2PgJSONTest.class.getName());
   private static CQL2PgJSON cql2pgJson;
+
+  @Rule
+  public Timeout rule = Timeout.seconds(2);
 
   /**
    * whether to reject any where-clause that contains lower.
@@ -89,36 +95,30 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
    */
   public void select(CQL2PgJSON aCql2pgJson, String sqlFile, String cql, String expectedNames) {
 
-    if (! cql.contains(" sortBy ")) {
+    // sort if we expected multiple results
+    if (! cql.contains(" sortBy ") && expectedNames.contains(";")) {
       cql += " sortBy name";
     }
     String sql = null;
     try {
-      String jsonFields = aCql2pgJson.getjsonField();
-      logger.severe("XXX " + jsonFields);
-
-      String blob = jsonFields.split("\\.")[1];
-      String tablename = jsonFields.split("\\.")[0];
       SqlSelect sqlSelect = aCql2pgJson.toSql(cql, 0, 100);
       if (rejectLower) {
         assertThat(sqlSelect.getWhere().toLowerCase(Locale.ROOT), not(containsString("lower")));
       }
       sql = sqlSelect.getFullQuery();
-      if (sql == null) {
-        sql = "select " + blob + "->'name' from " + tablename + " " + sqlSelect;
-      }
       logger.info("select: CQL --> SQL: " + cql + " --> " + sql);
       runSqlFile(sqlFile);
       logger.fine("select: sqlfile done");
       String actualNames = "";
-      try ( Statement statement = conn.createStatement();
-            ResultSet result = statement.executeQuery(sql) ) {
+      try (Statement statement = conn.createStatement();
+           ResultSet result = statement.executeQuery(sql) ) {
 
         while (result.next()) {
           if (! actualNames.isEmpty()) {
             actualNames += "; ";
           }
-          actualNames += result.getString(1).replace("\"", "");
+          JsonObject piece = new JsonObject(result.getString(1));
+          actualNames += piece.getString("name");
         }
       }
       if (! expectedNames.equals(actualNames)) {
@@ -128,8 +128,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       assertEquals("CQL: " + cql + ", SQL: " + sql, expectedNames, actualNames);
     } catch (QueryValidationException | SQLException e) {
       logger.fine("select: " + e.getClass().getSimpleName()
-        + " for query " + cql + " : " + e.getMessage());
+          + " for query " + cql + " : " + e.getMessage());
       if (! expectedNames.startsWith("!")) {
+        int pos = e.getMessage().indexOf("Position:");
+        if (pos != -1) {
+          int errorPos = Integer.parseInt(e.getMessage().substring(pos + 10)) - 1;
+          sql = sql.substring(0, errorPos) + "****^****" + sql.substring(errorPos);
+        }
         throw new RuntimeException(sql != null ? sql : cql, e);
       }
       assertThat(e.toString(), containsString(expectedNames.substring(1).trim()));

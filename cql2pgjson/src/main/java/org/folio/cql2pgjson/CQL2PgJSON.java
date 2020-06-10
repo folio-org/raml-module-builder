@@ -299,10 +299,27 @@ public class CQL2PgJSON {
   }
 
   private SqlSelect toSql(CQLNode node, int offset, int limit) throws QueryValidationException {
-    if (node instanceof CQLSortNode) {
-      return toSql((CQLSortNode) node, offset, limit);
+    String table = null;
+    String column = null;
+    if (jsonField != null) {
+      int pos = jsonField.indexOf('.');
+      if (pos != -1) {
+        table = jsonField.substring(0, pos);
+        column = jsonField.substring(pos + 1);
+      }
     }
-    return new SqlSelect(pg(node), null, null);
+    if (node instanceof CQLSortNode) {
+      return toSqlSort((CQLSortNode) node, offset, limit, table, column);
+    }
+    String where = pg(node);
+    StringBuilder sql = new StringBuilder("SELECT " + column + " FROM " + table + " WHERE " + where);
+    if (offset > 0) {
+      sql.append( " OFFSET " + offset);
+    }
+    if (limit >= 0) {
+      sql.append( " LIMIT " + limit);
+    }
+    return new SqlSelect(where, null, sql.toString());
   }
 
   private String pg(CQLNode node) throws QueryValidationException {
@@ -313,7 +330,7 @@ public class CQL2PgJSON {
       return pg((CQLBooleanNode) node);
     }
     if (node instanceof CQLSortNode) {
-      SqlSelect sqlSelect = toSql((CQLSortNode) node, 0, 0);
+      SqlSelect sqlSelect = toSqlSort((CQLSortNode) node, 0, 0, null, null);
       return sqlSelect.getWhere() + " ORDER BY " + sqlSelect.getOrderBy();
     }
     throw createUnsupportedException(node);
@@ -371,7 +388,8 @@ public class CQL2PgJSON {
   }
 
   @SuppressWarnings("squid:S135")  // suppress "reduce to one continue in for loop"
-  private SqlSelect toSql(CQLSortNode node, int offset, int limit) throws QueryValidationException {
+  private SqlSelect toSqlSort(CQLSortNode node, int offset, int limit, String table, String column)
+      throws QueryValidationException {
     StringBuilder order = new StringBuilder();
     String where = pg(node.getSubtree());
 
@@ -395,7 +413,6 @@ public class CQL2PgJSON {
         order.append(field).append(desc);
         continue;
       }
-
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(field);
 
       // if sort field is marked explicitly as number type
@@ -408,12 +425,13 @@ public class CQL2PgJSON {
       order.append(wrapForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers))).append(desc).append(", ")
       .append(wrapInLowerUnaccent(vals.getIndexText(), modifiers)).append(desc);
     }
-    String optimizedQuery = null;
+    if (column == null) {
+      return new SqlSelect(where, order.toString(), null);
+    }
+    String fullQuery = null;
     if (node.getSortIndexes().size() == 1 && limit > 0 && offset >= 0) {
       ModifierSet modifierSet = node.getSortIndexes().get(0);
-      String wrappedColumn = order.toString();
-      String cutWrappedColumn = wrapForLength(wrappedColumn);
-      String tableName = dbTable.getTableName();
+      String field = modifierSet.getBase();
 
       String lessGreater = ">";
       String ascDesc = "ASC";
@@ -422,38 +440,59 @@ public class CQL2PgJSON {
         lessGreater = "<";
         ascDesc = "DESC";
       }
+      String wrappedColumn;
+      String cutWrappedColumn;
+
+      DbIndex dbIndex = dbIndexMap.computeIfAbsent(field, f -> DbSchemaUtils.getDbIndex(dbTable, f));
+      if (dbIndex.isForeignKey() || "id".equals(field)) {
+        cutWrappedColumn = wrappedColumn = field;
+      } else {
+        IndexTextAndJsonValues vals = getIndexTextAndJsonValues(field);
+        wrappedColumn = wrapInLowerUnaccent(vals.getIndexText(), modifiers);
+        cutWrappedColumn = wrapForLength(wrapInLowerUnaccent(vals.getIndexText(), modifiers));
+      }
+
       int optimizedSqlSize = 1000;
-      optimizedQuery =
-          " WITH "
-              + " headrecords AS ("
-              + "   SELECT jsonb, (" + wrappedColumn + ") AS data_column FROM " + tableName
-              + "   WHERE (" + where + ")"
-              + "     AND " + cutWrappedColumn + lessGreater
-              + "             ( SELECT " + cutWrappedColumn
-              + "               FROM " + tableName
-              + "               ORDER BY " + cutWrappedColumn + " " + ascDesc
-              + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
-              + "             )"
-              + "   ORDER BY " + cutWrappedColumn + " " + ascDesc
-              + "   LIMIT " + limit + " OFFSET " + offset
-              + " ), "
-              + " allrecords AS ("
-              + "   SELECT jsonb, " + wrappedColumn + " AS data_column FROM " + tableName
-              + "   WHERE (" + where + ")"
-              + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
-              + " ),"
-              + " SELECT jsonb, data_column, (SELECT count FROM totalCount)"
-              + "   FROM headrecords"
-              + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
-              + " UNION"
-              + " (SELECT jsonb, data_column, (SELECT count FROM totalCount)"
-              + "   FROM allrecords"
-              + "   ORDER BY data_column " + ascDesc
-              + "   LIMIT " + limit + " OFFSET " + offset
-              + " )"
-              + " ORDER BY data_column " + ascDesc;
+      fullQuery = " WITH "
+          + " headrecords AS ("
+          + "   SELECT " + column + ", (" + wrappedColumn + ") AS data_column FROM " + table
+          + "   WHERE (" + where + ")"
+          + "     AND " + cutWrappedColumn + lessGreater
+          + "             ( SELECT " + cutWrappedColumn
+          + "               FROM " + table
+          + "               ORDER BY " + cutWrappedColumn + " " + ascDesc
+          + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
+          + "             )"
+          + "   ORDER BY " + cutWrappedColumn + " " + ascDesc
+          + "   LIMIT " + limit + " OFFSET " + offset
+          + " ), "
+          + " allrecords AS ("
+          + "   SELECT " + column + ", " + wrappedColumn + " AS data_column FROM " + table
+          + "   WHERE (" + where + ")"
+          + "     AND (SELECT COUNT(*) FROM headrecords) < " + limit
+          + " )"
+          + " SELECT " + column + ", data_column"
+          + "   FROM headrecords"
+          + "   WHERE (SELECT COUNT(*) FROM headrecords) >= " + limit
+          + " UNION"
+          + " (SELECT " + column + ", data_column"
+          + "   FROM allrecords"
+          + "   ORDER BY data_column " + ascDesc
+          + "   LIMIT " + limit + " OFFSET " + offset
+          + " )"
+          + " ORDER BY data_column " + ascDesc;
+    } else {
+      StringBuilder sql = new StringBuilder("SELECT " + column + " FROM " + table + " WHERE " + where
+          + " ORDER BY " + order.toString());
+      if (offset > 0) {
+        sql.append( " OFFSET " + offset);
+      }
+      if (limit >= 0) {
+        sql.append( " LIMIT " + limit);
+      }
+      fullQuery = sql.toString();
     }
-    return new SqlSelect(where, order.toString(), optimizedQuery);
+    return new SqlSelect(where, order.toString(), fullQuery);
   }
 
   private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
