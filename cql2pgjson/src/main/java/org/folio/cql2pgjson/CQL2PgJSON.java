@@ -65,8 +65,15 @@ public class CQL2PgJSON {
   private static Logger logger = Logger.getLogger(CQL2PgJSON.class.getName());
 
   private static final String JSONB_COLUMN_NAME = "jsonb";
+  private static final String FROM_STR = " FROM ";
+  private static final String LIMIT_STR = " LIMIT ";
+  private static final String OFFSET_STR = " OFFSET ";
+  private static final String ORDER_BY = " ORDER BY ";
+  private static final String SELECT_STR = "SELECT ";
+  private static final String WHERE_STR = " WHERE ";
 
   private final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+
 
   private String jsonField = null;
   private List<String> jsonFields = null;
@@ -301,23 +308,21 @@ public class CQL2PgJSON {
   private SqlSelect toSql(CQLNode node, int offset, int limit) throws QueryValidationException {
     String table = null;
     String column = null;
-    if (jsonField != null) {
-      int pos = jsonField.indexOf('.');
-      if (pos != -1) {
-        table = jsonField.substring(0, pos);
-        column = jsonField.substring(pos + 1);
-      }
+    int pos = jsonField.indexOf('.');
+    if (pos != -1) {
+      table = jsonField.substring(0, pos);
+      column = jsonField.substring(pos + 1);
     }
     if (node instanceof CQLSortNode) {
       return toSqlSort((CQLSortNode) node, offset, limit, table, column);
     }
     String where = pg(node);
-    StringBuilder sql = new StringBuilder("SELECT " + column + " FROM " + table + " WHERE " + where);
+    StringBuilder sql = new StringBuilder(SELECT_STR + column + FROM_STR + table + WHERE_STR + where);
     if (offset > 0) {
-      sql.append( " OFFSET " + offset);
+      sql.append(OFFSET_STR + offset);
     }
     if (limit >= 0) {
-      sql.append( " LIMIT " + limit);
+      sql.append(LIMIT_STR + limit);
     }
     return new SqlSelect(where, null, sql.toString());
   }
@@ -331,7 +336,7 @@ public class CQL2PgJSON {
     }
     if (node instanceof CQLSortNode) {
       SqlSelect sqlSelect = toSqlSort((CQLSortNode) node, 0, 0, null, null);
-      return sqlSelect.getWhere() + " ORDER BY " + sqlSelect.getOrderBy();
+      return sqlSelect.getWhere() + ORDER_BY + sqlSelect.getOrderBy();
     }
     throw createUnsupportedException(node);
   }
@@ -464,7 +469,7 @@ public class CQL2PgJSON {
           + "               OFFSET " + optimizedSqlSize + " LIMIT 1"
           + "             )"
           + "   ORDER BY " + cutWrappedColumn + " " + ascDesc
-          + "   LIMIT " + limit + " OFFSET " + offset
+          + LIMIT_STR + limit + OFFSET_STR + offset
           + " ), "
           + " allrecords AS ("
           + "   SELECT " + column + ", " + wrappedColumn + " AS data_column FROM " + table
@@ -478,17 +483,17 @@ public class CQL2PgJSON {
           + " (SELECT " + column + ", data_column"
           + "   FROM allrecords"
           + "   ORDER BY data_column " + ascDesc
-          + "   LIMIT " + limit + " OFFSET " + offset
+          + LIMIT_STR + limit + OFFSET_STR + offset
           + " )"
           + " ORDER BY data_column " + ascDesc;
     } else {
-      StringBuilder sql = new StringBuilder("SELECT " + column + " FROM " + table + " WHERE " + where
-          + " ORDER BY " + order.toString());
+      StringBuilder sql = new StringBuilder(SELECT_STR + column + FROM_STR + table + WHERE_STR + where
+          + ORDER_BY + order.toString());
       if (offset > 0) {
-        sql.append( " OFFSET " + offset);
+        sql.append(OFFSET_STR + offset);
       }
       if (limit >= 0) {
-        sql.append( " LIMIT " + limit);
+        sql.append(LIMIT_STR + limit);
       }
       fullQuery = sql.toString();
     }
