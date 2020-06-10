@@ -38,7 +38,7 @@ public class BooksDemoAPI implements Rmbtests {
    */
   @Validate
   @Override
-  public void getRmbtestsBooks(String author, Date publicationDate, Number rating, String isbn,
+  public void getRmbtestsBooks(String author, Date publicationDate, Number rating, int edition, String isbn,
       List<String> facets, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
