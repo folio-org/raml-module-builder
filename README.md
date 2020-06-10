@@ -61,6 +61,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Facet Support](#facet-support)
 * [JSON Schema fields](#json-schema-fields)
 * [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
+* [Boxed types](#boxed-types)
 * [Messages](#messages)
 * [Documentation of the APIs](#documentation-of-the-apis)
 * [Logging](#logging)
@@ -1897,6 +1898,33 @@ Note that `DEFAULTVALUE` only allows string values. `SIZE` requires a range ex. 
 
 example:
 `domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.json`
+
+## Boxed types
+
+RAML parameter types can be boxed primatives using a plugin. i.e. `boolean` to be a `Boolean`.
+
+Here is an example of a [boxed boolean](https://github.com/folio-org/raml-module-builder/blob/8089d463e2d029d50b12213c9028e0787a68494c/domain-models-runtime-it/ramls/wrappedboolean.raml).
+
+In order to use plugins you must use a library for `annotationTypes`:
+
+```
+uses:
+  ramltojaxrs: raml-util/library/ramltojaxrs.raml
+```
+
+This can be found in the raml repository. [ramltojaxrs.raml](https://github.com/folio-org/raml/blob/adff46e983ec874e791d5b04b81402069ee23e4d/library/ramltojaxrs.raml)
+
+Then can apply plugin to a type:
+
+```
+        type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
+```
+
+**Caveat**
+> Currently RMB only supports Boolean and Integer Boxed type query parameters. Boolean will become null is parameter not present, but Integer will be 1. To add additional type support, see [RestVerticle.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java#L1318).
 
 ## Messages
 
