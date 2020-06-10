@@ -1327,7 +1327,7 @@ public class RestVerticle extends AbstractVerticle {
               }
             } else if (valueType.equals("java.util.Date")) {
               // regular string param in query string - just push value
-              if (param == null && defaultVal != null) {
+              if (param == null) {
                 // no value passed - check if there is a default value
                 paramArray[order] = defaultVal;
               } else {
