@@ -1113,8 +1113,7 @@ public class RestVerticle extends AbstractVerticle {
     List<String> cmdParams = processArgs();
 
     if (cmdParams != null) {
-      for (Iterator<String> iterator = cmdParams.iterator(); iterator.hasNext();) {
-        String param = iterator.next();
+      for (String param : cmdParams) {
 
         if (param.startsWith("debug_log_package=")) {
           String debugPackage = param.split("=")[1];
