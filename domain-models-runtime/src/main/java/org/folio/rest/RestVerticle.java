@@ -1,6 +1,5 @@
 package org.folio.rest;
 
-import io.vertx.core.Promise;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,8 +32,15 @@ import javax.validation.ValidatorFactory;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.google.common.base.Joiner;
+import com.google.common.io.ByteStreams;
+
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateUtils;
+import org.apache.log4j.MDC;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -60,12 +66,6 @@ import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.rest.tools.utils.VertxUtils;
-import org.apache.log4j.MDC;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import com.google.common.base.Joiner;
-import com.google.common.io.ByteStreams;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
@@ -73,6 +73,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.EventBus;
@@ -110,13 +111,6 @@ public class RestVerticle extends AbstractVerticle {
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
-  private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
-  private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
-  private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
-  private static final String       CORS_ALLOW_METHODS_HEADER       = "Access-Control-Allow-Methods";
-  private static final String       CORS_ALLOW_METHODS_VALUE        = "POST, GET, OPTIONS , PUT, DELETE";
-  private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
-  private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept, x-okapi-tenant";
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_API_DEF = "application/vnd.api+json";
@@ -129,13 +123,23 @@ public class RestVerticle extends AbstractVerticle {
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
-  private static final String       DEFAULT_SCHEMA                  = "public";
+
   /**
    * Minimum java version used for runtime check.
    *
    * For compile time check see raml-module-builder/pom.xml maven-enforcer-plugin requireJavaVersion.
    */
   private static final String       MINIMUM_JAVA_VERSION              = "1.8.0_101";
+
+  private static final String[]     DATE_PATTERNS = {
+    "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+    "yyyy-MM-dd'T'HH:mm:ss'Z'",
+    "yyyy-MM-dd'T'HH:mm:ss",
+    "yyyy-MM-dd",
+    "yyyy-MM",
+    "yyyy"
+  };
 
   private static ValidatorFactory   validationFactory;
   private static String             deploymentId                     = "";
@@ -933,9 +937,6 @@ public class RestVerticle extends AbstractVerticle {
     //inject vertx context into each function
     newArray[params.length - (size-(pos+2))] = context;
 
-/*    if(tenantId[0] == null){
-      headers.put(OKAPI_HEADER_TENANT, DEFAULT_SCHEMA);
-    }*/
     newArray[params.length - (size-pos)] = headers;
 
     try {
@@ -1112,8 +1113,7 @@ public class RestVerticle extends AbstractVerticle {
     List<String> cmdParams = processArgs();
 
     if (cmdParams != null) {
-      for (Iterator iterator = cmdParams.iterator(); iterator.hasNext();) {
-        String param = (String) iterator.next();
+      for (String param : cmdParams) {
 
         if (param.startsWith("debug_log_package=")) {
           String debugPackage = param.split("=")[1];
@@ -1233,7 +1233,7 @@ public class RestVerticle extends AbstractVerticle {
         int order = ((JsonObject) entry.getValue()).getInteger("order");
         Object defaultVal = ((JsonObject) entry.getValue()).getValue("default_value");
 
-        boolean emptyNumeircParam = false;
+        boolean emptyNumericParam = false;
         // validation of query params (other then enums), object in body (not including drools),
         // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
         // handle un-annotated parameters - this is assumed to be
@@ -1315,7 +1315,7 @@ public class RestVerticle extends AbstractVerticle {
           paramArray[order] = pathParams[pathParamsIndex[0]++];
         } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
           String param = queryParams.get(valueName);
-          // support enum, numbers or strings as query parameters
+          // support date, enum, numbers or strings as query parameters
           try {
             if (valueType.equals("java.lang.String")) {
               // regular string param in query string - just push value
@@ -1324,6 +1324,14 @@ public class RestVerticle extends AbstractVerticle {
                 paramArray[order] = defaultVal;
               } else {
                 paramArray[order] = param;
+              }
+            } else if (valueType.equals("java.util.Date")) {
+              // regular string param in query string - just push value
+              if (param == null) {
+                // no value passed - check if there is a default value
+                paramArray[order] = defaultVal;
+              } else {
+                paramArray[order] = DateUtils.parseDate(param, DATE_PATTERNS);
               }
             } else if (valueType.equals("int") || valueType.equals("java.lang.Integer")) {
               // cant pass null to an int type
@@ -1335,7 +1343,7 @@ public class RestVerticle extends AbstractVerticle {
                 }
               }
               else if("".equals(param)) {
-                emptyNumeircParam = true;
+                emptyNumericParam = true;
               }
               else {
                 paramArray[order] = Integer.valueOf(param);
@@ -1365,7 +1373,7 @@ public class RestVerticle extends AbstractVerticle {
                 }
               }
               else if ("".equals(param)) {
-                emptyNumeircParam = true;
+                emptyNumericParam = true;
               }
               else {
                 paramArray[order] = new BigDecimal(param.replaceAll(",", "")); // big decimal can contain ","
@@ -1378,7 +1386,7 @@ public class RestVerticle extends AbstractVerticle {
                 endRequestWithError(rc, 400, true, ee.getMessage(), validRequest);
               }
             }
-            if(emptyNumeircParam){
+            if(emptyNumericParam){
               endRequestWithError(rc, 400, true, valueName + " does not have a default value in the RAML and has been passed empty",
                 validRequest);
             }
