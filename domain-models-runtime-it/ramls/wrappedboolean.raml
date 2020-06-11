@@ -1,0 +1,25 @@
+#%RAML 1.0
+title: WrappedBoolean
+baseUri: http://github.com/org/folio/raml-module-builder/domain-models-runtime-it
+
+documentation:
+  - title: WrappedBoolean API
+    content: API used for Integration tests
+
+uses:
+  ramltojaxrs: raml-util/library/ramltojaxrs.raml
+
+/wrapped-boolean:
+  get:
+    queryParameters:
+      value:
+        type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
+        example: false
+        required: false
+    responses:
+      200:
+        body:
+          text/plain:
