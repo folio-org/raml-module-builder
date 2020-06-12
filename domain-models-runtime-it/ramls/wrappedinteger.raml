@@ -1,0 +1,25 @@
+#%RAML 1.0
+title: WrappedInteger
+baseUri: http://github.com/org/folio/raml-module-builder/domain-models-runtime-it
+
+documentation:
+  - title: WrappedInteger API
+    content: API used for Integration tests
+
+uses:
+  ramltojaxrs: raml-util/library/ramltojaxrs.raml
+
+/wrapped-integer:
+  get:
+    queryParameters:
+      value:
+        type: integer
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
+        example: 10
+        required: false
+    responses:
+      200:
+        body:
+          text/plain:
