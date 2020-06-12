@@ -38,7 +38,8 @@ public class SchemaMakerIT extends PostgresClientITBase {
           tenantOperation, "mod-foo-18.2.3", "mod-foo-18.2.4");
       String json = ResourceUtil.asString("templates/db_scripts/" + filename);
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-      runSqlFileAsSuperuser(context, schemaMaker.generateDDL());
+      String sql = schemaMaker.generateDDL();
+      runSqlFileAsSuperuser(context, sql);
     } catch (Exception e) {
       context.fail(e);
     }
@@ -224,9 +225,30 @@ public class SchemaMakerIT extends PostgresClientITBase {
     runSchema(context, TenantOperation.CREATE, "compoundIndex.json");
   }
 
+  private int countConstraints(TestContext context) {
+    return selectInteger(context, "SELECT count(*) FROM pg_catalog.pg_constraint"
+        + " WHERE conname LIKE 'holdingsrecordid_holdings_record_fkey%'"
+        + " AND connamespace = (SELECT oid FROM pg_catalog.pg_namespace"
+        + "                     WHERE nspname = 'sometenant_raml_module_builder')");
+  }
+
   @Test
   public void foreignKey(TestContext context) {
     runSchema(context, TenantOperation.CREATE, "schemaInstanceItem.json");
+    // create 2 duplicate constraints
+    String sql = "ALTER TABLE sometenant_raml_module_builder.item"
+        + " ADD CONSTRAINT holdingsRecordId_holdings_record_fkey%d"
+        + " FOREIGN KEY (holdingsRecordId)"
+        + " REFERENCES sometenant_raml_module_builder.holdings_record";
+    executeSuperuser(context, String.format(sql, 1));
+    executeSuperuser(context, String.format(sql, 50));
+    // pretend that the last install/upgrade was made with RMB 29.3.2
+    executeSuperuser(context, "UPDATE sometenant_raml_module_builder.rmb_internal"
+        + " SET jsonb = jsonb || jsonb_build_object('rmbVersion', '29.3.2')");
+    assertThat(countConstraints(context), is(3));
+    // should remove the 2 duplicate constraints
+    runSchema(context, TenantOperation.UPDATE, "schemaInstanceItem.json");
+    assertThat(countConstraints(context), is(1));
   }
 
   private void assertSelectSingle(TestContext context, String sql, String expected) {

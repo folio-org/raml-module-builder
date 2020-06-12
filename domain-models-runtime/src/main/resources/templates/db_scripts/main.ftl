@@ -175,7 +175,7 @@ DECLARE
 BEGIN
   FOR aname IN SELECT name FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE remove = TRUE
   LOOP
-    EXECUTE format('DROP INDEX IF EXISTS %s', aname);
+    EXECUTE 'DROP INDEX IF EXISTS ' || aname;
   END LOOP;
 END $$;
 
@@ -202,7 +202,7 @@ BEGIN
       '${myuniversity}_${mymodule}.\1',
       'g');
     IF newindexdef <> i.indexdef THEN
-      EXECUTE format('DROP INDEX %I.%I', i.schemaname, i.indexname);
+      EXECUTE 'DROP INDEX ' || i.indexname;
       EXECUTE newindexdef;
       EXECUTE 'INSERT INTO rmb_internal_analyze VALUES ($1)' USING i.tablename;
     END IF;
@@ -217,7 +217,7 @@ DECLARE
 BEGIN
   FOR t IN SELECT DISTINCT tablename FROM rmb_internal_analyze
   LOOP
-    EXECUTE format('ANALYZE %I', t);
+    EXECUTE 'ANALYZE ' || t;
   END LOOP;
 END $$;
 TRUNCATE rmb_internal_analyze;

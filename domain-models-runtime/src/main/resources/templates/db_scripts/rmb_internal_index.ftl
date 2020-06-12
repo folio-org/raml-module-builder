@@ -12,6 +12,8 @@ DECLARE
   prepareddef text;
 BEGIN
   IF tops = 'DELETE' THEN
+    -- use case insensitive %s, not case sensitive %I
+    -- no SQL injection because the names are hard-coded in schema.json
     EXECUTE format('DROP INDEX IF EXISTS %s', aname);
     EXECUTE 'DELETE FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE name = $1' USING aname;
     RETURN;
