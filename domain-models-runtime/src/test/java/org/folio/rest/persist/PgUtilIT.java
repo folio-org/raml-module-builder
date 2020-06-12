@@ -1,8 +1,9 @@
 package org.folio.rest.persist;
 
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 import java.io.IOException;
@@ -863,15 +864,22 @@ public class PgUtilIT {
     UserdataCollection c = searchForDataUnoptimized("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
     assertThat(val, is(9));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(9)));  // estimation
 
     // limit=9
-     c = searchForDataUnoptimized("username=foo sortBy username", 0, 9, testContext);
+    c = searchForDataUnoptimized("username=foo sortBy username", 0, 9, testContext);
     val = c.getUsers().size();
     assertThat(val, is(9));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(9)));  // estimation
 
     // limit=5
     c = searchForDataUnoptimized("username=foo sortBy username", 0, 5, testContext);
     assertThat(c.getUsers().size(), is(5));
+
+    // limit=0
+    c = searchForDataUnoptimized("username=foo sortBy username", 0, 0, testContext);
+    assertThat(c.getUsers().size(), is(0));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(1)));  // estimation
 
     // offset=6, limit=3
     c = searchForDataUnoptimized("username=foo sortBy username", 6, 3, testContext);
@@ -908,11 +916,13 @@ public class PgUtilIT {
     UserdataCollection c = searchForData("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
     assertThat(val, is(9));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(9)));  // estimation
 
     // limit=9
     c = searchForData("username=foo sortBy username", 0, 9, testContext);
     val = c.getUsers().size();
     assertThat(val, is(9));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(9)));  // estimation
     for (int i=0; i<5; i++) {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (i + 1)));
@@ -929,6 +939,16 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (i + 1)));
     }
+
+    // limit=0
+    c = searchForData("username=foo sortBy username", 0, 0, testContext);
+    assertThat(c.getUsers().size(), is(0));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(1)));  // estimation
+
+    // offset=99, limit=0
+    c = searchForData("username=foo sortBy username", 99, 0, testContext);
+    assertThat(c.getUsers().size(), is(0));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(1)));  // estimation
 
     // offset=6, limit=3
     c = searchForData("username=foo sortBy username", 6, 3, testContext);
