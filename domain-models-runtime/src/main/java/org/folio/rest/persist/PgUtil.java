@@ -1149,6 +1149,9 @@ public final class PgUtil {
   static String generateOptimizedSql(String column, PreparedCQL preparedCql,
       int offset, int limit) throws QueryValidationException {
 
+    if (limit == 0) {
+      return null;
+    }
     String cql = preparedCql.getCqlWrapper().getQuery();
     CQLSortNode cqlSortNode = checkOptimizedCQL(cql, column);
     if (cqlSortNode == null) {
