@@ -1,3 +1,17 @@
+## 30.1.0 2020-06-15
+
+ * [RMB-645](https://issues.folio.org/browse/RMB-645) Use where-only clause for the "count query"
+ * [RMB-643](https://issues.folio.org/browse/RMB-643) Support generating wrapped native types
+ * [RMB-640](https://issues.folio.org/browse/RMB-640) Sortby title and limit=0 gives zero hits
+ * [RMB-639](https://issues.folio.org/browse/RMB-639) Unexpected breaking changes streamGet and getWithOptimizedSql
+ * [RMB-638](https://issues.folio.org/browse/RMB-638) Revert PgUtil.streamGet parameter reordering
+ * [RMB-636](https://issues.folio.org/browse/RMB-636) Support PATCH requests
+ * [RMB-634](https://issues.folio.org/browse/RMB-634) PostgresClient does not provide access to db connection configs
+ * [RMB-626](https://issues.folio.org/browse/RMB-626) Remove sample, sample2
+ * [RMB-615](https://issues.folio.org/browse/RMB-615) Cancel queries that take longer than limit
+ * [RMB-555](https://issues.folio.org/browse/RMB-555) Upgrade creates duplicate foreign key constraints
+ * [RMB-495](https://issues.folio.org/browse/RMB-495) Date types of query parameters do not work correctly
+
 ## 30.0.2 2020-06-05
 
  * [RMB-632](https://issues.folio.org/browse/RMB-632) Tenant upgrade fails on foreignKey targetPath
