@@ -52,7 +52,7 @@
       BEFORE INSERT OR UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
       FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.update_${table.tableName}_references();
 
-    -- Remove duplicate foreign key constraints created by RMB before 30.0.3
+    -- Remove duplicate foreign key constraints created by RMB before 30.1.0
     -- https://issues.folio.org/browse/RMB-555
     DO $$
     DECLARE
@@ -60,7 +60,7 @@
       i INT;
     BEGIN
       SELECT jsonb->>'rmbVersion' INTO version FROM rmb_internal;
-      IF version !~ '^(\d\.|1\d\.|2\d\.|30\.0\.0|30\.0\.1|30\.0\.2)' THEN
+      IF version !~ '^(\d\.|1\d\.|2\d\.|30\.0\.)' THEN
         RETURN;
       END IF;
       <#list table.foreignKeys?filter(key -> key.fieldName?? && key.tOps.name() == "ADD") as key>
