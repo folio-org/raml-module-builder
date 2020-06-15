@@ -1,3 +1,10 @@
+## 30.0.3 2020-06-15
+
+ * [RMB-645](https://issues.folio.org/browse/RMB-645) Use where-only clause for the "count query"
+ * [RMB-640](https://issues.folio.org/browse/RMB-640) Fix Sorby title and limit=0 gives zero hits
+ * [RMB-555](https://issues.folio.org/browse/RMB-555) Upgrade creates duplicate foreign key constraints
+ * [RMB-495](https://issues.folio.org/browse/RMB-495) Date types of query parameters do not work correctly
+
 ## 30.0.2 2020-06-05
 
  * [RMB-632](https://issues.folio.org/browse/RMB-632) Tenant upgrade fails on foreignKey targetPath
