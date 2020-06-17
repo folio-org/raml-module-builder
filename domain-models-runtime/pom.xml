@@ -91,21 +91,9 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.hibernate</groupId>
-      <artifactId>hibernate-validator</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>javax.el</groupId>
-      <artifactId>javax.el-api</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>cql2pgjson</artifactId>
       <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>javax.validation</groupId>
-      <artifactId>validation-api</artifactId>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
