@@ -418,42 +418,53 @@ public class ClientGenerator {
     }
     b.invoke(details.queryParams, APPEND).arg(JExpr.lit(details.valueName + "="));
     switch (details.op) {
-      case ENCODE: {
-        JExpression expr = jcodeModel.ref(java.net.URLEncoder.class)
-          .staticInvoke("encode")
-            .arg(JExpr.ref(details.valueName))
-            .arg("UTF-8");
-        b.invoke(details.queryParams, APPEND).arg(expr);
-      } break;
-      case FORMAT_DATE: {
-        JExpression expr = jcodeModel.ref(java.time.format.DateTimeFormatter.class)
-          .staticInvoke("ofPattern")
-            .arg("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-          .invoke("format")
-            .arg(jcodeModel.ref(java.time.ZonedDateTime.class)
-              .staticInvoke("ofInstant")
-                .arg(JExpr.ref(details.valueName).invoke("toInstant"))
-                .arg(jcodeModel.ref(java.time.ZoneId.class)
-                  .staticInvoke("systemDefault")));
-        b.invoke(details.queryParams, APPEND).arg(expr);
-      } break;
+      case ENCODE:
+        encodeParameter(b, details);
+        break;
+      case FORMAT_DATE:
+        formatDateParameter(b, details);
+        break;
+      case PROCESS_LIST:
+        processListParameter(b, details);
+        break;
       case NONE:
-        if (details.isList) {
-          b.directStatement(new StringBuilder("if(")
-            .append(details.valueName)
-            .append(".getClass().isArray())")
-            .append("{queryParams.append(String.join(\"&")
-            .append(details.valueName)
-            .append("=\",")
-            .append(details.valueName)
-            .append("));}")
-            .toString());
-        } else{
-          b.invoke(details.queryParams, APPEND).arg(JExpr.ref(details.valueName));
-        }
+        b.invoke(details.queryParams, APPEND).arg(JExpr.ref(details.valueName));
         break;
     }
     b.invoke(details.queryParams, APPEND).arg(JExpr.lit("&"));
+  }
+
+  private void encodeParameter(JBlock b, ParameterDetails details) {
+    JExpression expr = jcodeModel.ref(java.net.URLEncoder.class)
+      .staticInvoke("encode")
+        .arg(JExpr.ref(details.valueName))
+        .arg("UTF-8");
+    b.invoke(details.queryParams, APPEND).arg(expr);
+  }
+
+  private void formatDateParameter(JBlock b, ParameterDetails details) {
+    JExpression expr = jcodeModel.ref(java.time.format.DateTimeFormatter.class)
+      .staticInvoke("ofPattern")
+        .arg("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+      .invoke("format")
+        .arg(jcodeModel.ref(java.time.ZonedDateTime.class)
+          .staticInvoke("ofInstant")
+            .arg(JExpr.ref(details.valueName).invoke("toInstant"))
+            .arg(jcodeModel.ref(java.time.ZoneId.class)
+              .staticInvoke("systemDefault")));
+    b.invoke(details.queryParams, APPEND).arg(expr);
+  }
+
+  private void processListParameter(JBlock b, ParameterDetails details) {
+    b.directStatement(new StringBuilder("if(")
+      .append(details.valueName)
+      .append(".getClass().isArray())")
+      .append("{queryParams.append(String.join(\"&")
+      .append(details.valueName)
+      .append("=\",")
+      .append(details.valueName)
+      .append("));}")
+      .toString());
   }
 
   /**
@@ -559,7 +570,6 @@ public class ClientGenerator {
     }
     else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
       method.param(String.class, valueName);
-
     }
     else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
       method.param(String.class, valueName);
@@ -571,16 +581,20 @@ public class ClientGenerator {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
           method._throws(UnsupportedEncodingException.class);
-          addParameter(new ParameterDetails(methodBody, queryParams, valueName).withOp(ParameterOp.ENCODE));
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .withOp(ParameterOp.ENCODE));
         } else if (valueType.contains("Date")) {
           method.param(Date.class, valueName);
-          addParameter(new ParameterDetails(methodBody, queryParams, valueName).withOp(ParameterOp.FORMAT_DATE));
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .withOp(ParameterOp.FORMAT_DATE));
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
-          addParameter(new ParameterDetails(methodBody, queryParams, valueName).nullCheck(false));
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .nullCheck(false));
         } else if (valueType.contains("boolean")) {
           method.param(boolean.class, valueName);
-          addParameter(new ParameterDetails(methodBody, queryParams, valueName).nullCheck(false));
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .nullCheck(false));
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
           addParameter(new ParameterDetails(methodBody, queryParams, valueName));
@@ -595,7 +609,8 @@ public class ClientGenerator {
           addParameter(new ParameterDetails(methodBody, queryParams, valueName));
         } else if (valueType.contains("List")) {
           method.param(String[].class, valueName);
-          addParameter(new ParameterDetails(methodBody, queryParams, valueName).isList(true));
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .withOp(ParameterOp.PROCESS_LIST));
         } else {
           // enum object type
           Class<?> enumClazz = classForName(valueType);
@@ -622,7 +637,6 @@ public class ClientGenerator {
     final String valueName;
     ParameterOp op = ParameterOp.NONE;
     Boolean nullCheck = true;
-    Boolean isList = false;
     public ParameterDetails(JBlock methodBody, JVar queryParams, String valueName) {
       this.methodBody = methodBody;
       this.queryParams = queryParams;
@@ -636,14 +650,10 @@ public class ClientGenerator {
       this.nullCheck = nullCheck;
       return this;
     }
-    public ParameterDetails isList(Boolean isList) {
-      this.isList = isList;
-      return this;
-    }
   }
 
   private enum ParameterOp {
-    ENCODE, FORMAT_DATE, NONE
+    ENCODE, FORMAT_DATE, PROCESS_LIST, NONE
   }
 
 }
