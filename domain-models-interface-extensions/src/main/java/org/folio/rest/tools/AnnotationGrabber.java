@@ -53,8 +53,7 @@ public class AnnotationGrabber {
 
   private static final Logger log = LoggerFactory.getLogger(AnnotationGrabber.class);
 
-  // don't want to change this
-  private static boolean generateClient = true;
+  private static boolean generateClient = false;
 
   // ^http.*?//.*?/apis/patrons/.*?/fines/.*
   // ^http.*?\/\/.*?\/apis\/patrons\/?(.+?)*
