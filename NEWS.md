@@ -1,3 +1,9 @@
+## 30.2.0 2020-06-19
+
+ * [RMB-648](https://issues.folio.org/browse/RMB-648) org.hibernate:hibernate-validator vulnerability
+ * [RMB-649](https://issues.folio.org/browse/RMB-649) Remove duplicate foreign key constraints for unchanged tables
+ * [RMB-650](https://issues.folio.org/browse/RMB-650) Client generator should support Date query parameter
+
 ## 30.1.0 2020-06-15
 
  * [RMB-645](https://issues.folio.org/browse/RMB-645) Use where-only clause for the "count query"
