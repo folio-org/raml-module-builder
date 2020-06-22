@@ -66,7 +66,7 @@ import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.rest.tools.utils.VertxUtils;
-
+import org.folio.util.StringUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -353,6 +353,27 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   /**
+   * Match the path agaist pattern.
+   * @return the matching groups urldecoded, may be an empty array, or null if the pattern doesn't match
+   */
+  static String[] matchPath(String path, Pattern pattern) {
+    Matcher m = pattern.matcher(path);
+    if (! m.find()) {
+      return null;
+    }
+
+    int groups = m.groupCount();
+    // pathParams are the place holders in the raml query string
+    // for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
+    // they are replaced with actual values and are passed to the function which the url is mapped to
+    String[] pathParams = new String[groups];
+    for (int i = 0; i < groups; i++) {
+      pathParams[i] = StringUtil.urlDecode(m.group(i + 1));
+    }
+    return pathParams;
+  }
+
+  /**
    * Handler for all url calls other then documentation.
    * @param mappedURLs  maps paths found in raml to the generated functions to route to when the paths are requested
    * @param urlPaths  set of exposed urls as declared in the raml
@@ -363,23 +384,20 @@ public class RestVerticle extends AbstractVerticle {
       RoutingContext rc) {
     long start = System.nanoTime();
     try {
-      //list of regex urls created from urls declared in the raml
-      Iterator<String> iter = urlPaths.iterator();
       boolean validPath = false;
       boolean[] validRequest = { true };
+      // urlPaths = list of regex urls created from urls declared in the raml.
       // loop over regex patterns and try to match them against the requested
       // URL if no match is found, then the requested url is not supported by
       // the ramls and we return an error - this has positive security implications as well
-      while (iter.hasNext()) {
-        String regexURL = iter.next();
-        //try to match the requested url to each regex pattern created from the urls in the raml
-        Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
-        if (m.find()) {
+      for (String urlPath : urlPaths) {
+        String[] pathParams = matchPath(rc.request().path(), regex2Pattern.get(urlPath));
+        if (pathParams != null) {  // if matched
           validPath = true;
 
           // get the function that should be invoked for the requested
           // path + requested http_method pair
-          JsonObject ret = mappedURLs.getMethodbyPath(regexURL, rc.request().method().toString());
+          JsonObject ret = mappedURLs.getMethodbyPath(urlPath, rc.request().method().toString());
           // if a valid path was requested but no function was found
           if (ret == null) {
 
@@ -399,15 +417,6 @@ public class RestVerticle extends AbstractVerticle {
           Class<?> aClass;
           try {
             if (validRequest[0]) {
-              int groups = m.groupCount();
-              //pathParams are the place holders in the raml query string
-              //for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
-              //they are replaced with actual values and are passed to the function which the url is mapped to
-              String[] pathParams = new String[groups];
-              for (int i = 0; i < groups; i++) {
-                pathParams[i] = m.group(i + 1);
-              }
-
               //create okapi headers map and inject into function
               Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
               String []tenantId = new String[]{null};

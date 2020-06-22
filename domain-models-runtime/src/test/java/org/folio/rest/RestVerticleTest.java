@@ -1,9 +1,11 @@
 package org.folio.rest;
 
 import static org.folio.rest.jaxrs.model.CalendarPeriodsServicePointIdCalculateopeningGetUnit.*;
+import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.Matchers.emptyArray;
 import static org.hamcrest.Matchers.oneOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,6 +14,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.folio.rest.jaxrs.model.Book;
 import org.junit.jupiter.api.Test;
 
@@ -162,5 +165,21 @@ class RestVerticleTest {
     MyRestVerticle myRestVerticle = new MyRestVerticle();
     myRestVerticle.route(null, null, null, null);
     assertThat(myRestVerticle.status, is(500));
+  }
+
+  @Test
+  void matchUrl() {
+    assertThat(RestVerticle.matchPath("/", Pattern.compile("/x")), is(nullValue()));
+    assertThat(RestVerticle.matchPath("/x", Pattern.compile("/y")), is(nullValue()));
+    assertThat(RestVerticle.matchPath("/", Pattern.compile("/")), is(emptyArray()));
+    assertThat(RestVerticle.matchPath("/x", Pattern.compile("/")), is(emptyArray()));
+    assertThat(RestVerticle.matchPath("/x/yy/zzz", Pattern.compile("/x/yy")), is(emptyArray()));
+    assertThat(RestVerticle.matchPath("/x/yy/zzz", Pattern.compile("/x/yy/zzz")), is(emptyArray()));
+    assertThat(RestVerticle.matchPath("/x/yy/zzz", Pattern.compile("/x/([^/]+)")),
+        is(arrayContaining("yy")));
+    assertThat(RestVerticle.matchPath("/abc/def/ghi", Pattern.compile("/([^/]+)/([^/]+)/([^/]+)")),
+        is(arrayContaining("abc", "def", "ghi")));
+    assertThat(RestVerticle.matchPath("/%2F%3F%2B%23/12%2334", Pattern.compile("/([^/]+)/([^/]+)")),
+        is(arrayContaining("/?+#", "12#34")));
   }
 }

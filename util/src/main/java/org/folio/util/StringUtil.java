@@ -1,6 +1,7 @@
 package org.folio.util;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
@@ -45,5 +46,38 @@ public final class StringUtil {
     // Using this standard charset is always supported and therefore will
     // never trigger an UnsupportedEncodingException.
     return urlEncode(source, StandardCharsets.UTF_8.name());
+  }
+
+  /**
+   * Decode source using www-form-urlencoded scheme and charset.
+   *
+   * @param source  String to encode
+   * @param charset  name of the charset to use
+   * @return the decoded String, "" if source is null, or null if charset is not supported or null
+   */
+  public static String urlDecode(String source, String charset) {
+    if (source == null) {
+      return "";
+    }
+    try {
+      return URLDecoder.decode(source, charset);
+    } catch (UnsupportedEncodingException|NullPointerException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Decode source using www-form-urlencoded scheme and UTF-8 charset.
+   * <p>
+   * Note that <a href="https://tools.ietf.org/html/rfc3986#section-2.5">RFC3986 Section 2.5</a>
+   * requires UTF-8 encoding and that {@link java.net.URLDecoder#decode(String)} is deprecated
+   * because it uses the platform's default encoding. See also
+   * <a href="https://en.wikipedia.org/wiki/Percent-encoding">https://en.wikipedia.org/wiki/Percent-encoding</a>.
+   *
+   * @param source  String to decode
+   * @return the decoded String or "" if source is null.
+   */
+  public static String urlDecode(String source) {
+    return urlDecode(source, StandardCharsets.UTF_8.name());
   }
 }
