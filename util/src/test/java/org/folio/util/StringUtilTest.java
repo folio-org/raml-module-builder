@@ -38,12 +38,12 @@ class StringUtilTest {
   @ParameterizedTest
   @CsvSource({
     " ,      , ''",
-    "x,      , ''",
     " , UTF-8, ''",
+    "x,      ,   ",
   })
   void urlEncodeDecodeNull(String s, String encoding, String expected) {
-    assertThat(StringUtil.urlEncode(null, encoding), is(expected));
-    assertThat(StringUtil.urlDecode(null, encoding), is(expected));
+    assertThat(StringUtil.urlEncode(s, encoding), is(expected));
+    assertThat(StringUtil.urlDecode(s, encoding), is(expected));
   }
 
   @Test
