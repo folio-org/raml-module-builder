@@ -169,17 +169,16 @@ class RestVerticleTest {
 
   @Test
   void matchUrl() {
-    assertThat(RestVerticle.matchPath("/", Pattern.compile("/x")), is(nullValue()));
-    assertThat(RestVerticle.matchPath("/x", Pattern.compile("/y")), is(nullValue()));
-    assertThat(RestVerticle.matchPath("/", Pattern.compile("/")), is(emptyArray()));
-    assertThat(RestVerticle.matchPath("/x", Pattern.compile("/")), is(emptyArray()));
-    assertThat(RestVerticle.matchPath("/x/yy/zzz", Pattern.compile("/x/yy")), is(emptyArray()));
-    assertThat(RestVerticle.matchPath("/x/yy/zzz", Pattern.compile("/x/yy/zzz")), is(emptyArray()));
-    assertThat(RestVerticle.matchPath("/x/yy/zzz", Pattern.compile("/x/([^/]+)")),
+    assertThat(RestVerticle.matchPath("/", Pattern.compile("^/x$")), is(nullValue()));
+    assertThat(RestVerticle.matchPath("/x", Pattern.compile("^/$")), is(nullValue()));
+    assertThat(RestVerticle.matchPath("/x", Pattern.compile("^/y$")), is(nullValue()));
+    assertThat(RestVerticle.matchPath("/", Pattern.compile("^/$")), is(emptyArray()));
+    assertThat(RestVerticle.matchPath("/x/yy", Pattern.compile("^/x/yy$")), is(emptyArray()));
+    assertThat(RestVerticle.matchPath("/x/yy", Pattern.compile("^/x/([^/]+)$")),
         is(arrayContaining("yy")));
-    assertThat(RestVerticle.matchPath("/abc/def/ghi", Pattern.compile("/([^/]+)/([^/]+)/([^/]+)")),
+    assertThat(RestVerticle.matchPath("/abc/def/ghi", Pattern.compile("^/([^/]+)/([^/]+)/([^/]+)$")),
         is(arrayContaining("abc", "def", "ghi")));
-    assertThat(RestVerticle.matchPath("/%2F%3F%2B%23/12%2334", Pattern.compile("/([^/]+)/([^/]+)")),
+    assertThat(RestVerticle.matchPath("/%2F%3F%2B%23/12%2334", Pattern.compile("^/([^/]+)/([^/]+)$")),
         is(arrayContaining("/?+#", "12#34")));
   }
 }
