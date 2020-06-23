@@ -356,6 +356,7 @@ public class RestVerticle extends AbstractVerticle {
    * Match the path agaist pattern.
    * @return the matching groups urldecoded, may be an empty array, or null if the pattern doesn't match
    */
+  @SuppressWarnings("java:S1168")  // suppress "Empty arrays should be returned instead of null"
   static String[] matchPath(String path, Pattern pattern) {
     Matcher m = pattern.matcher(path);
     if (! m.find()) {
