@@ -16,24 +16,39 @@ class StringUtilTest {
 
   @ParameterizedTest
   @CsvSource({
-    "              ,           , ''",
-    "              , UTF-8     , ''",
-    "abc           ,           ,                      ",
     "abc           , UTF-8     , abc                  ",
     "key=a-umlaut-ä, ISO-8859-1, key%3Da-umlaut-%E4   ",
     "key=a-umlaut-ä, UTF-8     , key%3Da-umlaut-%C3%A4",
   })
-  void urlEncode(String source, String encoding, String expected) {
-    assertThat(StringUtil.urlEncode(source, encoding), is(expected));
+  void urlEncodeDecode(String source, String encoding, String encoded) {
+    assertThat(StringUtil.urlEncode(source, encoding), is(encoded));
+    assertThat(StringUtil.urlDecode(encoded, encoding), is(source));
   }
 
   @ParameterizedTest
   @CsvSource({
-    "              , ''",
     "abc           , abc                  ",
     "key=a-umlaut-ä, key%3Da-umlaut-%C3%A4",
   })
-  void urlEncode(String source, String expected) {
-    assertThat(StringUtil.urlEncode(source), is(expected));
+  void urlEncodeDecode(String source, String encoded) {
+    assertThat(StringUtil.urlEncode(source), is(encoded));
+    assertThat(StringUtil.urlDecode(encoded), is(source));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    " ,      , ''",
+    " , UTF-8, ''",
+    "x,      ,   ",
+  })
+  void urlEncodeDecodeNull(String s, String encoding, String expected) {
+    assertThat(StringUtil.urlEncode(s, encoding), is(expected));
+    assertThat(StringUtil.urlDecode(s, encoding), is(expected));
+  }
+
+  @Test
+  void urlEncodeDecodeNull() {
+    assertThat(StringUtil.urlEncode(null), is(""));
+    assertThat(StringUtil.urlDecode(null), is(""));
   }
 }
