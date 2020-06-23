@@ -1,5 +1,8 @@
 ## 30.2.0 2020-06-19
 
+Note error message regression: [RMB-652](https://issues.folio.org/browse/RMB-652)
+"may not be null" changed to "must not be null" (hibernate-validator)
+
  * [RMB-648](https://issues.folio.org/browse/RMB-648) org.hibernate:hibernate-validator vulnerability
  * [RMB-649](https://issues.folio.org/browse/RMB-649) Remove duplicate foreign key constraints for unchanged tables
  * [RMB-650](https://issues.folio.org/browse/RMB-650) Client generator should support Date query parameter
