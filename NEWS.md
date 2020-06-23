@@ -1,3 +1,10 @@
+## 30.2.1 2020-06-23
+
+RMB 30.0 and 30.1 are discontinued. Only RMB >= 30.2 will receive bug and security fixes.
+
+ * [RMB-653](https://issues.folio.org/browse/RMB-653) Urldecode path parameters like /perms/users/12%2334
+ * [RMB-649](https://issues.folio.org/browse/RMB-649) Remove duplicate foreign key constraints for unchanged tables
+
 ## 30.2.0 2020-06-19
 
 Note error message regression: [RMB-652](https://issues.folio.org/browse/RMB-652)
