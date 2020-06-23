@@ -113,7 +113,7 @@ public class AnnotationGrabber {
             if (type.isAssignableFrom(Path.class)) {
               classSpecificMapping.put(CLASS_URL, "^" + value);
               if (generateClient){
-                cGen.generateClassMeta(val.toString(), value);
+                cGen.generateClassMeta(val.toString());
               }
             }
           }
