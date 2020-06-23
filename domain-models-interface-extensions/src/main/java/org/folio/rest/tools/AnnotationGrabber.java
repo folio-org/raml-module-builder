@@ -182,6 +182,12 @@ public class AnnotationGrabber {
               }
             }
           }
+          // if there was no @Path annotation - use the one declared on the
+          // class
+          if (methodObj.getString(METHOD_URL) == null) {
+            methodObj.put(METHOD_URL, classSpecificMapping.getString(CLASS_URL));
+            methodObj.put(REGEX_URL, getRegexForPath(classSpecificMapping.getString(CLASS_URL)));
+          }
           if (generateClient) {
             cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
               methodObj.getJsonObject(METHOD_PARAMS),
@@ -189,12 +195,6 @@ public class AnnotationGrabber {
               methodObj.getString(HTTP_METHOD),
               methodObj.getJsonArray(CONSUMES),
               methodObj.getJsonArray(PRODUCES));
-          }
-          // if there was no @Path annotation - use the one declared on the
-          // class
-          if (methodObj.getString(METHOD_URL) == null) {
-            methodObj.put(METHOD_URL, classSpecificMapping.getString(CLASS_URL));
-            methodObj.put(REGEX_URL, getRegexForPath(classSpecificMapping.getString(CLASS_URL)));
           }
           // this is the key - the regex path is the key to the functions
           // represented by this url
