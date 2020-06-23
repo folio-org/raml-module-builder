@@ -3,6 +3,7 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 30.2](#version-302)
 * [Version 30.0](#version-300)
 * [Version 29.5](#version-295)
 * [Version 29.2](#version-292)
