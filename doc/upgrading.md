@@ -17,8 +17,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 30.2
 
-* [RMB-652](https://issues.folio.org/browse/RMB-652) "may not be null"
-  changed to "must not be null" (hibernate-validator)
+* [RMB-652](https://issues.folio.org/browse/RMB-652) error message
+  "may not be null" changed to "must not be null" (hibernate-validator)
 
 ## Version 30.0
 
