@@ -1,6 +1,6 @@
 ## 30.2.0 2020-06-19
 
-Don't use unless this regression doesn't affect you: [RMB-652](https://issues.folio.org/browse/RMB-652)
+Note error message regression: [RMB-652](https://issues.folio.org/browse/RMB-652)
 "may not be null" changed to "must not be null" (hibernate-validator)
 
  * [RMB-648](https://issues.folio.org/browse/RMB-648) org.hibernate:hibernate-validator vulnerability
