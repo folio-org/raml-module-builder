@@ -431,7 +431,7 @@ public class ClientGenerator {
   private void formatDateParameter(JBlock b, ParameterDetails details) {
     JExpression expr = jcodeModel.ref(java.time.format.DateTimeFormatter.class)
       .staticInvoke("ofPattern")
-        .arg("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+        .arg("yyyy-MM-dd'T'HH:mm:ss")
       .invoke("format")
         .arg(jcodeModel.ref(java.time.ZonedDateTime.class)
           .staticInvoke("ofInstant")

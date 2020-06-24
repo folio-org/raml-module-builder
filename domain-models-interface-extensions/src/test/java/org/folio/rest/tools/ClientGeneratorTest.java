@@ -206,7 +206,7 @@ public class ClientGeneratorTest {
     expected.add("        }");
     expected.add("        if (publicationDate!= null) {");
     expected.add("            queryParams.append(\"publicationDate=\");");
-    expected.add("            queryParams.append(DateTimeFormatter.ofPattern(\"yyyy-MM-dd'T'HH:mm:ss.SSSXXX\").format(ZonedDateTime.ofInstant(publicationDate.toInstant(), ZoneId.systemDefault())));");
+    expected.add("            queryParams.append(DateTimeFormatter.ofPattern(\"yyyy-MM-dd'T'HH:mm:ss\").format(ZonedDateTime.ofInstant(publicationDate.toInstant(), ZoneId.systemDefault())));");
     expected.add("            queryParams.append(\"&\");");
     expected.add("        }");
     expected.add("        if (rating!= null) {");
