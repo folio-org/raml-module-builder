@@ -435,7 +435,7 @@ public class DemoRamlRestTest {
   }
 
   @Test
-  public void options(TestContext context) {
+  public void options() {
     given().spec(tenant).when().options("/rmbtests/test").then().statusCode(200);
   }
 
