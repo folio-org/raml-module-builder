@@ -143,6 +143,11 @@ public class DemoRamlRestTest {
   }
 
   @Test
+  public void getOkWithDatetime(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=2011-12-03T10:15:30&author=you&rating=1.2", 200);
+  }
+
+  @Test
   public void history(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
   }
