@@ -436,7 +436,8 @@ public class ClientGenerator {
           .staticInvoke("ofInstant")
             .arg(JExpr.ref(details.valueName).invoke("toInstant"))
             .arg(jcodeModel.ref(java.time.ZoneId.class)
-              .staticInvoke("systemDefault")));
+              .staticInvoke("of")
+                .arg("UTC")));
     b.invoke(details.queryParams, APPEND).arg(expr);
   }
 
