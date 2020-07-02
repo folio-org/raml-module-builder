@@ -1,12 +1,9 @@
 package org.z3950.zing.cql.cql2pgjsoncli;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.IntConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,8 +19,6 @@ import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.model.SqlSelect;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 public class CQL2PGCLIMain {
 
@@ -105,31 +100,4 @@ public class CQL2PGCLIMain {
     return String.format("select * from %s where %s order by %s",
         dbName, sql.getWhere(), orderby);
   }
-
-  /*
-    If the string is valid JSON, read the values from the JSON object. If the
-    string is a path to a JSON file, load the file and read the JSON from the
-    file
-  */
-  static Map<String, String> parseDatabaseSchemaString(String dbsString) throws
-      IOException {
-    JSONObject fieldSchemaJson = null;
-    Map<String, String> fieldSchemaMap = new HashMap<>();
-    try {
-      fieldSchemaJson = new JSONObject(dbsString);
-    } catch( JSONException je ) {
-      System.out.println(String.format("Unable to parse %s as JSON: %s",
-          dbsString, je.getLocalizedMessage()));
-    }
-    if(fieldSchemaJson == null) {
-      String fieldSchemaJsonText = readFile(dbsString, StandardCharsets.UTF_8);
-      fieldSchemaJson = new JSONObject(fieldSchemaJsonText);
-    }
-    for(String key : fieldSchemaJson.keySet()) {
-      String value = readFile(fieldSchemaJson.getString(key), StandardCharsets.UTF_8);
-      fieldSchemaMap.put(key, value);
-    }
-    return fieldSchemaMap;
-  }
-
 }
