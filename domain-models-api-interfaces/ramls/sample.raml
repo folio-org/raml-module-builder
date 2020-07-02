@@ -129,6 +129,11 @@ traits:
         500:
           body:
             text/plain:
+    options:
+        description: "Preflight CORS for /rmbtests/test"
+        responses:
+          200:
+            description: "Return with appropriate CORS headers"
   /testStream:
     post:
       body:

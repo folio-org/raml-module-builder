@@ -118,4 +118,11 @@ public class BooksDemoAPI implements Rmbtests {
     asyncResultHandler.handle(Future.succeededFuture(
       PostRmbtestsTestStreamResponse.respond200WithApplicationJson(jo.encodePrettily())));
   }
+
+  @Validate
+  @Override
+  public void optionsRmbtestsTest(RoutingContext routingContext, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    asyncResultHandler.handle(Future.succeededFuture(OptionsRmbtestsTestResponse.respond200()));
+  }
 }

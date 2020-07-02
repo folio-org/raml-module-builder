@@ -38,4 +38,19 @@ public interface TestResource {
         List<String> facets, java.util.Map<String, String>okapiHeaders, io.vertx.core.Handler<io.vertx.core.AsyncResult<Response>>asyncResultHandler, Context vertxContext)
         throws Exception
     ;
+
+    @GET
+    @Produces({
+        "application/json"
+    })
+    @Validate
+    void getRmbtests(
+        @QueryParam("name")
+        @NotNull
+        String name,
+        @QueryParam("success")
+        @NotNull
+        Boolean success, java.util.Map<String, String>okapiHeaders, io.vertx.core.Handler<io.vertx.core.AsyncResult<Response>>asyncResultHandler, Context vertxContext)
+        throws Exception
+    ;
 }

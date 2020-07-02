@@ -69,8 +69,6 @@ public class ClientGenerator {
   /* for creating the class per interface */
   JDefinedClass jc = null;
 
-  private String globalPath = null;
-
   private List<String> functionSpecificHeaderParams = new ArrayList<>();
 
   private String className = null;
@@ -237,13 +235,12 @@ public class ClientGenerator {
     return method;
   }
 
-  public void generateClassMeta(String className, Object globalPath) {
+  public void generateClassMeta(String className) {
 
     String mapType = System.getProperty("json.type");
     if ("mongo".equals(mapType)) {
       mappingType = "mongo";
     }
-    this.globalPath = "GLOBAL_PATH";
 
     /* Adding packages here */
     JPackage jp = jcodeModel._package(RTFConsts.CLIENT_GEN_PACKAGE);
@@ -254,10 +251,6 @@ public class ClientGenerator {
       jc = jp._class(this.className + CLIENT_CLASS_SUFFIX);
       JDocComment com = jc.javadoc();
       com.add("Auto-generated code - based on class " + className);
-
-      /* class variable to root url path to this interface */
-      JFieldVar globalPathVar = jc.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, String.class, "GLOBAL_PATH");
-      globalPathVar.init(JExpr.lit((String)globalPath));
 
       /* class variable tenant id */
       tenantId = jc.field(JMod.PRIVATE, String.class, TENANT_ID);
@@ -320,23 +313,16 @@ public class ClientGenerator {
 
     ////////////////////////---- Handle place holders in the url  ----//////////////////
     /* create request */
-    if(url == null){
-      //if there is no path associated with a function
-      //use the @path from the class
-      url = globalPath;
+    /* Handle place holders in the URL
+      * replace {varName} with "+varName+" so that it will be replaced
+      * in the url at runtime with the correct values */
+    Matcher m = Pattern.compile("\\{.*?\\}").matcher(url);
+    while(m.find()){
+      String varName = m.group().replace("{","").replace("}", "");
+      url = url.replace("{"+varName+"}", "\"+"+varName+"+\"");
     }
-    else{
-      /* Handle place holders in the URL
-       * replace {varName} with "+varName+" so that it will be replaced
-       * in the url at runtime with the correct values */
-      Matcher m = Pattern.compile("\\{.*?\\}").matcher(url);
-      while(m.find()){
-        String varName = m.group().replace("{","").replace("}", "");
-        url = url.replace("{"+varName+"}", "\"+"+varName+"+\"");
-      }
 
-      url = "\""+url.substring(1)+"\"+queryParams.toString()";
-    }
+    url = "\""+url.substring(1)+"\"+queryParams.toString()";
 
     /* Adding java doc for method */
     jmCreate.javadoc().add("Service endpoint " + url);
@@ -444,14 +430,14 @@ public class ClientGenerator {
 
   private void formatDateParameter(JBlock b, ParameterDetails details) {
     JExpression expr = jcodeModel.ref(java.time.format.DateTimeFormatter.class)
-      .staticInvoke("ofPattern")
-        .arg("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+      .staticRef("ISO_LOCAL_DATE_TIME")
       .invoke("format")
         .arg(jcodeModel.ref(java.time.ZonedDateTime.class)
           .staticInvoke("ofInstant")
             .arg(JExpr.ref(details.valueName).invoke("toInstant"))
             .arg(jcodeModel.ref(java.time.ZoneId.class)
-              .staticInvoke("systemDefault")));
+              .staticInvoke("of")
+                .arg("UTC")));
     b.invoke(details.queryParams, APPEND).arg(expr);
   }
 

@@ -144,8 +144,10 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
     </#if>
   </#if>
 <#else>
-    <#-- The table has not changed, but we always check all its indexes because they may have changed. -->
+    <#-- The table has not changed, but we always check all its indexes and foreign keys
+         because they may have changed. -->
     <#include "indexes.ftl">
+    <#include "foreign_keys.ftl">
 </#if>
 </#list>
 

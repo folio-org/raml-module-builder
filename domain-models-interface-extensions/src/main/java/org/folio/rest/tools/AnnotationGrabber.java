@@ -113,7 +113,7 @@ public class AnnotationGrabber {
             if (type.isAssignableFrom(Path.class)) {
               classSpecificMapping.put(CLASS_URL, "^" + value);
               if (generateClient){
-                cGen.generateClassMeta(val.toString(), value);
+                cGen.generateClassMeta(val.toString());
               }
             }
           }
@@ -141,8 +141,7 @@ public class AnnotationGrabber {
           for (int j = 0; j < methodAn.length; j++) {
 
             Class<? extends Annotation> type = methodAn[j].annotationType();
-            //System.out.println("Values of " + type.getName());
-            if (RTFConsts.POSSIBLE_HTTP_METHOD.contains(type.getName())) {
+            if (isPossibleHttpMethod(type.getName())) {
               // put the method - get or post, etc..
               methodObj.put(HTTP_METHOD, type.getName());
             }
@@ -182,6 +181,12 @@ public class AnnotationGrabber {
               }
             }
           }
+          // if there was no @Path annotation - use the one declared on the
+          // class
+          if (methodObj.getString(METHOD_URL) == null) {
+            methodObj.put(METHOD_URL, classSpecificMapping.getString(CLASS_URL));
+            methodObj.put(REGEX_URL, getRegexForPath(classSpecificMapping.getString(CLASS_URL)));
+          }
           if (generateClient) {
             cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
               methodObj.getJsonObject(METHOD_PARAMS),
@@ -189,12 +194,6 @@ public class AnnotationGrabber {
               methodObj.getString(HTTP_METHOD),
               methodObj.getJsonArray(CONSUMES),
               methodObj.getJsonArray(PRODUCES));
-          }
-          // if there was no @Path annotation - use the one declared on the
-          // class
-          if (methodObj.getString(METHOD_URL) == null) {
-            methodObj.put(METHOD_URL, classSpecificMapping.getString(CLASS_URL));
-            methodObj.put(REGEX_URL, getRegexForPath(classSpecificMapping.getString(CLASS_URL)));
           }
           // this is the key - the regex path is the key to the functions
           // represented by this url
@@ -287,6 +286,24 @@ public class AnnotationGrabber {
       }
     }
     return retObject;
+  }
+
+  private static boolean isPossibleHttpMethod(String method) {
+    switch (method) {
+    case "javax.ws.rs.PUT":
+    case "javax.ws.rs.POST":
+    case "javax.ws.rs.DELETE":
+    case "javax.ws.rs.GET":
+    case "javax.ws.rs.OPTIONS":
+    case "javax.ws.rs.HEAD":
+    case "javax.ws.rs.TRACE":
+    case "javax.ws.rs.CONNECT":
+    case "org.folio.rest.jaxrs.resource.support.OPTIONS":
+    case "org.folio.rest.jaxrs.resource.support.PATCH":
+      return true;
+    default:
+      return false;
+    }
   }
 
   private static String getRegexForPath(String path) {
