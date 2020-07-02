@@ -17,7 +17,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collector;
 
@@ -169,8 +168,9 @@ public class PostgresClientTest {
     assertThat("user", is(options.getUser()));
     assertThat("pass", is(options.getPassword()));
     assertThat("db", is(options.getDatabase()));
-    assertThat(60000, is(options.getIdleTimeout()));
-    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
+    // TODO: enable when available in vertx-sql-client/vertx-pg-client
+    // https://issues.folio.org/browse/RMB-657
+    // assertThat(60000, is(options.getConnectionReleaseDelay()));
   }
 
   @Test
@@ -189,8 +189,9 @@ public class PostgresClientTest {
     assertThat("myuser", is(options.getUser()));
     assertThat("mypassword", is(options.getPassword()));
     assertThat("mydatabase", is(options.getDatabase()));
-    assertThat(1000, is(options.getIdleTimeout()));
-    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
+    // TODO: enable when available in vertx-sql-client/vertx-pg-client
+    // https://issues.folio.org/browse/RMB-657
+    // assertThat(1000, is(options.getConnectionReleaseDelay()));
   }
 
   @Test
