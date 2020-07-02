@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -467,8 +466,9 @@ public class PostgresClient {
       pgConnectOptions.setDatabase(database);
     }
     Integer connectionReleaseDelay = sqlConfig.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
-    pgConnectOptions.setIdleTimeout(connectionReleaseDelay);
-    pgConnectOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
+    // TODO: enable when available in vertx-sql-client/vertx-pg-client
+    // https://issues.folio.org/browse/RMB-657
+    // pgConnectOptions.setConnectionReleaseDelay(connectionReleaseDelay);
     return pgConnectOptions;
   }
 

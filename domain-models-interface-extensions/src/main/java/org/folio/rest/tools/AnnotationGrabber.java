@@ -141,8 +141,7 @@ public class AnnotationGrabber {
           for (int j = 0; j < methodAn.length; j++) {
 
             Class<? extends Annotation> type = methodAn[j].annotationType();
-            //System.out.println("Values of " + type.getName());
-            if (RTFConsts.POSSIBLE_HTTP_METHOD.contains(type.getName())) {
+            if (isPossibleHttpMethod(type.getName())) {
               // put the method - get or post, etc..
               methodObj.put(HTTP_METHOD, type.getName());
             }
@@ -287,6 +286,24 @@ public class AnnotationGrabber {
       }
     }
     return retObject;
+  }
+
+  private static boolean isPossibleHttpMethod(String method) {
+    switch (method) {
+    case "javax.ws.rs.PUT":
+    case "javax.ws.rs.POST":
+    case "javax.ws.rs.DELETE":
+    case "javax.ws.rs.GET":
+    case "javax.ws.rs.OPTIONS":
+    case "javax.ws.rs.HEAD":
+    case "javax.ws.rs.TRACE":
+    case "javax.ws.rs.CONNECT":
+    case "org.folio.rest.jaxrs.resource.support.OPTIONS":
+    case "org.folio.rest.jaxrs.resource.support.PATCH":
+      return true;
+    default:
+      return false;
+    }
   }
 
   private static String getRegexForPath(String path) {

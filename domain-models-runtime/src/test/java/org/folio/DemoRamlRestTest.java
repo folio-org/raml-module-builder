@@ -1,5 +1,7 @@
 package org.folio;
 
+import static io.restassured.RestAssured.given;
+
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -27,7 +29,9 @@ import org.junit.runner.RunWith;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -61,6 +65,7 @@ public class DemoRamlRestTest {
   private static int port;
   private static Locale oldLocale = Locale.getDefault();
   private static String TENANT = "folio_shared";
+  private static RequestSpecification tenant;
 
   /**
    * @param context  the test context.
@@ -72,6 +77,9 @@ public class DemoRamlRestTest {
 
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
+    RestAssured.port = port;
+    RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    tenant = new RequestSpecBuilder().addHeader("x-okapi-tenant", TENANT).build();
 
     try {
       deployRestVerticle(context);
@@ -132,6 +140,11 @@ public class DemoRamlRestTest {
   @Test
   public void getOk(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2", 200);
+  }
+
+  @Test
+  public void getOkWithDatetime(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=2011-12-03T10:15:30&author=you&rating=1.2", 200);
   }
 
   @Test
@@ -424,6 +437,11 @@ public class DemoRamlRestTest {
   @Test
   public void testStreamChunked(TestContext context) {
     testStream(context, true);
+  }
+
+  @Test
+  public void options() {
+    given().spec(tenant).when().options("/rmbtests/test").then().statusCode(200);
   }
 
   /**

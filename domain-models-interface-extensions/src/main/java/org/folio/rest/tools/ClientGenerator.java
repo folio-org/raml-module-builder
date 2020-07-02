@@ -430,14 +430,14 @@ public class ClientGenerator {
 
   private void formatDateParameter(JBlock b, ParameterDetails details) {
     JExpression expr = jcodeModel.ref(java.time.format.DateTimeFormatter.class)
-      .staticInvoke("ofPattern")
-        .arg("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+      .staticRef("ISO_LOCAL_DATE_TIME")
       .invoke("format")
         .arg(jcodeModel.ref(java.time.ZonedDateTime.class)
           .staticInvoke("ofInstant")
             .arg(JExpr.ref(details.valueName).invoke("toInstant"))
             .arg(jcodeModel.ref(java.time.ZoneId.class)
-              .staticInvoke("systemDefault")));
+              .staticInvoke("of")
+                .arg("UTC")));
     b.invoke(details.queryParams, APPEND).arg(expr);
   }
 
