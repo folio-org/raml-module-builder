@@ -1,3 +1,11 @@
+## 30.2.2 2020-07-02
+
+ * [RMB-657](https://issues.folio.org/browse/RMB-657) Default 60s connectionReleaseDelay prevents streaming large data
+ * [RMB-656](https://issues.folio.org/browse/RMB-656) NPE at startup when an OPTIONS endpoint is defined in RAML
+ * [RMB-662](https://issues.folio.org/browse/RMB-662) Remove parseDatabaseSchemaString and org.json:json
+ * [RMB-660](https://issues.folio.org/browse/RMB-660) com.thoughtworks.xstream vulnerability (CVE-2017-7957)
+ * [RMB-661](https://issues.folio.org/browse/RMB-661) Update log4j to 2.13.3 fixing SMTPS host mismatch (CVE-2020-9488)
+
 ## 30.2.1 2020-06-23
 
 RMB 30.0 and 30.1 are discontinued. Only RMB >= 30.2 will receive bug and security fixes.
