@@ -1006,7 +1006,7 @@ are split into the three words `foo`, `/bar`, and `/baz` (always reduced to a si
 ### CQL: Matching all records
 
 A search matching all records in the target index can be executed with a
-`cql.allRecords=1` query. `cql.allRecords=1` can be used alone or as part of
+`cql.allRecords=1` (CQL standard) or a `id=*` (RMB specific) query. They can be used alone or as part of
 a more complex query, for example
 `cql.allRecords=1 NOT name=Smith sortBy name/sort.ascending`
 
@@ -1014,7 +1014,8 @@ a more complex query, for example
    as a word or where name is not defined.
 * `name="" NOT name=Smith` matches all records where name is defined but does not contain
    Smith as a word.
-* For performance reasons, searching for `*` in any fulltext field will match all records as well.
+* For performance reasons, searching for `*` in any fulltext field will match all records as well,
+  including records where that field does not exist.
 
 ### CQL: Matching undefined or empty values
 
