@@ -975,13 +975,18 @@ and not as a JSONB string (`{"age": "19"}`).
 
 ### CQL: Matching id and foreign key fields
 
-The id field and any foreign key field is a UUID field and is not searched in the JSONB but in an
-extracted proper database table field. An index is automatically created for such a field,
+The id field and any foreign key field declared in schema.json is a UUID field
+and is not searched in the JSONB but in an extracted proper database table field.
+An index is automatically created for such a field,
 do not add an index entry in schema.json.
 
-`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID.
+`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID and use the index.
 
-`=`, `==`, and `<>` relations allow `*` for right truncation.
+`=`, `==`, and `<>` relations allow `*` for right truncation with index support.
+
+`=` is interpreted as `==` for the id field and foreign key fields declared in schema.json; for other fields
+that contain a UUID `=` results in a word full text match. Therefore `=` should be avoided and `==`
+been used for all UUID fields.
 
 Modifiers are forbidden.
 
