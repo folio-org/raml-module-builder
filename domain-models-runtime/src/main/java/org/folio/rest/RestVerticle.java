@@ -40,7 +40,7 @@ import com.google.common.io.ByteStreams;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
-import org.apache.log4j.MDC;
+import org.apache.logging.log4j.ThreadContext;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -424,7 +424,10 @@ public class RestVerticle extends AbstractVerticle {
               getOkapiHeaders(rc, okapiHeaders, tenantId);
               String reqId = okapiHeaders.get(OKAPI_REQUESTID_HEADER);
               if(reqId != null){
-                MDC.put("reqId", "reqId="+reqId);
+                // TODO: This doesn't properly work because multiple requests use the same thread
+                // https://issues.folio.org/browse/RMB-669 "Add default metrics to RMB: incoming API calls"
+                // will fix this
+                ThreadContext.put("reqId", "reqId="+reqId);
               }
               if(tenantId[0] == null && !rc.request().path().startsWith("/admin")){
                 //if tenant id is not passed in and this is not an /admin request, return error
