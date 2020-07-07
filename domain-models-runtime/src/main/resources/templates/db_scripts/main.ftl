@@ -1,8 +1,6 @@
 
 <#if mode.name() == "CREATE">
 
-<#include "extensions.ftl">
-
 CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
 GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
 CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
@@ -11,6 +9,8 @@ CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodu
 
 ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "$user";
 SET search_path TO ${myuniversity}_${mymodule};
+
+<#include "extensions.ftl">
 
 <#if mode.name() == "CREATE">
 
