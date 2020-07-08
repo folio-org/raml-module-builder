@@ -1587,7 +1587,7 @@ public class RestVerticle extends AbstractVerticle {
   /**
    * Run logCommand with request id. Take request id value from headers in routingContext
    * and temporarily store it as reqId in ThreadContext. Run logCommand without reqId
-   * if request id value is <code>null</code>l.
+   * if request id value is <code>null</code>.
    */
   private static void withRequestId(RoutingContext routingContext, Runnable logCommand) {
     if (routingContext == null) {
