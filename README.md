@@ -1771,9 +1771,9 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Estimated totalRecords
 
-RMB adds a `totalRecords` field to result sets. It contains an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited.
+RMB adds a `totalRecords` field to result sets. For `limit = 0` it contains the exact value, otherwise an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited.
 
-It uses this algorithm:
+For estimation it uses this algorithm:
 
 1. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
 2. If this is greater than 4*1000 return it and stop.
@@ -1796,6 +1796,8 @@ RMB adjusts `totalRecords` when the number of returned records in the current re
 Note that clients should **continue on the next page when `totalRecords = offset + limit`** because there may be more records.
 
 This is the exact count guarantee:
+
+For `limit = 0` an exact count is returned without any records. Otherwise:
 
 If a result set has a `totalRecords` value that is less than 1000 then it is the exact count; if it is 1000 or more it may be an estimate.
 
