@@ -1773,7 +1773,15 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 RMB adds a `totalRecords` field to result sets. It contains an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited.
 
-It uses this algorithm:
+It uses this algorithm for RMB >= 30.2.4 and for RMB < 30.0.0:
+
+1. Run "SELECT COUNT(*) FROM query LIMIT 1000".
+2. If this is less than 1000 return it (this is the exact number) and stop.
+3. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
+4. If the estimation from 3. is less than 1000 return 1000 and stop.
+5. Return the estimation from 3. (this is an estimation >= 1000).
+
+It uses this algorithm for RMB from 30.0.0 to 30.2.3:
 
 1. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
 2. If this is greater than 4*1000 return it and stop.
@@ -1783,7 +1791,8 @@ It uses this algorithm:
 6. Return result from 1. (this is a value between 1000 and 4*1000).
 
 Step 2. contains the factor 4 that should be adjusted when there is empirical data for a better number.
-Step 3. may take long for full text queries with many hits, therefore we need steps 1.-2.
+The "SELECT COUNT(*)" query may take long for full text queries with many hits and/or when fields
+from different database indexes are involved.
 
 1000 is configurable, see the [Post Tenant API](#the-post-tenant-api) how to set `exactCount` in schema.json.
 
@@ -1795,13 +1804,23 @@ RMB adjusts `totalRecords` when the number of returned records in the current re
 
 Note that clients should **continue on the next page when `totalRecords = offset + limit`** because there may be more records.
 
-This is the exact count guarantee:
+This is the exact hit count guarantee for RMB >= 30.2.4 and for RMB < 30.0.0:
 
-If a result set has a `totalRecords` value that is less than 1000 then it is the exact count; if it is 1000 or more it may be an estimate.
+`totalRecords` is the exact number if the exact number is less than 1000.
 
-If the exact count is less than 1000 then `totalRecords` almost always contains the exact count; only when PostgreSQL estimates it to be more than 4*1000 then it contains that overestimation.
+If `totalRecords` is less than 1000 it is the exact number.
 
-Replace 1000 by `exactCount` if configured differently.
+Otherwise an estimation is returned.
+
+Replace 1000 by `exactCount` configuration value if configured differently.
+
+This is the exact count guarantee for RMB from 30.0.0 to 30.2.3:
+
+If a result set has a `totalRecords` value that is less than 1000 then it is the exact number; if it is 1000 or more it may be an estimate.
+
+If the exact number is less than 1000 then `totalRecords` almost always contains the exact number; only when PostgreSQL estimates it to be more than 4*1000 then it contains that overestimation.
+
+Replace 1000 by `exactCount` configuration value if configured differently.
 
 ## Metadata
 

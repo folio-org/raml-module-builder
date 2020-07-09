@@ -2006,7 +2006,7 @@ public class PostgresClient {
       // only do estimation when filter is in use (such as CQL).
       String estQuery = SELECT + distinctOnClause + fieldName + addIdField
           + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereClause();
-      queryHelper.countQuery = SELECT + "count_estimate('"
+      queryHelper.countQuery = SELECT + "count_estimate_default('"
         + org.apache.commons.lang.StringEscapeUtils.escapeSql(estQuery)
         + "')";
     }
