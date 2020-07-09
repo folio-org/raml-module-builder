@@ -935,7 +935,7 @@ Only these relations have been implemented yet:
 
 * `=` (this is `==` for number matching and `adj` for a string matching.
        Examples 1: `height =/number 3.4` Example 2: `title = Potter`)
-* `==` (exact field match, for example `barcode == 883746123` or exact prefix match `title == "Harry Pott*"`
+* `==` (field match, for example `barcode == 883746123` or field prefix match `title == "Harry Pott*"`
         matching "Harry Potter and the chamber of secrets" but not "Science of Harry Potter";
         `==/number` matches any form: 3.4 = 3.400 = 0.34e1)
 * `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
@@ -948,8 +948,12 @@ Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
 
-The `==` exact string match operator is always case sensitive and respects accents. If an index should speed up the search
-it must be a b-tree `"index"` or `"uniqueIndex"` with `"caseSensitive": true` and `"removeAccents": false`.
+To speed up the `==` field matching use a b-tree `"index"` or `"uniqueIndex"`.
+
+To speed up the word matching use a `"fullTextIndex"`.
+
+The `"caseSensitive"` and `"removeAccents"` configuration of the supporting index in schema.json is
+used for all string matching operators; `"fullTextIndex"` is always `"caseSensitive": false`.
 
 Refer to further explanation of [CQL string matching](https://dev.folio.org/faqs/explain-cql/)
 for the "Exact match operator" and "Word match operators".
@@ -1040,36 +1044,15 @@ not defined or if it is defined but doesn't match.
 
 For matching the elements of an array use these queries (assuming that lang is either an array or not defined, and assuming
 an array element value does not contain double quotes):
-* `lang ==/respectAccents []` for matching records where lang is defined and an empty array
-* `cql.allRecords=1 NOT lang <>/respectAccents []` for matching records where lang is not defined or an empty array
-* `lang =/respectCase/respectAccents \"en\"` for matching records where lang is defined and contains the value en
-* `cql.allRecords=1 NOT lang =/respectCase/respectAccents \"en\"` for matching records where lang does not
+* `lang == []` for matching records where lang is defined and an empty array
+* `cql.allRecords=1 NOT lang <> []` for matching records where lang is not defined or an empty array
+* `lang = \"en\"` for matching records where lang is defined and contains the value en
+* `cql.allRecords=1 NOT lang = \"en\"` for matching records where lang does not
   contain the value en (including records where lang is not defined)
-* `lang = "" NOT lang =/respectCase/respectAccents \"en\"` for matching records where lang is defined and
+* `lang = "" NOT lang = \"en\"` for matching records where lang is defined and
   and does not contain the value en
 * `lang = ""` for matching records where lang is defined
 * `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
-* `identifiers == "*\"value\": \"6316800312\", \"identifierTypeId\": \"8261054f-be78-422d-bd51-4ed9f33c3422\"*"`
-  (note to use `==` and not `=`) for matching the ISBN 6316800312 using ISBN's identifierTypeId where each element of
-  the identifiers array is a JSON object with the two keys value and identifierTypeId, for example
-
-      "identifiers": [ {
-        "value": "(OCoLC)968777846", "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace"
-      }, {
-        "value": "6316800312", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"
-      } ]
-
-To avoid the complicated syntax all ISBN values or all values can be extracted and used to create a view or an index:
-
-    SELECT COALESCE(jsonb_agg(value), '[]')
-       FROM jsonb_to_recordset(jsonb->'identifiers')
-         AS y(key text, value text)
-       WHERE key='8261054f-be78-422d-bd51-4ed9f33c3422'
-
-    SELECT COALESCE(jsonb_agg(value), '[]')
-      FROM jsonb_to_recordset(jsonb->'identifiers')
-        AS x(key text, value text)
-      WHERE value IS NOT NULL
 
 ### CQL: @-relation modifiers for array searches
 
