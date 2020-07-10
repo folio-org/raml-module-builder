@@ -2002,20 +2002,24 @@ public class PostgresClient {
       // this method call invokes freemarker templating
       queryHelper.selectQuery = facetManager.generateFacetQuery();
     }
-    if (!wrapper.getWhereClause().isEmpty()) {
-      // only do estimation when filter is in use (such as CQL).
-      String estQuery = SELECT + distinctOnClause + fieldName + addIdField
-          + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereClause();
-      queryHelper.countQuery = SELECT + "count_estimate('"
-        + org.apache.commons.lang.StringEscapeUtils.escapeSql(estQuery)
-        + "')";
-    }
     int offset = wrapper.getOffset().get();
     if (offset != -1) {
       queryHelper.offset = offset;
     }
     int limit = wrapper.getLimit().get();
     queryHelper.limit = limit != -1 ? limit : Integer.MAX_VALUE;
+    // with where, but without order by, offset, limit
+    String query = SELECT + distinctOnClause + fieldName + addIdField
+        + FROM + schemaName + DOT + table + SPACE + wrapper.getWhereClause();
+    if (limit == 0) {
+      // calculate exact total count without returning records
+      queryHelper.countQuery = SELECT + "count(*) FROM (" + query + ") x";
+    } else if (!wrapper.getWhereClause().isEmpty()) {
+      // only do estimation when filter is in use (such as CQL).
+      queryHelper.countQuery = SELECT + "count_estimate('"
+        + org.apache.commons.lang.StringEscapeUtils.escapeSql(query)
+        + "')";
+    }
     return queryHelper;
   }
 

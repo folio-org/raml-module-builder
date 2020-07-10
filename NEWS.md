@@ -1,3 +1,7 @@
+## 30.2.3 2020-07-08
+
+ * [RMB-671](https://issues.folio.org/browse/RMB-671) Reinstall PostgreSQL extensions on upgrade, drop pg\_catalog.pg\_trgm
+
 ## 30.2.2 2020-07-02
 
  * [RMB-657](https://issues.folio.org/browse/RMB-657) Default 60s connectionReleaseDelay prevents streaming large data

@@ -3084,6 +3084,29 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void streamGetWithLimitZero(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+
+    Async async = context.async();
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
+      .setLimit(new Limit(0));
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+      false, null, context.asyncAssertSuccess(sr -> {
+        context.assertEquals(3, sr.resultInto().getTotalRecords());
+        sr.handler(streamHandler -> objectCount.incrementAndGet());
+        sr.endHandler(x -> {
+          context.assertEquals(0, objectCount.get());
+          async.complete();
+        });
+      }));
+    async.await(1000);
+  }
+
+  @Test
   public void streamGetPlain(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
