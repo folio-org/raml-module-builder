@@ -1,3 +1,8 @@
+## 30.2.4 2020-07-10
+
+ * [RMB-673](https://issues.folio.org/browse/RMB-673) totalRecords returns exact hit count for limit=0
+ * [RMB-670](https://issues.folio.org/browse/RMB-670) Fix RestVerticle requestId logging, replace log4j 1.2 MDC by log4j 2 ThreadContext
+
 ## 30.2.3 2020-07-08
 
  * [RMB-671](https://issues.folio.org/browse/RMB-671) Reinstall PostgreSQL extensions on upgrade, drop pg\_catalog.pg\_trgm
