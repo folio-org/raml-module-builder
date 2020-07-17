@@ -1,18 +1,26 @@
--- pg_trgm may have incorrectly been created in pg_catalog schema.
--- Therefore we drop pg_trgm if it is not loaded in public schema
--- to remove it from any other schema.
--- PostgreSQL can load an extension into only one schema.
--- References: https://issues.folio.org/browse/MODORDSTOR-161
+-- For FOLIO an PostgreSQL extension must reside in schema public
+-- because within one database it can be loaded only once and
+-- that one must be shared by all users from all schemas.
+-- For background see https://issues.folio.org/browse/RMB-584
+-- Extension pg_trgm may have been loaded into a wrong schema,
+-- we fix this by moving it into schema public; PostgreSQL
+-- automatically changes all extension usages to use the new
+-- extension location.
+-- https://issues.folio.org/browse/MODORDSTOR-161
 -- https://issues.folio.org/browse/RMB-671
 DO $$
 BEGIN
   BEGIN
     -- This only succeeds if show_trgm, a pg_trgm function,
-    -- has been loaded to public schema.
+    -- has been loaded into public schema.
     PERFORM public.show_trgm('a');
   EXCEPTION
     WHEN undefined_function THEN
-      DROP EXTENSION IF EXISTS pg_trgm CASCADE;
+      BEGIN
+        ALTER EXTENSION pg_trgm SET SCHEMA public;
+      EXCEPTION
+        WHEN undefined_object THEN NULL;
+      END;
   END;
 END $$;
 
