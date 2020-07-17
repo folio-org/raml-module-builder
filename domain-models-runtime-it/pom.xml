@@ -49,18 +49,11 @@
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
-          <encoding>UTF-8</encoding>
-        </configuration>
       </plugin>
 
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>1.5.0</version>
         <executions>
           <execution>
             <id>generate_interfaces</id>
@@ -103,9 +96,9 @@
       </plugin>
 
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
+        <groupId>com.nickwongdev</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.11</version>
+        <version>1.12.6</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
@@ -147,7 +140,6 @@
 
       <plugin>
         <artifactId>maven-resources-plugin</artifactId>
-        <version>3.0.1</version>
         <executions>
           <execution>
             <id>copy-resources</id>
@@ -187,27 +179,11 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.0.0</version>
-        <executions>
-          <execution>
-            <id>add-raml-jaxrs-source</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -233,37 +209,11 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>2.19.1</version>
-        <configuration>
-          <useSystemClassLoader>false</useSystemClassLoader>
-        </configuration>
-        <executions>
-          <execution>
-            <id>integration-test</id>
-            <goals>
-              <goal>integration-test</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>verify</id>
-            <goals>
-              <goal>verify</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.22.1</version>
-        <configuration>
-          <!-- TODO: update to version 3.0.0 and remove useSystemClassLoader
-               https://issues.folio.org/browse/FOLIO-1609
-               https://issues.apache.org/jira/browse/SUREFIRE-1588
-          -->
-          <useSystemClassLoader>false</useSystemClassLoader>
-        </configuration>
       </plugin>
 
     </plugins>
