@@ -175,10 +175,17 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.8.1</version>
           <configuration>
-            <release>11</release>
+            <source>1.8</source>
+            <target>1.8</target>
             <compilerArgument>-Xlint:unchecked</compilerArgument>
             <encoding>UTF-8</encoding>
           </configuration>
+        </plugin>
+
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>3.0.0</version>
         </plugin>
 
         <plugin>
@@ -350,7 +357,6 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>3.0.0</version>
         <executions>
           <execution>
             <id>git submodule update</id>
