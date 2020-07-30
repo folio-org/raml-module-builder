@@ -1386,7 +1386,7 @@ public void postTenant(TenantAttributes tenantAttributes, Map<String, String> he
       .add("data2", "items");
     tl.perform(tenantAttributes, headers, vertx, res1 -> {
       if (res1.failed()) {
-        hndlr.handle(Future.succeededFuture(PostTenantResponse
+        handler.handle(Future.succeededFuture(PostTenantResponse
           .respond500WithTextPlain(res1.cause().getMessage())));
         return;
       }
