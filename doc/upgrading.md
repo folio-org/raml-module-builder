@@ -3,6 +3,7 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 30.3](#version-303)
 * [Version 30.2](#version-302)
 * [Version 30.0](#version-300)
 * [Version 29.5](#version-295)
@@ -14,6 +15,14 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 30.3
+
+* [RMB-686](https://issues.folio.org/browse/RMB-686) When using TenantAPI with super.postTenant
+  immediately return `res` if `res.result().getStatus() >= 300` before starting own
+  processing and return `res` success Response from TenantAPI after own processing. See new
+  [Extending the Tenant Init](https://github.com/folio-org/raml-module-builder#extending-the-tenant-init)
+  documentation for details.
 
 ## Version 30.2
 
