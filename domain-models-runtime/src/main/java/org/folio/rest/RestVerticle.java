@@ -759,6 +759,10 @@ public class RestVerticle extends AbstractVerticle {
     return false;
   }
 
+  /**
+   * @return a {@link Response} extracted from asyncResult, either from result(), or from
+   *         cause().getResponse() if cause() is a {@link ResponseException}, or null otherwise
+   */
   static Response getResponse(AsyncResult<Response> asyncResult) {
     if (asyncResult.succeeded()) {
       return asyncResult.result();
