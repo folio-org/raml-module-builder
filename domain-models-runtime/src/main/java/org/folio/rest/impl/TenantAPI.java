@@ -64,7 +64,7 @@ public class TenantAPI implements Tenant {
             if(h.succeeded()){
               exists = h.result();
               if(!exists){
-                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.
+                handlers.handle(failedFuture(DeleteTenantResponse.
                   respond400WithTextPlain("Tenant does not exist: " + tenantId)));
                 log.error("Can not delete. Tenant does not exist: " + tenantId);
                 return;
@@ -102,7 +102,7 @@ public class TenantAPI implements Tenant {
                       if(reply.result().size() > 0){
                         log.error("Unable to run the following commands during tenant delete: ");
                         reply.result().forEach(System.out::println);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
+                        handlers.handle(failedFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
                       }
                       else {
                         OutStream os = new OutStream();
@@ -112,19 +112,19 @@ public class TenantAPI implements Tenant {
                     }
                     else {
                       log.error(reply.cause().getMessage(), reply.cause());
-                      handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                      handlers.handle(failedFuture(DeleteTenantResponse
                         .respond500WithTextPlain(reply.cause().getMessage())));
                     }
                   } catch (Exception e) {
                     log.error(e.getMessage(), e);
-                    handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                    handlers.handle(failedFuture(DeleteTenantResponse
                       .respond500WithTextPlain(e.getMessage())));
                   }
                 });
           });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
-        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+        handlers.handle(failedFuture(DeleteTenantResponse
           .respond500WithTextPlain(e.getMessage())));
       }
     });
@@ -176,13 +176,13 @@ public class TenantAPI implements Tenant {
           }
           else{
             log.error(res.cause().getMessage(), res.cause());
-            handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
+            handlers.handle(failedFuture(GetTenantResponse
               .respond500WithTextPlain(res.cause().getMessage())));
           }
         });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
-        handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
+        handlers.handle(failedFuture(GetTenantResponse
           .respond500WithTextPlain(e.getMessage())));
       }
     });
@@ -330,14 +330,22 @@ public class TenantAPI implements Tenant {
       log.error(e.getMessage(), e);
       String text = e.getMessage() + "\n" + ExceptionUtils.getStackTrace(e);
       Response response = PostTenantResponse.respond500WithTextPlain(text);
-      handlers.handle(Future.failedFuture(new ResponseException(response)));
+      handlers.handle(failedFuture(response));
     })
     .onSuccess(response -> {
       if (response.getStatus() >= 300) {
-        handlers.handle(Future.failedFuture(new ResponseException(response)));
+        handlers.handle(failedFuture(response));
         return;
       }
       handlers.handle(Future.succeededFuture(response));
     });
+  }
+
+  /**
+   * @return a failed {@link Future} where the failure cause is a {@link ResponseException}
+   *         containing the {@code response}
+   */
+  static Future<Response> failedFuture(Response response) {
+    return Future.failedFuture(new ResponseException(response));
   }
 }
