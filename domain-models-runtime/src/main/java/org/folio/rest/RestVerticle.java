@@ -51,6 +51,7 @@ import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.RTFConsts;
+import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.codecs.PojoEventBusCodec;
 import org.folio.rest.tools.messages.MessageConsts;
@@ -769,7 +770,13 @@ public class RestVerticle extends AbstractVerticle {
    *          - request's start time, using JVM's high-resolution time source, in nanoseconds
    */
   private void sendResponse(RoutingContext rc, AsyncResult<Response> v, long start, String tenantId) {
-    Response result = ((Response) ((AsyncResult<?>) v).result());
+    Response result = v.result();
+    if (v.failed()) {
+      Throwable exception = v.cause();
+      if (exception instanceof ResponseException) {
+        result = ((ResponseException) exception).getResponse();
+      }
+    }
     if (result == null) {
       // catch all
       endRequestWithError(rc, 500, true, "Server error", new boolean[] { true });

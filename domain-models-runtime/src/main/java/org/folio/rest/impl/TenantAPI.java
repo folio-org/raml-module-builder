@@ -8,6 +8,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.resource.Tenant;
@@ -17,6 +18,7 @@ import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -319,14 +321,23 @@ public class TenantAPI implements Tenant {
               ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
               : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
     })
+
     .onFailure(e -> {
       if (e instanceof NoSchemaJsonException) {
         handlers.handle(Future.succeededFuture(PostTenantResponse.respond204()));
         return;
       }
       log.error(e.getMessage(), e);
-      handlers.handle(Future.succeededFuture(PostTenantResponse.respond500WithTextPlain(e.getMessage())));
+      String text = e.getMessage() + "\n" + ExceptionUtils.getStackTrace(e);
+      Response response = PostTenantResponse.respond500WithTextPlain(text);
+      handlers.handle(Future.failedFuture(new ResponseException(response)));
     })
-    .onSuccess(response -> handlers.handle(Future.succeededFuture(response)));
+    .onSuccess(response -> {
+      if (response.getStatus() >= 300) {
+        handlers.handle(Future.failedFuture(new ResponseException(response)));
+        return;
+      }
+      handlers.handle(Future.succeededFuture(response));
+    });
   }
 }
