@@ -1331,7 +1331,7 @@ If you wish to call the Post Tenant API (with Postgres) then just call the corre
 @Validate
 @Override
 public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-  Handler<AsyncResult<Response>> handler, Context context) {
+    Handler<AsyncResult<Response>> handler, Context context) {
   super.postTenant(tenantAttributes, headers, handler, context);
 }
 ```
@@ -1342,7 +1342,10 @@ If you wish to load data for your module, that should be done after the DB has b
 e.g. do something like:
 
 ```
+@Validate
+@Override
 public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+    Handler<AsyncResult<Response>> handler, Context context) {
   super.postTenant(tenantAttributes, headers, res -> {
     if (res.failed() || res.result().getStatus() >= 300) {
       handler.handle(res);
@@ -1370,7 +1373,10 @@ as resources and as JSON files, you can use the TenantLoading utility.
 ```java
 import org.folio.rest.tools.utils.TenantLoading;
 
+@Validate
+@Override
 public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+    Handler<AsyncResult<Response>> handler, Context context) {
   super.postTenant(tenantAttributes, headers, res -> {
     if (res.failed() || res.result().getStatus() >= 300) {
       handler.handle(res);
