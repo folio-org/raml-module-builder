@@ -759,6 +759,17 @@ public class RestVerticle extends AbstractVerticle {
     return false;
   }
 
+  static Response getResponse(AsyncResult<Response> asyncResult) {
+    if (asyncResult.succeeded()) {
+      return asyncResult.result();
+    }
+    Throwable exception = asyncResult.cause();
+    if (exception instanceof ResponseException) {
+      return ((ResponseException) exception).getResponse();
+    }
+    return null;
+  }
+
   /**
    * Send the result as response.
    *
@@ -770,13 +781,7 @@ public class RestVerticle extends AbstractVerticle {
    *          - request's start time, using JVM's high-resolution time source, in nanoseconds
    */
   private void sendResponse(RoutingContext rc, AsyncResult<Response> v, long start, String tenantId) {
-    Response result = v.result();
-    if (v.failed()) {
-      Throwable exception = v.cause();
-      if (exception instanceof ResponseException) {
-        result = ((ResponseException) exception).getResponse();
-      }
-    }
+    Response result = getResponse(v);
     if (result == null) {
       // catch all
       endRequestWithError(rc, 500, true, "Server error", new boolean[] { true });
