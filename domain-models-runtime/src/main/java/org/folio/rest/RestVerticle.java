@@ -785,8 +785,8 @@ public class RestVerticle extends AbstractVerticle {
    *          - request's start time, using JVM's high-resolution time source, in nanoseconds
    */
   private void sendResponse(RoutingContext rc, AsyncResult<Response> v, long start, String tenantId) {
-    Response result = getResponse(v);
-    if (result == null) {
+    Response responseFromResult = getResponse(v);
+    if (responseFromResult == null) {
       // catch all
       endRequestWithError(rc, 500, true, "Server error", new boolean[] { true });
       return;
@@ -794,7 +794,7 @@ public class RestVerticle extends AbstractVerticle {
     Object entity = null;
     try {
       HttpServerResponse response = rc.response();
-      int statusCode = result.getStatus();
+      int statusCode = responseFromResult.getStatus();
       // 204 means no content returned in the response, so passing
       // a chunked Transfer header is not allowed
       if (statusCode != 204) {
@@ -806,9 +806,9 @@ public class RestVerticle extends AbstractVerticle {
       // !!!!!!!!!!!!!!!!!!!!!! CORS commented OUT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       // response.putHeader("Access-Control-Allow-Origin", "*");
 
-      copyHeadersJoin(result.getStringHeaders(), response.headers());
+      copyHeadersJoin(responseFromResult.getStringHeaders(), response.headers());
 
-      entity = result.getEntity();
+      entity = responseFromResult.getEntity();
 
       /* entity is of type OutStream - and will be written as a string */
       if (entity instanceof OutStream) {
