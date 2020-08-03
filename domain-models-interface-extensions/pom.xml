@@ -25,6 +25,10 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-api-aspects</artifactId>
       <version>${project.parent.version}</version>

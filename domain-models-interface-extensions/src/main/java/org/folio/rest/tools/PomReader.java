@@ -4,14 +4,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-
-import com.google.common.collect.ImmutableSet;
-import com.google.common.reflect.ClassPath;
-import com.google.common.reflect.ClassPath.ResourceInfo;
+import org.folio.rest.tools.utils.ClassPath;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -54,8 +52,8 @@ public enum PomReader {
       else{
         //this is runtime, the jar called via java -jar is the module's jar
         ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
-        ImmutableSet<ResourceInfo> resources = classPath.getResources();
-        for (ResourceInfo info : resources) {
+        Set<ClassPath.ResourceInfo> resources = classPath.getResources();
+        for (ClassPath.ResourceInfo info : resources) {
           if(info.getResourceName().endsWith("pom.xml")){
             //maven sets the classpath order according to the pom, so the poms project will be the first entry
             model = mavenreader.read(PomReader.class.getResourceAsStream("/"+info.getResourceName()));
