@@ -3,7 +3,7 @@ package org.folio.rest.persist.ddlgen;
 import java.util.Collections;
 import java.util.List;
 
-import org.folio.cql2pgjson.util.SqlUtil;
+import org.folio.dbschema.util.SqlUtil;
 
 /**
  * @author shale

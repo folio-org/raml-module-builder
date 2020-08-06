@@ -5,6 +5,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.stream.Stream;
 
+import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,7 +16,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class Cql2PgUtilTest {
   @Test
   void isUtilityClass() {
-    UtilityClassTester.assertUtilityClass(Cql2PgUtil.class);
+    UtilityClassTester.assertUtilityClass(SqlUtil.Cql2PgUtil.class);
   }
 
   @ParameterizedTest
@@ -28,14 +29,14 @@ class Cql2PgUtilTest {
     "a'bc.'xyz', tab.jsonb->'a''bc'->'''xyz'''",  // sql injection test
   })
   void cqlNameAsSqlJson(String cqlName, String sql) {
-    assertThat(Cql2PgUtil.cqlNameAsSqlJson("tab.jsonb", cqlName), is(sql));
+    assertThat(SqlUtil.Cql2PgUtil.cqlNameAsSqlJson("tab.jsonb", cqlName), is(sql));
 
     StringBuilder x = new StringBuilder("x ");
-    Cql2PgUtil.appendCqlNameAsSqlJson("tab.jsonb", cqlName, x);
+    SqlUtil.Cql2PgUtil.appendCqlNameAsSqlJson("tab.jsonb", cqlName, x);
     assertThat(x.toString(), is("x " + sql));
 
     StringBuilder y = new StringBuilder("y ");
-    Cql2PgUtil.appendCqlNameAsSqlJson("tab.jsonb", "u" + cqlName + "v", 1, 1 + cqlName.length(), y);
+    SqlUtil.Cql2PgUtil.appendCqlNameAsSqlJson("tab.jsonb", "u" + cqlName + "v", 1, 1 + cqlName.length(), y);
     assertThat(y.toString(), is("y " + sql));
   }
 
@@ -49,14 +50,14 @@ class Cql2PgUtilTest {
     "a'bc.'xyz', tab.jsonb->'a''bc'->>'''xyz'''",  // sql injection test
   })
   void cqlNameAsSqlText(String cqlName, String sql) {
-    assertThat(Cql2PgUtil.cqlNameAsSqlText("tab.jsonb", cqlName), is(sql));
+    assertThat(SqlUtil.Cql2PgUtil.cqlNameAsSqlText("tab.jsonb", cqlName), is(sql));
 
     StringBuilder x = new StringBuilder("x ");
-    Cql2PgUtil.appendCqlNameAsSqlText("tab.jsonb", cqlName, x);
+    SqlUtil.Cql2PgUtil.appendCqlNameAsSqlText("tab.jsonb", cqlName, x);
     assertThat(x.toString(), is("x " + sql));
 
     StringBuilder y = new StringBuilder("y ");
-    Cql2PgUtil.appendCqlNameAsSqlText("tab.jsonb", "u" + cqlName + "v", 1, 1 + cqlName.length(), y);
+    SqlUtil.Cql2PgUtil.appendCqlNameAsSqlText("tab.jsonb", "u" + cqlName + "v", 1, 1 + cqlName.length(), y);
     assertThat(y.toString(), is("y " + sql));
   }
 
@@ -75,14 +76,14 @@ class Cql2PgUtilTest {
   @ParameterizedTest
   @MethodSource
   void quoted(String s, String quoted) {
-    assertThat(Cql2PgUtil.quoted(s), is(quoted));
+    assertThat(SqlUtil.Cql2PgUtil.quoted(s), is(quoted));
 
     StringBuilder x = new StringBuilder("x ");
-    Cql2PgUtil.appendQuoted(s, x);
+    SqlUtil.Cql2PgUtil.appendQuoted(s, x);
     assertThat(x.toString(), is("x " + quoted));
 
     StringBuilder y = new StringBuilder("y ");
-    Cql2PgUtil.appendQuoted("u" + s + "v", 1, 1 + s.length(), y);
+    SqlUtil.Cql2PgUtil.appendQuoted("u" + s + "v", 1, 1 + s.length(), y);
     assertThat(y.toString(), is("y " + quoted));
   }
 
@@ -94,6 +95,6 @@ class Cql2PgUtilTest {
     "true,  true,  lower(f_unaccent(x))",
   })
   void wrapInLowerUnaccent(boolean lower, boolean unaccent, String expected) {
-    assertThat(Cql2PgUtil.wrapInLowerUnaccent("x", lower, unaccent), is(expected));
+    assertThat(SqlUtil.Cql2PgUtil.wrapInLowerUnaccent("x", lower, unaccent), is(expected));
   }
 }

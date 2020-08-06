@@ -52,7 +52,7 @@ import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.folio.cql2pgjson.util.Cql2PgUtil;
+import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -1197,7 +1197,7 @@ public class PostgresClient {
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     StringBuilder where = new StringBuilder().append(WHERE).append(ID_FIELD).append('=');
-    Cql2PgUtil.appendQuoted(id, where);  // proper masking prevents SQL injection
+    SqlUtil.Cql2PgUtil.appendQuoted(id, where);  // proper masking prevents SQL injection
     update(table, entity, DEFAULT_JSONB_FIELD_NAME, where.toString(), false, replyHandler);
   }
 

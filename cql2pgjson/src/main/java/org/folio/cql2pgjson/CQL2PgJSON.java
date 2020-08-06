@@ -26,9 +26,9 @@ import org.folio.cql2pgjson.model.DbFkInfo;
 import org.folio.cql2pgjson.model.DbIndex;
 import org.folio.cql2pgjson.model.IndexTextAndJsonValues;
 import org.folio.cql2pgjson.model.SqlSelect;
-import org.folio.cql2pgjson.util.Cql2PgUtil;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
+import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.persist.ddlgen.Index;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.persist.ddlgen.Table;
@@ -92,8 +92,12 @@ public class CQL2PgJSON {
    * @throws FieldException provided field is not valid
    */
   public CQL2PgJSON(String field) throws FieldException {
-    doInit(field, null);
-    initDbTable();
+    try {
+      doInit(field, null);
+      initDbTable();
+    } catch (NullPointerException e) {
+      logger.log(Level.SEVERE, e.getMessage(), e);
+    }
   }
 
   /**
@@ -329,7 +333,7 @@ public class CQL2PgJSON {
    * @return wrapped term
    */
   private static String wrapInLowerUnaccent(String term, CqlModifiers cqlModifiers) {
-    return Cql2PgUtil.wrapInLowerUnaccent(term,
+    return SqlUtil.Cql2PgUtil.wrapInLowerUnaccent(term,
         cqlModifiers.getCqlCase() != CqlCase.RESPECT_CASE,
         cqlModifiers.getCqlAccents() != CqlAccents.RESPECT_ACCENTS);
   }
@@ -343,9 +347,9 @@ public class CQL2PgJSON {
    */
   private static String wrapIndexExpression(String term, Index index) {
     if (index == null) {
-      return Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
+      return SqlUtil.Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
     }
-    return Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
+    return SqlUtil.Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
   }
 
   /**
@@ -357,11 +361,11 @@ public class CQL2PgJSON {
    */
   private static String wrapQueryExpression(String term, Index index) {
     if (index == null) {
-      return Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
+      return SqlUtil.Cql2PgUtil.wrapInLowerUnaccent(term, true, true);
     }
     String wrapper = index.getSqlExpressionQuery();
     if (wrapper == null) {
-      return Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
+      return SqlUtil.Cql2PgUtil.wrapInLowerUnaccent(term, ! index.isCaseSensitive(), index.isRemoveAccents());
     }
     return wrapper.replace("$", term);
   }
@@ -454,8 +458,8 @@ public class CQL2PgJSON {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(this.jsonField, index));
-    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(this.jsonField, index));
+    vals.setIndexJson(SqlUtil.Cql2PgUtil.cqlNameAsSqlJson(this.jsonField, index));
+    vals.setIndexText(SqlUtil.Cql2PgUtil.cqlNameAsSqlText(this.jsonField, index));
     return vals;
   }
 
@@ -466,16 +470,16 @@ public class CQL2PgJSON {
     for (String f : jsonFields) {
       if (index.startsWith(f+'.')) {
         String indexTermWithinField = index.substring(f.length()+1);
-        vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(f, indexTermWithinField));
-        vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(f, indexTermWithinField));
+        vals.setIndexJson(SqlUtil.Cql2PgUtil.cqlNameAsSqlJson(f, indexTermWithinField));
+        vals.setIndexText(SqlUtil.Cql2PgUtil.cqlNameAsSqlText(f, indexTermWithinField));
         return vals;
       }
     }
 
     // if no json field name prefix is found, the default field name gets applied.
     String defaultJsonField = this.jsonFields.get(0);
-    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(defaultJsonField, index));
-    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(defaultJsonField, index));
+    vals.setIndexJson(SqlUtil.Cql2PgUtil.cqlNameAsSqlJson(defaultJsonField, index));
+    vals.setIndexText(SqlUtil.Cql2PgUtil.cqlNameAsSqlText(defaultJsonField, index));
     return vals;
   }
 
@@ -552,8 +556,8 @@ public class CQL2PgJSON {
     String foreignTableJsonb = targetTable.getTableName() + "." + JSONB_COLUMN_NAME;
 
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    vals.setIndexJson(Cql2PgUtil.cqlNameAsSqlJson(foreignTableJsonb, foreignTarget[1]));
-    vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText(foreignTableJsonb, foreignTarget[1]));
+    vals.setIndexJson(SqlUtil.Cql2PgUtil.cqlNameAsSqlJson(foreignTableJsonb, foreignTarget[1]));
+    vals.setIndexText(SqlUtil.Cql2PgUtil.cqlNameAsSqlText(foreignTableJsonb, foreignTarget[1]));
 
     CqlModifiers cqlModifiers = new CqlModifiers(node);
     String indexField = foreignTarget[1];
@@ -677,7 +681,7 @@ public class CQL2PgJSON {
           sqlOr.append(" or ");
         }
         IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-        vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText("t.c", foundModifier));
+        vals.setIndexText(SqlUtil.Cql2PgUtil.cqlNameAsSqlText("t.c", foundModifier));
         sqlOr.append(indexNode(index, this.dbTable, node, vals, modifiers));
       } else {
         final String comparator = relationModifier.getComparison();
@@ -685,7 +689,7 @@ public class CQL2PgJSON {
           throw new QueryValidationException("CQL: Unsupported comparison for relation modifier " + relationModifier.getType());
         }
         sqlAnd.append(" and ");
-        sqlAnd.append(queryByFt(Cql2PgUtil.cqlNameAsSqlText("t.c", foundModifier), modifierValue,
+        sqlAnd.append(queryByFt(SqlUtil.Cql2PgUtil.cqlNameAsSqlText("t.c", foundModifier), modifierValue,
           comparator, schemaIndex, targetTable));
       }
     }
@@ -700,7 +704,7 @@ public class CQL2PgJSON {
         throw new QueryValidationException("CQL: No arraySubfield defined for index " + index);
       }
       IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-      vals.setIndexText(Cql2PgUtil.cqlNameAsSqlText("t.c", modifiersSubfield));
+      vals.setIndexText(SqlUtil.Cql2PgUtil.cqlNameAsSqlText("t.c", modifiersSubfield));
       sqlOr.append(indexNode(index, this.dbTable, node, vals, modifiers));
     }
     return "id in (select t.id"
@@ -889,7 +893,7 @@ public class CQL2PgJSON {
     } else if (schemaIndex != null && schemaIndex.getSqlExpression() != null) {
       indexText = schemaIndex.getSqlExpression();
     } else {
-      indexText = Cql2PgUtil.wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
+      indexText = SqlUtil.Cql2PgUtil.wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
     }
     String sql = "to_tsvector('simple', " + indexText + ") " + "@@ " + tsTerm.toString();
 

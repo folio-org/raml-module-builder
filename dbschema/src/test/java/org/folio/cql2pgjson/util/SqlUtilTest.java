@@ -3,6 +3,7 @@ package org.folio.cql2pgjson.util;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

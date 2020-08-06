@@ -2,7 +2,7 @@ package org.folio.rest.persist.ddlgen;
 
 import java.util.List;
 
-import org.folio.cql2pgjson.util.Cql2PgUtil;
+import org.folio.dbschema.util.SqlUtil;
 
 /**
  * @author shale
@@ -111,7 +111,7 @@ public class Index extends TableIndexes {
       appendExpandedTerm(tableLoc, splitIndex[i], result);
     }
     result.append(")");
-    return Cql2PgUtil.wrapInLowerUnaccent(result.toString(), lowerIt , removeAccents);
+    return SqlUtil.Cql2PgUtil.wrapInLowerUnaccent(result.toString(), lowerIt , removeAccents);
   }
 
   public String getFinalSqlExpression(String tableLoc) {
@@ -150,19 +150,19 @@ public class Index extends TableIndexes {
 
     //case where [*] is not found
     if (idx == -1) {
-      result.append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlText(JSONB, term));
+      result.append(table).append(".").append(SqlUtil.Cql2PgUtil.cqlNameAsSqlText(JSONB, term));
       return;
     }
     //case where [*] is found at the end
     if (idx == term.length() - ARRAY_TOKEN.length()) {
       result.append("concat_array_object(")
-            .append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson(JSONB, term.substring(0,idx)))
+            .append(table).append(".").append(SqlUtil.Cql2PgUtil.cqlNameAsSqlJson(JSONB, term.substring(0,idx)))
             .append(")");
       return;
     }
     //case with [*].value
     result.append("concat_array_object_values(")
-          .append(table).append(".").append(Cql2PgUtil.cqlNameAsSqlJson(JSONB,term.substring(0,idx)))
+          .append(table).append(".").append(SqlUtil.Cql2PgUtil.cqlNameAsSqlJson(JSONB,term.substring(0,idx)))
           .append(",")
           .append("'").append(term.substring(idx + ARRAY_TERM_TOKEN.length(), term.length())).append("'")
           .append(")");
