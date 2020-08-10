@@ -27,7 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import org.apache.commons.lang.StringEscapeUtils;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.ValidationHelper;

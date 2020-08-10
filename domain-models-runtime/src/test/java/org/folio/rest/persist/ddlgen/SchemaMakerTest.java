@@ -8,7 +8,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+
+import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.Schema;
+import org.folio.dbschema.Table;
+import org.folio.dbschema.TenantOperation;
+import org.folio.dbschema.View;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

@@ -29,10 +29,10 @@ import org.folio.cql2pgjson.model.SqlSelect;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
 import org.folio.dbschema.util.SqlUtil;
-import org.folio.rest.persist.ddlgen.Index;
-import org.folio.rest.persist.ddlgen.Schema;
-import org.folio.rest.persist.ddlgen.Table;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.Index;
+import org.folio.dbschema.Schema;
+import org.folio.dbschema.Table;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
@@ -178,7 +178,7 @@ public class CQL2PgJSON {
       }
       String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
       logger.log(Level.INFO, "loadDbSchema: Loaded {0} OK", schemaPath);
-      dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
+      dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found", ex);
     }

@@ -12,12 +12,12 @@ import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.resource.Tenant;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
-import org.folio.rest.persist.ddlgen.TenantOperation;
+import org.folio.dbschema.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 

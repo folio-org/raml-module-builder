@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import org.folio.rest.persist.ddlgen.Table;
+import org.folio.dbschema.Table;
 import org.junit.Test;
 
 public class DBSchemaTest {

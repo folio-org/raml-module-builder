@@ -26,7 +26,7 @@ import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.folio.cql2pgjson.model.CqlMasking;
 import org.folio.cql2pgjson.model.CqlModifiers;
 import org.folio.cql2pgjson.model.SqlSelect;
-import org.folio.rest.persist.ddlgen.Table;
+import org.folio.dbschema.Table;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;

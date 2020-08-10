@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.folio.cql2pgjson.DatabaseTestBase;
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;

@@ -71,7 +71,7 @@ import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.NetworkUtils;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;

@@ -8,7 +8,7 @@ import java.util.List;
 import org.folio.rest.tools.client.exceptions.ResponseNullPointer;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.parser.JsonPathParser.Pairs;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.ObjectMapperTool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ArrayListMultimap;

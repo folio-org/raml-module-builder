@@ -11,10 +11,11 @@ import java.util.List;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.model.DbFkInfo;
 import org.folio.cql2pgjson.model.DbIndex;
-import org.folio.rest.persist.ddlgen.Index;
-import org.folio.rest.persist.ddlgen.Schema;
-import org.folio.rest.persist.ddlgen.Table;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.cql2pgjson.util.DbSchemaUtils;
+import org.folio.dbschema.Index;
+import org.folio.dbschema.Schema;
+import org.folio.dbschema.Table;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
 import org.junit.Before;
 import org.junit.Rule;
@@ -93,7 +94,7 @@ public class DbSchemaUtilsTest {
   private Schema schema(String schemaPath) {
     try {
       String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
-      return ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
+      return ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
