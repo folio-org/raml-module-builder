@@ -16,10 +16,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.folio.rest.jaxrs.model.Book;
+import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.junit.jupiter.api.Test;
-
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
+import javax.ws.rs.core.Response;
 
 class RestVerticleTest {
 
@@ -180,5 +183,22 @@ class RestVerticleTest {
         is(arrayContaining("abc", "def", "ghi")));
     assertThat(RestVerticle.matchPath("/%2F%3F%2B%23/12%2334", Pattern.compile("^/([^/]+)/([^/]+)$")),
         is(arrayContaining("/?+#", "12#34")));
+  }
+
+  @Test
+  void getResponseSucceeded() {
+    Response response = ResponseDelegate.status(234).build();
+    assertThat(RestVerticle.getResponse(Future.succeededFuture(response)).getStatus(), is(234));
+  }
+
+  @Test
+  void getResponseFailed() {
+    Response response = ResponseDelegate.status(456).build();
+    assertThat(RestVerticle.getResponse(Future.failedFuture(new ResponseException(response))).getStatus(), is(456));
+  }
+
+  @Test
+  void getResponseFailedWithoutResponse() {
+    assertThat(RestVerticle.getResponse(Future.failedFuture("foo")), is(nullValue()));
   }
 }
