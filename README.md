@@ -1347,7 +1347,7 @@ e.g. do something like:
 public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
     Handler<AsyncResult<Response>> handler, Context context) {
   super.postTenant(tenantAttributes, headers, res -> {
-    if (res.failed() || res.result().getStatus() >= 300) {
+    if (res.failed()) {
       handler.handle(res);
       return;
     }
@@ -1378,7 +1378,7 @@ import org.folio.rest.tools.utils.TenantLoading;
 public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
     Handler<AsyncResult<Response>> handler, Context context) {
   super.postTenant(tenantAttributes, headers, res -> {
-    if (res.failed() || res.result().getStatus() >= 300) {
+    if (res.failed()) {
       handler.handle(res);
       return;
     }

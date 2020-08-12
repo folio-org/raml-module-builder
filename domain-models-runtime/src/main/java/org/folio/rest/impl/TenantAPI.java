@@ -18,6 +18,7 @@ import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.persist.ddlgen.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -298,8 +299,7 @@ public class TenantAPI implements Tenant {
   /**
    * Installs or upgrades a module for a tenant.
    *
-   * <p>The <code>handler</code> signals an error with a succeeding result
-   * where <code>Response</code> has HTTP status >= 300, or with a failing result.
+   * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
    *
    * @see <a href="https://github.com/folio-org/raml-module-builder#extending-the-tenant-init">Extending the Tenant Init</a>
    *      for usage examples
@@ -338,14 +338,14 @@ public class TenantAPI implements Tenant {
       log.error(e.getMessage(), e);
       String text = e.getMessage() + "\n" + ExceptionUtils.getStackTrace(e);
       Response response = PostTenantResponse.respond500WithTextPlain(text);
-      handlers.handle(failedFuture(response));
+      handler.handle(failedFuture(response));
     })
     .onSuccess(response -> {
       if (response.getStatus() >= 300) {
-        handlers.handle(failedFuture(response));
+        handler.handle(failedFuture(response));
         return;
       }
-      handlers.handle(Future.succeededFuture(response));
+      handler.handle(Future.succeededFuture(response));
     });
   }
 
