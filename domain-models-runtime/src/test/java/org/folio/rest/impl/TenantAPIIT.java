@@ -13,12 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
-
+import javax.ws.rs.core.Response;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.CoreMatchers;
 import org.junit.AfterClass;
@@ -272,8 +273,8 @@ public class TenantAPIIT {
       }
     };
     TenantAttributes tenantAttributes = new TenantAttributes();
-    tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(response -> {
-      assertThat(response.getStatus(), is(500));
+    tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertFailure(exception -> {
+      assertThat(((ResponseException) exception).getResponse().getStatus(), is(500));
     }), vertx.getOrCreateContext());
   }
 
@@ -293,7 +294,8 @@ public class TenantAPIIT {
         handler.handle(Future.succeededFuture(false));
       }
     };
-    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
+    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertFailure(exception -> {
+      Response result = ((ResponseException) exception).getResponse();
       assertThat(result.getStatus(), is(400));
       assertThat(result.getEntity(), is("[ \"first failure\" ]"));
     }), vertx.getOrCreateContext());
@@ -324,7 +326,8 @@ public class TenantAPIIT {
         }
       }
     };
-    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
+    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertFailure(exception -> {
+      Response result = ((ResponseException) exception).getResponse();
       assertThat(result.getStatus(), is(500));
       assertThat(result.getEntity().toString(), is(CoreMatchers.startsWith(exceptionClass.getName())));
     }), vertx.getOrCreateContext());
