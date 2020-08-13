@@ -2840,14 +2840,14 @@ public class PostgresClientIT {
         });
         sr.endHandler(x -> {
           events.append("[endHandler]");
+          async.complete();
         });
         sr.exceptionHandler(x -> {
           events.append("[exception]");
-          async.complete();
         });
       }));
     async.await(1000);
-    context.assertEquals("[handler][exception]", events.toString());
+    context.assertEquals("[handler][exception][endHandler]", events.toString());
   }
 
   @Test
@@ -3006,10 +3006,9 @@ public class PostgresClientIT {
           async.complete();
         });
         // no exceptionHandler defined
-        vertx.setTimer(100, x -> async.complete());
       }));
     async.await(1000);
-    context.assertEquals("[handler]", events.toString());
+    context.assertEquals("[handler][endHandler]", events.toString());
   }
 
   @Test
@@ -3053,11 +3052,10 @@ public class PostgresClientIT {
           });
           sr.exceptionHandler(x -> {
             events.append("[exception]");
-            async.complete();
           });
         }));
     async.await(1000);
-    context.assertEquals("[handler][exception]", events.toString());
+    context.assertEquals("[handler][exception][endHandler]", events.toString());
   }
 
   @Test
