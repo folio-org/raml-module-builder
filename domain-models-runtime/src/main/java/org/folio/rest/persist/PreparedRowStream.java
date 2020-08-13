@@ -76,21 +76,17 @@ public class PreparedRowStream implements RowStream<Row> {
 
   @Override
   public void close() {
-    preparedStatement.close(close -> {
-      rowStream.close();
-    });
+    preparedStatement.close(close -> rowStream.close());
   }
 
   @Override
   public void close(Handler<AsyncResult<Void>> completionHandler) {
-    preparedStatement.close(close1 -> {
-      rowStream.close(close2 -> {
-        if (close1.failed()) {
-          completionHandler.handle(close1);
-          return;
-        }
-        completionHandler.handle(close2);
-      });
-    });
+    preparedStatement.close(close1 -> rowStream.close(close2 -> {
+      if (close1.failed()) {
+        completionHandler.handle(close1);
+        return;
+      }
+      completionHandler.handle(close2);
+    }));
   }
 }
