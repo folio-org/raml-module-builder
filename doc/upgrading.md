@@ -15,6 +15,14 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
+## Version 31
+
+* [RMB-628](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
+  A few updates to `pom.xml` are necessary. For `maven-compiler-plugin`
+  use `<release>11</release>` instead of `source` and `target` elements.
+  Update aspectj version to 1.9.5. Update `aspect-maven-plugin` with
+  groupId `com.nickwongdev` and version `1.12.6`.
+
 ## Version 30.2
 
 * [RMB-652](https://issues.folio.org/browse/RMB-652) error message
