@@ -19,7 +19,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 * [RMB-628](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
   A few updates to `pom.xml` are necessary. For `maven-compiler-plugin`
-  use `<release>11</release>` instead of `source` and `target` elements.
+  update `version` to `3.8.1`. and use `<release>11</release>` instead
+  of `source` and `target` elements.
   Update aspectj version to 1.9.5. Update `aspect-maven-plugin` with
   groupId `com.nickwongdev` and version `1.12.6`.
 
