@@ -70,7 +70,7 @@ class PreparedRowStreamTest {
     PreparedRowStream preparedRowStream = new PreparedRowStream(mockedPreparedStatement, mockedRowStream);
     StringBuilder s = new StringBuilder();
     preparedRowStream.close(handler -> s.append(handler.cause().getMessage()));
-    assertThat(s.toString(), is("fail1"));
+    assertThat(s.toString(), is("fail2"));
     verify(mockedPreparedStatement).close(any());
   }
 }

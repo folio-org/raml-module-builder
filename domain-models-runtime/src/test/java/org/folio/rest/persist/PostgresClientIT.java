@@ -2840,14 +2840,14 @@ public class PostgresClientIT {
         });
         sr.exceptionHandler(x -> {
           events.append("[exception]");
+          vertx.runOnContext(run -> async.complete());
         });
         sr.endHandler(x -> {
           events.append("[endHandler]");
-          async.complete();
         });
       }));
     async.await(1000);
-    context.assertEquals("[handler][exception][endHandler]", events.toString());
+    context.assertEquals("[handler][exception]", events.toString());
   }
 
   @Test
@@ -2999,16 +2999,16 @@ public class PostgresClientIT {
       context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
+          vertx.runOnContext(run -> async.complete());
           throw new NullPointerException("null");
         });
         sr.endHandler(x -> {
           events.append("[endHandler]");
-          async.complete();
         });
         // no exceptionHandler defined
       }));
     async.await(1000);
-    context.assertEquals("[handler][endHandler]", events.toString());
+    context.assertEquals("[handler]", events.toString());
   }
 
   @Test
@@ -3026,7 +3026,7 @@ public class PostgresClientIT {
           events.append("[endHandler]");
         }).exceptionHandler(x -> {
           events.append("[exception]");
-          async.complete();
+          vertx.runOnContext(run -> async.complete());
         });
       }));
     async.await(1000);
@@ -3048,14 +3048,14 @@ public class PostgresClientIT {
           });
           sr.exceptionHandler(x -> {
             events.append("[exception]");
+            vertx.runOnContext(run -> async.complete());
           });
           sr.endHandler(x -> {
             events.append("[endHandler]");
-            async.complete();
           });
         }));
     async.await(1000);
-    context.assertEquals("[handler][exception][endHandler]", events.toString());
+    context.assertEquals("[handler][exception]", events.toString());
   }
 
   @Test
