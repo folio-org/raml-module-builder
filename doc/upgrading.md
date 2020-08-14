@@ -17,7 +17,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 31
 
-* [RMB-628](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
+* [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
   A few updates to `pom.xml` are necessary. For `maven-compiler-plugin`
   update `version` to `3.8.1`. and use `<release>11</release>` instead
   of `source` and `target` elements.
