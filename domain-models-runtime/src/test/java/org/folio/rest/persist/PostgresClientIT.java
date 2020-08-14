@@ -2838,12 +2838,12 @@ public class PostgresClientIT {
           events.append("[handler]");
           throw new NullPointerException("null");
         });
+        sr.exceptionHandler(x -> {
+          events.append("[exception]");
+        });
         sr.endHandler(x -> {
           events.append("[endHandler]");
           async.complete();
-        });
-        sr.exceptionHandler(x -> {
-          events.append("[exception]");
         });
       }));
     async.await(1000);
@@ -3046,12 +3046,12 @@ public class PostgresClientIT {
             events.append("[handler]");
             throw new NullPointerException("null");
           });
+          sr.exceptionHandler(x -> {
+            events.append("[exception]");
+          });
           sr.endHandler(x -> {
             events.append("[endHandler]");
             async.complete();
-          });
-          sr.exceptionHandler(x -> {
-            events.append("[exception]");
           });
         }));
     async.await(1000);
