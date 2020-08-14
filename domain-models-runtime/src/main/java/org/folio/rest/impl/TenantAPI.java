@@ -8,6 +8,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.resource.Tenant;
@@ -18,6 +19,7 @@ import org.folio.dbschema.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
 import org.folio.dbschema.ObjectMapperTool;
+import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 
@@ -62,7 +64,7 @@ public class TenantAPI implements Tenant {
             if(h.succeeded()){
               exists = h.result();
               if(!exists){
-                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.
+                handlers.handle(failedFuture(DeleteTenantResponse.
                   respond400WithTextPlain("Tenant does not exist: " + tenantId)));
                 log.error("Can not delete. Tenant does not exist: " + tenantId);
                 return;
@@ -100,7 +102,7 @@ public class TenantAPI implements Tenant {
                       if(reply.result().size() > 0){
                         log.error("Unable to run the following commands during tenant delete: ");
                         reply.result().forEach(System.out::println);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
+                        handlers.handle(failedFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
                       }
                       else {
                         OutStream os = new OutStream();
@@ -110,19 +112,19 @@ public class TenantAPI implements Tenant {
                     }
                     else {
                       log.error(reply.cause().getMessage(), reply.cause());
-                      handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                      handlers.handle(failedFuture(DeleteTenantResponse
                         .respond500WithTextPlain(reply.cause().getMessage())));
                     }
                   } catch (Exception e) {
                     log.error(e.getMessage(), e);
-                    handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                    handlers.handle(failedFuture(DeleteTenantResponse
                       .respond500WithTextPlain(e.getMessage())));
                   }
                 });
           });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
-        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+        handlers.handle(failedFuture(DeleteTenantResponse
           .respond500WithTextPlain(e.getMessage())));
       }
     });
@@ -174,13 +176,13 @@ public class TenantAPI implements Tenant {
           }
           else{
             log.error(res.cause().getMessage(), res.cause());
-            handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
+            handlers.handle(failedFuture(GetTenantResponse
               .respond500WithTextPlain(res.cause().getMessage())));
           }
         });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
-        handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
+        handlers.handle(failedFuture(GetTenantResponse
           .respond500WithTextPlain(e.getMessage())));
       }
     });
@@ -319,14 +321,31 @@ public class TenantAPI implements Tenant {
               ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
               : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
     })
+
     .onFailure(e -> {
       if (e instanceof NoSchemaJsonException) {
         handlers.handle(Future.succeededFuture(PostTenantResponse.respond204()));
         return;
       }
       log.error(e.getMessage(), e);
-      handlers.handle(Future.succeededFuture(PostTenantResponse.respond500WithTextPlain(e.getMessage())));
+      String text = e.getMessage() + "\n" + ExceptionUtils.getStackTrace(e);
+      Response response = PostTenantResponse.respond500WithTextPlain(text);
+      handlers.handle(failedFuture(response));
     })
-    .onSuccess(response -> handlers.handle(Future.succeededFuture(response)));
+    .onSuccess(response -> {
+      if (response.getStatus() >= 300) {
+        handlers.handle(failedFuture(response));
+        return;
+      }
+      handlers.handle(Future.succeededFuture(response));
+    });
+  }
+
+  /**
+   * @return a failed {@link Future} where the failure cause is a {@link ResponseException}
+   *         containing the {@code response}
+   */
+  static Future<Response> failedFuture(Response response) {
+    return Future.failedFuture(new ResponseException(response));
   }
 }
