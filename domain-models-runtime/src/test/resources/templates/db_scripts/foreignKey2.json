@@ -5,13 +5,13 @@
       "fromModuleVersion": "18.2.5",
       "foreignKeys": [
         {
-          "fieldName":        "refb",
+          "fieldName":        "ref.b",
           "targetTable":      "ref",
           "targetTableAlias": "ref",
           "tableAlias":       "ref"
         },
         {
-          "fieldName":        "refc",
+          "fieldName":        "ref.c",
           "targetTable":      "ref",
           "targetTableAlias": "ref",
           "tableAlias":       "ref"
@@ -23,19 +23,19 @@
       "fromModuleVersion": "18.2.5",
       "foreignKeys": [
         {
-          "fieldName":        "refd",
+          "fieldName":        "ref.d",
           "targetTable":      "ref",
           "targetTableAlias": "ref",
           "tableAlias":       "ref"
         },
         {
-          "fieldName":        "refe",
+          "fieldName":        "ref.e",
           "targetTable":      "ref",
           "targetTableAlias": "ref",
           "tableAlias":       "ref"
         },
         {
-          "fieldName":        "reff",
+          "fieldName":        "ref.f",
           "targetTable":      "ref",
           "targetTableAlias": "ref",
           "tableAlias":       "ref"

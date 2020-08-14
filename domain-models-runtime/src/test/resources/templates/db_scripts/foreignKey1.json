@@ -5,7 +5,7 @@
       "fromModuleVersion": "18.2.5",
       "foreignKeys": [
         {
-          "fieldName":        "refa",
+          "fieldName":        "ref.a",
           "targetTable":      "ref",
           "targetTableAlias": "ref",
           "tableAlias":       "ref"
@@ -17,7 +17,7 @@
       "fromModuleVersion": "18.2.5",
       "foreignKeys": [
         {
-          "fieldName":        "reff",
+          "fieldName":        "ref.f",
           "targetTable":      "ref",
           "targetTableAlias": "ref",
           "tableAlias":       "ref"
