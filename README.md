@@ -1308,44 +1308,61 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 
 public class MyTenantAPI extends TenantAPI {
- @Override
-  public void postTenant(TenantAttributes ta, Map<String, String> headers,
-    Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+  @Validate
+  @Override
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+      Handler<AsyncResult<Response>> handler, Context context) {
 
     ..
-    }
+  }
+
+  @Validate
   @Override
-  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> handler, Context context) {
     ..
   }
   ..
 }
-
 ```
 
 If you wish to call the Post Tenant API (with Postgres) then just call the corresponding super-class, e.g.:
+
 ```java
+@Validate
 @Override
-public void postTenant(TenantAttributes ta, Map<String, String> headers,
-  Handler<AsyncResult<Response>> hndlr, Context cntxt) {
-  super.postTenant(ta, headers, hndlr, cntxt);
+public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+    Handler<AsyncResult<Response>> handler, Context context) {
+  super.postTenant(tenantAttributes, headers, handler, context);
 }
 ```
-(not much point in that though - it would be the same as not defining it at all).
+
+(Not much point in that though - it would be the same as not defining it at all).
 
 If you wish to load data for your module, that should be done after the DB has been successfully initialized,
 e.g. do something like:
+
 ```
-public void postTenant(TenantAttributes ta, Map<String, String> headers,
-  super.postTenant(ta, headers, res -> {
+@Validate
+@Override
+public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+    Handler<AsyncResult<Response>> handler, Context context) {
+  super.postTenant(tenantAttributes, headers, res -> {
     if (res.failed()) {
-      hndlr.handle(res);
+      handler.handle(res);
       return;
     }
+
     // load data here
-    hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-      .respond201WithApplicationJson("")));
-  }, cntxt);
+    ...
+    if (some failure) {
+      handler.handle(Future.succeededFuture(PostTenantResponse
+          .respond500WithTextPlain(some failure message)));
+      return;
+    }
+    ...
+
+    handler.handle(res);  // HTTP status: 200 for upgrade, 201 for install
+  }, context);
 }
 ```
 
@@ -1356,10 +1373,13 @@ as resources and as JSON files, you can use the TenantLoading utility.
 ```java
 import org.folio.rest.tools.utils.TenantLoading;
 
-public void postTenant(TenantAttributes ta, Map<String, String> headers,
-  super.postTenant(ta, headers, res -> {
+@Validate
+@Override
+public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+    Handler<AsyncResult<Response>> handler, Context context) {
+  super.postTenant(tenantAttributes, headers, res -> {
     if (res.failed()) {
-      hndlr.handle(res);
+      handler.handle(res);
       return;
     }
     TenantLoading tl = new TenantLoading();
@@ -1367,19 +1387,18 @@ public void postTenant(TenantAttributes ta, Map<String, String> headers,
     // resources ref-data/data1 and ref-data/data2 .. loaded to
     // okapi-url/instances and okapi-url/items respectively
     tl.withKey("loadReference").withLead("ref-data")
-      .withIdContent().
+      .withIdContent()
       .add("data1", "instances")
       .add("data2", "items");
-    tl.perform(ta, headers, vertx, res1 -> {
+    tl.perform(tenantAttributes, headers, vertx, res1 -> {
       if (res1.failed()) {
-        hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-          .respond500WithTextPlain(res1.cause().getLocalizedMessage())));
+        handler.handle(Future.succeededFuture(PostTenantResponse
+          .respond500WithTextPlain(res1.cause().getMessage())));
         return;
       }
-      hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-        .respond201WithApplicationJson("")));
+      handler.handle(res);  // HTTP status: 200 for upgrade, 201 for install
     });
-  }, cntxt);
+  }, context);
 }
 ```
 
