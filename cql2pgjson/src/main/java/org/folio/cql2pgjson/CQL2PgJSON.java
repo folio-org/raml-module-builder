@@ -92,12 +92,8 @@ public class CQL2PgJSON {
    * @throws FieldException provided field is not valid
    */
   public CQL2PgJSON(String field) throws FieldException {
-    try {
-      doInit(field, null);
-      initDbTable();
-    } catch (NullPointerException e) {
-      logger.log(Level.SEVERE, e.getMessage(), e);
-    }
+    doInit(field, null);
+    initDbTable();
   }
 
   /**
