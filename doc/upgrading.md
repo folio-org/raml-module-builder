@@ -19,6 +19,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 * [RMB-652](https://issues.folio.org/browse/RMB-652) error message
   "may not be null" changed to "must not be null" (hibernate-validator)
+* [RMB-693](https://issues.folio.org/browse/RMB-693) If using
+  PostgresClient#selectStream always call RowStream#close.
 
 ## Version 30.0
 
