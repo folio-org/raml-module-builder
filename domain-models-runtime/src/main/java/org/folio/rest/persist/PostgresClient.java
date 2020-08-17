@@ -1873,10 +1873,11 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(prepareRes.cause()));
         return;
       }
-      PreparedStatement pq = prepareRes.result();
-      RowStream<Row> stream = pq.createStream(STREAM_GET_DEFAULT_CHUNK_SIZE, Tuple.tuple());
-      PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult(resultInfo);
-      doStreamRowResults(stream, clazz, closeConnection, queryHelper,
+      PreparedStatement preparedStatement = prepareRes.result();
+      RowStream<Row> rowStream = new PreparedRowStream(
+          preparedStatement, STREAM_GET_DEFAULT_CHUNK_SIZE, Tuple.tuple());
+      PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult<>(resultInfo);
+      doStreamRowResults(rowStream, clazz, closeConnection, queryHelper,
           streamResult, replyHandler);
     });
   }
@@ -1896,10 +1897,10 @@ public class PostgresClient {
     }
   }
 
-  <T> void doStreamRowResults(RowStream<Row> sqlRowStream, Class<T> clazz,
-    PgConnection pgConnection, QueryHelper queryHelper,
-    PostgresClientStreamResult<T> streamResult,
-    Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+  <T> void doStreamRowResults(RowStream<Row> rowStream, Class<T> clazz,
+      PgConnection pgConnection, QueryHelper queryHelper,
+      PostgresClientStreamResult<T> streamResult,
+      Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
     ResultInfo resultInfo = streamResult.resultInto();
     Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
@@ -1907,7 +1908,7 @@ public class PostgresClient {
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);
     Map<String, Method> externalColumnSetters = new HashMap<>();
     AtomicInteger resultCount = new AtomicInteger();
-    sqlRowStream.handler(r -> {
+    rowStream.handler(r -> {
       try {
         // for first row, get column names
         if (resultsHelper.offset == 0) {
@@ -1927,16 +1928,17 @@ public class PostgresClient {
         }
         resultsHelper.offset++;
       } catch (Exception e) {
+        log.error(e.getMessage(), e);
         if (!promise.future().isComplete()) {
           promise.complete(streamResult);
           replyHandler.handle(promise.future());
         }
-        sqlRowStream.close(); // does not really stop stream for vertx-pg-client
+        rowStream.close();
         closeIfNonNull(pgConnection);
-        log.error(e.getMessage(), e);
         streamResult.fireExceptionHandler(e);
       }
     }).endHandler(v2 -> {
+      rowStream.close();
       closeIfNonNull(pgConnection);
       resultInfo.setTotalRecords(
         getTotalRecords(resultCount.get(),
@@ -1952,6 +1954,7 @@ public class PostgresClient {
         streamResult.fireExceptionHandler(ex);
       }
     }).exceptionHandler(e -> {
+      rowStream.close();
       closeIfNonNull(pgConnection);
       if (!promise.future().isComplete()) {
         promise.complete(streamResult);
@@ -2940,17 +2943,17 @@ public class PostgresClient {
   }
 
   /**
-     * Run a parameterized/prepared select query and return the first record, or null if there is no result.
-     *
-     * <p>This never closes the connection conn.
-     *
-     * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
-     *
-     * @param conn  The connection on which to execute the query on.
-     * @param sql  The sql query to run.
-     * @param params  The parameters for the placeholders in sql.
-     * @param replyHandler  The query result or the failure.
-     */
+   * Run a parameterized/prepared select query and return the first record, or null if there is no result.
+   *
+   * <p>This never closes the connection conn.
+   *
+   * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
+   *
+   * @param conn  The connection on which to execute the query on.
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   */
   public void selectSingle(AsyncResult<SQLConnection> conn, String sql, Tuple params,
                            Handler<AsyncResult<Row>> replyHandler) {
     try {
@@ -2970,9 +2973,12 @@ public class PostgresClient {
   }
 
   /**
-   * Run a parameterized/prepared select query returning with an SQLRowStream.
+   * Run a parameterized/prepared select query returning with a {@link RowStream<Row>}.
    *
    * <p>This never closes the connection conn.
+   *
+   * <p>Always call {@link RowStream#close()} or {@link RowStream#close(Handler)}
+   * to release the underlying prepared statement.
    *
    * @param conn  The connection on which to execute the query on.
    * @param sql  The sql query to run.
@@ -2984,9 +2990,12 @@ public class PostgresClient {
   }
 
   /**
-   * Run a parameterized/prepared select query returning with an SQLRowStream.
+   * Run a parameterized/prepared select query returning with a {@link RowStream<Row>}.
    *
    * <p>This never closes the connection conn.
+   *
+   * <p>Always call {@link RowStream#close()} or {@link RowStream#close(Handler)}
+   * to release the underlying prepared statement.
    *
    * @param conn  The connection on which to execute the query on.
    * @param sql  The sql query to run.
@@ -2998,6 +3007,10 @@ public class PostgresClient {
      selectStream(conn, sql, params, STREAM_GET_DEFAULT_CHUNK_SIZE, replyHandler);
   }
 
+  /**
+   * Always call {@link RowStream#close()} or {@link RowStream#close(Handler)}
+   * to release the underlying prepared statement.
+   */
   void selectStream(AsyncResult<SQLConnection> conn, String sql, Tuple params, int chunkSize,
       Handler<AsyncResult<RowStream<Row>>> replyHandler) {
     try {
@@ -3012,8 +3025,8 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(res.cause()));
           return;
         }
-        PreparedStatement pq = res.result();
-        RowStream<Row> rowStream = pq.createStream(chunkSize, params);
+        PreparedStatement preparedStatement = res.result();
+        RowStream<Row> rowStream = new PreparedRowStream(preparedStatement, chunkSize, params);
         replyHandler.handle(Future.succeededFuture(rowStream));
       });
     } catch (Exception e) {
