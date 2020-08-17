@@ -39,10 +39,6 @@
       <artifactId>javassist</artifactId>
       <version>3.27.0-GA</version>
     </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-    </dependency>
   </dependencies>
 
 

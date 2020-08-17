@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.folio.cql2pgjson.util.DbSchemaUtils;
-import org.folio.rest.persist.ddlgen.ForeignKeys;
-import org.folio.rest.persist.ddlgen.Index;
-import org.folio.rest.persist.ddlgen.Table;
+import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.Index;
+import org.folio.dbschema.Table;
 
 /**
  * Stores index information to avoid iterating through the table's index lists repeatedly.

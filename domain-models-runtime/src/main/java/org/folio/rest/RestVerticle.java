@@ -62,7 +62,7 @@ import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
 import org.folio.rest.tools.utils.JwtUtils;
 import org.folio.rest.tools.utils.LogUtil;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;

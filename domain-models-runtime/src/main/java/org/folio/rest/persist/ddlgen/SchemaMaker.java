@@ -10,6 +10,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.Schema;
+import org.folio.dbschema.Table;
+import org.folio.dbschema.TableOperation;
+import org.folio.dbschema.TenantOperation;
 import org.folio.rest.tools.PomReader;
 import freemarker.template.Configuration;
 import freemarker.template.Template;

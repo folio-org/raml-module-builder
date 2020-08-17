@@ -14,11 +14,12 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
+
+import org.folio.dbschema.Schema;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.CoreMatchers;

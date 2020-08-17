@@ -15,6 +15,21 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
+## Version 31
+
+* [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
+  In most cases no code changes are necessary. A few files needs updating
+  ([mod-inventory-storage example](https://github.com/folio-org/mod-inventory-storage/pull/485/files)):
+  * `pom.xml`: For `maven-compiler-plugin` update `version` to `3.8.1` and
+    use `<release>11</release>` instead
+    of `source` and `target` elements.
+    Update aspectj version to `1.9.5`. Update `aspectj-maven-plugin` with
+    groupId `com.nickwongdev` and version `1.12.6`.
+  * `Jenkinsfile`: Add `buildNode = jenkins-agent-java11`.
+  * `Dockerfile` (if present): change `folioci/alpine-jre-openjdk8:latest`
+    to `folioci/alpine-jre-openjdk11:latest`.
+  * `docker/docker-entrypoint.sh`: remove if present.
+
 ## Version 30.2
 
 * [RMB-652](https://issues.folio.org/browse/RMB-652) error message

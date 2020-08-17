@@ -13,9 +13,11 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
+import org.folio.dbschema.Schema;
+import org.folio.dbschema.TenantOperation;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.PostgresClientITBase;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
 import org.junit.Before;
 import org.junit.Rule;
