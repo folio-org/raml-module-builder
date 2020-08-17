@@ -3,6 +3,10 @@
 
 Copyright (C) 2016-2020 The Open Library Foundation
 
+[ClassPath.java](domain-models-interface-extensions/src/main/java/org/folio/rest/tools/utils/ClassPath.java) and
+[ClassPathTest.java](domain-models-interface-extensions/src/test/java/org/folio/rest/tools/utils/ClassPathTest.java)
+are also Copyright (C) 2012 The Guava Authors.
+
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
 

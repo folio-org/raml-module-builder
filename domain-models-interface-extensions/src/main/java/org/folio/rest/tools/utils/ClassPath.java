@@ -12,7 +12,10 @@
  * the License.
  */
 
-/* based on https://github.com/google/guava/blob/master/guava/src/com/google/common/reflect/ClassPath.java */
+/* This file is based on
+ * https://github.com/google/guava/blob/v29.0/guava/src/com/google/common/reflect/ClassPath.java
+ * and was changed.
+ */
 
 package org.folio.rest.tools.utils;
 
@@ -127,7 +130,7 @@ public class ClassPath {
    * loadable from the class path.
    */
   public static class ResourceInfo {
-    
+
     private final String resourceName;
     private final ClassLoader loader;
 
@@ -196,10 +199,10 @@ public class ClassPath {
    * Represents a class that can be loaded through {@link #load}.
    */
   public static final class ClassInfo extends ResourceInfo {
-    
+
     private final String className;
 
-    
+
     ClassInfo(String resourceName, ClassLoader loader) {
       super(resourceName, loader);
       this.className = getClassName(resourceName);
@@ -294,12 +297,12 @@ public class ClassPath {
       int classNameEnd = filename.length() - CLASS_FILE_NAME_EXTENSION.length();
       return filename.substring(0, classNameEnd).replace('/', '.');
     }
-    
+
     private static String getPackageName(String classFullName) {
       int lastDot = classFullName.lastIndexOf('.');
       return (lastDot < 0) ? "" : classFullName.substring(0, lastDot);
     }
-    
+
   }
 
   /**
@@ -307,7 +310,7 @@ public class ClassPath {
    * {@link #scanDirectory} and {@link #scanJarFile} for directories and jar files on the class path
    * respectively.
    */
-  private abstract static class Scanner {
+  abstract static class Scanner {
 
     // We only scan each file once independent of the classloader that resource might be associated
     // with.
@@ -380,7 +383,7 @@ public class ClassPath {
       if (manifest == null) {
         return Collections.emptySet();
       }
-      
+
       Set<File> files = new LinkedHashSet<>();
 
       String classpathAttribute = manifest.getMainAttributes().getValue(Attributes.Name.CLASS_PATH.toString());
@@ -456,7 +459,7 @@ public class ClassPath {
           log.warn("Malformed classpath entry: " + entry, e);
         }
       }
-      
+
       return List.copyOf(urls);
     }
 
@@ -466,7 +469,7 @@ public class ClassPath {
      * File Specification</a>. Even though the specification only talks about relative urls,
      * absolute urls are actually supported too (for example, in Maven surefire plugin).
      */
-    private static URL getClassPathEntry(File jarFile, String path) throws MalformedURLException {
+    static URL getClassPathEntry(File jarFile, String path) throws MalformedURLException {
       return new URL(jarFile.toURI().toURL(), path);
     }
 
@@ -480,7 +483,7 @@ public class ClassPath {
     }
   }
 
-  private static final class DefaultScanner extends Scanner {
+  static final class DefaultScanner extends Scanner {
 
     private final SetValuedMap<ClassLoader, String> resources = MultiMapUtils.newSetValuedHashMap();
 
@@ -501,11 +504,11 @@ public class ClassPath {
 
       while (entries.hasMoreElements()) {
         JarEntry entry = entries.nextElement();
-        
+
         if (entry.isDirectory() || entry.getName().equals(JarFile.MANIFEST_NAME)) {
           continue;
         }
-        
+
         resources.get(classloader).add(entry.getName());
       }
     }
@@ -559,5 +562,5 @@ public class ClassPath {
       }
     }
   }
-  
+
 }
