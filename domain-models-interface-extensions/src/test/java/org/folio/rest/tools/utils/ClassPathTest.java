@@ -347,7 +347,7 @@ public class ClassPathTest extends TestCase {
     File jarFile = new File("base/some.jar");
     Manifest manifest = manifestClasspath("file:/with/absolute.jar relative.jar  relative/dir");
     assertThat(ClassPath.Scanner.getClassPathFromManifest(jarFile, manifest))
-        .containsOnly(
+        .containsExactly(
             fullpath("/with/absolute.jar"),
             fullpath("base/relative.jar"),
             fullpath("base/relative/dir"));

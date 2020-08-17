@@ -47,8 +47,6 @@ import java.util.stream.Stream;
 import org.apache.commons.collections4.MultiMapUtils;
 import org.apache.commons.collections4.SetValuedMap;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
-
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -403,7 +401,7 @@ public class ClassPath {
         }
       }
 
-      return Set.copyOf(files);
+      return new LinkedHashSet<>(files);
     }
 
     static Map<File, ClassLoader> getClassPathEntries(ClassLoader classloader) {
@@ -425,7 +423,7 @@ public class ClassPath {
         }
       }
 
-      return Map.copyOf(entries);
+      return new LinkedHashMap<File, ClassLoader>(entries);
     }
 
     private static List<URL> getClassLoaderUrls(ClassLoader classloader) {
@@ -445,8 +443,8 @@ public class ClassPath {
     static List<URL> parseJavaClassPath() {
       List<URL> urls = new LinkedList<>();
 
-      String pathSeparator = SystemUtils.PATH_SEPARATOR;
-      String javaClassPath = SystemUtils.JAVA_CLASS_PATH;
+      String pathSeparator = System.getProperty("path.separator");
+      String javaClassPath = System.getProperty("java.class.path");
 
       for (String entry : StringUtils.split(javaClassPath, pathSeparator)) {
         try {
