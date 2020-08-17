@@ -336,18 +336,18 @@ public class SchemaMakerTest {
     schemaMaker.setPreviousSchema(schema("templates/db_scripts/foreignKey1.json"));
     String ddl = schemaMaker.generateDDL();
     // a, f -> b, c, d, e, f
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refa"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refb"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refc"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refd"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refe"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS reff"));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refa")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refb")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refc")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refd")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refe")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS reff")));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_a"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_b"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_c"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_d"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_e"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_f"));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_a")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_b")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_c")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_d")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_e")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_f")));
   }
 
   @Test
@@ -357,18 +357,18 @@ public class SchemaMakerTest {
     schemaMaker.setPreviousSchema(schema("templates/db_scripts/foreignKey2.json"));
     String ddl = schemaMaker.generateDDL();
     // b, c, d, e, f -> a, f
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refa"));
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refb"));
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refc"));
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refd"));
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refe"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS reff"));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refa")));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refb")));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refc")));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refd")));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refe")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS reff")));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_a"));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_b"));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_c"));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_d"));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_e"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_f"));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_a")));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_b")));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_c")));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_d")));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_e")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_f")));
   }
 
   @ParameterizedTest

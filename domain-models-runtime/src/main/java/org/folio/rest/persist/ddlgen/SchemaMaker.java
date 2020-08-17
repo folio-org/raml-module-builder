@@ -103,7 +103,10 @@ public class SchemaMaker {
 
     templateInput.put("schemaJson", this.getSchemaJson());
 
-    this.schema.setup();
+    schema.setup();
+    if (previousSchema != null) {
+      previousSchema.setup();
+    }
 
     templateInput.put("tables", tables());
 
@@ -155,7 +158,6 @@ public class SchemaMaker {
       Table newTable = tableForName.get(oldTable.getTableName());
       if (newTable == null) {
         oldTable.setMode("delete");
-        oldTable.setup();
         list.add(oldTable);
         return;
       }
@@ -174,7 +176,6 @@ public class SchemaMaker {
           return;
         }
         oldForeignKey.settOps(TableOperation.DELETE);
-        oldForeignKey.setup();
         allForeignKeys.add(oldForeignKey);
       });
       newTable.setForeignKeys(allForeignKeys);
