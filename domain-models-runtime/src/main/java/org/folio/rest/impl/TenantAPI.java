@@ -296,10 +296,18 @@ public class TenantAPI implements Tenant {
     .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists));
   }
 
+  /**
+   * Installs or upgrades a module for a tenant.
+   *
+   * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
+   *
+   * @see <a href="https://github.com/folio-org/raml-module-builder#extending-the-tenant-init">Extending the Tenant Init</a>
+   *      for usage examples
+   */
   @Validate
   @Override
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-      Handler<AsyncResult<Response>> handlers, Context context)  {
+      Handler<AsyncResult<Response>> handler, Context context)  {
 
     String tenantId = TenantTool.tenantId(headers);
     log.info("sending... postTenant for " + tenantId);
@@ -324,20 +332,20 @@ public class TenantAPI implements Tenant {
 
     .onFailure(e -> {
       if (e instanceof NoSchemaJsonException) {
-        handlers.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+        handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
         return;
       }
       log.error(e.getMessage(), e);
       String text = e.getMessage() + "\n" + ExceptionUtils.getStackTrace(e);
       Response response = PostTenantResponse.respond500WithTextPlain(text);
-      handlers.handle(failedFuture(response));
+      handler.handle(failedFuture(response));
     })
     .onSuccess(response -> {
       if (response.getStatus() >= 300) {
-        handlers.handle(failedFuture(response));
+        handler.handle(failedFuture(response));
         return;
       }
-      handlers.handle(Future.succeededFuture(response));
+      handler.handle(Future.succeededFuture(response));
     });
   }
 
