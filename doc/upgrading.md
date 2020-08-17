@@ -17,12 +17,16 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 31
 
-* [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
-  A few updates to `pom.xml` are necessary. For `maven-compiler-plugin`
-  update `version` to `3.8.1` and use `<release>11</release>` instead
-  of `source` and `target` elements.
-  Update aspectj version to 1.9.5. Update `aspectj-maven-plugin` with
-  groupId `com.nickwongdev` and version `1.12.6`.
+* [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11. In most cases no code changes are necessary. A few files needs updating.
+  * `pom.xml`: For `maven-compiler-plugin` update `version` to `3.8.1` and
+    use `<release>11</release>` instead
+    of `source` and `target` elements.
+    Update aspectj version to `1.9.5`. Update `aspectj-maven-plugin` with
+    groupId `com.nickwongdev` and version `1.12.6`.
+  * `Jenkinsfile`: Add `buildNode = jenkins-agent-java11`.
+  * `Dockerfile` (if present): change `folioci/alpine-jre-openjdk8:latest`
+    to `folioci/alpine-jre-openjdk11:latest`.
+  * `docker/docker-entrypoint.sh`: remove if present.
 
 ## Version 30.2
 
