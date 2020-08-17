@@ -17,7 +17,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 31
 
-* [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11. In most cases no code changes are necessary. A few files needs updating.
+* [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
+  In most cases no code changes are necessary. A few files needs updating
+  ([mod-inventory-storage example](https://github.com/folio-org/mod-inventory-storage/pull/485/files)):
   * `pom.xml`: For `maven-compiler-plugin` update `version` to `3.8.1` and
     use `<release>11</release>` instead
     of `source` and `target` elements.
