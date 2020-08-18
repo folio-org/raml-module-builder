@@ -3,6 +3,7 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+* [Version 31.0](#version-310)
 * [Version 30.2](#version-302)
 * [Version 30.0](#version-300)
 * [Version 29.5](#version-295)
@@ -15,7 +16,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
-## Version 31
+## Version 31.0
 
 * [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
   In most cases no code changes are necessary. A few files needs updating
