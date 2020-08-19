@@ -60,6 +60,7 @@ import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
+import org.folio.rest.persist.PostgresClient.TotaledResults;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -70,6 +71,7 @@ import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.helpers.Poline;
 import org.folio.rest.persist.helpers.SimplePojo;
+import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -3570,6 +3572,27 @@ public class PostgresClientIT {
           }));
       async.awaitSuccess();
     }
+  }
+
+  // offset >= estimated total https://issues.folio.org/browse/RMB-684
+  @Test
+  public void processQueryWithCountBelowOffset(TestContext context) {
+    postgresClient = createNumbers(context, 1, 2, 3, 4, 5);
+    postgresClient.startTx(context.asyncAssertSuccess(conn -> {
+      QueryHelper queryHelper = new QueryHelper("numbers");
+      queryHelper.selectQuery = "SELECT i FROM numbers ORDER BY i OFFSET 2";
+      queryHelper.offset = 2;
+      queryHelper.countQuery = "SELECT 1";  // estimation=1 is below offset=2
+      Function<TotaledResults, Results<Integer>> resultSetMapper = totaledResults -> {
+        context.verify(verify -> {
+          assertThat(totaledResults.estimatedTotal, is(1));
+          assertThat(totaledResults.set.size(), is(3));
+        });
+        return null;
+      };
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", resultSetMapper,
+          context.asyncAssertSuccess());
+    }));
   }
 
   @Test
