@@ -1619,10 +1619,10 @@ public class PostgresClient {
 
   static class TotaledResults {
     final RowSet<Row> set;
-    final Integer total;
-    public TotaledResults(RowSet<Row> set, Integer total) {
+    final Integer estimatedTotal;
+    public TotaledResults(RowSet<Row> set, Integer estimatedTotal) {
       this.set = set;
-      this.total = total;
+      this.estimatedTotal = estimatedTotal;
     }
   }
 
@@ -1654,12 +1654,12 @@ public class PostgresClient {
     PgConnection connection = conn.result().conn;
     try {
       QueryHelper queryHelper = buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
+      Function<TotaledResults, Results<T>> resultSetMapper = totaledResults ->
+        processResults(totaledResults.set, totaledResults.estimatedTotal, queryHelper.offset, queryHelper.limit, clazz);
       if (returnCount) {
-        processQueryWithCount(connection, queryHelper, GET_STAT_METHOD,
-          totaledResults -> processResults(totaledResults.set, totaledResults.total, queryHelper.offset, queryHelper.limit, clazz), replyHandler);
+        processQueryWithCount(connection, queryHelper, GET_STAT_METHOD, resultSetMapper, replyHandler);
       } else {
-        processQuery(connection, queryHelper, null, GET_STAT_METHOD,
-          totaledResults -> processResults(totaledResults.set, totaledResults.total, queryHelper.offset, queryHelper.limit, clazz), replyHandler);
+        processQuery(connection, queryHelper, null, GET_STAT_METHOD, resultSetMapper, replyHandler);
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -2041,20 +2041,13 @@ public class PostgresClient {
           return;
         }
 
-        int total = countQueryResult.result().iterator().next().getInteger(0);
+        int estimatedTotal = countQueryResult.result().iterator().next().getInteger(0);
 
         long countQueryTime = (System.nanoTime() - start);
         StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
         log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
 
-        if (total <= queryHelper.offset) {
-          log.debug("Skipping query due to no results expected!");
-          RowSet<Row> emptySet = null;
-          replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(emptySet, total))));
-          return;
-        }
-
-        processQuery(connection, queryHelper, total, statMethod, resultSetMapper, replyHandler);
+        processQuery(connection, queryHelper, estimatedTotal, statMethod, resultSetMapper, replyHandler);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         replyHandler.handle(Future.failedFuture(e));
@@ -2063,7 +2056,7 @@ public class PostgresClient {
 }
 
   <T> void processQuery(
-    PgConnection connection, QueryHelper queryHelper, Integer total, String statMethod,
+    PgConnection connection, QueryHelper queryHelper, Integer estimatedTotal, String statMethod,
     Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
   ) {
     try {
@@ -2072,7 +2065,7 @@ public class PostgresClient {
           replyHandler.handle(Future.failedFuture(query.cause()));
           return;
         }
-        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), total))));
+        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), estimatedTotal))));
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
