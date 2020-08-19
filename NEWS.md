@@ -1,3 +1,13 @@
+## 30.2.5 2020-08-19
+
+ * [RMB-684](https://issues.folio.org/browse/RMB-684) GET query returns no records when offset value >= estimated totalRecords
+ * [RMB-694](https://issues.folio.org/browse/RMB-694) Upgrade foreign key of a sub-field like "fieldName": "foo.bar"
+ * [RMB-693](https://issues.folio.org/browse/RMB-693) Close prepared statements in PostgresClient stream get
+ * [RMB-686](https://issues.folio.org/browse/RMB-686) Fix documentation about postTenant error handling
+ * [RMB-687](https://issues.folio.org/browse/RMB-687) ResponseException for TenantAPI, fix wrong postTenant HTTP status code
+ * Drop obsolete rmb_internal_index
+ * [RMB-675](https://issues.folio.org/browse/RMB-675) Move pg_trgm from wrong to public schema, don't drop & recreate
+
 ## 30.2.4 2020-07-10
 
  * [RMB-673](https://issues.folio.org/browse/RMB-673) totalRecords returns exact hit count for limit=0
