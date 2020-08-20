@@ -51,7 +51,7 @@ class PomReaderTest {
     pom.readIt(false);
     // first dependency in main pom / but surefire sometimes?
     assertThat(pom.getModuleName(), anyOf(is("vertx_parent"), is("surefire")));
-    pom.readIt(true);
+    pom.readIt(true); // restore for other unit tests (it's a singleton)
   }
 
 }
