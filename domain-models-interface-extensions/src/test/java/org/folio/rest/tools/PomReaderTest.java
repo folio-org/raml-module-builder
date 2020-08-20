@@ -13,39 +13,39 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class PomReaderTest {
+class PomReaderTest {
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
 
   @Test
-  public void testGetModuleName() {
+  void testGetModuleName() {
     assertThat(PomReader.INSTANCE.getModuleName(), is("raml_module_builder"));
   }
 
   @Test
-  public void testGetVersion() {
+  void testGetVersion() {
     assertTrue(PomReader.INSTANCE.getVersion().matches("[0-9]+\\.[0-9]+\\..*"));
   }
 
   @Test
-  public void testGetProps() {
+  void testGetProps() {
     assertNull(PomReader.INSTANCE.getProps().getProperty("does_not_exist"));
   }
 
   @Test
-  public void testGetDependencies() {
+  void testGetDependencies() {
     List<Dependency> dependencies = PomReader.INSTANCE.getDependencies();
     assertTrue(!dependencies.isEmpty());
   }
 
   @Test
-  public void testGetRmbVersion() {
+  void testGetRmbVersion() {
     assertThat(PomReader.INSTANCE.getRmbVersion(), is(PomReader.INSTANCE.getVersion()));
   }
 
   @Test
-  public void readFromJar() throws IOException, XmlPullParserException {
+  void readFromJar() throws IOException, XmlPullParserException {
     PomReader pom = PomReader.INSTANCE;
 
     pom.readIt(false);
