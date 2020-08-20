@@ -1,19 +1,21 @@
 package org.folio.rest.tools;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import java.io.File;
 import java.io.FileReader;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
-
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.folio.rest.tools.utils.ClassPath;
-
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 
 /**
  * @author shale
@@ -51,14 +53,24 @@ public enum PomReader {
       }
       else{
         //this is runtime, the jar called via java -jar is the module's jar
-        ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
-        Set<ClassPath.ResourceInfo> resources = classPath.getResources();
-        for (ClassPath.ResourceInfo info : resources) {
-          if(info.getResourceName().endsWith("pom.xml")){
-            //maven sets the classpath order according to the pom, so the poms project will be the first entry
-            model = mavenreader.read(PomReader.class.getResourceAsStream("/"+info.getResourceName()));
-            break;
-          }
+        String directoryName = "META-INF/maven";
+        URL url = Thread.currentThread().getContextClassLoader().getResource(directoryName);
+        if (url.getProtocol().equals("jar")) {
+          String dirname = directoryName + "/";
+          String path = url.getPath();
+          String jarPath = path.substring(5, path.indexOf('!'));
+          JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8.name()));
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+              JarEntry entry = entries.nextElement();
+              String name = entry.getName();
+              // first pom.xml should be the right one.
+              if (name.startsWith(dirname) && !dirname.equals(name) && name.endsWith("pom.xml")) {
+                InputStream pomFile = PomReader.class.getClassLoader().getResourceAsStream(name);
+                model = mavenreader.read(pomFile);
+                break;
+              }
+            }
         }
       }
       if(model.getParent() != null){
@@ -97,7 +109,6 @@ public enum PomReader {
         rmbVersion = version;
       }
 
-      //props.list(System.out);
       log.info("module name: " + moduleName + ", version: " + version);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
