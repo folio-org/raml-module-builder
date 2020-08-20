@@ -113,17 +113,17 @@ public enum PomReader {
       String path = url.getPath();
       String jarPath = path.substring(5, path.indexOf('!'));
       JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8.name()));
-        Enumeration<JarEntry> entries = jar.entries();
-        while (entries.hasMoreElements()) {
-          JarEntry entry = entries.nextElement();
-          String name = entry.getName();
-          // first pom.xml should be the right one.
-          if (name.startsWith(dirname) && !dirname.equals(name) && name.endsWith("pom.xml")) {
-            InputStream pomFile = PomReader.class.getClassLoader().getResourceAsStream(name);
-            model = mavenreader.read(pomFile);
-            break;
-          }
+      Enumeration<JarEntry> entries = jar.entries();
+      while (entries.hasMoreElements()) {
+        JarEntry entry = entries.nextElement();
+        String name = entry.getName();
+        // first pom.xml should be the right one.
+        if (name.startsWith(dirname) && !dirname.equals(name) && name.endsWith("pom.xml")) {
+          InputStream pomFile = PomReader.class.getClassLoader().getResourceAsStream(name);
+          model = mavenreader.read(pomFile);
+          break;
         }
+      }
     }
     return model;
   }
