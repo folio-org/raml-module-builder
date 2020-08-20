@@ -38,10 +38,8 @@ public enum PomReader {
   @SuppressWarnings("checkstyle:methodlength")
   private PomReader() {
     try {
-      System.out.print("Attempting to read in the module name from....");
       String currentRunningJar =
           PomReader.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
-      System.out.println(currentRunningJar);
       boolean readCurrent = currentRunningJar != null && (currentRunningJar.contains("domain-models-runtime")
           || currentRunningJar.contains("domain-models-interface-extensions"));
       readIt(readCurrent);
@@ -53,6 +51,7 @@ public enum PomReader {
   void readIt(boolean readCurrent) throws IOException, XmlPullParserException {
     Model model;
     if (readCurrent) {
+      log.info("Reading from local pom.xml");
       //the runtime is the jar run when deploying during unit tests
       //the interface-extensions is the jar run when running build time tools,
       //like MDGenerator, ClientGenerator, etc..
@@ -63,6 +62,7 @@ public enum PomReader {
     }
     else
     { //this is runtime, the jar called via java -jar is the module's jar
+      log.info("Reading from jar");
       model = getModelFromJar();
     }
     if (model.getParent() != null) {
@@ -87,6 +87,7 @@ public enum PomReader {
     //the version is a placeholder to a value in the props section
     version = replacePlaceHolderWithValue(version);
 
+    rmbVersion = null;
     for (int i = 0; i < dependencies.size(); i++) {
       if("domain-models-runtime".equals(dependencies.get(i).getArtifactId())){
         rmbVersion = dependencies.get(i).getVersion();
