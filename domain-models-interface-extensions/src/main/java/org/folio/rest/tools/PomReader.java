@@ -44,6 +44,7 @@ public enum PomReader {
       readIt(readCurrent);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
+      throw new IllegalArgumentException(e.getCause());
     }
   }
 
