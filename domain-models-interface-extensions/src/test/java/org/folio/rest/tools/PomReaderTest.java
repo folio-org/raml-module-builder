@@ -10,8 +10,7 @@ import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PomReaderTest {
   static {
@@ -48,10 +47,28 @@ class PomReaderTest {
   void readFromJar() throws IOException, XmlPullParserException {
     PomReader pom = PomReader.INSTANCE;
 
-    pom.readIt(false);
+    pom.readIt(null);  // force reading from Jar
     // first dependency in main pom / but surefire sometimes?
     assertThat(pom.getModuleName(), anyOf(is("vertx_parent"), is("surefire")));
-    pom.readIt(true); // restore for other unit tests (it's a singleton)
+    pom.readIt("pom.xml"); // restore for other unit tests (it's a singleton)
   }
 
+  @Test
+  void BadFilename()  {
+    PomReader pom = PomReader.INSTANCE;
+
+    Exception exception = assertThrows(IllegalArgumentException.class, () -> pom.init("does_not_exist.xml"));
+    pom.init("pom.xml"); // restore for other unit tests (it's a singleton)
+  }
+
+  @Test
+  void otherPom() throws IOException, XmlPullParserException {
+    PomReader pom = PomReader.INSTANCE;
+
+    pom.init("src/test/resources/pom/pom-sample.xml");
+    assertThat(PomReader.INSTANCE.getModuleName(), is("mod_inventory_storage"));
+    assertThat(PomReader.INSTANCE.getVersion(), is("19.4.0"));
+    assertThat(PomReader.INSTANCE.getRmbVersion(), is("30.0.0"));
+    pom.init("pom.xml");
+  }
 }
