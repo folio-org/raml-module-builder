@@ -19,7 +19,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class LogUtilTest {
+// renaming to LogUtilTest fails on Jenkins
+class LogUtilIT {
   private static Appender appender;
   private static Logger logger;
 
