@@ -1765,7 +1765,7 @@ public class PostgresClient {
 
     getSQLConnection(0, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, replyHandler));
+            distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
@@ -1789,7 +1789,7 @@ public class PostgresClient {
 
     getSQLConnection(queryTimeout, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, replyHandler));
+            distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
@@ -3055,10 +3055,24 @@ public class PostgresClient {
     });
   }
 
+  /**
+   * Don't forget to close the connection!
+   *
+   * <p>Use closeAndHandleResult as replyHandler, for example:
+   *
+   * <pre>getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
+   */
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLConnection(0, handler);
   }
 
+  /**
+   * Don't forget to close the connection!
+   *
+   * <p>Use closeAndHandleResult as replyHandler, for example:
+   *
+   * <pre>getSQLConnection(timeout, conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
+   */
   void getSQLConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
     getConnection(res -> {
       if (res.failed()) {
