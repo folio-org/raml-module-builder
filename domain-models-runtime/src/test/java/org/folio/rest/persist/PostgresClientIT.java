@@ -2923,8 +2923,8 @@ public class PostgresClientIT {
     StringBuilder events = new StringBuilder();
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
-    PgConnection pgConnection = null;
-    postgresClient.doStreamRowResults(sqlRowStream, Object.class, pgConnection,
+    Transaction transaction = null;
+    postgresClient.doStreamRowResults(sqlRowStream, Object.class, transaction,
       new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -3190,17 +3190,16 @@ public class PostgresClientIT {
         false, null, context.asyncAssertSuccess(sr -> {
           context.assertEquals(3, sr.resultInto().getTotalRecords());
           sr.handler(obj -> {
-            ObjectMapper mapper = new ObjectMapper();
             try {
+              ObjectMapper mapper = new ObjectMapper();
               ids.add(new JsonObject(mapper.writeValueAsString(obj)).getString("id"));
               objectCount.incrementAndGet();
             } catch (JsonProcessingException ex) {
-              throw new IllegalArgumentException(ex);
+              context.fail(ex);
             }
           });
-          sr.endHandler(x -> {
-            async.complete();
-          });
+          sr.endHandler(x -> async.complete());
+          sr.exceptionHandler(x -> context.fail(x));
         }));
       async.await(1000);
       // expect when in-bounds; 0 when out of bounds
