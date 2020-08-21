@@ -65,7 +65,7 @@ class PomReaderTest {
     PomReader pom = PomReader.INSTANCE;
 
     Exception exception = assertThrows(NullPointerException.class,
-        () -> pom.readIt(null, "META-INF"));
+        () -> pom.readIt(null, "ramls"));
   }
 
   @Test
