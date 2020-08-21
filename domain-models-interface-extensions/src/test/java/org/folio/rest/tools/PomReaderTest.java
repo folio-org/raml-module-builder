@@ -64,8 +64,7 @@ class PomReaderTest {
   void readFromJarNoPom() {
     PomReader pom = PomReader.INSTANCE;
 
-    Exception exception = assertThrows(NullPointerException.class,
-        () -> pom.readIt(null, "ramls"));
+    assertThrows(NullPointerException.class, () -> pom.readIt(null, "ramls"));
   }
 
   @Test
