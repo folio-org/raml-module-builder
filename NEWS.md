@@ -1,3 +1,8 @@
+## 31.0.1 2020-08-21
+
+ * [RMB-699](https://issues.folio.org/browse/RMB-699) Fix Module name detection broken
+ * [RMB-684](https://issues.folio.org/browse/RMB-684) Fix GET query returns no records when offset value > estimated totalRecords
+
 ## 31.0.0 2020-08-18
 
  * [RMB-328](https://issues.folio.org/browse/RMB-328) Make RMB OpenJDK 11 compliant
