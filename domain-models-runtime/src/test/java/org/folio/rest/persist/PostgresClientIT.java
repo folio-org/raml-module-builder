@@ -652,7 +652,8 @@ public class PostgresClientIT {
   public void selectWithTimeoutSuccess(TestContext context) {
       PostgresClient client = postgresClient();
       client.getSQLConnection(2000, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(1);", context.asyncAssertSuccess());
+        client.selectSingle(conn, "SELECT 1, pg_sleep(1);",
+            client.closeAndHandleResult(conn, context.asyncAssertSuccess()));
       }));
   }
 
@@ -660,10 +661,11 @@ public class PostgresClientIT {
   public void selectWithTimeoutFailure(TestContext context) {
       PostgresClient client = postgresClient();
       client.getSQLConnection(500, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(3);", context.asyncAssertFailure(e -> {
-          String sqlState = new PgExceptionFacade(e).getSqlState();
-          assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
-        }));
+        client.selectSingle(conn, "SELECT 1, pg_sleep(3);",
+            client.closeAndHandleResult(conn, context.asyncAssertFailure(e -> {
+              String sqlState = new PgExceptionFacade(e).getSqlState();
+              assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
+        })));
       }));
   }
 

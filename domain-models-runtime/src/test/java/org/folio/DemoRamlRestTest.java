@@ -265,6 +265,18 @@ public class DemoRamlRestTest {
     postBook(context, "", 422);
   }
 
+  /**
+   * 4 calls with invalid CQL cause RMB to hang if PostgreSQL connections
+   * are not closed: https://issues.folio.org/browse/RMB-677
+   */
+  @Test
+  public void invalidCqlClosesConnection(TestContext context) {
+    for (int i=0; i<10; i++) {
+      given().spec(tenant).when().get("/rmbtests/test?query=()").then().statusCode(400);
+    }
+  }
+
+
   @Test
   public void postBookValidateAuthor(TestContext context) {
     postBook(context, "?validate_field=author", 200);
