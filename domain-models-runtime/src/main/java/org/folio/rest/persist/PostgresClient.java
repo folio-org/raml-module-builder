@@ -1861,14 +1861,12 @@ public class PostgresClient {
   <T> void doStreamGetQuery(SQLConnection connection, QueryHelper queryHelper,
                             ResultInfo resultInfo, Class<T> clazz,
                             Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
-    // decide if we need to close transaction+connection ourselves
-    final PgConnection closeConnection = connection.tx == null ? connection.conn : null;
-    if (closeConnection != null) {
-      closeConnection.begin();
-    }
+    // Start a transaction that we need to close.
+    // If a transaction is already running we don't need to close it.
+    final Transaction transaction = connection.tx == null ? connection.conn.begin() : null;
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
-        connection.conn.close();
+        closeIfNonNull(transaction);
         log.error(prepareRes.cause().getMessage(), prepareRes.cause());
         replyHandler.handle(Future.failedFuture(prepareRes.cause()));
         return;
@@ -1877,7 +1875,7 @@ public class PostgresClient {
       RowStream<Row> rowStream = new PreparedRowStream(
           preparedStatement, STREAM_GET_DEFAULT_CHUNK_SIZE, Tuple.tuple());
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult<>(resultInfo);
-      doStreamRowResults(rowStream, clazz, closeConnection, queryHelper,
+      doStreamRowResults(rowStream, clazz, transaction, queryHelper,
           streamResult, replyHandler);
     });
   }
@@ -1891,14 +1889,17 @@ public class PostgresClient {
     return columnNames;
   }
 
-  private void closeIfNonNull(PgConnection pgConnection) {
-    if (pgConnection != null) {
-      pgConnection.close();
+  private void closeIfNonNull(Transaction transaction) {
+    if (transaction != null) {
+      transaction.close();
     }
   }
 
+  /**
+   * @param transaction the transaction to close, null if not to close
+   */
   <T> void doStreamRowResults(RowStream<Row> rowStream, Class<T> clazz,
-      PgConnection pgConnection, QueryHelper queryHelper,
+      Transaction transaction, QueryHelper queryHelper,
       PostgresClientStreamResult<T> streamResult,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
@@ -1934,12 +1935,12 @@ public class PostgresClient {
           replyHandler.handle(promise.future());
         }
         rowStream.close();
-        closeIfNonNull(pgConnection);
+        closeIfNonNull(transaction);
         streamResult.fireExceptionHandler(e);
       }
     }).endHandler(v2 -> {
       rowStream.close();
-      closeIfNonNull(pgConnection);
+      closeIfNonNull(transaction);
       resultInfo.setTotalRecords(
         getTotalRecords(resultCount.get(),
           resultInfo.getTotalRecords(),
@@ -1955,7 +1956,7 @@ public class PostgresClient {
       }
     }).exceptionHandler(e -> {
       rowStream.close();
-      closeIfNonNull(pgConnection);
+      closeIfNonNull(transaction);
       if (!promise.future().isComplete()) {
         promise.complete(streamResult);
         replyHandler.handle(promise.future());
