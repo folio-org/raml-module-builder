@@ -61,49 +61,49 @@ public enum PomReader {
    * @param pomFilename
    */
   void readIt(String pomFilename) throws IOException, XmlPullParserException {
-      Model model;
-      if (pomFilename != null) {
-        log.info("Reading from " + pomFilename);
-        //the runtime is the jar run when deploying during unit tests
-        //the interface-extensions is the jar run when running build time tools,
-        //like MDGenerator, ClientGenerator, etc..
-        //this is build time - not runtime, so just use the pom
-        File pomFile = new File(pomFilename);
-        MavenXpp3Reader mavenreader = new MavenXpp3Reader();
-        model = mavenreader.read(new FileReader(pomFile));
-      } else { //this is runtime, the jar called via java -jar is the module's jar
-        log.info("Reading from jar");
-        model = getModelFromJar();
-      }
-      if (model.getParent() != null) {
-        moduleName = model.getParent().getArtifactId();
-        version = model.getParent().getVersion();
-      } else {
-        moduleName = model.getArtifactId();
-        version = model.getVersion();
-      }
-      version = version.replaceAll("-.*", "");
+    Model model;
+    if (pomFilename != null) {
+      log.info("Reading from " + pomFilename);
+      //the runtime is the jar run when deploying during unit tests
+      //the interface-extensions is the jar run when running build time tools,
+      //like MDGenerator, ClientGenerator, etc..
+      //this is build time - not runtime, so just use the pom
+      File pomFile = new File(pomFilename);
+      MavenXpp3Reader mavenreader = new MavenXpp3Reader();
+      model = mavenreader.read(new FileReader(pomFile));
+    } else { //this is runtime, the jar called via java -jar is the module's jar
+      log.info("Reading from jar");
+      model = getModelFromJar();
+    }
+    if (model.getParent() != null) {
+      moduleName = model.getParent().getArtifactId();
+      version = model.getParent().getVersion();
+    } else {
+      moduleName = model.getArtifactId();
+      version = model.getVersion();
+    }
+    version = version.replaceAll("-.*", "");
 
-      moduleName = moduleName.replaceAll("-", "_");
-      props = model.getProperties();
-      dependencies = model.getDependencies();
+    moduleName = moduleName.replaceAll("-", "_");
+    props = model.getProperties();
+    dependencies = model.getDependencies();
 
-      //the version is a placeholder to a value in the props section
-      version = replacePlaceHolderWithValue(version);
+    //the version is a placeholder to a value in the props section
+    version = replacePlaceHolderWithValue(version);
 
-      rmbVersion = null;
-      for (int i = 0; i < dependencies.size(); i++) {
-        if ("domain-models-runtime".equals(dependencies.get(i).getArtifactId())) {
-          rmbVersion = dependencies.get(i).getVersion();
-          rmbVersion = replacePlaceHolderWithValue(rmbVersion);
-          rmbVersion = rmbVersion.replaceAll("-.*", "");
-        }
+    rmbVersion = null;
+    for (int i = 0; i < dependencies.size(); i++) {
+      if ("domain-models-runtime".equals(dependencies.get(i).getArtifactId())) {
+        rmbVersion = dependencies.get(i).getVersion();
+        rmbVersion = replacePlaceHolderWithValue(rmbVersion);
+        rmbVersion = rmbVersion.replaceAll("-.*", "");
       }
-      if (rmbVersion == null) {
-        //if we are in the rmb jar - build time
-        rmbVersion = version;
-      }
-      log.info("module name: " + moduleName + ", version: " + version);
+    }
+    if (rmbVersion == null) {
+      //if we are in the rmb jar - build time
+      rmbVersion = version;
+    }
+    log.info("module name: " + moduleName + ", version: " + version);
   }
 
   private Model getModelFromJar() throws IOException, XmlPullParserException {
