@@ -49,7 +49,7 @@ public enum PomReader {
           PomReader.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
       boolean readCurrent = currentRunningJar != null && (currentRunningJar.contains("domain-models-runtime")
           || currentRunningJar.contains("domain-models-interface-extensions"));
-      readIt(readCurrent ? pomFilename : null);
+      readIt(readCurrent ? pomFilename : null, "META-INF/maven");
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new IllegalArgumentException(e.getCause());
@@ -57,10 +57,11 @@ public enum PomReader {
   }
 
   /**
-   * Read from pomFile if not nulL; otherwise read JAR
-   * @param pomFilename
+   * Read from pomFile if not null; otherwise read JAR
+   * @param pomFilename POM filename; null for search in JAR
+   * @param directoryName directory prefix for search of pom.xml in JAR
    */
-  void readIt(String pomFilename) throws IOException, XmlPullParserException {
+  void readIt(String pomFilename, String directoryName) throws IOException, XmlPullParserException {
     Model model;
     if (pomFilename != null) {
       log.info("Reading from " + pomFilename);
@@ -73,7 +74,7 @@ public enum PomReader {
       model = mavenreader.read(new FileReader(pomFile));
     } else { //this is runtime, the jar called via java -jar is the module's jar
       log.info("Reading from jar");
-      model = getModelFromJar();
+      model = getModelFromJar(directoryName);
     }
     if (model.getParent() != null) {
       moduleName = model.getParent().getArtifactId();
@@ -106,10 +107,9 @@ public enum PomReader {
     log.info("module name: " + moduleName + ", version: " + version);
   }
 
-  private Model getModelFromJar() throws IOException, XmlPullParserException {
+  private Model getModelFromJar(String directoryName) throws IOException, XmlPullParserException {
     MavenXpp3Reader mavenreader = new MavenXpp3Reader();
     Model model = null;
-    String directoryName = "META-INF/maven";
     URL url = Thread.currentThread().getContextClassLoader().getResource(directoryName);
     if (url.getProtocol().equals("jar")) {
       String dirname = directoryName + "/";

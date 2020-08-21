@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.maven.model.Dependency;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -15,6 +16,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class PomReaderTest {
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
+  }
+
+  @AfterEach
+  void tearDown() {
+    PomReader pom = PomReader.INSTANCE;
+    pom.init("pom.xml");  // restore for other unit tests (it's a singleton)
   }
 
   @Test
@@ -43,22 +50,38 @@ class PomReaderTest {
     assertThat(PomReader.INSTANCE.getRmbVersion(), is(PomReader.INSTANCE.getVersion()));
   }
 
+
   @Test
   void readFromJar() throws IOException, XmlPullParserException {
     PomReader pom = PomReader.INSTANCE;
 
-    pom.readIt(null);  // force reading from Jar
+    pom.readIt(null, "META-INF/maven");  // force reading from Jar
     // first dependency in main pom / but surefire sometimes?
     assertThat(pom.getModuleName(), anyOf(is("vertx_parent"), is("surefire")));
-    pom.readIt("pom.xml"); // restore for other unit tests (it's a singleton)
+  }
+
+  @Test
+  void readFromJarNoPom() {
+    PomReader pom = PomReader.INSTANCE;
+
+    Exception exception = assertThrows(NullPointerException.class,
+        () -> pom.readIt(null, "META-INF"));
+  }
+
+  @Test
+  void readFromJarNoResource() {
+    PomReader pom = PomReader.INSTANCE;
+
+    Exception exception = assertThrows(NullPointerException.class,
+        () -> pom.readIt(null, "pom/pom-sample.xml"));
   }
 
   @Test
   void BadFilename()  {
     PomReader pom = PomReader.INSTANCE;
 
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> pom.init("does_not_exist.xml"));
-    pom.init("pom.xml"); // restore for other unit tests (it's a singleton)
+    Exception exception = assertThrows(IllegalArgumentException.class,
+        () -> pom.init("does_not_exist.xml"));
   }
 
   @Test
@@ -69,6 +92,5 @@ class PomReaderTest {
     assertThat(PomReader.INSTANCE.getModuleName(), is("mod_inventory_storage"));
     assertThat(PomReader.INSTANCE.getVersion(), is("19.4.0"));
     assertThat(PomReader.INSTANCE.getRmbVersion(), is("30.0.0"));
-    pom.init("pom.xml");
   }
 }
