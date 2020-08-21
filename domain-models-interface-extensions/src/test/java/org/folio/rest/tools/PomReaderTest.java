@@ -72,16 +72,14 @@ class PomReaderTest {
   void readFromJarNoResource() {
     PomReader pom = PomReader.INSTANCE;
 
-    Exception exception = assertThrows(NullPointerException.class,
-        () -> pom.readIt(null, "pom/pom-sample.xml"));
+    assertThrows(NullPointerException.class, () -> pom.readIt(null, "pom/pom-sample.xml"));
   }
 
   @Test
   void BadFilename()  {
     PomReader pom = PomReader.INSTANCE;
 
-    Exception exception = assertThrows(IllegalArgumentException.class,
-        () -> pom.init("does_not_exist.xml"));
+    assertThrows(IllegalArgumentException.class, () -> pom.init("does_not_exist.xml"));
   }
 
   @Test
