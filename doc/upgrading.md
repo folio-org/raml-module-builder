@@ -32,16 +32,13 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     to `folioci/alpine-jre-openjdk11:latest`.
   * `docker/docker-entrypoint.sh`: remove if present.
 
-## Version 30.2.5
-
-* [RMB-702](https://issues.folio.org/browse/RMB-702) Rename {version} path variable in RAML files.
-
 ## Version 30.2
 
 * [RMB-652](https://issues.folio.org/browse/RMB-652) error message
   "may not be null" changed to "must not be null" (hibernate-validator)
 * [RMB-693](https://issues.folio.org/browse/RMB-693) If using
   PostgresClient#selectStream always call RowStream#close.
+* [RMB-702](https://issues.folio.org/browse/RMB-702) Rename {version} path variable in RAML files.
 
 ## Version 30.0
 
