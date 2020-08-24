@@ -38,6 +38,7 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.impl.RowDesc;
+import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.Envs;
@@ -384,6 +385,11 @@ public class PostgresClientTest {
 
     @Override
     public void close() {
+    }
+
+    @Override
+    public DatabaseMetadata databaseMetadata() {
+      return null;
     }
   }
 
