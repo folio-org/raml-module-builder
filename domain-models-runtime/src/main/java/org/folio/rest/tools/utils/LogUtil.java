@@ -2,7 +2,7 @@ package org.folio.rest.tools.utils;
 
 import java.util.Collection;
 import java.util.Enumeration;
-
+import java.util.function.Function;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -11,40 +11,80 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.folio.rest.RestVerticle;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.web.RoutingContext;
 
 
 public class LogUtil {
 
   private static final Logger log = LoggerFactory.getLogger(LogUtil.class);
 
-  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int ResponseCode, long responseTime,
+  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int responseCode, long responseTime,
       long responseSize, String url, String queryParams, String message) {
 
     String message1 = new StringBuilder(injectDeploymentId()).append(clientIP).append(" ").append(httpMethod).append(" ").append(url).append(" ").append(queryParams)
-        .append(" ").append(httpVersion).append(" ").append(ResponseCode).append(" ").append(responseSize).append(" ").append(responseTime)
+        .append(" ").append(httpVersion).append(" ").append(responseCode).append(" ").append(responseSize).append(" ").append(responseTime)
         .append(" ").append(message).toString();
 
     log.info(message1);
   }
 
-  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int ResponseCode, long responseTime,
+  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int responseCode, long responseTime,
       long responseSize, String url, String queryParams, String message, String tenantId, String body) {
 
     String message1 = new StringBuilder(injectDeploymentId()).append(clientIP).append(" ").append(httpMethod).append(" ").append(url).append(" ").append(queryParams)
-        .append(" ").append(httpVersion).append(" ").append(ResponseCode).append(" ").append(responseSize).append(" ").append(responseTime)
+        .append(" ").append(httpVersion).append(" ").append(responseCode).append(" ").append(responseSize).append(" ").append(responseTime)
         .append(" tid=").append(tenantId).append(" ").append(message).append(" ").append(body).toString();
 
     log.info(message1);
   }
 
-  public static void formatLogMessage(String clazz, String funtion, String message) {
-    log.info(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(funtion).append(" ").append(message));
+  /**
+   * @return function.apply(t).toString(), or "null" if t is null or function.apply(t) returns null.
+   */
+  private static <T> String map(T t, Function<T,Object> function) {
+    if (t == null) {
+        return "null";
+    }
+    Object object = function.apply(t);
+    if (object == null) {
+      return "null";
+    }
+    return object.toString();
   }
-  public static void formatErrorLogMessage(String clazz, String funtion, String message) {
-    log.error(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(funtion).append(" ").append(message));
+
+  public static void formatStatsLogMessage(RoutingContext routingContext,
+      long responseTime, String tenantId, String body) {
+
+    if (routingContext == null) {
+      log.info(injectDeploymentId() + responseTime + " tid=" + tenantId + " " + body);
+      return;
+    }
+    HttpServerRequest request = routingContext.request();
+    HttpServerResponse response = routingContext.response();
+    formatStatsLogMessage(
+        map(request, HttpServerRequest::remoteAddress),
+        map(request, HttpServerRequest::method),
+        map(request, HttpServerRequest::version),
+        response == null ? -1 : response.getStatusCode(),
+        responseTime,
+        response == null ? -1 : response.bytesWritten(),
+        map(request, HttpServerRequest::path),
+        map(request, HttpServerRequest::query),
+        map(response, HttpServerResponse::getStatusMessage),
+        tenantId,
+        body);
+  }
+
+  public static void formatLogMessage(String clazz, String function, String message) {
+    log.info(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(function).append(" ").append(message));
+  }
+  public static void formatErrorLogMessage(String clazz, String function, String message) {
+    log.error(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(function).append(" ").append(message));
   }
 
   /**
