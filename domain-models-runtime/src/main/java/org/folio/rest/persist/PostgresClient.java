@@ -70,6 +70,7 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.ResourceUtils;
@@ -1109,6 +1110,7 @@ public class PostgresClient {
    * Save a list of POJOs.
    * POJOs are converted to a JSON String and saved in a single INSERT call.
    * A random id is generated if POJO's id is null.
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
    * @param replyHandler result, containing the id field for each inserted POJO
@@ -1124,6 +1126,7 @@ public class PostgresClient {
    * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
    * A random id is generated if POJO's id is null.
    * If a record with the id already exists it is updated (upsert).
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
    * @param replyHandler result, containing the id field for each inserted POJO
@@ -1138,6 +1141,7 @@ public class PostgresClient {
    * Save a list of POJOs.
    * POJOs are converted to a JSON String and saved in a single INSERT call.
    * A random id is generated if POJO's id is null.
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param sqlConnection  the connection to run on, may be on a transaction
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
@@ -1153,6 +1157,7 @@ public class PostgresClient {
    * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
    * A random id is generated if POJO's id is null.
    * If a record with the id already exists it is updated (upsert).
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param sqlConnection  the connection to run on, may be on a transaction
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
