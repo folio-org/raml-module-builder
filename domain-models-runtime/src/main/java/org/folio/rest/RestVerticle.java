@@ -844,13 +844,7 @@ public class RestVerticle extends AbstractVerticle {
       }
     }
 
-    withRequestId(rc, () -> LogUtil.formatStatsLogMessage(
-        rc.request().remoteAddress().toString(), rc.request().method().toString(),
-        rc.request().version().toString(), rc.response().getStatusCode(),
-        (end - start) / 1000000,
-        rc.response().bytesWritten(),
-        rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), tenantId,
-        sb.toString()));
+    withRequestId(rc, () -> LogUtil.formatStatsLogMessage(rc, (end - start) / 1000000, tenantId, sb.toString()));
   }
 
   /**
@@ -885,10 +879,7 @@ public class RestVerticle extends AbstractVerticle {
         response.end();
       }
       withRequestId(rc, () ->
-        LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
-          rc.request().version().toString(), response.getStatusCode(), -1, rc.response().bytesWritten(),
-          rc.request().path(), rc.request().query(), response.getStatusMessage(), null,
-          message == null ? "" : message));
+        LogUtil.formatStatsLogMessage(rc, -1, null, message == null ? "" : message));
     }
     // once we are here the call is not valid
     isValid[0] = false;

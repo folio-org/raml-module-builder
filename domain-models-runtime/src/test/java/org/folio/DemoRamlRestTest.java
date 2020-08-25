@@ -83,16 +83,22 @@ public class DemoRamlRestTest {
 
     try {
       deployRestVerticle(context);
+
+      Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
+      postData(context, "http://localhost:" + port + "/_/tenant", buf,
+        201, HttpMethod.POST, "application/json", TENANT, false);
     } catch (Exception e) {
       context.fail(e);
     }
   }
 
   private static void deployRestVerticle(TestContext context) {
+    Async async = context.async();
     DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(
         new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions,
-            context.asyncAssertSuccess());
+        context.asyncAssertSuccess(done -> async.complete()));
+    async.await();
   }
 
   /**
@@ -173,12 +179,7 @@ public class DemoRamlRestTest {
 
   @Test
   public void getBookWithRoutingContext(TestContext context)  throws Exception {
-    Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
-    NetClient cli = vertx.createNetClient();
-    postData(context, "http://localhost:" + port + "/_/tenant", buf,
-      201, HttpMethod.POST, "application/json", TENANT, false);
-
-    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=nullpointer%3Dtrue", 500);
+    Buffer buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=nullpointer%3Dtrue", 500);
     context.assertEquals("java.lang.NullPointerException", buf.toString());
 
     Books books;
@@ -264,6 +265,18 @@ public class DemoRamlRestTest {
   public void postBookNoParameters(TestContext context) {
     postBook(context, "", 422);
   }
+
+  /**
+   * 4 calls with invalid CQL cause RMB to hang if PostgreSQL connections
+   * are not closed: https://issues.folio.org/browse/RMB-677
+   */
+  @Test
+  public void invalidCqlClosesConnection(TestContext context) {
+    for (int i=0; i<10; i++) {
+      given().spec(tenant).when().get("/rmbtests/test?query=()").then().statusCode(400);
+    }
+  }
+
 
   @Test
   public void postBookValidateAuthor(TestContext context) {
@@ -576,7 +589,8 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private void postData(TestContext context, String url, Buffer buffer, int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
+  private static void postData(TestContext context, String url, Buffer buffer,
+      int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
     Exception stacktrace = new RuntimeException();  // save stacktrace for async handler
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
