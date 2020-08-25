@@ -54,6 +54,7 @@ import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
+import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -1800,6 +1801,10 @@ public class PostgresClientIT {
 
       }
 
+      @Override
+      public DatabaseMetadata databaseMetadata() {
+        throw new RuntimeException();
+      }
     };
 
     PgPool client = new PgPool() {
@@ -1920,6 +1925,11 @@ public class PostgresClientIT {
       @Override
       public void close() {
       }
+
+      @Override
+      public DatabaseMetadata databaseMetadata() {
+        return null;
+      }
     };
 
     PgPool client = new PgPool() {
@@ -2022,6 +2032,10 @@ public class PostgresClientIT {
 
       }
 
+      @Override
+      public DatabaseMetadata databaseMetadata() {
+        return null;
+      }
     };
     PgPool client = new PgPool() {
       @Override
