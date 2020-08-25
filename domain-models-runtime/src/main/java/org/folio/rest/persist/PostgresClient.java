@@ -116,12 +116,15 @@ public class PostgresClient {
   private static final String    WHERE  = " WHERE ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final String    _PASSWORD = "password"; //NOSONAR
-  private static final String    _USERNAME = "username";
+  @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
+  // we use it as a key in the config. We use it as a default password only when testing
+  // using embedded postgres, see getPostgreSQLClientConfig
+  private static final String    PASSWORD = "password";
+  private static final String    USERNAME = "username";
   private static final String    HOST      = "host";
   private static final String    PORT      = "port";
   private static final String    DATABASE  = "database";
-  private static final String    DEFAULT_IP = "127.0.0.1"; //NOSONAR
+  private static final String    DEFAULT_IP = "127.0.0.1";
 
   private static final String    STATS_KEY = PostgresClient.class.getName();
 
@@ -453,11 +456,11 @@ public class PostgresClient {
     if (port != null) {
       pgConnectOptions.setPort(port);
     }
-    String username = sqlConfig.getString(_USERNAME);
+    String username = sqlConfig.getString(USERNAME);
     if (username != null) {
       pgConnectOptions.setUser(username);
     }
-    String password = sqlConfig.getString(_PASSWORD);
+    String password = sqlConfig.getString(PASSWORD);
     if (password != null) {
       pgConnectOptions.setPassword(password);
     }
@@ -530,8 +533,8 @@ public class PostgresClient {
         log.info("No DB configuration found, using default config, port is already in use");
       }
       config = new JsonObject();
-      config.put(_USERNAME, _USERNAME);
-      config.put(_PASSWORD, _PASSWORD);
+      config.put(USERNAME, USERNAME);
+      config.put(PASSWORD, PASSWORD);
       config.put(HOST, DEFAULT_IP);
       config.put(PORT, EMBEDDED_POSTGRES_PORT);
       config.put(DATABASE, "postgres");
@@ -541,11 +544,11 @@ public class PostgresClient {
       PostgresClient.setExplainQueryThreshold((Long) v);
     }
     if (tenantId.equals(DEFAULT_SCHEMA)) {
-      config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
+      config.put(PASSWORD, decodePassword( config.getString(PASSWORD) ));
     } else {
       log.info("Using schema: " + tenantId);
-      config.put(_USERNAME, schemaName);
-      config.put(_PASSWORD, createPassword(tenantId));
+      config.put(USERNAME, schemaName);
+      config.put(PASSWORD, createPassword(tenantId));
     }
     if(embeddedPort != -1 && embeddedMode){
       //over ride the declared default port - coming from the config file and use the
@@ -567,7 +570,7 @@ public class PostgresClient {
       return;
     }
     JsonObject passwordRedacted = postgreSQLClientConfig.copy();
-    passwordRedacted.put(_PASSWORD, "...");
+    passwordRedacted.put(PASSWORD, "...");
     log.info("postgreSQLClientConfig = " + passwordRedacted.encode());
   }
 
@@ -3513,8 +3516,8 @@ public class PostgresClient {
   private Connection getStandaloneConnection(String newDB, boolean superUser) throws SQLException {
     String host = postgreSQLClientConfig.getString(HOST);
     int port = postgreSQLClientConfig.getInteger(PORT);
-    String user = postgreSQLClientConfig.getString(_USERNAME);
-    String pass = postgreSQLClientConfig.getString(_PASSWORD);
+    String user = postgreSQLClientConfig.getString(USERNAME);
+    String pass = postgreSQLClientConfig.getString(PASSWORD);
     String db = postgreSQLClientConfig.getString(DATABASE);
 
     if(newDB != null){
@@ -3676,8 +3679,8 @@ public class PostgresClient {
     setIsEmbedded(true);
     if (embeddedPostgres == null) {
       int port = postgreSQLClientConfig.getInteger(PORT);
-      String username = postgreSQLClientConfig.getString(_USERNAME);
-      String password = postgreSQLClientConfig.getString(_PASSWORD);
+      String username = postgreSQLClientConfig.getString(USERNAME);
+      String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       String locale = "en_US.UTF-8";
@@ -3733,8 +3736,8 @@ public class PostgresClient {
       try {
         String host = postgreSQLClientConfig.getString(HOST);
         int port = postgreSQLClientConfig.getInteger(PORT);
-        String user = postgreSQLClientConfig.getString(_USERNAME);
-        String pass = postgreSQLClientConfig.getString(_PASSWORD);
+        String user = postgreSQLClientConfig.getString(USERNAME);
+        String pass = postgreSQLClientConfig.getString(PASSWORD);
         String db = postgreSQLClientConfig.getString(DATABASE);
 
         log.info("Connecting to " + db);
