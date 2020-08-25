@@ -1,3 +1,9 @@
+## 31.0.2 2020-08-25
+
+ * [RMB-701](https://issues.folio.org/browse/RMB-701) Update to Vert.x 3.9.2
+ * [RMB-700](https://issues.folio.org/browse/RMB-700) NPE when RestVerticle calls LogUtil.formatStatsLogMessage
+ * [RMB-677](https://issues.folio.org/browse/RMB-677) Close PostgreSQL connection after invalid CQL failure
+
 ## 31.0.1 2020-08-21
 
  * [RMB-699](https://issues.folio.org/browse/RMB-699) Fix Module name detection broken
