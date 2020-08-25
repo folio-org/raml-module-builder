@@ -1,3 +1,9 @@
+## 30.2.6 2020-08-25
+
+ * [RMB-701](https://issues.folio.org/browse/RMB-701) Update to Vert.x 3.9.2, fixing WebClient request timeout races
+ * [RMB-700](https://issues.folio.org/browse/RMB-700) NPE when RestVerticle calls LogUtil.formatStatsLogMessage
+ * [RMB-677](https://issues.folio.org/browse/RMB-677) Close PostgreSQL connection after invalid CQL failure
+
 ## 30.2.5 2020-08-19
 
  * [RMB-684](https://issues.folio.org/browse/RMB-684) GET query returns no records when offset value >= estimated totalRecords
