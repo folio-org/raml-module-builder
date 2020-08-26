@@ -342,6 +342,7 @@ public class DatabaseTestBase {
    * runSqlFile general_functions.ftl from domain-models-runtime
    */
   public static void runGeneralFunctions() {
+    runSqlStatement("CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public");
     runSqlFile("./templates/db_scripts/general_functions.ftl");  // pom.xml copies it from domain-model-runtime
   }
 }
