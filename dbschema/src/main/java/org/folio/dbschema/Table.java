@@ -32,7 +32,7 @@ public class Table extends Versioned {
    */
   private List<Index> ginIndex;
   /**
-   * indexes using to_tsvector full text search
+   * indexes using tsvector full text search
    * @see <a href="https://www.postgresql.org/docs/current/textsearch-indexes.html">https://www.postgresql.org/docs/current/textsearch-indexes.html</a>
    */
   private List<Index> fullTextIndex;

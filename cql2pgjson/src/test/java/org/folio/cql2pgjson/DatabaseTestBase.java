@@ -341,7 +341,7 @@ public class DatabaseTestBase {
   /**
    * runSqlFile general_functions.ftl from domain-models-runtime
    */
-  static void runGeneralFunctions() {
+  public static void runGeneralFunctions() {
     runSqlFile("./templates/db_scripts/general_functions.ftl");  // pom.xml copies it from domain-model-runtime
   }
 }

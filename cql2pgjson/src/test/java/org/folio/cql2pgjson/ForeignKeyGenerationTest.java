@@ -67,7 +67,7 @@ public class ForeignKeyGenerationTest  {
     String sql = cql2pgJson("tablea.json", "foreignKey.json")
         .toSql("tableb.ftprefix = x0").getWhere();
     assertEquals("tablea.id IN  ( SELECT tableaId FROM tableb "
-        + "WHERE to_tsvector('simple', tableb.jsonb->>'ftprefix') @@ tsquery_phrase('x0'))", sql);
+        + "WHERE my_tsvector(tableb.jsonb->>'ftprefix') @@ tsquery_phrase('x0'))", sql);
   }
 
   @Test
@@ -174,7 +174,7 @@ public class ForeignKeyGenerationTest  {
         .toSql("instance.title = Olmsted").toString();
     String expected = "WHERE item.holdingsRecordId IN  ( SELECT id FROM holdings_record "
         + "WHERE holdings_record.instanceId IN  ( SELECT id FROM instance "
-        + "WHERE to_tsvector('simple', f_unaccent(instance.jsonb->>'title')) @@ tsquery_phrase(f_unaccent('Olmsted'))))";
+        + "WHERE my_tsvector(f_unaccent(instance.jsonb->>'title')) @@ tsquery_phrase(f_unaccent('Olmsted'))))";
     assertEquals(expected, sql);
   }
 
