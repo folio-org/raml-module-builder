@@ -146,7 +146,6 @@ public class SchemaMakerTest {
       "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
     IOException e = assertThrows(IOException.class, () -> {
       schemaMaker.setSchema(schema("templates/db_scripts/schemaPopulateJsonWithId.json"));
-      schemaMaker.generateDDL();
     });
     assertThat(tidy(e.getMessage()), containsString("Unrecognized field \"populateJsonWithId\""));
   }
