@@ -1,9 +1,11 @@
 package org.folio.rest.tools.utils;
 
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import org.folio.okapi.common.OkapiToken;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Metadata;
 
@@ -38,7 +40,11 @@ public final class MetadataUtil {
   public static Metadata createMetadata(Map<String, String> okapiHeaders) {
     String userId = okapiHeaders.get(RestVerticle.OKAPI_USERID_HEADER);
     if (userId == null) {
-      userId = JwtUtils.get("user_id", okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN));
+      try {
+        userId = new OkapiToken(okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN)).getUserIdWithoutValidation();
+      } catch (Exception e) {
+        // ignore, userId remains null
+      }
     }
     Metadata md = new Metadata();
     md.setUpdatedDate(new Date());
@@ -58,14 +64,7 @@ public final class MetadataUtil {
     //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema.
     // The createdDate and createdByUserId fields are stored in the db in separate columns on insert trigger so that even if
     // we overwrite them here, the correct value will be reset via a database trigger on update.
-    if (entity == null) {
-      return;
-    }
-    Method setMetadata = getSetMetadataMethod(entity);
-    if (setMetadata == null) {
-      return;
-    }
-    setMetadata.invoke(entity, createMetadata(okapiHeaders));
+    populateMetadata(Collections.singletonList(entity), okapiHeaders);
   }
 
   /**
