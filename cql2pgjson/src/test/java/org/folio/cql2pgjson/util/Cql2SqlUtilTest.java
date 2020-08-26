@@ -25,10 +25,7 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
   @BeforeClass
   public static void runOnceBeforeClass() throws Exception {
     setupDatabase();
-    runSqlStatement("CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;");
-    runSqlStatement("CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $$ "
-        + "SELECT public.unaccent('public.unaccent', $1); "
-        + "$$ LANGUAGE sql IMMUTABLE;");
+    runGeneralFunctions();
   }
 
   @AfterClass
@@ -189,8 +186,8 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
   }
 
   private String selectTsvector(String field, boolean removeAccents) {
-    return removeAccents ? "SELECT to_tsvector('simple', f_unaccent('" + field.replace("'", "''") + "')) @@ "
-                         : "SELECT to_tsvector('simple', '" + field.replace("'", "''") + "') @@ ";
+    return removeAccents ? "SELECT my_tsvector(f_unaccent('" + field.replace("'", "''") + "')) @@ "
+                         : "SELECT my_tsvector('" + field.replace("'", "''") + "') @@ ";
   }
 
   private void assertCql2tsqueryAnd(String field, String query, boolean removeAccents, String result) {

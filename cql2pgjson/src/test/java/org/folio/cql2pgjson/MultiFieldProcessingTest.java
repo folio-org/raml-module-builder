@@ -27,13 +27,13 @@ public class MultiFieldProcessingTest {
   public void testApplicationOfFieldNames() throws FieldException, QueryValidationException {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
     assertThat(converter.cql2pgJson("field1.name=v"),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("my_tsvector"),
             containsString("field1->>'name'")));
     assertThat(converter.cql2pgJson("field2.name=v"),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("my_tsvector"),
             containsString("field2->>'name'")));
     assertThat(converter.cql2pgJson("name=v"),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("my_tsvector"),
             containsString("field1->>'name'")));
   }
 
@@ -43,15 +43,15 @@ public class MultiFieldProcessingTest {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
     converter.setServerChoiceIndexes(Arrays.asList("field1.name"));
     assertThat(converter.cql2pgJson("v"),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("my_tsvector"),
             containsString("field1->>'name'")));
     converter.setServerChoiceIndexes(Arrays.asList("field2.name"));
     assertThat(converter.cql2pgJson("v"),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("my_tsvector"),
             containsString("field2->>'name'")));
     converter.setServerChoiceIndexes(Arrays.asList("name"));
     assertThat(converter.cql2pgJson("v"),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("my_tsvector"),
             containsString("field1->>'name'")));
   }
 
@@ -62,7 +62,7 @@ public class MultiFieldProcessingTest {
             "name=Smith"
                 + " AND email=gmail.com"
                 + " sortBy field2.name/sort.ascending"),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("my_tsvector"),
             containsString("field1->>'name'"),
             containsString("Smith"),
             containsString("field1->>'email'"),

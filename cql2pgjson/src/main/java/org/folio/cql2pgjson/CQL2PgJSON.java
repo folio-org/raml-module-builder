@@ -891,7 +891,7 @@ public class CQL2PgJSON {
     } else {
       indexText = Cql2PgUtil.wrapInLowerUnaccent(indexText, /* lower */ false, removeAccents);
     }
-    String sql = "to_tsvector('simple', " + indexText + ") " + "@@ " + tsTerm.toString();
+    String sql = "my_tsvector(" + indexText + ") " + "@@ " + tsTerm.toString();
 
     logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
     return sql;
