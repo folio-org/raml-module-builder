@@ -20,7 +20,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 
 @Path("/users")
@@ -227,6 +226,11 @@ public interface Users {
       return new HeadersFor201();
     }
 
+    public static PostUsersResponse respond201() {
+      Response.ResponseBuilder responseBuilder = Response.status(201);
+      return new PostUsersResponse(responseBuilder.build());
+    }
+
     public static PostUsersResponse respond201WithApplicationJson(Object entity, HeadersFor201 headers) {
       Response.ResponseBuilder responseBuilder = Response.status(201).header("Content-Type", "application/json");
       responseBuilder.entity(entity);
@@ -242,6 +246,12 @@ public interface Users {
 
     public static PostUsersResponse respond401WithTextPlain(Object entity) {
       Response.ResponseBuilder responseBuilder = Response.status(401).header("Content-Type", "text/plain");
+      responseBuilder.entity(entity);
+      return new PostUsersResponse(responseBuilder.build(), entity);
+    }
+
+    public static PostUsersResponse respond413WithTextPlain(Object entity) {
+      Response.ResponseBuilder responseBuilder = Response.status(413).header("Content-Type", "text/plain");
       responseBuilder.entity(entity);
       return new PostUsersResponse(responseBuilder.build(), entity);
     }

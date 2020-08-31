@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.folio.dbschema.ObjectMapperTool;
+import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.ValidationHelper;
@@ -57,10 +58,12 @@ public final class PgUtil {
   private static final Logger logger = LoggerFactory.getLogger(PgUtil.class);
 
   private static final String RESPOND_200_WITH_APPLICATION_JSON = "respond200WithApplicationJson";
+  private static final String RESPOND_201                       = "respond201";
   private static final String RESPOND_201_WITH_APPLICATION_JSON = "respond201WithApplicationJson";
   private static final String RESPOND_204                       = "respond204";
   private static final String RESPOND_400_WITH_TEXT_PLAIN       = "respond400WithTextPlain";
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
+  private static final String RESPOND_413_WITH_TEXT_PLAIN       = "respond413WithTextPlain";
   private static final String RESPOND_422_WITH_APPLICATION_JSON = "respond422WithApplicationJson";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
   private static final String NOT_FOUND = "Not found";
@@ -983,6 +986,66 @@ public final class PgUtil {
         }
         asyncResultHandler.handle(response(respond204, respond500));
       });
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+    }
+  }
+
+  /**
+   * Post a list of T entities to the database. Fail all if any of them fails.
+
+   * @param table database table to store into
+   * @param entities  the records to store
+   * @param maxEntities  fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
+   *     suggested value is from 100 ... 10000.
+   * @param upsert  true to update records with the same id, false to fail all entities if one has an existing id
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
+   *               respond201(), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler  where to return the result created by responseClass
+   */
+  public static <T> void postSync(String table, List<T> entities, int maxEntities, boolean upsert,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+
+    final Method respond500;
+
+    try {
+      respond500 = responseClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      return;
+    }
+
+    try {
+      Method respond201 = responseClass.getMethod(RESPOND_201);
+      Method respond413 = responseClass.getMethod(RESPOND_413_WITH_TEXT_PLAIN, Object.class);
+      if (entities != null && entities.size() > maxEntities) {
+        String message = "Expected a maximum of " + maxEntities
+            + " records to prevent out of memory but got " + entities.size();
+        asyncResultHandler.handle(response(message, respond413, respond500));
+        return;
+      }
+      // RestVerticle populates a single record only, not an array of records
+      MetadataUtil.populateMetadata(entities, okapiHeaders);
+      PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
+      Handler<AsyncResult<RowSet<Row>>> replyHandler = result -> {
+        if (result.failed()) {
+          asyncResultHandler.handle(response(table, /* id */ "", result.cause(),
+              responseClass, respond500, respond500));
+          return;
+        }
+        asyncResultHandler.handle(response(respond201, respond500));
+      };
+      if (upsert) {
+        postgresClient.upsertBatch(table, entities, replyHandler);
+      } else {
+        postgresClient.saveBatch(table, entities, replyHandler);
+      }
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));

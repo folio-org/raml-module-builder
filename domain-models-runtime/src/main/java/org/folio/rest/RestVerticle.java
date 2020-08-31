@@ -9,7 +9,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -44,7 +43,6 @@ import org.apache.logging.log4j.ThreadContext;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
@@ -60,8 +58,8 @@ import org.folio.rest.tools.utils.AsyncResponseResult;
 import org.folio.rest.tools.utils.BinaryOutStream;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
-import org.folio.rest.tools.utils.JwtUtils;
 import org.folio.rest.tools.utils.LogUtil;
+import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
@@ -1311,7 +1309,7 @@ public class RestVerticle extends AbstractVerticle {
                 sendResponse(rc, arr, 0, null);
                 return;
               }
-              populateMetaData(paramArray[order], okapiHeaders, rc.request().path());
+              MetadataUtil.populateMetadata(paramArray[order], okapiHeaders);
             }
           } catch (Exception e) {
             withRequestId(rc, () -> log.error(e.getMessage(), e));
@@ -1527,68 +1525,6 @@ public class RestVerticle extends AbstractVerticle {
     }
 
     return new Object[]{Boolean.valueOf(ret), content};
-  }
-
-  /**
-   * @return entity.setMetadata(Metadata) method, or null if not found.
-   */
-  private static Method getSetMetadataMethod(Object entity) {
-    if (entity == null) {
-      return null;
-    }
-    // entity.getClass().getMethod("setMetadata", new Class[] { Metadata.class })
-    // is 20 times slower than this loop when not found because of throwing the exception
-    for (Method method : entity.getClass().getMethods()) {
-      if (method.getName().equals("setMetadata") &&
-          method.getParameterCount() == 1 &&
-          method.getParameters()[0].getType().equals(Metadata.class)) {
-        return method;
-      }
-    }
-    return null;
-  }
-
-  private static String userIdFromToken(String token) {
-    try {
-      String[] split = token.split("\\.");
-      //the split array contains the 3 parts of the token - the body is the middle part
-      String json = JwtUtils.getJson(split[1]);
-      JsonObject j = new JsonObject(json);
-      return j.getString("user_id");
-    } catch (Exception e) {
-      log.warn("Invalid " + OKAPI_HEADER_TOKEN + ": " + token, e);
-      return null;
-    }
-  }
-
-  static void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path) {
-    //try to populate meta data section of the passed in json (converted to pojo already as this stage)
-    //will only succeed if the pojo (json schema) has a reference to the metaData schema.
-    //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema.
-    // The createdDate and createdByUserId fields are stored in the db in separate columns on insert trigger so that even if
-    // we overwrite them here, the correct value will be reset via a database trigger on update.
-    String userId = "";
-    String token = "";
-    try {
-      Method setMetadata = getSetMetadataMethod(entity);
-      if (setMetadata == null) {
-        return;
-      }
-      userId = okapiHeaders.get(OKAPI_USERID_HEADER);
-      token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
-      if (userId == null && token != null) {
-        userId = userIdFromToken(token);
-      }
-      Metadata md = new Metadata();
-      md.setUpdatedDate(new Date());
-      md.setCreatedDate(md.getUpdatedDate());
-      md.setCreatedByUserId(userId);
-      md.setUpdatedByUserId(userId);
-      setMetadata.invoke(entity,  md);
-    } catch (Exception e) {
-      log.warn("path = " + path + ", " + OKAPI_HEADER_TOKEN + " = " + token
-          + ", userId = " + userId + ": " + e.getMessage(), e);
-    }
   }
 
   /**
