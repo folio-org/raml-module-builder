@@ -117,12 +117,15 @@ public class PostgresClient {
   private static final String    WHERE  = " WHERE ";
   private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
-  private static final String    _PASSWORD = "password"; //NOSONAR
-  private static final String    _USERNAME = "username";
+  @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
+  // we use it as a key in the config. We use it as a default password only when testing
+  // using embedded postgres, see getPostgreSQLClientConfig
+  private static final String    PASSWORD = "password";
+  private static final String    USERNAME = "username";
   private static final String    HOST      = "host";
   private static final String    PORT      = "port";
   private static final String    DATABASE  = "database";
-  private static final String    DEFAULT_IP = "127.0.0.1"; //NOSONAR
+  private static final String    DEFAULT_IP = "127.0.0.1";
 
   private static final String    STATS_KEY = PostgresClient.class.getName();
 
@@ -454,11 +457,11 @@ public class PostgresClient {
     if (port != null) {
       pgConnectOptions.setPort(port);
     }
-    String username = sqlConfig.getString(_USERNAME);
+    String username = sqlConfig.getString(USERNAME);
     if (username != null) {
       pgConnectOptions.setUser(username);
     }
-    String password = sqlConfig.getString(_PASSWORD);
+    String password = sqlConfig.getString(PASSWORD);
     if (password != null) {
       pgConnectOptions.setPassword(password);
     }
@@ -531,8 +534,8 @@ public class PostgresClient {
         log.info("No DB configuration found, using default config, port is already in use");
       }
       config = new JsonObject();
-      config.put(_USERNAME, _USERNAME);
-      config.put(_PASSWORD, _PASSWORD);
+      config.put(USERNAME, USERNAME);
+      config.put(PASSWORD, PASSWORD);
       config.put(HOST, DEFAULT_IP);
       config.put(PORT, EMBEDDED_POSTGRES_PORT);
       config.put(DATABASE, "postgres");
@@ -542,11 +545,11 @@ public class PostgresClient {
       PostgresClient.setExplainQueryThreshold((Long) v);
     }
     if (tenantId.equals(DEFAULT_SCHEMA)) {
-      config.put(_PASSWORD, decodePassword( config.getString(_PASSWORD) ));
+      config.put(PASSWORD, decodePassword( config.getString(PASSWORD) ));
     } else {
       log.info("Using schema: " + tenantId);
-      config.put(_USERNAME, schemaName);
-      config.put(_PASSWORD, createPassword(tenantId));
+      config.put(USERNAME, schemaName);
+      config.put(PASSWORD, createPassword(tenantId));
     }
     if(embeddedPort != -1 && embeddedMode){
       //over ride the declared default port - coming from the config file and use the
@@ -568,7 +571,7 @@ public class PostgresClient {
       return;
     }
     JsonObject passwordRedacted = postgreSQLClientConfig.copy();
-    passwordRedacted.put(_PASSWORD, "...");
+    passwordRedacted.put(PASSWORD, "...");
     log.info("postgreSQLClientConfig = " + passwordRedacted.encode());
   }
 
@@ -1770,7 +1773,7 @@ public class PostgresClient {
 
     getSQLConnection(0, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, replyHandler));
+            distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
@@ -1794,7 +1797,7 @@ public class PostgresClient {
 
     getSQLConnection(queryTimeout, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, replyHandler));
+            distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
   }
 
   /**
@@ -1866,14 +1869,12 @@ public class PostgresClient {
   <T> void doStreamGetQuery(SQLConnection connection, QueryHelper queryHelper,
                             ResultInfo resultInfo, Class<T> clazz,
                             Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
-    // decide if we need to close transaction+connection ourselves
-    final PgConnection closeConnection = connection.tx == null ? connection.conn : null;
-    if (closeConnection != null) {
-      closeConnection.begin();
-    }
+    // Start a transaction that we need to close.
+    // If a transaction is already running we don't need to close it.
+    final Transaction transaction = connection.tx == null ? connection.conn.begin() : null;
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
-        connection.conn.close();
+        closeIfNonNull(transaction);
         log.error(prepareRes.cause().getMessage(), prepareRes.cause());
         replyHandler.handle(Future.failedFuture(prepareRes.cause()));
         return;
@@ -1882,7 +1883,7 @@ public class PostgresClient {
       RowStream<Row> rowStream = new PreparedRowStream(
           preparedStatement, STREAM_GET_DEFAULT_CHUNK_SIZE, Tuple.tuple());
       PostgresClientStreamResult<T> streamResult = new PostgresClientStreamResult<>(resultInfo);
-      doStreamRowResults(rowStream, clazz, closeConnection, queryHelper,
+      doStreamRowResults(rowStream, clazz, transaction, queryHelper,
           streamResult, replyHandler);
     });
   }
@@ -1896,14 +1897,17 @@ public class PostgresClient {
     return columnNames;
   }
 
-  private void closeIfNonNull(PgConnection pgConnection) {
-    if (pgConnection != null) {
-      pgConnection.close();
+  private void closeIfNonNull(Transaction transaction) {
+    if (transaction != null) {
+      transaction.close();
     }
   }
 
+  /**
+   * @param transaction the transaction to close, null if not to close
+   */
   <T> void doStreamRowResults(RowStream<Row> rowStream, Class<T> clazz,
-      PgConnection pgConnection, QueryHelper queryHelper,
+      Transaction transaction, QueryHelper queryHelper,
       PostgresClientStreamResult<T> streamResult,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
@@ -1939,12 +1943,12 @@ public class PostgresClient {
           replyHandler.handle(promise.future());
         }
         rowStream.close();
-        closeIfNonNull(pgConnection);
+        closeIfNonNull(transaction);
         streamResult.fireExceptionHandler(e);
       }
     }).endHandler(v2 -> {
       rowStream.close();
-      closeIfNonNull(pgConnection);
+      closeIfNonNull(transaction);
       resultInfo.setTotalRecords(
         getTotalRecords(resultCount.get(),
           resultInfo.getTotalRecords(),
@@ -1960,7 +1964,7 @@ public class PostgresClient {
       }
     }).exceptionHandler(e -> {
       rowStream.close();
-      closeIfNonNull(pgConnection);
+      closeIfNonNull(transaction);
       if (!promise.future().isComplete()) {
         promise.complete(streamResult);
         replyHandler.handle(promise.future());
@@ -3060,10 +3064,24 @@ public class PostgresClient {
     });
   }
 
+  /**
+   * Don't forget to close the connection!
+   *
+   * <p>Use closeAndHandleResult as replyHandler, for example:
+   *
+   * <pre>getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
+   */
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLConnection(0, handler);
   }
 
+  /**
+   * Don't forget to close the connection!
+   *
+   * <p>Use closeAndHandleResult as replyHandler, for example:
+   *
+   * <pre>getSQLConnection(timeout, conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
+   */
   void getSQLConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
     getConnection(res -> {
       if (res.failed()) {
@@ -3503,8 +3521,8 @@ public class PostgresClient {
   private Connection getStandaloneConnection(String newDB, boolean superUser) throws SQLException {
     String host = postgreSQLClientConfig.getString(HOST);
     int port = postgreSQLClientConfig.getInteger(PORT);
-    String user = postgreSQLClientConfig.getString(_USERNAME);
-    String pass = postgreSQLClientConfig.getString(_PASSWORD);
+    String user = postgreSQLClientConfig.getString(USERNAME);
+    String pass = postgreSQLClientConfig.getString(PASSWORD);
     String db = postgreSQLClientConfig.getString(DATABASE);
 
     if(newDB != null){
@@ -3666,8 +3684,8 @@ public class PostgresClient {
     setIsEmbedded(true);
     if (embeddedPostgres == null) {
       int port = postgreSQLClientConfig.getInteger(PORT);
-      String username = postgreSQLClientConfig.getString(_USERNAME);
-      String password = postgreSQLClientConfig.getString(_PASSWORD);
+      String username = postgreSQLClientConfig.getString(USERNAME);
+      String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       String locale = "en_US.UTF-8";
@@ -3723,8 +3741,8 @@ public class PostgresClient {
       try {
         String host = postgreSQLClientConfig.getString(HOST);
         int port = postgreSQLClientConfig.getInteger(PORT);
-        String user = postgreSQLClientConfig.getString(_USERNAME);
-        String pass = postgreSQLClientConfig.getString(_PASSWORD);
+        String user = postgreSQLClientConfig.getString(USERNAME);
+        String pass = postgreSQLClientConfig.getString(PASSWORD);
         String db = postgreSQLClientConfig.getString(DATABASE);
 
         log.info("Connecting to " + db);

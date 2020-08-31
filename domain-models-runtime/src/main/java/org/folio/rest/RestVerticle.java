@@ -1506,7 +1506,7 @@ public class RestVerticle extends AbstractVerticle {
         //and that field fails validation. if another field fails validation
         //that is ok as validation on that specific field wasnt requested
         //or there are validation errors and this is not a per field validation request
-        if((singleField != null && singleField.contains(field)) || singleField.isEmpty()){
+        if (singleField != null && (singleField.contains(field) || singleField.isEmpty())) {
           errorResp.getErrors().add(error);
           ret = false;
         }
