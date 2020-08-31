@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({
     "username",
     "id",
+    "metadata",
     "dummy"
 })
 public class User {
@@ -38,6 +39,17 @@ public class User {
     @JsonPropertyDescription("A globally unique (UUID) identifier for the user")
     @NotNull
     private String id;
+
+    /**
+     * Metadata Schema
+     * <p>
+     * Metadata about creation and changes to records, provided by the server (client should not provide)
+     *
+     */
+    @JsonProperty("metadata")
+    @JsonPropertyDescription("Metadata about creation and changes to records, provided by the server (client should not provide)")
+    @javax.validation.constraints.Null
+    private Metadata metadata;
 
     /**
      * A dummy field to be set by testing trigger
@@ -94,6 +106,28 @@ public class User {
     public User withId(String id) {
         this.id = id;
         return this;
+    }
+
+    /**
+     * Metadata Schema
+     * <p>
+     * Metadata about creation and changes to records, provided by the server (client should not provide)
+     *
+     */
+    @JsonProperty("metadata")
+    public Metadata getMetadata() {
+        return metadata;
+    }
+
+    /**
+     * Metadata Schema
+     * <p>
+     * Metadata about creation and changes to records, provided by the server (client should not provide)
+     *
+     */
+    @JsonProperty("metadata")
+    public void setMetadata(Metadata metadata) {
+        this.metadata = metadata;
     }
 
     public String getDummy() {
