@@ -110,7 +110,7 @@ $$;
 -- Replace & by , because we use & as the AND operator when the query contains multiple words.
 -- PostgreSQL removes punctuation but not in URLs:
 -- https://www.postgresql.org/docs/current/textsearch-parsers.html
-CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.my_tsvector(text) RETURNS tsvector AS $$
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.get_tsvector(text) RETURNS tsvector AS $$
   SELECT to_tsvector('simple', translate($1, '&', ','));
 $$ LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
 

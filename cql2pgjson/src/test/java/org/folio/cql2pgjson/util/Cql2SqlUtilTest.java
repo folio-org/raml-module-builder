@@ -186,8 +186,8 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
   }
 
   private String selectTsvector(String field, boolean removeAccents) {
-    return removeAccents ? "SELECT my_tsvector(f_unaccent('" + field.replace("'", "''") + "')) @@ "
-                         : "SELECT my_tsvector('" + field.replace("'", "''") + "') @@ ";
+    return removeAccents ? "SELECT get_tsvector(f_unaccent('" + field.replace("'", "''") + "')) @@ "
+                         : "SELECT get_tsvector('" + field.replace("'", "''") + "') @@ ";
   }
 
   private void assertCql2tsqueryAnd(String field, String query, boolean removeAccents, String result) {
