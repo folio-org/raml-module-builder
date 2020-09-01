@@ -278,35 +278,6 @@
       </plugin>
 
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-enforcer-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>enforce-java</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                 <requireMavenVersion>
-                  <message>Maven &gt;= 3.3 required</message>
-                  <version>3.3</version>
-                </requireMavenVersion>
-                <requireJavaVersion>
-                  <message>
-                    JDK &gt;= 1.8.0-101 required for Let's Encrypt certificate of https://repository.folio.org/ :
-                    https://dev.folio.org/guides/troubleshooting/#missing-certificate-authority-for-lets-encrypt
-                  </message>
-                  <version>1.8.0-101</version>
-                  <!-- for runtime check see domain-models-runtime RestVerticle.MINIMUM_JAVA_VERSION -->
-                </requireJavaVersion>
-              </rules>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>properties-maven-plugin</artifactId>
         <version>1.0.0</version>
