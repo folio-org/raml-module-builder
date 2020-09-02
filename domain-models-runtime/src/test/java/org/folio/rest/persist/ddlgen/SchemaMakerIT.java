@@ -319,14 +319,14 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertThat(indexdef(context, "casetable_u_idx_unique"), containsString("lower(f_unaccent((jsonb ->> 'u'::text)))"));
     assertThat(indexdef(context, "casetable_l_idx_like"),   containsString("lower(f_unaccent((jsonb ->> 'l'::text)))"));
     assertThat(indexdef(context, "casetable_g_idx_gin"),    containsString("lower(f_unaccent((jsonb ->> 'g'::text)))"));
-    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString(    ", f_unaccent((jsonb ->> 'f'::text)))"));
+    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString("get_tsvector(f_unaccent((jsonb ->> 'f'::text)))"));
 
     runSchema(context, TenantOperation.UPDATE, "indexKeepAccents.json");
     assertThat(indexdef(context, "casetable_i_idx"),        containsString("lower((jsonb ->> 'i'::text))"));
     assertThat(indexdef(context, "casetable_u_idx_unique"), containsString("lower((jsonb ->> 'u'::text))"));
     assertThat(indexdef(context, "casetable_l_idx_like"),   containsString("lower((jsonb ->> 'l'::text))"));
     assertThat(indexdef(context, "casetable_g_idx_gin"),    containsString("lower((jsonb ->> 'g'::text))"));
-    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString(    ", (jsonb ->> 'f'::text))"));
+    assertThat(indexdef(context, "casetable_f_idx_ft"),     containsString("get_tsvector((jsonb ->> 'f'::text))"));
 
     // no indexes get recreated when schema doesn't change.
     execute(context, "DROP INDEX "
