@@ -1,3 +1,7 @@
+## 30.2.7 2020-09-02
+
+ * [RMB-703](https://issues.folio.org/browse/RMB-703) Full text search doesn't match URLs containing &
+
 ## 30.2.6 2020-08-25
 
  * [RMB-701](https://issues.folio.org/browse/RMB-701) Update to Vert.x 3.9.2, fixing WebClient request timeout races
