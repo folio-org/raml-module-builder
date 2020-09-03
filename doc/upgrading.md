@@ -25,7 +25,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `pom.xml`: For `maven-compiler-plugin` update `version` to `3.8.1` and
     use `<release>11</release>` instead
     of `source` and `target` elements.
-    Update aspectj version to `1.9.5`. Update `aspectj-maven-plugin` with
+    Update aspectj version to `1.9.6`. Update `aspectj-maven-plugin` with
     groupId `com.nickwongdev` and version `1.12.6`.
   * `Jenkinsfile`: Add `buildNode = jenkins-agent-java11`.
   * `Dockerfile` (if present): change `folioci/alpine-jre-openjdk8:latest`
