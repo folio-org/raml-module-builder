@@ -26,7 +26,7 @@
   </licenses>
 
   <properties>
-    <aspectj.version>1.9.5</aspectj.version>
+    <aspectj.version>1.9.6</aspectj.version>
     <junit-jupiter-version>5.6.0</junit-jupiter-version>
     <postgresql-embedded-version>2.10</postgresql-embedded-version>
 
