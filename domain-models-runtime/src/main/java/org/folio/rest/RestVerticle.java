@@ -123,13 +123,6 @@ public class RestVerticle extends AbstractVerticle {
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
 
-  /**
-   * Minimum java version used for runtime check.
-   *
-   * For compile time check see raml-module-builder/pom.xml maven-enforcer-plugin requireJavaVersion.
-   */
-  private static final String       MINIMUM_JAVA_VERSION              = "1.8.0_101";
-
   private static final String[]     DATE_PATTERNS = {
     "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
     "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
@@ -159,31 +152,6 @@ public class RestVerticle extends AbstractVerticle {
     //passed in the request body in put and post requests. The constraints validated by this factory
     //are the ones in the json schemas accompanying the raml files
     validationFactory = Validation.buildDefaultValidatorFactory();
-    checkJavaVersion(System.getProperty("java.runtime.version"));
-  }
-
-  /**
-   * Compare java version strings of the form 1.8.0_191
-   */
-  static int compareJavaVersion(String versionA, String versionB) {
-    String [] a = versionA.split("[^0-9]+");
-    String [] b = versionB.split("[^0-9]+");
-    for (int i=0; i<4; i++) {
-      int compare = Integer.compare(Integer.parseInt(a[i]), Integer.parseInt(b[i]));
-      if (compare != 0) {
-        return compare;
-      }
-    }
-    return 0;
-  }
-
-  /**
-   * @throws InternalError if javaVersion is less than {@link #MINIMUM_JAVA_VERSION}
-   */
-  static void checkJavaVersion(String javaVersion) {
-    if (compareJavaVersion(javaVersion, MINIMUM_JAVA_VERSION) < 0) {
-      throw new InternalError("Minimum java version is " + MINIMUM_JAVA_VERSION + " but found " + javaVersion);
-    }
   }
 
   // https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html

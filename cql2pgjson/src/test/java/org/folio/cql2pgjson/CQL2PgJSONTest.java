@@ -772,11 +772,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void toSql() throws QueryValidationException {
     SqlSelect s = cql2pgJson.toSql("email=Long sortBy name/sort.descending");
     assertThat(s.getWhere(),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("get_tsvector"),
             containsString("users.user_data->>'email'")));
     assertEquals("left(lower(f_unaccent(users.user_data->>'name')),600) DESC, lower(f_unaccent(users.user_data->>'name')) DESC", s.getOrderBy());
     String sql = s.toString();
-    assertTrue(sql.startsWith("WHERE to_tsvector('simple',"));
+    assertTrue(sql.startsWith("WHERE get_tsvector("));
     assertTrue(sql.endsWith(" ORDER BY "
       + "left(lower(f_unaccent(users.user_data->>'name')),600) DESC, lower(f_unaccent(users.user_data->>'name')) DESC"));
   }
