@@ -27,6 +27,8 @@ public enum PomReader {
 
   INSTANCE;
 
+  private static final String POM_PROPERTIES_PATH =
+      "/META-INF/maven/org.folio/domain-models-interface-extensions/pom.properties";
   private String moduleName = null;
   private String version = null;
   private Properties props = null;
@@ -92,19 +94,25 @@ public enum PomReader {
     //the version is a placeholder to a value in the props section
     version = replacePlaceHolderWithValue(version);
 
-    rmbVersion = null;
-    for (int i = 0; i < dependencies.size(); i++) {
-      if ("domain-models-runtime".equals(dependencies.get(i).getArtifactId())) {
-        rmbVersion = dependencies.get(i).getVersion();
-        rmbVersion = replacePlaceHolderWithValue(rmbVersion);
-        rmbVersion = rmbVersion.replaceAll("-.*", "");
-      }
-    }
+    rmbVersion = readRmbVersion();
     if (rmbVersion == null) {
       //if we are in the rmb jar - build time
       rmbVersion = version;
     }
     log.info("module name: " + moduleName + ", version: " + version);
+  }
+
+  private static String readRmbVersion() {
+    try (InputStream inputStream = PomReader.class.getResourceAsStream(POM_PROPERTIES_PATH)) {
+      if (inputStream == null) {
+        return null;
+      }
+      Properties pomProperties = new Properties();
+      pomProperties.load(inputStream);
+      return pomProperties.getProperty("version");
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   private Model getModelFromJar(String directoryName) throws IOException, XmlPullParserException {
