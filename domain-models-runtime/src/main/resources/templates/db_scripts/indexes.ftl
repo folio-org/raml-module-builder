@@ -62,7 +62,7 @@
       PERFORM rmb_internal_index(
       '${table.tableName}', '${table.tableName}_${indexes.fieldName}_idx_ft', '${indexes.tOps.name()}',
       'CREATE INDEX IF NOT EXISTS ${table.tableName}_${indexes.fieldName}_idx_ft ON ${myuniversity}_${mymodule}.${table.tableName} USING GIN '
-      || $rmb$( to_tsvector('simple', ${indexes.getFinalSqlExpression(table.tableName)}) )$rmb$);
+      || $rmb$( get_tsvector(${indexes.getFinalSqlExpression(table.tableName)}) )$rmb$);
     END $do$;
   </#list>
 </#if>
