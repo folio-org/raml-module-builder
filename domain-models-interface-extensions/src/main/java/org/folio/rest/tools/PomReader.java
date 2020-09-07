@@ -146,8 +146,4 @@ public enum PomReader {
     return dependencies;
   }
 
-  public String getRmbVersion() {
-    return RmbVersion.getRmbVersion();
-  }
-
 }

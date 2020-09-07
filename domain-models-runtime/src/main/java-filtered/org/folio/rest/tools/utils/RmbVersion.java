@@ -1,4 +1,4 @@
-package org.folio.rest.tools;
+package org.folio.rest.tools.utils;
 
 public class RmbVersion {
   // pom.xml copies this file to target/generated-sources and fills in the value

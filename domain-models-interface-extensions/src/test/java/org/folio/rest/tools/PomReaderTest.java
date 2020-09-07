@@ -12,7 +12,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PomReaderTest {
@@ -45,12 +44,6 @@ class PomReaderTest {
   void testGetDependencies() {
     List<Dependency> dependencies = PomReader.INSTANCE.getDependencies();
     assertTrue(!dependencies.isEmpty());
-  }
-
-  @Test
-  void testGetRmbVersion() {
-    assertThat(PomReader.INSTANCE.getVersion(), matchesPattern("[0-9]+\\.[0-9]+\\..*"));
-    assertThat(PomReader.INSTANCE.getRmbVersion(), is(not(PomReader.INSTANCE.getVersion())));
   }
 
   @Test

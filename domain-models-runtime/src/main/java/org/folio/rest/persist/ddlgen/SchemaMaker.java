@@ -15,7 +15,7 @@ import org.folio.dbschema.Schema;
 import org.folio.dbschema.Table;
 import org.folio.dbschema.TableOperation;
 import org.folio.dbschema.TenantOperation;
-import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.utils.RmbVersion;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -58,7 +58,7 @@ public class SchemaMaker {
     this.mode = mode;
     this.previousVersion = previousVersion;
     this.newVersion = newVersion;
-    this.rmbVersion = PomReader.INSTANCE.getRmbVersion();
+    this.rmbVersion = RmbVersion.getRmbVersion();
   }
 
   public String generateDDL() throws IOException, TemplateException {
