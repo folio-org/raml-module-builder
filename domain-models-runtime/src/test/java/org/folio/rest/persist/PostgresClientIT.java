@@ -2937,8 +2937,7 @@ public class PostgresClientIT {
     StringBuilder events = new StringBuilder();
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
-    Transaction transaction = null;
-    postgresClient.doStreamRowResults(sqlRowStream, Object.class, transaction,
+    postgresClient.doStreamRowResults(sqlRowStream, Object.class,
       new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
