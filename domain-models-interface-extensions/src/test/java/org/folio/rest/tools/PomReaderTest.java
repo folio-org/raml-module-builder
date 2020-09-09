@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.text.MatchesPattern.matchesPattern;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,7 +32,7 @@ class PomReaderTest {
 
   @Test
   void testGetVersion() {
-    assertTrue(PomReader.INSTANCE.getVersion().matches("[0-9]+\\.[0-9]+\\..*"));
+    assertThat(PomReader.INSTANCE.getVersion(), matchesPattern("[0-9]+\\.[0-9]+\\..*"));
   }
 
   @Test
@@ -44,12 +45,6 @@ class PomReaderTest {
     List<Dependency> dependencies = PomReader.INSTANCE.getDependencies();
     assertTrue(!dependencies.isEmpty());
   }
-
-  @Test
-  void testGetRmbVersion() {
-    assertThat(PomReader.INSTANCE.getRmbVersion(), is(PomReader.INSTANCE.getVersion()));
-  }
-
 
   @Test
   void readFromJar() throws IOException, XmlPullParserException {
@@ -88,6 +83,5 @@ class PomReaderTest {
     pom.init("src/test/resources/pom/pom-sample.xml");
     assertThat(PomReader.INSTANCE.getModuleName(), is("mod_inventory_storage"));
     assertThat(PomReader.INSTANCE.getVersion(), is("19.4.0"));
-    assertThat(PomReader.INSTANCE.getRmbVersion(), is("30.0.0"));
   }
 }
