@@ -20,7 +20,6 @@ import org.folio.rest.tools.ClientGenerator;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.OutStream;
-import org.folio.rest.tools.utils.RmbVersion;
 import org.folio.rest.tools.utils.TenantTool;
 
 import freemarker.template.TemplateException;
@@ -82,7 +81,7 @@ public class TenantAPI implements Tenant {
             String sqlFile = null;
             try {
               SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(),
-                  TenantOperation.DELETE, null, RmbVersion.getRmbVersion());
+                  TenantOperation.DELETE, null, null);
               sqlFile = sMaker.generateDDL();
 
             } catch (Exception e1) {
