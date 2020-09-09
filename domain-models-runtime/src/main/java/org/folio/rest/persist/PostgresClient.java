@@ -2028,7 +2028,7 @@ public class PostgresClient {
       queryHelper.countQuery = SELECT + "count(*) FROM (" + query + ") x";
     } else if (!wrapper.getWhereClause().isEmpty()) {
       // only do estimation when filter is in use (such as CQL).
-      queryHelper.countQuery = SELECT + "count_estimate('"
+      queryHelper.countQuery = SELECT + schemaName + DOT + "count_estimate('"
         + org.apache.commons.lang.StringEscapeUtils.escapeSql(query)
         + "')";
     }

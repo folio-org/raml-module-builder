@@ -356,6 +356,14 @@ public class TenantAPIIT {
     tenantDelete(context);  // delete existing tenant
     assertThat(tenantGet(context), is(false));
     tenantDelete(context);  // delete non existing tenant
+    assertThat(tenantGet(context), is(false));
+    tenantPost(context);    // create tenant
+    assertThat(tenantGet(context), is(true));
+
+    String sql = "SELECT count(*) FROM " + PostgresClient.convertToPsqlStandard(tenantId) + ".test_tenantapi";
+    PostgresClient.getInstance(vertx, tenantId).selectSingle(sql, context.asyncAssertSuccess(result -> {
+      assertThat(result.getInteger(0), is(0));
+    }));
   }
 
   @Test
