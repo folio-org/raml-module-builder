@@ -17,7 +17,6 @@ import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.dbschema.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
-import org.folio.rest.tools.PomReader;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.OutStream;
@@ -81,7 +80,8 @@ public class TenantAPI implements Tenant {
 
             String sqlFile = null;
             try {
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), TenantOperation.DELETE, null, PomReader.INSTANCE.getRmbVersion());
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(),
+                  TenantOperation.DELETE, null, null);
               sqlFile = sMaker.generateDDL();
 
             } catch (Exception e1) {

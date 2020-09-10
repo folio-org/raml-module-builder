@@ -31,7 +31,6 @@ public enum PomReader {
   private String version = null;
   private Properties props = null;
   private List<Dependency> dependencies = null;
-  private String rmbVersion = null;
 
   private final Logger log = LoggerFactory.getLogger(PomReader.class);
 
@@ -92,18 +91,6 @@ public enum PomReader {
     //the version is a placeholder to a value in the props section
     version = replacePlaceHolderWithValue(version);
 
-    rmbVersion = null;
-    for (int i = 0; i < dependencies.size(); i++) {
-      if ("domain-models-runtime".equals(dependencies.get(i).getArtifactId())) {
-        rmbVersion = dependencies.get(i).getVersion();
-        rmbVersion = replacePlaceHolderWithValue(rmbVersion);
-        rmbVersion = rmbVersion.replaceAll("-.*", "");
-      }
-    }
-    if (rmbVersion == null) {
-      //if we are in the rmb jar - build time
-      rmbVersion = version;
-    }
     log.info("module name: " + moduleName + ", version: " + version);
   }
 
@@ -157,10 +144,6 @@ public enum PomReader {
 
   public List<Dependency> getDependencies() {
     return dependencies;
-  }
-
-  public String getRmbVersion() {
-    return rmbVersion;
   }
 
 }
