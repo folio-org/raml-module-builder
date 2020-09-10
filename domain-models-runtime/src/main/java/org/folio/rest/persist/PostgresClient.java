@@ -67,7 +67,6 @@ import org.folio.rest.security.AES;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
-import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
@@ -127,10 +126,7 @@ public class PostgresClient {
   private static final String    DATABASE  = "database";
   private static final String    DEFAULT_IP = "127.0.0.1";
 
-  private static final String    STATS_KEY = PostgresClient.class.getName();
-
   private static final String    GET_STAT_METHOD = "get";
-  private static final String    COUNT_STAT_METHOD = "count";
   private static final String    SAVE_STAT_METHOD = "save";
   private static final String    UPDATE_STAT_METHOD = "update";
   private static final String    DELETE_STAT_METHOD = "delete";
@@ -228,7 +224,6 @@ public class PostgresClient {
    */
   private void statsTracker(String descriptionKey, String sql, long startNanoTime) {
     long endNanoTime = System.nanoTime();
-    StatsTracker.addStatElement(STATS_KEY + DOT + descriptionKey, (endNanoTime - startNanoTime));
     if (log.isDebugEnabled()) {
       logTimer(descriptionKey, sql, startNanoTime, endNanoTime);
     }
@@ -2053,7 +2048,6 @@ public class PostgresClient {
         int estimatedTotal = countQueryResult.result().iterator().next().getInteger(0);
 
         long countQueryTime = (System.nanoTime() - start);
-        StatsTracker.addStatElement(STATS_KEY + COUNT_STAT_METHOD, countQueryTime);
         log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
 
         processQuery(connection, queryHelper, estimatedTotal, statMethod, resultSetMapper, replyHandler);
@@ -2795,7 +2789,6 @@ public class PostgresClient {
     long start = System.nanoTime();
     conn.query(sql).execute(res -> {
       long queryTime = (System.nanoTime() - start);
-      StatsTracker.addStatElement(STATS_KEY + statMethod, queryTime);
       if (res.failed()) {
         log.error("queryAndAnalyze: " + res.cause().getMessage() + " - "
           + sql, res.cause());
