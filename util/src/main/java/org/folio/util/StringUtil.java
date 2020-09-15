@@ -16,22 +16,23 @@ public final class StringUtil {
   }
 
   /**
-   * Append s to appendable after masking the five special
-   * CQL characters {@code \ * ? ^ "} and after putting it
-   * into double quotes.
-   *
-   * <p>appends {@code ""} if s is null
-   * <p>appends {@code ""} if s is an empty string
-   * <p>appends {@code "foo\* bar\*"} if s is {@code foo* bar*}
-   * <p>appends {@code "\\\*\?\^\""} if s is {@code \*?^"}
+   * Appends s to appendable as a quoted CQL string constant.
+   * It masks the five special CQL characters {@code \ * ? ^ "}
+   * and puts the result into double quotes.
    *
    * <p>Example usage:
    *
    * <pre>
    * StringBuilder query = new StringBuilder("username==");
-   * StringUtil.appendCqlEncoded(query, username).append(" AND totalRecords=none");
+   * StringUtil.appendCqlEncoded(query, username).append(" AND x=y";
    * String url = "https://example.com/users?query=" + StringUtil.urlEncode(query.toString());
    * </pre>
+   *
+   * <p>query is {@code username=="" AND x=y} if username is null
+   * <p>query is {@code username=="" AND x=y} if username is an empty string
+   * <p>query is {@code username=="foo" AND x=y} if username is {@code foo}
+   * <p>query is {@code username=="foo\* bar\*" AND x=y} if username is {@code foo* bar*}
+   * <p>query is {@code username=="\\\*\?\^\"" AND x=y} if username is {@code \*?^"}
    *
    * @return appendable
    */
@@ -62,13 +63,9 @@ public final class StringUtil {
   }
 
   /**
-   * Return s after masking these five special CQL characters {@code \ * ? ^ "}
-   * and after putting it into double quotes.
-   *
-   * <p>returns {@code ""} if s is null
-   * <p>returns {@code ""} if s is an empty string
-   * <p>returns {@code "foo\* bar\*"} if s is {@code foo* bar*}
-   * <p>returns {@code "\\\*\?\^\""} if s is {@code \*?^"}
+   * Returns s as a quoted CQL string constant. It masks the five
+   * special CQL characters {@code \ * ? ^ "} and puts the result into
+   * double quotes.
    *
    * <p>Example usage:
    *
@@ -77,8 +74,14 @@ public final class StringUtil {
    * String url = "https://example.com/users?query=" + StringUtil.urlEncode(query);
    * </pre>
    *
+   * <p>query is {@code username==""} if s is null
+   * <p>query is {@code username==""} if s is an empty string
+   * <p>query is {@code username=="foo"} if s is {@code foo}
+   * <p>query is {@code username=="foo\* bar\*"} if s is {@code foo* bar*}
+   * <p>query is {@code username=="\\\*\?\^\""} if s is {@code \*?^"}
+   *
    * @return appendable
-   * @see {@link #appendCqlEncoded(Appendable, CharSequence)} how to append to a StringBuilder
+   * @see {@link #appendCqlEncoded(Appendable, CharSequence)} for appending to a StringBuilder
    */
   public static String cqlEncode(CharSequence s) {
     if (s == null) {
