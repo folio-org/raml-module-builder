@@ -224,13 +224,13 @@ public class SchemaMakerTest {
   }
 
   @Test
-  public void delete() throws IOException, TemplateException {
+  public void deleteSchema() throws IOException, TemplateException {
 
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.DELETE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
-        "REVOKE ALL PRIVILEGES ON DATABASE"));
+    assertThat(tidy(schemaMaker.generateDDL()), allOf(
+        containsString("DROP SCHEMA "), containsString("DROP ROLE ")));
   }
 
   @Test
