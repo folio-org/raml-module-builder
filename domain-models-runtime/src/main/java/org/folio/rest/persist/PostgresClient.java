@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -431,20 +430,32 @@ public class PostgresClient {
     whenDone.handle(Future.succeededFuture());
   }
 
+  static int getConnectionPoolSize() {
+    return connectionPool.size();
+  }
+
+  /**
+   * Closes all SQL clients of the tenant.
+   */
+  public static void closeAllClients(String tenantId) {
+    // A for or forEach loop does not allow concurrent delete
+    List<PostgresClient> clients = new ArrayList<>();
+    connectionPool.forEach((multiKey, postgresClient) -> {
+      if (tenantId.equals(multiKey.getKey(1))) {
+        clients.add(postgresClient);
+      }
+    });
+    clients.forEach(client -> client.closeClient(ignore -> {}));
+  }
+
   /**
    * Close all SQL clients stored in the connection pool.
    */
   public static void closeAllClients() {
-    @SuppressWarnings("rawtypes")
-    List<Future> list = new ArrayList<>(connectionPool.size());
     // copy of values() because closeClient will delete them from connectionPool
     for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
-      Promise<Object> promise = Promise.promise();
-      list.add(promise.future());
-      client.closeClient(f -> promise.complete());
+      client.closeClient(ignore -> {});
     }
-
-    CompositeFuture.join(list);
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig) {

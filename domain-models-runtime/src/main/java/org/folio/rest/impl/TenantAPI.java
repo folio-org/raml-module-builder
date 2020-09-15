@@ -98,7 +98,7 @@ public class TenantAPI implements Tenant {
                   try {
                     // close clients because they still use the old oid of the dropped schema/role name,
                     // they will fail when the same schema/role is recreated with a new oid.
-                    PostgresClient.closeAllClients();
+                    PostgresClient.closeAllClients(tenantId);
                     String res = "";
                     if(reply.succeeded()){
                       res = new JsonArray(reply.result()).encodePrettily();
