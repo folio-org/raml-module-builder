@@ -1,5 +1,7 @@
 package org.folio.util;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -11,6 +13,81 @@ import java.nio.charset.StandardCharsets;
 public final class StringUtil {
   private StringUtil() {
     throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Appends s to appendable as a quoted CQL string constant.
+   * It masks the five special CQL characters {@code \ * ? ^ "}
+   * and puts the result into double quotes.
+   *
+   * <p>Example usage:
+   *
+   * <pre>
+   * StringBuilder query = new StringBuilder("username==");
+   * StringUtil.appendCqlEncoded(query, username).append(" AND x=y";
+   * String url = "https://example.com/users?query=" + StringUtil.urlEncode(query.toString());
+   * </pre>
+   *
+   * <p>query is {@code username=="" AND x=y} if username is null
+   * <p>query is {@code username=="" AND x=y} if username is an empty string
+   * <p>query is {@code username=="foo" AND x=y} if username is {@code foo}
+   * <p>query is {@code username=="foo\* bar\*" AND x=y} if username is {@code foo* bar*}
+   * <p>query is {@code username=="\\\*\?\^\"" AND x=y} if username is {@code \*?^"}
+   *
+   * @return appendable
+   */
+  public static Appendable appendCqlEncoded(Appendable appendable, CharSequence s) {
+    try {
+      appendable.append('"');
+      if (s != null) {
+        for (int i = 0; i < s.length(); i++) {
+          char c = s.charAt(i);
+          switch (c) {
+          case '\\':
+          case '*':
+          case '?':
+          case '^':
+          case '"':
+            appendable.append('\\').append(c);
+            break;
+          default:
+            appendable.append(c);
+          }
+        }
+      }
+      appendable.append('"');
+      return appendable;
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  /**
+   * Returns s as a quoted CQL string constant. It masks the five
+   * special CQL characters {@code \ * ? ^ "} and puts the result into
+   * double quotes.
+   *
+   * <p>Example usage:
+   *
+   * <pre>
+   * String query = "username==" + StringUtil.cqlEncode(username);
+   * String url = "https://example.com/users?query=" + StringUtil.urlEncode(query);
+   * </pre>
+   *
+   * <p>query is {@code username==""} if s is null
+   * <p>query is {@code username==""} if s is an empty string
+   * <p>query is {@code username=="foo"} if s is {@code foo}
+   * <p>query is {@code username=="foo\* bar\*"} if s is {@code foo* bar*}
+   * <p>query is {@code username=="\\\*\?\^\""} if s is {@code \*?^"}
+   *
+   * @return appendable
+   * @see {@link #appendCqlEncoded(Appendable, CharSequence)} for appending to a StringBuilder
+   */
+  public static String cqlEncode(CharSequence s) {
+    if (s == null) {
+      return "\"\"";
+    }
+    return appendCqlEncoded(new StringBuilder(s.length() + 2), s).toString();
   }
 
   /**

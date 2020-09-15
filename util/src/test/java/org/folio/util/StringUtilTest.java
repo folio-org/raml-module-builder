@@ -3,7 +3,11 @@ package org.folio.util;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.io.Writer;
 import org.folio.rest.testing.UtilityClassTester;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -12,6 +16,31 @@ class StringUtilTest {
   @Test
   void isUtilityClass() {
     UtilityClassTester.assertUtilityClass(StringUtil.class);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "         , \"\"",  // null
+    "''       , \"\"",  // empty string
+    "a        , \"a\"",
+    "foo      , \"foo\"",
+    "foo* bar*, \"foo\\* bar\\*\"",
+    "\\*?^    , \"\\\\\\*\\?\\^\"",
+    "*?\\*?\\ , \"\\*\\?\\\\\\*\\?\\\\\"",
+  })
+  void cqlEncode(String s, String encoded) {
+    assertThat(StringUtil.cqlEncode(s), is(encoded));
+
+    StringBuilder stringBuilder = new StringBuilder("x*y");
+    String actual = StringUtil.appendCqlEncoded(stringBuilder, s).toString();
+    assertThat(actual, is("x*y" + encoded));
+  }
+
+  @Test
+  void appendCqlEncodedIOException() throws IOException {
+    Writer writer = Writer.nullWriter();
+    writer.close();
+    Assertions.assertThrows(UncheckedIOException.class, () -> StringUtil.appendCqlEncoded(writer, "foo"));
   }
 
   @ParameterizedTest
