@@ -1,5 +1,10 @@
 ## 31.1.0 2020-09-16
 
+ * [RMB-699](https://issues.folio.org/browse/RMB-699) Fix Module name detection broken
+ * [RMB-684](https://issues.folio.org/browse/RMB-684) Fix GET query returns no records when offset value > estimated totalRecords
+ * [RMB-701](https://issues.folio.org/browse/RMB-701) Update to Vert.x 3.9.2
+ * [RMB-700](https://issues.folio.org/browse/RMB-700) NPE when RestVerticle calls LogUtil.formatStatsLogMessage
+ * [RMB-677](https://issues.folio.org/browse/RMB-677) Close PostgreSQL connection after invalid CQL failure
  * [RMB-553](https://issues.folio.org/browse/RMB-553) Add postSync to PgUtil
  * [RMB-697](https://issues.folio.org/browse/RMB-697) Explain Vert.x 4 futurisation
  * [RMB-698](https://issues.folio.org/browse/RMB-698) saveBatch and upsertBatch should create metadata
@@ -18,17 +23,6 @@
  * [RMB-716](https://issues.folio.org/browse/RMB-716) [Snyk] Update javaparser-core from 3.3.0 to 3.16.1
  * [RMB-714](https://issues.folio.org/browse/RMB-714) Remove unused aws-lambda-java-core dependency
  * [RMB-725](https://issues.folio.org/browse/RMB-725) StringUtil.cqlEncode masking CQL characters preventing CQL injection	
-
-## 31.0.2 2020-08-25
-
- * [RMB-701](https://issues.folio.org/browse/RMB-701) Update to Vert.x 3.9.2
- * [RMB-700](https://issues.folio.org/browse/RMB-700) NPE when RestVerticle calls LogUtil.formatStatsLogMessage
- * [RMB-677](https://issues.folio.org/browse/RMB-677) Close PostgreSQL connection after invalid CQL failure
-
-## 31.0.1 2020-08-21
-
- * [RMB-699](https://issues.folio.org/browse/RMB-699) Fix Module name detection broken
- * [RMB-684](https://issues.folio.org/browse/RMB-684) Fix GET query returns no records when offset value > estimated totalRecords
 
 ## 31.0.0 2020-08-18
 
