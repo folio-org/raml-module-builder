@@ -3,6 +3,7 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -228,7 +229,24 @@ public class PostgresClientIT {
   public void closeAllClients(TestContext context) {
     PostgresClient c = PostgresClient.getInstance(vertx);
     context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(not(0)));
     PostgresClient.closeAllClients();
+    assertThat(PostgresClient.getConnectionPoolSize(), is(0));
+  }
+
+  @Test
+  public void closeAllClientsTenant(TestContext context) {
+    PostgresClient.closeAllClients();
+    PostgresClient.getInstance(vertx, "a");
+    PostgresClient.getInstance(Vertx.vertx(), "a");
+    PostgresClient.getInstance(vertx, "b");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(3));
+    PostgresClient.closeAllClients("c");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(3));
+    PostgresClient.closeAllClients("b");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(2));
+    PostgresClient.closeAllClients("a");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(0));
   }
 
   @Test

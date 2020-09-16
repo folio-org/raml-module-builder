@@ -951,6 +951,13 @@ Only these relations have been implemented yet:
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
+Example using [StringUtil](util/src/main/java/org/folio/util/StringUtil.java):
+
+```
+String query = "username==" + StringUtil.cqlEncode(username);
+String url = "https://example.com/users?query=" + StringUtil.urlEncode(query);
+```
+
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
 
 To speed up the `==` field matching use a b-tree `"index"` or `"uniqueIndex"`.

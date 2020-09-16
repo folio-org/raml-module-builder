@@ -1,3 +1,29 @@
+## 31.1.0 2020-09-16
+
+ * [RMB-699](https://issues.folio.org/browse/RMB-699) Fix Module name detection broken
+ * [RMB-684](https://issues.folio.org/browse/RMB-684) Fix GET query returns no records when offset value > estimated totalRecords
+ * [RMB-701](https://issues.folio.org/browse/RMB-701) Update to Vert.x 3.9.2
+ * [RMB-700](https://issues.folio.org/browse/RMB-700) NPE when RestVerticle calls LogUtil.formatStatsLogMessage
+ * [RMB-677](https://issues.folio.org/browse/RMB-677) Close PostgreSQL connection after invalid CQL failure
+ * [RMB-553](https://issues.folio.org/browse/RMB-553) Add postSync to PgUtil
+ * [RMB-697](https://issues.folio.org/browse/RMB-697) Explain Vert.x 4 futurisation
+ * [RMB-698](https://issues.folio.org/browse/RMB-698) saveBatch and upsertBatch should create metadata
+ * [RMB-703](https://issues.folio.org/browse/RMB-703) Full text search doesn't match URLs containing &
+ * [RMB-721](https://issues.folio.org/browse/RMB-721) NPE in PomReader while PostgresClient.getInstance
+ * [RMB-723](https://issues.folio.org/browse/RMB-723) Close database connection after dropping schema and role
+ * [RMB-702](https://issues.folio.org/browse/RMB-702) {version} path variable no longer allowed in RAML
+ * [RMB-704](https://issues.folio.org/browse/RMB-704) RestVerticle "singleField" is nullable
+ * [RMB-705](https://issues.folio.org/browse/RMB-705) Refactor assertThrows lambda to have only one invocation throwing an exception
+ * [RMB-706](https://issues.folio.org/browse/RMB-706) Critical code smell constant name, hardcoded password and ip address
+ * [RMB-707](https://issues.folio.org/browse/RMB-707) Remove JwtUtils in favour of okapi-common's OkapiToken
+ * [RMB-711](https://issues.folio.org/browse/RMB-711) Remove Java 8 and Maven 3.3 check
+ * [RMB-712](https://issues.folio.org/browse/RMB-712) [Snyk] Update javax.validation:validation-api to 2.0.1.Final
+ * [RMB-713](https://issues.folio.org/browse/RMB-713) [Snyk] Update org.aspectj:aspectjrt to 1.9.6
+ * [RMB-715](https://issues.folio.org/browse/RMB-715) [Snyk] Update commons-cli from 1.3.1 to 1.4
+ * [RMB-716](https://issues.folio.org/browse/RMB-716) [Snyk] Update javaparser-core from 3.3.0 to 3.16.1
+ * [RMB-714](https://issues.folio.org/browse/RMB-714) Remove unused aws-lambda-java-core dependency
+ * [RMB-725](https://issues.folio.org/browse/RMB-725) StringUtil.cqlEncode masking CQL characters preventing CQL injection	
+
 ## 31.0.0 2020-08-18
 
  * [RMB-328](https://issues.folio.org/browse/RMB-328) Make RMB OpenJDK 11 compliant
@@ -5,8 +31,8 @@
  * [RMB-693](https://issues.folio.org/browse/RMB-693) Close prepared statements in PostgresClient stream get
  * [RMB-686](https://issues.folio.org/browse/RMB-686) Fix documentation about postTenant error handling
  * [RMB-687](https://issues.folio.org/browse/RMB-687) ResponseException for TenantAPI, fix wrong postTenant HTTP status code
- * Drop obsolete rmb_internal_index
- * [RMB-675](https://issues.folio.org/browse/RMB-675) Move pg_trgm from wrong to public schema, don't drop & recreate
+ * Drop obsolete rmb\_internal\_index
+ * [RMB-675](https://issues.folio.org/browse/RMB-675) Move pg\_trgm from wrong to public schema, don't drop & recreate
 
 ## 30.2.4 2020-07-10
 

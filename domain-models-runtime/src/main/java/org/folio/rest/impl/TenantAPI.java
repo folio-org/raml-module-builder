@@ -96,12 +96,15 @@ public class TenantAPI implements Tenant {
             postgresClient(context).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
+                    // close clients because they still use the old oid of the dropped schema/role name,
+                    // they will fail when the same schema/role is recreated with a new oid.
+                    PostgresClient.closeAllClients(tenantId);
                     String res = "";
                     if(reply.succeeded()){
                       res = new JsonArray(reply.result()).encodePrettily();
                       if(reply.result().size() > 0){
                         log.error("Unable to run the following commands during tenant delete: ");
-                        reply.result().forEach(System.out::println);
+                        reply.result().forEach(log::error);
                         handlers.handle(failedFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
                       }
                       else {
