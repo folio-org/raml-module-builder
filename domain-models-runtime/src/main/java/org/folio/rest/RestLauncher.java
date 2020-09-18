@@ -5,9 +5,7 @@ import io.vertx.core.Launcher;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.dropwizard.DropwizardMetricsOptions;
-import io.vertx.ext.dropwizard.Match;
-import io.vertx.ext.dropwizard.MatchType;
+import org.folio.rest.tools.utils.MetricsUtil;
 
 public class RestLauncher extends Launcher {
 
@@ -27,9 +25,17 @@ public class RestLauncher extends Launcher {
     System.out.println("starting rest verticle service..........");
     options.setBlockedThreadCheckInterval(1500000);
     options.setWarningExceptionTime(1500000);
-    boolean enabled = options.getMetricsOptions().isEnabled();
-    options.setMetricsOptions(new DropwizardMetricsOptions().setEnabled(enabled).addMonitoredHttpServerUri(
-        new Match().setValue("/.*").setType(MatchType.REGEX)));
+    if (options.getMetricsOptions().isEnabled()) {
+      enableMetrics(options);
+    }
+  }
+
+  private void enableMetrics(VertxOptions options) {
+    String influxUrl = System.getProperty("influxUrl");
+    String influxDbName = System.getProperty("influxDbName");
+    String influxUserName = System.getProperty("influxUserName");
+    String influxPassword = System.getProperty("influxPassword");
+    MetricsUtil.config(options, influxUrl, influxDbName, influxUserName, influxPassword);
   }
 
   @Override

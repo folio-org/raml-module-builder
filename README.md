@@ -70,6 +70,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Documentation of the APIs](#documentation-of-the-apis)
 * [Logging](#logging)
 * [Monitoring](#monitoring)
+* [Instrumentation](#instrumentation)
 * [Overriding Out of The Box RMB APIs](#overriding-out-of-the-box-rmb-apis)
 * [Client Generator](#client-generator)
 * [Querying multiple modules via HTTP](#querying-multiple-modules-via-http)
@@ -2073,7 +2074,23 @@ Some are listed below (and see the [full set](#documentation-of-the-apis)):
  - `/admin/postgres_load` -- Load information in Postgres.
  - `/admin/postgres_active_sessions` -- Active sessions in Postgres.
  - `/admin/health` -- Returns status code 200 as long as service is up.
- - `/admin/module_stats` -- Summary statistics (count, sum, min, max, average) of all select / update / delete / insert DB queries in the last 2 minutes.
+
+## Instrumentation
+
+RMB can push instrumentation data to an InfluxDB backend, from which
+they can be shown with something like Grafana. Vert.x pushes some numbers
+automatically, but RMB based modules can push their own numbers explicitly.
+
+Enabling the metrics via `-Dvertx.metrics.options.enabled=true` will start sending metrics to `localhost:8086`
+
+Follwing Java parameters can be used to config InfluxDB connection.
+* `influxUrl` - default to `http://localhost:8086`
+* `influxDbName` - default to `okapi`
+* `influxUser` - default to null
+* `influxPassword` - default to null
+
+For example: `java -Dvertx.metrics.options.enabled=true -DinfluxUrl=http://influx.yourdomain.io:8086 -jar mod-inventory-storage/target/mod-inventory-storage-fat.jar` then metrics
+will be sent to `http://influx.yourdomain.io:8086`
 
 ## Overriding Out of The Box RMB APIs
 It is possible to over ride APIs that the RMB provides with custom implementations.

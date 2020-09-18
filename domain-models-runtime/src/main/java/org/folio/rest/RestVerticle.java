@@ -86,7 +86,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.dropwizard.MetricsService;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -118,7 +117,6 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static final String       HTTP_PORT_SETTING               = "http.port";
-  private static MetricsService     serverMetrics                   = null;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
@@ -183,8 +181,6 @@ public class RestVerticle extends AbstractVerticle {
     deploymentId = UUID.randomUUID().toString();
 
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
-
-    serverMetrics = MetricsService.create(vertx);
 
     // maps paths found in raml to the generated functions to route to when the paths are requested
     MappedClasses mappedURLs = populateConfig();
@@ -1516,10 +1512,6 @@ public class RestVerticle extends AbstractVerticle {
     // For a better implementation see
     // https://issues.folio.org/browse/RMB-669 "Add default metrics to RMB: incoming API calls"
     ThreadContext.remove("reqId");
-  }
-
-  public static MetricsService getServerMetrics(){
-    return serverMetrics;
   }
 
   class StreamStatus {
