@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.folio.cql2pgjson.util.DbSchemaUtils;
-import org.folio.rest.persist.ddlgen.ForeignKeys;
-import org.folio.rest.persist.ddlgen.Index;
-import org.folio.rest.persist.ddlgen.Table;
+import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.Index;
+import org.folio.dbschema.Table;
 
 /**
  * Stores index information to avoid iterating through the table's index lists repeatedly.
@@ -27,7 +27,7 @@ public class DbIndex {
    */
   private final Index ginIndex;
   /**
-   * index using to_tsvector full text search
+   * index using tsvector full text search
    * @see <a href="https://www.postgresql.org/docs/current/textsearch-tables.html#TEXTSEARCH-TABLES-INDEX">https://www.postgresql.org/docs/current/textsearch-tables.html#TEXTSEARCH-TABLES-INDEX</a>
    */
   private final Index fullTextIndex;
@@ -92,7 +92,7 @@ public class DbIndex {
   }
 
   /**
-   * @return index using to_tsvector full text search, or null if no such index exists
+   * @return index using tsvector full text search, or null if no such index exists
    * @see <a href="https://www.postgresql.org/docs/current/textsearch-tables.html#TEXTSEARCH-TABLES-INDEX">https://www.postgresql.org/docs/current/textsearch-tables.html#TEXTSEARCH-TABLES-INDEX</a>
    */
   public Index getFullTextIndex() {
@@ -133,7 +133,7 @@ public class DbIndex {
   }
 
   /**
-   * @return whether an index using to_tsvector full text search exists
+   * @return whether an index using tsvector full text search exists
    * @see <a href="https://www.postgresql.org/docs/current/textsearch-indexes.html">https://www.postgresql.org/docs/current/textsearch-indexes.html</a>
    */
   public boolean hasFullTextIndex() {

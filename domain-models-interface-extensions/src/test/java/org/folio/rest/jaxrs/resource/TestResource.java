@@ -2,6 +2,7 @@
 package org.folio.rest.jaxrs.resource;
 
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
@@ -25,9 +26,9 @@ public interface TestResource {
         @QueryParam("author")
         @NotNull
         String author,
-        @QueryParam("publicationYear")
+        @QueryParam("publicationDate")
         @NotNull
-        BigDecimal publicationYear,
+        Date publicationDate,
         @QueryParam("rating")
         BigDecimal rating,
         @QueryParam("isbn")
@@ -35,6 +36,21 @@ public interface TestResource {
         String isbn,
         @QueryParam("facets")
         List<String> facets, java.util.Map<String, String>okapiHeaders, io.vertx.core.Handler<io.vertx.core.AsyncResult<Response>>asyncResultHandler, Context vertxContext)
+        throws Exception
+    ;
+
+    @GET
+    @Produces({
+        "application/json"
+    })
+    @Validate
+    void getRmbtests(
+        @QueryParam("name")
+        @NotNull
+        String name,
+        @QueryParam("success")
+        @NotNull
+        Boolean success, java.util.Map<String, String>okapiHeaders, io.vertx.core.Handler<io.vertx.core.AsyncResult<Response>>asyncResultHandler, Context vertxContext)
         throws Exception
     ;
 }

@@ -8,16 +8,17 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.resource.Tenant;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
-import org.folio.rest.persist.ddlgen.TenantOperation;
+import org.folio.dbschema.TenantOperation;
 import org.folio.rest.tools.ClientGenerator;
-import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.ObjectMapperTool;
+import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 
@@ -62,7 +63,7 @@ public class TenantAPI implements Tenant {
             if(h.succeeded()){
               exists = h.result();
               if(!exists){
-                handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.
+                handlers.handle(failedFuture(DeleteTenantResponse.
                   respond400WithTextPlain("Tenant does not exist: " + tenantId)));
                 log.error("Can not delete. Tenant does not exist: " + tenantId);
                 return;
@@ -79,7 +80,8 @@ public class TenantAPI implements Tenant {
 
             String sqlFile = null;
             try {
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), TenantOperation.DELETE, null, PomReader.INSTANCE.getRmbVersion());
+              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(),
+                  TenantOperation.DELETE, null, null);
               sqlFile = sMaker.generateDDL();
 
             } catch (Exception e1) {
@@ -94,13 +96,16 @@ public class TenantAPI implements Tenant {
             postgresClient(context).runSQLFile(sqlFile, true,
                 reply -> {
                   try {
+                    // close clients because they still use the old oid of the dropped schema/role name,
+                    // they will fail when the same schema/role is recreated with a new oid.
+                    PostgresClient.closeAllClients(tenantId);
                     String res = "";
                     if(reply.succeeded()){
                       res = new JsonArray(reply.result()).encodePrettily();
                       if(reply.result().size() > 0){
                         log.error("Unable to run the following commands during tenant delete: ");
-                        reply.result().forEach(System.out::println);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
+                        reply.result().forEach(log::error);
+                        handlers.handle(failedFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
                       }
                       else {
                         OutStream os = new OutStream();
@@ -110,19 +115,19 @@ public class TenantAPI implements Tenant {
                     }
                     else {
                       log.error(reply.cause().getMessage(), reply.cause());
-                      handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                      handlers.handle(failedFuture(DeleteTenantResponse
                         .respond500WithTextPlain(reply.cause().getMessage())));
                     }
                   } catch (Exception e) {
                     log.error(e.getMessage(), e);
-                    handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+                    handlers.handle(failedFuture(DeleteTenantResponse
                       .respond500WithTextPlain(e.getMessage())));
                   }
                 });
           });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
-        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse
+        handlers.handle(failedFuture(DeleteTenantResponse
           .respond500WithTextPlain(e.getMessage())));
       }
     });
@@ -174,13 +179,13 @@ public class TenantAPI implements Tenant {
           }
           else{
             log.error(res.cause().getMessage(), res.cause());
-            handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
+            handlers.handle(failedFuture(GetTenantResponse
               .respond500WithTextPlain(res.cause().getMessage())));
           }
         });
       } catch (Exception e) {
         log.error(e.getMessage(), e);
-        handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse
+        handlers.handle(failedFuture(GetTenantResponse
           .respond500WithTextPlain(e.getMessage())));
       }
     });
@@ -294,10 +299,18 @@ public class TenantAPI implements Tenant {
     .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists));
   }
 
+  /**
+   * Installs or upgrades a module for a tenant.
+   *
+   * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
+   *
+   * @see <a href="https://github.com/folio-org/raml-module-builder#extending-the-tenant-init">Extending the Tenant Init</a>
+   *      for usage examples
+   */
   @Validate
   @Override
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-      Handler<AsyncResult<Response>> handlers, Context context)  {
+      Handler<AsyncResult<Response>> handler, Context context)  {
 
     String tenantId = TenantTool.tenantId(headers);
     log.info("sending... postTenant for " + tenantId);
@@ -319,14 +332,31 @@ public class TenantAPI implements Tenant {
               ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
               : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
     })
+
     .onFailure(e -> {
       if (e instanceof NoSchemaJsonException) {
-        handlers.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+        handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
         return;
       }
       log.error(e.getMessage(), e);
-      handlers.handle(Future.succeededFuture(PostTenantResponse.respond500WithTextPlain(e.getMessage())));
+      String text = e.getMessage() + "\n" + ExceptionUtils.getStackTrace(e);
+      Response response = PostTenantResponse.respond500WithTextPlain(text);
+      handler.handle(failedFuture(response));
     })
-    .onSuccess(response -> handlers.handle(Future.succeededFuture(response)));
+    .onSuccess(response -> {
+      if (response.getStatus() >= 300) {
+        handler.handle(failedFuture(response));
+        return;
+      }
+      handler.handle(Future.succeededFuture(response));
+    });
+  }
+
+  /**
+   * @return a failed {@link Future} where the failure cause is a {@link ResponseException}
+   *         containing the {@code response}
+   */
+  static Future<Response> failedFuture(Response response) {
+    return Future.failedFuture(new ResponseException(response));
   }
 }

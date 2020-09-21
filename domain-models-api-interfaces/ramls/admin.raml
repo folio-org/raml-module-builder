@@ -388,24 +388,3 @@ traits:
           body:
             text/plain:
               example: "Internal server error, contact administrator"
-  /module_stats:
-    get:
-      description: The API returns service specific statistics. Should be overridden |
-        by individual services that run a set of business logic functions / gather stats and return.
-      responses:
-        200:
-          description: "returned status"
-          body:
-            text/plain:
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: |
-                ""
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error, contact administrator"
-

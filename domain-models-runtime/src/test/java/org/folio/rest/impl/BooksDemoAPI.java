@@ -9,6 +9,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,7 @@ public class BooksDemoAPI implements Rmbtests {
    */
   @Validate
   @Override
-  public void getRmbtestsBooks(String author, Number publicationYear, Number rating, String isbn,
+  public void getRmbtestsBooks(String author, Date publicationDate, Number rating, int edition, String isbn,
       List<String> facets, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
@@ -116,5 +117,12 @@ public class BooksDemoAPI implements Rmbtests {
     jo.put("complete", okapiHeaders.containsKey("COMPLETE"));
     asyncResultHandler.handle(Future.succeededFuture(
       PostRmbtestsTestStreamResponse.respond200WithApplicationJson(jo.encodePrettily())));
+  }
+
+  @Validate
+  @Override
+  public void optionsRmbtestsTest(RoutingContext routingContext, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    asyncResultHandler.handle(Future.succeededFuture(OptionsRmbtestsTestResponse.respond200()));
   }
 }

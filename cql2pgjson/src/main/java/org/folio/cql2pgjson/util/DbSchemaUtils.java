@@ -6,10 +6,10 @@ import java.util.List;
 
 import org.folio.cql2pgjson.model.DbFkInfo;
 import org.folio.cql2pgjson.model.DbIndex;
-import org.folio.rest.persist.ddlgen.ForeignKeys;
-import org.folio.rest.persist.ddlgen.Index;
-import org.folio.rest.persist.ddlgen.Schema;
-import org.folio.rest.persist.ddlgen.Table;
+import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.Index;
+import org.folio.dbschema.Schema;
+import org.folio.dbschema.Table;
 
 /**
  * Help method to extract info from RMB db schema.json

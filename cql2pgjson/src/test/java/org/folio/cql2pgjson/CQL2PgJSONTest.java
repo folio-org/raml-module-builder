@@ -29,7 +29,7 @@ import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.folio.cql2pgjson.model.CqlMasking;
 import org.folio.cql2pgjson.model.CqlModifiers;
 import org.folio.cql2pgjson.model.SqlSelect;
-import org.folio.rest.persist.ddlgen.Table;
+import org.folio.dbschema.Table;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -324,7 +324,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   }
   @Test
   @Parameters({
-    "name ==\"LEA long\"           #", // == means exact match, case and everything
+    "name ==\"LEA long\"           #", // == means field match
   })
   public void caseSensitive(String testcase) {
     select(cql2pgjsonRespectCase,testcase);
@@ -776,11 +776,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void toSql() throws QueryValidationException {
     SqlSelect s = cql2pgJson.toSql("email=Long sortBy name/sort.descending");
     assertThat(s.getWhere(),
-        allOf(containsString("to_tsvector"),
+        allOf(containsString("get_tsvector"),
             containsString("users.user_data->>'email'")));
     assertEquals("left(lower(f_unaccent(users.user_data->>'name')),600) DESC, lower(f_unaccent(users.user_data->>'name')) DESC", s.getOrderBy());
     String sql = s.toString();
-    assertTrue(sql.startsWith("WHERE to_tsvector('simple',"));
+    assertTrue(sql.startsWith("WHERE get_tsvector("));
     assertTrue(sql.endsWith(" ORDER BY "
       + "left(lower(f_unaccent(users.user_data->>'name')),600) DESC, lower(f_unaccent(users.user_data->>'name')) DESC"));
   }
@@ -904,7 +904,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "Long                           # Lea Long",
     "Lon                            #",
     "ong                            #",
-    "cql.serverChoice==example      #", // == means exact match
+    "cql.serverChoice==example      #", // == means field match
     "email==ka@example.com          # Ka Keller",
     "email=ka@example.com           # Ka Keller",
     "email=ka@*                     # Ka Keller",
@@ -912,7 +912,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     // like (.+)@(.*)(\.)(??.+) is considered an email, and comes up
     // as one token. Anything else will be tokenized at the '@' and '.'
     // into separate tokens. The end result is that email-looking things
-    // will only do exact match, and truncation breaks (unless the top-domain
+    // will only do field match, and truncation breaks (unless the top-domain
     // is longer than two characters, and we mention two characters and
     // truncate the rest)
     //

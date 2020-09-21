@@ -1,6 +1,5 @@
 package org.folio.rest;
 
-import io.vertx.core.Promise;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +9,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -33,18 +31,25 @@ import javax.validation.ValidatorFactory;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.google.common.base.Joiner;
+import com.google.common.io.ByteStreams;
+
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateUtils;
+import org.apache.logging.log4j.ThreadContext;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.RTFConsts;
+import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.codecs.PojoEventBusCodec;
 import org.folio.rest.tools.messages.MessageConsts;
@@ -53,26 +58,21 @@ import org.folio.rest.tools.utils.AsyncResponseResult;
 import org.folio.rest.tools.utils.BinaryOutStream;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
-import org.folio.rest.tools.utils.JwtUtils;
 import org.folio.rest.tools.utils.LogUtil;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.rest.tools.utils.MetadataUtil;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.rest.tools.utils.VertxUtils;
-import org.apache.log4j.MDC;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import com.google.common.base.Joiner;
-import com.google.common.io.ByteStreams;
-
+import org.folio.util.StringUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.EventBus;
@@ -86,7 +86,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.dropwizard.MetricsService;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -110,13 +109,6 @@ public class RestVerticle extends AbstractVerticle {
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
-  private static final String       UPLOAD_PATH_TO_HANDLE           = "/admin/upload";
-  private static final String       CORS_ALLOW_HEADER               = "Access-Control-Allow-Origin";
-  private static final String       CORS_ALLOW_ORIGIN               = "Access-Control-Allow-Headers";
-  private static final String       CORS_ALLOW_METHODS_HEADER       = "Access-Control-Allow-Methods";
-  private static final String       CORS_ALLOW_METHODS_VALUE        = "POST, GET, OPTIONS , PUT, DELETE";
-  private static final String       CORS_ALLOW_HEADER_VALUE         = "*";
-  private static final String       CORS_ALLOW_ORIGIN_VALUE         = "Origin, Authorization, X-Requested-With, Content-Type, Accept, x-okapi-tenant";
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_API_DEF = "application/vnd.api+json";
@@ -125,17 +117,19 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static final String       HTTP_PORT_SETTING               = "http.port";
-  private static MetricsService     serverMetrics                   = null;
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LoggerFactory.getLogger(className);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
-  private static final String       DEFAULT_SCHEMA                  = "public";
-  /**
-   * Minimum java version used for runtime check.
-   *
-   * For compile time check see raml-module-builder/pom.xml maven-enforcer-plugin requireJavaVersion.
-   */
-  private static final String       MINIMUM_JAVA_VERSION              = "1.8.0_101";
+
+  private static final String[]     DATE_PATTERNS = {
+    "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+    "yyyy-MM-dd'T'HH:mm:ss'Z'",
+    "yyyy-MM-dd'T'HH:mm:ss",
+    "yyyy-MM-dd",
+    "yyyy-MM",
+    "yyyy"
+  };
 
   private static ValidatorFactory   validationFactory;
   private static String             deploymentId                     = "";
@@ -156,31 +150,6 @@ public class RestVerticle extends AbstractVerticle {
     //passed in the request body in put and post requests. The constraints validated by this factory
     //are the ones in the json schemas accompanying the raml files
     validationFactory = Validation.buildDefaultValidatorFactory();
-    checkJavaVersion(System.getProperty("java.runtime.version"));
-  }
-
-  /**
-   * Compare java version strings of the form 1.8.0_191
-   */
-  static int compareJavaVersion(String versionA, String versionB) {
-    String [] a = versionA.split("[^0-9]+");
-    String [] b = versionB.split("[^0-9]+");
-    for (int i=0; i<4; i++) {
-      int compare = Integer.compare(Integer.parseInt(a[i]), Integer.parseInt(b[i]));
-      if (compare != 0) {
-        return compare;
-      }
-    }
-    return 0;
-  }
-
-  /**
-   * @throws InternalError if javaVersion is less than {@link #MINIMUM_JAVA_VERSION}
-   */
-  static void checkJavaVersion(String javaVersion) {
-    if (compareJavaVersion(javaVersion, MINIMUM_JAVA_VERSION) < 0) {
-      throw new InternalError("Minimum java version is " + MINIMUM_JAVA_VERSION + " but found " + javaVersion);
-    }
   }
 
   // https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
@@ -212,8 +181,6 @@ public class RestVerticle extends AbstractVerticle {
     deploymentId = UUID.randomUUID().toString();
 
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
-
-    serverMetrics = MetricsService.create(vertx);
 
     // maps paths found in raml to the generated functions to route to when the paths are requested
     MappedClasses mappedURLs = populateConfig();
@@ -349,6 +316,28 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   /**
+   * Match the path agaist pattern.
+   * @return the matching groups urldecoded, may be an empty array, or null if the pattern doesn't match
+   */
+  @SuppressWarnings("java:S1168")  // suppress "Empty arrays should be returned instead of null"
+  static String[] matchPath(String path, Pattern pattern) {
+    Matcher m = pattern.matcher(path);
+    if (! m.find()) {
+      return null;
+    }
+
+    int groups = m.groupCount();
+    // pathParams are the place holders in the raml query string
+    // for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
+    // they are replaced with actual values and are passed to the function which the url is mapped to
+    String[] pathParams = new String[groups];
+    for (int i = 0; i < groups; i++) {
+      pathParams[i] = StringUtil.urlDecode(m.group(i + 1));
+    }
+    return pathParams;
+  }
+
+  /**
    * Handler for all url calls other then documentation.
    * @param mappedURLs  maps paths found in raml to the generated functions to route to when the paths are requested
    * @param urlPaths  set of exposed urls as declared in the raml
@@ -359,23 +348,20 @@ public class RestVerticle extends AbstractVerticle {
       RoutingContext rc) {
     long start = System.nanoTime();
     try {
-      //list of regex urls created from urls declared in the raml
-      Iterator<String> iter = urlPaths.iterator();
       boolean validPath = false;
       boolean[] validRequest = { true };
+      // urlPaths = list of regex urls created from urls declared in the raml.
       // loop over regex patterns and try to match them against the requested
       // URL if no match is found, then the requested url is not supported by
       // the ramls and we return an error - this has positive security implications as well
-      while (iter.hasNext()) {
-        String regexURL = iter.next();
-        //try to match the requested url to each regex pattern created from the urls in the raml
-        Matcher m = regex2Pattern.get(regexURL).matcher(rc.request().path());
-        if (m.find()) {
+      for (String urlPath : urlPaths) {
+        String[] pathParams = matchPath(rc.request().path(), regex2Pattern.get(urlPath));
+        if (pathParams != null) {  // if matched
           validPath = true;
 
           // get the function that should be invoked for the requested
           // path + requested http_method pair
-          JsonObject ret = mappedURLs.getMethodbyPath(regexURL, rc.request().method().toString());
+          JsonObject ret = mappedURLs.getMethodbyPath(urlPath, rc.request().method().toString());
           // if a valid path was requested but no function was found
           if (ret == null) {
 
@@ -395,23 +381,10 @@ public class RestVerticle extends AbstractVerticle {
           Class<?> aClass;
           try {
             if (validRequest[0]) {
-              int groups = m.groupCount();
-              //pathParams are the place holders in the raml query string
-              //for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
-              //they are replaced with actual values and are passed to the function which the url is mapped to
-              String[] pathParams = new String[groups];
-              for (int i = 0; i < groups; i++) {
-                pathParams[i] = m.group(i + 1);
-              }
-
               //create okapi headers map and inject into function
               Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
               String []tenantId = new String[]{null};
               getOkapiHeaders(rc, okapiHeaders, tenantId);
-              String reqId = okapiHeaders.get(OKAPI_REQUESTID_HEADER);
-              if(reqId != null){
-                MDC.put("reqId", "reqId="+reqId);
-              }
               if(tenantId[0] == null && !rc.request().path().startsWith("/admin")){
                 //if tenant id is not passed in and this is not an /admin request, return error
                 endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest)
@@ -503,11 +476,11 @@ public class RestVerticle extends AbstractVerticle {
                         //if request is valid - invoke it
                         try {
                           invoke(method2Run[0], paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
-                            LogUtil.formatLogMessage(className, "start", " invoking " + function);
+                            withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
                             sendResponse(rc, v, start, tenantId[0]);
                           });
                         } catch (Exception e1) {
-                          log.error(e1.getMessage(), e1);
+                          withRequestId(rc, () -> log.error(e1.getMessage(), e1));
                           rc.response().end();
                         }
                       }
@@ -531,11 +504,11 @@ public class RestVerticle extends AbstractVerticle {
                     //if request is valid - invoke it
                     try {
                       invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
-                        LogUtil.formatLogMessage(className, "start", " invoking " + function);
+                        withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
                         sendResponse(rc, v, start, tenantId[0]);
                       });
                     } catch (Exception e1) {
-                      log.error(e1.getMessage(), e1);
+                      withRequestId(rc, () -> log.error(e1.getMessage(), e1));
                       rc.response().end();
                     }
                   }
@@ -548,7 +521,7 @@ public class RestVerticle extends AbstractVerticle {
               }
             }
           } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            withRequestId(rc, () -> log.error(e.getMessage(), e));
             endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest) + e.getMessage(),
               validRequest);
             return;
@@ -561,7 +534,7 @@ public class RestVerticle extends AbstractVerticle {
           messages.getMessage("en", MessageConsts.InvalidURLPath, rc.request().path()), validRequest);
       }
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
+      withRequestId(rc, () -> log.error(e.getMessage(), e));
       endRequestWithError(rc, 500, true, "Server error", new boolean[] { true });
     }
   }
@@ -578,10 +551,10 @@ public class RestVerticle extends AbstractVerticle {
           paramArray[uploadParamPosition[0]] =
               new ByteArrayInputStream( buff.getBytes() );
           invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
-            LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
+            withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run));
           });
         } catch (Exception e1) {
-          log.error(e1.getMessage(), e1);
+          withRequestId(rc, () -> log.error(e1.getMessage(), e1));
           rc.response().end();
         }
       }
@@ -591,7 +564,7 @@ public class RestVerticle extends AbstractVerticle {
       stat.setStatus(1);
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
       invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
-        LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
+        withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run));
         //all data has been stored in memory - not necessarily all processed
         sendResponse(rc, v, start, tenantId[0]);
       });
@@ -602,8 +575,9 @@ public class RestVerticle extends AbstractVerticle {
         StreamStatus stat = new StreamStatus();
         stat.setStatus(2);
         paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
-        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, stat, v
-          -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run)
+        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, stat,
+            v -> withRequestId(rc, () ->
+              LogUtil.formatLogMessage(className, "start", " invoking " + method2Run))
         );
         endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
       }
@@ -637,11 +611,11 @@ public class RestVerticle extends AbstractVerticle {
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(content.getBytes());
       try {
         invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
-          LogUtil.formatLogMessage(className, "start", " invoking " + method2Run);
+          withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run));
           sendResponse(rc, v, start, tenantId[0]);
         });
       } catch (Exception e1) {
-        log.error(e1.getMessage(), e1);
+        withRequestId(rc, () -> log.error(e1.getMessage(), e1));
         rc.response().end();
       }
     });
@@ -727,7 +701,7 @@ public class RestVerticle extends AbstractVerticle {
             mmp.addBodyPart(mbp);
             content = null;
           } catch (MessagingException e) {
-            log.error(e.getMessage(), e);
+            withRequestId(rc, () -> log.error(e.getMessage(), e));
           }
         }
       });
@@ -748,6 +722,21 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   /**
+   * @return a {@link Response} extracted from asyncResult, either from result(), or from
+   *         cause().getResponse() if cause() is a {@link ResponseException}, or null otherwise
+   */
+  static Response getResponse(AsyncResult<Response> asyncResult) {
+    if (asyncResult.succeeded()) {
+      return asyncResult.result();
+    }
+    Throwable exception = asyncResult.cause();
+    if (exception instanceof ResponseException) {
+      return ((ResponseException) exception).getResponse();
+    }
+    return null;
+  }
+
+  /**
    * Send the result as response.
    *
    * @param rc
@@ -758,8 +747,8 @@ public class RestVerticle extends AbstractVerticle {
    *          - request's start time, using JVM's high-resolution time source, in nanoseconds
    */
   private void sendResponse(RoutingContext rc, AsyncResult<Response> v, long start, String tenantId) {
-    Response result = ((Response) ((AsyncResult<?>) v).result());
-    if (result == null) {
+    Response responseFromResult = getResponse(v);
+    if (responseFromResult == null) {
       // catch all
       endRequestWithError(rc, 500, true, "Server error", new boolean[] { true });
       return;
@@ -767,7 +756,7 @@ public class RestVerticle extends AbstractVerticle {
     Object entity = null;
     try {
       HttpServerResponse response = rc.response();
-      int statusCode = result.getStatus();
+      int statusCode = responseFromResult.getStatus();
       // 204 means no content returned in the response, so passing
       // a chunked Transfer header is not allowed
       if (statusCode != 204) {
@@ -779,9 +768,9 @@ public class RestVerticle extends AbstractVerticle {
       // !!!!!!!!!!!!!!!!!!!!!! CORS commented OUT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       // response.putHeader("Access-Control-Allow-Origin", "*");
 
-      copyHeadersJoin(result.getStringHeaders(), response.headers());
+      copyHeadersJoin(responseFromResult.getStringHeaders(), response.headers());
 
-      entity = result.getEntity();
+      entity = responseFromResult.getEntity();
 
       /* entity is of type OutStream - and will be written as a string */
       if (entity instanceof OutStream) {
@@ -800,7 +789,7 @@ public class RestVerticle extends AbstractVerticle {
         response.write(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       }
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
+      withRequestId(rc, () -> log.error(e.getMessage(), e));
     } finally {
       rc.response().end();
     }
@@ -812,17 +801,12 @@ public class RestVerticle extends AbstractVerticle {
       try {
         sb.append(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       } catch (Exception e) {
-        String name = "null";
-        if (entity != null) {
-          name = entity.getClass().getName();
-        }
-        log.error("writeValueAsString(" + name + ")", e);
+        String name = entity == null ? "null" : entity.getClass().getName();
+        withRequestId(rc, () -> log.error("writeValueAsString(" + name + ")", e));
       }
     }
 
-    LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
-      rc.request().version().toString(), rc.response().getStatusCode(), (((end - start) / 1000000)), rc.response().bytesWritten(),
-      rc.request().path(), rc.request().query(), rc.response().getStatusMessage(), tenantId, sb.toString());
+    withRequestId(rc, () -> LogUtil.formatStatsLogMessage(rc, (end - start) / 1000000, tenantId, sb.toString()));
   }
 
   /**
@@ -853,14 +837,11 @@ public class RestVerticle extends AbstractVerticle {
         }
         if (message != null) {
           response.write(message);
-        } else {
-          message = "";
         }
         response.end();
       }
-      LogUtil.formatStatsLogMessage(rc.request().remoteAddress().toString(), rc.request().method().toString(),
-        rc.request().version().toString(), response.getStatusCode(), -1, rc.response().bytesWritten(),
-        rc.request().path(), rc.request().query(), response.getStatusMessage(), null, message);
+      withRequestId(rc, () ->
+        LogUtil.formatStatsLogMessage(rc, -1, null, message == null ? "" : message));
     }
     // once we are here the call is not valid
     isValid[0] = false;
@@ -933,9 +914,6 @@ public class RestVerticle extends AbstractVerticle {
     //inject vertx context into each function
     newArray[params.length - (size-(pos+2))] = context;
 
-/*    if(tenantId[0] == null){
-      headers.put(OKAPI_HEADER_TENANT, DEFAULT_SCHEMA);
-    }*/
     newArray[params.length - (size-pos)] = headers;
 
     try {
@@ -943,7 +921,7 @@ public class RestVerticle extends AbstractVerticle {
       // response.setChunked(true);
       // response.setStatusCode(((Response)result).getStatus());
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
+      withRequestId(rc, () -> log.error(e.getMessage(), e));
       String message;
       try {
         // catch exception for now in case of null point and show generic
@@ -1112,8 +1090,7 @@ public class RestVerticle extends AbstractVerticle {
     List<String> cmdParams = processArgs();
 
     if (cmdParams != null) {
-      for (Iterator iterator = cmdParams.iterator(); iterator.hasNext();) {
-        String param = (String) iterator.next();
+      for (String param : cmdParams) {
 
         if (param.startsWith("debug_log_package=")) {
           String debugPackage = param.split("=")[1];
@@ -1233,7 +1210,7 @@ public class RestVerticle extends AbstractVerticle {
         int order = ((JsonObject) entry.getValue()).getInteger("order");
         Object defaultVal = ((JsonObject) entry.getValue()).getValue("default_value");
 
-        boolean emptyNumeircParam = false;
+        boolean emptyNumericParam = false;
         // validation of query params (other then enums), object in body (not including drools),
         // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
         // handle un-annotated parameters - this is assumed to be
@@ -1251,7 +1228,7 @@ public class RestVerticle extends AbstractVerticle {
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
               String bodyContent = rc.getBodyAsString();
-              log.debug(rc.request().path() + " -------- bodyContent -------- " + bodyContent);
+              withRequestId(rc, () -> log.debug(rc.request().path() + " -------- bodyContent -------- " + bodyContent));
               if(bodyContent != null){
                 if("java.io.Reader".equals(valueType)){
                   paramArray[order] = new StringReader(bodyContent);
@@ -1263,7 +1240,7 @@ public class RestVerticle extends AbstractVerticle {
                   try {
                     paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
                   } catch (UnrecognizedPropertyException e) {
-                    log.error(e.getMessage(), e);
+                    withRequestId(rc, () -> log.error(e.getMessage(), e));
                     endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(
                       ValidationHelper.createValidationErrorMessage("", "", e.getMessage())) , validRequest);
                     return;
@@ -1296,10 +1273,10 @@ public class RestVerticle extends AbstractVerticle {
                 sendResponse(rc, arr, 0, null);
                 return;
               }
-              populateMetaData(paramArray[order], okapiHeaders, rc.request().path());
+              MetadataUtil.populateMetadata(paramArray[order], okapiHeaders);
             }
           } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            withRequestId(rc, () -> log.error(e.getMessage(), e));
             endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), validRequest);
 
           }
@@ -1315,7 +1292,7 @@ public class RestVerticle extends AbstractVerticle {
           paramArray[order] = pathParams[pathParamsIndex[0]++];
         } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
           String param = queryParams.get(valueName);
-          // support enum, numbers or strings as query parameters
+          // support date, enum, numbers or strings as query parameters
           try {
             if (valueType.equals("java.lang.String")) {
               // regular string param in query string - just push value
@@ -1325,17 +1302,25 @@ public class RestVerticle extends AbstractVerticle {
               } else {
                 paramArray[order] = param;
               }
+            } else if (valueType.equals("java.util.Date")) {
+              // regular string param in query string - just push value
+              if (param == null) {
+                // no value passed - check if there is a default value
+                paramArray[order] = defaultVal;
+              } else {
+                paramArray[order] = DateUtils.parseDate(param, DATE_PATTERNS);
+              }
             } else if (valueType.equals("int") || valueType.equals("java.lang.Integer")) {
               // cant pass null to an int type
               if (param == null) {
                 if (defaultVal != null) {
                   paramArray[order] = Integer.valueOf((String) defaultVal);
                 } else {
-                  paramArray[order] = 0;
+                  paramArray[order] = valueType.equals("int") ? 0 : null;
                 }
               }
               else if("".equals(param)) {
-                emptyNumeircParam = true;
+                emptyNumericParam = true;
               }
               else {
                 paramArray[order] = Integer.valueOf(param);
@@ -1365,7 +1350,7 @@ public class RestVerticle extends AbstractVerticle {
                 }
               }
               else if ("".equals(param)) {
-                emptyNumeircParam = true;
+                emptyNumericParam = true;
               }
               else {
                 paramArray[order] = new BigDecimal(param.replaceAll(",", "")); // big decimal can contain ","
@@ -1374,16 +1359,16 @@ public class RestVerticle extends AbstractVerticle {
               try {
                 paramArray[order] = parseEnum(valueType, param, defaultVal);
               } catch (Exception ee) {
-                log.error(ee.getMessage(), ee);
+                withRequestId(rc, () -> log.error(ee.getMessage(), ee));
                 endRequestWithError(rc, 400, true, ee.getMessage(), validRequest);
               }
             }
-            if(emptyNumeircParam){
+            if(emptyNumericParam){
               endRequestWithError(rc, 400, true, valueName + " does not have a default value in the RAML and has been passed empty",
                 validRequest);
             }
           } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            withRequestId(rc, () -> log.error(e.getMessage(), e));
             endRequestWithError(rc, 400, true, e.getMessage(), validRequest);
           }
         }
@@ -1461,7 +1446,8 @@ public class RestVerticle extends AbstractVerticle {
             ((JsonObject)content).remove(cv.getPropertyPath().toString());
             continue;
           } catch (Exception e) {
-            log.warn("Failed to remove " + cv.getPropertyPath().toString() + " field from body when calling " + rc.request().absoluteURI(), e);
+            withRequestId(rc, () -> log.warn("Failed to remove " + cv.getPropertyPath().toString()
+                + " field from body when calling " + rc.request().absoluteURI(), e));
           }
         }
         Error error = new Error();
@@ -1484,7 +1470,7 @@ public class RestVerticle extends AbstractVerticle {
         //and that field fails validation. if another field fails validation
         //that is ok as validation on that specific field wasnt requested
         //or there are validation errors and this is not a per field validation request
-        if((singleField != null && singleField.contains(field)) || singleField.isEmpty()){
+        if (singleField != null && (singleField.contains(field) || singleField.isEmpty())) {
           errorResp.getErrors().add(error);
           ret = false;
         }
@@ -1495,7 +1481,9 @@ public class RestVerticle extends AbstractVerticle {
         try {
           content = MAPPER.readValue(((JsonObject)content).encode(), entityClazz);
         } catch (IOException e) {
-          log.error("Failed to serialize body content after removing read-only fields when calling " + rc.request().absoluteURI(), e);
+          withRequestId(rc, () -> log.error(
+              "Failed to serialize body content after removing read-only fields when calling "
+                  + rc.request().absoluteURI(), e));
         }
       }
     }
@@ -1504,69 +1492,26 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   /**
-   * @return entity.setMetadata(Metadata) method, or null if not found.
+   * Run logCommand with request id. Take request id value from headers in routingContext
+   * and temporarily store it as reqId in ThreadContext. Run logCommand without reqId
+   * if request id value is <code>null</code>.
    */
-  private static Method getSetMetadataMethod(Object entity) {
-    if (entity == null) {
-      return null;
+  private static void withRequestId(RoutingContext routingContext, Runnable logCommand) {
+    if (routingContext == null) {
+      logCommand.run();
+      return;
     }
-    // entity.getClass().getMethod("setMetadata", new Class[] { Metadata.class })
-    // is 20 times slower than this loop when not found because of throwing the exception
-    for (Method method : entity.getClass().getMethods()) {
-      if (method.getName().equals("setMetadata") &&
-          method.getParameterCount() == 1 &&
-          method.getParameters()[0].getType().equals(Metadata.class)) {
-        return method;
-      }
+    String requestId = routingContext.request().headers().get(RestVerticle.OKAPI_REQUESTID_HEADER);
+    if (requestId == null) {
+      logCommand.run();
+      return;
     }
-    return null;
-  }
-
-  private static String userIdFromToken(String token) {
-    try {
-      String[] split = token.split("\\.");
-      //the split array contains the 3 parts of the token - the body is the middle part
-      String json = JwtUtils.getJson(split[1]);
-      JsonObject j = new JsonObject(json);
-      return j.getString("user_id");
-    } catch (Exception e) {
-      log.warn("Invalid " + OKAPI_HEADER_TOKEN + ": " + token, e);
-      return null;
-    }
-  }
-
-  static void populateMetaData(Object entity, Map<String, String> okapiHeaders, String path) {
-    //try to populate meta data section of the passed in json (converted to pojo already as this stage)
-    //will only succeed if the pojo (json schema) has a reference to the metaData schema.
-    //there should not be a metadata schema declared in the json schema unless it is the OOTB meta data schema.
-    // The createdDate and createdByUserId fields are stored in the db in separate columns on insert trigger so that even if
-    // we overwrite them here, the correct value will be reset via a database trigger on update.
-    String userId = "";
-    String token = "";
-    try {
-      Method setMetadata = getSetMetadataMethod(entity);
-      if (setMetadata == null) {
-        return;
-      }
-      userId = okapiHeaders.get(OKAPI_USERID_HEADER);
-      token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
-      if (userId == null && token != null) {
-        userId = userIdFromToken(token);
-      }
-      Metadata md = new Metadata();
-      md.setUpdatedDate(new Date());
-      md.setCreatedDate(md.getUpdatedDate());
-      md.setCreatedByUserId(userId);
-      md.setUpdatedByUserId(userId);
-      setMetadata.invoke(entity,  md);
-    } catch (Exception e) {
-      log.warn("path = " + path + ", " + OKAPI_HEADER_TOKEN + " = " + token
-          + ", userId = " + userId + ": " + e.getMessage(), e);
-    }
-  }
-
-  public static MetricsService getServerMetrics(){
-    return serverMetrics;
+    ThreadContext.put("reqId", "reqId=" + requestId);
+    logCommand.run();
+    // Multiple vertx async requests use the same thread therefore we must delete reqId afterwards.
+    // For a better implementation see
+    // https://issues.folio.org/browse/RMB-669 "Add default metrics to RMB: incoming API calls"
+    ThreadContext.remove("reqId");
   }
 
   class StreamStatus {

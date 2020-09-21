@@ -24,16 +24,15 @@ import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 import org.folio.rest.jaxrs.model.AdminPostgresMaintenancePostCommand;
 import org.folio.rest.jaxrs.resource.Admin;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
-import org.folio.rest.persist.ddlgen.TenantOperation;
+import org.folio.dbschema.TenantOperation;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.monitor.StatsTracker;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 
@@ -451,28 +450,6 @@ public class AdminAPI implements Admin {
     stream.setData("OK");
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminHealthResponse.respond200WithAnyAny(stream)));
 
-  }
-
-  @Override
-  public void getAdminModuleStats(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    try {
-      //vertx.http.servers.open-connections
-      //vertx.eventbus
-      //vertx.event-loop-size
-      //vertx.pools
-      JsonObject o = StatsTracker.spillAllStats();
-      JsonObject metrics = RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.net.servers" /* vertxContext.owner() */);
-      if(metrics != null) {
-        metrics.mergeIn(RestVerticle.getServerMetrics().getMetricsSnapshot("vertx.pools"));
-        o.mergeIn(metrics);
-      }
-      asyncResultHandler.handle(
-        io.vertx.core.Future.succeededFuture(GetAdminModuleStatsResponse.respond200WithTextPlain(
-          o.encodePrettily())));
-    } catch (Exception e) {
-      asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
-    }
   }
 
   @Validate

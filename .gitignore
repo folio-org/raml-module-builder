@@ -9,6 +9,7 @@ nbproject/
 .project
 .settings/
 .classpath
+.factorypath
 #eclipse creates the user specific .checkstyle config file with local paths
 .checkstyle
 /*/bin/

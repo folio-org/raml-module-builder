@@ -10,7 +10,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import org.folio.rest.tools.PomReader;
+import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.Schema;
+import org.folio.dbschema.Table;
+import org.folio.dbschema.TableOperation;
+import org.folio.dbschema.TenantOperation;
+import org.folio.rest.tools.utils.RmbVersion;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -53,7 +58,7 @@ public class SchemaMaker {
     this.mode = mode;
     this.previousVersion = previousVersion;
     this.newVersion = newVersion;
-    this.rmbVersion = PomReader.INSTANCE.getRmbVersion();
+    this.rmbVersion = RmbVersion.getRmbVersion();
   }
 
   public String generateDDL() throws IOException, TemplateException {
@@ -98,7 +103,10 @@ public class SchemaMaker {
 
     templateInput.put("schemaJson", this.getSchemaJson());
 
-    this.schema.setup();
+    schema.setup();
+    if (previousSchema != null) {
+      previousSchema.setup();
+    }
 
     templateInput.put("tables", tables());
 
@@ -150,7 +158,6 @@ public class SchemaMaker {
       Table newTable = tableForName.get(oldTable.getTableName());
       if (newTable == null) {
         oldTable.setMode("delete");
-        oldTable.setup();
         list.add(oldTable);
         return;
       }
@@ -169,7 +176,6 @@ public class SchemaMaker {
           return;
         }
         oldForeignKey.settOps(TableOperation.DELETE);
-        oldForeignKey.setup();
         allForeignKeys.add(oldForeignKey);
       });
       newTable.setForeignKeys(allForeignKeys);

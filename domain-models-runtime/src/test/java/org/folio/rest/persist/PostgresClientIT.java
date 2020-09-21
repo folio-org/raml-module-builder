@@ -3,6 +3,7 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,12 +55,14 @@ import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
+import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
+import org.folio.rest.persist.PostgresClient.TotaledResults;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -70,6 +73,7 @@ import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.helpers.Poline;
 import org.folio.rest.persist.helpers.SimplePojo;
+import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -225,7 +229,24 @@ public class PostgresClientIT {
   public void closeAllClients(TestContext context) {
     PostgresClient c = PostgresClient.getInstance(vertx);
     context.assertNotNull(PostgresClientHelper.getClient(c), "getClient()");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(not(0)));
     PostgresClient.closeAllClients();
+    assertThat(PostgresClient.getConnectionPoolSize(), is(0));
+  }
+
+  @Test
+  public void closeAllClientsTenant(TestContext context) {
+    PostgresClient.closeAllClients();
+    PostgresClient.getInstance(vertx, "a");
+    PostgresClient.getInstance(Vertx.vertx(), "a");
+    PostgresClient.getInstance(vertx, "b");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(3));
+    PostgresClient.closeAllClients("c");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(3));
+    PostgresClient.closeAllClients("b");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(2));
+    PostgresClient.closeAllClients("a");
+    assertThat(PostgresClient.getConnectionPoolSize(), is(0));
   }
 
   @Test
@@ -650,7 +671,8 @@ public class PostgresClientIT {
   public void selectWithTimeoutSuccess(TestContext context) {
       PostgresClient client = postgresClient();
       client.getSQLConnection(2000, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(1);", context.asyncAssertSuccess());
+        client.selectSingle(conn, "SELECT 1, pg_sleep(1);",
+            client.closeAndHandleResult(conn, context.asyncAssertSuccess()));
       }));
   }
 
@@ -658,10 +680,11 @@ public class PostgresClientIT {
   public void selectWithTimeoutFailure(TestContext context) {
       PostgresClient client = postgresClient();
       client.getSQLConnection(500, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(3);", context.asyncAssertFailure(e -> {
-          String sqlState = new PgExceptionFacade(e).getSqlState();
-          assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
-        }));
+        client.selectSingle(conn, "SELECT 1, pg_sleep(3);",
+            client.closeAndHandleResult(conn, context.asyncAssertFailure(e -> {
+              String sqlState = new PgExceptionFacade(e).getSqlState();
+              assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
+        })));
       }));
   }
 
@@ -1796,6 +1819,10 @@ public class PostgresClientIT {
 
       }
 
+      @Override
+      public DatabaseMetadata databaseMetadata() {
+        throw new RuntimeException();
+      }
     };
 
     PgPool client = new PgPool() {
@@ -1916,6 +1943,11 @@ public class PostgresClientIT {
       @Override
       public void close() {
       }
+
+      @Override
+      public DatabaseMetadata databaseMetadata() {
+        return null;
+      }
     };
 
     PgPool client = new PgPool() {
@@ -2018,6 +2050,10 @@ public class PostgresClientIT {
 
       }
 
+      @Override
+      public DatabaseMetadata databaseMetadata() {
+        return null;
+      }
     };
     PgPool client = new PgPool() {
       @Override
@@ -2838,12 +2874,12 @@ public class PostgresClientIT {
           events.append("[handler]");
           throw new NullPointerException("null");
         });
-        sr.endHandler(x -> {
-          events.append("[endHandler]");
-        });
         sr.exceptionHandler(x -> {
           events.append("[exception]");
-          async.complete();
+          vertx.runOnContext(run -> async.complete());
+        });
+        sr.endHandler(x -> {
+          events.append("[endHandler]");
         });
       }));
     async.await(1000);
@@ -2919,8 +2955,8 @@ public class PostgresClientIT {
     StringBuilder events = new StringBuilder();
     Async async = context.async();
     PostgresClientStreamResult<Object> streamResult = new PostgresClientStreamResult(resultInfo);
-    PgConnection pgConnection = null;
-    postgresClient.doStreamRowResults(sqlRowStream, Object.class, pgConnection,
+    Transaction transaction = null;
+    postgresClient.doStreamRowResults(sqlRowStream, Object.class, transaction,
       new QueryHelper("table_name"), streamResult, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -2999,14 +3035,13 @@ public class PostgresClientIT {
       context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
+          vertx.runOnContext(run -> async.complete());
           throw new NullPointerException("null");
         });
         sr.endHandler(x -> {
           events.append("[endHandler]");
-          async.complete();
         });
         // no exceptionHandler defined
-        vertx.setTimer(100, x -> async.complete());
       }));
     async.await(1000);
     context.assertEquals("[handler]", events.toString());
@@ -3027,7 +3062,7 @@ public class PostgresClientIT {
           events.append("[endHandler]");
         }).exceptionHandler(x -> {
           events.append("[exception]");
-          async.complete();
+          vertx.runOnContext(run -> async.complete());
         });
       }));
     async.await(1000);
@@ -3047,13 +3082,12 @@ public class PostgresClientIT {
             events.append("[handler]");
             throw new NullPointerException("null");
           });
-          sr.endHandler(x -> {
-            events.append("[endHandler]");
-            async.complete();
-          });
           sr.exceptionHandler(x -> {
             events.append("[exception]");
-            async.complete();
+            vertx.runOnContext(run -> async.complete());
+          });
+          sr.endHandler(x -> {
+            events.append("[endHandler]");
           });
         }));
     async.await(1000);
@@ -3077,6 +3111,29 @@ public class PostgresClientIT {
         sr.handler(streamHandler -> objectCount.incrementAndGet());
         sr.endHandler(x -> {
           context.assertEquals(1, objectCount.get());
+          async.complete();
+        });
+      }));
+    async.await(1000);
+  }
+
+  @Test
+  public void streamGetWithLimitZero(TestContext context) throws IOException, FieldException {
+    AtomicInteger objectCount = new AtomicInteger();
+
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+
+    Async async = context.async();
+    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
+      .setLimit(new Limit(0));
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+      false, null, context.asyncAssertSuccess(sr -> {
+        context.assertEquals(3, sr.resultInto().getTotalRecords());
+        sr.handler(streamHandler -> objectCount.incrementAndGet());
+        sr.endHandler(x -> {
+          context.assertEquals(0, objectCount.get());
           async.complete();
         });
       }));
@@ -3165,17 +3222,16 @@ public class PostgresClientIT {
         false, null, context.asyncAssertSuccess(sr -> {
           context.assertEquals(3, sr.resultInto().getTotalRecords());
           sr.handler(obj -> {
-            ObjectMapper mapper = new ObjectMapper();
             try {
+              ObjectMapper mapper = new ObjectMapper();
               ids.add(new JsonObject(mapper.writeValueAsString(obj)).getString("id"));
               objectCount.incrementAndGet();
             } catch (JsonProcessingException ex) {
-              throw new IllegalArgumentException(ex);
+              context.fail(ex);
             }
           });
-          sr.endHandler(x -> {
-            async.complete();
-          });
+          sr.endHandler(x -> async.complete());
+          sr.exceptionHandler(x -> context.fail(x));
         }));
       async.await(1000);
       // expect when in-bounds; 0 when out of bounds
@@ -3549,6 +3605,27 @@ public class PostgresClientIT {
           }));
       async.awaitSuccess();
     }
+  }
+
+  // offset >= estimated total https://issues.folio.org/browse/RMB-684
+  @Test
+  public void processQueryWithCountBelowOffset(TestContext context) {
+    postgresClient = createNumbers(context, 1, 2, 3, 4, 5);
+    postgresClient.startTx(context.asyncAssertSuccess(conn -> {
+      QueryHelper queryHelper = new QueryHelper("numbers");
+      queryHelper.selectQuery = "SELECT i FROM numbers ORDER BY i OFFSET 2";
+      queryHelper.offset = 2;
+      queryHelper.countQuery = "SELECT 1";  // estimation=1 is below offset=2
+      Function<TotaledResults, Results<Integer>> resultSetMapper = totaledResults -> {
+        context.verify(verify -> {
+          assertThat(totaledResults.estimatedTotal, is(1));
+          assertThat(totaledResults.set.size(), is(3));
+        });
+        return null;
+      };
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", resultSetMapper,
+          context.asyncAssertSuccess());
+    }));
   }
 
   @Test

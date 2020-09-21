@@ -162,11 +162,6 @@ public class AdminAPIIT {
   }
 
   @Test
-  public void getAdminModuleStats(TestContext context) {
-    new AdminAPI().getAdminModuleStats(okapiHeaders, context.asyncAssertFailure(), vertx.getOrCreateContext());
-  }
-
-  @Test
   public void getAdminTotalDbSize(TestContext context) {
     new AdminAPI().getAdminTotalDbSize("postgres", okapiHeaders, context.asyncAssertSuccess(response -> {
       assertThat(response.getStatus(), is(HttpStatus.HTTP_OK.toInt()));

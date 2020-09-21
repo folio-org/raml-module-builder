@@ -8,7 +8,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+
+import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.Schema;
+import org.folio.dbschema.Table;
+import org.folio.dbschema.TenantOperation;
+import org.folio.dbschema.View;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -96,8 +102,8 @@ public class SchemaMakerTest {
 
     assertThat(result,containsString("((lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'user','firstName') , concat_array_object_values(tablea.jsonb->'user','lastName')))) public.gin_trgm_ops)"));
     assertThat(result,containsString("((lower(concat_space_sql(concat_array_object_values(tablea.jsonb->'user'->'info','firstName') , concat_array_object_values(tablea.jsonb->'user'->'info','lastName')))) public.gin_trgm_ops)"));
-    assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','firstName') , concat_array_object_values(tablea.jsonb->'field2','lastName'))) )"));
-    assertThat(result,containsString("( to_tsvector('simple', concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->'info','firstName') , concat_array_object_values(tablea.jsonb->'field2'->'info','lastName'))) )"));
+    assertThat(result,containsString("( get_tsvector(concat_space_sql(concat_array_object_values(tablea.jsonb->'field1','firstName') , concat_array_object_values(tablea.jsonb->'field2','lastName'))) )"));
+    assertThat(result,containsString("( get_tsvector(concat_space_sql(concat_array_object_values(tablea.jsonb->'field1'->'info','firstName') , concat_array_object_values(tablea.jsonb->'field2'->'info','lastName'))) )"));
   }
 
   @Test
@@ -140,7 +146,6 @@ public class SchemaMakerTest {
       "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2");
     IOException e = assertThrows(IOException.class, () -> {
       schemaMaker.setSchema(schema("templates/db_scripts/schemaPopulateJsonWithId.json"));
-      schemaMaker.generateDDL();
     });
     assertThat(tidy(e.getMessage()), containsString("Unrecognized field \"populateJsonWithId\""));
   }
@@ -219,13 +224,13 @@ public class SchemaMakerTest {
   }
 
   @Test
-  public void delete() throws IOException, TemplateException {
+  public void deleteSchema() throws IOException, TemplateException {
 
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.DELETE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
-        "REVOKE ALL PRIVILEGES ON DATABASE"));
+    assertThat(tidy(schemaMaker.generateDDL()), allOf(
+        containsString("DROP SCHEMA "), containsString("DROP ROLE ")));
   }
 
   @Test
@@ -291,8 +296,8 @@ public class SchemaMakerTest {
     assertThat(ddl, containsString("(lower(f_unaccent(jsonb->>'name')))"));             // unique index
     assertThat(ddl, containsString("((lower(f_unaccent(jsonb->>'type')))text_pattern_ops)"));
     assertThat(ddl, containsString("GIN ' || $rmb$((lower(f_unaccent(jsonb->>'title')))public.gin_trgm_ops)"));
-    assertThat(ddl, containsString("GIN ' || $rmb$(to_tsvector('simple', f_unaccent(jsonb->>'title')))"));
-    assertThat(ddl, containsString("GIN ' || $rmb$(to_tsvector('simple',(jsonb->>'author')))"));
+    assertThat(ddl, containsString("GIN ' || $rmb$(get_tsvector(f_unaccent(jsonb->>'title')))"));
+    assertThat(ddl, containsString("GIN ' || $rmb$(get_tsvector((jsonb->>'author')))"));
   }
 
   @Test
@@ -330,18 +335,18 @@ public class SchemaMakerTest {
     schemaMaker.setPreviousSchema(schema("templates/db_scripts/foreignKey1.json"));
     String ddl = schemaMaker.generateDDL();
     // a, f -> b, c, d, e, f
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refa"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refb"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refc"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refd"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refe"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS reff"));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refa")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refb")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refc")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refd")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refe")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS reff")));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_a"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_b"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_c"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_d"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_e"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_f"));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_a")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_b")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_c")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_d")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_e")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_f")));
   }
 
   @Test
@@ -351,18 +356,18 @@ public class SchemaMakerTest {
     schemaMaker.setPreviousSchema(schema("templates/db_scripts/foreignKey2.json"));
     String ddl = schemaMaker.generateDDL();
     // b, c, d, e, f -> a, f
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refa"));
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refb"));
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refc"));
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refd"));
-    assertThat(ddl, containsString("DROP COLUMN IF EXISTS refe"));
-    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS reff"));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refa")));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refb")));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refc")));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refd")));
-    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS refe")));
-    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS reff")));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_a"));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_b"));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_c"));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_d"));
+    assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_e"));
+    assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_f"));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_a")));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_b")));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_c")));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_d")));
+    assertThat(ddl, not(containsString("ADD COLUMN IF NOT EXISTS ref_e")));
+    assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS ref_f")));
   }
 
   @ParameterizedTest

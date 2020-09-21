@@ -1,8 +1,6 @@
 
 <#if mode.name() == "CREATE">
 
-<#include "extensions.ftl">
-
 CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
 GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
 CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
@@ -11,6 +9,8 @@ CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodu
 
 ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "$user";
 SET search_path TO ${myuniversity}_${mymodule};
+
+<#include "extensions.ftl">
 
 <#if mode.name() == "CREATE">
 
@@ -144,8 +144,10 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
     </#if>
   </#if>
 <#else>
-    <#-- The table has not changed, but we always check all its indexes because they may have changed. -->
+    <#-- The table has not changed, but we always check all its indexes and foreign keys
+         because they may have changed. -->
     <#include "indexes.ftl">
+    <#include "foreign_keys.ftl">
 </#if>
 </#list>
 
@@ -175,7 +177,7 @@ DECLARE
 BEGIN
   FOR aname IN SELECT name FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE remove = TRUE
   LOOP
-    EXECUTE format('DROP INDEX IF EXISTS %s', aname);
+    EXECUTE 'DROP INDEX IF EXISTS ' || aname;
   END LOOP;
 END $$;
 
@@ -202,7 +204,7 @@ BEGIN
       '${myuniversity}_${mymodule}.\1',
       'g');
     IF newindexdef <> i.indexdef THEN
-      EXECUTE format('DROP INDEX %I.%I', i.schemaname, i.indexname);
+      EXECUTE 'DROP INDEX ' || i.indexname;
       EXECUTE newindexdef;
       EXECUTE 'INSERT INTO rmb_internal_analyze VALUES ($1)' USING i.tablename;
     END IF;
@@ -217,7 +219,7 @@ DECLARE
 BEGIN
   FOR t IN SELECT DISTINCT tablename FROM rmb_internal_analyze
   LOOP
-    EXECUTE format('ANALYZE %I', t);
+    EXECUTE 'ANALYZE ' || t;
   END LOOP;
 END $$;
 TRUNCATE rmb_internal_analyze;

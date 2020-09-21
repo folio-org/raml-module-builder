@@ -1,5 +1,7 @@
 package org.folio;
 
+import static io.restassured.RestAssured.given;
+
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -27,7 +29,9 @@ import org.junit.runner.RunWith;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -61,6 +65,7 @@ public class DemoRamlRestTest {
   private static int port;
   private static Locale oldLocale = Locale.getDefault();
   private static String TENANT = "folio_shared";
+  private static RequestSpecification tenant;
 
   /**
    * @param context  the test context.
@@ -72,19 +77,28 @@ public class DemoRamlRestTest {
 
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
+    RestAssured.port = port;
+    RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    tenant = new RequestSpecBuilder().addHeader("x-okapi-tenant", TENANT).build();
 
     try {
       deployRestVerticle(context);
+
+      Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
+      postData(context, "http://localhost:" + port + "/_/tenant", buf,
+        201, HttpMethod.POST, "application/json", TENANT, false);
     } catch (Exception e) {
       context.fail(e);
     }
   }
 
   private static void deployRestVerticle(TestContext context) {
+    Async async = context.async();
     DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(
         new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions,
-            context.asyncAssertSuccess());
+        context.asyncAssertSuccess(done -> async.complete()));
+    async.await();
   }
 
   /**
@@ -100,22 +114,22 @@ public class DemoRamlRestTest {
   }
 
   @Test
-  public void year(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=&author=me", 400);
+  public void date(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=&author=me", 400);
   }
 
   @Test
-  public void yearx(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=x&author=me", 400);
+  public void datex(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=x&author=me", 400);
   }
 
   @Test
-  public void year1(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1&author=me", 400);
+  public void date1(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1&author=me", 400);
   }
 
   @Test
-  public void withoutYearParameter(TestContext context) {
+  public void withoutDateParameter(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/books?author=me", 400);
   }
 
@@ -131,7 +145,12 @@ public class DemoRamlRestTest {
 
   @Test
   public void getOk(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationYear=1900&author=me&rating=1.2", 200);
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2", 200);
+  }
+
+  @Test
+  public void getOkWithDatetime(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=2011-12-03T10:15:30&author=you&rating=1.2", 200);
   }
 
   @Test
@@ -160,12 +179,7 @@ public class DemoRamlRestTest {
 
   @Test
   public void getBookWithRoutingContext(TestContext context)  throws Exception {
-    Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
-    NetClient cli = vertx.createNetClient();
-    postData(context, "http://localhost:" + port + "/_/tenant", buf,
-      201, HttpMethod.POST, "application/json", TENANT, false);
-
-    buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=nullpointer%3Dtrue", 500);
+    Buffer buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=nullpointer%3Dtrue", 500);
     context.assertEquals("java.lang.NullPointerException", buf.toString());
 
     Books books;
@@ -251,6 +265,18 @@ public class DemoRamlRestTest {
   public void postBookNoParameters(TestContext context) {
     postBook(context, "", 422);
   }
+
+  /**
+   * 4 calls with invalid CQL cause RMB to hang if PostgreSQL connections
+   * are not closed: https://issues.folio.org/browse/RMB-677
+   */
+  @Test
+  public void invalidCqlClosesConnection(TestContext context) {
+    for (int i=0; i<10; i++) {
+      given().spec(tenant).when().get("/rmbtests/test?query=()").then().statusCode(400);
+    }
+  }
+
 
   @Test
   public void postBookValidateAuthor(TestContext context) {
@@ -426,6 +452,11 @@ public class DemoRamlRestTest {
     testStream(context, true);
   }
 
+  @Test
+  public void options() {
+    given().spec(tenant).when().options("/rmbtests/test").then().statusCode(200);
+  }
+
   /**
    * @param context
    *
@@ -558,7 +589,8 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private void postData(TestContext context, String url, Buffer buffer, int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
+  private static void postData(TestContext context, String url, Buffer buffer,
+      int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
     Exception stacktrace = new RuntimeException();  // save stacktrace for async handler
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();

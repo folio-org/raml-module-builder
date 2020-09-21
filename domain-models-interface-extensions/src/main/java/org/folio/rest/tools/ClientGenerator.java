@@ -33,6 +33,7 @@ import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -67,8 +68,6 @@ public class ClientGenerator {
 
   /* for creating the class per interface */
   JDefinedClass jc = null;
-
-  private String globalPath = null;
 
   private List<String> functionSpecificHeaderParams = new ArrayList<>();
 
@@ -236,13 +235,12 @@ public class ClientGenerator {
     return method;
   }
 
-  public void generateClassMeta(String className, Object globalPath) {
+  public void generateClassMeta(String className) {
 
     String mapType = System.getProperty("json.type");
     if ("mongo".equals(mapType)) {
       mappingType = "mongo";
     }
-    this.globalPath = "GLOBAL_PATH";
 
     /* Adding packages here */
     JPackage jp = jcodeModel._package(RTFConsts.CLIENT_GEN_PACKAGE);
@@ -253,10 +251,6 @@ public class ClientGenerator {
       jc = jp._class(this.className + CLIENT_CLASS_SUFFIX);
       JDocComment com = jc.javadoc();
       com.add("Auto-generated code - based on class " + className);
-
-      /* class variable to root url path to this interface */
-      JFieldVar globalPathVar = jc.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, String.class, "GLOBAL_PATH");
-      globalPathVar.init(JExpr.lit((String)globalPath));
 
       /* class variable tenant id */
       tenantId = jc.field(JMod.PRIVATE, String.class, TENANT_ID);
@@ -319,23 +313,16 @@ public class ClientGenerator {
 
     ////////////////////////---- Handle place holders in the url  ----//////////////////
     /* create request */
-    if(url == null){
-      //if there is no path associated with a function
-      //use the @path from the class
-      url = globalPath;
+    /* Handle place holders in the URL
+      * replace {varName} with "+varName+" so that it will be replaced
+      * in the url at runtime with the correct values */
+    Matcher m = Pattern.compile("\\{.*?\\}").matcher(url);
+    while(m.find()){
+      String varName = m.group().replace("{","").replace("}", "");
+      url = url.replace("{"+varName+"}", "\"+"+varName+"+\"");
     }
-    else{
-      /* Handle place holders in the URL
-       * replace {varName} with "+varName+" so that it will be replaced
-       * in the url at runtime with the correct values */
-      Matcher m = Pattern.compile("\\{.*?\\}").matcher(url);
-      while(m.find()){
-        String varName = m.group().replace("{","").replace("}", "");
-        url = url.replace("{"+varName+"}", "\"+"+varName+"+\"");
-      }
 
-      url = "\""+url.substring(1)+"\"+queryParams.toString()";
-    }
+    url = "\""+url.substring(1)+"\"+queryParams.toString()";
 
     /* Adding java doc for method */
     jmCreate.javadoc().add("Service endpoint " + url);
@@ -407,28 +394,63 @@ public class ClientGenerator {
     }
 
     body.directStatement("request.end();");
-
   }
 
-  private void addParameter(JBlock methodBody, JVar queryParams, String valueName, Boolean encode, Boolean simple, boolean isList) {
-    JBlock b = methodBody;
-    if (!simple) {
-      JConditional ifClause = methodBody._if(JExpr.ref(valueName).ne(JExpr._null()));
+  private void addParameter(ParameterDetails details) {
+    JBlock b = details.methodBody;
+    if (Boolean.TRUE.equals(details.nullCheck)) {
+      JConditional ifClause = details.methodBody._if(JExpr.ref(details.valueName).ne(JExpr._null()));
       b = ifClause._then();
     }
-    b.invoke(queryParams, APPEND).arg(JExpr.lit(valueName + "="));
-    if (encode) {
-        JExpression expr = jcodeModel.ref(java.net.URLEncoder.class).staticInvoke("encode").arg(JExpr.ref(valueName)).arg("UTF-8");
-        b.invoke(queryParams, APPEND).arg(expr);
-    } else {
-      if(isList){
-        b.directStatement("if("+valueName+".getClass().isArray())"
-            +"{queryParams.append(String.join(\"&"+valueName+"=\"," +valueName+"));}");
-      } else{
-        b.invoke(queryParams, APPEND).arg(JExpr.ref(valueName));
-      }
+    b.invoke(details.queryParams, APPEND).arg(JExpr.lit(details.valueName + "="));
+    switch (details.op) {
+      case ENCODE:
+        encodeParameter(b, details);
+        break;
+      case FORMAT_DATE:
+        formatDateParameter(b, details);
+        break;
+      case PROCESS_LIST:
+        processListParameter(b, details);
+        break;
+      case NONE:
+        b.invoke(details.queryParams, APPEND).arg(JExpr.ref(details.valueName));
+        break;
     }
-    b.invoke(queryParams, APPEND).arg(JExpr.lit("&"));
+    b.invoke(details.queryParams, APPEND).arg(JExpr.lit("&"));
+  }
+
+  private void encodeParameter(JBlock b, ParameterDetails details) {
+    JExpression expr = jcodeModel.ref(java.net.URLEncoder.class)
+      .staticInvoke("encode")
+        .arg(JExpr.ref(details.valueName))
+        .arg("UTF-8");
+    b.invoke(details.queryParams, APPEND).arg(expr);
+  }
+
+  private void formatDateParameter(JBlock b, ParameterDetails details) {
+    JExpression expr = jcodeModel.ref(java.time.format.DateTimeFormatter.class)
+      .staticRef("ISO_LOCAL_DATE_TIME")
+      .invoke("format")
+        .arg(jcodeModel.ref(java.time.ZonedDateTime.class)
+          .staticInvoke("ofInstant")
+            .arg(JExpr.ref(details.valueName).invoke("toInstant"))
+            .arg(jcodeModel.ref(java.time.ZoneId.class)
+              .staticInvoke("of")
+                .arg("UTC")));
+    b.invoke(details.queryParams, APPEND).arg(expr);
+  }
+
+  private void processListParameter(JBlock b, ParameterDetails details) {
+    b.directStatement(new StringBuilder("if(")
+      .append(details.valueName)
+      .append(".getClass().isArray())")
+      .append("{queryParams.append(String.join(\"&")
+      .append(details.valueName)
+      .append("=\",")
+      .append(details.valueName)
+      .append("));}")
+      .toString());
   }
 
   /**
@@ -534,51 +556,54 @@ public class ClientGenerator {
     }
     else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
       method.param(String.class, valueName);
-
     }
     else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
       method.param(String.class, valueName);
       functionSpecificHeaderParams.add("request.putHeader(\""+valueName+"\", "+valueName+");");
     }
     else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
-      // support enum, numbers or strings as query parameters
-      boolean encode = false;
+      // support date, enum, numbers or strings as query parameters
       try {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
-          encode = true;
-          addParameter(methodBody, queryParams, valueName, encode, false, false);
+          method._throws(UnsupportedEncodingException.class);
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .withOp(ParameterOp.ENCODE));
+        } else if (valueType.contains("Date")) {
+          method.param(Date.class, valueName);
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .withOp(ParameterOp.FORMAT_DATE));
         } else if (valueType.contains("int")) {
           method.param(int.class, valueName);
-          addParameter(methodBody, queryParams, valueName, encode, true, false);
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .nullCheck(false));
         } else if (valueType.contains("boolean")) {
           method.param(boolean.class, valueName);
-          addParameter(methodBody, queryParams, valueName, encode, true, false);
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .nullCheck(false));
         } else if (valueType.contains("BigDecimal")) {
           method.param(BigDecimal.class, valueName);
-          addParameter(methodBody, queryParams, valueName, encode, false, false);
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName));
         } else if (valueType.contains("Number")) {
           method.param(Number.class, valueName);
-          addParameter(methodBody, queryParams, valueName, encode, false, false);
-        }
-        else if (valueType.contains("Integer")) {
-            method.param(Integer.class, valueName);
-            addParameter(methodBody, queryParams, valueName, encode, false, false);
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName));
+        } else if (valueType.contains("Integer")) {
+          method.param(Integer.class, valueName);
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName));
         } else if (valueType.contains("Boolean")) {
-            method.param(Boolean.class, valueName);
-            addParameter(methodBody, queryParams, valueName, encode, false, false);
-        }else if (valueType.contains("List")) {
+          method.param(Boolean.class, valueName);
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName));
+        } else if (valueType.contains("List")) {
           method.param(String[].class, valueName);
-          addParameter(methodBody, queryParams, valueName, encode, false, true);
-        }else { // enum object type
+          addParameter(new ParameterDetails(methodBody, queryParams, valueName)
+            .withOp(ParameterOp.PROCESS_LIST));
+        } else {
+          // enum object type
           Class<?> enumClazz = classForName(valueType);
           if (enumClazz.isEnum()) {
             method.param(enumClazz, valueName);
-            addParameter(methodBody, queryParams, valueName, encode, false, false);
+            addParameter(new ParameterDetails(methodBody, queryParams, valueName));
           }
-        }
-        if(encode){
-          method._throws(UnsupportedEncodingException.class);
         }
       } catch (Exception e) {
         log.error(e.getMessage(), e);
@@ -590,6 +615,31 @@ public class ClientGenerator {
   public void generateClass(JsonObject classSpecificMapping) throws IOException {
     String genPath = System.getProperty("project.basedir") + PATH_TO_GENERATE_TO;
     jcodeModel.build(new File(genPath));
+  }
+
+  private class ParameterDetails {
+    final JBlock methodBody;
+    final JVar queryParams;
+    final String valueName;
+    ParameterOp op = ParameterOp.NONE;
+    Boolean nullCheck = true;
+    public ParameterDetails(JBlock methodBody, JVar queryParams, String valueName) {
+      this.methodBody = methodBody;
+      this.queryParams = queryParams;
+      this.valueName = valueName;
+    }
+    public ParameterDetails withOp(ParameterOp op) {
+      this.op = op;
+      return this;
+    }
+    public ParameterDetails nullCheck(Boolean nullCheck) {
+      this.nullCheck = nullCheck;
+      return this;
+    }
+  }
+
+  private enum ParameterOp {
+    ENCODE, FORMAT_DATE, PROCESS_LIST, NONE
   }
 
 }

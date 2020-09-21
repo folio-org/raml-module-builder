@@ -1,14 +1,18 @@
 package org.folio.rest.persist;
 
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import javax.ws.rs.core.Response;
@@ -16,12 +20,14 @@ import javax.ws.rs.core.Response;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgException;
+import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Referencing;
 import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.jaxrs.model.UserdataCollection;
 import org.folio.rest.jaxrs.model.Users;
+import org.folio.rest.jaxrs.model.Users.PostUsersResponse;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
@@ -189,12 +195,18 @@ public class PgUtilIT {
       }
       testContext.assertEquals(httpStatus, newHandler.result().getStatus(), "http status");
       try {
-        nextHandler.handle(newHandler);
+        if (nextHandler != null) {
+          nextHandler.handle(newHandler);
+        }
       } catch (Throwable e) {
         testContext.fail(e);
       }
       async.complete();
     };
+  }
+
+  private Handler<AsyncResult<Response>> asyncAssertSuccess(TestContext testContext, int httpStatus) {
+    return asyncAssertSuccess(testContext, httpStatus, (Handler<AsyncResult<Response>>) null);
   }
 
   /**
@@ -664,6 +676,51 @@ public class PgUtilIT {
   }
 
   @Test
+  public void postSync(TestContext testContext) {
+    String id1 = UUID.randomUUID().toString();
+    String id2 = UUID.randomUUID().toString();
+    Map<String,String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    headers.putAll(okapiHeaders);
+    headers.put(RestVerticle.OKAPI_USERID_HEADER, "okapiUser");
+    List<User> entities = Arrays.asList(new User().withId(id1), new User().withId(id2));
+    boolean upsert = true;
+    PgUtil.postSync("users", entities, 1000, upsert, headers, vertx.getOrCreateContext(),
+        PostUsersResponse.class, asyncAssertSuccess(testContext, 201, post -> {
+          PgUtil.getById("users", User.class, id2,
+              okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
+              asyncAssertSuccess(testContext, 200, get -> {
+                User user = (User) get.result().getEntity();
+                assertThat(user.getMetadata().getCreatedByUserId(), is("okapiUser"));
+                PgUtil.postSync("users", entities, 1000, upsert, headers, vertx.getOrCreateContext(),
+                    PostUsersResponse.class, asyncAssertSuccess(testContext, 201, post2 -> {
+                      boolean noUpsert = false;
+                      PgUtil.postSync("users", entities, 1000, noUpsert, headers, vertx.getOrCreateContext(),
+                          PostUsersResponse.class, asyncAssertSuccess(testContext, 422));
+                    }));
+              }));
+        }));
+  }
+
+  @Test
+  public void postSyncReponseWithout500(TestContext testContext) {
+    PgUtil.postSync("users", Collections.emptyList(), 1000, true, okapiHeaders, vertx.getOrCreateContext(),
+        ResponseWithout500.class, asyncAssertFail(testContext, "respond500WithTextPlain"));
+  }
+
+  @Test
+  public void postSync413(TestContext testContext) {
+    PgUtil.postSync("users", Arrays.asList(new User [1001]), 1000, true, okapiHeaders, vertx.getOrCreateContext(),
+        PostUsersResponse.class, asyncAssertSuccess(testContext, 413,
+            "Expected a maximum of 1000 records to prevent out of memory but got 1001"));
+  }
+
+  @Test
+  public void postSyncException(TestContext testContext) {
+    PgUtil.postSync("users", Collections.emptyList(), 1000, true, okapiHeaders, null,
+        PostUsersResponse.class, asyncAssertSuccess(testContext, 500));
+  }
+
+  @Test
   public void message(TestContext testContext) {
     testContext.assertEquals(null, PgUtil.message(new RuntimeException()));
   }
@@ -863,15 +920,22 @@ public class PgUtilIT {
     UserdataCollection c = searchForDataUnoptimized("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
     assertThat(val, is(9));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(9)));  // estimation
 
     // limit=9
-     c = searchForDataUnoptimized("username=foo sortBy username", 0, 9, testContext);
+    c = searchForDataUnoptimized("username=foo sortBy username", 0, 9, testContext);
     val = c.getUsers().size();
     assertThat(val, is(9));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(9)));  // estimation
 
     // limit=5
     c = searchForDataUnoptimized("username=foo sortBy username", 0, 5, testContext);
     assertThat(c.getUsers().size(), is(5));
+
+    // limit=0
+    c = searchForDataUnoptimized("username=foo sortBy username", 0, 0, testContext);
+    assertThat(c.getUsers().size(), is(0));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(1)));  // estimation
 
     // offset=6, limit=3
     c = searchForDataUnoptimized("username=foo sortBy username", 6, 3, testContext);
@@ -908,11 +972,13 @@ public class PgUtilIT {
     UserdataCollection c = searchForData("username=*", 0, 9, testContext);
     int val = c.getUsers().size();
     assertThat(val, is(9));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(9)));  // estimation
 
     // limit=9
     c = searchForData("username=foo sortBy username", 0, 9, testContext);
     val = c.getUsers().size();
     assertThat(val, is(9));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(9)));  // estimation
     for (int i=0; i<5; i++) {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (i + 1)));
@@ -929,6 +995,16 @@ public class PgUtilIT {
       User user = c.getUsers().get(i);
       assertThat(user.getUsername(), is("b foo " + (i + 1)));
     }
+
+    // limit=0
+    c = searchForData("username=foo sortBy username", 0, 0, testContext);
+    assertThat(c.getUsers().size(), is(0));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(1)));  // estimation
+
+    // offset=99, limit=0
+    c = searchForData("username=foo sortBy username", 99, 0, testContext);
+    assertThat(c.getUsers().size(), is(0));
+    assertThat(c.getTotalRecords(), is(greaterThanOrEqualTo(1)));  // estimation
 
     // offset=6, limit=3
     c = searchForData("username=foo sortBy username", 6, 3, testContext);

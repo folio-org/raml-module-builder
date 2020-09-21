@@ -1,8 +1,10 @@
--- Recreate index if its definition has changed,
--- drop it and replace by the replacement if a prepared replacement index exists,
--- drop it if tops = 'DELETE'.
--- Update its entry in table rmb_internal_index.
--- Add an entry in table rmb_internal_analyze if ALTER INDEX or CREATE INDEX was executed.
+DROP FUNCTION IF EXISTS rmb_internal_index(aname text, tops text, newdef text);
+
+-- This function recreates index if its definition has changed,
+-- drops it and replaces it by the replacement if a prepared replacement index exists,
+-- drops it if tops = 'DELETE'.
+-- Updates its entry in table rmb_internal_index.
+-- Adds an entry in table rmb_internal_analyze if ALTER INDEX or CREATE INDEX was executed.
 CREATE OR REPLACE FUNCTION rmb_internal_index(
   atable text, aname text, tops text, newdef text) RETURNS void AS
 $$
@@ -12,6 +14,8 @@ DECLARE
   prepareddef text;
 BEGIN
   IF tops = 'DELETE' THEN
+    -- use case insensitive %s, not case sensitive %I
+    -- no SQL injection because the names are hard-coded in schema.json
     EXECUTE format('DROP INDEX IF EXISTS %s', aname);
     EXECUTE 'DELETE FROM ${myuniversity}_${mymodule}.rmb_internal_index WHERE name = $1' USING aname;
     RETURN;

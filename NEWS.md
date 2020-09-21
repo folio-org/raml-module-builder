@@ -1,3 +1,86 @@
+## 31.1.0 2020-09-16
+
+ * [RMB-699](https://issues.folio.org/browse/RMB-699) Fix Module name detection broken
+ * [RMB-684](https://issues.folio.org/browse/RMB-684) Fix GET query returns no records when offset value > estimated totalRecords
+ * [RMB-701](https://issues.folio.org/browse/RMB-701) Update to Vert.x 3.9.2
+ * [RMB-700](https://issues.folio.org/browse/RMB-700) NPE when RestVerticle calls LogUtil.formatStatsLogMessage
+ * [RMB-677](https://issues.folio.org/browse/RMB-677) Close PostgreSQL connection after invalid CQL failure
+ * [RMB-553](https://issues.folio.org/browse/RMB-553) Add postSync to PgUtil
+ * [RMB-697](https://issues.folio.org/browse/RMB-697) Explain Vert.x 4 futurisation
+ * [RMB-698](https://issues.folio.org/browse/RMB-698) saveBatch and upsertBatch should create metadata
+ * [RMB-703](https://issues.folio.org/browse/RMB-703) Full text search doesn't match URLs containing &
+ * [RMB-721](https://issues.folio.org/browse/RMB-721) NPE in PomReader while PostgresClient.getInstance
+ * [RMB-723](https://issues.folio.org/browse/RMB-723) Close database connection after dropping schema and role
+ * [RMB-702](https://issues.folio.org/browse/RMB-702) {version} path variable no longer allowed in RAML
+ * [RMB-704](https://issues.folio.org/browse/RMB-704) RestVerticle "singleField" is nullable
+ * [RMB-705](https://issues.folio.org/browse/RMB-705) Refactor assertThrows lambda to have only one invocation throwing an exception
+ * [RMB-706](https://issues.folio.org/browse/RMB-706) Critical code smell constant name, hardcoded password and ip address
+ * [RMB-707](https://issues.folio.org/browse/RMB-707) Remove JwtUtils in favour of okapi-common's OkapiToken
+ * [RMB-711](https://issues.folio.org/browse/RMB-711) Remove Java 8 and Maven 3.3 check
+ * [RMB-712](https://issues.folio.org/browse/RMB-712) [Snyk] Update javax.validation:validation-api to 2.0.1.Final
+ * [RMB-713](https://issues.folio.org/browse/RMB-713) [Snyk] Update org.aspectj:aspectjrt to 1.9.6
+ * [RMB-715](https://issues.folio.org/browse/RMB-715) [Snyk] Update commons-cli from 1.3.1 to 1.4
+ * [RMB-716](https://issues.folio.org/browse/RMB-716) [Snyk] Update javaparser-core from 3.3.0 to 3.16.1
+ * [RMB-714](https://issues.folio.org/browse/RMB-714) Remove unused aws-lambda-java-core dependency
+ * [RMB-725](https://issues.folio.org/browse/RMB-725) StringUtil.cqlEncode masking CQL characters preventing CQL injection	
+
+## 31.0.0 2020-08-18
+
+ * [RMB-328](https://issues.folio.org/browse/RMB-328) Make RMB OpenJDK 11 compliant
+ * [RMB-694](https://issues.folio.org/browse/RMB-694) Upgrade foreign key of a sub-field like "fieldName": "foo.bar"
+ * [RMB-693](https://issues.folio.org/browse/RMB-693) Close prepared statements in PostgresClient stream get
+ * [RMB-686](https://issues.folio.org/browse/RMB-686) Fix documentation about postTenant error handling
+ * [RMB-687](https://issues.folio.org/browse/RMB-687) ResponseException for TenantAPI, fix wrong postTenant HTTP status code
+ * Drop obsolete rmb\_internal\_index
+ * [RMB-675](https://issues.folio.org/browse/RMB-675) Move pg\_trgm from wrong to public schema, don't drop & recreate
+
+## 30.2.4 2020-07-10
+
+ * [RMB-673](https://issues.folio.org/browse/RMB-673) totalRecords returns exact hit count for limit=0
+ * [RMB-670](https://issues.folio.org/browse/RMB-670) Fix RestVerticle requestId logging, replace log4j 1.2 MDC by log4j 2 ThreadContext
+
+## 30.2.3 2020-07-08
+
+ * [RMB-671](https://issues.folio.org/browse/RMB-671) Reinstall PostgreSQL extensions on upgrade, drop pg\_catalog.pg\_trgm
+
+## 30.2.2 2020-07-02
+
+ * [RMB-657](https://issues.folio.org/browse/RMB-657) Default 60s connectionReleaseDelay prevents streaming large data
+ * [RMB-656](https://issues.folio.org/browse/RMB-656) NPE at startup when an OPTIONS endpoint is defined in RAML
+ * [RMB-662](https://issues.folio.org/browse/RMB-662) Remove parseDatabaseSchemaString and org.json:json
+ * [RMB-660](https://issues.folio.org/browse/RMB-660) com.thoughtworks.xstream vulnerability (CVE-2017-7957)
+ * [RMB-661](https://issues.folio.org/browse/RMB-661) Update log4j to 2.13.3 fixing SMTPS host mismatch (CVE-2020-9488)
+
+## 30.2.1 2020-06-23
+
+RMB 30.0 and 30.1 are discontinued. Only RMB >= 30.2 will receive bug and security fixes.
+
+ * [RMB-653](https://issues.folio.org/browse/RMB-653) Urldecode path parameters like /perms/users/12%2334
+ * [RMB-649](https://issues.folio.org/browse/RMB-649) Remove duplicate foreign key constraints for unchanged tables
+
+## 30.2.0 2020-06-19
+
+Note error message regression: [RMB-652](https://issues.folio.org/browse/RMB-652)
+"may not be null" changed to "must not be null" (hibernate-validator)
+
+ * [RMB-648](https://issues.folio.org/browse/RMB-648) org.hibernate:hibernate-validator vulnerability
+ * [RMB-649](https://issues.folio.org/browse/RMB-649) Remove duplicate foreign key constraints for unchanged tables
+ * [RMB-650](https://issues.folio.org/browse/RMB-650) Client generator should support Date query parameter
+
+## 30.1.0 2020-06-15
+
+ * [RMB-645](https://issues.folio.org/browse/RMB-645) Use where-only clause for the "count query"
+ * [RMB-643](https://issues.folio.org/browse/RMB-643) Support generating wrapped native types
+ * [RMB-640](https://issues.folio.org/browse/RMB-640) Sortby title and limit=0 gives zero hits
+ * [RMB-639](https://issues.folio.org/browse/RMB-639) Unexpected breaking changes streamGet and getWithOptimizedSql
+ * [RMB-638](https://issues.folio.org/browse/RMB-638) Revert PgUtil.streamGet parameter reordering
+ * [RMB-636](https://issues.folio.org/browse/RMB-636) Support PATCH requests
+ * [RMB-634](https://issues.folio.org/browse/RMB-634) PostgresClient does not provide access to db connection configs
+ * [RMB-626](https://issues.folio.org/browse/RMB-626) Remove sample, sample2
+ * [RMB-615](https://issues.folio.org/browse/RMB-615) Cancel queries that take longer than limit
+ * [RMB-555](https://issues.folio.org/browse/RMB-555) Upgrade creates duplicate foreign key constraints
+ * [RMB-495](https://issues.folio.org/browse/RMB-495) Date types of query parameters do not work correctly
+
 ## 30.0.2 2020-06-05
 
  * [RMB-632](https://issues.folio.org/browse/RMB-632) Tenant upgrade fails on foreignKey targetPath

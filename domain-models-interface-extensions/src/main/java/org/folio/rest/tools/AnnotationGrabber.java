@@ -1,5 +1,6 @@
 package org.folio.rest.tools;
 
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
@@ -9,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.HeaderParam;
@@ -17,10 +19,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.reflect.ClassPath;
+import org.folio.rest.tools.utils.ClassPath;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -72,18 +71,10 @@ public class AnnotationGrabber {
     JsonObject globalClassMapping = new JsonObject();
 
     // get classes in generated package
-    ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
-    ImmutableSet<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(RTFConsts.INTERFACE_PACKAGE);
-    Collection<Object> classNames = Collections2.transform(classes, new Function<ClassPath.ClassInfo, Object>() {
-      @Override
-      public Object apply(ClassPath.ClassInfo input) {
-        log.info("Mapping functions in " + input.getName() +" class to appropriate urls");
-        return input.getName(); // not needed - dont need transform function,
-                                // remove
-      }
-    });
+    Collection<Class<?>> interfaces = findTopLevelInterfacesInPackage(RTFConsts.INTERFACE_PACKAGE);
+
     // loop over all the classes from the package
-    classNames.forEach(val -> {
+    interfaces.forEach(intface -> {
       try {
 
         ClientGenerator cGen = new ClientGenerator();
@@ -94,10 +85,10 @@ public class AnnotationGrabber {
         // will contain all mappings for a specific class in the package
         JsonObject classSpecificMapping = new JsonObject();
         // get annotations via reflection for a class
-        Annotation[] annotations = Class.forName(val.toString()).getAnnotations();
+        Annotation[] annotations = intface.getAnnotations();
         // create an entry for the class name = ex. "class":"com.sling.rest.jaxrs.resource.BibResource"
-        classSpecificMapping.put(CLASS_NAME, val.toString());
-        classSpecificMapping.put(INTERFACE_NAME, val.toString());
+        classSpecificMapping.put(CLASS_NAME, intface.getName());
+        classSpecificMapping.put(INTERFACE_NAME, intface.getName());
 
         // loop over all the annotations for the class in order to add the
         // needed info - these are class level annotation - not method level
@@ -113,7 +104,7 @@ public class AnnotationGrabber {
             if (type.isAssignableFrom(Path.class)) {
               classSpecificMapping.put(CLASS_URL, "^" + value);
               if (generateClient){
-                cGen.generateClassMeta(val.toString(), value);
+                cGen.generateClassMeta(intface.getName());
               }
             }
           }
@@ -124,7 +115,7 @@ public class AnnotationGrabber {
 
         JsonArray methodsInAPath;
         // iterate over all functions in the class
-        Method[] inputMethods = Class.forName(val.toString()).getMethods();
+        Method[] inputMethods = intface.getMethods();
         // sort generated methods to allow comparing generated file with previous versions
         Arrays.sort(inputMethods, Comparator.comparing(Method::toGenericString));
         for (Method inputMethod : inputMethods) {
@@ -141,8 +132,7 @@ public class AnnotationGrabber {
           for (int j = 0; j < methodAn.length; j++) {
 
             Class<? extends Annotation> type = methodAn[j].annotationType();
-            //System.out.println("Values of " + type.getName());
-            if (RTFConsts.POSSIBLE_HTTP_METHOD.contains(type.getName())) {
+            if (isPossibleHttpMethod(type.getName())) {
               // put the method - get or post, etc..
               methodObj.put(HTTP_METHOD, type.getName());
             }
@@ -182,6 +172,12 @@ public class AnnotationGrabber {
               }
             }
           }
+          // if there was no @Path annotation - use the one declared on the
+          // class
+          if (methodObj.getString(METHOD_URL) == null) {
+            methodObj.put(METHOD_URL, classSpecificMapping.getString(CLASS_URL));
+            methodObj.put(REGEX_URL, getRegexForPath(classSpecificMapping.getString(CLASS_URL)));
+          }
           if (generateClient) {
             cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
               methodObj.getJsonObject(METHOD_PARAMS),
@@ -189,12 +185,6 @@ public class AnnotationGrabber {
               methodObj.getString(HTTP_METHOD),
               methodObj.getJsonArray(CONSUMES),
               methodObj.getJsonArray(PRODUCES));
-          }
-          // if there was no @Path annotation - use the one declared on the
-          // class
-          if (methodObj.getString(METHOD_URL) == null) {
-            methodObj.put(METHOD_URL, classSpecificMapping.getString(CLASS_URL));
-            methodObj.put(REGEX_URL, getRegexForPath(classSpecificMapping.getString(CLASS_URL)));
           }
           // this is the key - the regex path is the key to the functions
           // represented by this url
@@ -225,10 +215,10 @@ public class AnnotationGrabber {
 
     Parameter[] nonAnnotationParams = method.getParameters();
     Annotation[][] annotations = method.getParameterAnnotations();
-    Class[] parameterTypes = method.getParameterTypes();
+    Class<?>[] parameterTypes = method.getParameterTypes();
     int k = 0;
     for (Annotation[] annotation : annotations) {
-      Class parameterType = parameterTypes[k++];
+      Class<?> parameterType = parameterTypes[k++];
       if (annotation.length == 0) {
         // we are here because - there is a param but it is not annotated - this
         // will occur for post / put
@@ -287,6 +277,41 @@ public class AnnotationGrabber {
       }
     }
     return retObject;
+  }
+
+  private static Collection<Class<?>> findTopLevelInterfacesInPackage(String packageName) throws IOException {
+    ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
+
+    List<Class<?>> result = new ArrayList<>();
+
+    Set<ClassPath.ClassInfo> classInfo = classPath.getTopLevelClasses(packageName);
+    for (ClassPath.ClassInfo info : classInfo) {
+      Class<?> cl = info.load();
+
+      if (cl.isInterface()) {
+        result.add(cl);
+      }
+    }
+
+    return result;
+  }
+
+  private static boolean isPossibleHttpMethod(String method) {
+    switch (method) {
+    case "javax.ws.rs.PUT":
+    case "javax.ws.rs.POST":
+    case "javax.ws.rs.DELETE":
+    case "javax.ws.rs.GET":
+    case "javax.ws.rs.OPTIONS":
+    case "javax.ws.rs.HEAD":
+    case "javax.ws.rs.TRACE":
+    case "javax.ws.rs.CONNECT":
+    case "org.folio.rest.jaxrs.resource.support.OPTIONS":
+    case "org.folio.rest.jaxrs.resource.support.PATCH":
+      return true;
+    default:
+      return false;
+    }
   }
 
   private static String getRegexForPath(String path) {

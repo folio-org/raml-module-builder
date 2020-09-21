@@ -3,6 +3,10 @@
 
 Copyright (C) 2016-2020 The Open Library Foundation
 
+[ClassPath.java](domain-models-interface-extensions/src/main/java/org/folio/rest/tools/utils/ClassPath.java) and
+[ClassPathTest.java](domain-models-interface-extensions/src/test/java/org/folio/rest/tools/utils/ClassPathTest.java)
+are also Copyright (C) 2012 The Guava Authors.
+
 This software is distributed under the terms of the Apache License, Version 2.0.
 See the file ["LICENSE"](LICENSE) for more information.
 
@@ -61,10 +65,12 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Facet Support](#facet-support)
 * [JSON Schema fields](#json-schema-fields)
 * [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
+* [Boxed types](#boxed-types)
 * [Messages](#messages)
 * [Documentation of the APIs](#documentation-of-the-apis)
 * [Logging](#logging)
 * [Monitoring](#monitoring)
+* [Instrumentation](#instrumentation)
 * [Overriding Out of The Box RMB APIs](#overriding-out-of-the-box-rmb-apis)
 * [Client Generator](#client-generator)
 * [Querying multiple modules via HTTP](#querying-multiple-modules-via-http)
@@ -934,7 +940,7 @@ Only these relations have been implemented yet:
 
 * `=` (this is `==` for number matching and `adj` for a string matching.
        Examples 1: `height =/number 3.4` Example 2: `title = Potter`)
-* `==` (exact field match, for example `barcode == 883746123` or exact prefix match `title == "Harry Pott*"`
+* `==` (field match, for example `barcode == 883746123` or field prefix match `title == "Harry Pott*"`
         matching "Harry Potter and the chamber of secrets" but not "Science of Harry Potter";
         `==/number` matches any form: 3.4 = 3.400 = 0.34e1)
 * `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
@@ -945,10 +951,21 @@ Only these relations have been implemented yet:
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
+Example using [StringUtil](util/src/main/java/org/folio/util/StringUtil.java):
+
+```
+String query = "username==" + StringUtil.cqlEncode(username);
+String url = "https://example.com/users?query=" + StringUtil.urlEncode(query);
+```
+
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
 
-The `==` exact string match operator is always case sensitive and respects accents. If an index should speed up the search
-it must be a b-tree `"index"` or `"uniqueIndex"` with `"caseSensitive": true` and `"removeAccents": false`.
+To speed up the `==` field matching use a b-tree `"index"` or `"uniqueIndex"`.
+
+To speed up the word matching use a `"fullTextIndex"`.
+
+The `"caseSensitive"` and `"removeAccents"` configuration of the supporting index in schema.json is
+used for all string matching operators; `"fullTextIndex"` is always `"caseSensitive": false`.
 
 Refer to further explanation of [CQL string matching](https://dev.folio.org/faqs/explain-cql/)
 for the "Exact match operator" and "Word match operators".
@@ -974,13 +991,18 @@ and not as a JSONB string (`{"age": "19"}`).
 
 ### CQL: Matching id and foreign key fields
 
-The id field and any foreign key field is a UUID field and is not searched in the JSONB but in an
-extracted proper database table field. An index is automatically created for such a field,
+The id field and any foreign key field declared in schema.json is a UUID field
+and is not searched in the JSONB but in an extracted proper database table field.
+An index is automatically created for such a field,
 do not add an index entry in schema.json.
 
-`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID.
+`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID and use the index.
 
-`=`, `==`, and `<>` relations allow `*` for right truncation.
+`=`, `==`, and `<>` relations allow `*` for right truncation with index support.
+
+`=` is interpreted as `==` for the id field and foreign key fields declared in schema.json; for other fields
+that contain a UUID `=` results in a word full text match. Therefore `=` should be avoided and `==`
+been used for all UUID fields.
 
 Modifiers are forbidden.
 
@@ -1005,7 +1027,7 @@ are split into the three words `foo`, `/bar`, and `/baz` (always reduced to a si
 ### CQL: Matching all records
 
 A search matching all records in the target index can be executed with a
-`cql.allRecords=1` query. `cql.allRecords=1` can be used alone or as part of
+`cql.allRecords=1` (CQL standard) or a `id=*` (RMB specific) query. They can be used alone or as part of
 a more complex query, for example
 `cql.allRecords=1 NOT name=Smith sortBy name/sort.ascending`
 
@@ -1013,7 +1035,8 @@ a more complex query, for example
    as a word or where name is not defined.
 * `name="" NOT name=Smith` matches all records where name is defined but does not contain
    Smith as a word.
-* For performance reasons, searching for `*` in any fulltext field will match all records as well.
+* For performance reasons, searching for `*` in any fulltext field will match all records as well,
+  including records where that field does not exist.
 
 ### CQL: Matching undefined or empty values
 
@@ -1033,36 +1056,15 @@ not defined or if it is defined but doesn't match.
 
 For matching the elements of an array use these queries (assuming that lang is either an array or not defined, and assuming
 an array element value does not contain double quotes):
-* `lang ==/respectAccents []` for matching records where lang is defined and an empty array
-* `cql.allRecords=1 NOT lang <>/respectAccents []` for matching records where lang is not defined or an empty array
-* `lang =/respectCase/respectAccents \"en\"` for matching records where lang is defined and contains the value en
-* `cql.allRecords=1 NOT lang =/respectCase/respectAccents \"en\"` for matching records where lang does not
+* `lang == []` for matching records where lang is defined and an empty array
+* `cql.allRecords=1 NOT lang <> []` for matching records where lang is not defined or an empty array
+* `lang = \"en\"` for matching records where lang is defined and contains the value en
+* `cql.allRecords=1 NOT lang = \"en\"` for matching records where lang does not
   contain the value en (including records where lang is not defined)
-* `lang = "" NOT lang =/respectCase/respectAccents \"en\"` for matching records where lang is defined and
+* `lang = "" NOT lang = \"en\"` for matching records where lang is defined and
   and does not contain the value en
 * `lang = ""` for matching records where lang is defined
 * `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
-* `identifiers == "*\"value\": \"6316800312\", \"identifierTypeId\": \"8261054f-be78-422d-bd51-4ed9f33c3422\"*"`
-  (note to use `==` and not `=`) for matching the ISBN 6316800312 using ISBN's identifierTypeId where each element of
-  the identifiers array is a JSON object with the two keys value and identifierTypeId, for example
-
-      "identifiers": [ {
-        "value": "(OCoLC)968777846", "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace"
-      }, {
-        "value": "6316800312", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"
-      } ]
-
-To avoid the complicated syntax all ISBN values or all values can be extracted and used to create a view or an index:
-
-    SELECT COALESCE(jsonb_agg(value), '[]')
-       FROM jsonb_to_recordset(jsonb->'identifiers')
-         AS y(key text, value text)
-       WHERE key='8261054f-be78-422d-bd51-4ed9f33c3422'
-
-    SELECT COALESCE(jsonb_agg(value), '[]')
-      FROM jsonb_to_recordset(jsonb->'identifiers')
-        AS x(key text, value text)
-      WHERE value IS NOT NULL
 
 ### CQL: @-relation modifiers for array searches
 
@@ -1318,44 +1320,61 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 
 public class MyTenantAPI extends TenantAPI {
- @Override
-  public void postTenant(TenantAttributes ta, Map<String, String> headers,
-    Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+  @Validate
+  @Override
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+      Handler<AsyncResult<Response>> handler, Context context) {
 
     ..
-    }
+  }
+
+  @Validate
   @Override
-  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> hndlr, Context cntxt) {
+  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> handler, Context context) {
     ..
   }
   ..
 }
-
 ```
 
 If you wish to call the Post Tenant API (with Postgres) then just call the corresponding super-class, e.g.:
+
 ```java
+@Validate
 @Override
-public void postTenant(TenantAttributes ta, Map<String, String> headers,
-  Handler<AsyncResult<Response>> hndlr, Context cntxt) {
-  super.postTenant(ta, headers, hndlr, cntxt);
+public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+    Handler<AsyncResult<Response>> handler, Context context) {
+  super.postTenant(tenantAttributes, headers, handler, context);
 }
 ```
-(not much point in that though - it would be the same as not defining it at all).
+
+(Not much point in that though - it would be the same as not defining it at all).
 
 If you wish to load data for your module, that should be done after the DB has been successfully initialized,
 e.g. do something like:
+
 ```
-public void postTenant(TenantAttributes ta, Map<String, String> headers,
-  super.postTenant(ta, headers, res -> {
+@Validate
+@Override
+public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+    Handler<AsyncResult<Response>> handler, Context context) {
+  super.postTenant(tenantAttributes, headers, res -> {
     if (res.failed()) {
-      hndlr.handle(res);
+      handler.handle(res);
       return;
     }
+
     // load data here
-    hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-      .respond201WithApplicationJson("")));
-  }, cntxt);
+    ...
+    if (some failure) {
+      handler.handle(Future.succeededFuture(PostTenantResponse
+          .respond500WithTextPlain(some failure message)));
+      return;
+    }
+    ...
+
+    handler.handle(res);  // HTTP status: 200 for upgrade, 201 for install
+  }, context);
 }
 ```
 
@@ -1366,10 +1385,13 @@ as resources and as JSON files, you can use the TenantLoading utility.
 ```java
 import org.folio.rest.tools.utils.TenantLoading;
 
-public void postTenant(TenantAttributes ta, Map<String, String> headers,
-  super.postTenant(ta, headers, res -> {
+@Validate
+@Override
+public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+    Handler<AsyncResult<Response>> handler, Context context) {
+  super.postTenant(tenantAttributes, headers, res -> {
     if (res.failed()) {
-      hndlr.handle(res);
+      handler.handle(res);
       return;
     }
     TenantLoading tl = new TenantLoading();
@@ -1377,19 +1399,18 @@ public void postTenant(TenantAttributes ta, Map<String, String> headers,
     // resources ref-data/data1 and ref-data/data2 .. loaded to
     // okapi-url/instances and okapi-url/items respectively
     tl.withKey("loadReference").withLead("ref-data")
-      .withIdContent().
+      .withIdContent()
       .add("data1", "instances")
       .add("data2", "items");
-    tl.perform(ta, headers, vertx, res1 -> {
+    tl.perform(tenantAttributes, headers, vertx, res1 -> {
       if (res1.failed()) {
-        hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-          .respond500WithTextPlain(res1.cause().getLocalizedMessage())));
+        handler.handle(Future.succeededFuture(PostTenantResponse
+          .respond500WithTextPlain(res1.cause().getMessage())));
         return;
       }
-      hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
-        .respond201WithApplicationJson("")));
+      handler.handle(res);  // HTTP status: 200 for upgrade, 201 for install
     });
-  }, cntxt);
+  }, context);
 }
 ```
 
@@ -1764,9 +1785,9 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Estimated totalRecords
 
-RMB adds a `totalRecords` field to result sets. It contains an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited.
+RMB adds a `totalRecords` field to result sets. For `limit = 0` it contains the exact value, otherwise an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited.
 
-It uses this algorithm:
+For estimation it uses this algorithm:
 
 1. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
 2. If this is greater than 4*1000 return it and stop.
@@ -1789,6 +1810,8 @@ RMB adjusts `totalRecords` when the number of returned records in the current re
 Note that clients should **continue on the next page when `totalRecords = offset + limit`** because there may be more records.
 
 This is the exact count guarantee:
+
+For `limit = 0` an exact count is returned without any records. Otherwise:
 
 If a result set has a `totalRecords` value that is less than 1000 then it is the exact count; if it is 1000 or more it may be an estimate.
 
@@ -1898,6 +1921,33 @@ Note that `DEFAULTVALUE` only allows string values. `SIZE` requires a range ex. 
 example:
 `domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.json`
 
+## Boxed types
+
+RAML parameter types can be boxed primitives using a plugin. i.e. `boolean` to be a `Boolean`.
+
+Here is an example of a [boxed boolean](https://github.com/folio-org/raml-module-builder/blob/8089d463e2d029d50b12213c9028e0787a68494c/domain-models-runtime-it/ramls/wrappedboolean.raml).
+
+In order to use plugins you must use a library for `annotationTypes`:
+
+```
+uses:
+  ramltojaxrs: raml-util/library/ramltojaxrs.raml
+```
+
+This can be found in the raml repository. [ramltojaxrs.raml](https://github.com/folio-org/raml/blob/adff46e983ec874e791d5b04b81402069ee23e4d/library/ramltojaxrs.raml)
+
+Then can apply plugin to a type:
+
+```
+        type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
+```
+
+**Caveat**
+> Currently RMB only supports Boolean and Integer Boxed type query parameters. Both Boolean and Integer will become null if parameter not present. To add additional type support, see [RestVerticle.java](https://github.com/folio-org/raml-module-builder/blob/v30.0.2/domain-models-runtime/src/main/java/org/folio/rest/RestVerticle.java#L1317).
+
 ## Messages
 
 The runtime framework comes with a set of messages it prints out to the logs /
@@ -1989,7 +2039,7 @@ All current API documentation is also available at [dev.folio.org/doc/api](https
 ## Logging
 
 RMB uses the Log4J logging library. Logs that are generated by RMB will print all log entries in the following format:
-`%d{dd MMM yyyy HH:mm:ss:SSS} %-5p %C{1} %X{reqId} %m%n`
+`%d{dd MMM yyyy HH:mm:ss:SSS} %-5p %C{1} [%X{reqId}] %m%n`
 
 A module that wants to generate log4J logs in a different format can create a log4j.properties file in the /resources directory.
 
@@ -2024,7 +2074,23 @@ Some are listed below (and see the [full set](#documentation-of-the-apis)):
  - `/admin/postgres_load` -- Load information in Postgres.
  - `/admin/postgres_active_sessions` -- Active sessions in Postgres.
  - `/admin/health` -- Returns status code 200 as long as service is up.
- - `/admin/module_stats` -- Summary statistics (count, sum, min, max, average) of all select / update / delete / insert DB queries in the last 2 minutes.
+
+## Instrumentation
+
+RMB can push instrumentation data to an InfluxDB backend, from which
+they can be shown with something like Grafana. Vert.x pushes some numbers
+automatically, but RMB based modules can push their own numbers explicitly.
+
+Enabling the metrics via `-Dvertx.metrics.options.enabled=true` will start sending metrics to `localhost:8086`
+
+Follwing Java parameters can be used to config InfluxDB connection.
+* `influxUrl` - default to `http://localhost:8086`
+* `influxDbName` - default to `okapi`
+* `influxUser` - default to null
+* `influxPassword` - default to null
+
+For example: `java -Dvertx.metrics.options.enabled=true -DinfluxUrl=http://influx.yourdomain.io:8086 -jar mod-inventory-storage/target/mod-inventory-storage-fat.jar` then metrics
+will be sent to `http://influx.yourdomain.io:8086`
 
 ## Overriding Out of The Box RMB APIs
 It is possible to over ride APIs that the RMB provides with custom implementations.

@@ -3,6 +3,9 @@
 These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
+<!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 31.0](#version-310)
+* [Version 30.2](#version-302)
 * [Version 30.0](#version-300)
 * [Version 29.5](#version-295)
 * [Version 29.2](#version-292)
@@ -13,6 +16,29 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 31.0
+
+* [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
+  In most cases no code changes are necessary. A few files needs updating
+  ([mod-inventory-storage example](https://github.com/folio-org/mod-inventory-storage/pull/485/files)):
+  * `pom.xml`: For `maven-compiler-plugin` update `version` to `3.8.1` and
+    use `<release>11</release>` instead
+    of `source` and `target` elements.
+    Update aspectj version to `1.9.6`. Update `aspectj-maven-plugin` with
+    groupId `com.nickwongdev` and version `1.12.6`.
+  * `Jenkinsfile`: Add `buildNode = jenkins-agent-java11`.
+  * `Dockerfile` (if present): change `folioci/alpine-jre-openjdk8:latest`
+    to `folioci/alpine-jre-openjdk11:latest`.
+  * `docker/docker-entrypoint.sh`: remove if present.
+
+## Version 30.2
+
+* [RMB-652](https://issues.folio.org/browse/RMB-652) error message
+  "may not be null" changed to "must not be null" (hibernate-validator)
+* [RMB-693](https://issues.folio.org/browse/RMB-693) If using
+  PostgresClient#selectStream always call RowStream#close.
+* [RMB-702](https://issues.folio.org/browse/RMB-702) Rename {version} path variable in RAML files.
 
 ## Version 30.0
 
@@ -55,12 +81,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * Replace `Verticle#start(Future<Void>)` and `Verticle#stop(Future<Void>)` by
     `Verticle#start(Promise<Void>)` and `Verticle#stop(Promise<Void>)`
   * Replace `Future.setHandler(ar -> …)` by `Future.onComplete(ar -> …)`
-* Vert.x 4 will split `Future` into `Future` and `Promise`
-  * Vert.x 3 `Future<T>` extends `AsyncResult<T>` _and_ `Handler<AsyncResult<T>>`
-  * Vert.x 4 `Future<T>` extends `AsyncResult<T>` _only_
-  * Vert.x 4 `Promise<T>` extends `Handler<AsyncResult<T>>` _only_
-  * When writing or changing code and a `Handler<AsyncResult<T>>` is needed
-    use `promise`, not `promise.future()`, to be prepared for Vert.x 4.
+* Vert.x 4 will split `Future` into `Future` and `Promise`, see
+  [futurisation.md](./futurisation.md) for details and deprecations.
 * [RMB-624](https://issues.folio.org/browse/RMB-624) Fix invalid RAML sample
   JSON files, otherwise GenerateRunner/SchemaDereferencer will fail with
   InvocationTargetException/DecodeException "Failed to decode".

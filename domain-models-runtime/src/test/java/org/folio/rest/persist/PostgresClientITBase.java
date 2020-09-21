@@ -6,10 +6,10 @@ import java.util.Map;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
-import org.folio.rest.persist.ddlgen.TenantOperation;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.dbschema.TenantOperation;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.util.ResourceUtil;
 import org.junit.AfterClass;

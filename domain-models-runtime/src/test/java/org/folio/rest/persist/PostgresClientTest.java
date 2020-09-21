@@ -17,7 +17,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collector;
 
@@ -39,6 +38,7 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.impl.RowDesc;
+import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.Envs;
@@ -169,8 +169,9 @@ public class PostgresClientTest {
     assertThat("user", is(options.getUser()));
     assertThat("pass", is(options.getPassword()));
     assertThat("db", is(options.getDatabase()));
-    assertThat(60000, is(options.getIdleTimeout()));
-    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
+    // TODO: enable when available in vertx-sql-client/vertx-pg-client
+    // https://issues.folio.org/browse/RMB-657
+    // assertThat(60000, is(options.getConnectionReleaseDelay()));
   }
 
   @Test
@@ -189,8 +190,9 @@ public class PostgresClientTest {
     assertThat("myuser", is(options.getUser()));
     assertThat("mypassword", is(options.getPassword()));
     assertThat("mydatabase", is(options.getDatabase()));
-    assertThat(1000, is(options.getIdleTimeout()));
-    assertThat(TimeUnit.MILLISECONDS, is(options.getIdleTimeoutUnit()));
+    // TODO: enable when available in vertx-sql-client/vertx-pg-client
+    // https://issues.folio.org/browse/RMB-657
+    // assertThat(1000, is(options.getConnectionReleaseDelay()));
   }
 
   @Test
@@ -384,6 +386,11 @@ public class PostgresClientTest {
     @Override
     public void close() {
     }
+
+    @Override
+    public DatabaseMetadata databaseMetadata() {
+      return null;
+    }
   }
 
   @Test
@@ -399,8 +406,8 @@ public class PostgresClientTest {
 
     testClient.processQueryWithCount(connection, queryHelper, "get",
       totaledResults -> {
-        assertThat(totaledResults.total, is(total));
-        return testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class);
+        assertThat(totaledResults.estimatedTotal, is(total));
+        return testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class);
       },
       reply -> {
         List<TestPojo> results = reply.result().getResults();
@@ -427,7 +434,7 @@ public class PostgresClientTest {
     PgConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), true);
 
     testClient.processQuery(connection, queryHelper, total, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
         List<TestJsonbPojo> results = reply.result().getResults();
 
@@ -446,7 +453,7 @@ public class PostgresClientTest {
     PgConnection connection = new FakeSqlConnection(Future.failedFuture("Bad query"), false);
 
     testClient.processQuery(connection, queryHelper, 30, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
         assertThat(reply.failed(), is(true));
         assertThat(reply.cause().getMessage(), is("Bad query"));
@@ -462,7 +469,7 @@ public class PostgresClientTest {
 
     PgConnection connection = null;
     testClient.processQuery(connection, queryHelper, 30, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
+      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
         assertThat(reply.failed(), is(true));
         assertThat(reply.cause() instanceof NullPointerException, is(true));
