@@ -11,6 +11,10 @@ public class AES {
 
   private static String secretKey = null;
 
+  private AES() {
+    throw new UnsupportedOperationException("Cannot instantiate AES class");
+  }
+
   /** get the secret key to use for decoding a password*/
   public static String getSecretKey() {
     return secretKey;
