@@ -9,9 +9,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.rest.persist.cql.CQLWrapper;
-
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -235,30 +232,4 @@ public class FacetManager {
   public void setCountQuery(String countQuery) {
     this.countQuery = countQuery;
   }
-
-  public static void main(String args[]) throws Exception {
-
-    FacetManager fm = new FacetManager("myuniversity_new1_mod_users.users");
-
-    List<String> facetsStrings = new ArrayList<>();
-    facetsStrings.add("username.abc.cde:5");
-    facetsStrings.add("username[].abc:5");
-    facetsStrings.add("username[].username2[].abc:5");
-    facetsStrings.add("username.username[].username2[].abc:5");
-    facetsStrings.add("username.username[].username2.abc[].dc:5");
-
-    FacetManager.convertFacetStrings2FacetFields(facetsStrings, "jsonb");
-    List<FacetField> facets = new ArrayList<>();
-    facets.add(new FacetField("jsonb->'username[]'->'username2[]'->>'abc'", 5));
-
-    fm.setSupportFacets(facets);
-
-    fm.setWhere(new CQLWrapper(new CQL2PgJSON("jsonb"), "username=jha* OR username=szeev*").toString());
-
-    fm.setMainQuery("SELECT jsonb FROM myuniversity_new1_mod_users.users where jsonb->>'username' like 'jha%' OR jsonb->>'username' like 'szeev%'" );
-
-    System.out.println(fm.generateFacetQuery());
-
-  }
-
 }
