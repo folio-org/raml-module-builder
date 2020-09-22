@@ -9,9 +9,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.rest.persist.cql.CQLWrapper;
-
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
