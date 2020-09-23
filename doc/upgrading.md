@@ -27,7 +27,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
     of `source` and `target` elements.
     Update aspectj version to `1.9.6`. Update `aspectj-maven-plugin` with
     groupId `com.nickwongdev` and version `1.12.6`.
-  * `Jenkinsfile`: Add `buildNode = jenkins-agent-java11`.
+  * `Jenkinsfile`: Add `buildNode = 'jenkins-agent-java11'`
   * `Dockerfile` (if present): change `folioci/alpine-jre-openjdk8:latest`
     to `folioci/alpine-jre-openjdk11:latest`.
   * `docker/docker-entrypoint.sh`: remove if present.
