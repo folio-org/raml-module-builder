@@ -5,7 +5,8 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.desc.ColumnDescriptor;
-
+import io.vertx.sqlclient.impl.RowDesc;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -13,7 +14,7 @@ import java.util.List;
 public class LocalRowSet implements RowSet<Row> {
   final int rowCount;
   List<Row> rows = new LinkedList<>();
-  List<String> columns = new LinkedList<>();
+  RowDesc rowDesc = new RowDesc(Collections.emptyList());
 
   public LocalRowSet(int rowCount) {
     this.rowCount = rowCount;
@@ -25,7 +26,7 @@ public class LocalRowSet implements RowSet<Row> {
   }
 
   public LocalRowSet withColumns(List<String> columns) {
-    this.columns = columns;
+    this.rowDesc = new RowDesc(columns);
     return this;
   }
 
@@ -41,12 +42,12 @@ public class LocalRowSet implements RowSet<Row> {
 
   @Override
   public List<String> columnsNames() {
-    return columns;
+    return rowDesc.columnNames();
   }
 
   @Override
   public List<ColumnDescriptor> columnDescriptors() {
-    return new LinkedList<>();
+    return rowDesc.columnDescriptor();
   }
 
   @Override
