@@ -1072,7 +1072,7 @@ public class PgUtilIT {
   @Test
   public void optimizedSQLwithNo500(TestContext testContext) {
     PgUtil.getWithOptimizedSql("users", User.class, UserdataCollection.class,
-        "title", "username=a sortBy title", 0, 10,
+        "title", "username=a sortBy username", 0, 10,
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertFailure(e -> {
           assertThat(e, is(instanceOf(NullPointerException.class)));
         }));
@@ -1090,14 +1090,14 @@ public class PgUtilIT {
 
   @Test
   public void optimizedSqlInvalidSortModifier(TestContext testContext) {
-    String cql = "username=a sortBy title/sort.ignoreCase";
+    String cql = "username=a sortBy username/sort.ignoreCase";
     String msg = searchForDataExpectFailure(cql, 0, 10, testContext);
     assertThat(msg, containsString("Unsupported modifier sort.ignorecase"));
   }
 
   @Test
   public void optimizedSqlInvalidSortModifier2(TestContext testContext) {
-    String cql = "username=a sortBy title/sort.ascending/sort.respectAccents";
+    String cql = "username=a sortBy username/sort.ascending/sort.respectAccents";
     String msg = searchForDataExpectFailure(cql, 0, 10, testContext);
     assertThat(msg, containsString("Unsupported modifier sort.respectaccents"));
   }
