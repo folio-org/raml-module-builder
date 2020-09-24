@@ -46,7 +46,7 @@ public class LocalRowSet implements RowSet<Row> {
 
   @Override
   public List<ColumnDescriptor> columnDescriptors() {
-    return null;
+    return new LinkedList<>();
   }
 
   @Override
