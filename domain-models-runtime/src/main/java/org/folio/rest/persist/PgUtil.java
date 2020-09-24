@@ -34,6 +34,7 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.util.UuidUtil;
 import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -1083,7 +1084,7 @@ public final class PgUtil {
     }
   }
 
-  private static String getAscDesc(ModifierSet modifierSet) {
+  private static String getAscDesc(ModifierSet modifierSet) throws CQLFeatureUnsupportedException {
     String ascDesc = "";
     for (Modifier modifier : modifierSet.getModifiers()) {
       switch (modifier.getType()) {
@@ -1094,7 +1095,7 @@ public final class PgUtil {
         ascDesc = "DESC";
         break;
       default:
-        // ignore
+        throw new CQLFeatureUnsupportedException("CQL: Unsupported modifier " + modifier.getType());
       }
     }
     return ascDesc;
