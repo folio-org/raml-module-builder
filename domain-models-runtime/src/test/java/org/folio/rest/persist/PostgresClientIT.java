@@ -2881,7 +2881,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
-      facets, QUERY_TIMEOUT, context.asyncAssertSuccess(sr -> {
+      facets, context.asyncAssertSuccess(sr -> {
         ResultInfo resultInfo = sr.resultInto();
         context.assertEquals(0, resultInfo.getTotalRecords());
         context.assertEquals(0, resultInfo.getFacets().size());
