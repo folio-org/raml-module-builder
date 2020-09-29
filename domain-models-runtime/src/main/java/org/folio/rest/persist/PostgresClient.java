@@ -94,7 +94,9 @@ public class PostgresClient {
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
 
-  static final String COUNT_FIELD = "count";
+  static final String            COUNT_FIELD = "count";
+
+  static final int               STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
 
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
@@ -105,8 +107,6 @@ public class PostgresClient {
   private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
-
-  private static final int       STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
 
   private static final String    SELECT = "SELECT ";
   private static final String    UPDATE = "UPDATE ";
@@ -702,11 +702,7 @@ public class PostgresClient {
         handler.handle(ar);
         return;
       }
-      SQLConnection sqlConnection = conn.result();
-      if (sqlConnection.conn != null) {
-        sqlConnection.conn.close();
-      }
-      cancelConnectionTimeoutTimer(sqlConnection);
+      conn.result().close(vertx);
       handler.handle(ar);
     };
   }
@@ -1725,19 +1721,19 @@ public class PostgresClient {
       null, 0, replyHandler);
   }
 
-   /**
+  /**
    * Stream GET with CQLWrapper, no facets {@link org.folio.rest.persist.PostgresClientStreamResult}
-    * @param <T>
-    * @param table
-    * @param clazz
-    * @param fieldName
-    * @param filter
-    * @param returnIdField
-    * @param distinctOn may be null
-    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
-    * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
-    */
-   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param filter
+   * @param returnIdField
+   * @param distinctOn may be null
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
+   */
+  @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> void streamGet(String table, Class<T> clazz, String fieldName,
        CQLWrapper filter, boolean returnIdField, String distinctOn,
        int queryTimeout, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
@@ -1746,7 +1742,29 @@ public class PostgresClient {
       null, queryTimeout, replyHandler);
   }
 
-    /**
+  /**
+   * Close conn before calling {@link PostgresClientStreamResult#endHandler(Handler)} or
+   * {@link PostgresClientStreamResult#exceptionHandler(Handler)}, and on failed result.
+   * @param conn the connection to close
+   * @return a handler that ensures that the connection gets closed
+   */
+  <T> Handler<AsyncResult<PostgresClientStreamResult<T>>> closeAtEnd(
+      AsyncResult<SQLConnection> conn, Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
+    return asyncResult -> {
+      try {
+        if (asyncResult.succeeded()) {
+          asyncResult.result().setCloseHandler(close -> conn.result().close(vertx));
+        } else {
+          conn.result().close(vertx);
+        }
+        replyHandler.handle(asyncResult);
+      } catch (Exception e) {
+        replyHandler.handle(Future.failedFuture(e));
+      }
+    };
+  }
+
+  /**
    * Stream GET with CQLWrapper and facets {@link org.folio.rest.persist.PostgresClientStreamResult}
    * @param <T>
    * @param table
@@ -1765,7 +1783,7 @@ public class PostgresClient {
 
     getSQLConnection(0, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
+            distinctOn, facets, closeAtEnd(conn, replyHandler)));
   }
 
   /**
@@ -1789,7 +1807,7 @@ public class PostgresClient {
 
     getSQLConnection(queryTimeout, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, closeAndHandleResult(conn, replyHandler)));
+            distinctOn, facets, closeAtEnd(conn, replyHandler)));
   }
 
   /**
@@ -1842,7 +1860,6 @@ public class PostgresClient {
     try {
       QueryHelper queryHelper = buildQueryHelper(table,
         fieldName, wrapper, returnIdField, facets, distinctOn);
-
       connection.conn.query(queryHelper.countQuery).execute(countQueryResult -> {
         if (countQueryResult.failed()) {
           replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
@@ -2632,7 +2649,6 @@ public class PostgresClient {
     ResultsHelper<T> resultsHelper, Map<String, Method> externalColumnSetters,
     boolean isAuditFlavored, Row row
   ) throws IOException, InstantiationException, IllegalAccessException, InvocationTargetException {
-
     Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
     Object o = null;
     resultsHelper.facet = false;
@@ -3101,13 +3117,6 @@ public class PostgresClient {
       SQLConnection sqlConnection = new SQLConnection(pgConnection, null, timerId);
       handler.handle(Future.succeededFuture(sqlConnection));
     });
-  }
-
-  private void cancelConnectionTimeoutTimer(SQLConnection sqlConnection) {
-    Long timeId = sqlConnection.timerId;
-    if (timeId != null) {
-      vertx.cancelTimer(timeId);
-    }
   }
 
   /**
