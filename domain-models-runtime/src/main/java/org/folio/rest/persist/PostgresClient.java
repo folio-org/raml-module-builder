@@ -1917,7 +1917,7 @@ public class PostgresClient {
       PostgresClientStreamResult<T> streamResult,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    ResultInfo resultInfo = streamResult.resultInto();
+    ResultInfo resultInfo = streamResult.resultInfo();
     Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
     ResultsHelper<T> resultsHelper = new ResultsHelper<>(clazz);
     boolean isAuditFlavored = isAuditFlavored(resultsHelper.clazz);

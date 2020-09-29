@@ -32,7 +32,7 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
    *
    * @return Result information.. including totalRecords and facets
    */
-  public ResultInfo resultInto() {
+  public ResultInfo resultInfo() {
     return this.resultInfo;
   }
 
