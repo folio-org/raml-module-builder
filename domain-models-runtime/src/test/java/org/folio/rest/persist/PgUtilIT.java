@@ -1071,11 +1071,11 @@ public class PgUtilIT {
 
   @Test
   public void optimizedSQLwithNo500(TestContext testContext) {
-    PgUtil.getWithOptimizedSql("users", User.class, UserdataCollection.class, "title", "username=a sortBy title",
-        0, 10, okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, response -> {
-
-          testContext.assertTrue( response.cause() instanceof NullPointerException);
-        });
+    PgUtil.getWithOptimizedSql("users", User.class, UserdataCollection.class,
+        "title", "username=a sortBy username", 0, 10,
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertFailure(e -> {
+          assertThat(e, is(instanceOf(NullPointerException.class)));
+        }));
   }
 
   @Test
@@ -1086,6 +1086,20 @@ public class PgUtilIT {
     assertThat(PgUtil.getOptimizedSqlSize(), is(newSize));
     PgUtil.setOptimizedSqlSize(oldSize);
     assertThat(PgUtil.getOptimizedSqlSize(), is(oldSize));
+  }
+
+  @Test
+  public void optimizedSqlInvalidSortModifier(TestContext testContext) {
+    String cql = "username=a sortBy username/sort.ignoreCase";
+    String msg = searchForDataExpectFailure(cql, 0, 10, testContext);
+    assertThat(msg, containsString("Unsupported modifier sort.ignorecase"));
+  }
+
+  @Test
+  public void optimizedSqlInvalidSortModifier2(TestContext testContext) {
+    String cql = "username=a sortBy username/sort.ascending/sort.respectAccents";
+    String msg = searchForDataExpectFailure(cql, 0, 10, testContext);
+    assertThat(msg, containsString("Unsupported modifier sort.respectaccents"));
   }
 
   private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
@@ -1241,7 +1255,7 @@ public class PgUtilIT {
     return userdataCollection;
   }
   private String searchForDataExpectFailure(String cql, int offset, int limit, TestContext testContext) {
-    String responseString = new String();
+    StringBuilder responseString = new StringBuilder();
     Async async = testContext.async();
     PgUtil.getWithOptimizedSql(
         "users", User.class, UserdataCollection.class, "username", cql, offset, limit,
@@ -1254,11 +1268,11 @@ public class PgUtilIT {
             return;
           }
           String c = (String) response.getEntity();
-          responseString.concat(c);
+          responseString.append(c);
           async.complete();
     }));
     async.awaitSuccess(10000 /* ms */);
-    return responseString;
+    return responseString.toString();
   }
   private String searchForDataNullHeadersExpectFailure(String cql, int offset, int limit, TestContext testContext) {
     String responseString = new String();
