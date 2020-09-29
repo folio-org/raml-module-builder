@@ -31,6 +31,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `Dockerfile` (if present): change `folioci/alpine-jre-openjdk8:latest`
     to `folioci/alpine-jre-openjdk11:latest`.
   * `docker/docker-entrypoint.sh`: remove if present.
+  * For `pom.xml` , plugin `maven-shade-plugin`, add
+   `<Multi-Release>true</Multi-Release>` to section `manifestEntries`. see
+   [this](https://github.com/folio-org/okapi/pull/968) example.
 
 ## Version 30.2
 
