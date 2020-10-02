@@ -2705,6 +2705,60 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void closeAtEndException(TestContext context) throws Exception {
+    Async async = context.async();
+    CQLWrapper cql = new CQLWrapper(new CQL2PgJSON("jsonb"), "id=*", 1, /* offset */ 0);
+    postgresClient = createTable(context, TENANT, MOCK_POLINES_TABLE, "id UUID PRIMARY KEY, jsonb JSONB NOT NULL");
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", cql, false, null, 0,
+        asyncResult -> {
+          if (asyncResult.succeeded()) {
+            throw new RuntimeException("foo");
+          } else {
+            context.assertEquals("foo", asyncResult.cause().getMessage());
+            async.complete();
+          }
+        });
+  }
+
+  private void streamGetCursorPage(TestContext context, int limit) throws Exception {
+    Async async = context.async();
+    CQLWrapper cql = new CQLWrapper(new CQL2PgJSON("jsonb"), "id=*", limit, /* offset */ 0);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", cql, false, null,
+        context.asyncAssertSuccess(r -> {
+          AtomicInteger count = new AtomicInteger();
+          r.handler(streamHandler -> {
+            count.incrementAndGet();
+          });
+          r.endHandler(x -> {
+            context.assertEquals(limit, count.get());
+            async.complete();
+          });
+          r.exceptionHandler(e -> context.fail(e));
+        }));
+  }
+
+  @Test
+  public void streamGetCursorPage(TestContext context) throws Exception {
+    String schema = PostgresClient.convertToPsqlStandard(TENANT);
+    postgresClient = createTable(context, TENANT, MOCK_POLINES_TABLE, "id UUID PRIMARY KEY, jsonb JSONB NOT NULL");
+    int n = PostgresClient.STREAM_GET_DEFAULT_CHUNK_SIZE;
+    int max = 2*n+1;
+    execute(context,
+        "INSERT INTO " + schema + "." + MOCK_POLINES_TABLE +
+        " SELECT id, jsonb_build_object('id', id) as json" +
+        " FROM (SELECT md5(generate_series(1, " + max + ")::text)::uuid) x(id)");
+    // check that it works at the borders of the pages (chunks) we use for the SQL cursor
+    streamGetCursorPage(context, 0);
+    streamGetCursorPage(context, 1);
+    streamGetCursorPage(context, n-1);
+    streamGetCursorPage(context, n);
+    streamGetCursorPage(context, n+1);
+    streamGetCursorPage(context, 2*n-1);
+    streamGetCursorPage(context, 2*n);
+    streamGetCursorPage(context, 2*n+1);
+  }
+
+  @Test
   public void streamGetUnsupported(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
@@ -2827,7 +2881,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
-      facets, QUERY_TIMEOUT, context.asyncAssertSuccess(sr -> {
+      facets, context.asyncAssertSuccess(sr -> {
         ResultInfo resultInfo = sr.resultInfo();
         context.assertEquals(0, resultInfo.getTotalRecords());
         context.assertEquals(0, resultInfo.getFacets().size());
