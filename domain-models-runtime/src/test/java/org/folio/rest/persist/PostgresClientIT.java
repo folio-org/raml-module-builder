@@ -2682,7 +2682,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
       false, null, context.asyncAssertSuccess(sr -> {
-        context.assertEquals(3, sr.resultInto().getTotalRecords());
+        context.assertEquals(3, sr.resultInfo().getTotalRecords());
       }));
   }
 
@@ -2695,7 +2695,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       context.asyncAssertSuccess(sr -> {
-        context.assertEquals(3, sr.resultInto().getTotalRecords());
+        context.assertEquals(3, sr.resultInfo().getTotalRecords());
         sr.handler(streamHandler -> objectCount.incrementAndGet());
         sr.endHandler(x -> {
           context.assertEquals(3, objectCount.get());
@@ -2798,7 +2798,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       context.asyncAssertSuccess(sr -> {
-        context.assertEquals(0, sr.resultInto().getTotalRecords());
+        context.assertEquals(0, sr.resultInfo().getTotalRecords());
         sr.handler(streamHandler -> objectCount.incrementAndGet());
         sr.endHandler(x -> {
           context.assertEquals(0, objectCount.get());
@@ -2821,7 +2821,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Poline.class, "jsonb", wrapper, true, null,
       facets, QUERY_TIMEOUT, context.asyncAssertSuccess(sr -> {
-        ResultInfo resultInfo = sr.resultInto();
+        ResultInfo resultInfo = sr.resultInfo();
         context.assertEquals(3, resultInfo.getTotalRecords());
         context.assertEquals(2, resultInfo.getFacets().size());
         context.assertEquals("edition", resultInfo.getFacets().get(0).getType());
@@ -2882,7 +2882,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
       facets, context.asyncAssertSuccess(sr -> {
-        ResultInfo resultInfo = sr.resultInto();
+        ResultInfo resultInfo = sr.resultInfo();
         context.assertEquals(0, resultInfo.getTotalRecords());
         context.assertEquals(0, resultInfo.getFacets().size());
         sr.handler(streamHandler -> objectCount.incrementAndGet());
@@ -3161,7 +3161,7 @@ public class PostgresClientIT {
       .setLimit(new Limit(1));
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
       false, null, context.asyncAssertSuccess(sr -> {
-        context.assertEquals(3, sr.resultInto().getTotalRecords());
+        context.assertEquals(3, sr.resultInfo().getTotalRecords());
         sr.handler(streamHandler -> objectCount.incrementAndGet());
         sr.endHandler(x -> {
           context.assertEquals(1, objectCount.get());
@@ -3184,7 +3184,7 @@ public class PostgresClientIT {
       .setLimit(new Limit(0));
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
       false, null, context.asyncAssertSuccess(sr -> {
-        context.assertEquals(3, sr.resultInto().getTotalRecords());
+        context.assertEquals(3, sr.resultInfo().getTotalRecords());
         sr.handler(streamHandler -> objectCount.incrementAndGet());
         sr.endHandler(x -> {
           context.assertEquals(0, objectCount.get());
@@ -3205,7 +3205,7 @@ public class PostgresClientIT {
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
         false, null, context.asyncAssertSuccess(sr -> {
-          context.assertEquals(3, sr.resultInto().getTotalRecords());
+          context.assertEquals(3, sr.resultInfo().getTotalRecords());
           sr.handler(streamHandler -> objectCount.incrementAndGet());
           sr.endHandler(x -> {
             context.assertEquals(3, objectCount.get());
@@ -3226,7 +3226,7 @@ public class PostgresClientIT {
     postgresClient.startTx(trans -> {
       postgresClient.streamGet(trans, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
           false, null, null, context.asyncAssertSuccess(sr -> {
-            context.assertEquals(3, sr.resultInto().getTotalRecords());
+            context.assertEquals(3, sr.resultInfo().getTotalRecords());
             sr.handler(streamHandler -> objectCount.incrementAndGet());
             sr.endHandler(x -> {
               context.assertEquals(3, objectCount.get());
@@ -3250,7 +3250,7 @@ public class PostgresClientIT {
       .setOffset(new Offset(1));
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
       false, null, context.asyncAssertSuccess(sr -> {
-        context.assertEquals(3, sr.resultInto().getTotalRecords());
+        context.assertEquals(3, sr.resultInfo().getTotalRecords());
         sr.handler(streamHandler -> objectCount.incrementAndGet());
         sr.endHandler(x -> {
           context.assertEquals(2, objectCount.get());
@@ -3274,7 +3274,7 @@ public class PostgresClientIT {
         .setOffset(new Offset(i)).setLimit(new Limit(1));
       postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
         false, null, context.asyncAssertSuccess(sr -> {
-          context.assertEquals(3, sr.resultInto().getTotalRecords());
+          context.assertEquals(3, sr.resultInfo().getTotalRecords());
           sr.handler(obj -> {
             try {
               ObjectMapper mapper = new ObjectMapper();

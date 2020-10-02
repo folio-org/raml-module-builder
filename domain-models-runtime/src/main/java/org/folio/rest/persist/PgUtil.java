@@ -489,10 +489,10 @@ public final class PgUtil {
       String message = res.getMessage();
       List<Diagnostic> diag = new ArrayList<>();
       diag.add(new Diagnostic().withCode("500").withMessage(message));
-      result.resultInto().setDiagnostics(diag);
-      streamTrailer(response, result.resultInto());
+      result.resultInfo().setDiagnostics(diag);
+      streamTrailer(response, result.resultInfo());
     });
-    result.endHandler(res -> streamTrailer(response, result.resultInto()));
+    result.endHandler(res -> streamTrailer(response, result.resultInfo()));
     result.handler(res -> {
       String itemString = null;
       try {
