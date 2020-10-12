@@ -1,3 +1,7 @@
+## 31.1.2 2020-10-12
+
+ * [RMB-732](https://issues.folio.org/browse/RMB-732) doStreamGetQuery returns only 100 records when limit>100
+
 ## 31.1.1 2020-09-25
 
 Bug fix release of RMB. No code changes should be necessary for modules.
