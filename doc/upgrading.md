@@ -34,6 +34,23 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * For `pom.xml`, plugin `maven-shade-plugin`, add
    `<Multi-Release>true</Multi-Release>` to section `manifestEntries`. see
    [this](https://github.com/folio-org/okapi/pull/968) example.
+    Also, after `version` element, add section as shown below to avoid warnings
+    about format specifiers during startup. See
+    [this](https://github.com/folio-org/okapi/pull/964/commits/f4b5b33dfed59e2d64340a9a18a5cc479957afcf)
+    example.
+
+```xml
+        <configuration>
+          <filters>
+            <filter>
+              <artifact>*:*</artifact>
+              <excludes>
+                <exclude>**/Log4j2Plugins.dat</exclude>
+              </excludes>
+            </filter>
+          </filters>
+        </configuration>
+```
 
 ## Version 30.2
 
