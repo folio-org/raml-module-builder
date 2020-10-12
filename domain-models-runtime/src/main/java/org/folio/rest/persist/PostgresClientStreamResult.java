@@ -16,6 +16,7 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
   private Handler<T> streamHandler;
   private Handler<Void> endHandler;
   private Handler<Throwable> exceptionHandler;
+  private Handler<Void> closeHandler;
   private boolean failed = false; // to ensure exceptionHandler being called at most once
 
   /**
@@ -32,7 +33,7 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
    *
    * @return Result information.. including totalRecords and facets
    */
-  public ResultInfo resultInto() {
+  public ResultInfo resultInfo() {
     return this.resultInfo;
   }
 
@@ -75,7 +76,16 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
   }
 
   /**
-   * Only to be called by PostgresCLient itself
+   * Set a handler that is called before the endHandler or the exceptionHandler is to be fired.
+   * The handler is called even if endHandler or exceptionHandler is null.
+   */
+  PostgresClientStreamResult<T> setCloseHandler(Handler<Void> closeHandler) {
+    this.closeHandler = closeHandler;
+    return this;
+  }
+
+  /**
+   * Only to be called by PostgresClient itself
    *
    * @param t
    */
@@ -89,6 +99,9 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
    * Only to be called by PostgresClient itself
    */
   void fireEndHandler() {
+    if (closeHandler != null) {
+      closeHandler.handle(null);
+    }
     if (endHandler != null) {
       endHandler.handle(null);
     }
@@ -104,6 +117,13 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
       return;
     }
     failed = true;
+    if (closeHandler != null) {
+      try {
+        closeHandler.handle(null);
+      } catch (Exception e) {
+        // ignore yet another exception, connection may have been closed before
+      }
+    }
     if (exceptionHandler != null) {
       exceptionHandler.handle(cause);
     }
