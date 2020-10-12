@@ -1,3 +1,7 @@
+## 30.2.8 2020-10-12
+
+ * [RMB-732](https://issues.folio.org/browse/RMB-732) doStreamGetQuery returns only 100 records when limit>100
+
 ## 30.2.7 2020-09-02
 
  * [RMB-703](https://issues.folio.org/browse/RMB-703) Full text search doesn't match URLs containing &
