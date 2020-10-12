@@ -40,6 +40,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.ThreadContext;
+import org.folio.okapi.common.logging.FolioLoggingContext;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -915,6 +916,8 @@ public class RestVerticle extends AbstractVerticle {
     newArray[params.length - (size-(pos+2))] = context;
 
     newArray[params.length - (size-pos)] = headers;
+
+    headers.forEach(FolioLoggingContext::put);
 
     try {
       method.invoke(o, newArray);

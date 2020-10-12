@@ -1,5 +1,10 @@
 package org.folio.rest.tools.client;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.ext.web.client.HttpRequest;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,10 +32,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -53,8 +54,8 @@ public class HttpModuleClient2 implements HttpClientInterface {
   private static final Logger log = LoggerFactory.getLogger(HttpModuleClient2.class);
 
   private String tenantId;
-  private HttpClientOptions options;
-  private HttpClient httpClient;
+  private WebClientOptions options;
+  private WebClient webClient;
   private Vertx vertx;
   private boolean autoCloseConnections = true;
   private Map<String, String> headers = new HashMap<>();
@@ -70,7 +71,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
     this.cacheTO = cacheTO;
     this.connTO = connTO;
     this.idleTO = idleTO;
-    options = new HttpClientOptions().setLogActivity(true).setKeepAlive(keepAlive)
+    options = new WebClientOptions().setLogActivity(true).setKeepAlive(keepAlive)
         .setConnectTimeout(connTO).setIdleTimeout(idleTO);
     options.setDefaultHost(host);
     if(port == -1){
@@ -82,7 +83,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
     this.autoCloseConnections = autoCloseConnections;
     vertx = VertxUtils.getVertxFromContextOrNew();
     setDefaultHeaders();
-    httpClient = vertx.createHttpClient(options);
+    webClient = WebClient.create(vertx, options);
   }
 
   public HttpModuleClient2(String host, int port, String tenantId) {
@@ -119,31 +120,21 @@ public class HttpModuleClient2 implements HttpClientInterface {
   }
 
   private void request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers,
-      boolean cache, Handler<HttpClientResponse> responseHandler, CompletableFuture<Response> cf2){
+      boolean cache, Handler<AsyncResult<HttpResponse<Buffer>>> responseHandler, CompletableFuture<Response> cf2){
 
     try {
-      HttpClientRequest request = null;
+      HttpRequest<Buffer> request = null;
       if(absoluteHostAddr){
-        request = httpClient.requestAbs(method, options.getDefaultHost() + endpoint);
+        request = webClient.requestAbs(method, options.getDefaultHost() + endpoint);
       } else {
-        request = httpClient.request(method, endpoint);
+        request = webClient.request(method, endpoint);
       }
-      request.exceptionHandler(error -> {
-        Response r = new Response();
-        r.populateError(endpoint, -1, error.getMessage());
-        cf2.complete(r);
-      })
-      .handler(responseHandler);
+      request
+      .sendBuffer(data, responseHandler);
       if(headers != null){
         this.headers.putAll(headers);
       }
       request.headers().setAll(this.headers);
-      if(data != null){
-        request.end(data);
-      }
-      else{
-        request.end();
-      }
     } catch (Exception e) {
       Response r = new Response();
       r.populateError(endpoint, -1, e.getMessage());
@@ -172,7 +163,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
     CompletableFuture<Response> cf = new CompletableFuture<>();
     HTTPJsonResponseHandler handler = new HTTPJsonResponseHandler(endpoint, cf);
     if(autoCloseConnections){
-      handler.httpClient = httpClient;
+      handler.httpClient = webClient;
     }
     if(rollbackURL != null){
       handler.rollbackURL = rollbackURL;
@@ -390,7 +381,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
 
   @Override
   public void closeClient(){
-    httpClient.close();
+    webClient.close();
   }
 
   @Override
