@@ -2668,7 +2668,8 @@ public class PostgresClient {
     ResultsHelper<T> resultsHelper, Map<String, Method> externalColumnSetters,
     boolean isAuditFlavored, Row row
   ) throws IOException, InstantiationException, IllegalAccessException, InvocationTargetException {
-    Object jo = row.getValue(DEFAULT_JSONB_FIELD_NAME);
+    int columnIndex = row.getColumnIndex(DEFAULT_JSONB_FIELD_NAME);
+    Object jo = columnIndex == -1 ? null : row.getValue(columnIndex);
     Object o = null;
     resultsHelper.facet = false;
 
@@ -2746,6 +2747,13 @@ public class PostgresClient {
     }
   }
 
+  private boolean isStringArrayType(Object value) {
+    // https://github.com/eclipse-vertx/vertx-sql-client/blob/4.0.0.Beta3/vertx-sql-client/src/main/java/io/vertx/sqlclient/Tuple.java#L737
+    return value instanceof String[] ||
+        value instanceof Enum[] ||
+        (value != null && value.getClass() == Object[].class);
+  }
+
   /**
    * populate jsonb object with values from external columns - for example:
    * if there is an update_date column in the record - try to populate a field updateDate in the
@@ -2763,11 +2771,12 @@ public class PostgresClient {
     for (Map.Entry<String, Method> entry : externalColumnSetters.entrySet()) {
       String columnName = entry.getKey();
       Method method = entry.getValue();
-      String[] stringArray = row.getStringArray(columnName);
-      if (stringArray != null) {
-        method.invoke(o, Arrays.asList(stringArray));
+      int columnIndex = row.getColumnIndex(columnName);
+      Object value = columnIndex == -1 ? null : row.getValue(columnIndex);
+      if (isStringArrayType(value)) {
+        method.invoke(o, Arrays.asList(row.getStringArray(columnIndex)));
       } else {
-        method.invoke(o, row.getValue(columnName));
+        method.invoke(o, value);
       }
     }
   }
@@ -2841,7 +2850,7 @@ public class PostgresClient {
           RowIterator<Row> iterator = explain.result().iterator();
           while (iterator.hasNext()) {
             Row row = iterator.next();
-            e.append('\n').append(row.getString(0));
+            e.append('\n').append(row.getValue(0));
           }
           log.warn(e.toString());
         });
