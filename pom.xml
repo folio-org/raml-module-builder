@@ -27,7 +27,7 @@
 
   <properties>
     <aspectj.version>1.9.6</aspectj.version>
-    <junit-jupiter-version>5.6.0</junit-jupiter-version>
+    <junit-jupiter-version>5.7.0</junit-jupiter-version>
     <postgresql-embedded-version>2.10</postgresql-embedded-version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
@@ -73,7 +73,7 @@
       <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
-        <version>4.13</version>
+        <version>4.13.1</version>
       </dependency>
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
