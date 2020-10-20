@@ -8,7 +8,6 @@ import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -243,13 +242,14 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void testPopulateExternalColumns() throws InvocationTargetException, IllegalAccessException {
+  public void testPopulateExternalColumns() throws Exception {
     PostgresClient testClient = PostgresClient.testClient();
     List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
       "id", "foo", "bar", "biz", "baz"
     }));
     Map<String, Method> externalColumnSetters = new HashMap<>();
     testClient.collectExternalColumnSetters(columnNames, TestPojo.class, false, externalColumnSetters);
+    externalColumnSetters.put("nonExistingColumn", TestPojo.class.getMethod("setBar", String.class));
     TestPojo o = new TestPojo();
     String foo = "Hello";
     String bar = "World";
