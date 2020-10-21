@@ -631,7 +631,7 @@ public class PostgresClient {
       }
       try {
         SQLConnection pgTransaction = new SQLConnection(res.result(),
-            res.result().begin(), null);
+            res.result().begin().result(), null);
         done.handle(Future.succeededFuture(pgTransaction));
       } catch (Exception e) {
         log.error(e.getMessage(), e);
@@ -1894,7 +1894,7 @@ public class PostgresClient {
                             Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
     // Start a transaction that we need to close.
     // If a transaction is already running we don't need to close it.
-    final Transaction transaction = connection.tx == null ? connection.conn.begin() : null;
+    final Transaction transaction = connection.tx == null ? connection.conn.begin().result() : null;
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
         closeIfNonNull(transaction);
@@ -1922,7 +1922,7 @@ public class PostgresClient {
 
   private void closeIfNonNull(Transaction transaction) {
     if (transaction != null) {
-      transaction.close();
+      transaction.completion();
     }
   }
 
@@ -3041,7 +3041,8 @@ public class PostgresClient {
         return;
       }
       final Transaction tx = conn.result().tx;
-      tx.prepare(sql, res -> {
+      final PgConnection pgConnection = conn.result().conn;
+      pgConnection.prepare(sql, res -> {
         if (res.failed()) {
           log.error(res.cause().getMessage(), res.cause());
           replyHandler.handle(Future.failedFuture(res.cause()));
@@ -3508,7 +3509,13 @@ public class PostgresClient {
    */
   public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
     Promise<List<String>> promise = Promise.promise();
-    runSQLFile(sqlFile, stopOnError, promise.future());
+    runSQLFile(sqlFile, stopOnError, (res) -> {
+        if (res.failed()) {
+          log.error("Error while executing SQL :" + res.cause().getMessage());
+          promise.fail(res.cause());
+        }
+        promise.complete(res.result());
+        });
     return promise.future();
   }
 

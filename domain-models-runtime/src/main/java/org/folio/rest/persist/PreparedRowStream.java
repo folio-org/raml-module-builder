@@ -1,7 +1,9 @@
 package org.folio.rest.persist;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
@@ -40,7 +42,7 @@ public class PreparedRowStream implements RowStream<Row> {
   }
 
   @Override
-  public ReadStream<Row> fetch(long amount) {
+  public RowStream<Row> fetch(long amount) {
     return rowStream.fetch(amount);
   }
 
@@ -75,8 +77,13 @@ public class PreparedRowStream implements RowStream<Row> {
   }
 
   @Override
-  public void close() {
-    rowStream.close(close -> preparedStatement.close());
+  public Future<Void> close() {
+    Promise<Void> p = Promise.promise();
+    rowStream.close(close -> {
+      preparedStatement.close();
+      p.complete();
+    });
+    return p.future();
   }
 
   @Override
