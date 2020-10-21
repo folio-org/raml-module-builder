@@ -4,3 +4,6 @@
 [submodule "domain-models-runtime-it/ramls/raml-util"]
 	path = domain-models-runtime-it/ramls/raml-util
 	url = https://github.com/folio-org/raml
+[submodule "ramls/raml-util"]
+	path = ramls/raml-util
+	url = https://github.com/folio-org/raml
