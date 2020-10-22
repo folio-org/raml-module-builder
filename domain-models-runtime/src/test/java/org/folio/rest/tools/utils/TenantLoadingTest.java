@@ -563,16 +563,16 @@ public class TenantLoadingTest {
   }
 
   private void assertGetIdBase(TestContext context, String path, String expectedBase) {
-    Future<Void> future = Promise.<Void>promise().future();
-    context.assertEquals(expectedBase, TenantLoading.getIdBase(path, future));
-    context.assertFalse(future.isComplete());
+    Promise<Void> promise = Promise.<Void>promise();
+    context.assertEquals(expectedBase, TenantLoading.getIdBase(path, promise));
+    context.assertFalse(promise.future().isComplete());
   }
 
   private void assertGetIdBaseFail(TestContext context, String path) {
-    Future<Void> future = Promise.<Void>promise().future();
-    context.assertEquals(null, TenantLoading.getIdBase(path, future));
-    context.assertTrue(future.failed());
-    context.assertEquals("No basename for " + path, future.cause().getMessage());
+    Promise<Void> promise = Promise.<Void>promise();
+    context.assertEquals(null, TenantLoading.getIdBase(path, promise));
+    context.assertTrue(promise.future().failed());
+    context.assertEquals("No basename for " + path, promise.future().cause().getMessage());
   }
 
   @Test

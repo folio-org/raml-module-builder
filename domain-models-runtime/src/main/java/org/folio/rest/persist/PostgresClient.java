@@ -631,7 +631,7 @@ public class PostgresClient {
       }
       try {
         SQLConnection pgTransaction = new SQLConnection(res.result(),
-            res.result().begin().result(), null);
+            res.result().begin(), null);
         done.handle(Future.succeededFuture(pgTransaction));
       } catch (Exception e) {
         log.error(e.getMessage(), e);
@@ -1894,7 +1894,7 @@ public class PostgresClient {
                             Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
     // Start a transaction that we need to close.
     // If a transaction is already running we don't need to close it.
-    final Transaction transaction = connection.tx == null ? connection.conn.begin().result() : null;
+    final Transaction transaction = connection.tx == null ? connection.conn.begin() : null;
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
         closeIfNonNull(transaction);
@@ -1922,7 +1922,7 @@ public class PostgresClient {
 
   private void closeIfNonNull(Transaction transaction) {
     if (transaction != null) {
-      transaction.completion();
+      transaction.close();
     }
   }
 

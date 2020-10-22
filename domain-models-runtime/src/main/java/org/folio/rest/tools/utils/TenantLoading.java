@@ -318,7 +318,6 @@ public class TenantLoading {
               f.handle(Future.failedFuture(diag));
             }
           });
-       ;
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
           || resPut.statusCode() == 204 || loadingEntry.statusAccept
           .contains(resPut.statusCode())) {

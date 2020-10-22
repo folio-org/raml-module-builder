@@ -133,13 +133,13 @@ public class TenantAPI implements Tenant {
     });
   }
 
-  Future<AsyncResult<Boolean>> tenantExists(Context context, String tenantId) {
-    Promise<AsyncResult<Boolean>> promise = Promise.promise();
+  Future<Boolean> tenantExists(Context context, String tenantId) {
+    Promise<Boolean> promise = Promise.promise();
     tenantExists(context, tenantId, promise.future());
     return promise.future();
   }
 
-  void tenantExists(Context context, String tenantId, Future<AsyncResult<Boolean>> handler){
+  void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
     /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
     postgresClient(context).select(
       "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '"+ PostgresClient.convertToPsqlStandard(tenantId) +"');",
