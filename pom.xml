@@ -29,6 +29,7 @@
     <aspectj.version>1.9.6</aspectj.version>
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
     <postgresql-embedded-version>2.10</postgresql-embedded-version>
+    <vertx.version>3.9.4</vertx.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -51,9 +52,19 @@
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
-        <version>3.9.4</version>
+        <version>${vertx.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-sql-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-pg-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
       </dependency>
       <dependency>
         <groupId>io.rest-assured</groupId>
