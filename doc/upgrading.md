@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 31.1](#version-311)
 * [Version 31.0](#version-310)
 * [Version 30.2](#version-302)
 * [Version 30.0](#version-300)
@@ -16,6 +17,41 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 31.1
+
+* [RMB-738](https://issues.folio.org/browse/RMB-738) Since RMB 30.2.9 and 31.1.3:
+  Upgrade to Vert.x 3.9.4
+* [RMB-740](https://issues.folio.org/browse/RMB-740) Since RMB 30.2.9 and 31.1.3:
+  Use FOLIO fork of vertx-sql-client and vertx-pg-client,
+  [example pom.xml](https://github.com/folio-org/raml-module-builder/commit/1481635d291fc6191366aeb276c8e23fad038655):
+```
+  <properties>
+    <vertx.version>3.9.4</vertx.version>
+  </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-stack-depchain</artifactId>
+        <version>3.9.4</version>
+        <version>${vertx.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-sql-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-pg-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+```
 
 ## Version 31.0
 
