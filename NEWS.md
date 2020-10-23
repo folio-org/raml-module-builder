@@ -1,3 +1,13 @@
+## 31.1.3 2020-10-23
+
+ * [RMB-737](https://issues.folio.org/browse/RMB-737): Update to Junit and jupiter to 4.13.1
+ * [RMB-740](https://issues.folio.org/browse/RMB-740) Use FOLIO fork of vertx-sql-client and vertx-pg-client with
+   the following two patches
+ * [RMB-739](https://issues.folio.org/browse/RMB-739) Make RMB's DB\_CONNECTIONRELEASEDELAY work again, defaults to 60 seconds
+ * [FOLIO-2840](https://issues.folio.org/browse/FOLIO-2840) Fix duplicate names causing 'prepared statement "XYZ" already exists'
+ * [RMB-738](https://issues.folio.org/browse/RMB-738) Upgrade to Vert.x 3.9.4, most notable fixed bug: RowStream fetch
+   can close prematurely the stream https://github.com/eclipse-vertx/vertx-sql-client/issues/778
+
 ## 31.1.2 2020-10-12
 
  * [RMB-732](https://issues.folio.org/browse/RMB-732) doStreamGetQuery returns only 100 records when limit>100
