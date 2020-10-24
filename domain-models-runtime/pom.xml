@@ -106,16 +106,6 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-micrometer-metrics</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-registry-influx</artifactId>
-      <version>1.4.2</version>
-      <!-- use this version because later 1.5.x ones do not work -->
-    </dependency>
-    <dependency>
       <groupId>ru.yandex.qatools.embed</groupId>
       <artifactId>postgresql-embedded</artifactId>
       <version>${postgresql-embedded-version}</version>
