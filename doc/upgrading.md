@@ -19,6 +19,37 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 31.0
 
+* [RMB-738](https://issues.folio.org/browse/RMB-738) Since RMB 30.2.9 and 31.1.3:
+  Upgrade to Vert.x 3.9.4
+* [RMB-740](https://issues.folio.org/browse/RMB-740) Since RMB 30.2.9 and 31.1.3:
+  Use FOLIO fork of vertx-sql-client and vertx-pg-client,
+  [example pom.xml](https://github.com/folio-org/raml-module-builder/commit/1481635d291fc6191366aeb276c8e23fad038655):
+```
+  <properties>
+    <vertx.version>3.9.4</vertx.version>
+  </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-stack-depchain</artifactId>
+        <version>${vertx.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-sql-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-pg-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+```
 * [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
   In most cases no code changes are necessary. A few files needs updating
   ([mod-inventory-storage example](https://github.com/folio-org/mod-inventory-storage/pull/485/files)):
