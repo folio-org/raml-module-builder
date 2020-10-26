@@ -2077,20 +2077,9 @@ Some are listed below (and see the [full set](#documentation-of-the-apis)):
 
 ## Instrumentation
 
-RMB can push instrumentation data to an InfluxDB backend, from which
-they can be shown with something like Grafana. Vert.x pushes some numbers
-automatically, but RMB based modules can push their own numbers explicitly.
-
-Enabling the metrics via `-Dvertx.metrics.options.enabled=true` will start sending metrics to `localhost:8086`
-
-Follwing Java parameters can be used to config InfluxDB connection.
-* `influxUrl` - default to `http://localhost:8086`
-* `influxDbName` - default to `okapi`
-* `influxUser` - default to null
-* `influxPassword` - default to null
-
-For example: `java -Dvertx.metrics.options.enabled=true -DinfluxUrl=http://influx.yourdomain.io:8086 -jar mod-inventory-storage/target/mod-inventory-storage-fat.jar` then metrics
-will be sent to `http://influx.yourdomain.io:8086`
+RMB shares the same instrumentation code with Okapi. Please see 
+[Okapi instrumentation](https://github.com/folio-org/okapi/blob/master/doc/guide.md#instrumentation).
+Change `okapi-core/target/okapi-core-fat.jar dev` in the example to RMB based module jar name and parameters.
 
 ## Overriding Out of The Box RMB APIs
 It is possible to over ride APIs that the RMB provides with custom implementations.
