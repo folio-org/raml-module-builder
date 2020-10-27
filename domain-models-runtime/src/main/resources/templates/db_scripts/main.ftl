@@ -60,8 +60,16 @@ CREATE TABLE IF NOT EXISTS rmb_internal_analyze (
   </#list>
 </#if>
 
-REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
-REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+DO $$
+DECLARE
+  n text;
+BEGIN
+  -- use "FOR UPDATE" to prevent "tuple concurrently updated"
+  -- https://issues.folio.org/browse/RMB-744
+  SELECT nspname INTO n FROM pg_catalog.pg_namespace WHERE nspname = 'public' FOR UPDATE;
+  REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
+  REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+END $$;
 
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>
