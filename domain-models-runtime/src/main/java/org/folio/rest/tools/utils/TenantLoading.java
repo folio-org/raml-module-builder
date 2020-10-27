@@ -234,9 +234,7 @@ public class TenantLoading {
   private static void handleException(Throwable ex, String lead, Promise<Void> f) {
     String diag = lead + ": " + ex.getMessage();
     log.error(diag, ex);
-    if (!f.future().isComplete()) {
-      f.handle(Future.failedFuture(diag));
-    }
+    f.tryFail(diag);
   }
 
   private static void handleException(Throwable ex, HttpMethod method, String uri,
