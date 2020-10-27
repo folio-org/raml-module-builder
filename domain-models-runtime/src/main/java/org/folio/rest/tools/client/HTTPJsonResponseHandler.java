@@ -22,7 +22,7 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
   CompletableFuture<Response> cf;
   String endpoint;
   RollBackURL rollbackURL;
-  WebClient httpClient;
+  WebClient webClient;
 
   public HTTPJsonResponseHandler(String endpoint, CompletableFuture<Response> cf) {
     this.cf = cf;

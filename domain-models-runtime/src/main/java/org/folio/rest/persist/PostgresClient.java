@@ -630,9 +630,9 @@ public class PostgresClient {
         return;
       }
       try {
-        SQLConnection pgTransaction = new SQLConnection(res.result(),
-            res.result().begin(), null);
-        done.handle(Future.succeededFuture(pgTransaction));
+        res.result().begin()
+        .map(transaction -> new SQLConnection(res.result(), transaction, null))
+        .onComplete(done);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         done.handle(Future.failedFuture(e.getCause()));
@@ -1894,12 +1894,28 @@ public class PostgresClient {
                             Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
     // Start a transaction that we need to close.
     // If a transaction is already running we don't need to close it.
-    final Transaction transaction = connection.tx == null ? connection.conn.begin() : null;
+    if (connection.tx == null) {
+      connection.conn.begin().onComplete((AsyncResult<Transaction> trans) -> {
+        if (trans.failed()) {
+          log.error(trans.cause());
+        } else  {
+          executeGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler, trans.result());
+        }
+      });
+    } else {
+      executeGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler, null);
+    }
+  }
+
+  private <T> void executeGetQuery(SQLConnection connection, QueryHelper queryHelper,
+      ResultInfo resultInfo, Class<T> clazz,
+      Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler, Transaction transaction) {
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
-        closeIfNonNull(transaction);
+        closeIfNonNull(transaction).onComplete((voidRes) -> {
         log.error(prepareRes.cause().getMessage(), prepareRes.cause());
         replyHandler.handle(Future.failedFuture(prepareRes.cause()));
+        });
         return;
       }
       PreparedStatement preparedStatement = prepareRes.result();
@@ -1920,10 +1936,11 @@ public class PostgresClient {
     return columnNames;
   }
 
-  private void closeIfNonNull(Transaction transaction) {
-    if (transaction != null) {
-      transaction.close();
+  private Future<Void> closeIfNonNull(Transaction transaction) {
+    if (transaction == null) {
+      return Future.succeededFuture();
     }
+    return transaction.commit();
   }
 
   /**
@@ -1966,13 +1983,12 @@ public class PostgresClient {
           replyHandler.handle(promise.future());
         }
         rowStream.close();
-        closeIfNonNull(transaction);
-        streamResult.fireExceptionHandler(e);
+        closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> streamResult.fireExceptionHandler(e));
       }
     }).endHandler(v2 -> {
       rowStream.close();
-      closeIfNonNull(transaction);
-      resultInfo.setTotalRecords(
+      closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> {
+          resultInfo.setTotalRecords(
         getTotalRecords(resultCount.get(),
           resultInfo.getTotalRecords(),
           queryHelper.offset, queryHelper.limit));
@@ -1985,14 +2001,16 @@ public class PostgresClient {
       } catch (Exception ex) {
         streamResult.fireExceptionHandler(ex);
       }
+      });
     }).exceptionHandler(e -> {
       rowStream.close();
-      closeIfNonNull(transaction);
-      if (!promise.future().isComplete()) {
+      closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> {
+        if (!promise.future().isComplete()) {
         promise.complete(streamResult);
         replyHandler.handle(promise.future());
       }
       streamResult.fireExceptionHandler(e);
+      });
     });
   }
 
@@ -3520,7 +3538,6 @@ public class PostgresClient {
     Promise<List<String>> promise = Promise.promise();
     runSQLFile(sqlFile, stopOnError, (res) -> {
         if (res.failed()) {
-          log.error("Error while executing SQL :" + res.cause().getMessage());
           promise.fail(res.cause());
         }
         promise.complete(res.result());

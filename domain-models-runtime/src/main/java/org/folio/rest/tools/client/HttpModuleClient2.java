@@ -163,7 +163,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
     CompletableFuture<Response> cf = new CompletableFuture<>();
     HTTPJsonResponseHandler handler = new HTTPJsonResponseHandler(endpoint, cf);
     if(autoCloseConnections){
-      handler.httpClient = webClient;
+      handler.webClient = webClient;
     }
     if(rollbackURL != null){
       handler.rollbackURL = rollbackURL;

@@ -42,7 +42,7 @@ public class PreparedRowStream implements RowStream<Row> {
   }
 
   @Override
-  public ReadStream<Row> fetch(long amount) {
+  public RowStream<Row> fetch(long amount) {
     return rowStream.fetch(amount);
   }
 
@@ -77,10 +77,10 @@ public class PreparedRowStream implements RowStream<Row> {
   }
 
   @Override
-  public void close() {
-    rowStream.close(close -> {
-      preparedStatement.close();
-    });
+  public Future<Void> close() {
+    Promise<Void> promise = Promise.promise();
+    close(promise);
+    return promise.future();
   }
 
   @Override

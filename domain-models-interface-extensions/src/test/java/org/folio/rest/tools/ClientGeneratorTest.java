@@ -3,9 +3,9 @@ package org.folio.rest.tools;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
+
+import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -15,6 +15,8 @@ import org.junit.Test;
 import io.vertx.core.logging.LoggerFactory;
 
 public class ClientGeneratorTest {
+
+  private static final Pattern TRAINLING_SPACE_PATTERN = Pattern.compile("\\s+$", Pattern.MULTILINE);
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME,
@@ -59,7 +61,7 @@ public class ClientGeneratorTest {
 
 
   private String removeTrailingSpaces(String str) {
-    return str.replaceAll("(\\s+)\n","\n");
+    return TRAINLING_SPACE_PATTERN.matcher(str).replaceAll("");
   }
 
 }
