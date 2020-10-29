@@ -1,6 +1,10 @@
+## 31.1.4 2020-10-29
+
+ * [RMB-744](https://issues.folio.org/browse/RMB-744) Fix "tuple concurrently updated" on REVOKE
+
 ## 31.1.3 2020-10-23
 
- * [RMB-737](https://issues.folio.org/browse/RMB-737): Update to Junit and jupiter to 4.13.1
+ * [RMB-737](https://issues.folio.org/browse/RMB-737) Update to Junit and jupiter to 4.13.1
  * [RMB-740](https://issues.folio.org/browse/RMB-740) Use FOLIO fork of vertx-sql-client and vertx-pg-client with
    the following two patches
  * [RMB-739](https://issues.folio.org/browse/RMB-739) Make RMB's DB\_CONNECTIONRELEASEDELAY work again, defaults to 60 seconds

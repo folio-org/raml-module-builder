@@ -34,7 +34,6 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
-        <version>3.9.4</version>
         <version>${vertx.version}</version>
         <type>pom</type>
         <scope>import</scope>
