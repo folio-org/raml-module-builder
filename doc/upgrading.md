@@ -52,6 +52,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   </dependencyManagement>
 ```
 
+* A colon has been added to the timezone to comply with RFC 3339,
+  `2017-07-27T10:23:43.000+0000` becomes `2017-07-27T10:23:43.000+00:00`.
+
 ## Version 31.0
 
 * [RMB-328](https://issues.folio.org/browse/RMB-328) Update to OpenJDK 11.
