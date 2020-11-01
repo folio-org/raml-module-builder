@@ -61,12 +61,10 @@ CREATE TABLE IF NOT EXISTS rmb_internal_analyze (
 </#if>
 
 DO $$
-DECLARE
-  n text;
 BEGIN
-  -- use "FOR UPDATE" to prevent "tuple concurrently updated"
+  -- use advisory lock to prevent "tuple concurrently updated"
   -- https://issues.folio.org/browse/RMB-744
-  SELECT nspname INTO n FROM pg_catalog.pg_namespace WHERE nspname = 'public' FOR UPDATE;
+  PERFORM pg_advisory_xact_lock(20201101, 1234567890);
   REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
   REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 END $$;
