@@ -82,6 +82,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
           </filters>
         </configuration>
 ```
+* A colon has been added to the timezone to comply with RFC 3339,
+  `2017-07-27T10:23:43.000+0000` becomes `2017-07-27T10:23:43.000+00:00`.
 
 ## Version 30.2
 

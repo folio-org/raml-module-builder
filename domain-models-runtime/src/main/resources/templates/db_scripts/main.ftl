@@ -60,8 +60,14 @@ CREATE TABLE IF NOT EXISTS rmb_internal_analyze (
   </#list>
 </#if>
 
-REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
-REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+DO $$
+BEGIN
+  -- use advisory lock to prevent "tuple concurrently updated"
+  -- https://issues.folio.org/browse/RMB-744
+  PERFORM pg_advisory_xact_lock(20201101, 1234567890);
+  REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
+  REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+END $$;
 
 <#-- Loop over all tables that need updating / adding / deleting -->
 <#list tables as table>
