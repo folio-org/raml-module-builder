@@ -1,3 +1,7 @@
+## 31.1.5 2020-11-02
+
+ * [RMB-750](https://issues.folio.org/browse/RMB-750) Change lock for "tuple concurrently updated" when upgrading Q2 to Q3 (REVOKE)
+
 ## 31.1.4 2020-10-29
 
  * [RMB-744](https://issues.folio.org/browse/RMB-744) Fix "tuple concurrently updated" on REVOKE
