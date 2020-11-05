@@ -65,15 +65,20 @@ DECLARE
   n text;
 BEGIN
   -- Use lock to prevent "tuple concurrently updated".
-  -- In AWS Aurora env, the db admin user cannot acquire row level lock on pg_catalog.pg_namespace
-  -- table due to permission issue and needs to use an advisory lock.
   -- https://issues.folio.org/browse/RMB-744
   -- https://issues.folio.org/browse/RMB-750
   -- https://issues.folio.org/browse/RMB-755
   BEGIN
     SELECT nspname INTO n FROM pg_catalog.pg_namespace WHERE nspname = 'public' FOR UPDATE;
   EXCEPTION WHEN OTHERS THEN
+    -- In AWS Aurora env, the db admin user cannot acquire row level lock on pg_catalog.pg_namespace
+    -- table due to permission issue and needs to use an advisory lock only.
+    NULL;
+  END;
+  BEGIN
     PERFORM pg_advisory_xact_lock(20201101, 1234567890);
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
   END;
   BEGIN
     REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
