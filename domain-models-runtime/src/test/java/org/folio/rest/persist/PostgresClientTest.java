@@ -8,6 +8,7 @@ import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import io.vertx.core.Promise;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -323,6 +324,13 @@ public class PostgresClientTest {
     }
 
     @Override
+    public Future<PreparedStatement> prepare(String s) {
+      Promise<PreparedStatement> promise = Promise.promise();
+      prepare(s, promise);
+      return promise.future();
+    }
+
+    @Override
     public PgConnection exceptionHandler(Handler<Throwable> handler) {
       return this;
     }
@@ -333,13 +341,24 @@ public class PostgresClientTest {
     }
 
     @Override
-    public Transaction begin() {
+    public void begin(
+        Handler<AsyncResult<Transaction>> handler) {
+
+    }
+
+    @Override
+    public Future<Transaction> begin() {
       return null;
     }
 
     @Override
     public boolean isSSL() {
       return false;
+    }
+
+    @Override
+    public void close(Handler<AsyncResult<Void>> handler) {
+
     }
 
     @Override
@@ -367,6 +386,13 @@ public class PostgresClientTest {
         }
 
         @Override
+        public Future<RowSet<Row>> execute() {
+          Promise<RowSet<Row>> promise = Promise.promise();
+          execute(promise::handle);
+          return promise.future();
+        }
+
+        @Override
         public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
           return null;
         }
@@ -384,7 +410,8 @@ public class PostgresClientTest {
     }
 
     @Override
-    public void close() {
+    public Future<Void> close() {
+      return Future.succeededFuture();
     }
 
     @Override

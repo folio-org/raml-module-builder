@@ -135,7 +135,7 @@ public class TenantAPI implements Tenant {
 
   Future<Boolean> tenantExists(Context context, String tenantId) {
     Promise<Boolean> promise = Promise.promise();
-    tenantExists(context, tenantId, promise.future());
+    tenantExists(context, tenantId, promise);
     return promise.future();
   }
 

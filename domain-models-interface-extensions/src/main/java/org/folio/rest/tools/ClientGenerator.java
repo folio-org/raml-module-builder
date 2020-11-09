@@ -352,8 +352,9 @@ public class ClientGenerator {
     //////////////////////////////////////////////////////////////////////////////////////
 
     /* create the http client request object */
-    body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = httpClient."+
-        httpVerb.substring(httpVerb.lastIndexOf('.')+1).toLowerCase()+"Abs(okapiUrl+"+url+");");
+    final String httpMethodName = httpVerb.substring(httpVerb.lastIndexOf('.') + 1).toUpperCase();
+    body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = httpClient.requestAbs("+
+        "io.vertx.core.http.HttpMethod."+ httpMethodName +", okapiUrl+"+url+");");
 
     /* add headers to request */
     functionSpecificHeaderParams.forEach(body::directStatement);
