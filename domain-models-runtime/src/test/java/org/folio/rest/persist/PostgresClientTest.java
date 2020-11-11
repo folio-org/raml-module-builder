@@ -7,6 +7,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -28,14 +30,17 @@ import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
+import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.folio.rest.persist.facets.FacetField;
@@ -48,6 +53,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.AdditionalAnswers;
 
 
 public class PostgresClientTest {
@@ -709,5 +715,96 @@ public class PostgresClientTest {
 
     assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
   }
+  
+  @Test
+  public void testGetById() {
+    String table = "a";
+    String id = UUID.randomUUID().toString();
+    PostgresClient pc = spy(PostgresClient.testClient());
+    
+    // mock empty query result
+    @SuppressWarnings("unchecked")
+    RowSet<Row> mockRowSet = mock(RowSet.class);
+    when(mockRowSet.size()).thenReturn(0);
+    @SuppressWarnings("unchecked")
+    PreparedQuery<RowSet<Row>> mockPreparedQuery = mock(PreparedQuery.class);
+    doAnswer(AdditionalAnswers.answerVoid(
+        (Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler)
+        -> handler.handle(Future.succeededFuture(mockRowSet))))
+        .when(mockPreparedQuery).execute(any(Tuple.class), any());
+    PgConnection mockPgConnection = mock(PgConnection.class);
+    when(mockPgConnection.preparedQuery(anyString())).thenReturn(mockPreparedQuery);
+    PgPool mockPgPool = mock(PgPool.class);
+    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<PgConnection>> handler)
+        -> handler.handle(Future.succeededFuture(mockPgConnection))))
+        .when(mockPgPool).getConnection(any());
+    when(pc.getClient()).thenReturn(mockPgPool);
+    SQLConnection mockSQLConnection = new SQLConnection(mockPgConnection, null, null);
+    AsyncResult<SQLConnection> mockConn = Future.succeededFuture(mockSQLConnection);
+    // tests
+    pc.getByIdAsString(table, id, ar -> assertTrue(ar.succeeded()));
+    pc.getByIdAsString(mockConn, table, id, ar -> assertTrue(ar.succeeded()));
+    pc.getByIdAsStringForUpdate(mockConn, table, id, ar -> assertTrue(ar.succeeded()));
+    pc.getById(table, id, ar -> assertTrue(ar.succeeded()));
+    pc.getById(mockConn, table, id, ar -> assertTrue(ar.succeeded()));
+    pc.getByIdForUpdate(mockConn, table, id, ar -> assertTrue(ar.succeeded()));
+    pc.getById(table, id, Map.class, ar -> assertTrue(ar.succeeded()));
+    pc.getById(mockConn, table, id, Map.class, ar -> assertTrue(ar.succeeded()));
+    pc.getByIdForUpdate(mockConn, table, id, Map.class, ar -> assertTrue(ar.succeeded()));
 
+    // mock with query result
+    String jsonString = "{\"id\": \"abc\"}";
+    when(mockRowSet.size()).thenReturn(1);
+    @SuppressWarnings("unchecked")
+    RowIterator<Row> mockRowIterator = mock(RowIterator.class);
+    Row mockRow = mock(Row.class);
+    when(mockRowSet.iterator()).thenReturn(mockRowIterator);
+    when(mockRowIterator.next()).thenReturn(mockRow);
+    when(mockRow.getValue(anyInt())).thenReturn(jsonString);
+    // tests
+    pc.getByIdAsString(table, id, ar -> assertGetByIdAsString(ar));
+    pc.getByIdAsString(mockConn, table, id, ar -> assertGetByIdAsString(ar));
+    pc.getByIdAsStringForUpdate(mockConn, table, id, ar -> assertGetByIdAsString(ar));
+    pc.getById(table, id, ar -> assertGetByIdAsJson(ar));
+    pc.getById(mockConn, table, id, ar -> assertGetByIdAsJson(ar));
+    pc.getByIdForUpdate(mockConn, table, id, ar -> assertGetByIdAsJson(ar));
+    pc.getById(table, id, Map.class, ar -> assertGetByIdAsObject(ar));
+    pc.getById(mockConn, table, id, Map.class, ar -> assertGetByIdAsObject(ar));
+    pc.getByIdForUpdate(mockConn, table, id, Map.class, ar -> assertGetByIdAsObject(ar));
+    
+    // test exceptions
+    pc.getByIdAsString(Future.failedFuture("fail"), table, id, ar -> assertTrue(ar.failed()));
+    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<PgConnection>> handler)
+        -> handler.handle(Future.failedFuture("fail"))))
+        .when(mockPgPool).getConnection(any());
+    pc.getByIdAsString(table, id, ar -> assertTrue(ar.failed()));
+    doAnswer(AdditionalAnswers.answerVoid(
+        (Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler)
+        -> handler.handle(Future.failedFuture("fail"))))
+        .when(mockPreparedQuery).execute(any(Tuple.class), any());
+    pc.getByIdAsString(mockConn, table, id, ar -> assertTrue(ar.failed()));
+    doAnswer(AdditionalAnswers.answerVoid(
+        (Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler)
+        -> handler.handle(Future.succeededFuture(mockRowSet))))
+        .when(mockPreparedQuery).execute(any(Tuple.class), any());
+    when(mockRow.getValue(anyInt())).thenThrow(new RuntimeException("fail"));
+    pc.getByIdAsString(mockConn, table, id, ar -> assertTrue(ar.failed()));
+    pc.getByIdAsString(mockConn, table, "1", ar -> assertTrue(ar.failed()));
+  } 
+  
+  private void assertGetByIdAsString(AsyncResult<String> ar) {
+    assertTrue(ar.succeeded());
+    assertTrue(ar.result().contains("id"));
+    assertTrue(ar.result().contains("abc"));
+  }
+
+  private void assertGetByIdAsJson(AsyncResult<JsonObject> ar) {
+    assertTrue(ar.succeeded());
+    assertEquals("abc", ar.result().getString("id"));
+  }
+
+  private void assertGetByIdAsObject(@SuppressWarnings("rawtypes") AsyncResult<Map> ar) {
+    assertTrue(ar.succeeded());
+    assertEquals("abc", ar.result().get("id"));
+  }
 }
