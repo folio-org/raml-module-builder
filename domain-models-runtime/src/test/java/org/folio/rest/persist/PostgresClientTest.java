@@ -25,7 +25,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
@@ -54,7 +53,6 @@ import org.junit.Test;
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
 
-  private Logger oldLogger;
   private String oldConfigFilePath;
   private boolean oldIsEmbedded;
   private int oldEmbeddedPort;
@@ -640,16 +638,6 @@ public class PostgresClientTest {
     public void setJsonb(JsonObject jsonb) {
       this.jsonb = jsonb;
     }
-  }
-
-  @Before
-  public void saveLogger() {
-    oldLogger = PostgresClient.log;
-  }
-
-  @After
-  public void restoreLogger() {
-    PostgresClient.log = oldLogger;
   }
 
   @Test
