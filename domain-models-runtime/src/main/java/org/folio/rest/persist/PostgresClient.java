@@ -3536,12 +3536,7 @@ public class PostgresClient {
    */
   public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
     Promise<List<String>> promise = Promise.promise();
-    runSQLFile(sqlFile, stopOnError, (res) -> {
-        if (res.failed()) {
-          promise.fail(res.cause());
-        }
-        promise.complete(res.result());
-        });
+     runSQLFile(sqlFile, stopOnError, promise);
     return promise.future();
   }
 
