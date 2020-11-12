@@ -1895,13 +1895,13 @@ public class PostgresClient {
     // Start a transaction that we need to close.
     // If a transaction is already running we don't need to close it.
     if (connection.tx == null) {
-      connection.conn.begin().onComplete((AsyncResult<Transaction> trans) -> {
-        if (trans.failed()) {
-          log.error(trans.cause());
-        } else  {
-          executeGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler, trans.result());
-        }
-      });
+      connection.conn.begin()
+      .onFailure(cause -> {
+        log.error(cause.getMessage(), cause);
+        replyHandler.handle(Future.failedFuture(cause));
+      }).onSuccess(trans ->
+        executeGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler, trans)
+      );
     } else {
       executeGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler, null);
     }
