@@ -2,6 +2,11 @@ package org.folio;
 
 import static io.restassured.RestAssured.given;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.http.HttpClientResponse;
+import io.vertx.ext.web.client.HttpRequest;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -402,44 +407,47 @@ public class DemoRamlRestTest {
     int numberChunks = 50;
     Async async = context.async();
     HttpClient httpClient = vertx.createHttpClient();
-    HttpClientRequest req = httpClient.post(port, "localhost", "/rmbtests/testStream", res -> {
-      Buffer resBuf = Buffer.buffer();
-      res.handler(resBuf::appendBuffer);
-      res.endHandler(x -> {
-        context.assertEquals(200, res.statusCode());
-        JsonObject jo = new JsonObject(resBuf);
-        context.assertTrue(jo.getBoolean("complete"));
-        async.complete();
-      });
-      res.exceptionHandler(x -> {
-        if (!async.isCompleted()) {
-          context.assertTrue(false, "exceptionHandler res: " + x.getLocalizedMessage());
-          async.complete();
-        }
-      });
+    httpClient.request(HttpMethod.POST, port, "localhost", "/rmbtests/testStream", (AsyncResult<HttpClientRequest> reqRes) -> reqRes.map((HttpClientRequest res) -> {
+    Buffer resBuf = Buffer.buffer();
+    res.send(e -> e.result().handler(resBuf::appendBuffer));
+    final HttpClientResponse req = res.result();
+    req.endHandler(x -> {
+      context.assertEquals(200, req.statusCode());
+      JsonObject jo = new JsonObject(resBuf);
+      context.assertTrue(jo.getBoolean("complete"));
+      async.complete();
     });
-    req.exceptionHandler(x -> {
+    res.exceptionHandler(x -> {
       if (!async.isCompleted()) {
-        context.assertTrue(false, "exceptionHandler req: " + x.getLocalizedMessage());
+        context.assertTrue(false, "exceptionHandler res: " + x.getLocalizedMessage());
         async.complete();
       }
     });
-    if (chunk) {
-      req.setChunked(true);
-    } else {
-      req.putHeader("Content-Length", Integer.toString(chunkSize * numberChunks));
+
+    req.exceptionHandler(x -> {
+    if (!async.isCompleted()) {
+      context.assertTrue(false, "exceptionHandler req: " + x.getLocalizedMessage());
+      async.complete();
     }
-    req.putHeader("Accept", "application/json,text/plain");
-    req.putHeader("Content-type", "application/octet-stream");
-    req.putHeader("x-okapi-tenant", TENANT);
+    });
+    if (chunk) {
+      res.setChunked(true);
+    } else {
+      res.putHeader("Content-Length", Integer.toString(chunkSize * numberChunks));
+    }
+    res.putHeader("Accept", "application/json,text/plain");
+    res.putHeader("Content-type", "application/octet-stream");
+    res.putHeader("x-okapi-tenant", TENANT);
     Buffer buf = Buffer.buffer(chunkSize);
     for (int i = 0; i < chunkSize; i++) {
       buf.appendString("X");
     }
     for (int i = 0; i < numberChunks; i++) {
-      req.write(buf);
+      res.write(buf);
     }
     req.end();
+    return null;
+    }));
   }
 
   @Test
@@ -469,23 +477,22 @@ public class DemoRamlRestTest {
 
       AdminClient aClient = new AdminClient("http://localhost:" + port, "abc", "abc", false);
       aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
-        reply.bodyHandler( body -> {
-          //System.out.println(body.toString("UTF8"));
+        Buffer body = reply.result().body();
+        //System.out.println(body.toString("UTF8"));
           async.countDown();
-        });
       });
 
       aClient.getAdminJstack( trace -> {
-        trace.bodyHandler( content -> {
+        Buffer content = trace.result().body();
           //System.out.println(content);
           async.countDown();
-        });
       });
 
       aClient.getAdminMemory(false , resp -> {
-        resp.bodyHandler( content -> {
-          //System.out.println(content);
+        resp.map(r-> {
+          //System.out.println(r.body());
           async.countDown();
+          return null;
         });
       });
 
@@ -503,52 +510,60 @@ public class DemoRamlRestTest {
 
     String url = "/jobs/jobconfs";
     Async async = context.async();
-    HttpClient client = vertx.createHttpClient();
-    HttpClientRequest request = null;
-    request = client.postAbs("http://localhost:" + port + url);
-    request.exceptionHandler(error -> {
-      async.complete();
-      context.fail(error.getMessage());
-    }).handler(response -> {
-      int statusCode = response.statusCode();
-      String location = response.getHeader("Location");
-      // is it 2XX
-      log.info(statusCode + " status at " + System.currentTimeMillis() + " for " +
-        "http://localhost:" + port + url);
-
-      if (statusCode == 201) {
-        checkURLs(context, "http://localhost:" + port + url, 200);
-        try {
-          postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs"
-          , Buffer.buffer(getFile("job.json")), 201, HttpMethod.POST, "application/json", TENANT, false);
-          postData(context, "http://localhost:" + port + url + "/" +location
-          , Buffer.buffer(getFile("job_conf_post.json")), 204, HttpMethod.PUT, null, TENANT, false);
-          postData(context, "http://localhost:" + port + url + "/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, HttpMethod.DELETE, null, TENANT, false);
-          postData(context, "http://localhost:" + port + url + "/" +location+ "/jobs/12345"
-          , Buffer.buffer(getFile("job_conf_post.json")), 404, HttpMethod.DELETE, null, TENANT, false);
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-          context.fail();
-        }
-
-      } else {
-        context.fail("got incorrect response code");
-      }
-      if(!async.isCompleted()){
-        async.complete();
-      }
-    });
-    request.setChunked(true);
+    WebClient client = WebClient.create(vertx);
+    HttpRequest<Buffer> request = client
+        .requestAbs(HttpMethod.POST, "http://localhost:" + port + url);
     request.putHeader("Accept", "application/json,text/plain");
     request.putHeader("Content-type", "application/json");
+    final String file;
     try {
-      request.write(getFile("job_conf_post.json"));
+      file = getFile("job_conf_post.json");
     } catch (IOException e) {
       log.error(e.getMessage(), e);
       context.fail("unable to read file");
+      return;
     }
-    request.end();
+      request.sendBuffer(Buffer.buffer(file)).onComplete(response -> {
+        response.map(res -> {
+          int statusCode = res.statusCode();
+          String location = res.getHeader("Location");
+          // is it 2XX
+          log.info(statusCode + " status at " + System.currentTimeMillis() + " for " +
+              "http://localhost:" + port + url);
+
+          if (statusCode == 201) {
+            checkURLs(context, "http://localhost:" + port + url, 200);
+            try {
+              postData(context, "http://localhost:" + port + url + "/" + location + "/jobs"
+                  , Buffer.buffer(getFile("job.json")), 201, HttpMethod.POST, "application/json",
+                  TENANT, false);
+              postData(context, "http://localhost:" + port + url + "/" + location
+                  , Buffer.buffer(file), 204, HttpMethod.PUT, null, TENANT,
+                  false);
+              postData(context, "http://localhost:" + port + url + "/12345"
+                  , Buffer.buffer(file), 404, HttpMethod.DELETE, null,
+                  TENANT, false);
+              postData(context, "http://localhost:" + port + url + "/" + location + "/jobs/12345"
+                  , Buffer.buffer(file), 404, HttpMethod.DELETE, null,
+                  TENANT, false);
+            } catch (Exception e) {
+              log.error(e.getMessage(), e);
+              context.fail();
+            }
+
+          } else {
+            context.fail("got incorrect response code");
+          }
+          if (!async.isCompleted()) {
+            async.complete();
+          }
+        return null;
+        }).otherwise(e -> {
+          async.complete();
+          context.fail(e.getMessage());
+          return null;
+        });
+    });
   }
 
   public Buffer checkURLs(TestContext context, String url, int codeExpected) {
@@ -560,24 +575,25 @@ public class DemoRamlRestTest {
     Buffer res = Buffer.buffer();
     try {
       Async async = context.async();
-      HttpClient client = vertx.createHttpClient();
-      HttpClientRequest request = client.getAbs(url, httpClientResponse -> {
-        httpClientResponse.handler(res::appendBuffer);
-        httpClientResponse.endHandler(x -> {
+      WebClient client = WebClient.create(vertx);
+      final HttpRequest<Buffer> request = client.getAbs(url);
+      request.headers().add("x-okapi-tenant", TENANT);
+      request.headers().add("Accept", accept);
+      request.send(x -> {
+        x.map(httpClientResponse->
+        {
           log.info(httpClientResponse.statusCode() + ", " + codeExpected + " status expected: " + url);
           context.assertEquals(codeExpected, httpClientResponse.statusCode(), url);
           log.info(res.toString());
           async.complete();
+          return null;
+        }).otherwise(f-> {
+          context.fail(url + " - " + f.getMessage());
+          async.complete();
+          return null;
+         }
+        );
         });
-      });
-      request.exceptionHandler(error -> {
-        context.fail(url + " - " + error.getMessage());
-        async.complete();
-      });
-      request.headers().add("x-okapi-tenant", TENANT);
-      request.headers().add("Accept", accept);
-      request.setChunked(true);
-      request.end();
       async.await();
     } catch (Throwable e) {
       log.error(e.getMessage(), e);
@@ -593,20 +609,39 @@ public class DemoRamlRestTest {
       int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
     Exception stacktrace = new RuntimeException();  // save stacktrace for async handler
     Async async = context.async();
-    HttpClient client = vertx.createHttpClient();
-    HttpClientRequest request = client.requestAbs(method, url);
+    WebClient client =  WebClient.create(vertx);
+    HttpRequest<Buffer> request = client.requestAbs(method, url);
+    request.putHeader("X-Okapi-Request-Id", "999999999999");
+    if(tenant != null){
+      request.putHeader("x-okapi-tenant", tenant);
+    }
+    request.putHeader("Accept", "application/json,text/plain");
+    if(userIdHeader){
+      request.putHeader("X-Okapi-User-Id", "af23adf0-61ba-4887-bf82-956c4aae2260");
+    }
+    request.putHeader("Content-type",  contenttype);
+    if(buffer != null) {
+      request.sendBuffer(buffer, e-> postDataHandler(e, async, context, errorCode,
+          stacktrace, method, url, userIdHeader));
+    } else {
+      request.send(e -> postDataHandler(e, async, context, errorCode,
+          stacktrace, method, url, userIdHeader));
+    }
 
-    request.exceptionHandler(error -> {
-      async.complete();
-      System.out.println(" ---------------xxxxxx-------------------- " + error.getMessage());
-      context.fail(new RuntimeException(error.getMessage(), stacktrace));
-    }).handler(response -> {
+
+    async.await();
+  }
+
+  private static void postDataHandler(AsyncResult<HttpResponse<Buffer>> asyncResult,
+      Async async, TestContext context, int errorCode, Exception stacktrace,
+      HttpMethod method, String url, boolean userIdHeader) {
+    asyncResult.map(response -> {
       int statusCode = response.statusCode();
       // is it 2XX
       log.info(statusCode + ", " + errorCode + " expected status at "
         + System.currentTimeMillis() + " " + method.name() + " " + url);
 
-      response.bodyHandler(responseData -> {
+      Buffer responseData = response.body();
         if (statusCode == errorCode) {
           final String str = response.getHeader("Content-type");
           if (str == null && statusCode >= 400) {
@@ -640,24 +675,15 @@ public class DemoRamlRestTest {
         if (!async.isCompleted()) {
           async.complete();
         }
-      });
+          return null;
+    }).otherwise(error -> {
+      async.complete();
+      System.out.println(" ---------------xxxxxx-------------------- " + error.getMessage());
+      context.fail(new RuntimeException(error.getMessage(), stacktrace));
+      return null;
     });
-    request.setChunked(true);
-    request.putHeader("X-Okapi-Request-Id", "999999999999");
-    if(tenant != null){
-      request.putHeader("x-okapi-tenant", tenant);
-    }
-    request.putHeader("Accept", "application/json,text/plain");
-    if(userIdHeader){
-      request.putHeader("X-Okapi-User-Id", "af23adf0-61ba-4887-bf82-956c4aae2260");
-    }
-    request.putHeader("Content-type",  contenttype);
-    if(buffer != null){
-      request.write(buffer);
-    }
-    request.end();
-    async.await();
   }
+
 
   private String getFile(String filename) throws IOException {
     return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
