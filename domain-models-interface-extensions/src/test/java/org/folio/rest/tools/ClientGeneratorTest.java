@@ -16,7 +16,7 @@ import io.vertx.core.logging.LoggerFactory;
 
 public class ClientGeneratorTest {
 
-  private static final Pattern TRAINLING_SPACE_PATTERN = Pattern.compile("\\s+$", Pattern.MULTILINE);
+  private static final Pattern TRAILING_SPACE_PATTERN = Pattern.compile("\\s+$", Pattern.MULTILINE);
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME,
@@ -61,7 +61,7 @@ public class ClientGeneratorTest {
 
 
   private String removeTrailingSpaces(String str) {
-    return TRAINLING_SPACE_PATTERN.matcher(str).replaceAll("");
+    return TRAILING_SPACE_PATTERN.matcher(str).replaceAll("");
   }
 
 }
