@@ -32,8 +32,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -84,8 +82,6 @@ import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
-  private static final Logger log = LoggerFactory.getLogger(PostgresClientIT.class);
-
   static private final String TENANT = "tenant";
   /** table name */
   static private final String FOO = "foo";
@@ -101,10 +97,6 @@ public class PostgresClientIT {
 
   @Rule
   public Timeout rule = Timeout.seconds(15);
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
 
   private int QUERY_TIMEOUT = 0;
 
@@ -883,7 +875,7 @@ public class PostgresClientIT {
   }
 
   private String base64(byte [] source) {
-    return Base64.getEncoder().encodeToString(source);
+    return Base64.getEncoder().withoutPadding().encodeToString(source);
   }
 
   @Test
