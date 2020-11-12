@@ -10,8 +10,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
@@ -51,6 +49,8 @@ import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -88,7 +88,7 @@ public class PostgresClient {
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
-  static Logger log = LoggerFactory.getLogger(PostgresClient.class);
+  static Logger log = LogManager.getLogger();
 
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
@@ -1077,6 +1077,11 @@ public class PostgresClient {
                                   List<Tuple> batch, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
     try {
+      if (batch.isEmpty()) {
+        // vertx-pg-client fails with "Can not execute batch query with 0 sets of batch parameters."
+        replyHandler.handle(Future.succeededFuture(new LocalRowSet(0)));
+        return;
+      }
       long start = System.nanoTime();
       log.info("starting: saveBatch size=" + batch.size());
       String sql = INSERT_CLAUSE + schemaName + DOT + table + " (id, jsonb) VALUES ($1, $2)"
@@ -1977,6 +1982,7 @@ public class PostgresClient {
         }
         resultsHelper.offset++;
       } catch (Exception e) {
+        streamResult.handler(null);
         log.error(e.getMessage(), e);
         if (!promise.future().isComplete()) {
           promise.complete(streamResult);
