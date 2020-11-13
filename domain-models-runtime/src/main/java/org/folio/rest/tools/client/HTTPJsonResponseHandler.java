@@ -5,19 +5,19 @@ import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * @author shale
  */
 class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer>>> {
 
-  private static final Logger log = LoggerFactory.getLogger(HTTPJsonResponseHandler.class);
+  private static final Logger log = LogManager.getLogger();
 
   CompletableFuture<Response> cf;
   String endpoint;
@@ -82,7 +82,7 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
   }
 
   private void handleSuccess(Buffer bh, Response r) {
-    if (r.code == 204 || bh.length() == 0) {
+    if (r.code == 204 || bh == null || bh.length() == 0) {
       r.body = null;
       cf.complete(r);
     } else {
