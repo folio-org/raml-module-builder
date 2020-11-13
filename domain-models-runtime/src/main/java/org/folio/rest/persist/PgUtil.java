@@ -9,8 +9,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
@@ -27,6 +25,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.OutStream;
@@ -56,7 +56,7 @@ import org.z3950.zing.cql.ModifierSet;
  * Helper methods for using PostgresClient.
  */
 public final class PgUtil {
-  private static final Logger logger = LoggerFactory.getLogger(PgUtil.class);
+  private static final Logger logger = LogManager.getLogger();
 
   private static final String RESPOND_200_WITH_APPLICATION_JSON = "respond200WithApplicationJson";
   private static final String RESPOND_201                       = "respond201";
