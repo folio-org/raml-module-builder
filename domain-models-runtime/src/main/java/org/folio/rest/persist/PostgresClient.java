@@ -2379,8 +2379,10 @@ public class PostgresClient {
 
   /**
    * Get the jsonb by id.
-   * @param conn  if provided, the connection on which to execute the query on.
-   * @param lock  whether to use SELECT FOR UPDATE to lock the selected row.
+   * @param conn  if provided, the connection to use;
+   *              if null, a new connection is created and automatically released afterwards;
+   *              if failed, the replyHandler is failed
+   * @param lock  whether to use SELECT FOR UPDATE to lock the selected row
    * @param table  the table to search in
    * @param id  the value of the id field
    * @param function  how to convert the (String encoded) JSON
@@ -2391,28 +2393,17 @@ public class PostgresClient {
                            Handler<AsyncResult<R>> replyHandler) {
     Promise<PgConnection> promise = Promise.promise();
     if (conn != null) {
-      if (conn.failed()) {
-        promise.fail(conn.cause());
-      } else {
-        promise.complete(conn.result().conn);
-      }
+      promise.handle(conn.map(sqlConnection -> sqlConnection.conn));
     } else {
-      getConnection(res -> {
-        if (res.failed()) {
-          promise.fail(res.cause());
-        } else {
-          promise.complete(res.result());
-        }
-      });
+      getConnection(promise);
     }
-    promise.future().onFailure(ex -> replyHandler.handle(Future.failedFuture(ex)))
+    promise.future()
+    .onFailure(ex -> replyHandler.handle(Future.failedFuture(ex)))
     .onSuccess(connection -> {
       String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
           + FROM + schemaName + DOT + table
-          + WHERE + ID_FIELD + "= $1";
-      if (lock) {
-        sql += " FOR UPDATE";
-      }
+          + WHERE + ID_FIELD + "= $1"
+          + (lock ? " FOR UPDATE" : "");
       try {
         connection.preparedQuery(sql).execute(Tuple.of(UUID.fromString(id)), query -> {
           if (query.failed()) {
@@ -2453,8 +2444,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a String. Query will be executed on
-   * <code>conn</code> if provided.
+   * Get the jsonb by id and return it as a String.
    * @param conn  if provided, the connection on which to execute the query on.
    * @param table  the table to search in
    * @param id  the value of the id field
@@ -2466,9 +2456,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a String. Query will be executed on
-   * <code>conn</code> if provided. Selected row will be locked using
-   * <code>select ... for update<code> clause.
+   * Lock the row using <code>select ... for update</code> and return jsonb as String.
    * @param conn  if provided, the connection on which to execute the query on.
    * @param table  the table to search in
    * @param id  the value of the id field
@@ -2490,8 +2478,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a JsonObject. Query will be executed on
-   * <code>conn</code> if provided.
+   * Get the jsonb by id and return it as a JsonObject.
    * @param conn  if provided, the connection on which to execute the query on.
    * @param table  the table to search in
    * @param id  the value of the id field
@@ -2503,9 +2490,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a JsonObject. Query will be executed on
-   * <code>conn</code> if provided. Selected row will be locked using
-   * <code>select ... for update<code> clause.
+   * Lock the row using <code>select ... for update</code> and return jsonb as a JsonObject.
    * @param conn  if provided, the connection on which to execute the query on.
    * @param table  the table to search in
    * @param id  the value of the id field
@@ -2529,8 +2514,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a pojo of type T. Query will be executed on
-   * <code>conn</code> if provided.
+   * Get the jsonb by id and return it as a pojo of type T.
    * @param conn  if provided, the connection on which to execute the query on.
    * @param table  the table to search in
    * @param id  the value of the id field
@@ -2543,9 +2527,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a pojo of type T. Query will be executed on
-   * <code>conn</code> if provided. Selected row will be locked using
-   * <code>select ... for update<code> clause.
+   * Lock the row using <code>select ... for update</code> and return jsonb as a pojo of type T.
    * @param conn  if provided, the connection on which to execute the query on.
    * @param table  the table to search in
    * @param id  the value of the id field
