@@ -1,21 +1,18 @@
 package org.folio;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ThreadLocalRandom;
-
-import org.apache.commons.io.IOUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
 import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
@@ -29,6 +26,7 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -40,17 +38,14 @@ import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetSocket;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.rest.persist.PostgresClient;
 
@@ -60,17 +55,16 @@ import org.folio.rest.persist.PostgresClient;
 @RunWith(VertxUnitRunner.class)
 public class DemoRamlRestTest {
 
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
-
-  private static final Logger log = LoggerFactory.getLogger(DemoRamlRestTest.class);
+  private static final Logger log = LogManager.getLogger();
 
   private static Vertx vertx;
   private static int port;
   private static Locale oldLocale = Locale.getDefault();
   private static String TENANT = "folio_shared";
   private static RequestSpecification tenant;
+
+  @Rule
+  public Timeout timeout = Timeout.seconds(5);
 
   /**
    * @param context  the test context.
@@ -86,15 +80,25 @@ public class DemoRamlRestTest {
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     tenant = new RequestSpecBuilder().addHeader("x-okapi-tenant", TENANT).build();
 
-    try {
-      deployRestVerticle(context);
+    dropSchemaRole(context);
+    deployRestVerticle(context);
 
-      Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
-      postData(context, "http://localhost:" + port + "/_/tenant", buf,
-        201, HttpMethod.POST, "application/json", TENANT, false);
-    } catch (Exception e) {
-      context.fail(e);
-    }
+    Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
+    postData(context, "http://localhost:" + port + "/_/tenant", buf,
+      201, HttpMethod.POST, "application/json", TENANT, false);
+  }
+
+  private static void dropSchemaRole(TestContext context) {
+    // Dropping is needed when developers reuse the database to save startup time.
+    Async async = context.async();
+    PostgresClient postgresClient = PostgresClient.getInstance(Vertx.vertx());
+    postgresClient.execute("drop schema " + TENANT + "_raml_module_builder cascade", ignore1 -> {
+      postgresClient.execute("drop role " + TENANT + "_raml_module_builder", ignore2 -> {
+        PostgresClient.closeAllClients();
+        async.complete();
+      });
+    });
+    async.await(5000);
   }
 
   private static void deployRestVerticle(TestContext context) {
@@ -103,7 +107,7 @@ public class DemoRamlRestTest {
         new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions,
         context.asyncAssertSuccess(done -> async.complete()));
-    async.await();
+    async.await(5000);
   }
 
   /**
@@ -352,8 +356,6 @@ public class DemoRamlRestTest {
     postData(context, "http://localhost:" + port + "/rmbtests/books",
       Buffer.buffer(om.writerWithDefaultPrettyPrinter().writeValueAsString(b)), 201, HttpMethod.POST, "application/json", TENANT, false);
 
-    List<Object> list = getListOfBooks();
-
     checkURLs(context, "http://localhost:" + port + "/apidocs/index.html", 200);
     checkURLs(context, "http://localhost:" + port + "/admin/loglevel", 200);
   }
@@ -402,51 +404,34 @@ public class DemoRamlRestTest {
     testStreamTcpClient(context, 10);
   }
 
-  private void testStream(TestContext context, boolean chunk) {
+  private void testStream(TestContext context, boolean chunked) {
     int chunkSize = 1024;
     int numberChunks = 50;
     Async async = context.async();
-    HttpClient httpClient = vertx.createHttpClient();
-    httpClient.request(HttpMethod.POST, port, "localhost", "/rmbtests/testStream", (AsyncResult<HttpClientRequest> reqRes) -> reqRes.map((HttpClientRequest res) -> {
-    Buffer resBuf = Buffer.buffer();
-    res.send(e -> e.result().handler(resBuf::appendBuffer));
-    final HttpClientResponse req = res.result();
-    req.endHandler(x -> {
-      context.assertEquals(200, req.statusCode());
-      JsonObject jo = new JsonObject(resBuf);
-      context.assertTrue(jo.getBoolean("complete"));
-      async.complete();
-    });
-    res.exceptionHandler(x -> {
-      if (!async.isCompleted()) {
-        context.assertTrue(false, "exceptionHandler res: " + x.getLocalizedMessage());
-        async.complete();
-      }
-    });
+    vertx.createHttpClient()
+    .request(HttpMethod.POST, port, "localhost", "/rmbtests/testStream")
+    .onComplete(context.asyncAssertSuccess(request -> {
+      request.onComplete(context.asyncAssertSuccess(response -> {
+        assertThat(response.statusCode(), is(200));
+        response.body(context.asyncAssertSuccess(body -> {
+          assertThat(body.toJsonObject().getBoolean("complete"), is(true));
+          async.complete();
+        }));
+      }));
 
-    req.exceptionHandler(x -> {
-    if (!async.isCompleted()) {
-      context.assertTrue(false, "exceptionHandler req: " + x.getLocalizedMessage());
-      async.complete();
-    }
-    });
-    if (chunk) {
-      res.setChunked(true);
-    } else {
-      res.putHeader("Content-Length", Integer.toString(chunkSize * numberChunks));
-    }
-    res.putHeader("Accept", "application/json,text/plain");
-    res.putHeader("Content-type", "application/octet-stream");
-    res.putHeader("x-okapi-tenant", TENANT);
-    Buffer buf = Buffer.buffer(chunkSize);
-    for (int i = 0; i < chunkSize; i++) {
-      buf.appendString("X");
-    }
-    for (int i = 0; i < numberChunks; i++) {
-      res.write(buf);
-    }
-    req.end();
-    return null;
+      if (chunked) {
+        request.setChunked(true);
+      } else {
+        request.putHeader("Content-Length", Integer.toString(chunkSize * numberChunks));
+      }
+      request.putHeader("Accept", "application/json,text/plain");
+      request.putHeader("Content-type", "application/octet-stream");
+      request.putHeader("x-okapi-tenant", TENANT);
+      String chunk = "X".repeat(chunkSize);
+      for (int i = 0; i < numberChunks; i++) {
+        request.write(chunk);
+      }
+      request.end(context.asyncAssertSuccess());
     }));
   }
 
@@ -470,100 +455,11 @@ public class DemoRamlRestTest {
    *
    */
   @Test
-  public void checkClientCode(TestContext context)  {
-
-    try {
-      Async async = context.async(3);
-
+  public void checkClientCode(TestContext context) throws Exception {
       AdminClient aClient = new AdminClient("http://localhost:" + port, "abc", "abc", false);
-      aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", reply -> {
-        Buffer body = reply.result().body();
-        //System.out.println(body.toString("UTF8"));
-          async.countDown();
-      });
-
-      aClient.getAdminJstack( trace -> {
-        Buffer content = trace.result().body();
-          //System.out.println(content);
-          async.countDown();
-      });
-
-      aClient.getAdminMemory(false , resp -> {
-        resp.map(r-> {
-          //System.out.println(r.body());
-          async.countDown();
-          return null;
-        });
-      });
-
-    }
-    catch (Exception e) {
-      log.error(e.getMessage(), e);
-      context.fail();
-    }
-  }
-
-  /**
-   * @param context
-   */
-  private void jobsTest(TestContext context) {
-
-    String url = "/jobs/jobconfs";
-    Async async = context.async();
-    WebClient client = WebClient.create(vertx);
-    HttpRequest<Buffer> request = client
-        .requestAbs(HttpMethod.POST, "http://localhost:" + port + url);
-    request.putHeader("Accept", "application/json,text/plain");
-    request.putHeader("Content-type", "application/json");
-    final String file;
-    try {
-      file = getFile("job_conf_post.json");
-    } catch (IOException e) {
-      log.error(e.getMessage(), e);
-      context.fail("unable to read file");
-      return;
-    }
-      request.sendBuffer(Buffer.buffer(file)).onComplete(response -> {
-        response.map(res -> {
-          int statusCode = res.statusCode();
-          String location = res.getHeader("Location");
-          // is it 2XX
-          log.info(statusCode + " status at " + System.currentTimeMillis() + " for " +
-              "http://localhost:" + port + url);
-
-          if (statusCode == 201) {
-            checkURLs(context, "http://localhost:" + port + url, 200);
-            try {
-              postData(context, "http://localhost:" + port + url + "/" + location + "/jobs"
-                  , Buffer.buffer(getFile("job.json")), 201, HttpMethod.POST, "application/json",
-                  TENANT, false);
-              postData(context, "http://localhost:" + port + url + "/" + location
-                  , Buffer.buffer(file), 204, HttpMethod.PUT, null, TENANT,
-                  false);
-              postData(context, "http://localhost:" + port + url + "/12345"
-                  , Buffer.buffer(file), 404, HttpMethod.DELETE, null,
-                  TENANT, false);
-              postData(context, "http://localhost:" + port + url + "/" + location + "/jobs/12345"
-                  , Buffer.buffer(file), 404, HttpMethod.DELETE, null,
-                  TENANT, false);
-            } catch (Exception e) {
-              log.error(e.getMessage(), e);
-              context.fail();
-            }
-
-          } else {
-            context.fail("got incorrect response code");
-          }
-          if (!async.isCompleted()) {
-            async.complete();
-          }
-        return null;
-        }).otherwise(e -> {
-          async.complete();
-          context.fail(e.getMessage());
-          return null;
-        });
-    });
+      aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", context.asyncAssertSuccess());
+      aClient.getAdminJstack(context.asyncAssertSuccess());
+      aClient.getAdminMemory(false, context.asyncAssertSuccess());
   }
 
   public Buffer checkURLs(TestContext context, String url, int codeExpected) {
@@ -582,9 +478,10 @@ public class DemoRamlRestTest {
       request.send(x -> {
         x.map(httpClientResponse->
         {
+          res.appendBuffer(httpClientResponse.body());
           log.info(httpClientResponse.statusCode() + ", " + codeExpected + " status expected: " + url);
+          log.info(res);
           context.assertEquals(codeExpected, httpClientResponse.statusCode(), url);
-          log.info(res.toString());
           async.complete();
           return null;
         }).otherwise(f-> {
@@ -666,7 +563,7 @@ public class DemoRamlRestTest {
           }
           context.assertTrue(true);
         } else {
-          System.out.println(" ---------------xxxxxx-1------------------- " + responseData.toString());
+          log.info(" ---------------xxxxxx-1------------------- {}", responseData.toString());
 
           context.fail(new RuntimeException("got unexpected response code, expected: "
             + errorCode + ", received code: " + statusCode + " " + method.name() + " " + url
@@ -675,50 +572,11 @@ public class DemoRamlRestTest {
         if (!async.isCompleted()) {
           async.complete();
         }
-          return null;
+        return null;
     }).otherwise(error -> {
-      async.complete();
-      System.out.println(" ---------------xxxxxx-------------------- " + error.getMessage());
+      log.error(" ---------------xxxxxx-------------------- " + error.getMessage(), error);
       context.fail(new RuntimeException(error.getMessage(), stacktrace));
       return null;
     });
-  }
-
-
-  private String getFile(String filename) throws IOException {
-    return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
-  }
-
-
-  private List<Object> getListOfBooks(){
-    List<Object> list = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
-      Book b = createBook();
-      b.setStatus(i);
-      list.add(b);
-    }
-    return list;
-  }
-
-  private Book createBook(){
-    int ran = ThreadLocalRandom.current().nextInt(0, 11);
-    Book b = new Book();
-    b.setStatus(99+ran);
-    b.setSuccess(true);
-    b.setData(null);
-    Data d = new Data();
-    d.setAuthor("a" + ran);
-    Datetime dt = new Datetime();
-
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS\'Z\'");
-    String parsedDate = format.format(new Date());
-    dt.set$date(parsedDate);
-    d.setDatetime(dt);
-    d.setGenre("b");
-    d.setDescription("c");
-    d.setLink("d");
-    d.setTitle("title"+ran);
-    b.setData(d);
-    return b;
   }
 }
