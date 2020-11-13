@@ -15,7 +15,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.client.exceptions.PopulateTemplateException;
 import org.folio.rest.tools.client.exceptions.PreviousRequestException;
@@ -33,8 +34,6 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
@@ -51,7 +50,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
   private static final String X_OKAPI_HEADER = "x-okapi-tenant";
   private static final Pattern TAG_REGEX = Pattern.compile("\\{(.+?)\\}");
 
-  private static final Logger log = LoggerFactory.getLogger(HttpModuleClient2.class);
+  private static final Logger log = LogManager.getLogger();
 
   private String tenantId;
   private WebClientOptions options;
@@ -60,8 +59,6 @@ public class HttpModuleClient2 implements HttpClientInterface {
   private boolean autoCloseConnections = true;
   private Map<String, String> headers = new HashMap<>();
   private long cacheTO = 30; //minutes
-  private int connTO = 2000;
-  private int idleTO = 5000;
   private boolean absoluteHostAddr = false;
 
   public HttpModuleClient2(String host, int port, String tenantId, boolean keepAlive, int connTO,
@@ -69,8 +66,6 @@ public class HttpModuleClient2 implements HttpClientInterface {
 
     this.tenantId = tenantId;
     this.cacheTO = cacheTO;
-    this.connTO = connTO;
-    this.idleTO = idleTO;
     options = new WebClientOptions().setLogActivity(true).setKeepAlive(keepAlive)
         .setConnectTimeout(connTO).setIdleTimeout(idleTO);
     options.setDefaultHost(host);
@@ -129,12 +124,11 @@ public class HttpModuleClient2 implements HttpClientInterface {
       } else {
         request = webClient.request(method, endpoint);
       }
-      request
-      .sendBuffer(data, responseHandler);
       if(headers != null){
         this.headers.putAll(headers);
       }
       request.headers().setAll(this.headers);
+      request.sendBuffer(data, responseHandler);
     } catch (Exception e) {
       Response r = new Response();
       r.populateError(endpoint, -1, e.getMessage());
