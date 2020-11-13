@@ -21,7 +21,7 @@ import org.junit.runner.RunWith;
 import org.mockito.AdditionalAnswers;
 
 @RunWith(VertxUnitRunner.class)
-public class PostgresClientTestWithMock {
+public class PostgresClientMockTest {
   
   @Test
   public void testGetById(TestContext context) {
