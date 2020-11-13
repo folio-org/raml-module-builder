@@ -709,4 +709,5 @@ public class PostgresClientTest {
 
     assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
   }
+
 }
