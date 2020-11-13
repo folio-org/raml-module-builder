@@ -6,11 +6,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
@@ -32,6 +29,8 @@ import java.util.function.UnaryOperator;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import org.apache.commons.io.IOUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.util.StringUtil;
@@ -88,7 +87,7 @@ import org.folio.util.StringUtil;
  */
 public class TenantLoading {
 
-  private static final Logger log = LoggerFactory.getLogger(TenantLoading.class);
+  private static final Logger log = LogManager.getLogger();
   private static final String RETURNED_STATUS = " returned status ";
 
   private enum Strategy {
@@ -193,11 +192,11 @@ public class TenantLoading {
     req.sendBuffer(Buffer.buffer(json), handler);
   }
 
-  static String getIdBase(String path, Promise<Void> f) {
+  static String getIdBase(String path, Promise<Void> promise) {
     int base = path.lastIndexOf('/');
     int suf = path.lastIndexOf('.');
     if (base == -1) {
-      f.handle(Future.failedFuture("No basename for " + path));
+      promise.tryFail("No basename for " + path);
       return null;
     }
     if (suf > base) {
@@ -208,19 +207,18 @@ public class TenantLoading {
   }
 
   private static String getId(LoadingEntry loadingEntry, URL url, String content,
-      Promise<Void> f) {
+      Promise<Void> promise) {
 
     switch (loadingEntry.strategy) {
       case BASENAME:
-        return getIdBase(url.getPath(), f);
+        return getIdBase(url.getPath(), promise);
       case CONTENT:
         JsonObject jsonObject = new JsonObject(content);
         String id = jsonObject.getString(loadingEntry.idProperty);
         if (id == null) {
-          log.warn("Missing property "
-              + loadingEntry.idProperty + " for url=" + url.toString());
-          f.handle(Future.failedFuture("Missing property "
-              + loadingEntry.idProperty + " for url=" + url.toString()));
+          String msg = "Missing property " + loadingEntry.idProperty + " for url=" + url;
+          log.warn(msg);
+          promise.tryFail(msg);
           return null;
         }
         return StringUtil.urlEncode(id);
@@ -231,18 +229,18 @@ public class TenantLoading {
     return null;
   }
 
-  private static void handleException(Throwable ex, String lead, Promise<Void> f) {
+  private static void handleException(Throwable ex, String lead, Promise<Void> promise) {
     String diag = lead + ": " + ex.getMessage();
     log.error(diag, ex);
-    f.tryFail(diag);
+    promise.tryFail(diag);
   }
 
   private static void handleException(Throwable ex, HttpMethod method, String uri,
-      Promise<Void> f) {
-    handleException(ex, method.name() + " " + uri, f);
+      Promise<Void> promise) {
+    handleException(ex, method.name() + " " + uri, promise);
   }
 
-  private static String getContent(URL url, LoadingEntry loadingEntry, Promise<Void> f) {
+  private static String getContent(URL url, LoadingEntry loadingEntry, Promise<Void> promise) {
     try {
       String content = IOUtils.toString(url, StandardCharsets.UTF_8);
       if (loadingEntry.contentFilter != null) {
@@ -250,22 +248,22 @@ public class TenantLoading {
       }
       return content;
     } catch (IOException ex) {
-      handleException(ex, "IOException for url " + url.toString(), f);
+      handleException(ex, "IOException for url " + url.toString(), promise);
       return null;
     }
   }
 
-  private static void loadURL(Map<String, String> headers, URL url,
-      WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl,
-      Promise<Void> f) {
+  private static Future<Void> loadURL(Map<String, String> headers, URL url,
+      WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
 
-    final String content = getContent(url, loadingEntry, f);
-    if (f.future().isComplete()) {
-      return;
+    Promise<Void> promise = Promise.promise();
+    final String content = getContent(url, loadingEntry, promise);
+    if (promise.future().isComplete()) {
+      return promise.future();
     }
-    String id = getId(loadingEntry, url, content, f);
-    if (f.future().isComplete()) {
-      return;
+    String id = getId(loadingEntry, url, content, promise);
+    if (promise.future().isComplete()) {
+      return promise.future();
     }
     StringBuilder putUri = new StringBuilder();
     HttpMethod method1t;
@@ -287,7 +285,7 @@ public class TenantLoading {
     HttpRequest<Buffer> reqPut = httpClient.requestAbs(method1, putUri.toString());
     sendWithXHeaders(reqPut, headers, content, res -> {
       if (res.failed()) {
-        handleException(res.cause(), method1, putUri.toString(), f);
+        handleException(res.cause(), method1, putUri.toString(), promise);
         return;
       }
       HttpResponse<Buffer> resPut = res.result();
@@ -300,34 +298,35 @@ public class TenantLoading {
         HttpRequest<Buffer> reqPost = httpClient.requestAbs(method2, endPointUrl);
          sendWithXHeaders(reqPost, headers, content, res1 -> {
           if (res1.failed()) {
-              handleException(res1.cause(), method2, endPointUrl, f);
+            handleException(res1.cause(), method2, endPointUrl, promise);
             return;
           }
-           HttpResponse<Buffer> resPost = res1.result();
+          HttpResponse<Buffer> resPost = res1.result();
           Buffer body2 = resPost.bodyAsBuffer();
             if (resPost.statusCode() == 201) {
-              f.handle(Future.succeededFuture());
+              promise.handle(Future.succeededFuture());
             } else {
               String diag = method1.name() + " " + putUri.toString()
-                  + RETURNED_STATUS + resPut.statusCode() + ": " + body1.toString()
+                  + RETURNED_STATUS + resPut.statusCode() + ": " + body1
                   + " " + method2.name() + " " + endPointUrl
-                  + RETURNED_STATUS + resPost.statusCode() + ": " + body2.toString();
+                  + RETURNED_STATUS + resPost.statusCode() + ": " + body2;
               log.error(diag);
-              f.handle(Future.failedFuture(diag));
+              promise.handle(Future.failedFuture(diag));
             }
           });
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
           || resPut.statusCode() == 204 || loadingEntry.statusAccept
           .contains(resPut.statusCode())) {
-        f.handle(Future.succeededFuture());
+        promise.handle(Future.succeededFuture());
       } else {
         String diag =
             method1.name() + " " + putUri.toString() + RETURNED_STATUS + resPut.statusCode()
-                + ": " + body1.toString();
+                + ": " + body1;
         log.error(diag);
-        f.handle(Future.failedFuture(diag));
+        promise.tryFail(diag);
       }
     });
+    return promise.future();
   }
 
   private static void loadData(String okapiUrl, Map<String, String> headers,
@@ -346,19 +345,9 @@ public class TenantLoading {
       }
       Future<Void> future = Future.succeededFuture();
       for (URL url : urls) {
-        future = future.compose(x -> {
-          Promise<Void> p = Promise.promise();
-          loadURL(headers, url, httpClient, loadingEntry, endPointUrl, p);
-          return p.future();
-        });
+        future = future.compose(x -> loadURL(headers, url, httpClient, loadingEntry, endPointUrl));
       }
-      future.onComplete(x -> {
-        if (x.failed()) {
-          res.handle(Future.failedFuture(x.cause().getLocalizedMessage()));
-        } else {
-          res.handle(Future.succeededFuture(urls.size()));
-        }
-      });
+      future.map(urls.size()).onComplete(res);
     } catch (URISyntaxException | IOException ex) {
       log.error("Exception for path " + filePath, ex);
       res.handle(Future.failedFuture("Exception for path " + filePath + " ex=" + ex.getMessage()));

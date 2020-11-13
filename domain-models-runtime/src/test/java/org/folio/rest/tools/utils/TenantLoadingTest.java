@@ -1,6 +1,5 @@
 package org.folio.rest.tools.utils;
 
-import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import java.util.List;
 import org.junit.Test;
@@ -14,9 +13,9 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -30,22 +29,21 @@ import java.util.HashSet;
 import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class TenantLoadingTest {
 
+  @Rule
+  public Timeout timeout = Timeout.seconds(5);
+
   Vertx vertx;
-  static int port = 0;
+  int port;
   int putStatus; // for our fake server
   int postStatus; // for our fake server
 
   Set<String> ids = new HashSet<>();
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-    port = NetworkUtils.nextFreePort();
-  }
 
   private void fakeHttpServerHandler(RoutingContext ctx) {
     ctx.response().setChunked(true);
@@ -77,6 +75,7 @@ public class TenantLoadingTest {
   @Before
   public void setUp(TestContext context) {
     vertx = Vertx.vertx();
+    port = NetworkUtils.nextFreePort();;
     Async async = context.async();
     Router router = Router.router(vertx);
     router.post("/data").handler(this::fakeHttpServerHandler);
@@ -268,7 +267,7 @@ public class TenantLoadingTest {
     headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
 
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     putStatus = 500;
     tl.perform(tenantAttributes, headers, vertx, context.asyncAssertFailure());
   }
