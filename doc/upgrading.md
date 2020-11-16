@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 32.0](#version-320)
 * [Version 31.0](#version-310)
 * [Version 30.2](#version-302)
 * [Version 30.0](#version-300)
@@ -16,6 +17,23 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 32.0
+
+* [RMB-609](https://issues.folio.org/browse/RMB-609) Upgrade to Vert.x 4:
+  * Replace deprecated `io.vertx.core.logging.Logger` by
+    `org.apache.logging.log4j.Logger`, for example
+    `private static final Logger LOGGER = LogManager.getLogger(Foo.class)`
+    (using `getLogger()` without argument requires Multi-Release for
+    stack walking, see below).
+  * Replace `HttpClient` `.getAbs`, `.postAbs`, `.putAbs`, `.deleteAbs` by
+    `WebClient.requestAbs(HttpMethod method, ...)`.
+  * Replace `Future.setHandler` by `Future.onComplete`.
+  * `Future` has been split into `Future` and `Promise`, see
+    [Futurisation in Vert.x 4](futurisation.md).
+* [OKAPI-943](https://issues.folio.org/browse/OKAPI-943) When calling `.any`, `.all` or `.join`
+  replace `io.vertx.core.CompositeFuture` by `org.folio.okapi.common.GenericCompositeFuture`,
+  replace raw type by actual type and remove `@SuppressWarnings("rawtypes")`.
 
 ## Version 31.0
 
