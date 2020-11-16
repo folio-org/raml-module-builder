@@ -56,7 +56,7 @@ import org.z3950.zing.cql.ModifierSet;
  * Helper methods for using PostgresClient.
  */
 public final class PgUtil {
-  private static final Logger logger = LogManager.getLogger();
+  private static final Logger logger = LogManager.getLogger(PgUtil.class);
 
   private static final String RESPOND_200_WITH_APPLICATION_JSON = "respond200WithApplicationJson";
   private static final String RESPOND_201                       = "respond201";

@@ -8,14 +8,7 @@ import java.nio.file.Path;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.vertx.core.logging.LoggerFactory;
-
 public class MessagesTest {
-
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
 
   private static String __(String language, MessageEnum consts) {
     return Messages.getInstance().getMessage(language, consts);

@@ -1,8 +1,5 @@
 package org.folio.rest.tools.messages;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -21,6 +18,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Stream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Provide language specific messages, caching the language files in memory.
@@ -34,7 +33,7 @@ public class Messages {
   /** default language used for fall-back */
   public static final String      DEFAULT_LANGUAGE       = "en";
 
-  private static final Logger log = LoggerFactory.getLogger(Messages.class);
+  private static final Logger log = LogManager.getLogger(Messages.class);
 
   /** messageMap.get(language).getProperty(code) is the text */
   Map<String, Properties> messageMap       = new HashMap<>();

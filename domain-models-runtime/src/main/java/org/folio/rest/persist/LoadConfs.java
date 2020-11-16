@@ -1,19 +1,18 @@
 package org.folio.rest.persist;
 
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.utils.NetworkUtils;
 
 import com.google.common.io.ByteStreams;
 
 public final class LoadConfs {
-  private static final Logger log = LoggerFactory.getLogger(LoadConfs.class);
+  private static final Logger log = LogManager.getLogger(LoadConfs.class);
 
   private LoadConfs() throws IllegalAccessException {
     throw new IllegalAccessException("Cannot instantiate a utility class");

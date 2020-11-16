@@ -50,7 +50,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
   private static final String X_OKAPI_HEADER = "x-okapi-tenant";
   private static final Pattern TAG_REGEX = Pattern.compile("\\{(.+?)\\}");
 
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger log = LogManager.getLogger(HttpModuleClient2.class);
 
   private String tenantId;
   private WebClientOptions options;

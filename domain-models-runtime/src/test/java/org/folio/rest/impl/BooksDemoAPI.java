@@ -5,8 +5,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
 import java.io.InputStream;
 import java.util.Date;
@@ -30,7 +28,6 @@ import org.folio.rest.tools.utils.OutStream;
  */
 public class BooksDemoAPI implements Rmbtests {
 
-  private static final Logger log = LoggerFactory.getLogger(BooksDemoAPI.class);
   private static final String TABLE = "test_tenantapi";
 
   /**

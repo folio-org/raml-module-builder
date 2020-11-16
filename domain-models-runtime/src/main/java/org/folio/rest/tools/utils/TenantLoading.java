@@ -87,7 +87,7 @@ import org.folio.util.StringUtil;
  */
 public class TenantLoading {
 
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger log = LogManager.getLogger(TenantLoading.class);
   private static final String RETURNED_STATUS = " returned status ";
 
   private enum Strategy {

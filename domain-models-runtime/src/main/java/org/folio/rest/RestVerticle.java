@@ -39,6 +39,8 @@ import com.google.common.io.ByteStreams;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
 import org.folio.okapi.common.logging.FolioLoggingContext;
 import org.folio.rest.annotations.Stream;
@@ -85,8 +87,6 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -119,7 +119,7 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static final String       HTTP_PORT_SETTING               = "http.port";
   private static String             className                       = RestVerticle.class.getName();
-  private static final Logger       log                             = LoggerFactory.getLogger(className);
+  private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
 
   private static final String[]     DATE_PATTERNS = {

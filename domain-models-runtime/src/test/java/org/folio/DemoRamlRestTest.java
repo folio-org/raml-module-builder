@@ -55,7 +55,7 @@ import org.folio.rest.persist.PostgresClient;
 @RunWith(VertxUnitRunner.class)
 public class DemoRamlRestTest {
 
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger log = LogManager.getLogger(DemoRamlRestTest.class);
 
   private static Vertx vertx;
   private static int port;

@@ -17,7 +17,7 @@ import org.apache.logging.log4j.Logger;
  */
 class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer>>> {
 
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger log = LogManager.getLogger(HTTPJsonResponseHandler.class);
 
   CompletableFuture<Response> cf;
   String endpoint;

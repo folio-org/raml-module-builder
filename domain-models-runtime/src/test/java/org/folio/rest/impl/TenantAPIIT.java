@@ -37,7 +37,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -47,11 +46,6 @@ public class TenantAPIIT {
   private static final String tenantId = "folio_shared";
   protected static Vertx vertx;
   private static Map<String,String> okapiHeaders = new HashMap<>();
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-    okapiHeaders.put("TenantId", tenantId);
-  }
 
   @Rule
   public Timeout rule = Timeout.seconds(20);

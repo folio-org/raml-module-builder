@@ -88,7 +88,7 @@ public class PostgresClient {
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
-  static Logger log = LogManager.getLogger();
+  static Logger log = LogManager.getLogger(PostgresClient.class);
 
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
