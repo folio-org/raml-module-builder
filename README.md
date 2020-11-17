@@ -1056,12 +1056,12 @@ not defined or if it is defined but doesn't match.
 
 For matching the elements of an array use these queries (assuming that lang is either an array or not defined, and assuming
 an array element value does not contain double quotes):
-* `lang == []` for matching records where lang is defined and an empty array
-* `cql.allRecords=1 NOT lang <> []` for matching records where lang is not defined or an empty array
-* `lang = \"en\"` for matching records where lang is defined and contains the value en
-* `cql.allRecords=1 NOT lang = \"en\"` for matching records where lang does not
+* `lang == "[]"` for matching records where lang is defined and an empty array
+* `cql.allRecords=1 NOT lang <> "[]"` for matching records where lang is not defined or an empty array
+* `lang == "*\"en\"*"` for matching records where lang is defined and contains the value en
+* `cql.allRecords=1 NOT lang == "*\"en\"*"` for matching records where lang does not
   contain the value en (including records where lang is not defined)
-* `lang = "" NOT lang = \"en\"` for matching records where lang is defined and
+* `lang = "" NOT lang == "*\"en\"*"` for matching records where lang is defined and
   and does not contain the value en
 * `lang = ""` for matching records where lang is defined
 * `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
