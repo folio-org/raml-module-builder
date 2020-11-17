@@ -1484,6 +1484,55 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void getByIdAsStringForUpdate(TestContext context) {
+    Async async1 = context.async();
+    Async async2 = context.async();
+    String id = randomUuid();
+    postgresClient = createFoo(context);
+    postgresClient.save(FOO, id, new StringPojo("x0"), res -> {
+      assertSuccess(context, res);
+      context.assertEquals(id, res.result());
+      Criterion criterion = new Criterion();
+      criterion.addCriterion(new Criteria().addField("'id'").setOperation("=").setVal(id));
+      postgresClient.startTx(conn -> {
+        // lock the row for update
+        postgresClient.getByIdAsStringForUpdate(conn, FOO, id, get -> {
+          // concurrent update will have to wait
+          postgresClient.update(FOO, new StringPojo("x2"), id, rows -> {
+            context.assertTrue(async1.isCompleted());
+            postgresClient.getByIdAsString(FOO, id, get2 -> {
+              assertSuccess(context, get2);
+              context.assertTrue(get2.result().contains("\"x2\""));
+              async2.complete();
+            });
+          });
+          // update first because it holds the lock
+          postgresClient.execute(conn, "SELECT pg_sleep(0.5)", delayRs -> {
+            assertSuccess(context, delayRs);
+            postgresClient.update(conn, FOO, new StringPojo("x1"),
+                new CQLWrapper(criterion), true, rows -> {
+              assertSuccess(context, rows);
+              context.assertFalse(async2.isCompleted());
+              async1.complete();
+              // before the first update is committed
+              postgresClient.getByIdAsString(FOO, id, get0 -> {
+                assertSuccess(context, get0);
+                context.assertTrue(get0.result().contains("\"x0\""), get0.result());
+                // read in the same update transaction
+                postgresClient.getByIdAsString(conn, FOO, id, get1 -> {
+                  assertSuccess(context, get1);
+                  context.assertTrue(get1.result().contains("\"x1\""), get1.result());
+                  postgresClient.endTx(conn, context.asyncAssertSuccess());
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  }
+
+  @Test
   public void getByIdAsPojo(TestContext context) {
     Async async = context.async();
     String uuid = randomUuid();
