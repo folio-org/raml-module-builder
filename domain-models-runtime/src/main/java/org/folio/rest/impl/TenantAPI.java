@@ -4,11 +4,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.resource.Tenant;
@@ -16,10 +19,8 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.dbschema.TenantOperation;
-import org.folio.rest.tools.ClientGenerator;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.client.exceptions.ResponseException;
-import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 
 import freemarker.template.TemplateException;
@@ -28,7 +29,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.sqlclient.Row;
@@ -47,95 +47,10 @@ public class TenantAPI implements Tenant {
     return PostgresClient.getInstance(context.owner());
   }
 
-  @Validate
-  @Override
-  public void deleteTenant(Map<String, String> headers,
-      Handler<AsyncResult<Response>> handlers, Context context) {
-
-    context.runOnContext(v -> {
-      try {
-
-        String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-        log.info("sending... deleteTenant for " + tenantId);
-        tenantExists(context, tenantId,
-          h -> {
-            boolean exists = false;
-            if(h.succeeded()){
-              exists = h.result();
-              if(!exists){
-                handlers.handle(failedFuture(DeleteTenantResponse.
-                  respond400WithTextPlain("Tenant does not exist: " + tenantId)));
-                log.error("Can not delete. Tenant does not exist: " + tenantId);
-                return;
-              }
-              else{
-                log.info("Deleting tenant " + tenantId);
-              }
-            }
-            else{
-              handlers.handle(io.vertx.core.Future.failedFuture(h.cause().getMessage()));
-              log.error(h.cause().getMessage(), h.cause());
-              return;
-            }
-
-            String sqlFile = null;
-            try {
-              SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(),
-                  TenantOperation.DELETE, null, null);
-              sqlFile = sMaker.generateDDL();
-
-            } catch (Exception e1) {
-              handlers.handle(io.vertx.core.Future.failedFuture(e1.getMessage()));
-              log.error(e1.getMessage(), e1);
-              return;
-            }
-
-            log.info("Attempting to run delete script for: " + tenantId);
-            log.debug("GENERATED SCHEMA " + sqlFile);
-            /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-            postgresClient(context).runSQLFile(sqlFile, true,
-                reply -> {
-                  try {
-                    // close clients because they still use the old oid of the dropped schema/role name,
-                    // they will fail when the same schema/role is recreated with a new oid.
-                    PostgresClient.closeAllClients(tenantId);
-                    String res = "";
-                    if(reply.succeeded()){
-                      res = new JsonArray(reply.result()).encodePrettily();
-                      if(reply.result().size() > 0){
-                        log.error("Unable to run the following commands during tenant delete: ");
-                        reply.result().forEach(log::error);
-                        handlers.handle(failedFuture(DeleteTenantResponse.respond400WithTextPlain(res)));
-                      }
-                      else {
-                        OutStream os = new OutStream();
-                        os.setData(res);
-                        handlers.handle(io.vertx.core.Future.succeededFuture(DeleteTenantResponse.respond204()));
-                      }
-                    }
-                    else {
-                      log.error(reply.cause().getMessage(), reply.cause());
-                      handlers.handle(failedFuture(DeleteTenantResponse
-                        .respond500WithTextPlain(reply.cause().getMessage())));
-                    }
-                  } catch (Exception e) {
-                    log.error(e.getMessage(), e);
-                    handlers.handle(failedFuture(DeleteTenantResponse
-                      .respond500WithTextPlain(e.getMessage())));
-                  }
-                });
-          });
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        handlers.handle(failedFuture(DeleteTenantResponse
-          .respond500WithTextPlain(e.getMessage())));
-      }
-    });
-  }
 
   Future<Boolean> tenantExists(Context context, String tenantId) {
     Promise<Boolean> promise = Promise.promise();
-    tenantExists(context, tenantId, promise.future());
+    tenantExists(context, tenantId, promise::handle);
     return promise.future();
   }
 
@@ -156,38 +71,6 @@ public class TenantAPI implements Tenant {
             log.error(e.getMessage(), e);
             handler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
           }
-    });
-  }
-
-  @Validate
-  @Override
-  public void getTenant(Map<String, String> headers, Handler<AsyncResult<Response>> handlers,
-      Context context)  {
-
-    context.runOnContext(v -> {
-      try {
-
-        String tenantId = TenantTool.calculateTenantId( headers.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-        log.info("sending... getTenant for " + tenantId);
-
-        tenantExists(context, tenantId, res -> {
-          boolean exists = false;
-          if(res.succeeded()){
-            exists = res.result();
-            handlers.handle(io.vertx.core.Future.succeededFuture(GetTenantResponse.respond200WithTextPlain(String.valueOf(
-              exists))));
-          }
-          else{
-            log.error(res.cause().getMessage(), res.cause());
-            handlers.handle(failedFuture(GetTenantResponse
-              .respond500WithTextPlain(res.cause().getMessage())));
-          }
-        });
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        handlers.handle(failedFuture(GetTenantResponse
-          .respond500WithTextPlain(e.getMessage())));
-      }
     });
   }
 
@@ -299,6 +182,8 @@ public class TenantAPI implements Tenant {
     .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists));
   }
 
+  static Map<UUID, JsonObject> operations = new HashMap<>();
+
   /**
    * Installs or upgrades a module for a tenant.
    *
@@ -309,54 +194,64 @@ public class TenantAPI implements Tenant {
    */
   @Validate
   @Override
-  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-      Handler<AsyncResult<Response>> handler, Context context)  {
+  public void postTenant(TenantAttributes tenantAttributes, RoutingContext routingContext, Map<String, String> headers,
+                         Handler<AsyncResult<Response>> handler, Context context)  {
 
     String tenantId = TenantTool.tenantId(headers);
-    log.info("sending... postTenant for " + tenantId);
-    if (tenantAttributes != null) {
-      log.debug("upgrade from " + tenantAttributes.getModuleFrom() + " to " + tenantAttributes.getModuleTo());
-    }
-
     Future<Boolean> tenantExistsFuture = tenantExists(context, tenantId);
     tenantExistsFuture
-    .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists))
-    .compose(sqlFile -> postgresClient(context).runSQLFile(sqlFile, true))
-    .map(failedStatements -> {
-      String jsonListOfFailures = new JsonArray(failedStatements).encodePrettily();
-      if (! failedStatements.isEmpty()) {
-        return PostTenantResponse.respond400WithTextPlain(jsonListOfFailures);
-      }
-      boolean tenantExists = tenantExistsFuture.result();
-      return tenantExists
-              ? PostTenantResponse.respond200WithApplicationJson(jsonListOfFailures)
-              : PostTenantResponse.respond201WithApplicationJson(jsonListOfFailures);
-    })
-
-    .onFailure(e -> {
-      if (e instanceof NoSchemaJsonException) {
-        handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
-        return;
-      }
-      log.error(e.getMessage(), e);
-      String text = e.getMessage() + "\n" + ExceptionUtils.getStackTrace(e);
-      Response response = PostTenantResponse.respond500WithTextPlain(text);
-      handler.handle(failedFuture(response));
-    })
-    .onSuccess(response -> {
-      if (response.getStatus() >= 300) {
-        handler.handle(failedFuture(response));
-        return;
-      }
-      handler.handle(Future.succeededFuture(response));
-    });
+        .onFailure(
+            cause -> {
+              log.error(cause.getMessage(), cause);
+              PostTenantResponse.respond400WithTextPlain(cause.getMessage());
+            })
+        .onSuccess(
+            tenantExists -> {
+              UUID id = UUID.randomUUID();
+              JsonObject operation = new JsonObject().put("complete", false).put("id", id.toString());
+              operations.put(id, operation);
+              String location = routingContext.request().uri() + "/" + id.toString();
+              PostTenantResponse.respond201WithApplicationJson(operation,
+                  PostTenantResponse.headersFor201().withLocation(location));
+              sqlFile(context, tenantId, tenantAttributes, tenantExists)
+                  .compose(sqlFile -> postgresClient(context).runSQLFile(sqlFile, true))
+                  .onComplete(res -> {
+                    JsonObject result = new JsonObject().put("complete", true).put("id", id.toString());
+                    if (res.failed()) {
+                      result.put("error", res.cause().getMessage());
+                    } else {
+                      if (!res.result().isEmpty()) {
+                        result.put("error", "sql error");
+                        result.put("messages", res.result());
+                      }
+                    }
+                    operations.put(id, operation);
+                  });
+            });
   }
 
-  /**
-   * @return a failed {@link Future} where the failure cause is a {@link ResponseException}
-   *         containing the {@code response}
-   */
-  static Future<Response> failedFuture(Response response) {
-    return Future.failedFuture(new ResponseException(response));
+  @Override
+  public void getTenantByOperationId(String operationId, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    JsonObject operation = operations.get(operationId);
+    if (operation == null) {
+      GetTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
+      return;
+    }
+    GetTenantByOperationIdResponse.respond200WithApplicationJson(operation.encodePrettily());
   }
+
+  @Override
+  public void deleteTenantByOperationId(String operationId, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    JsonObject operation = operations.get(operationId);
+    if (operation == null) {
+      DeleteTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
+      return;
+    }
+    if (!operation.getBoolean("complete")) {
+      DeleteTenantByOperationIdResponse.respond400WithTextPlain("Cannot delete " + operationId + " operation in progress");
+    }
+    operation.remove(operationId);
+    DeleteTenantByOperationIdResponse.respond204();
+  }
+
 }
