@@ -1513,21 +1513,19 @@ public class PostgresClientIT {
                 new CQLWrapper(criterion), true, rows -> {
               assertSuccess(context, rows);
               context.assertFalse(async2.isCompleted());
-              Row row = rows.result().iterator().next();
-              context.assertEquals(id, row.getUUID("id").toString());
               async1.complete();
-              postgresClient.endTx(conn, done -> {
-                postgresClient.getByIdAsString(FOO, id, get1 -> {
+              // before the first update is committed
+              postgresClient.getByIdAsString(FOO, id, get0 -> {
+                assertSuccess(context, get0);
+                context.assertTrue(get0.result().contains("\"x0\""), get0.result());
+                // read in the same update transaction
+                postgresClient.getByIdAsString(conn, FOO, id, get1 -> {
                   assertSuccess(context, get1);
                   context.assertTrue(get1.result().contains("\"x1\""), get1.result());
+                  postgresClient.endTx(conn, context.asyncAssertSuccess());
                 });
               });
             });
-          });
-          // before update
-          postgresClient.getByIdAsString(FOO, id, get0 -> {
-            assertSuccess(context, get0);
-            context.assertTrue(get0.result().contains("\"x0\""), get0.result());
           });
         });
       });
