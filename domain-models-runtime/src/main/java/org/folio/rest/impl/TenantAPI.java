@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -43,10 +45,12 @@ public class TenantAPI implements Tenant {
 
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
 
+  private static Map<String, JsonObject> operations = new HashMap<>();
+  private static Map<String, List<Promise<Void>>> waiters = new HashMap<>();
+
   PostgresClient postgresClient(Context context) {
     return PostgresClient.getInstance(context.owner());
   }
-
 
   Future<Boolean> tenantExists(Context context, String tenantId) {
     Promise<Boolean> promise = Promise.promise();
@@ -61,7 +65,8 @@ public class TenantAPI implements Tenant {
         reply -> {
           try {
             if(reply.succeeded()){
-              handler.handle(io.vertx.core.Future.succeededFuture(reply.result().iterator().next().getBoolean(0)));
+              Boolean aBoolean = reply.result().iterator().next().getBoolean(0);
+              handler.handle(io.vertx.core.Future.succeededFuture(aBoolean));
             }
             else {
               log.error(reply.cause().getMessage(), reply.cause());
@@ -136,7 +141,9 @@ public class TenantAPI implements Tenant {
     TenantOperation op = TenantOperation.CREATE;
     String previousVersion = null;
     String newVersion = tenantAttributes == null ? null : tenantAttributes.getModuleTo();
-    if (tenantExists) {
+    if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
+      op = TenantOperation.DELETE;
+    } else if (tenantExists) {
       op = TenantOperation.UPDATE;
       if (tenantAttributes != null) {
         previousVersion = tenantAttributes.getModuleFrom();
@@ -156,33 +163,33 @@ public class TenantAPI implements Tenant {
   }
 
   private Future<String> sqlFile(Context context, String tenantId, TenantAttributes tenantAttributes,
-      boolean tenantExists) {
+                                 boolean tenantExists) {
 
     return previousSchema(context, tenantId, tenantExists)
-    .compose(previousSchema -> {
-      try {
-        String sqlFile = sqlFile(tenantId, tenantExists, tenantAttributes, previousSchema);
-        return Future.succeededFuture(sqlFile);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      } catch (TemplateException e) {  // checked exception from main.tpl parsing
-        throw new IllegalArgumentException(e);
-      }
-    });
+        .compose(previousSchema -> {
+          try {
+            String sqlFile = sqlFile(tenantId, tenantExists, tenantAttributes, previousSchema);
+            return Future.succeededFuture(sqlFile);
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          } catch (TemplateException e) {  // checked exception from main.tpl parsing
+            throw new IllegalArgumentException(e);
+          } catch (NoSchemaJsonException e) {  // checked exception from main.tpl parsing
+            throw new IllegalArgumentException("No schema.json");
+          }
+        });
   }
 
   /**
    * @param tenantAttributes parameters like module version that may influence generated SQL
    * @return the SQL commands to create or upgrade the tenant's schema
-   * @throws NoSchemaJsonException when templates/db_scripts/schema.json doesn't exist
+   * @throws IllegalArgumentException when templates/db_scripts/schema.json doesn't exist
    * @throws TemplateException when processing templates/db_scripts/schema.json fails
    */
   public Future<String> sqlFile(Context context, String tenantId, TenantAttributes tenantAttributes) {
     return tenantExists(context, tenantId)
     .compose(tenantExists -> sqlFile(context, tenantId, tenantAttributes, tenantExists));
   }
-
-  static Map<UUID, JsonObject> operations = new HashMap<>();
 
   /**
    * Installs or upgrades a module for a tenant.
@@ -196,6 +203,11 @@ public class TenantAPI implements Tenant {
   @Override
   public void postTenant(TenantAttributes tenantAttributes, RoutingContext routingContext, Map<String, String> headers,
                          Handler<AsyncResult<Response>> handler, Context context)  {
+    postTenant(true, tenantAttributes, routingContext, headers, handler, context);
+  }
+
+  private void postTenant(boolean async, TenantAttributes tenantAttributes, RoutingContext routingContext, Map<String, String> headers,
+                          Handler<AsyncResult<Response>> handler, Context context)  {
 
     String tenantId = TenantTool.tenantId(headers);
     Future<Boolean> tenantExistsFuture = tenantExists(context, tenantId);
@@ -203,55 +215,85 @@ public class TenantAPI implements Tenant {
         .onFailure(
             cause -> {
               log.error(cause.getMessage(), cause);
-              PostTenantResponse.respond400WithTextPlain(cause.getMessage());
+              handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
             })
         .onSuccess(
             tenantExists -> {
-              UUID id = UUID.randomUUID();
-              JsonObject operation = new JsonObject().put("complete", false).put("id", id.toString());
-              operations.put(id, operation);
-              String location = routingContext.request().uri() + "/" + id.toString();
-              PostTenantResponse.respond201WithApplicationJson(operation,
-                  PostTenantResponse.headersFor201().withLocation(location));
+              String id = UUID.randomUUID().toString();
+              JsonObject operationNew = new JsonObject().put("complete", false).put("id", id);
+              operations.put(id, operationNew);
+              String location = (routingContext != null ? routingContext.request().uri() : "") + "/" + id;
+              if (async) {
+                handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(operationNew,
+                    PostTenantResponse.headersFor201().withLocation(location))));
+              }
               sqlFile(context, tenantId, tenantAttributes, tenantExists)
                   .compose(sqlFile -> postgresClient(context).runSQLFile(sqlFile, true))
                   .onComplete(res -> {
-                    JsonObject result = new JsonObject().put("complete", true).put("id", id.toString());
+                    if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
+                      PostgresClient.closeAllClients(tenantId);
+                    }
+                    JsonObject operationResult = new JsonObject().put("complete", true).put("id", id.toString());
                     if (res.failed()) {
-                      result.put("error", res.cause().getMessage());
+                      log.error(res.cause().getMessage(), res.cause());
+                      operationResult.put("error", res.cause().getMessage());
                     } else {
                       if (!res.result().isEmpty()) {
-                        result.put("error", "sql error");
-                        result.put("messages", res.result());
+                        operationResult.put("error", "SQL error");
+                        operationResult.put("messages", res.result());
                       }
                     }
-                    operations.put(id, operation);
+                    operations.put(id, operationResult);
+                    List<Promise<Void>> promises = waiters.remove(id);
+                    if (promises != null) {
+                      for (Promise<Void> promise : promises) {
+                        promise.complete();
+                      }
+                    }
+                    if (!async) {
+                      handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(operationResult,
+                          PostTenantResponse.headersFor201().withLocation(location))));
+                    }
                   });
             });
   }
 
-  @Override
-  public void getTenantByOperationId(String operationId, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    JsonObject operation = operations.get(operationId);
-    if (operation == null) {
-      GetTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
-      return;
-    }
-    GetTenantByOperationIdResponse.respond200WithApplicationJson(operation.encodePrettily());
+
+  public void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
+                             Handler<AsyncResult<Response>> handler, Context context)  {
+    postTenant(false, tenantAttributes, null, headers, handler, context);
   }
 
   @Override
-  public void deleteTenantByOperationId(String operationId, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getTenantByOperationId(String operationId, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> handler, Context vertxContext) {
     JsonObject operation = operations.get(operationId);
+    Response response;
     if (operation == null) {
-      DeleteTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
-      return;
+      response = GetTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
+    } else {
+      if (!operation.getBoolean("complete")) {
+        Promise<Void> promise = Promise.promise();
+        waiters.putIfAbsent(operationId, new LinkedList<>());
+        waiters.get(operationId).add(promise);
+        promise.future().onComplete(res -> getTenantByOperationId(operationId, okapiHeaders, handler, vertxContext));
+        return;
+      }
+      response = GetTenantByOperationIdResponse.respond200WithApplicationJson(operation);
     }
-    if (!operation.getBoolean("complete")) {
-      DeleteTenantByOperationIdResponse.respond400WithTextPlain("Cannot delete " + operationId + " operation in progress");
+    handler.handle(Future.succeededFuture(response));
+  }
+
+  @Override
+  public void deleteTenantByOperationId(String operationId, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> handler, Context vertxContext) {
+    JsonObject operation = operations.get(operationId);
+    Response response;
+    if (operation == null) {
+      response = DeleteTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
+    } else {
+      operation.remove(operationId);
+      response = DeleteTenantByOperationIdResponse.respond204();
     }
-    operation.remove(operationId);
-    DeleteTenantByOperationIdResponse.respond204();
+    handler.handle(Future.succeededFuture(response));
   }
 
 }

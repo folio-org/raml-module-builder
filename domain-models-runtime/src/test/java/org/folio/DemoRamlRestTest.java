@@ -85,8 +85,10 @@ public class DemoRamlRestTest {
       deployRestVerticle(context);
 
       Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
-      postData(context, "http://localhost:" + port + "/_/tenant", buf,
+      String location = postData(context, "http://localhost:" + port + "/_/tenant", buf,
         201, HttpMethod.POST, "application/json", TENANT, false);
+      checkURLs(context, "http://localhost:" + port + location, 200);
+
     } catch (Exception e) {
       context.fail(e);
     }
@@ -108,6 +110,13 @@ public class DemoRamlRestTest {
    */
   @AfterClass
   public static void tearDown(TestContext context) {
+    try {
+      Buffer buf = Buffer.buffer("{\"purge\": true}");
+      postData(context, "http://localhost:" + port + "/_/tenant", buf,
+          201, HttpMethod.POST, "application/json", TENANT, false);
+    } catch (Exception e) {
+      context.fail(e);
+    }
     Locale.setDefault(oldLocale);
     PostgresClient.stopEmbeddedPostgres();
     vertx.close(context.asyncAssertSuccess());
@@ -551,12 +560,12 @@ public class DemoRamlRestTest {
     request.end();
   }
 
-  public Buffer checkURLs(TestContext context, String url, int codeExpected) {
+  public static Buffer checkURLs(TestContext context, String url, int codeExpected) {
     String accept = "application/json";
     return checkURLs(context, url, codeExpected, accept);
   }
 
-  public Buffer checkURLs(TestContext context, String url, int codeExpected, String accept) {
+  public static Buffer checkURLs(TestContext context, String url, int codeExpected, String accept) {
     Buffer res = Buffer.buffer();
     try {
       Async async = context.async();
@@ -589,12 +598,13 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private static void postData(TestContext context, String url, Buffer buffer,
+  private static String postData(TestContext context, String url, Buffer buffer,
       int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
     Exception stacktrace = new RuntimeException();  // save stacktrace for async handler
     Async async = context.async();
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request = client.requestAbs(method, url);
+    StringBuilder location = new StringBuilder();
 
     request.exceptionHandler(error -> {
       async.complete();
@@ -605,6 +615,11 @@ public class DemoRamlRestTest {
       // is it 2XX
       log.info(statusCode + ", " + errorCode + " expected status at "
         + System.currentTimeMillis() + " " + method.name() + " " + url);
+
+      String returnedLocation = response.getHeader("Location");
+      if (returnedLocation != null) {
+        location.append(returnedLocation);
+      }
 
       response.bodyHandler(responseData -> {
         if (statusCode == errorCode) {
@@ -657,6 +672,7 @@ public class DemoRamlRestTest {
     }
     request.end();
     async.await();
+    return location.toString();
   }
 
   private String getFile(String filename) throws IOException {
