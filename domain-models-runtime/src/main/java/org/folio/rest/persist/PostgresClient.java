@@ -2851,7 +2851,7 @@ public class PostgresClient {
   }
 
   private boolean isStringArrayType(Object value) {
-    // https://github.com/eclipse-vertx/vertx-sql-client/blob/4.0.0.Beta3/vertx-sql-client/src/main/java/io/vertx/sqlclient/Tuple.java#L737
+    // https://github.com/eclipse-vertx/vertx-sql-client/blob/4.0.0.CR1/vertx-sql-client/src/main/java/io/vertx/sqlclient/Tuple.java#L737
     return value instanceof String[] ||
         value instanceof Enum[] ||
         (value != null && value.getClass() == Object[].class);
