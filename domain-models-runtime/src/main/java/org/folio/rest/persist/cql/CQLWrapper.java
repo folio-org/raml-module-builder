@@ -289,7 +289,7 @@ public class CQLWrapper {
     spaceAppend(sb, offset.toString());
     String sql = sb.toString();
     if (log.isInfoEnabled()) {
-      log.info(getType() + " >>> SQL: " + getQuery() + " >>>" + sql);
+      log.info(String.format("%s >>> SQL: %s >>>%s", getType(), getQuery(), sql));
     }
     return sql;
   }

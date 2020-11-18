@@ -34,7 +34,7 @@ public class InterfaceToImpl {
     ArrayList<Class<?>> impl = new ArrayList<>();
     ArrayList<Class<?>> cachedClazz = clazzCache.get(implDir, interface2check);
     if(cachedClazz != null){
-      log.debug("returned " +cachedClazz.size()+" class/es from cache");
+      log.debug("returned {} class/es from cache", cachedClazz.size());
       return cachedClazz;
     }
 

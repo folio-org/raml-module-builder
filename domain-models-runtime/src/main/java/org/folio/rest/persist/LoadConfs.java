@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonObject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.text.MessageFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -36,18 +37,18 @@ public final class LoadConfs {
         if (file.exists()) {
           jsonData = ByteStreams.toByteArray(new FileInputStream(file));
           loadResource = false;
-          log.info("File has been loaded: " + configFile);
+          log.info("File has been loaded: {}", configFile);
         } else {
-          log.info("File does not exist: " + configFile);
+          log.info("File does not exist: {}", configFile);
         }
       }
       if (loadResource) {
           InputStream is = LoadConfs.class.getResourceAsStream(configFile);
           if (is == null) {
-            log.info("Resource does not exist: " + configFile);
+            log.info("Resource does not exist: {}", configFile);
             return null;
           }
-          log.info("Resource has been loaded: " + configFile);
+          log.info("Resource has been loaded: {}", configFile);
           jsonData = ByteStreams.toByteArray(is);
       }
       return new JsonObject(new String(jsonData));
