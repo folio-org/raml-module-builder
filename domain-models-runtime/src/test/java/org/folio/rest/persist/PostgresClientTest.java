@@ -385,9 +385,7 @@ public class PostgresClientTest {
 
         @Override
         public Future<RowSet<Row>> execute() {
-          Promise<RowSet<Row>> promise = Promise.promise();
-          execute(promise::handle);
-          return promise.future();
+          return Future.future(promise -> execute(promise));
         }
 
         @Override
