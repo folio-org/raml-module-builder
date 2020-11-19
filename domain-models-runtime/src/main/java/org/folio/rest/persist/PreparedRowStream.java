@@ -78,9 +78,7 @@ public class PreparedRowStream implements RowStream<Row> {
 
   @Override
   public Future<Void> close() {
-    Promise<Void> promise = Promise.promise();
-    close(promise);
-    return promise.future();
+    return Future.future(promise -> close(promise));
   }
 
   @Override
