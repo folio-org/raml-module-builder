@@ -388,7 +388,10 @@ public class ClientGenerator {
     ifClause2._then().directStatement("request.putHeader(\"X-Okapi-Url\", okapiUrl);");
 
     /* add response handler to each function */
-    JClass handler = jcodeModel.ref(Handler.class).narrow(jcodeModel.ref(AsyncResult.class).narrow(jcodeModel.ref(HttpResponse.class).narrow(Buffer.class)));
+    JClass handler = jcodeModel.ref(HttpResponse.class).narrow(Buffer.class);
+    handler = jcodeModel.ref(AsyncResult.class).narrow(handler);
+    handler = jcodeModel.ref(Handler.class).narrow(handler);
+    jmCreate.param(handler, "responseHandler");
     jmCreate.param(handler, "responseHandler");
 
     /* if we need to pass data in the body */
