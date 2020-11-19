@@ -11,11 +11,11 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.jaxrs.resource.Tenant;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.dbschema.Schema;
@@ -45,7 +45,7 @@ public class TenantAPI implements Tenant {
 
   private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
 
-  private static Map<String, JsonObject> operations = new HashMap<>();
+  private static Map<String, TenantJob> jobs = new HashMap<>();
   private static Map<String, List<Promise<Void>>> waiters = new HashMap<>();
 
   PostgresClient postgresClient(Context context) {
@@ -220,11 +220,16 @@ public class TenantAPI implements Tenant {
         .onSuccess(
             tenantExists -> {
               String id = UUID.randomUUID().toString();
-              JsonObject operationNew = new JsonObject().put("complete", false).put("id", id);
-              operations.put(id, operationNew);
+              TenantJob job = new TenantJob();
+              job.setId(id);
+              job.setTenant(tenantId);
+              job.setTenantAttributes(tenantAttributes);
+              job.setComplete(false);
+
+              jobs.put(id, job);
               String location = (routingContext != null ? routingContext.request().uri() : "") + "/" + id;
               if (async) {
-                handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(operationNew,
+                handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
                     PostTenantResponse.headersFor201().withLocation(location))));
               }
               sqlFile(context, tenantId, tenantAttributes, tenantExists)
@@ -233,25 +238,25 @@ public class TenantAPI implements Tenant {
                     if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
                       PostgresClient.closeAllClients(tenantId);
                     }
-                    JsonObject operationResult = new JsonObject().put("complete", true).put("id", id.toString());
+                    job.setComplete(true);
                     if (res.failed()) {
                       log.error(res.cause().getMessage(), res.cause());
-                      operationResult.put("error", res.cause().getMessage());
+                      job.setError(res.cause().getMessage());
                     } else {
                       if (!res.result().isEmpty()) {
-                        operationResult.put("error", "SQL error");
-                        operationResult.put("messages", res.result());
+                        job.setError("SQL error");
+                        job.setMessages(res.result());
                       }
                     }
-                    operations.put(id, operationResult);
+                    jobs.put(id, job);
                     List<Promise<Void>> promises = waiters.remove(id);
                     if (promises != null) {
                       for (Promise<Void> promise : promises) {
-                        promise.complete();
+                        promise.tryComplete();
                       }
                     }
                     if (!async) {
-                      handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(operationResult,
+                      handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
                           PostTenantResponse.headersFor201().withLocation(location))));
                     }
                   });
@@ -265,32 +270,33 @@ public class TenantAPI implements Tenant {
   }
 
   @Override
-  public void getTenantByOperationId(String operationId, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> handler, Context vertxContext) {
-    JsonObject operation = operations.get(operationId);
+  public void getTenantByOperationId(String operationId, int wait, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> handler, Context vertxContext) {
+    TenantJob job = jobs.get(operationId);
     Response response;
-    if (operation == null) {
+    if (job == null) {
       response = GetTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
     } else {
-      if (!operation.getBoolean("complete")) {
+      if (wait > 0 && !Boolean.TRUE.equals(job.getComplete())) {
         Promise<Void> promise = Promise.promise();
         waiters.putIfAbsent(operationId, new LinkedList<>());
         waiters.get(operationId).add(promise);
-        promise.future().onComplete(res -> getTenantByOperationId(operationId, okapiHeaders, handler, vertxContext));
+        vertxContext.owner().setTimer(wait, res -> promise.tryComplete());
+        promise.future().onComplete(res -> getTenantByOperationId(operationId, 0, okapiHeaders, handler, vertxContext));
         return;
       }
-      response = GetTenantByOperationIdResponse.respond200WithApplicationJson(operation);
+      response = GetTenantByOperationIdResponse.respond200WithApplicationJson(job);
     }
     handler.handle(Future.succeededFuture(response));
   }
 
   @Override
   public void deleteTenantByOperationId(String operationId, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> handler, Context vertxContext) {
-    JsonObject operation = operations.get(operationId);
+    TenantJob job = jobs.get(operationId);
     Response response;
-    if (operation == null) {
+    if (job == null) {
       response = DeleteTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
     } else {
-      operation.remove(operationId);
+      jobs.remove(operationId);
       response = DeleteTenantByOperationIdResponse.respond204();
     }
     handler.handle(Future.succeededFuture(response));

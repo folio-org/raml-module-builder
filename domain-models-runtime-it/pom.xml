@@ -21,6 +21,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <aspectj.version>1.9.5</aspectj.version>
+    <generate_routing_context>/rmbtests/test,/_/tenant</generate_routing_context>
   </properties>
 
   <dependencies>
