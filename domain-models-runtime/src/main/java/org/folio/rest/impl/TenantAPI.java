@@ -210,61 +210,50 @@ public class TenantAPI implements Tenant {
                           Handler<AsyncResult<Response>> handler, Context context)  {
 
     String tenantId = TenantTool.tenantId(headers);
-    Future<Boolean> tenantExistsFuture = tenantExists(context, tenantId);
-    tenantExistsFuture
-        .onFailure(
-            cause -> {
-              log.error(cause.getMessage(), cause);
-              handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
-            })
-        .onSuccess(
-            tenantExists -> {
-              String id = UUID.randomUUID().toString();
-              TenantJob job = new TenantJob();
-              job.setId(id);
-              job.setTenant(tenantId);
-              job.setTenantAttributes(tenantAttributes);
-              job.setComplete(false);
+    String id = UUID.randomUUID().toString();
+    TenantJob job = new TenantJob();
+    job.setId(id);
+    job.setTenant(tenantId);
+    job.setTenantAttributes(tenantAttributes);
+    job.setComplete(false);
 
-              jobs.put(id, job);
-              String location = (routingContext != null ? routingContext.request().uri() : "") + "/" + id;
-              if (async) {
-                handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
-                    PostTenantResponse.headersFor201().withLocation(location))));
-              }
-              sqlFile(context, tenantId, tenantAttributes, tenantExists)
-                  .compose(sqlFile -> postgresClient(context).runSQLFile(sqlFile, true))
-                  .onComplete(res -> {
-                    if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
-                      PostgresClient.closeAllClients(tenantId);
-                    }
-                    job.setComplete(true);
-                    if (res.failed()) {
-                      log.error(res.cause().getMessage(), res.cause());
-                      job.setError(res.cause().getMessage());
-                    } else {
-                      if (!res.result().isEmpty()) {
-                        job.setError("SQL error");
-                        job.setMessages(res.result());
-                      }
-                    }
-                    jobs.put(id, job);
-                    List<Promise<Void>> promises = waiters.remove(id);
-                    if (promises != null) {
-                      for (Promise<Void> promise : promises) {
-                        promise.tryComplete();
-                      }
-                    }
-                    if (!async) {
-                      handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
-                          PostTenantResponse.headersFor201().withLocation(location))));
-                    }
-                  });
-            });
+    jobs.put(id, job);
+    String location = (routingContext != null ? routingContext.request().uri() : "") + "/" + id;
+    if (async) {
+      handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
+          PostTenantResponse.headersFor201().withLocation(location))));
+    }
+    sqlFile(context, tenantId, tenantAttributes)
+        .compose(sqlFile -> postgresClient(context).runSQLFile(sqlFile, true))
+        .onComplete(res -> {
+          if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
+            PostgresClient.closeAllClients(tenantId);
+          }
+          job.setComplete(true);
+          if (res.failed()) {
+            log.error(res.cause().getMessage(), res.cause());
+            job.setError(res.cause().getMessage());
+          } else {
+            if (!res.result().isEmpty()) {
+              job.setError("SQL error");
+              job.setMessages(res.result());
+            }
+          }
+          jobs.put(id, job);
+          List<Promise<Void>> promises = waiters.remove(id);
+          if (promises != null) {
+            for (Promise<Void> promise : promises) {
+              promise.tryComplete();
+            }
+          }
+          if (!async) {
+            handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
+                PostTenantResponse.headersFor201().withLocation(location))));
+          }
+        });
   }
 
-
-  public void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
+  void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
                              Handler<AsyncResult<Response>> handler, Context context)  {
     postTenant(false, tenantAttributes, null, headers, handler, context);
   }
