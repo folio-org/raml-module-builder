@@ -10,11 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import org.folio.rest.RestVerticle;
-import org.folio.rest.tools.utils.VertxUtils;
-import org.junit.jupiter.api.BeforeAll;
-
+import io.restassured.response.Response;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.http.ContentType;
@@ -22,6 +18,8 @@ import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.folio.rest.tools.utils.VertxUtils;
+import org.junit.jupiter.api.BeforeAll;
 
 public class ApiTestBase {
   static Vertx vertx;
@@ -70,11 +68,15 @@ public class ApiTestBase {
     then();
 
     // create tenant (schema, tables, ...)
-    given(r).header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
-    contentType(ContentType.JSON).
-    body("{\"module_to\":\"mod-api-1.0.0\"}").
-    when().post("/_/tenant").
-    then().statusCode(201);
+    Response response = given(r).header("x-okapi-url-to", "http://localhost:" + port).
+        contentType(ContentType.JSON).
+        body("{\"module_to\":\"mod-api-1.0.0\"}").
+        when().post("/_/tenant").
+        then().statusCode(201).extract().response();
+    String location = response.header("Location");
+    given(r).
+        when().get(location + "?wait=5000").
+        then().statusCode(200);
   }
 
   /**
