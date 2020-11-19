@@ -1918,8 +1918,8 @@ public class PostgresClient {
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
         closeIfNonNull(transaction).onComplete(ignore -> {
-        log.error(prepareRes.cause().getMessage(), prepareRes.cause());
-        replyHandler.handle(Future.failedFuture(prepareRes.cause()));
+          log.error(prepareRes.cause().getMessage(), prepareRes.cause());
+          replyHandler.handle(Future.failedFuture(prepareRes.cause()));
         });
         return;
       }
