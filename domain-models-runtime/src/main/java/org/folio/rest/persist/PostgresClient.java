@@ -1917,7 +1917,7 @@ public class PostgresClient {
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler, Transaction transaction) {
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
-        closeIfNonNull(transaction).onComplete((voidRes) -> {
+        closeIfNonNull(transaction).onComplete(ignore -> {
         log.error(prepareRes.cause().getMessage(), prepareRes.cause());
         replyHandler.handle(Future.failedFuture(prepareRes.cause()));
         });
