@@ -52,9 +52,7 @@ public class ClientGeneratorTest {
 
     String actual = removeTrailingSpaces(FileUtils.readFileToString(expectedClient, StandardCharsets.UTF_8));
 
-    String expected = removeTrailingSpaces(FileUtils.readFileToString(
-        new File(ClientGeneratorTest.class.getResource("/clients/TestClient.txt").getFile()),
-        StandardCharsets.UTF_8));
+    String expected = removeTrailingSpaces(ResourceUtil.asString("/clients/TestClient.txt", this.getClass()));
 
     Assert.assertEquals(expected, actual);
   }
