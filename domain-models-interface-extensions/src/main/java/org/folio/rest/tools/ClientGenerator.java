@@ -268,7 +268,7 @@ public class ClientGenerator {
       JFieldVar options = jc.field(JMod.PRIVATE, WebClientOptions.class, "options");
 
       /* class variable to http client */
-      JFieldVar httpClient = jc.field(JMod.PRIVATE, WebClient.class, "httpClient");
+      JFieldVar webClient = jc.field(JMod.PRIVATE, WebClient.class, "webClient");
 
       addConstructorOkapi6Args(tokenVar, options, httpClient);
       addConstructorOkapi4Args();
