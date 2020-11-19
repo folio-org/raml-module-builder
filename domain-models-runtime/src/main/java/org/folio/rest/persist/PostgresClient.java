@@ -1917,9 +1917,9 @@ public class PostgresClient {
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler, Transaction transaction) {
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
-        closeIfNonNull(transaction).onComplete((voidRes) -> {
-        log.error(prepareRes.cause().getMessage(), prepareRes.cause());
-        replyHandler.handle(Future.failedFuture(prepareRes.cause()));
+        closeIfNonNull(transaction).onComplete(ignore -> {
+          log.error(prepareRes.cause().getMessage(), prepareRes.cause());
+          replyHandler.handle(Future.failedFuture(prepareRes.cause()));
         });
         return;
       }
@@ -1994,7 +1994,7 @@ public class PostgresClient {
       }
     }).endHandler(v2 -> {
       rowStream.close();
-      closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> {
+      closeIfNonNull(transaction).onComplete(ignore -> {
         resultInfo.setTotalRecords(
             getTotalRecords(resultCount.get(),
                 resultInfo.getTotalRecords(),
@@ -2011,7 +2011,7 @@ public class PostgresClient {
       });
     }).exceptionHandler(e -> {
       rowStream.close();
-      closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> {
+      closeIfNonNull(transaction).onComplete(ignore -> {
         if (!promise.future().isComplete()) {
           promise.complete(streamResult);
           replyHandler.handle(promise.future());
@@ -2852,7 +2852,7 @@ public class PostgresClient {
   }
 
   private boolean isStringArrayType(Object value) {
-    // https://github.com/eclipse-vertx/vertx-sql-client/blob/4.0.0.CR1/vertx-sql-client/src/main/java/io/vertx/sqlclient/Tuple.java#L737
+    // https://github.com/eclipse-vertx/vertx-sql-client/blob/4.0.0.CR1/vertx-sql-client/src/main/java/io/vertx/sqlclient/Tuple.java#L910
     return value instanceof String[] ||
         value instanceof Enum[] ||
         (value != null && value.getClass() == Object[].class);

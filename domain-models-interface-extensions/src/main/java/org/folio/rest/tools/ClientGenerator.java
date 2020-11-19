@@ -213,7 +213,7 @@ public class ClientGenerator {
     conBody.assign(JExpr._this().ref(tenantId), tenantIdVar);
     conBody.assign(JExpr._this().ref(tokenVar), token);
     conBody.assign(JExpr._this().ref(okapiUrl), okapiUrlVar);
-    conBody.assign(options, JExpr._new(jcodeModel.ref(io.vertx.ext.web.client.WebClientOptions.class)));
+    conBody.assign(options, JExpr._new(jcodeModel.ref(WebClientOptions.class)));
     conBody.invoke(options, "setLogActivity").arg(JExpr.TRUE);
     conBody.invoke(options, "setKeepAlive").arg(keepAlive);
     conBody.invoke(options, "setConnectTimeout").arg(connTimeout);
@@ -268,7 +268,7 @@ public class ClientGenerator {
       JFieldVar options = jc.field(JMod.PRIVATE, WebClientOptions.class, "options");
 
       /* class variable to http client */
-      JFieldVar httpClient = jc.field(JMod.PRIVATE, WebClient.class, "httpClient");
+      JFieldVar webClient = jc.field(JMod.PRIVATE, WebClient.class, "webClient");
 
       addConstructorOkapi6Args(tokenVar, options, httpClient);
       addConstructorOkapi4Args();
@@ -388,7 +388,10 @@ public class ClientGenerator {
     ifClause2._then().directStatement("request.putHeader(\"X-Okapi-Url\", okapiUrl);");
 
     /* add response handler to each function */
-    JClass handler = jcodeModel.ref(Handler.class).narrow(jcodeModel.ref(AsyncResult.class).narrow(jcodeModel.ref(HttpResponse.class).narrow(Buffer.class)));
+    JClass handler = jcodeModel.ref(HttpResponse.class).narrow(Buffer.class);
+    handler = jcodeModel.ref(AsyncResult.class).narrow(handler);
+    handler = jcodeModel.ref(Handler.class).narrow(handler);
+    jmCreate.param(handler, "responseHandler");
     jmCreate.param(handler, "responseHandler");
 
     /* if we need to pass data in the body */
