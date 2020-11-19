@@ -461,4 +461,20 @@ public class TenantAPIIT {
     }), vertx.getOrCreateContext());
   }
 
+  @Test
+  public void postTenantOk(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantAttributes tenantAttributes = new TenantAttributes();
+    tenantAttributes.setModuleFrom("mod-0.0.0");
+    tenantAttributes.setModuleTo("mod-1.0.0");
+    tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(201));
+      TenantJob job = (TenantJob) result.getEntity();
+      assertThat(job.getTenant(), is("folio_shared"));
+      assertThat(job.getComplete(), is(true));
+      TenantAttributes returnedAttributes = job.getTenantAttributes();
+      assertThat(returnedAttributes, is(tenantAttributes));
+    }), vertx.getOrCreateContext());
+  }
+
 }
