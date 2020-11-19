@@ -451,7 +451,7 @@ public class TenantAPIIT {
   public void postTenantWithLoadFail(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers) {
+      Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context ctx) {
         return Future.failedFuture("Load Failure");
       }
     };

@@ -240,7 +240,7 @@ public class TenantAPI implements Tenant {
             PostgresClient.closeAllClients(tenantId);
             return Future.succeededFuture();
           } else {
-            return loadData(tenantAttributes, tenantId, headers);
+            return loadData(tenantAttributes, tenantId, headers, context);
           }
         })
         .onComplete(res -> {
@@ -269,7 +269,8 @@ public class TenantAPI implements Tenant {
    * @param headers HTTP headers for the request (Okapi)
    * @return
    */
-  Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers) {
+  Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
+                        Context vertxContext) {
     return Future.succeededFuture();
   }
 
