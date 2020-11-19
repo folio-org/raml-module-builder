@@ -2379,26 +2379,33 @@ public class PostgresClient {
 
   /**
    * Get the jsonb by id.
+   * @param conn  if provided, the connection to use;
+   *              if null, a new connection is created and automatically released afterwards;
+   *              if failed, the replyHandler is failed
+   * @param lock  whether to use SELECT FOR UPDATE to lock the selected row
    * @param table  the table to search in
    * @param id  the value of the id field
    * @param function  how to convert the (String encoded) JSON
    * @param replyHandler  the result after applying function
    */
-  private <R> void getById(String table, String id,
+  private <R> void getById(final AsyncResult<SQLConnection> conn, boolean lock, String table, String id,
                            FunctionWithException<String, R, Exception> function,
                            Handler<AsyncResult<R>> replyHandler) {
-    getConnection(res -> {
-      if (res.failed()) {
-        replyHandler.handle(Future.failedFuture(res.cause()));
-        return;
-      }
-      PgConnection connection = res.result();
+    Promise<PgConnection> promise = Promise.promise();
+    if (conn != null) {
+      promise.handle(conn.map(sqlConnection -> sqlConnection.conn));
+    } else {
+      getConnection(promise);
+    }
+    promise.future()
+    .onFailure(ex -> replyHandler.handle(Future.failedFuture(ex)))
+    .onSuccess(connection -> {
       String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
           + FROM + schemaName + DOT + table
-          + WHERE + ID_FIELD + "= $1";
+          + WHERE + ID_FIELD + "= $1"
+          + (lock ? " FOR UPDATE" : "");
       try {
         connection.preparedQuery(sql).execute(Tuple.of(UUID.fromString(id)), query -> {
-          connection.close();
           if (query.failed()) {
             replyHandler.handle(Future.failedFuture(query.cause()));
             return;
@@ -2418,6 +2425,10 @@ public class PostgresClient {
         });
       } catch (Exception e) {
         replyHandler.handle(Future.failedFuture(e));
+      } finally {
+        if (conn == null) {
+          connection.close();
+        }
       }
     });
   }
@@ -2429,7 +2440,31 @@ public class PostgresClient {
    * @param replyHandler  the result; the JSON is encoded as a String
    */
   public void getByIdAsString(String table, String id, Handler<AsyncResult<String>> replyHandler) {
-    getById(table, id, string -> string, replyHandler);
+    getByIdAsString(null, table, id, replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id and return it as a String.
+   * @param conn  if provided, the connection on which to execute the query on.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a String
+   */
+  public void getByIdAsString(AsyncResult<SQLConnection> conn,
+      String table, String id, Handler<AsyncResult<String>> replyHandler) {
+    getById(conn, false, table, id, string -> string, replyHandler);
+  }
+
+  /**
+   * Lock the row using <code>select ... for update</code> and return jsonb as String.
+   * @param conn  if provided, the connection on which to execute the query on.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a String
+   */
+  public void getByIdAsStringForUpdate(AsyncResult<SQLConnection> conn,
+      String table, String id, Handler<AsyncResult<String>> replyHandler) {
+    getById(conn, true, table, id, string -> string, replyHandler);
   }
 
   /**
@@ -2439,7 +2474,31 @@ public class PostgresClient {
    * @param replyHandler  the result; the JSON is encoded as a JsonObject
    */
   public void getById(String table, String id, Handler<AsyncResult<JsonObject>> replyHandler) {
-    getById(table, id, JsonObject::new, replyHandler);
+    getById(null, table, id, replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id and return it as a JsonObject.
+   * @param conn  if provided, the connection on which to execute the query on.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a JsonObject
+   */
+  public void getById(AsyncResult<SQLConnection> conn,
+      String table, String id, Handler<AsyncResult<JsonObject>> replyHandler) {
+    getById(conn, false, table, id, JsonObject::new, replyHandler);
+  }
+
+  /**
+   * Lock the row using <code>select ... for update</code> and return jsonb as a JsonObject.
+   * @param conn  if provided, the connection on which to execute the query on.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param replyHandler  the result; the JSON is encoded as a JsonObject
+   */
+  public void getByIdForUpdate(AsyncResult<SQLConnection> conn,
+      String table, String id, Handler<AsyncResult<JsonObject>> replyHandler) {
+    getById(conn, true, table, id, JsonObject::new, replyHandler);
   }
 
   /**
@@ -2451,7 +2510,33 @@ public class PostgresClient {
    */
   public <T> void getById(String table, String id, Class<T> clazz,
       Handler<AsyncResult<T>> replyHandler) {
-    getById(table, id, json -> mapper.readValue(json, clazz), replyHandler);
+    getById(null, table, id, clazz, replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id and return it as a pojo of type T.
+   * @param conn  if provided, the connection on which to execute the query on.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param clazz  the type of the pojo
+   * @param replyHandler  the result; the JSON is converted into a T pojo.
+   */
+  public <T> void getById(AsyncResult<SQLConnection> conn,
+      String table, String id, Class<T> clazz, Handler<AsyncResult<T>> replyHandler) {
+    getById(conn, false, table, id, json -> mapper.readValue(json, clazz), replyHandler);
+  }
+
+  /**
+   * Lock the row using <code>select ... for update</code> and return jsonb as a pojo of type T.
+   * @param conn  if provided, the connection on which to execute the query on.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param clazz  the type of the pojo
+   * @param replyHandler  the result; the JSON is converted into a T pojo.
+   */
+  public <T> void getByIdForUpdate(AsyncResult<SQLConnection> conn,
+      String table, String id, Class<T> clazz, Handler<AsyncResult<T>> replyHandler) {
+    getById(conn, true, table, id, json -> mapper.readValue(json, clazz), replyHandler);
   }
 
   /**
