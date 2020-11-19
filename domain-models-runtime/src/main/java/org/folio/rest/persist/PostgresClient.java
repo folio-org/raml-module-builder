@@ -1989,33 +1989,34 @@ public class PostgresClient {
           replyHandler.handle(promise.future());
         }
         rowStream.close();
-        closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> streamResult.fireExceptionHandler(e));
+        closeIfNonNull(transaction)
+            .onComplete((AsyncResult<Void> voidRes) -> streamResult.fireExceptionHandler(e));
       }
     }).endHandler(v2 -> {
       rowStream.close();
       closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> {
-          resultInfo.setTotalRecords(
-        getTotalRecords(resultCount.get(),
-          resultInfo.getTotalRecords(),
-          queryHelper.offset, queryHelper.limit));
-      try {
-        if (!promise.future().isComplete()) {
-          promise.complete(streamResult);
-          replyHandler.handle(promise.future());
+        resultInfo.setTotalRecords(
+            getTotalRecords(resultCount.get(),
+                resultInfo.getTotalRecords(),
+                queryHelper.offset, queryHelper.limit));
+        try {
+          if (!promise.future().isComplete()) {
+            promise.complete(streamResult);
+            replyHandler.handle(promise.future());
+          }
+          streamResult.fireEndHandler();
+        } catch (Exception ex) {
+          streamResult.fireExceptionHandler(ex);
         }
-        streamResult.fireEndHandler();
-      } catch (Exception ex) {
-        streamResult.fireExceptionHandler(ex);
-      }
       });
     }).exceptionHandler(e -> {
       rowStream.close();
       closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> {
         if (!promise.future().isComplete()) {
-        promise.complete(streamResult);
-        replyHandler.handle(promise.future());
-      }
-      streamResult.fireExceptionHandler(e);
+          promise.complete(streamResult);
+          replyHandler.handle(promise.future());
+        }
+        streamResult.fireExceptionHandler(e);
       });
     });
   }
@@ -3626,9 +3627,7 @@ public class PostgresClient {
    * @return Future with list of statements that failed; the list may be empty
    */
   public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
-    Promise<List<String>> promise = Promise.promise();
-     runSQLFile(sqlFile, stopOnError, promise);
-    return promise.future();
+    return Future.future(promise -> runSQLFile(sqlFile, stopOnError, promise));
   }
 
   /**

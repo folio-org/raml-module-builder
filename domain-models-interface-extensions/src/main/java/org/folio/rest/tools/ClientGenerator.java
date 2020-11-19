@@ -393,8 +393,6 @@ public class ClientGenerator {
 
     /* if we need to pass data in the body */
     if(bodyContentExists[0]){
-      body.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
-      //body.directStatement("request.setChunked(true);"); //TODO: consider adding this somehow
       body.directStatement("request.sendBuffer(buffer, responseHandler);");
     } else {
       body.directStatement("request.send(responseHandler);");

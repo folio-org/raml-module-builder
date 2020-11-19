@@ -64,21 +64,21 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
         log.error(e.getMessage(), e);
       }
     }
-/*      if(r.error != null && rollbackURL != null){
+      /* if(r.error != null && rollbackURL != null){
 
       }*/
-  /* //TODO: think if it is needed
-    if (httpClient != null) {
+
+    if (webClient != null) {
         //this is not null when autoclose = true
         try {
-          httpClient.close();
+          webClient.close();
         } catch (Exception e) {
           log.error(
               "HTTPJsonResponseHandler class tried closing a client that was closed, this may be ok. "
                   + e.getMessage(), e);
         }
       }
-      cf.completeExceptionally(res.cause());*/
+      cf.completeExceptionally(res.cause());
   }
 
   private void handleSuccess(Buffer bh, Response r) {
