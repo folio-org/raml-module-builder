@@ -40,7 +40,7 @@ import org.folio.util.StringUtil;
  *
  * The loading is triggered by Tenant Init Parameters and the TenantLoading is
  * meant to be used in the implementation of the
- * {@link org.folio.rest.impl.TenantAPI#postTenantSync} method.
+ * {@link org.folio.rest.impl.TenantAPI#loadData} method.
  *
  * Different strategies for communicating with the web service
  * <ul>

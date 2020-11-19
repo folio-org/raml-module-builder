@@ -1594,7 +1594,13 @@ When upgrading a module via the Tenant API, an index is deleted if either `"tOps
 
 ##### Posting information
 
-Posting a new tenant must include a body. The body should contain a JSON conforming to the [moduleInfoSchema](https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema) schema. The `module_to` entry is mandatory, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
+Posting a new tenant must include a body. The body should contain a JSON
+conforming to the
+[tenantAttributes](https://github.com/folio-org/raml/blob/master/schemas/tenantAttributes.schema)
+schema. The `module_to` entry is optional, indicating the version module for
+this tenant. If `module_to` is omitted, module is disabled for the tenant. The
+`module_from` entry is optional and indicates an upgrade for the tenant to a
+new module version or disable if `module_to` is omitted.
 
 The body may also hold a `parameters` property to specify per-tenant
 actions/info to be done during tenant creation/update.
