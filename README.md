@@ -1300,8 +1300,8 @@ In Eclipse you may use "Run as ... Maven Build" for doing so.
 
 The Postgres Client support in the RMB is schema specific, meaning that it expects every tenant to be
 represented by its own schema. The Tenant API is asynchronous as of RMB 32 and later.
-The operation "job" is POSTed and may be inspected with GET and optionally be cleaned
-up with DELETE.
+The tenant job is initiated by a POST and may be inspected with GET and optionally be
+cleaned up with DELETE.
 
 The RAML defining the API:
 
