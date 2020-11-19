@@ -1298,19 +1298,23 @@ In Eclipse you may use "Run as ... Maven Build" for doing so.
 
 ## Tenant API
 
-The Postgres Client support in the RMB is schema specific, meaning that it expects every tenant to be represented by its own schema. The RMB exposes three APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existence' of a tenant schema. Note that the use of this API is optional.
+The Postgres Client support in the RMB is schema specific, meaning that it expects every tenant to be
+represented by its own schema. The Tenant API is asynchronous as of RMB 32 and later.
+The operation "job" is POSTed and may be inspected with GET and optionally be cleaned
+up with DELETE.
 
 The RAML defining the API:
 
    https://github.com/folio-org/raml/blob/raml1.0/ramls/tenant.raml
 
-By default RMB includes an implementation of the Tenant API which assumes Postgres being present. Implementation in
+By default RMB includes an implementation of the Tenant API which assumes Postgres being present.
+Implementation in
  [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) file. You might want to extend/override this because:
 
 1. You want to not call it at all (your module is not using Postgres).
 2. You want to provide further Tenant control, such as loading reference and/or sample data.
 
-#### Extending the Tenant Init
+#### Extending the Tenant API
 
 In order to implement your tenant API, extend `TenantAPI` class:
 
@@ -1322,59 +1326,29 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 public class MyTenantAPI extends TenantAPI {
   @Validate
   @Override
-  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-      Handler<AsyncResult<Response>> handler, Context context) {
+  public void postTenant(TenantAttributes tenantAttributes, RoutingContext routingContext,
+      Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
 
-    ..
-  }
-
-  @Validate
-  @Override
-  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> handler, Context context) {
     ..
   }
   ..
 }
 ```
 
-If you wish to call the Post Tenant API (with Postgres) then just call the corresponding super-class, e.g.:
+But note that as of RMB this should be implemented asynchronously.. meaning that the handler response
+should be called early in the process with a location and that the status of the job can be inspected
+later with a call to `getTenantByOperationId`.
 
-```java
-@Validate
-@Override
-public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-    Handler<AsyncResult<Response>> handler, Context context) {
-  super.postTenant(tenantAttributes, headers, handler, context);
-}
-```
-
-(Not much point in that though - it would be the same as not defining it at all).
-
-If you wish to load data for your module, that should be done after the DB has been successfully initialized,
-e.g. do something like:
+Extend the `loadData` method, to load sample/reference data for a module.
 
 ```
 @Validate
 @Override
-public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-    Handler<AsyncResult<Response>> handler, Context context) {
-  super.postTenant(tenantAttributes, headers, res -> {
-    if (res.failed()) {
-      handler.handle(res);
-      return;
-    }
-
-    // load data here
-    ...
-    if (some failure) {
-      handler.handle(Future.succeededFuture(PostTenantResponse
-          .respond500WithTextPlain(some failure message)));
-      return;
-    }
-    ...
-
-    handler.handle(res);  // HTTP status: 200 for upgrade, 201 for install
-  }, context);
+Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
+  Context verxContext) {
+  Future<Void> future = super.loadData(attributes, tenantId, headers, vertxContext).compose(res -> {
+    return Future...;
+  });
 }
 ```
 
@@ -1387,36 +1361,32 @@ import org.folio.rest.tools.utils.TenantLoading;
 
 @Validate
 @Override
-public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-    Handler<AsyncResult<Response>> handler, Context context) {
-  super.postTenant(tenantAttributes, headers, res -> {
-    if (res.failed()) {
-      handler.handle(res);
-      return;
-    }
+Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
+  Context verxContext) {
+  Future<Void> future = super.loadData(attributes, tenantId, headers, vertxContext).compose(res -> {
     TenantLoading tl = new TenantLoading();
     // two sets of reference data files
     // resources ref-data/data1 and ref-data/data2 .. loaded to
     // okapi-url/instances and okapi-url/items respectively
+    Promise<Void> promise = Promise.promise();
     tl.withKey("loadReference").withLead("ref-data")
       .withIdContent()
       .add("data1", "instances")
       .add("data2", "items");
     tl.perform(tenantAttributes, headers, vertx, res1 -> {
       if (res1.failed()) {
-        handler.handle(Future.succeededFuture(PostTenantResponse
-          .respond500WithTextPlain(res1.cause().getMessage())));
+        promise.fail(res1.cause().getMessage());
         return;
       }
-      handler.handle(res);  // HTTP status: 200 for upgrade, 201 for install
+      promise.complete(); // OK
     });
-  }, context);
+    return promise.future();
+  });
 }
 ```
 
-If data is already in resources, then fine. If not, for example, if in root of
-project in project, then copy it with maven-resource-plugin. For example, to
-copy `reference-data` to `ref-data` in resources:
+If data is already in resources, then fine. If not, then copy it with maven-resource-plugin.
+For example, to copy `reference-data` to `ref-data` in resources:
 
 ```xml
 <execution>
