@@ -1993,7 +1993,7 @@ public class PostgresClient {
       }
     }).endHandler(v2 -> {
       rowStream.close();
-      closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> {
+      closeIfNonNull(transaction).onComplete(ignore -> {
           resultInfo.setTotalRecords(
         getTotalRecords(resultCount.get(),
           resultInfo.getTotalRecords(),
