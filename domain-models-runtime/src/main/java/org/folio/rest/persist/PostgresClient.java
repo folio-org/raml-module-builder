@@ -2010,7 +2010,7 @@ public class PostgresClient {
       });
     }).exceptionHandler(e -> {
       rowStream.close();
-      closeIfNonNull(transaction).onComplete((AsyncResult<Void> voidRes) -> {
+      closeIfNonNull(transaction).onComplete(ignore -> {
         if (!promise.future().isComplete()) {
         promise.complete(streamResult);
         replyHandler.handle(promise.future());
