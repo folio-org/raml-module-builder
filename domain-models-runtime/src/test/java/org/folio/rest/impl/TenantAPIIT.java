@@ -14,11 +14,11 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
-import freemarker.template.TemplateNotFoundException;
 import org.folio.dbschema.Schema;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
+import org.folio.rest.jaxrs.resource.Tenant;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.VertxUtils;
@@ -445,6 +445,20 @@ public class TenantAPIIT {
       }), Vertx.currentContext());
     });
     async.awaitSuccess();
+  }
+
+  @Test
+  public void postTenantWithLoadFail(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI() {
+      @Override
+      Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers) {
+        return Future.failedFuture("Load Failure");
+      }
+    };
+    tenantAPI.postTenantSync(new TenantAttributes(), okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(201));
+      assertThat(((TenantJob) result.getEntity()).getError(), is("Load Failure"));
+    }), vertx.getOrCreateContext());
   }
 
 }

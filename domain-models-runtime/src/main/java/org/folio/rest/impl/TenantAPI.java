@@ -225,21 +225,30 @@ public class TenantAPI implements Tenant {
     }
     sqlFile(context, tenantId, tenantAttributes)
         .compose(sqlFile -> postgresClient(context).runSQLFile(sqlFile, true))
-        .onComplete(res -> {
-          if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
-            PostgresClient.closeAllClients(tenantId);
-          }
-          job.setComplete(true);
-          if (res.failed()) {
-            log.error(res.cause().getMessage(), res.cause());
-            job.setError(res.cause().getMessage());
+        .compose(res -> {
+          if (!res.isEmpty()) {
+            job.setMessages(res);
+            return Future.failedFuture("SQL error");
           } else {
-            if (!res.result().isEmpty()) {
-              job.setError("SQL error");
-              job.setMessages(res.result());
-            }
+            return Future.succeededFuture();
           }
+        })
+        .compose(res -> {
+          if (tenantAttributes == null) {
+            return Future.succeededFuture();
+          } else if (Boolean.TRUE.equals(tenantAttributes.getPurge())) {
+            PostgresClient.closeAllClients(tenantId);
+            return Future.succeededFuture();
+          } else {
+            return loadData(tenantAttributes, tenantId, headers);
+          }
+        })
+        .onComplete(res -> {
+          job.setComplete(true);
           jobs.put(id, job);
+          if (res.failed()) {
+            job.setError(res.cause().getMessage());
+          }
           List<Promise<Void>> promises = waiters.remove(id);
           if (promises != null) {
             for (Promise<Void> promise : promises) {
@@ -251,6 +260,17 @@ public class TenantAPI implements Tenant {
                 PostTenantResponse.headersFor201().withLocation(location))));
           }
         });
+  }
+
+  /**
+   * Stub load sample/reference data.
+   * @param attributes information about what to load.
+   * @param tenantId tenant ID
+   * @param headers HTTP headers for the request (Okapi)
+   * @return
+   */
+  Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers) {
+    return Future.succeededFuture();
   }
 
   void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
