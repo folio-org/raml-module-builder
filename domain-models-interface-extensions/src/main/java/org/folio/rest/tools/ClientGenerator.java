@@ -213,7 +213,7 @@ public class ClientGenerator {
     conBody.assign(JExpr._this().ref(tenantId), tenantIdVar);
     conBody.assign(JExpr._this().ref(tokenVar), token);
     conBody.assign(JExpr._this().ref(okapiUrl), okapiUrlVar);
-    conBody.assign(options, JExpr._new(jcodeModel.ref(io.vertx.ext.web.client.WebClientOptions.class)));
+    conBody.assign(options, JExpr._new(jcodeModel.ref(WebClientOptions.class)));
     conBody.invoke(options, "setLogActivity").arg(JExpr.TRUE);
     conBody.invoke(options, "setKeepAlive").arg(keepAlive);
     conBody.invoke(options, "setConnectTimeout").arg(connTimeout);
