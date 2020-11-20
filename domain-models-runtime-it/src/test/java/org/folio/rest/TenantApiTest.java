@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.hasSize;
 import java.util.Random;
 
 import io.restassured.response.Response;
+import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.RestAssured;
@@ -30,7 +31,7 @@ public class TenantApiTest extends ApiTestBase {
         then().
         statusCode(201).extract().response();
     String location = response.getHeader("Location");
-    System.out.println("Location=" + location);
+    Assert.assertTrue(location, location.startsWith("/_/tenant/"));
 
     given(r).
         get(location + "?wait=5000").
@@ -52,7 +53,7 @@ public class TenantApiTest extends ApiTestBase {
         then().
         statusCode(201).extract().response();
     String location = response.getHeader("Location");
-    System.out.println("Location=" + location);
+    Assert.assertTrue(location, location.startsWith("/_/tenant/"));
 
     given(r).
         get(location + "?wait=5000").
