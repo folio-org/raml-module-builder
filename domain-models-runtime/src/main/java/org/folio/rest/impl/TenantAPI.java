@@ -238,7 +238,6 @@ public class TenantAPI implements Tenant {
             return Future.succeededFuture();
           }
           return loadData(tenantAttributes, tenantId, headers, context);
-          }
         })
         .onComplete(res -> {
           job.setComplete(true);
