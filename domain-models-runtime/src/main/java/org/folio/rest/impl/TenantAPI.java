@@ -53,9 +53,7 @@ public class TenantAPI implements Tenant {
   }
 
   Future<Boolean> tenantExists(Context context, String tenantId) {
-    Promise<Boolean> promise = Promise.promise();
-    tenantExists(context, tenantId, promise::handle);
-    return promise.future();
+    return Future.future(promise -> tenantExists(context, tenantId, promise));
   }
 
   void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
