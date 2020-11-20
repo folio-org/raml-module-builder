@@ -229,18 +229,15 @@ public class TenantAPI implements Tenant {
           if (!res.isEmpty()) {
             job.setMessages(res);
             return Future.failedFuture("SQL error");
-          } else {
-            return Future.succeededFuture();
           }
-        })
-        .compose(res -> {
           if (tenantAttributes == null) {
             return Future.succeededFuture();
-          } else if (Boolean.TRUE.equals(tenantAttributes.getPurge())) {
+          }
+          if (Boolean.TRUE.equals(tenantAttributes.getPurge())) {
             PostgresClient.closeAllClients(tenantId);
             return Future.succeededFuture();
-          } else {
-            return loadData(tenantAttributes, tenantId, headers, context);
+          }
+          return loadData(tenantAttributes, tenantId, headers, context);
           }
         })
         .onComplete(res -> {
