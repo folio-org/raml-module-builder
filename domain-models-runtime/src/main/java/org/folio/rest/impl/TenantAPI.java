@@ -1,5 +1,14 @@
 package org.folio.rest.impl;
 
+import freemarker.template.TemplateException;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.sqlclient.Row;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -10,8 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
-
-import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -25,15 +32,6 @@ import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.TenantTool;
 
-import freemarker.template.TemplateException;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.sqlclient.Row;
 
 /**
  * @author shale
@@ -199,12 +197,12 @@ public class TenantAPI implements Tenant {
    */
   @Validate
   @Override
-  public void postTenant(TenantAttributes tenantAttributes, RoutingContext routingContext, Map<String, String> headers,
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
                          Handler<AsyncResult<Response>> handler, Context context)  {
-    postTenant(true, tenantAttributes, routingContext, headers, handler, context);
+    postTenant(true, tenantAttributes, headers, handler, context);
   }
 
-  private void postTenant(boolean async, TenantAttributes tenantAttributes, RoutingContext routingContext, Map<String, String> headers,
+  private void postTenant(boolean async, TenantAttributes tenantAttributes, Map<String, String> headers,
                           Handler<AsyncResult<Response>> handler, Context context)  {
 
     String tenantId = TenantTool.tenantId(headers);
@@ -216,7 +214,7 @@ public class TenantAPI implements Tenant {
     job.setComplete(false);
 
     jobs.put(id, job);
-    String location = (routingContext != null ? routingContext.request().uri() : "") + "/" + id;
+    String location = "/_/tenant/" + id;
     if (async) {
       handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
           PostTenantResponse.headersFor201().withLocation(location))));
@@ -269,8 +267,8 @@ public class TenantAPI implements Tenant {
   }
 
   void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
-                             Handler<AsyncResult<Response>> handler, Context context)  {
-    postTenant(false, tenantAttributes, null, headers, handler, context);
+                      Handler<AsyncResult<Response>> handler, Context context)  {
+    postTenant(false, tenantAttributes, headers, handler, context);
   }
 
   @Override

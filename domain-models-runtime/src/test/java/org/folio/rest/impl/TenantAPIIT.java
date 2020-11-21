@@ -113,7 +113,7 @@ public class TenantAPIIT {
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
 
-      tenantAPI.postTenant(tenantAttributes, null, okapiHeaders, onSuccess(context, res1 -> {
+      tenantAPI.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
         TenantJob job = (TenantJob) res1.getEntity();
         id.append(job.getId());
         tenantAPI.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 ->
