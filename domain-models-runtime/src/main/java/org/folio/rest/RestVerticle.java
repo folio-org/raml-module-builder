@@ -41,14 +41,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.ThreadContext;
 import org.folio.rest.annotations.Stream;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.AnnotationGrabber;
-import org.folio.rest.tools.ClientGenerator;
-import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.codecs.PojoEventBusCodec;
@@ -97,7 +90,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
   public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
 
-  public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
+  public static final String        OKAPI_HEADER_TENANT             = "x-okapi-tenant";
   public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
   public static final String        OKAPI_HEADER_PERMISSIONS        = "X-Okapi-Permissions";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";

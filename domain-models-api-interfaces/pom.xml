@@ -17,6 +17,10 @@
       <artifactId>vertx-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.glassfish.jersey.media</groupId>
       <artifactId>jersey-media-json-jackson</artifactId>
     </dependency>
@@ -55,11 +59,6 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-api-aspects</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>domain-models-interface-extensions</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
@@ -103,32 +102,24 @@
       </plugin>
 
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${project.parent.version}</version>
         <executions>
           <execution>
-            <id>generate_interfaces</id>
-            <phase>generate-sources</phase>
+            <id>generate-interfaces</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>raml_files</key>
-                  <value>${ramlfiles_path},${ramlfiles_util_path}/ramls</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>jsonschema.customfield</key>
-                  <value>{"fieldname": "test", "fieldvalue": true, "annotation": {"type":"javax.validation.constraints.Null"}}</value>
-                </systemProperty>
-              </systemProperties>
+              <ramlDirs>
+                <ramlDir>ramls</ramlDir>
+                <ramlDir>ramls/raml-util</ramlDir>
+              </ramlDirs>
+              <jsonSchemaCustomFields>
+                <field>{"fieldname": "test", "fieldvalue": true, "annotation": {"type":"javax.validation.constraints.Null"}}</field>
+              </jsonSchemaCustomFields>
+              <generateClients>true</generateClients>
             </configuration>
           </execution>
         </executions>
