@@ -1722,12 +1722,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(null));
+        handler.handle(getConnection());
       }
 
       @Override
       public Future<SqlConnection> getConnection() {
-        return null;
+        return Future.succeededFuture();
       }
 
       @Override
@@ -1765,14 +1765,15 @@ public class PostgresClientIT {
    */
   private PostgresClient postgresClientGetConnectionFails() {
     PgPool client = new PgPool() {
+
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.failedFuture("postgresClientGetConnectionFails"));
+        handler.handle(getConnection());
       }
 
       @Override
       public Future<SqlConnection> getConnection() {
-        return null;
+        return Future.failedFuture("postgresClientGetConnectionFails");
       }
 
       @Override
@@ -2011,12 +2012,12 @@ public class PostgresClientIT {
 
           @Override
           public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
-            handler.handle(Future.failedFuture("queryFails"));
+            handler.handle(execute());
           }
 
           @Override
           public Future<RowSet<Row>> execute() {
-            return null;
+            return Future.failedFuture("queryFails");
           }
 
           @Override

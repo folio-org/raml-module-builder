@@ -317,15 +317,13 @@ public class PostgresClientTest {
 
     @Override
     public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
+      handler.handle(prepare(s));
       return this;
     }
 
     @Override
     public Future<PreparedStatement> prepare(String s) {
-      Promise<PreparedStatement> promise = Promise.promise();
-      prepare(s, promise);
-      return promise.future();
+      return Future.failedFuture("not implemented");
     }
 
     @Override

@@ -456,10 +456,10 @@ public class DemoRamlRestTest {
    */
   @Test
   public void checkClientCode(TestContext context) throws Exception {
-      AdminClient aClient = new AdminClient("http://localhost:" + port, "abc", "abc", false);
-      aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", context.asyncAssertSuccess());
-      aClient.getAdminJstack(context.asyncAssertSuccess());
-      aClient.getAdminMemory(false, context.asyncAssertSuccess());
+    AdminClient aClient = new AdminClient("http://localhost:" + port, "abc", "abc", false);
+    aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", context.asyncAssertSuccess());
+    aClient.getAdminJstack(context.asyncAssertSuccess());
+    aClient.getAdminMemory(false, context.asyncAssertSuccess());
   }
 
   public Buffer checkURLs(TestContext context, String url, int codeExpected) {
