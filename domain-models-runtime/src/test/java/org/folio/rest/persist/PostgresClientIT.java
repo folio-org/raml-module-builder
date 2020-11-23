@@ -1742,7 +1742,7 @@ public class PostgresClientIT {
 
       @Override
       public void close(Handler<AsyncResult<Void>> handler) {
-      handler.handle(close());
+        handler.handle(close());
       }
 
       @Override
