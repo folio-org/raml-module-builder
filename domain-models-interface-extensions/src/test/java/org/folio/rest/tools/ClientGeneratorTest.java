@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 
 import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
+import org.folio.util.ResourceUtil;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
