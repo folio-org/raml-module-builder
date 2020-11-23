@@ -1748,7 +1748,7 @@ public class PostgresClientIT {
       @Override
       public Future<Void> close() {
         // nothing to do
-        return Future.succeededFuture(null);
+        return Future.succeededFuture();
       }
     };
     try {
