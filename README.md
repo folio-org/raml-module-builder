@@ -1326,8 +1326,8 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 public class MyTenantAPI extends TenantAPI {
   @Validate
   @Override
-  public void postTenant(TenantAttributes tenantAttributes, RoutingContext routingContext,
-      Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+      Handler<AsyncResult<Response>> handler, Context context) {
 
     ..
   }
