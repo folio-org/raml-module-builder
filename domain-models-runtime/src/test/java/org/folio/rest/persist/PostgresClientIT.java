@@ -1919,7 +1919,6 @@ public class PostgresClientIT {
 
       }
 
-
       @Override
       public Future<Void> close() {
         return null;
@@ -2075,7 +2074,7 @@ public class PostgresClientIT {
 
       @Override
       public Future<Void> close() {
-        return null;
+        return Future.succeededFuture();
       }
     };
     try {
@@ -2202,8 +2201,7 @@ public class PostgresClientIT {
 
       @Override
       public Future<Void> close() {
-        // nothing to do
-        return null;
+        return Future.succeededFuture();
       }
     };
     try {
