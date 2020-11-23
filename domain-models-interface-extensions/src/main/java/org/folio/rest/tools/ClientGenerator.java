@@ -19,9 +19,6 @@ import com.sun.codemodel.JWhileLoop;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -198,7 +195,7 @@ public class ClientGenerator {
     conBody.invoke("this").arg(okapiUrlVar).arg(tenantIdVar).arg(tokenVar).arg(keepAlive)
       .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
   }
-  private void addConstructorOkapi6Args(JFieldVar tokenVar, JFieldVar options, JFieldVar httpClient) {
+  private void addConstructorOkapi6Args(JFieldVar tokenVar, JFieldVar options, JFieldVar webClient) {
     /* constructor, init the httpClient - allow to pass keep alive option */
     JMethod constructor = constructor();
     JVar okapiUrlVar = constructor.param(String.class, OKAPI_URL);
@@ -223,7 +220,7 @@ public class ClientGenerator {
         .ref("io.vertx.ext.web.client.WebClient")
         .staticInvoke("create").arg(jcodeModel
         .ref("org.folio.rest.tools.utils.VertxUtils").staticInvoke("getVertxFromContextOrNew")).arg(options);
-    conBody.assign(httpClient, client);
+    conBody.assign(webClient, client);
   }
 
   /**
@@ -268,9 +265,9 @@ public class ClientGenerator {
       JFieldVar options = jc.field(JMod.PRIVATE, WebClientOptions.class, "options");
 
       /* class variable to http client */
-      JFieldVar webClient = jc.field(JMod.PRIVATE, WebClient.class, "webClient");
+      JFieldVar webClient = jc.field(JMod.PRIVATE, WebClient.class, "httpClient");
 
-      addConstructorOkapi6Args(tokenVar, options, httpClient);
+      addConstructorOkapi6Args(tokenVar, options, webClient);
       addConstructorOkapi4Args();
       addConstructorOkapi3Args();
 
@@ -391,7 +388,6 @@ public class ClientGenerator {
     JClass handler = jcodeModel.ref(HttpResponse.class).narrow(Buffer.class);
     handler = jcodeModel.ref(AsyncResult.class).narrow(handler);
     handler = jcodeModel.ref(Handler.class).narrow(handler);
-    jmCreate.param(handler, "responseHandler");
     jmCreate.param(handler, "responseHandler");
 
     /* if we need to pass data in the body */
