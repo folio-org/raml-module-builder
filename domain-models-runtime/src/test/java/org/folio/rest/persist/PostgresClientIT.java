@@ -1793,7 +1793,6 @@ public class PostgresClientIT {
 
       @Override
       public Future<Void> close() {
-        // nothing to do
         return null;
       }
     };
