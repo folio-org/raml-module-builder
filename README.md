@@ -1599,10 +1599,11 @@ When upgrading a module via the Tenant API, an index is deleted if either `"tOps
 Posting a new tenant must include a body. The body should contain a JSON
 conforming to the
 [tenantAttributes](https://github.com/folio-org/raml/blob/master/schemas/tenantAttributes.schema)
-schema. The `module_to` entry is optional, indicating the version module for
-this tenant. If `module_to` is omitted, module is disabled for the tenant. The
-`module_from` entry is optional and indicates an upgrade for the tenant to a
-new module version or disable if `module_to` is omitted.
+schema.
+
+To enable a new module indicate the version module in `module_to` and omit `module_from`.
+To upgrade a module indicate the existing version module in `module_from` and the new version module in `module_to`.
+To disable a module indicate the existing version module in `module_from` and omit `module_to`.
 
 The body may also hold a `parameters` property to specify per-tenant
 actions/info to be done during tenant creation/update.
