@@ -1365,7 +1365,7 @@ import org.folio.rest.tools.utils.TenantLoading;
 @Override
 Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
   Context verxContext) {
-  Future<Void> future = super.loadData(attributes, tenantId, headers, vertxContext).compose(res -> {
+  return super.loadData(attributes, tenantId, headers, vertxContext).compose(res -> {
     TenantLoading tl = new TenantLoading();
     // two sets of reference data files
     // resources ref-data/data1 and ref-data/data2 .. loaded to
