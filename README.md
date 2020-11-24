@@ -1346,9 +1346,11 @@ Extend the `loadData` method, to load sample/reference data for a module.
 @Override
 Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
   Context verxContext) {
-  Future<Void> future = super.loadData(attributes, tenantId, headers, vertxContext).compose(res -> {
+  return super.loadData(attributes, tenantId, headers, vertxContext).compose(res -> {
+    // load data
     return Future...;
   });
+}
 }
 ```
 
