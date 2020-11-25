@@ -1370,19 +1370,12 @@ Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, 
     // two sets of reference data files
     // resources ref-data/data1 and ref-data/data2 .. loaded to
     // okapi-url/instances and okapi-url/items respectively
-    Promise<Void> promise = Promise.promise();
     tl.withKey("loadReference").withLead("ref-data")
       .withIdContent()
       .add("data1", "instances")
       .add("data2", "items");
-    tl.perform(tenantAttributes, headers, vertx, res1 -> {
-      if (res1.failed()) {
-        promise.fail(res1.cause().getMessage());
-        return;
-      }
-      promise.complete(); // OK
-    });
-    return promise.future();
+    return Future.<Integer>future(promise -> tl.perform(attributes, headers, verxContext.owner(), promise))
+        .mapEmpty();
   });
 }
 ```
