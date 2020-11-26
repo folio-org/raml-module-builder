@@ -392,9 +392,8 @@ public class TenantLoading {
    * @param vertx Vertx handle to be used (for spawning HTTP clients)
    * @return Success or failure
    */
-  public Future<Void> perform(TenantAttributes ta, Map<String, String> headers,
-      Context context) {
-    return perform0(ta, headers, context.owner()).mapEmpty();
+  public Future<Void> perform(TenantAttributes ta, Map<String, String> headers, Vertx vertx) {
+    return perform0(ta, headers, vertx).mapEmpty();
   }
 
   /**
