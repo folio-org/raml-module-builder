@@ -1363,20 +1363,18 @@ import org.folio.rest.tools.utils.TenantLoading;
 
 @Validate
 @Override
-Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
-  Context verxContext) {
-  return super.loadData(attributes, tenantId, headers, vertxContext).compose(res -> {
-    TenantLoading tl = new TenantLoading();
-    // two sets of reference data files
-    // resources ref-data/data1 and ref-data/data2 .. loaded to
-    // okapi-url/instances and okapi-url/items respectively
-    tl.withKey("loadReference").withLead("ref-data")
-      .withIdContent()
-      .add("data1", "instances")
-      .add("data2", "items");
-    return Future.<Integer>future(promise -> tl.perform(attributes, headers, verxContext.owner(), promise))
-        .mapEmpty();
-  });
+Future<Void> loadData(TenantAttributes attributes, String tenantId,
+                      Map<String, String> headers, Context vertxContext) {
+  return super.loadData(attributes, tenantId, headers, vertxContext)
+      .compose(res -> new TenantLoading()
+          // two sets of reference data files
+          // resources ref-data/data1 and ref-data/data2 .. loaded to
+          // okapi-url/instances and okapi-url/items respectively
+          .withKey("loadReference").withLead("ref-data")
+          .withIdContent()
+          .add("data1", "instances")
+          .add("data2", "items");
+          .perform(attributes, headers, vertxContext));
 }
 ```
 
