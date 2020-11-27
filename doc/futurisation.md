@@ -152,6 +152,24 @@ void squared(int i, Promise<Integer> promise) {
 }
 ```
 
+## HttpClient composition
+
+The
+[Vert.x documentation](https://vertx-web-site.github.io/docs/vertx-core/java/#_request_and_response_composition)
+warns:
+
+The HttpClient API "intentionally does not return a
+`Future<HttpClientResponse>` because setting a completion handler on
+the future can be racy when this is set outside of the event-loop",
+"the API is event driven and you need to understand it otherwise you
+might experience possible data races (i.e loosing events leading to
+corrupted data)."
+
+"[Vert.x Web Client](https://vertx-web-site.github.io/docs/vertx-web-client/java/)
+is a higher level API alternative (in fact it is built on top of this
+client) you might consider if this client is too low level for your
+use cases".
+
 ## Result and error handling
 
 Use `onSuccess` and `onFailure` to process the result or the failure:
