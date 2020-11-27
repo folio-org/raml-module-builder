@@ -16,7 +16,7 @@ public class TenantRefAPI extends TenantAPI {
         .compose(res -> new TenantLoading()
             .withKey("loadReference").withLead("ref-data")
             .withIdContent().add("data", "bees/bees")
-            .perform(attributes, headers, vertxContext.owner()));
+            .perform(attributes, headers, vertxContext)).mapEmpty();
   }
 
 }

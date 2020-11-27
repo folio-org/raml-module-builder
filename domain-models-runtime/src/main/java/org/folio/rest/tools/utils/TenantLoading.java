@@ -389,11 +389,11 @@ public class TenantLoading {
    *
    * @param ta Tenant Attributes as they are passed via Okapi install
    * @param headers Okapi headers taken verbatim from RMBs handler
-   * @param vertx Vertx handle to be used (for spawning HTTP clients)
-   * @return Success or failure
+   * @param context Vert.x context
+   * @return async result with number of files loaded.
    */
-  public Future<Void> perform(TenantAttributes ta, Map<String, String> headers, Vertx vertx) {
-    return perform0(ta, headers, vertx).mapEmpty();
+  public Future<Integer> perform(TenantAttributes ta, Map<String, String> headers, Context context) {
+    return perform0(ta, headers, context.owner());
   }
 
   /**
@@ -407,7 +407,7 @@ public class TenantLoading {
    * @param ta Tenant Attributes as they are passed via Okapi install
    * @param headers Okapi headers taken verbatim from RMBs handler
    * @param vertx Vertx handle to be used (for spawning HTTP clients)
-   * @param handler async result. If succesfull, the result is number of files
+   * @param handler async result. If successful, the result is number of files
    * loaded.
    */
   public void perform(TenantAttributes ta, Map<String, String> headers,
