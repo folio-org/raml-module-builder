@@ -26,6 +26,7 @@ import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -410,6 +411,32 @@ public class PostgresClientIT {
     selectAFail(context, c2, tenant);
     c1.closeClient(context.asyncAssertSuccess());
     c2.closeClient(context.asyncAssertSuccess());
+  }
+
+  /**
+   * Each connection runs pg_sleep(1) that takes 1 second.
+   * Setting maxPoolSize=90 runs them in parallel so that it
+   * completes within 5 seconds.
+   *
+   * <p>If you want to test with a higher maxPoolSize you
+   * need to increase max_connections so that maxPoolSize is within
+   * (max_connections - superuser_reserved_connections):
+   * <a href="https://www.postgresql.org/docs/current/runtime-config-connection.html">
+   * https://www.postgresql.org/docs/current/runtime-config-connection.html</a>
+   */
+  @Test(timeout = 5000)  // milliseconds
+  public void maxPoolSize(TestContext context) {
+    int maxPoolSize = 90;
+    postgresClient = createA(context, TENANT);
+    JsonObject configuration = postgresClient.getConnectionConfig().copy()
+        .put("maxPoolSize", maxPoolSize);
+    postgresClient.setClient(PostgresClient.createPgPool(vertx, configuration));
+    List<Future> futures = new ArrayList<>();
+    for (int i=0; i<maxPoolSize; i++) {
+      futures.add(Future.<RowSet<Row>>future(promise ->
+        postgresClient.execute("SELECT pg_sleep(1)", promise)));
+    }
+    CompositeFuture.all(futures).onComplete(context.asyncAssertSuccess());
   }
 
   public static class StringPojo {
