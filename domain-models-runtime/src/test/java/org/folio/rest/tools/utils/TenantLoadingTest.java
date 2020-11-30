@@ -137,8 +137,8 @@ public class TenantLoadingTest {
         .withKey("loadRef")
         .withLead("tenant-load-ref")
         .add("data");
-    tl.perform(tenantAttributes, headers, vertx.getOrCreateContext())
-        .onComplete(context.asyncAssertSuccess(cnt -> context.assertEquals(2, cnt)));
+    tl.perform(tenantAttributes, headers, vertx.getOrCreateContext(), 10)
+        .onComplete(context.asyncAssertSuccess(cnt -> context.assertEquals(12, cnt)));
   }
 
   public String myFilter(String content) {

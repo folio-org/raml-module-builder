@@ -10,13 +10,13 @@ import java.util.Map;
 public class TenantRefAPI extends TenantAPI {
 
   @Override
-  Future<Void> loadData(TenantAttributes attributes, String tenantId,
-                        Map<String, String> headers, Context vertxContext) {
+  Future<Integer> loadData(TenantAttributes attributes, String tenantId,
+                           Map<String, String> headers, Context vertxContext) {
     return super.loadData(attributes, tenantId, headers, vertxContext)
-        .compose(res -> new TenantLoading()
+        .compose(recordsLoaded -> new TenantLoading()
             .withKey("loadReference").withLead("ref-data")
             .withIdContent().add("data", "bees/bees")
-            .perform(attributes, headers, vertxContext)).mapEmpty();
+            .perform(attributes, headers, vertxContext, recordsLoaded));
   }
 
 }

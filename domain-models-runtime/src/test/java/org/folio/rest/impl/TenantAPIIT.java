@@ -18,7 +18,6 @@ import org.folio.dbschema.Schema;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.jaxrs.resource.Tenant;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.VertxUtils;
@@ -451,7 +450,7 @@ public class TenantAPIIT {
   public void postTenantWithLoadFail(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context ctx) {
+      Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context ctx) {
         return Future.failedFuture("Load Failure");
       }
     };

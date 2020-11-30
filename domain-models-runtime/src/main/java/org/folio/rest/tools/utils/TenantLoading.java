@@ -362,7 +362,7 @@ public class TenantLoading {
     }
 
   private Future<Integer> perform0(TenantAttributes ta, Map<String, String> headers,
-      Vertx vertx) {
+      Vertx vertx, int recordsLoaded) {
 
     String okapiUrl = headers.get("X-Okapi-Url-to");
     if (okapiUrl == null) {
@@ -375,7 +375,7 @@ public class TenantLoading {
     }
     Iterator<LoadingEntry> it = loadingEntries.iterator();
     HttpClient httpClient = vertx.createHttpClient();
-    return performR(okapiUrl, ta, headers, it, httpClient, 0)
+    return performR(okapiUrl, ta, headers, it, httpClient, recordsLoaded)
         .onComplete(complete -> httpClient.close());
   }
 
@@ -390,10 +390,12 @@ public class TenantLoading {
    * @param ta Tenant Attributes as they are passed via Okapi install
    * @param headers Okapi headers taken verbatim from RMBs handler
    * @param context Vert.x context
-   * @return async result with number of files loaded.
+   * @param recordsLoaded number of records that have already been loaded
+   * @return async result with total number of records loaded (sum of recordsLoaded and the load of this perform).
    */
-  public Future<Integer> perform(TenantAttributes ta, Map<String, String> headers, Context context) {
-    return perform0(ta, headers, context.owner());
+  public Future<Integer> perform(TenantAttributes ta, Map<String, String> headers,
+      Context context, int recordsLoaded) {
+    return perform0(ta, headers, context.owner(), recordsLoaded);
   }
 
   /**
@@ -407,12 +409,12 @@ public class TenantLoading {
    * @param ta Tenant Attributes as they are passed via Okapi install
    * @param headers Okapi headers taken verbatim from RMBs handler
    * @param vertx Vertx handle to be used (for spawning HTTP clients)
-   * @param handler async result. If successful, the result is number of files
+   * @param handler async result. If successful, the result is number of records loaded by this perform.
    * loaded.
    */
   public void perform(TenantAttributes ta, Map<String, String> headers,
       Vertx vertx, Handler<AsyncResult<Integer>> handler) {
-    perform0(ta, headers, vertx).onComplete(handler::handle);
+    perform0(ta, headers, vertx, 0).onComplete(handler::handle);
   }
 
   /**

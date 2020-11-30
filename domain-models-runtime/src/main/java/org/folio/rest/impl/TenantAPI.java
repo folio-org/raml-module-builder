@@ -259,11 +259,11 @@ public class TenantAPI implements Tenant {
    * @param attributes information about what to load.
    * @param tenantId tenant ID
    * @param headers HTTP headers for the request (Okapi)
-   * @return
+   * @return number of records loaded
    */
-  Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
+  Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
                         Context vertxContext) {
-    return Future.succeededFuture();
+    return Future.succeededFuture(0);
   }
 
   void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,

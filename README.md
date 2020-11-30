@@ -1344,13 +1344,13 @@ Extend the `loadData` method, to load sample/reference data for a module.
 ```
 @Validate
 @Override
-Future<Void> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
-  Context verxContext) {
-  return super.loadData(attributes, tenantId, headers, vertxContext).compose(res -> {
-    // load data
-    return Future...;
-  });
-}
+Future<Integer> loadData(TenantAttributes attributes, String tenantId,
+                         Map<String, String> headers, Context verxContext) {
+  return super.loadData(attributes, tenantId, headers, vertxContext)
+      .compose(superRecordsLoaded -> {
+        // load n records
+        return Future.succeededFuture(superRecordsLoaded + n);
+      });
 }
 ```
 
@@ -1363,10 +1363,10 @@ import org.folio.rest.tools.utils.TenantLoading;
 
 @Validate
 @Override
-Future<Void> loadData(TenantAttributes attributes, String tenantId,
-                      Map<String, String> headers, Context vertxContext) {
+Future<Integer> loadData(TenantAttributes attributes, String tenantId,
+                         Map<String, String> headers, Context vertxContext) {
   return super.loadData(attributes, tenantId, headers, vertxContext)
-      .compose(res -> new TenantLoading()
+      .compose(recordsLoaded -> new TenantLoading()
           // two sets of reference data files
           // resources ref-data/data1 and ref-data/data2 .. loaded to
           // okapi-url/instances and okapi-url/items respectively
@@ -1374,7 +1374,7 @@ Future<Void> loadData(TenantAttributes attributes, String tenantId,
           .withIdContent()
           .add("data1", "instances")
           .add("data2", "items");
-          .perform(attributes, headers, vertxContext));
+          .perform(attributes, headers, vertxContext, recordsLoaded));
 }
 ```
 
