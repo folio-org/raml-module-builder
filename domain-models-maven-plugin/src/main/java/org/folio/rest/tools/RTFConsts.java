@@ -20,6 +20,7 @@ public class RTFConsts {
   public static final String SCHEDULE_TYPE_SCHEDULED = "SCHEDULED";
   public static final String SCHEDULE_TYPE_MANUAL    = "MANUAL";
 
+  public static final String JAXRS_PACKAGE          = "org.folio.rest.jaxrs";
   public static final String INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
   public static final String CLIENT_GEN_PACKAGE     = "org.folio.rest.client";
 

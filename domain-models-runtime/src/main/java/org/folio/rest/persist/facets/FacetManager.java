@@ -85,7 +85,7 @@ public class FacetManager {
 
     templateInput.put("schema", this.schema);
 
-    templateInput.put("countQuery", org.apache.commons.lang.StringEscapeUtils.escapeSql(this.countQuery));
+    templateInput.put("countQuery", this.countQuery.replace("'", "''"));
 
     templateInput.put("calculateOnFirst" , calculateOnFirst+"");
 

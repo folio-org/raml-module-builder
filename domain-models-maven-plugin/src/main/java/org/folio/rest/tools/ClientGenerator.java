@@ -1,5 +1,6 @@
 package org.folio.rest.tools;
 
+import com.github.javaparser.utils.StringEscapeUtils;
 import com.sun.codemodel.JBlock; //NOSONAR - suppress "Use classes from the Java API instead of Sun classes."
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JCodeModel;
@@ -30,10 +31,12 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -87,18 +90,63 @@ public class ClientGenerator {
       mappingType = "mongo";
     }
 
-    basedir = System.getProperty("project.basedir");
-
-    generate(basedir, generateClient);
+    generate(System.getProperty("project.basedir"), generateClient);
   }
 
   public static void generate(String basedir, boolean generateClient) throws IOException {
+    ClientGenerator.basedir = basedir;
     String packageDir = basedir
         + ClientGenerator.PATH_TO_GENERATE_TO
         + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
     makeCleanDir(packageDir);
+    JsonObject classMappings = AnnotationGrabber.generateMappings(generateClient);
+    String javaFile = basedir
+        + ClientGenerator.PATH_TO_GENERATE_TO
+        + RTFConsts.JAXRS_PACKAGE.replace('.', '/')
+        + "/MappedClassesConfig.java";
+    String javaCode = populateConfig(classMappings);
+    FileUtils.writeStringToFile(new File(javaFile), javaCode, StandardCharsets.UTF_8);
+  }
 
-    AnnotationGrabber.generateMappings(generateClient);
+  private static String populateConfig(JsonObject jObjClasses) {
+    String java = "package " + RTFConsts.JAXRS_PACKAGE + ";\n"
+        + "\n"
+        + "import io.vertx.core.json.JsonObject;\n"
+        + "import org.folio.rest.MappedClasses;\n"
+        + "\n"
+        + "public class MappedClassesConfig {\n"
+        + "\n"
+        + "  public static MappedClasses get() {\n"
+        + "    MappedClasses mappedClasses = new MappedClasses();\n";
+    Set<String> classURLs = jObjClasses.fieldNames();
+    for (String classURL : classURLs) {
+      log.info(classURL);
+      JsonObject jObjMethods = jObjClasses.getJsonObject(classURL);
+      Set<String> methodURLs = jObjMethods.fieldNames();
+      jObjMethods.fieldNames();
+      for (String methodURL : methodURLs) {
+        Object val = jObjMethods.getValue(methodURL);
+        if (! (val instanceof JsonArray)) {
+          continue;
+        }
+        for (Object entry : (JsonArray) val) {
+          if (! (entry instanceof JsonObject)) {
+            continue;
+          }
+          JsonObject jsonObject = (JsonObject) entry;
+          String pathRegex = jsonObject.getString("regex2method");
+          jsonObject.put(AnnotationGrabber.CLASS_NAME, jObjMethods.getString(AnnotationGrabber.CLASS_NAME));
+          jsonObject.put(AnnotationGrabber.INTERFACE_NAME, jObjMethods.getString(AnnotationGrabber.INTERFACE_NAME));
+          java += "    mappedClasses.addPath(\"" + StringEscapeUtils.escapeJava(pathRegex) +
+              "\", new JsonObject(\"" + StringEscapeUtils.escapeJava(jsonObject.encode()) + "\"));\n";
+        }
+      }
+    }
+    return java
+        + "    return mappedClasses;\n"
+        + "  }\n"
+        + "\n"
+        + "}\n";
   }
 
   /**

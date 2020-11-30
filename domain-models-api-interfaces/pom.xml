@@ -114,12 +114,11 @@
             <configuration>
               <ramlDirs>
                 <ramlDir>ramls</ramlDir>
-                <ramlDir>ramls/raml-util</ramlDir>
+                <ramlDir>ramls/raml-util/ramls</ramlDir>
               </ramlDirs>
               <jsonSchemaCustomFields>
                 <field>{"fieldname": "test", "fieldvalue": true, "annotation": {"type":"javax.validation.constraints.Null"}}</field>
               </jsonSchemaCustomFields>
-              <generateClients>true</generateClients>
             </configuration>
           </execution>
         </executions>

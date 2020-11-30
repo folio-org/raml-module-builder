@@ -216,6 +216,13 @@
         <groupId>org.folio</groupId>
         <artifactId>domain-models-maven-plugin</artifactId>
         <version>${project.parent.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.folio</groupId>
+            <artifactId>domain-models-api-interfaces</artifactId>
+            <version>${project.parent.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <id>generate-clients</id>

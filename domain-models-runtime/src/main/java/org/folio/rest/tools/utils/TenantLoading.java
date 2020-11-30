@@ -1,9 +1,9 @@
 package org.folio.rest.tools.utils;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
@@ -40,7 +40,7 @@ import org.folio.util.StringUtil;
  *
  * The loading is triggered by Tenant Init Parameters and the TenantLoading is
  * meant to be used in the implementation of the
- * {@link org.folio.rest.impl.TenantAPI#postTenant} method.
+ * {@link org.folio.rest.impl.TenantAPI#loadData} method.
  *
  * Different strategies for communicating with the web service
  * <ul>
@@ -59,30 +59,18 @@ import org.folio.util.StringUtil;
  * <pre>
  * <code>
  *
- * public void postTenant(TenantAttributes ta, Map<String, String> headers,
- *   Handler<AsyncResult<Response>> hndlr, Context cntxt) {
- *   Vertx vertx = cntxt.owner();
- *   super.postTenant(ta, headers, res -> {
- *     if (res.failed()) {
- *       hndlr.handle(res);
- *       return;
- *     }
- *     TenantLoading tl = new TenantLoading();
- *     tl.withKey("loadReference").withLead("ref-data")
- *     .add("groups")
- *     .withKey("loadSample").withLead("sample-data")
- *     .add("users")
- *     .perform(ta, headers, vertx, res1 -> {
- *       if (res1.failed()) {
- *         hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
- *          .respond500WithTextPlain(res1.cause().getLocalizedMessage())));
- *        return;
- *       }
- *       hndlr.handle(io.vertx.core.Future.succeededFuture(PostTenantResponse
- *         .respond201WithApplicationJson("")));
- *     });
- *   }, cntxt);
+ * @Override
+ * Future<Void> loadData(TenantAttributes attributes, String tenantId,
+ *                       Map<String, String> headers, Context vertxContext) {
+ *   return super.loadData(attributes, tenantId, headers, vertxContext)
+ *       .compose(res -> new TenantLoading()
+ *           .withKey("loadReference").withLead("ref-data")
+ *           .add("groups")
+ *           .withKey("loadSample").withLead("sample-data")
+ *           .add("users")
+ *           .perform(attributes, headers, vertxContext));
  * }
+ *
  * </code>
  * </pre>
  *
@@ -330,9 +318,8 @@ public class TenantLoading {
     endWithXHeaders(reqPut, headers, content);
   }
 
-  private static void loadData(String okapiUrl, Map<String, String> headers,
-    LoadingEntry loadingEntry, HttpClient httpClient,
-    Handler<AsyncResult<Integer>> res) {
+  private static Future<Integer> loadData(String okapiUrl, Map<String, String> headers,
+    LoadingEntry loadingEntry, HttpClient httpClient) {
 
     String filePath = loadingEntry.lead;
     if (!loadingEntry.filePath.isEmpty()) {
@@ -346,48 +333,69 @@ public class TenantLoading {
       }
       Future<Void> future = Future.succeededFuture();
       for (URL url : urls) {
-        future = future.compose(x -> {
-          Promise<Void> p = Promise.promise();
-          loadURL(headers, url, httpClient, loadingEntry, endPointUrl, p.future());
-          return p.future();
-        });
+        future = future.compose(x -> Future.future(promise ->
+          loadURL(headers, url, httpClient, loadingEntry, endPointUrl, promise.future())));
       }
-      future.onComplete(x -> {
-        if (x.failed()) {
-          res.handle(Future.failedFuture(x.cause().getLocalizedMessage()));
-        } else {
-          res.handle(Future.succeededFuture(urls.size()));
-        }
-      });
+      return future.map(urls.size());
     } catch (URISyntaxException|IOException ex) {
       log.error("Exception for path " + filePath, ex);
-      res.handle(Future.failedFuture("Exception for path " + filePath + " ex=" + ex.getMessage()));
+      return Future.failedFuture("Exception for path " + filePath + " ex=" + ex.getMessage());
     }
   }
 
-  private void performR(String okapiUrl, TenantAttributes ta,
-    Map<String, String> headers, Iterator<LoadingEntry> it,
-    HttpClient httpClient, int number, Handler<AsyncResult<Integer>> res) {
-    if (!it.hasNext()) {
-      res.handle(Future.succeededFuture(number));
-    } else {
+  private Future<Integer> performR(String okapiUrl, TenantAttributes ta,
+      Map<String, String> headers, Iterator<LoadingEntry> it,
+      HttpClient httpClient, int number) {
+      if (!it.hasNext()) {
+        return Future.succeededFuture(number);
+      }
       LoadingEntry le = it.next();
       if (ta != null) {
         for (Parameter parameter : ta.getParameters()) {
           if (le.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
-            loadData(okapiUrl, headers, le, httpClient, x -> {
-              if (x.failed()) {
-                res.handle(Future.failedFuture(x.cause()));
-              } else {
-                performR(okapiUrl, ta, headers, it, httpClient, number + x.result(), res);
-              }
-            });
-            return;
+            return loadData(okapiUrl, headers, le, httpClient)
+                .compose(loaded -> performR(okapiUrl, ta, headers, it, httpClient, number + loaded));
           }
         }
       }
-      performR(okapiUrl, ta, headers, it, httpClient, number, res);
+      return performR(okapiUrl, ta, headers, it, httpClient, number);
     }
+
+  private Future<Integer> perform0(TenantAttributes ta, Map<String, String> headers,
+      Vertx vertx, int recordsLoaded) {
+
+    String okapiUrl = headers.get("X-Okapi-Url-to");
+    if (okapiUrl == null) {
+      log.warn("TenantLoading.perform No X-Okapi-Url-to header");
+      okapiUrl = headers.get("X-Okapi-Url");
+    }
+    if (okapiUrl == null) {
+      log.warn("TenantLoading.perform No X-Okapi-Url header");
+      return Future.failedFuture("No X-Okapi-Url header");
+    }
+    Iterator<LoadingEntry> it = loadingEntries.iterator();
+    HttpClient httpClient = vertx.createHttpClient();
+    return performR(okapiUrl, ta, headers, it, httpClient, recordsLoaded)
+        .onComplete(complete -> httpClient.close());
+  }
+
+  /**
+   * Perform the actual loading of files
+   *
+   * This is normally the last method to be executed for the TenantLoading
+   * instance.
+   *
+   * See {@link TenantLoading} for an example.
+   *
+   * @param ta Tenant Attributes as they are passed via Okapi install
+   * @param headers Okapi headers taken verbatim from RMBs handler
+   * @param context Vert.x context
+   * @param recordsLoaded number of records that have already been loaded
+   * @return async result with total number of records loaded (sum of recordsLoaded and the load of this perform).
+   */
+  public Future<Integer> perform(TenantAttributes ta, Map<String, String> headers,
+      Context context, int recordsLoaded) {
+    return perform0(ta, headers, context.owner(), recordsLoaded);
   }
 
   /**
@@ -401,28 +409,12 @@ public class TenantLoading {
    * @param ta Tenant Attributes as they are passed via Okapi install
    * @param headers Okapi headers taken verbatim from RMBs handler
    * @param vertx Vertx handle to be used (for spawning HTTP clients)
-   * @param handler async result. If succesfull, the result is number of files
+   * @param handler async result. If successful, the result is number of records loaded by this perform.
    * loaded.
    */
   public void perform(TenantAttributes ta, Map<String, String> headers,
-    Vertx vertx, Handler<AsyncResult<Integer>> handler) {
-
-    String okapiUrl = headers.get("X-Okapi-Url-to");
-    if (okapiUrl == null) {
-      log.warn("TenantLoading.perform No X-Okapi-Url-to header");
-      okapiUrl = headers.get("X-Okapi-Url");
-    }
-    if (okapiUrl == null) {
-      log.warn("TenantLoading.perform No X-Okapi-Url header");
-      handler.handle(Future.failedFuture("No X-Okapi-Url header"));
-      return;
-    }
-    Iterator<LoadingEntry> it = loadingEntries.iterator();
-    HttpClient httpClient = vertx.createHttpClient();
-    performR(okapiUrl, ta, headers, it, httpClient, 0, res -> {
-      handler.handle(res);
-      httpClient.close();
-    });
+      Vertx vertx, Handler<AsyncResult<Integer>> handler) {
+    perform0(ta, headers, vertx, 0).onComplete(handler::handle);
   }
 
   /**

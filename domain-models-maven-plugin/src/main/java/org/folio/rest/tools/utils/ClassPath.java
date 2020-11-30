@@ -338,7 +338,7 @@ public class ClassPath {
           return;
         }
       } catch (SecurityException e) {
-        log.log(Level.SEVERE, "Cannot access " + file + ": " + e);
+        log.finer(() -> "Cannot access " + file + ": " + e.getMessage());
         return;
       }
 

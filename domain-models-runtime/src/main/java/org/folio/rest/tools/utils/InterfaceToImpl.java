@@ -6,7 +6,7 @@ import java.util.Set;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-
+import com.google.common.reflect.ClassPath;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -42,7 +42,7 @@ public class InterfaceToImpl {
 
     ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
     Set<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
-    
+
     Class<?> userImpl = null;
     /** iterate over all classes in the org.folio.rest.impl package to find the one implementing the
      * requested interface */

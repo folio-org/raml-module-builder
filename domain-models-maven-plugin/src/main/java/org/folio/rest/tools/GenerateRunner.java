@@ -151,6 +151,7 @@ public class GenerateRunner {
    * @throws Exception  on read, write or validate error
    */
   public void generate(String inputDirectory) throws IOException {
+    System.out.println("GenerateRunner.generate Input directory " + inputDirectory);
     log.info( "Input directory " + inputDirectory);
     File inputDir = new File(inputDirectory);
     if (! inputDir.isDirectory()) {

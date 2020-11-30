@@ -26,7 +26,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.OutStream;
@@ -1328,12 +1327,12 @@ public final class PgUtil {
     String wrappedColumn =
       "lower(f_unaccent(jsonb->>'" + column + "')) ";
     String cutWrappedColumn = "left(" + wrappedColumn + ",600) ";
+    String innerSql = "SELECT " + wrappedColumn + " AS data_column "
+            + "FROM " + tableName + " WHERE " + where;
     String countSql = preparedCql.getSchemaName()
-      + ".count_estimate('"
-      + "  SELECT " + StringEscapeUtils.escapeSql(wrappedColumn) + " AS data_column "
-      + "  FROM " + tableName + " "
-      + "  WHERE " + StringEscapeUtils.escapeSql(where)
-      + "')";
+        + ".count_estimate('"
+        + innerSql.replace("'", "''")
+        + "')";
     String sql =
       " WITH "
         + " headrecords AS ("
