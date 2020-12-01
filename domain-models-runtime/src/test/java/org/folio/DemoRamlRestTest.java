@@ -84,8 +84,8 @@ public class DemoRamlRestTest {
     deployRestVerticle(context);
 
     Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
-    postData(context, "http://localhost:" + port + "/_/tenant", buf,
-      201, HttpMethod.POST, "application/json", TENANT, false);
+    String location =postData(context, "http://localhost:" + port + "/_/tenant", buf,
+      201, HttpMethod.POST, "application/json", TENANT, false);checkURLs(context, "http://localhost:" + port + location, 200);
   }
 
   private static void dropSchemaRole(TestContext context) {
@@ -117,6 +117,13 @@ public class DemoRamlRestTest {
    */
   @AfterClass
   public static void tearDown(TestContext context) {
+    try {
+      Buffer buf = Buffer.buffer("{\"purge\": true}");
+      postData(context, "http://localhost:" + port + "/_/tenant", buf,
+          201, HttpMethod.POST, "application/json", TENANT, false);
+    } catch (Exception e) {
+      context.fail(e);
+    }
     Locale.setDefault(oldLocale);
     PostgresClient.stopEmbeddedPostgres();
     vertx.close(context.asyncAssertSuccess());
@@ -462,12 +469,12 @@ public class DemoRamlRestTest {
     aClient.getAdminMemory(false, context.asyncAssertSuccess());
   }
 
-  public Buffer checkURLs(TestContext context, String url, int codeExpected) {
+  public static Buffer checkURLs(TestContext context, String url, int codeExpected) {
     String accept = "application/json";
     return checkURLs(context, url, codeExpected, accept);
   }
 
-  public Buffer checkURLs(TestContext context, String url, int codeExpected, String accept) {
+  public static Buffer checkURLs(TestContext context, String url, int codeExpected, String accept) {
     Buffer res = Buffer.buffer();
     try {
       Async async = context.async();
@@ -502,10 +509,11 @@ public class DemoRamlRestTest {
   /**
    * for POST
    */
-  private static void postData(TestContext context, String url, Buffer buffer,
+  private static String postData(TestContext context, String url, Buffer buffer,
       int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
     Exception stacktrace = new RuntimeException();  // save stacktrace for async handler
     Async async = context.async();
+     StringBuilder location = new StringBuilder();
     WebClient client =  WebClient.create(vertx);
     HttpRequest<Buffer> request = client.requestAbs(method, url);
     request.putHeader("X-Okapi-Request-Id", "999999999999");
@@ -518,8 +526,8 @@ public class DemoRamlRestTest {
     }
     request.putHeader("Content-type",  contenttype);
     if(buffer != null) {
-      request.sendBuffer(buffer, e-> postDataHandler(e, async, context, errorCode,
-          stacktrace, method, url, userIdHeader));
+      location.append(request.sendBuffer(buffer, e-> postDataHandler(e, async, context, errorCode,
+          stacktrace, method, url, userIdHeader)));
     } else {
       request.send(e -> postDataHandler(e, async, context, errorCode,
           stacktrace, method, url, userIdHeader));
@@ -527,6 +535,7 @@ public class DemoRamlRestTest {
 
 
     async.await();
+    return location.toString();
   }
 
   private static void postDataHandler(AsyncResult<HttpResponse<Buffer>> asyncResult,
@@ -572,7 +581,7 @@ public class DemoRamlRestTest {
         if (!async.isCompleted()) {
           async.complete();
         }
-        return null;
+        return response.getHeader("Location");
     }).otherwise(error -> {
       log.error(" ---------------xxxxxx-------------------- " + error.getMessage(), error);
       context.fail(new RuntimeException(error.getMessage(), stacktrace));
