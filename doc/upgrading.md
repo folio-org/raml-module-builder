@@ -36,6 +36,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [OKAPI-943](https://issues.folio.org/browse/OKAPI-943) When calling `.any`, `.all` or `.join`
   replace `io.vertx.core.CompositeFuture` by `org.folio.okapi.common.GenericCompositeFuture`,
   replace raw type by actual type and remove `@SuppressWarnings("rawtypes")`.
+* [RMB-728](https://issues.folio.org/browse/RMB-728) In `pom.xml` update `aspectj-maven-plugin`
+  `<configuration>` with `<complianceLevel>11</complianceLevel>`.
 
 ## Version 31.0
 
@@ -76,8 +78,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `pom.xml`: For `maven-compiler-plugin` update `version` to `3.8.1` and
     use `<release>11</release>` instead
     of `source` and `target` elements.
-    Update aspectj version to `1.9.6`. Update `aspectj-maven-plugin` with
-    groupId `com.nickwongdev` and version `1.12.6`.
+  * `pom.xml`: Update aspectj version to `1.9.6`. Update `aspectj-maven-plugin` with
+    groupId `com.nickwongdev` and version `1.12.6` and set `<complianceLevel>11</complianceLevel>`
+    in the `<configuration>` section.
   * `Jenkinsfile`: Add `buildNode = 'jenkins-agent-java11'`
   * `Dockerfile` (if present): change `folioci/alpine-jre-openjdk8:latest`
     to `folioci/alpine-jre-openjdk11:latest`.

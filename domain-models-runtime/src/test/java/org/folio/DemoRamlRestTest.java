@@ -411,7 +411,7 @@ public class DemoRamlRestTest {
     vertx.createHttpClient()
     .request(HttpMethod.POST, port, "localhost", "/rmbtests/testStream")
     .onComplete(context.asyncAssertSuccess(request -> {
-      request.onComplete(context.asyncAssertSuccess(response -> {
+      request.response().onComplete(context.asyncAssertSuccess(response -> {
         assertThat(response.statusCode(), is(200));
         response.body(context.asyncAssertSuccess(body -> {
           assertThat(body.toJsonObject().getBoolean("complete"), is(true));
