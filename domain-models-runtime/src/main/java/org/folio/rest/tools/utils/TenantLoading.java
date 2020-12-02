@@ -20,7 +20,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -220,10 +219,6 @@ public class TenantLoading {
     String diag = lead + ": " + ex.getMessage();
     log.error(diag, ex);
     return diag;
-  }
-
-  private static String handleException(Throwable ex, HttpMethod method, String uri) {
-    return handleException(ex, method.name() + " " + uri);
   }
 
   private static Future<String> getContent(URL url, LoadingEntry loadingEntry) {
