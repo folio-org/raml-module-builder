@@ -73,7 +73,7 @@ public class HttpModuleClient2Test {
     port1 = NetworkUtils.nextFreePort();
     port2 = NetworkUtils.nextFreePort();
     Future<Void> future = startServer();
-    future.setHandler(context.asyncAssertSuccess());
+    future.onComplete(context.asyncAssertSuccess());
   }
 
   @After

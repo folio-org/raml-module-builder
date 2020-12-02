@@ -32,9 +32,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.streams.ReadStream;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -85,8 +82,6 @@ import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
-  private static final Logger log = LoggerFactory.getLogger(PostgresClientIT.class);
-
   static private final String TENANT = "tenant";
   /** table name */
   static private final String FOO = "foo";
@@ -102,10 +97,6 @@ public class PostgresClientIT {
 
   @Rule
   public Timeout rule = Timeout.seconds(15);
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
 
   private int QUERY_TIMEOUT = 0;
 
@@ -884,7 +875,7 @@ public class PostgresClientIT {
   }
 
   private String base64(byte [] source) {
-    return Base64.getEncoder().encodeToString(source);
+    return Base64.getEncoder().withoutPadding().encodeToString(source);
   }
 
   @Test
@@ -1731,7 +1722,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(null));
+        handler.handle(getConnection());
+      }
+
+      @Override
+      public Future<SqlConnection> getConnection() {
+        return Future.succeededFuture();
       }
 
       @Override
@@ -1745,13 +1741,14 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
-        handler.handle(Future.succeededFuture(null));
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(close());
       }
 
       @Override
-      public void close() {
+      public Future<Void> close() {
         // nothing to do
+        return Future.succeededFuture();
       }
     };
     try {
@@ -1768,9 +1765,15 @@ public class PostgresClientIT {
    */
   private PostgresClient postgresClientGetConnectionFails() {
     PgPool client = new PgPool() {
+
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.failedFuture("postgresClientGetConnectionFails"));
+        handler.handle(getConnection());
+      }
+
+      @Override
+      public Future<SqlConnection> getConnection() {
+        return Future.failedFuture("postgresClientGetConnectionFails");
       }
 
       @Override
@@ -1784,13 +1787,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
+      public void close(Handler<AsyncResult<Void>> handler) {
 
       }
 
       @Override
-      public void close() {
-        // nothing to do
+      public Future<Void> close() {
+        return null;
       }
     };
     try {
@@ -1834,6 +1837,11 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Future<PreparedStatement> prepare(String s) {
+        return null;
+      }
+
+      @Override
       public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
@@ -1844,13 +1852,24 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Transaction begin() {
+      public void begin(
+          Handler<AsyncResult<Transaction>> handler) {
+
+      }
+
+      @Override
+      public Future<Transaction> begin() {
         return null;
       }
 
       @Override
       public boolean isSSL() {
         return false;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+
       }
 
       @Override
@@ -1864,8 +1883,8 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void close() {
-
+      public Future<Void> close() {
+        return Future.succeededFuture();
       }
 
       @Override
@@ -1881,6 +1900,11 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Future<SqlConnection> getConnection() {
+        return null;
+      }
+
+      @Override
       public Query<RowSet<Row>> query(String s) {
         return null;
       }
@@ -1891,13 +1915,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
+      public void close(Handler<AsyncResult<Void>> handler) {
 
       }
 
       @Override
-      public void close() {
-        // nothing to do
+      public Future<Void> close() {
+        return null;
       }
     };
     try {
@@ -1943,6 +1967,11 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Future<PreparedStatement> prepare(String s) {
+        return null;
+      }
+
+      @Override
       public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
@@ -1953,7 +1982,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Transaction begin() {
+      public void begin(
+          Handler<AsyncResult<Transaction>> handler) {
+
+      }
+
+      @Override
+      public Future<Transaction> begin() {
         return null;
       }
 
@@ -1963,13 +1998,23 @@ public class PostgresClientIT {
       }
 
       @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+
+      }
+
+      @Override
       public Query<RowSet<Row>> query(String s)
       {
         return new Query<RowSet<Row>> () {
 
           @Override
           public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
-            handler.handle(Future.failedFuture("queryFails"));
+            handler.handle(execute());
+          }
+
+          @Override
+          public Future<RowSet<Row>> execute() {
+            return Future.failedFuture("queryFails");
           }
 
           @Override
@@ -1990,7 +2035,8 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void close() {
+      public Future<Void> close() {
+        return null;
       }
 
       @Override
@@ -2006,6 +2052,11 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Future<SqlConnection> getConnection() {
+        return null;
+      }
+
+      @Override
       public Query<RowSet<Row>> query(String s) {
         return null;
       }
@@ -2016,13 +2067,14 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
+      public void close(Handler<AsyncResult<Void>> handler) {
 
       }
 
+
       @Override
-      public void close() {
-        // nothing to do
+      public Future<Void> close() {
+        return Future.succeededFuture();
       }
     };
     try {
@@ -2065,6 +2117,11 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Future<PreparedStatement> prepare(String s) {
+        return null;
+      }
+
+      @Override
       public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
@@ -2075,13 +2132,24 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Transaction begin() {
+      public void begin(
+          Handler<AsyncResult<Transaction>> handler) {
+
+      }
+
+      @Override
+      public Future<Transaction> begin() {
         return null;
       }
 
       @Override
       public boolean isSSL() {
         return false;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+
       }
 
       @Override
@@ -2095,8 +2163,9 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void close() {
+      public Future<Void> close() {
 
+        return null;
       }
 
       @Override
@@ -2111,6 +2180,11 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Future<SqlConnection> getConnection() {
+        return null;
+      }
+
+      @Override
       public Query<RowSet<Row>> query(String s) {
         return null;
       }
@@ -2121,13 +2195,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
+      public void close(Handler<AsyncResult<Void>> handler) {
 
       }
 
       @Override
-      public void close() {
-        // nothing to do
+      public Future<Void> close() {
+        return Future.succeededFuture();
       }
     };
     try {
@@ -3026,7 +3100,7 @@ public class PostgresClientIT {
     }
 
     @Override
-    public ReadStream<Row> fetch(long l) {
+    public RowStream<Row> fetch(long l) {
       return this;
     }
 
@@ -3036,8 +3110,8 @@ public class PostgresClientIT {
     }
 
     @Override
-    public void close() {
-
+    public Future<Void> close() {
+      return Future.succeededFuture();
     }
 
     @Override

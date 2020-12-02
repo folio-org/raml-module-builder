@@ -5,14 +5,14 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
+
+import java.net.MalformedURLException;
 import java.util.List;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -25,8 +25,11 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -35,17 +38,15 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class TenantLoadingTest {
 
+  @Rule
+  public Timeout timeout = Timeout.seconds(5);
+
   Vertx vertx;
-  static int port = 0;
+  int port;
   int putStatus; // for our fake server
   int postStatus; // for our fake server
 
   Set<String> ids = new HashSet<>();
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-    port = NetworkUtils.nextFreePort();
-  }
 
   private void fakeHttpServerHandler(RoutingContext ctx) {
     ctx.response().setChunked(true);
@@ -77,6 +78,7 @@ public class TenantLoadingTest {
   @Before
   public void setUp(TestContext context) {
     vertx = Vertx.vertx();
+    port = NetworkUtils.nextFreePort();;
     Async async = context.async();
     Router router = Router.router(vertx);
     router.post("/data").handler(this::fakeHttpServerHandler);
@@ -263,7 +265,7 @@ public class TenantLoadingTest {
     headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port));
 
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     putStatus = 500;
     tl.perform(tenantAttributes, headers, vertx, context.asyncAssertFailure());
   }
@@ -524,16 +526,15 @@ public class TenantLoadingTest {
   }
 
   private void assertGetIdBase(TestContext context, String path, String expectedBase) {
-    Future<Void> future = Promise.<Void>promise().future();
-    context.assertEquals(expectedBase, TenantLoading.getIdBase(path, future));
-    context.assertFalse(future.isComplete());
+    TenantLoading.getIdBase(path).onComplete(context.asyncAssertSuccess(res ->
+      context.assertEquals(expectedBase, res)
+    ));
   }
 
   private void assertGetIdBaseFail(TestContext context, String path) {
-    Future<Void> future = Promise.<Void>promise().future();
-    context.assertEquals(null, TenantLoading.getIdBase(path, future));
-    context.assertTrue(future.failed());
-    context.assertEquals("No basename for " + path, future.cause().getMessage());
+    TenantLoading.getIdBase(path).onComplete(context.asyncAssertFailure(cause ->
+        context.assertEquals("No basename for " + path, cause.getMessage())
+    ));
   }
 
   @Test
@@ -568,5 +569,14 @@ public class TenantLoadingTest {
     }
     context.assertFalse(urls.isEmpty());
     context.assertNotNull(s);
+  }
+
+  @Test
+  public void testGetContentFail(TestContext context) throws MalformedURLException {
+    String filename = UUID.randomUUID().toString();
+    TenantLoading.getContent(new URL("file:/" + filename), null)
+        .onComplete(context.asyncAssertFailure(cause ->
+            context.assertTrue(cause.getMessage().startsWith("IOException for url file:/" + filename),
+                cause.getMessage())));
   }
 }

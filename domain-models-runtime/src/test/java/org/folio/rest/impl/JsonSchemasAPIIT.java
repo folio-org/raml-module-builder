@@ -16,7 +16,6 @@ import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -25,10 +24,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class JsonSchemasAPIIT {
 
   private static Vertx vertx;
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
 
   @Rule
   public Timeout rule = Timeout.seconds(20);

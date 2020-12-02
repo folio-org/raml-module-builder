@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.MessageCodec;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 
 /**
@@ -16,7 +16,7 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class PojoEventBusCodec implements MessageCodec<Object, Object> {
 
-  private static final Logger log = LoggerFactory.getLogger(PojoEventBusCodec.class);
+  private static final Logger log = LogManager.getLogger(PojoEventBusCodec.class);
   private static final ObjectMapper MAPPER  = new ObjectMapper();
 
 

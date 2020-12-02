@@ -132,7 +132,7 @@ public final class PgExceptionUtil {
     return "ErrorMessage(fields=["
         + "(Severity, " + e.getSeverity() + "), "
         + "(SQLSTATE, " + e.getCode() + "), "
-        + "(Message, " + e.getMessage() + "), "
+        + "(Message, " + e.getErrorMessage() + "), "
         + "(Detail, " + e.getDetail() + ")])";
   }
 
@@ -141,7 +141,7 @@ public final class PgExceptionUtil {
       return null;
     }
     Map<Character, String> map = new HashMap<>();
-    map.put('M', ((PgException) throwable).getMessage());
+    map.put('M', ((PgException) throwable).getErrorMessage());
     map.put('D', ((PgException) throwable).getDetail());
     map.put('S', ((PgException) throwable).getSeverity());
     map.put('C', ((PgException) throwable).getCode());
