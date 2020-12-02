@@ -339,8 +339,8 @@ public class TenantLoading {
         final String okapiUrlFinal = okapiUrl;
         for (Parameter parameter : ta.getParameters()) {
           if (entry.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
-            future = future.compose(x -> loadData(okapiUrlFinal, headers, entry, httpClient)
-                .compose(y -> Future.succeededFuture(x + y)));
+            future = future.compose(sum -> loadData(okapiUrlFinal, headers, entry, httpClient)
+                .map(newRecords -> sum + newRecords));
           }
         }
       }
