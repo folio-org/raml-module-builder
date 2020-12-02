@@ -11,7 +11,8 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.core.Promise;
+
+import java.net.MalformedURLException;
 import java.util.List;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -24,6 +25,8 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -566,5 +569,14 @@ public class TenantLoadingTest {
     }
     context.assertFalse(urls.isEmpty());
     context.assertNotNull(s);
+  }
+
+  @Test
+  public void testGetContentFail(TestContext context) throws MalformedURLException {
+    String filename = UUID.randomUUID().toString();
+    TenantLoading.getContent(new URL("file:/" + filename), null)
+        .onComplete(context.asyncAssertFailure(cause ->
+            context.assertTrue(cause.getMessage().startsWith("IOException for url file:/" + filename),
+                cause.getMessage())));
   }
 }

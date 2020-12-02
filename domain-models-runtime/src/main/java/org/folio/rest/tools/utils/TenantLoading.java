@@ -221,7 +221,7 @@ public class TenantLoading {
     return diag;
   }
 
-  private static Future<String> getContent(URL url, LoadingEntry loadingEntry) {
+  static Future<String> getContent(URL url, LoadingEntry loadingEntry) {
     try {
       String content = IOUtils.toString(url, StandardCharsets.UTF_8);
       if (loadingEntry.contentFilter != null) {
