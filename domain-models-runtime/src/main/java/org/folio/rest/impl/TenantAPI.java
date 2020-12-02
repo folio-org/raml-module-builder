@@ -20,9 +20,6 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
@@ -43,7 +40,7 @@ public class TenantAPI implements Tenant {
 
   public static final String TABLE_JSON = "templates/db_scripts/schema.json";
 
-  private static final Logger log = LogManager.getLogger(TenantAPI.class);
+  private static final Logger       log               = LoggerFactory.getLogger(TenantAPI.class);
 
   private static Map<String, TenantJob> jobs = new HashMap<>();
   private static Map<String, List<Promise<Void>>> waiters = new HashMap<>();
