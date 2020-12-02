@@ -80,12 +80,17 @@ public class DemoRamlRestTest {
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     tenant = new RequestSpecBuilder().addHeader("x-okapi-tenant", TENANT).build();
 
-    dropSchemaRole(context);
-    deployRestVerticle(context);
+    try {
+      dropSchemaRole(context);
+      deployRestVerticle(context);
+      Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
+      String location = postData(context, "http://localhost:" + port + "/_/tenant", buf,
+        201, HttpMethod.POST, "application/json", TENANT, false);
+      checkURLs(context, "http://localhost:" + port + location, 200);
 
-    Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
-    String location =postData(context, "http://localhost:" + port + "/_/tenant", buf,
-      201, HttpMethod.POST, "application/json", TENANT, false);checkURLs(context, "http://localhost:" + port + location, 200);
+    } catch (Exception e) {
+      context.fail(e);
+    }
   }
 
   private static void dropSchemaRole(TestContext context) {
@@ -513,75 +518,80 @@ public class DemoRamlRestTest {
       int errorCode, HttpMethod method, String contenttype, String tenant, boolean userIdHeader) {
     Exception stacktrace = new RuntimeException();  // save stacktrace for async handler
     Async async = context.async();
-     StringBuilder location = new StringBuilder();
     WebClient client =  WebClient.create(vertx);
     HttpRequest<Buffer> request = client.requestAbs(method, url);
     request.putHeader("X-Okapi-Request-Id", "999999999999");
-    if(tenant != null){
+    if (tenant != null) {
       request.putHeader("x-okapi-tenant", tenant);
     }
     request.putHeader("Accept", "application/json,text/plain");
-    if(userIdHeader){
+    if (userIdHeader) {
       request.putHeader("X-Okapi-User-Id", "af23adf0-61ba-4887-bf82-956c4aae2260");
     }
     request.putHeader("Content-type",  contenttype);
-    if(buffer != null) {
-      location.append(request.sendBuffer(buffer, e-> postDataHandler(e, async, context, errorCode,
-          stacktrace, method, url, userIdHeader)));
+    StringBuilder location = new StringBuilder();
+    if (buffer != null) {
+      request.sendBuffer(buffer, e-> postDataHandler(e, async, context, errorCode,
+          stacktrace, method, url, userIdHeader, location));
     } else {
       request.send(e -> postDataHandler(e, async, context, errorCode,
-          stacktrace, method, url, userIdHeader));
+          stacktrace, method, url, userIdHeader, location));
     }
-
-
     async.await();
+    client.close();
     return location.toString();
   }
 
   private static void postDataHandler(AsyncResult<HttpResponse<Buffer>> asyncResult,
-      Async async, TestContext context, int errorCode, Exception stacktrace,
-      HttpMethod method, String url, boolean userIdHeader) {
+                                      Async async, TestContext context, int expectedStatusCode,
+                                      Exception stacktrace,
+                                      HttpMethod method, String url, boolean userIdHeader,
+                                      StringBuilder location) {
     asyncResult.map(response -> {
       int statusCode = response.statusCode();
       // is it 2XX
-      log.info(statusCode + ", " + errorCode + " expected status at "
-        + System.currentTimeMillis() + " " + method.name() + " " + url);
+      log.info(statusCode + ", " + expectedStatusCode + " expected status at "
+          + System.currentTimeMillis() + " " + method.name() + " " + url);
 
       Buffer responseData = response.body();
-        if (statusCode == errorCode) {
-          final String str = response.getHeader("Content-type");
-          if (str == null && statusCode >= 400) {
-            context.fail(new RuntimeException("No Content-Type", stacktrace));
-          }
-          if (statusCode == 422) {
-            if (str.contains("application/json")) {
-              context.assertTrue(true);
-            } else {
-              context.fail(new RuntimeException(
+      if (statusCode == expectedStatusCode) {
+        final String str = response.getHeader("Content-type");
+        if (str == null && statusCode >= 400) {
+          context.fail(new RuntimeException("No Content-Type", stacktrace));
+        }
+        if (statusCode == 422) {
+          if (str.contains("application/json")) {
+            context.assertTrue(true);
+          } else {
+            context.fail(new RuntimeException(
                 "422 response code should contain a Content-Type header of application/json",
                 stacktrace));
-            }
-          } else if (statusCode == 201) {
-            if (userIdHeader) {
-              String date = (String) new JsonPathParser(responseData.toJsonObject()).getValueAt("metadata.createdDate");
-              if (date == null) {
-                context.fail(new RuntimeException(
+          }
+        } else if (statusCode == 201) {
+          if (userIdHeader) {
+            String date = (String) new JsonPathParser(responseData.toJsonObject()).getValueAt("metadata.createdDate");
+            if (date == null) {
+              context.fail(new RuntimeException(
                   "metaData schema createdDate missing from returned json", stacktrace));
-              }
             }
           }
-          context.assertTrue(true);
-        } else {
-          log.info(" ---------------xxxxxx-1------------------- {}", responseData.toString());
+          String tmp = response.getHeader("Location");
+          if (tmp != null) {
+            location.append(tmp);
+          }
+        }
+        context.assertTrue(true);
+      } else {
+        log.info(" ---------------xxxxxx-1------------------- {}", responseData.toString());
 
-          context.fail(new RuntimeException("got unexpected response code, expected: "
-            + errorCode + ", received code: " + statusCode + " " + method.name() + " " + url
+        context.fail(new RuntimeException("got unexpected response code, expected: "
+            + expectedStatusCode + ", received code: " + statusCode + " " + method.name() + " " + url
             + "\ndata:" + responseData.toString(), stacktrace));
-        }
-        if (!async.isCompleted()) {
-          async.complete();
-        }
-        return response.getHeader("Location");
+      }
+      if (!async.isCompleted()) {
+        async.complete();
+      }
+      return null;
     }).otherwise(error -> {
       log.error(" ---------------xxxxxx-------------------- " + error.getMessage(), error);
       context.fail(new RuntimeException(error.getMessage(), stacktrace));

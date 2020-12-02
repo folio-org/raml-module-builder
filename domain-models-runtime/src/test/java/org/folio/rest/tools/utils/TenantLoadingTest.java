@@ -1,13 +1,5 @@
 package org.folio.rest.tools.utils;
 
-import io.vertx.core.Promise;
-import java.util.List;
-import org.junit.Test;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.TenantAttributes;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
@@ -19,7 +11,6 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import java.util.List;
 import java.util.HashMap;
@@ -532,16 +523,15 @@ public class TenantLoadingTest {
   }
 
   private void assertGetIdBase(TestContext context, String path, String expectedBase) {
-    Promise<Void> promise = Promise.<Void>promise();
-    context.assertEquals(expectedBase, TenantLoading.getIdBase(path, promise));
-    context.assertFalse(promise.future().isComplete());
+    TenantLoading.getIdBase(path).onComplete(context.asyncAssertSuccess(res ->
+      context.assertEquals(expectedBase, res)
+    ));
   }
 
   private void assertGetIdBaseFail(TestContext context, String path) {
-    Promise<Void> promise = Promise.<Void>promise();
-    context.assertEquals(null, TenantLoading.getIdBase(path, promise));
-    context.assertTrue(promise.future().failed());
-    context.assertEquals("No basename for " + path, promise.future().cause().getMessage());
+    TenantLoading.getIdBase(path).onComplete(context.asyncAssertFailure(cause ->
+        context.assertEquals("No basename for " + path, cause.getMessage())
+    ));
   }
 
   @Test

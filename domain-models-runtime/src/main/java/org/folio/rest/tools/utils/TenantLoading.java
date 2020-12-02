@@ -38,8 +38,9 @@ import org.folio.util.StringUtil;
 /**
  * TenantLoading is utility for loading data into modules during the Tenant Init service.
  *
- * The loading is triggered by Tenant Init Parameters and the TenantLoading is meant to be used in
- * the implementation of the {@link org.folio.rest.impl.TenantAPI#loadData} method.
+ * The loading is triggered by Tenant Init Parameters and the TenantLoading is
+ * meant to be used in the implementation of the
+ * {@link org.folio.rest.impl.TenantAPI#loadData} method.
  *
  * Different strategies for communicating with the web service
  * <ul>
@@ -129,6 +130,8 @@ public class TenantLoading {
    *
    * @param directoryName (no prefix or suffix )
    * @return list of URLs
+   * @throws URISyntaxException
+   * @throws IOException
    */
   public static List<URL> getURLsFromClassPathDir(String directoryName)
       throws URISyntaxException, IOException {
@@ -167,8 +170,8 @@ public class TenantLoading {
     return filenames;
   }
 
-  private static void sendWithXHeaders(HttpRequest<Buffer> req, Map<String, String> headers,
-      String json, Handler<AsyncResult<HttpResponse<Buffer>>> handler) {
+  private static Future<HttpResponse<Buffer>> sendWithXHeaders(HttpRequest<Buffer> req, Map<String, String> headers,
+      String json) {
     for (Map.Entry<String, String> e : headers.entrySet()) {
       String k = e.getKey();
       if (k.startsWith("X-") || k.startsWith("x-")) {
@@ -177,82 +180,74 @@ public class TenantLoading {
     }
     req.headers().add("Content-Type", "application/json");
     req.headers().add("Accept", "application/json, text/plain");
-    req.sendBuffer(Buffer.buffer(json), handler);
+    return req.sendBuffer(Buffer.buffer(json));
   }
 
-  static String getIdBase(String path, Promise<Void> promise) {
+  static Future<String> getIdBase(String path) {
     int base = path.lastIndexOf('/');
     int suf = path.lastIndexOf('.');
     if (base == -1) {
-      promise.tryFail("No basename for " + path);
-      return null;
+      return Future.failedFuture("No basename for " + path);
     }
     if (suf > base) {
-      return path.substring(base, suf);
+      return Future.succeededFuture(path.substring(base, suf));
     } else {
-      return path.substring(base);
+      return Future.succeededFuture(path.substring(base));
     }
   }
 
-  private static String getId(LoadingEntry loadingEntry, URL url, String content,
-      Promise<Void> promise) {
-
+  private static Future<String> getId(LoadingEntry loadingEntry, URL url, String content) {
     switch (loadingEntry.strategy) {
       case BASENAME:
-        return getIdBase(url.getPath(), promise);
+        return getIdBase(url.getPath());
       case CONTENT:
         JsonObject jsonObject = new JsonObject(content);
         String id = jsonObject.getString(loadingEntry.idProperty);
         if (id == null) {
           String msg = "Missing property " + loadingEntry.idProperty + " for url=" + url;
           log.warn(msg);
-          promise.tryFail(msg);
-          return null;
+          return Future.failedFuture(msg);
         }
-        return StringUtil.urlEncode(id);
+        return Future.succeededFuture(StringUtil.urlEncode(id));
       case RAW_PUT:
       case RAW_POST:
         break;
     }
-    return null;
+    return Future.succeededFuture(null);
   }
 
-  private static void handleException(Throwable ex, String lead, Promise<Void> promise) {
+  private static String handleException(Throwable ex, String lead) {
     String diag = lead + ": " + ex.getMessage();
     log.error(diag, ex);
-    promise.tryFail(diag);
+    return diag;
   }
 
-  private static void handleException(Throwable ex, HttpMethod method, String uri,
-      Promise<Void> promise) {
-    handleException(ex, method.name() + " " + uri, promise);
+  private static String handleException(Throwable ex, HttpMethod method, String uri) {
+    return handleException(ex, method.name() + " " + uri);
   }
 
-  private static String getContent(URL url, LoadingEntry loadingEntry, Promise<Void> promise) {
+  private static Future<String> getContent(URL url, LoadingEntry loadingEntry) {
     try {
       String content = IOUtils.toString(url, StandardCharsets.UTF_8);
       if (loadingEntry.contentFilter != null) {
-        return loadingEntry.contentFilter.apply(content);
+        return Future.succeededFuture(loadingEntry.contentFilter.apply(content));
       }
-      return content;
+      return Future.succeededFuture(content);
     } catch (IOException ex) {
-      handleException(ex, "IOException for url " + url.toString(), promise);
-      return null;
+      return Future.failedFuture(handleException(ex, "IOException for url " + url.toString()));
     }
   }
 
   private static Future<Void> loadURL(Map<String, String> headers, URL url,
-      WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
+                                      WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
 
-    Promise<Void> promise = Promise.promise();
-    final String content = getContent(url, loadingEntry, promise);
-    if (promise.future().isComplete()) {
-      return promise.future();
-    }
-    String id = getId(loadingEntry, url, content, promise);
-    if (promise.future().isComplete()) {
-      return promise.future();
-    }
+    return getContent(url, loadingEntry)
+        .compose(content -> getId(loadingEntry, url, content)
+            .compose(id -> loadURL(headers, content, id, httpClient, loadingEntry, endPointUrl)));
+  }
+
+  private static Future<Void> loadURL(Map<String, String> headers, String content, String id,
+                                      WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
     StringBuilder putUri = new StringBuilder();
     HttpMethod method1t;
     if (loadingEntry.strategy == Strategy.RAW_POST) {
@@ -271,12 +266,7 @@ public class TenantLoading {
     }
     final HttpMethod method1 = method1t;
     HttpRequest<Buffer> reqPut = httpClient.requestAbs(method1, putUri.toString());
-    sendWithXHeaders(reqPut, headers, content, res -> {
-      if (res.failed()) {
-        handleException(res.cause(), method1, putUri.toString(), promise);
-        return;
-      }
-      HttpResponse<Buffer> resPut = res.result();
+    return sendWithXHeaders(reqPut, headers, content).compose(resPut -> {
       Buffer body1 = resPut.bodyAsBuffer();
       if (loadingEntry.strategy != Strategy.RAW_PUT
           && loadingEntry.strategy != Strategy.RAW_POST
@@ -284,41 +274,35 @@ public class TenantLoading {
           || resPut.statusCode() == 422)) {
         HttpMethod method2 = HttpMethod.POST;
         HttpRequest<Buffer> reqPost = httpClient.requestAbs(method2, endPointUrl);
-         sendWithXHeaders(reqPost, headers, content, res1 -> {
-          if (res1.failed()) {
-            handleException(res1.cause(), method2, endPointUrl, promise);
-            return;
-          }
-          HttpResponse<Buffer> resPost = res1.result();
+        return sendWithXHeaders(reqPost, headers, content).compose(resPost -> {
           Buffer body2 = resPost.bodyAsBuffer();
-            if (resPost.statusCode() == 201) {
-              promise.handle(Future.succeededFuture());
-            } else {
-              String diag = method1.name() + " " + putUri.toString()
-                  + RETURNED_STATUS + resPut.statusCode() + ": " + body1
-                  + " " + method2.name() + " " + endPointUrl
-                  + RETURNED_STATUS + resPost.statusCode() + ": " + body2;
-              log.error(diag);
-              promise.handle(Future.failedFuture(diag));
-            }
-          });
+          if (resPost.statusCode() == 201) {
+            return Future.succeededFuture();
+          } else {
+            String diag = method1.name() + " " + putUri.toString()
+                + RETURNED_STATUS + resPut.statusCode() + ": " + body1
+                + " " + method2.name() + " " + endPointUrl
+                + RETURNED_STATUS + resPost.statusCode() + ": " + body2;
+            log.error(diag);
+            return Future.failedFuture(diag);
+          }
+        });
       } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
           || resPut.statusCode() == 204 || loadingEntry.statusAccept
           .contains(resPut.statusCode())) {
-        promise.handle(Future.succeededFuture());
+        return Future.succeededFuture();
       } else {
         String diag =
             method1.name() + " " + putUri.toString() + RETURNED_STATUS + resPut.statusCode()
                 + ": " + body1;
         log.error(diag);
-        promise.tryFail(diag);
+        return Future.failedFuture(diag);
       }
     });
-    return promise.future();
   }
 
   private static Future<Integer> loadData(String okapiUrl, Map<String, String> headers,
-      LoadingEntry loadingEntry, WebClient httpClient) {
+    LoadingEntry loadingEntry, WebClient httpClient) {
 
     String filePath = loadingEntry.lead;
     if (!loadingEntry.filePath.isEmpty()) {
@@ -332,36 +316,17 @@ public class TenantLoading {
       }
       Future<Void> future = Future.succeededFuture();
       for (URL url : urls) {
-        future = future.compose(x -> Future.future(promise ->
-          loadURL(headers, url, httpClient, loadingEntry, endPointUrl, promise.future())));
+        future = future.compose(x -> loadURL(headers, url, httpClient, loadingEntry, endPointUrl));
       }
       return future.map(urls.size());
-    } catch (URISyntaxException | IOException ex) {
+    } catch (URISyntaxException|IOException ex) {
       log.error("Exception for path " + filePath, ex);
       return Future.failedFuture("Exception for path " + filePath + " ex=" + ex.getMessage());
     }
   }
 
-  private Future<Integer> performR(String okapiUrl, TenantAttributes ta,
-      Map<String, String> headers, Iterator<LoadingEntry> it,
-      WebClient httpClient, int number) {
-      if (!it.hasNext()) {
-        return Future.succeededFuture(number);
-      }
-      LoadingEntry le = it.next();
-      if (ta != null) {
-        for (Parameter parameter : ta.getParameters()) {
-          if (le.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
-            return loadData(okapiUrl, headers, le, httpClient)
-                .compose(loaded -> performR(okapiUrl, ta, headers, it, httpClient, number + loaded));
-          }
-        }
-      }
-      return performR(okapiUrl, ta, headers, it, httpClient, number);
-    }
-
   private Future<Integer> perform0(TenantAttributes ta, Map<String, String> headers,
-      Vertx vertx, int recordsLoaded) {
+                                   Vertx vertx, int recordsLoaded) {
 
     String okapiUrl = headers.get("X-Okapi-Url-to");
     if (okapiUrl == null) {
@@ -372,13 +337,21 @@ public class TenantLoading {
       log.warn("TenantLoading.perform No X-Okapi-Url header");
       return Future.failedFuture("No X-Okapi-Url header");
     }
-
-    Iterator<LoadingEntry> it = loadingEntries.iterator();
-    WebClient webClient = WebClient.create(vertx);
-    return performR(okapiUrl, ta, headers, it, webClient, recordsLoaded).onComplete(res -> {
-      webClient.close();
-    });
-  }
+    WebClient httpClient = WebClient.create(vertx);
+    Future<Integer> future = Future.succeededFuture(recordsLoaded);
+    for (LoadingEntry entry : loadingEntries) {
+      if (ta != null) {
+        final String okapiUrlFinal = okapiUrl;
+        for (Parameter parameter : ta.getParameters()) {
+          if (entry.key.equals(parameter.getKey()) && "true".equals(parameter.getValue())) {
+            future = future.compose(x -> loadData(okapiUrlFinal, headers, entry, httpClient)
+                .compose(y -> Future.succeededFuture(x + y)));
+          }
+        }
+      }
+    }
+    return future.onComplete(complete -> httpClient.close());
+}
 
   /**
    * Perform the actual loading of files
