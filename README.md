@@ -1345,7 +1345,7 @@ Extend the `loadData` method, to load sample/reference data for a module.
 @Validate
 @Override
 Future<Integer> loadData(TenantAttributes attributes, String tenantId,
-                         Map<String, String> headers, Context verxContext) {
+                         Map<String, String> headers, Context vertxContext) {
   return super.loadData(attributes, tenantId, headers, vertxContext)
       .compose(superRecordsLoaded -> {
         // load n records
