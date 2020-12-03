@@ -10,8 +10,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
@@ -51,6 +49,8 @@ import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -88,7 +88,7 @@ public class PostgresClient {
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
 
-  static Logger log = LoggerFactory.getLogger(PostgresClient.class);
+  static Logger log = LogManager.getLogger(PostgresClient.class);
 
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
@@ -630,9 +630,9 @@ public class PostgresClient {
         return;
       }
       try {
-        SQLConnection pgTransaction = new SQLConnection(res.result(),
-            res.result().begin(), null);
-        done.handle(Future.succeededFuture(pgTransaction));
+        res.result().begin()
+        .map(transaction -> new SQLConnection(res.result(), transaction, null))
+        .onComplete(done);
       } catch (Exception e) {
         log.error(e.getMessage(), e);
         done.handle(Future.failedFuture(e.getCause()));
@@ -1077,6 +1077,11 @@ public class PostgresClient {
                                   List<Tuple> batch, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
     try {
+      if (batch.isEmpty()) {
+        // vertx-pg-client fails with "Can not execute batch query with 0 sets of batch parameters."
+        replyHandler.handle(Future.succeededFuture(new LocalRowSet(0)));
+        return;
+      }
       long start = System.nanoTime();
       log.info("starting: saveBatch size=" + batch.size());
       String sql = INSERT_CLAUSE + schemaName + DOT + table + " (id, jsonb) VALUES ($1, $2)"
@@ -1894,12 +1899,28 @@ public class PostgresClient {
                             Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
     // Start a transaction that we need to close.
     // If a transaction is already running we don't need to close it.
-    final Transaction transaction = connection.tx == null ? connection.conn.begin() : null;
+    if (connection.tx == null) {
+      connection.conn.begin()
+      .onFailure(cause -> {
+        log.error(cause.getMessage(), cause);
+        replyHandler.handle(Future.failedFuture(cause));
+      }).onSuccess(trans ->
+        executeGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler, trans)
+      );
+    } else {
+      executeGetQuery(connection, queryHelper, resultInfo, clazz, replyHandler, null);
+    }
+  }
+
+  private <T> void executeGetQuery(SQLConnection connection, QueryHelper queryHelper,
+      ResultInfo resultInfo, Class<T> clazz,
+      Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler, Transaction transaction) {
     connection.conn.prepare(queryHelper.selectQuery, prepareRes -> {
       if (prepareRes.failed()) {
-        closeIfNonNull(transaction);
-        log.error(prepareRes.cause().getMessage(), prepareRes.cause());
-        replyHandler.handle(Future.failedFuture(prepareRes.cause()));
+        closeIfNonNull(transaction).onComplete(ignore -> {
+          log.error(prepareRes.cause().getMessage(), prepareRes.cause());
+          replyHandler.handle(Future.failedFuture(prepareRes.cause()));
+        });
         return;
       }
       PreparedStatement preparedStatement = prepareRes.result();
@@ -1920,10 +1941,11 @@ public class PostgresClient {
     return columnNames;
   }
 
-  private void closeIfNonNull(Transaction transaction) {
-    if (transaction != null) {
-      transaction.close();
+  private Future<Void> closeIfNonNull(Transaction transaction) {
+    if (transaction == null) {
+      return Future.succeededFuture();
     }
+    return transaction.commit();
   }
 
   /**
@@ -1960,39 +1982,42 @@ public class PostgresClient {
         }
         resultsHelper.offset++;
       } catch (Exception e) {
+        streamResult.handler(null);
         log.error(e.getMessage(), e);
         if (!promise.future().isComplete()) {
           promise.complete(streamResult);
           replyHandler.handle(promise.future());
         }
         rowStream.close();
-        closeIfNonNull(transaction);
-        streamResult.fireExceptionHandler(e);
+        closeIfNonNull(transaction)
+            .onComplete((AsyncResult<Void> voidRes) -> streamResult.fireExceptionHandler(e));
       }
     }).endHandler(v2 -> {
       rowStream.close();
-      closeIfNonNull(transaction);
-      resultInfo.setTotalRecords(
-        getTotalRecords(resultCount.get(),
-          resultInfo.getTotalRecords(),
-          queryHelper.offset, queryHelper.limit));
-      try {
+      closeIfNonNull(transaction).onComplete(ignore -> {
+        resultInfo.setTotalRecords(
+            getTotalRecords(resultCount.get(),
+                resultInfo.getTotalRecords(),
+                queryHelper.offset, queryHelper.limit));
+        try {
+          if (!promise.future().isComplete()) {
+            promise.complete(streamResult);
+            replyHandler.handle(promise.future());
+          }
+          streamResult.fireEndHandler();
+        } catch (Exception ex) {
+          streamResult.fireExceptionHandler(ex);
+        }
+      });
+    }).exceptionHandler(e -> {
+      rowStream.close();
+      closeIfNonNull(transaction).onComplete(ignore -> {
         if (!promise.future().isComplete()) {
           promise.complete(streamResult);
           replyHandler.handle(promise.future());
         }
-        streamResult.fireEndHandler();
-      } catch (Exception ex) {
-        streamResult.fireExceptionHandler(ex);
-      }
-    }).exceptionHandler(e -> {
-      rowStream.close();
-      closeIfNonNull(transaction);
-      if (!promise.future().isComplete()) {
-        promise.complete(streamResult);
-        replyHandler.handle(promise.future());
-      }
-      streamResult.fireExceptionHandler(e);
+        streamResult.fireExceptionHandler(e);
+      });
     });
   }
 
@@ -2827,7 +2852,7 @@ public class PostgresClient {
   }
 
   private boolean isStringArrayType(Object value) {
-    // https://github.com/eclipse-vertx/vertx-sql-client/blob/4.0.0.Beta3/vertx-sql-client/src/main/java/io/vertx/sqlclient/Tuple.java#L737
+    // https://github.com/eclipse-vertx/vertx-sql-client/blob/4.0.0.CR1/vertx-sql-client/src/main/java/io/vertx/sqlclient/Tuple.java#L910
     return value instanceof String[] ||
         value instanceof Enum[] ||
         (value != null && value.getClass() == Object[].class);
@@ -3135,7 +3160,8 @@ public class PostgresClient {
         return;
       }
       final Transaction tx = conn.result().tx;
-      tx.prepare(sql, res -> {
+      final PgConnection pgConnection = conn.result().conn;
+      pgConnection.prepare(sql, res -> {
         if (res.failed()) {
           log.error(res.cause().getMessage(), res.cause());
           replyHandler.handle(Future.failedFuture(res.cause()));
@@ -3601,9 +3627,7 @@ public class PostgresClient {
    * @return Future with list of statements that failed; the list may be empty
    */
   public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
-    Promise<List<String>> promise = Promise.promise();
-    runSQLFile(sqlFile, stopOnError, promise.future());
-    return promise.future();
+    return Future.future(promise -> runSQLFile(sqlFile, stopOnError, promise));
   }
 
   /**

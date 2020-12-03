@@ -1,10 +1,9 @@
 package org.folio.rest.persist.cql;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -13,7 +12,7 @@ import org.folio.rest.persist.Criteria.Offset;
 
 public class CQLWrapper {
 
-  private static final Logger log = LoggerFactory.getLogger(CQLWrapper.class);
+  private static final Logger log = LogManager.getLogger(CQLWrapper.class);
   CQL2PgJSON field;
   Criterion criterion;
   String query;
@@ -290,7 +289,7 @@ public class CQLWrapper {
     spaceAppend(sb, offset.toString());
     String sql = sb.toString();
     if (log.isInfoEnabled()) {
-      log.info(getType() + " >>> SQL: " + getQuery() + " >>>" + sql);
+      log.info("{} >>> SQL: {} >>>{}", getType(), getQuery(), sql);
     }
     return sql;
   }

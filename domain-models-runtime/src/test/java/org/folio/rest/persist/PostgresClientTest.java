@@ -8,6 +8,7 @@ import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import io.vertx.core.Promise;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -24,7 +25,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
@@ -53,7 +53,6 @@ import org.junit.Test;
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
 
-  private Logger oldLogger;
   private String oldConfigFilePath;
   private boolean oldIsEmbedded;
   private int oldEmbeddedPort;
@@ -318,8 +317,13 @@ public class PostgresClientTest {
 
     @Override
     public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
+      handler.handle(prepare(s));
       return this;
+    }
+
+    @Override
+    public Future<PreparedStatement> prepare(String s) {
+      return Future.failedFuture("not implemented");
     }
 
     @Override
@@ -333,13 +337,24 @@ public class PostgresClientTest {
     }
 
     @Override
-    public Transaction begin() {
+    public void begin(
+        Handler<AsyncResult<Transaction>> handler) {
+
+    }
+
+    @Override
+    public Future<Transaction> begin() {
       return null;
     }
 
     @Override
     public boolean isSSL() {
       return false;
+    }
+
+    @Override
+    public void close(Handler<AsyncResult<Void>> handler) {
+
     }
 
     @Override
@@ -367,6 +382,11 @@ public class PostgresClientTest {
         }
 
         @Override
+        public Future<RowSet<Row>> execute() {
+          return Future.future(promise -> execute(promise));
+        }
+
+        @Override
         public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
           return null;
         }
@@ -384,7 +404,8 @@ public class PostgresClientTest {
     }
 
     @Override
-    public void close() {
+    public Future<Void> close() {
+      return Future.succeededFuture();
     }
 
     @Override
@@ -613,16 +634,6 @@ public class PostgresClientTest {
     public void setJsonb(JsonObject jsonb) {
       this.jsonb = jsonb;
     }
-  }
-
-  @Before
-  public void saveLogger() {
-    oldLogger = PostgresClient.log;
-  }
-
-  @After
-  public void restoreLogger() {
-    PostgresClient.log = oldLogger;
   }
 
   @Test

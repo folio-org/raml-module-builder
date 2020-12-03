@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>31.2.0-SNAPSHOT</version>
+    <version>32.0.0-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -54,6 +54,12 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web-client</artifactId>
+    </dependency>
+     <!-- It is needed for SCRAM-SHA-256 authentication in postgres https://github.com/eclipse-vertx/vertx-sql-client/blob/master/vertx-pg-client/src/main/asciidoc/index.adoc#sasl-scram-sha-256-authentication-mechanism -->
+    <dependency>
+      <groupId>com.ongres.scram</groupId>
+      <artifactId>client</artifactId>
+      <version>2.1</version>
     </dependency>
     <dependency>
       <groupId>io.rest-assured</groupId>
@@ -420,6 +426,7 @@
                   <manifestEntries>
                     <Main-Class>org.folio.rest.RestLauncher</Main-Class>
                     <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
+                    <Multi-Release>true</Multi-Release>
                   </manifestEntries>
                 </transformer>
               </transformers>
