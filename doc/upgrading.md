@@ -38,6 +38,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   replace raw type by actual type and remove `@SuppressWarnings("rawtypes")`.
 * [RMB-728](https://issues.folio.org/browse/RMB-728) In `pom.xml` update `aspectj-maven-plugin`
   `<configuration>` with `<complianceLevel>11</complianceLevel>`.
+* Remove `setWorker(true)` when starting RestVerticle in tests or production code, learn why at
+  [RMB RestVerticle](https://github.com/folio-org/raml-module-builder#restverticle) and
+  [MODINVSTOR-635](https://issues.folio.org/browse/MODINVSTOR-635).
 
 ## Version 31.0
 

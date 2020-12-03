@@ -29,6 +29,7 @@ See the file ["LICENSE"](LICENSE) for more information.
     * [Step 4: Build your project](#step-4-build-your-project)
     * [Step 5: Implement the generated interfaces](#step-5-implement-the-generated-interfaces)
     * [Step 6: Design the RAML files](#step-6-design-the-raml-files)
+* [RestVerticle](#restverticle)
 * [Adding an init() implementation](#adding-an-init-implementation)
 * [Adding code to run periodically](#adding-code-to-run-periodically)
 * [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
@@ -482,6 +483,21 @@ RAML-aware text editors are very helpful, such as
 
 Remember that the POM configuration enables viewing your RAML and interacting
 with your application via the local [API documentation](#documentation-of-the-apis).
+
+## RestVerticle
+
+RestVerticle is implemented using the reactor pattern and Vert.x HttpServer and
+must be started on the Vert.x event loop. Don't start it on a Vert.x worker context, this
+[may fail because of unsupported concurrency](https://issues.folio.org/browse/MODINVSTOR-635).
+
+Use VertxOptions
+[setMaxEventLoopExecuteTime](https://vertx.io/docs/apidocs/io/vertx/core/VertxOptions.html#setMaxEventLoopExecuteTime-long-)
+and
+[setWarningExceptionTime](https://vertx.io/docs/apidocs/io/vertx/core/VertxOptions.html#setWarningExceptionTime-long-)
+to adjust warnings like
+`Thread vertx-eventloop-thread-3 has been blocked for 20458 ms`
+and fix these violations of the [Golden Rule](https://vertx.io/docs/vertx-core/java/#golden_rule)
+that make the module unresponsive. For details see [Running blocking code](https://vertx.io/docs/vertx-core/java/#blocking_code).
 
 ## Adding an init() implementation
 
