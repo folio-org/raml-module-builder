@@ -17,13 +17,15 @@ import com.sun.codemodel.JPackage;
 import com.sun.codemodel.JVar;
 import com.sun.codemodel.JWhileLoop;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -163,7 +165,6 @@ public class ClientGenerator {
   /**
    * Create a constructor and add a comment to the body of the constructor saying that it
    * is auto-generated and how.
-   * @param mods  Modifiers for this constructor
    * @return the new constructor
    */
   private JMethod constructor() {
@@ -253,7 +254,7 @@ public class ClientGenerator {
     conBody.invoke("this").arg(okapiUrlVar).arg(tenantIdVar).arg(tokenVar).arg(keepAlive)
       .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
   }
-  private void addConstructorOkapi6Args(JFieldVar tokenVar, JFieldVar options, JFieldVar httpClient) {
+  private void addConstructorOkapi6Args(JFieldVar tokenVar, JFieldVar options, JFieldVar webClient) {
     /* constructor, init the httpClient - allow to pass keep alive option */
     JMethod constructor = constructor();
     JVar okapiUrlVar = constructor.param(String.class, OKAPI_URL);
@@ -268,16 +269,17 @@ public class ClientGenerator {
     conBody.assign(JExpr._this().ref(tenantId), tenantIdVar);
     conBody.assign(JExpr._this().ref(tokenVar), token);
     conBody.assign(JExpr._this().ref(okapiUrl), okapiUrlVar);
-    conBody.assign(options, JExpr._new(jcodeModel.ref(HttpClientOptions.class)));
+    conBody.assign(options, JExpr._new(jcodeModel.ref(WebClientOptions.class)));
     conBody.invoke(options, "setLogActivity").arg(JExpr.TRUE);
     conBody.invoke(options, "setKeepAlive").arg(keepAlive);
     conBody.invoke(options, "setConnectTimeout").arg(connTimeout);
     conBody.invoke(options, "setIdleTimeout").arg(idleTimeout);
 
-    JExpression vertx = jcodeModel
-        .ref("org.folio.rest.tools.utils.VertxUtils")
-        .staticInvoke("getVertxFromContextOrNew");
-    conBody.assign(httpClient, vertx.invoke("createHttpClient").arg(options));
+    JExpression client = jcodeModel
+        .ref("io.vertx.ext.web.client.WebClient")
+        .staticInvoke("create").arg(jcodeModel
+        .ref("org.folio.rest.tools.utils.VertxUtils").staticInvoke("getVertxFromContextOrNew")).arg(options);
+    conBody.assign(webClient, client);
   }
 
   /**
@@ -314,12 +316,12 @@ public class ClientGenerator {
       okapiUrl = jc.field(JMod.PRIVATE, String.class, OKAPI_URL);
 
       /* class variable to http options */
-      JFieldVar options = jc.field(JMod.PRIVATE, HttpClientOptions.class, "options");
+      JFieldVar options = jc.field(JMod.PRIVATE, WebClientOptions.class, "options");
 
       /* class variable to http client */
-      JFieldVar httpClient = jc.field(JMod.PRIVATE, HttpClient.class, "httpClient");
+      JFieldVar webClient = jc.field(JMod.PRIVATE, WebClient.class, "httpClient");
 
-      addConstructorOkapi6Args(tokenVar, options, httpClient);
+      addConstructorOkapi6Args(tokenVar, options, webClient);
       addConstructorOkapi4Args();
       addConstructorOkapi3Args();
 
@@ -401,9 +403,9 @@ public class ClientGenerator {
     //////////////////////////////////////////////////////////////////////////////////////
 
     /* create the http client request object */
-    body.directStatement("io.vertx.core.http.HttpClientRequest request = httpClient."+
-        httpVerb.substring(httpVerb.lastIndexOf('.')+1).toLowerCase()+"Abs(okapiUrl+"+url+");");
-    body.directStatement("request.handler(responseHandler);");
+    final String httpMethodName = httpVerb.substring(httpVerb.lastIndexOf('.') + 1).toUpperCase();
+    body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = httpClient.requestAbs("+
+        "io.vertx.core.http.HttpMethod."+ httpMethodName +", okapiUrl+"+url+");");
 
     /* add headers to request */
     functionSpecificHeaderParams.forEach(body::directStatement);
@@ -437,17 +439,17 @@ public class ClientGenerator {
     ifClause2._then().directStatement("request.putHeader(\"X-Okapi-Url\", okapiUrl);");
 
     /* add response handler to each function */
-    JClass handler = jcodeModel.ref(Handler.class).narrow(HttpClientResponse.class);
+    JClass handler = jcodeModel.ref(HttpResponse.class).narrow(Buffer.class);
+    handler = jcodeModel.ref(AsyncResult.class).narrow(handler);
+    handler = jcodeModel.ref(Handler.class).narrow(handler);
     jmCreate.param(handler, "responseHandler");
 
     /* if we need to pass data in the body */
     if(bodyContentExists[0]){
-      body.directStatement("request.putHeader(\"Content-Length\", buffer.length()+\"\");");
-      body.directStatement("request.setChunked(true);");
-      body.directStatement("request.write(buffer);");
+      body.directStatement("request.sendBuffer(buffer, responseHandler);");
+    } else {
+      body.directStatement("request.send(responseHandler);");
     }
-
-    body.directStatement("request.end();");
   }
 
   private void addParameter(ParameterDetails details) {

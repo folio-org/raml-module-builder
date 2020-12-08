@@ -1,14 +1,12 @@
 package org.folio.rest.tools.utils;
 
-import java.lang.invoke.MethodHandles;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 public class VertxUtils {
-  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  private static final Logger log = LogManager.getLogger(VertxUtils.class);
 
   private VertxUtils() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");

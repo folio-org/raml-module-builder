@@ -17,8 +17,6 @@ import java.util.UUID;
 
 import javax.ws.rs.core.Response;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgException;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Error;
@@ -53,8 +51,6 @@ import junit.framework.AssertionFailedError;
 
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
-  static Logger log = LoggerFactory.getLogger(PgUtilIT.class);
-
   @Rule
   public Timeout timeoutRule = Timeout.seconds(40);
 
