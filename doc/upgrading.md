@@ -42,7 +42,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   [RMB RestVerticle](https://github.com/folio-org/raml-module-builder#restverticle) and
   [MODINVSTOR-635](https://issues.folio.org/browse/MODINVSTOR-635).
 * Update the module descriptor - usually `descriptors/ModuleDescriptor-template.json` - to
-  tenant interface version 2. Replace the old `_tenant` provides with
+  tenant interface version 2. Replace the old `_tenant` "provides" with
 ```json
     "provides" : [ {
        "id" : "_tenant",
