@@ -74,7 +74,9 @@ public class DomainModelsMojo extends AbstractMojo {
     System.err.println("DomainModelsMojo.execute()");
     System.err.println("generateInterfaces=" + generateInterfaces);
     System.err.println("generateClients=" + generateClients);
-    System.err.println("baseDir = " + (project == null ? "" : project.getBasedir()));
+    System.err.println("project.baseDir = " + (project == null ? "" : project.getBasedir()));
+    System.err.println("project.name = " + (project == null ? "" : project.getName()));
+    System.err.println("project.actifactId = " + (project == null ? "" : project.getArtifactId()));
 
     if (ramlDirs != null) {
       System.out.println("ramlDirs.size=" + ramlDirs.length);
@@ -94,6 +96,7 @@ public class DomainModelsMojo extends AbstractMojo {
     try {
       if (generateInterfaces) {
         generateInterfaces();
+        ModuleNameWriter.writeModuleNameClass(project);
       }
       if (generateClients) {
         ClientGenerator.generate(project.getBasedir().getAbsolutePath(), true);

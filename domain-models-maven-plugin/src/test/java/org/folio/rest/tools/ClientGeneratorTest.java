@@ -42,7 +42,7 @@ public class ClientGeneratorTest {
     Assert.assertTrue(expectedClient.exists());
 
     // IDEs always removes trailing spaces from edited files, but java code generator adds then,
-    // so we nee to remove them before the comparison
+    // so we need to remove them before the comparison
 
     String actual = removeTrailingSpaces(FileUtils.readFileToString(expectedClient, StandardCharsets.UTF_8));
 
