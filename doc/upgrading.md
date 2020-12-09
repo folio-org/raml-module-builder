@@ -50,12 +50,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
        "interfaceType" : "system",
        "handlers" : [ {
          "methods" : [ "POST" ],
-         "pathPattern" : "/_/tenant",
-         "permissionsRequired" : [ ]
+         "pathPattern" : "/_/tenant"
        }, {
          "methods" : [ "GET", "DELETE" ],
-         "pathPattern" : "/_/tenant/{id}",
-         "permissionsRequired" : [ ]
+         "pathPattern" : "/_/tenant/{id}"
        } ]
     } ]
 ```
