@@ -8,6 +8,7 @@ import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -104,6 +105,9 @@ public class PgUtilIT {
   }
 
   private static final String DUMMY_VAL = "dummy value set by trigger";
+  
+  // a special user name used to test 409 response
+  private static final String USER_409 = "user_409_raise_exception";
 
   private static void createUserTable(TestContext context) {
     execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
@@ -125,6 +129,15 @@ public class PgUtilIT {
     execute(context, "CREATE TRIGGER idusername BEFORE INSERT OR UPDATE ON " + schema + ".users "
                      + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".dummy();");
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
+
+    // when user_409 is updated, raise exception and test 409 response
+    execute(context, "CREATE FUNCTION " + schema + ".raise_409() RETURNS TRIGGER AS "
+        + "$$ BEGIN IF NEW.jsonb->>'username' = '" + USER_409 
+        + "' THEN RAISE EXCEPTION '" + PgUtil.ERR_MSG_409 + "'; END IF; RETURN NEW; "
+        + "END; $$ language 'plpgsql';");
+    execute(context, "CREATE TRIGGER trigger_409 BEFORE UPDATE ON " + schema + ".users "
+            + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".raise_409();");
+    
     LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
   }
 
@@ -598,6 +611,16 @@ public class PgUtilIT {
   }
 
   @Test
+  public void put409(TestContext testContext) {
+    String uuid = randomUuid();
+    post(testContext, "user_" + uuid, uuid, 201);
+    PgUtil.put("users", new User().withUsername(USER_409).withId(uuid), uuid,
+        okapiHeaders, vertx.getOrCreateContext(),
+        Users.PutUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 409));
+  }
+
+  @Test
   public void putInvalidUuid(TestContext testContext) {
     PgUtil.put("users", new User().withUsername("Bö"), "SomeInvalidUuid",
         okapiHeaders, vertx.getOrCreateContext(),
@@ -708,6 +731,16 @@ public class PgUtilIT {
     PgUtil.postSync("users", Arrays.asList(new User [1001]), 1000, true, okapiHeaders, vertx.getOrCreateContext(),
         PostUsersResponse.class, asyncAssertSuccess(testContext, 413,
             "Expected a maximum of 1000 records to prevent out of memory but got 1001"));
+  }
+
+  @Test
+  public void postSync409(TestContext testContext) {
+    List<User> users = new ArrayList<>();
+    String uuid = randomUuid();
+    users.add(new User().withUsername("user_" + randomUuid()).withId(uuid));
+    users.add(new User().withUsername(USER_409).withId(uuid));
+    PgUtil.postSync("users", users, 10, true, okapiHeaders, vertx.getOrCreateContext(),
+        PostUsersResponse.class, asyncAssertSuccess(testContext, 409));
   }
 
   @Test
@@ -1354,6 +1387,9 @@ public class PgUtilIT {
     }
     public static Response respond404WithTextPlain(Object entity) {
       return plain(404, entity);
+    }
+    public static Response respond409WithTextPlain(Object entity) {
+      return plain(409, entity);
     }
     public static Response respond500WithTextPlain(Object entity) {
       return plain(500, entity);
