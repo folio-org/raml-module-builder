@@ -3,6 +3,7 @@ package org.folio.rest;
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -66,10 +67,15 @@ public class ApiTestBase {
         header("x-okapi-tenant", "testlib").
         contentType(ContentType.JSON);
 
-    // delete tenant (schema, tables, ...) if it exists from previous tests, ignore errors.
-    given(r).
-    when().delete("/_/tenant").
-    then();
+    // delete tenant (schema, tables, ...) if it exists from previous tests
+    TenantAttributes delete = new TenantAttributes()
+        .withModuleFrom("mod-api-0.0.0")
+        .withParameters(Collections.singletonList(
+            new Parameter().withKey("purge").withValue("true")));
+    given(r)
+    .body(Json.encode(delete))
+    .when().post("/_/tenant")
+    .then();  // ignore errors
 
     List<Parameter> list = new LinkedList<>();
     list.add(new Parameter().withKey("loadReference").withValue("true"));
