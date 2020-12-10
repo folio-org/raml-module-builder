@@ -961,12 +961,11 @@ public final class PgUtil {
       return;
     }
 
-    final Method respond409 = getRespond409(clazz);
-
     try {
       Method respond204 = clazz.getMethod(RESPOND_204);
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
+      final Method respond409 = getRespond409(clazz);
       if (! UuidUtil.isUuid(id)) {
         asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
         return;
@@ -1041,10 +1040,9 @@ public final class PgUtil {
       return;
     }
 
-    final Method respond409 = getRespond409(responseClass);
-
     try {
       Method respond201 = responseClass.getMethod(RESPOND_201);
+      final Method respond409 = getRespond409(responseClass);
       Method respond413 = responseClass.getMethod(RESPOND_413_WITH_TEXT_PLAIN, Object.class);
       if (entities != null && entities.size() > maxEntities) {
         String message = "Expected a maximum of " + maxEntities
