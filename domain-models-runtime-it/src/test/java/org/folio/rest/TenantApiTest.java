@@ -1,12 +1,11 @@
 package org.folio.rest;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.Matchers.hasSize;
 
 import java.util.Random;
 
-import io.restassured.response.Response;
-import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.RestAssured;
@@ -23,15 +22,15 @@ public class TenantApiTest extends ApiTestBase {
 
   @Test
   void post() {
-    Response response = given(r).
+    String location = given(r).
         header("x-okapi-tenant", randomTenant()).
         header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
         body("{\"module_to\":\"mod-api-1.0.0\"}").
         when().post("/_/tenant").
         then().
-        statusCode(201).extract().response();
-    String location = response.getHeader("Location");
-    Assert.assertTrue(location, location.startsWith("/_/tenant/"));
+        statusCode(201).
+        header("Location", startsWith("/_/tenant/")).
+        extract().header("Location");
 
     given(r).
         get(location + "?wait=5000").
@@ -44,16 +43,16 @@ public class TenantApiTest extends ApiTestBase {
   // mod-event-config /_/tenant with "X-Okapi-Request-Id: 1" fails with 500 Internal Server Error
   @Test
   void posttWithRequestId() {
-    Response response = given(r).
+    String location = given(r).
         header("x-okapi-tenant", randomTenant()).
         header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
         header("X-Okapi-Request-Id", "1").
         body("{\"module_to\":\"mod-api-1.0.0\"}").
         when().post("/_/tenant").
         then().
-        statusCode(201).extract().response();
-    String location = response.getHeader("Location");
-    Assert.assertTrue(location, location.startsWith("/_/tenant/"));
+        statusCode(201).
+        header("Location", startsWith("/_/tenant/")).
+        extract().header("Location");
 
     given(r).
         get(location + "?wait=5000").
