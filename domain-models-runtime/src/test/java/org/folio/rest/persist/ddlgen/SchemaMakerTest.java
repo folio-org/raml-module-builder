@@ -229,7 +229,7 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.DELETE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), allOf(
+    assertThat(tidy(schemaMaker.generatePurge()), allOf(
         containsString("DROP SCHEMA "), containsString("DROP ROLE ")));
   }
 

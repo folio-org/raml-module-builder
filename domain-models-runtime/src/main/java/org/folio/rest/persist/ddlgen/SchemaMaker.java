@@ -40,9 +40,8 @@ public class SchemaMaker {
   private Schema previousSchema;
   private String schemaJson = "{}";
 
-  /**
-   * @param onTable
-   */
+
+
   public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion, String newVersion){
     if(SchemaMaker.cfg == null){
       //do this ONLY ONCE
@@ -65,31 +64,43 @@ public class SchemaMaker {
     return generateDDL(false);
   }
 
-  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException {
+  public String generatePurge() throws IOException, TemplateException {
+    return generateDDL("delete.ftl");
+  }
 
+  public String generateSchemas() throws IOException, TemplateException {
+    templateInput.put("schemaJson", this.getSchemaJson());
+
+    templateInput.put("tables", tables());
+
+    templateInput.put("views", this.schema.getViews());
+
+    templateInput.put("scripts", this.schema.getScripts());
+
+    templateInput.put("exactCount", this.schema.getExactCount()+"");
+
+    return generateDDL("schemas.ftl");
+  }
+
+  public String generateCreate(String jobId) throws IOException, TemplateException {
+    templateInput.put("jobId", jobId);
+    return generateDDL("create.ftl");
+  }
+
+  private String generateDDL(String template) throws IOException, TemplateException {
     templateInput.put("myuniversity", this.tenant);
 
     templateInput.put("mymodule", this.module);
 
     templateInput.put("mode", this.mode);
 
-    if("delete".equalsIgnoreCase(this.mode.name())){
-      return handleDelete();
-    }
-
-    if(this.schema == null){
-      //log this
-      System.out.print("Must call setSchema() first...");
-      return null;
-    }
-
     String pVersion = this.previousVersion;
 
-    if(pVersion == null){
+    if (pVersion == null){
       //will be null on deletes unless its read from db by rmb
       pVersion = "0.0";
     }
-    if(newVersion == null){
+    if (newVersion == null){
       newVersion = "0.0";
     }
 
@@ -101,30 +112,19 @@ public class SchemaMaker {
     //version, to check if core rmb scripts need updating due to an update
     templateInput.put("rmbVersion", this.rmbVersion);
 
-    templateInput.put("schemaJson", this.getSchemaJson());
-
-    schema.setup();
-    if (previousSchema != null) {
-      previousSchema.setup();
-    }
-
-    templateInput.put("tables", tables());
-
-    templateInput.put("views", this.schema.getViews());
-
-    templateInput.put("scripts", this.schema.getScripts());
-
-    templateInput.put("exactCount", this.schema.getExactCount()+"");
-
-    String template = "main.ftl";
-    if(recreateIndexMode){
-      template = "indexes_only.ftl";
-    }
     Template tableTemplate = cfg.getTemplate(template);
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
 
     return writer.toString();
+  }
+
+  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException {
+    if (recreateIndexMode) {
+      return generateDDL("indexes_only.ftl");
+    } else {
+      return generateCreate("1") + generateSchemas();
+    }
   }
 
   private String handleDelete() throws IOException, TemplateException {
@@ -213,6 +213,7 @@ public class SchemaMaker {
 
   public void setSchema(Schema schema) {
     this.schema = schema;
+    schema.setup();
   }
 
   public Schema getPreviousSchema() {
@@ -221,6 +222,9 @@ public class SchemaMaker {
 
   public void setPreviousSchema(Schema previousSchema) {
     this.previousSchema = previousSchema;
+    if (previousSchema !=  null) {
+      previousSchema.setup();
+    }
   }
 
   public String getSchemaJson() {
