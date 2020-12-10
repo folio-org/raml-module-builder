@@ -30,7 +30,9 @@ public class ModuleNameWriter {
     project.addCompileSourceRoot(sourceRoot.getPath());
     Path dir = new File(sourceRoot, "org/folio/rest/tools/utils").toPath();
     Files.createDirectories(dir);
-    String moduleName = project.getArtifactId().replace('-', '_');
+    project.getParentArtifact();
+    String moduleName = project.getParent() == null ? project.getArtifactId() : project.getParent().getArtifactId();
+    moduleName = moduleName.replace('-', '_');
     Files.writeString(dir.resolve("ModuleName.java"), JAVA.replace("{}", moduleName));
   }
 }

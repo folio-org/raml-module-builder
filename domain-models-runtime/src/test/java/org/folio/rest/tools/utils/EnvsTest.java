@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,6 +15,11 @@ import org.junit.Test;
 import io.vertx.core.json.JsonObject;
 
 public class EnvsTest {
+  @AfterClass
+  public static void restoreEnv() {
+    Envs.setEnv(System.getenv());
+  }
+
   @Before
   public void setUp() {
     Map<String, String> map = new HashMap<>();

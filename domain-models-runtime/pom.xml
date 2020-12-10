@@ -444,7 +444,7 @@
                   <!-- exclude ModuleName, domain-models-maven-plugin will create it -->
                   <artifact>org.folio:domain-models-api-interfaces</artifact>
                   <excludes>
-                    <exclude>org/folio/rest/tools/utils/ModuleWriter.class</exclude>
+                    <exclude>org/folio/rest/tools/utils/ModuleName.class</exclude>
                   </excludes>
                 </filter>
                 <filter>

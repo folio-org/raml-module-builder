@@ -17,16 +17,13 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -547,28 +544,18 @@ public class TenantLoadingTest {
   }
 
   @Test
-  public void testFilesfromExistingJar(TestContext context) {
-    List<URL> urls = new LinkedList<>();
-    InputStream s = null;
-    try {
-      // load resources from "overrides" in domain-models-interface-extensions
-      urls = TenantLoading.getURLsFromClassPathDir("overrides");
-      if (!urls.isEmpty()) {
-        URL url = urls.get(0);
-        if (url != null) {
-          s = url.openStream();
+  public void testFilesfromExistingJar(TestContext context) throws Exception {
+    // load a resource like META-INF/vertx/vertx-version.txt that a vertx jar ships with
+    List<URL> urls = TenantLoading.getURLsFromClassPathDir("META-INF/vertx");
+    for (URL url : urls) {
+      try (InputStream inputStream = url.openStream()) {
+        if (inputStream.available() > 0) {
+          return; // success
         }
-        if (s != null) {
-          s.close();
-        }
+        // otherwise this might be a directory, so try next
       }
-    } catch (IOException ex) {
-
-    } catch (URISyntaxException ex) {
-
     }
-    context.assertFalse(urls.isEmpty());
-    context.assertNotNull(s);
+    context.fail("Cannot read a file from jar: " + urls);
   }
 
   @Test

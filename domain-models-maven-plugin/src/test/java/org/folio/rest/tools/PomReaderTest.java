@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
-import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -46,9 +45,9 @@ class PomReaderTest {
   void readFromJar() throws IOException, XmlPullParserException {
     PomReader pom = PomReader.INSTANCE;
 
-    pom.readIt(null, "META-INF/maven");  // force reading from Jar
+    pom.readIt(null, "META-INF/maven/io.vertx");  // force reading from Jar
     // first dependency in main pom
-    assertThat(pom.getModuleName(), anyOf(is("vertx_parent"), is("surefire"), is("maven")));
+    assertThat(pom.getModuleName(), is("vertx_parent"));
   }
 
   @Test
