@@ -8,7 +8,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -27,7 +26,6 @@ import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class SchemaMakerIT extends PostgresClientITBase {
-  private UUID jobId = UUID.randomUUID();
   @Rule
   public Timeout rule = Timeout.seconds(15);
 
