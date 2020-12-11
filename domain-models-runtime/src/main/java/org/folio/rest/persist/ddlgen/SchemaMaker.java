@@ -40,9 +40,8 @@ public class SchemaMaker {
   private Schema previousSchema;
   private String schemaJson = "{}";
 
-
-
-  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion, String newVersion){
+  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion,
+                     String newVersion) {
     if(SchemaMaker.cfg == null){
       //do this ONLY ONCE
       SchemaMaker.cfg = new Configuration(new Version(2, 3, 26));
@@ -58,10 +57,6 @@ public class SchemaMaker {
     this.previousVersion = previousVersion;
     this.newVersion = newVersion;
     this.rmbVersion = RmbVersion.getRmbVersion();
-  }
-
-  public String generateDDL() throws IOException, TemplateException {
-    return generateDDL(false);
   }
 
   public String generatePurge() throws IOException, TemplateException {
@@ -82,8 +77,7 @@ public class SchemaMaker {
     return generateDDL("schemas.ftl");
   }
 
-  public String generateCreate(String jobId) throws IOException, TemplateException {
-    templateInput.put("jobId", jobId);
+  public String generateCreate() throws IOException, TemplateException {
     return generateDDL("create.ftl");
   }
 
@@ -119,19 +113,12 @@ public class SchemaMaker {
     return writer.toString();
   }
 
-  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException {
-    if (recreateIndexMode) {
-      return generateDDL("indexes_only.ftl");
-    } else {
-      return generateCreate("1") + generateSchemas();
-    }
+  public String generateDDL() throws IOException, TemplateException {
+    return generateCreate() + generateSchemas();
   }
 
-  private String handleDelete() throws IOException, TemplateException {
-    Writer writer = new StringWriter();
-    Template tableTemplate = cfg.getTemplate("delete.ftl");
-    tableTemplate.process(templateInput, writer);
-    return writer.toString();
+  public String generateIndexesOnly() throws IOException, TemplateException {
+    return generateDDL("indexes_only.ftl");
   }
 
   /**

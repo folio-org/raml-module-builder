@@ -119,8 +119,10 @@ public class TenantAPIIT {
         }
         context.assertEquals(201, res1.getStatus());
         TenantJob job = (TenantJob) res1.getEntity();
-        tenantAPI.getTenantByOperationId(job.getId(), 0 /*TIMER_WAIT*/, okapiHeaders, onSuccess(context, res2 -> {
+        tenantAPI.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 -> {
           context.assertEquals(200, res2.getStatus());
+          TenantJob o = (TenantJob) res2.getEntity();
+          context.assertTrue(o.getComplete());
             tenantAPI.deleteTenantByOperationId(job.getId(), okapiHeaders, onSuccess(context, res3 -> {
               context.assertEquals(204, res3.getStatus());
               tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
@@ -143,18 +145,20 @@ public class TenantAPIIT {
     api.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
       TenantJob job = (TenantJob) res1.getEntity();
       id.append(job.getId());
-      api.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 ->
-          api.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
-            context.assertTrue(bool, "tenant exists after post");
-            async.complete();
-          }))
-      ), vertx.getOrCreateContext());
+      api.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 -> {
+        TenantJob o = (TenantJob) res2.getEntity();
+        context.assertTrue(o.getComplete());
+        api.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
+          context.assertTrue(bool, "tenant exists after post");
+          async.complete();
+        }));
+      }), vertx.getOrCreateContext());
     }), vertx.getOrCreateContext());
     async.await();
     return id.toString();
   }
 
-  public boolean tenantGet(TestContext context) {
+    public boolean tenantGet(TestContext context) {
     boolean [] result = new boolean [1];
     Async async = context.async();
     vertx.runOnContext(run -> {
@@ -361,7 +365,7 @@ public class TenantAPIIT {
   public void postWithSqlFileIOException(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, String jobId, Schema previousSchema)
+      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
           throws IOException {
         throw new IOException();
       }
@@ -373,7 +377,7 @@ public class TenantAPIIT {
   public void postWithSqlFileTemplateException(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, String jobId, Schema previousSchema)
+      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
           throws TemplateException {
         throw new TemplateException(null);
       }

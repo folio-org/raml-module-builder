@@ -7,6 +7,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import java.io.IOException;
@@ -45,7 +46,6 @@ public class TenantAPI implements Tenant {
 
   private static final Logger log = LogManager.getLogger(TenantAPI.class);
 
-  private static Map<String, TenantJob> jobs = new HashMap<>();
   private static Map<String, List<Promise<Void>>> waiters = new HashMap<>();
 
   PostgresClient postgresClient(Context context) {
@@ -127,7 +127,7 @@ public class TenantAPI implements Tenant {
    * @throws TemplateException when processing templates/db_scripts/schema.json fails
    */
   public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes tenantAttributes,
-      String jobId, Schema previousSchema) throws IOException, TemplateException {
+      Schema previousSchema) throws IOException, TemplateException {
 
     InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(getTablePath());
     if (tableInput == null) {
@@ -157,7 +157,7 @@ public class TenantAPI implements Tenant {
     sMaker.setPreviousSchema(previousSchema);
 
     String [] scripts = new String[2];
-    scripts[0] = sMaker.generateCreate(jobId);
+    scripts[0] = sMaker.generateCreate();
     scripts[1] = sMaker.generateSchemas();
     log.debug("GENERATED SCHEMA " + scripts[0]);
     return scripts;
@@ -176,12 +176,12 @@ public class TenantAPI implements Tenant {
   }
 
   private Future<String[]> sqlFile(Context context, String tenantId,
-                                   TenantAttributes tenantAttributes, String jobId, boolean tenantExists) {
+                                   TenantAttributes tenantAttributes, boolean tenantExists) {
 
     return previousSchema(context, tenantId, tenantExists)
         .compose(previousSchema -> {
           try {
-            String [] sqlFile = sqlFile(tenantId, tenantExists, tenantAttributes, jobId, previousSchema);
+            String [] sqlFile = sqlFile(tenantId, tenantExists, tenantAttributes, previousSchema);
             return Future.succeededFuture(sqlFile);
           } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -199,23 +199,35 @@ public class TenantAPI implements Tenant {
     return Future.<RowSet<Row>>future(promise -> postgresClient(context).execute(sql, promise)).mapEmpty();
   }
 
+
   Future<TenantJob> getJob(String tenantId, String jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
     String sql = "SELECT jsonb FROM " + table + " WHERE id = '" + jobId + "'";
-    return Future.<RowSet<Row>>future(promise -> postgresClient(context).select(sql, promise))
+    return Future.<Row>future(promise -> postgresClient(context).selectSingle(sql, promise))
         .compose(reply -> {
-          if (reply.size() < 1) {
+          if (reply == null) {
             return Future.failedFuture("Job not found " + jobId);
           }
-          TenantJob job = jobs.get(jobId);
-          if (job == null) {
-            return Future.failedFuture("Job not found xxxxxxxxxxx " + jobId);
-          }
-          return Future.succeededFuture(job);
+          JsonObject o = reply.getJsonObject(0);
+          return Future.succeededFuture(o.mapTo(TenantJob.class));
         });
   }
 
-/**
+  Future<Void> updateJob(TenantJob tenantJob, Context context) {
+    String table = PostgresClient.convertToPsqlStandard(tenantJob.getTenant()) + ".rmb_job";
+    String sql = "UPDATE " + table
+        + " SET jsonb = '" + Json.encode(tenantJob) + "'::JSONB"
+        + " WHERE id = '" + tenantJob.getId() + "'";
+    return Future.<RowSet<Row>>future(promise -> postgresClient(context).execute(sql, promise)).mapEmpty();
+  }
+
+  Future<Void> removeJob(String tenantId, String jobId, Context context) {
+    String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
+    String sql = "DELETE FROM  " + table + " WHERE id = '" + jobId + "'::UUID";
+    return Future.<RowSet<Row>>future(promise -> postgresClient(context).execute(sql, promise)).mapEmpty();
+  }
+
+  /**
  * Installs or upgrades a module for a tenant.
  *
  * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
@@ -241,7 +253,6 @@ public class TenantAPI implements Tenant {
     job.setTenantAttributes(tenantAttributes);
     job.setComplete(false);
 
-    jobs.put(id, job);
     String location = "/_/tenant/" + id;
     boolean purge = tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge());
     tenantExists(context, tenantId)
@@ -254,7 +265,7 @@ public class TenantAPI implements Tenant {
         handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(tenantId + " does not exist")));
         return;
       }
-      sqlFile(context, tenantId, tenantAttributes, id, exists)
+      sqlFile(context, tenantId, tenantAttributes, exists)
           .onFailure(cause -> {
             log.error("{}", cause.getMessage(), cause);
             handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
@@ -296,7 +307,7 @@ public class TenantAPI implements Tenant {
                           });
                     } else {
                       // on purge async we do nothing but marking it complete
-                      completeJob(job);
+                      completeJob(job, context);
                     }
                   }
                 });
@@ -304,15 +315,22 @@ public class TenantAPI implements Tenant {
     });
   }
 
-  private void completeJob(TenantJob job) {
+  private void completeJob(TenantJob job, Context context) {
     job.setComplete(true);
-    List<Promise<Void>> promises = waiters.remove(job.getId());
-    if (promises != null) {
-      for (Promise<Void> promise : promises) {
-        promise.tryComplete();
+    updateJob(job, context).onComplete(res -> {
+      if (res.failed()) {
+        log.error("updateJob FAILED");
+        log.error(res.cause().getMessage(), res.cause());
       }
-    }
+      List<Promise<Void>> promises = waiters.remove(job.getId());
+      if (promises != null) {
+        for (Promise<Void> promise : promises) {
+          promise.tryComplete();
+        }
+      }
+    });
   }
+
   private Future<Void> runAsync(TenantAttributes tenantAttributes, String file, TenantJob job, Map<String, String> headers, Context context) {
     return postgresClient(context).runSQLFile(file, true)
         .compose(res -> {
@@ -329,7 +347,7 @@ public class TenantAPI implements Tenant {
           if (res.failed()) {
             job.setError(res.cause().getMessage());
           }
-          completeJob(job);
+          completeJob(job, context);
         }).mapEmpty();
   }
 
@@ -355,20 +373,8 @@ public class TenantAPI implements Tenant {
       if (!exists) {
         return Future.failedFuture("Tenant not found " + tenantId);
       }
-      String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
-      String sql = "SELECT jsonb FROM " + table + " WHERE id = '" + jobId + "'";
-      return Future.<RowSet<Row>>future(promise -> postgresClient(context).select(sql, promise))
-          .compose(reply -> {
-            if (reply.size() < 1) {
-              return Future.failedFuture("Job not found " + jobId);
-            }
-            TenantJob job = jobs.get(jobId);
-            if (job == null) {
-              return Future.failedFuture("Job not found xxxxxxxxxxx " + jobId);
-            }
-            return Future.succeededFuture(job);
-          });
-        });
+      return getJob(tenantId, jobId, context);
+    });
   }
 
   @Override
@@ -390,6 +396,7 @@ public class TenantAPI implements Tenant {
           handler.handle(Future.succeededFuture(response));
         })
         .onFailure(cause -> {
+          log.error(cause.getMessage(), cause);
           Response response = GetTenantByOperationIdResponse.respond404WithTextPlain(cause.getMessage());
           handler.handle(Future.succeededFuture(response));
         });
@@ -400,23 +407,27 @@ public class TenantAPI implements Tenant {
                                         Handler<AsyncResult<Response>> handler, Context context) {
     String tenantId = TenantTool.tenantId(headers);
     checkJob(tenantId, operationId, context)
-        .compose(job -> {
-          TenantAttributes attributes = job.getTenantAttributes();
-          if (attributes != null && Boolean.TRUE.equals(attributes.getPurge())) {
-            return runAsync(attributes, sqlFilePurge(tenantId), job, headers, context)
-                .onSuccess(res -> PostgresClient.closeAllClients(tenantId));
-          }
-          return Future.succeededFuture();
-        })
-        .onSuccess(res -> {
-          jobs.remove(operationId);
-          Response response = DeleteTenantByOperationIdResponse.respond204();
-          handler.handle(Future.succeededFuture(response));
-        })
         .onFailure(cause -> {
           log.error("{}", cause.getMessage(), cause);
           Response response = DeleteTenantByOperationIdResponse.respond404WithTextPlain(cause.getMessage());
           handler.handle(Future.succeededFuture(response));
+        })
+        .onSuccess(job -> {
+          removeJob(tenantId, operationId, context).compose(x -> {
+            TenantAttributes attributes = job.getTenantAttributes();
+            if (attributes != null && Boolean.TRUE.equals(attributes.getPurge())) {
+              return runAsync(attributes, sqlFilePurge(tenantId), job, headers, context)
+                  .onSuccess(res -> PostgresClient.closeAllClients(tenantId));
+            }
+            return Future.succeededFuture();
+          }).onSuccess(res -> {
+            Response response = DeleteTenantByOperationIdResponse.respond204();
+            handler.handle(Future.succeededFuture(response));
+          }).onFailure(cause -> {
+            log.error("{}", cause.getMessage(), cause);
+            Response response = DeleteTenantByOperationIdResponse.respond400WithTextPlain(cause.getMessage());
+            handler.handle(Future.succeededFuture(response));
+          });
         });
   }
 

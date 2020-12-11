@@ -27,5 +27,3 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_job (
 
 </#if>
 
--- INSERT INTO ${myuniversity}_${mymodule}.rmb_job VALUES ('${jobId}'::UUID, '{"complete": false}'::JSONB );
-
