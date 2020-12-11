@@ -745,6 +745,88 @@ public final class PgUtil {
     }
   }
 
+   /**
+   * Delete records by CQL.
+   * @param table  the table that contains the records
+   * @param cql  the CQL query for filtering and sorting the records
+   * @param offset number of records to skip, use 0 or negative number for not skipping
+   * @param limit maximum number of records to return, use a negative number for no limit
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static void delete(String table,
+      String cql, int offset, int limit,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+
+    final Method respond500;
+    final Method respond400;
+    try {
+      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      return;
+    }
+
+    try {
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
+      PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
+      delete(preparedCql, okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
+    } catch (FieldException e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
+    }
+  }
+
+    static void delete(PreparedCQL preparedCql,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+
+    final Method respond500;
+    try {
+      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      return;
+    }
+
+    try {
+      Method respond200 = responseDelegateClass.getMethod(RESPOND_200_WITH_APPLICATION_JSON, Object.class);
+      Method respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+      PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+      postgresClient.delete(preparedCql.getTableName(), preparedCql.getCqlWrapper(), reply -> {
+        try {
+          if (reply.failed()) {
+            String message = PgExceptionUtil.badRequestMessage(reply.cause());
+            if (message == null) {
+              message = reply.cause().getMessage();
+            }
+            logger.error(message, reply.cause());
+            asyncResultHandler.handle(response(message, respond400, respond500));
+            return;
+          }
+          asyncResultHandler.handle(response(respond200, respond500));
+        } catch (Exception e) {
+          logger.error(e.getMessage(), e);
+          asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+        }
+      });
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+    }
+  }
+
   /**
    * Get a record by id.
    *
