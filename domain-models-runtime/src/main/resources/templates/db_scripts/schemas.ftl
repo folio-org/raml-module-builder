@@ -1,3 +1,5 @@
+SET search_path TO ${myuniversity}_${mymodule};
+
 -- List of all indexes maintained by RMB
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
   name text PRIMARY KEY,

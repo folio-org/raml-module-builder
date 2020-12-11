@@ -40,8 +40,11 @@ public class SchemaMakerIT extends PostgresClientITBase {
           tenantOperation, "mod-foo-18.2.3", "mod-foo-18.2.4");
       String json = ResourceUtil.asString("templates/db_scripts/" + filename);
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-      String sql = schemaMaker.generateDDL();
+      String sql = schemaMaker.generateCreate("1234");
       runSqlFileAsSuperuser(context, sql);
+      sql = schemaMaker.generateSchemas();
+      runSqlFileAsSuperuser(context, sql);
+
     } catch (Exception e) {
       context.fail(e);
     }
