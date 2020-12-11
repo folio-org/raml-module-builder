@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -26,6 +27,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class SchemaMakerIT extends PostgresClientITBase {
+  private UUID jobId = UUID.randomUUID();
   @Rule
   public Timeout rule = Timeout.seconds(15);
 
@@ -40,11 +42,10 @@ public class SchemaMakerIT extends PostgresClientITBase {
           tenantOperation, "mod-foo-18.2.3", "mod-foo-18.2.4");
       String json = ResourceUtil.asString("templates/db_scripts/" + filename);
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-      String sql = schemaMaker.generateCreate("1234");
+      String sql = schemaMaker.generateCreate(jobId.toString());
       runSqlFileAsSuperuser(context, sql);
       sql = schemaMaker.generateSchemas();
       runSqlFileAsSuperuser(context, sql);
-
     } catch (Exception e) {
       context.fail(e);
     }
@@ -273,6 +274,18 @@ public class SchemaMakerIT extends PostgresClientITBase {
     runSchema(context, TenantOperation.CREATE, "schema.json");
     assertSelectSingle(context, "SELECT f_unaccent(E'a\\u0308 and a\\u0308')", "a and a");
     assertSelectSingle(context, "SELECT f_unaccent(E'b\\u20e2c\\u20e3d\\u20e4')", "bcd");
+  }
+
+  @Test
+  public void rmb_job_created(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "schema.json");
+    String sql = "SELECT jsonb FROM rmb_job WHERE id = '" + jobId.toString() + "'";
+    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
+    postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
+      context.assertEquals(1, result.size());
+      JsonObject jsonObject = result.getJsonObject(0);
+      context.assertEquals("{\"complete\":false}", jsonObject.encode());
+    }));
   }
 
   @Test

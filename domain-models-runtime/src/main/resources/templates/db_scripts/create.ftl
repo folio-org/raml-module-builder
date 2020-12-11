@@ -8,7 +8,6 @@ CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodu
 </#if>
 
 ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "$user";
-SET search_path TO ${myuniversity}_${mymodule};
 
 <#include "extensions.ftl">
 
@@ -20,6 +19,13 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
     );
 
 insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
+
+CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_job (
+      id UUID PRIMARY KEY,
+      jsonb JSONB NOT NULL
+    );
+
+INSERT INTO ${myuniversity}_${mymodule}.rmb_job VALUES ('${jobId}'::UUID, '{"complete": false}'::JSONB );
 
 </#if>
 
