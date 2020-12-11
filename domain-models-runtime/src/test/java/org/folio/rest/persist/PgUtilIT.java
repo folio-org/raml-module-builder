@@ -133,7 +133,7 @@ public class PgUtilIT {
     // when user_409 is updated, raise exception and test 409 response
     execute(context, "CREATE FUNCTION " + schema + ".raise_409() RETURNS TRIGGER AS "
         + "$$ BEGIN IF NEW.jsonb->>'username' = '" + USER_409 
-        + "' THEN RAISE EXCEPTION '" + PgUtil.ERR_MSG_409 + "'; END IF; RETURN NEW; "
+        + "' THEN RAISE EXCEPTION 'version conflict' USING ERRCODE = '" + PgExceptionUtil.VERSION_CONFLICT + "'; END IF; RETURN NEW; "
         + "END; $$ language 'plpgsql';");
     execute(context, "CREATE TRIGGER trigger_409 BEFORE UPDATE ON " + schema + ".users "
             + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".raise_409();");

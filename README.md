@@ -1480,6 +1480,10 @@ For each **table** in `tables` property:
 14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all JSON entries in the table
 15. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into `jsonb->'id'` on each insert and update.
 16. `pkColumnName` - No longer supported. The name of the primary key column is always `id` and is copied into `jsonb->'id'` in each insert and update. The method PostgresClient.setIdField(String) no longer exists.
+17. `withOptimisticLocking` - Creates insert/update trigger to auto populate/update `_version` field in the json
+    * `off` Optimistic Locking is disabled. The trigger does nothing
+    * `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged as a warning message
+    * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction
 
 The **views** section is a bit more self explanatory, as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```
@@ -1808,6 +1812,10 @@ Replace 1000 by `exactCount` if configured differently.
 ## Metadata
 
 RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT / PATCH) comes into an RMB module, RMB will check if the passed-in JSON's schema declares a reference to the metadata schema. If so, RMB will populate the JSON with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
+
+## Optimistic Locking
+
+RMB supports optimistic locking. By default it is disabled. Module developer can enable it for specific tables by updating table definition in schema.json through attribute `withOptimisticLocking`. See #17 in [table section](https://github.com/folio-org/raml-module-builder#the-post-tenant-api). Note, this would also require field `_version` to be defined in json. The version conflict error will be reported as 419 HTTP response code if defined by RAML, otherwise, it will fall back to 400 HTTP response code.
 
 ## Facet Support
 

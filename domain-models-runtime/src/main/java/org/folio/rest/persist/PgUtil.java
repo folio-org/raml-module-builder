@@ -56,7 +56,6 @@ import org.z3950.zing.cql.ModifierSet;
  * Helper methods for using PostgresClient.
  */
 public final class PgUtil {
-  static final String ERR_MSG_409 = "it has been changed";
   private static final Logger logger = LogManager.getLogger(PgUtil.class);
 
   private static final String RESPOND_200_WITH_APPLICATION_JSON = "respond200WithApplicationJson";
@@ -965,7 +964,7 @@ public final class PgUtil {
       Method respond204 = clazz.getMethod(RESPOND_204);
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
-      final Method respond409 = getRespond409(clazz);
+      Method respond409 = getRespond409(clazz);
       if (! UuidUtil.isUuid(id)) {
         asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
         return;
@@ -974,8 +973,9 @@ public final class PgUtil {
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.update(table, entity, id, reply -> {
         if (reply.failed()) {
-          if (respond409 != null && reply.cause().getMessage().contains(ERR_MSG_409)) {
-            asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond409, respond409));
+          if (PgExceptionUtil.isVersionConflict(reply.cause())) {
+            Method method = respond409 == null ? respond400 : respond409;
+            asyncResultHandler.handle(response(reply.cause().getMessage(), method, method));
           } else {
             asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           }
@@ -1042,7 +1042,8 @@ public final class PgUtil {
 
     try {
       Method respond201 = responseClass.getMethod(RESPOND_201);
-      final Method respond409 = getRespond409(responseClass);
+      Method respond400 = responseClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+      Method respond409 = getRespond409(responseClass);
       Method respond413 = responseClass.getMethod(RESPOND_413_WITH_TEXT_PLAIN, Object.class);
       if (entities != null && entities.size() > maxEntities) {
         String message = "Expected a maximum of " + maxEntities
@@ -1055,8 +1056,9 @@ public final class PgUtil {
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       Handler<AsyncResult<RowSet<Row>>> replyHandler = result -> {
         if (result.failed()) {
-          if (respond409 != null && result.cause().getMessage().contains(ERR_MSG_409)) {
-            asyncResultHandler.handle(response(result.cause().getMessage(), respond409, respond409));
+          if (PgExceptionUtil.isVersionConflict(result.cause())) {
+            Method method = respond409 == null ? respond400 : respond409;
+            asyncResultHandler.handle(response(result.cause().getMessage(), method, method));
           } else {
             asyncResultHandler.handle(response(table, /* id */ "", result.cause(),
                 responseClass, respond500, respond500));

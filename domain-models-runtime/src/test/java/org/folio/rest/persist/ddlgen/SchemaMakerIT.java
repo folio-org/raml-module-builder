@@ -415,7 +415,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
         // fail on conflict
         executeAndExpectFailure(context, updateSql, "Cannot update record", "because it has been changed");
       } else {
-        execute(context, "UPDATE " + table + " SET jsonb=jsonb_set(jsonb, '{" + olVersion + "}', to_jsonb('2'::text))");
+        execute(context, updateSql);
       }
     });
     assertThat("tab_ol_off has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(0));
@@ -423,6 +423,10 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(1));
     // update version as provided if table has no optimistic locking configuration
     assertThat("tab_ol_none has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_none")), is(2));
+    // test insert with OFF
+    execute(context, "DELETE from tab_ol_off");
+    execute(context, "INSERT INTO tab_ol_off SELECT md5('abc')::uuid, jsonb_build_object('" + olVersion + "', 5)");
+    assertThat("tab_ol_off ignore version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(5));
   }
   
   private static void executeAndExpectFailure(TestContext context, String sqlStatement, String ... errMessages) {
