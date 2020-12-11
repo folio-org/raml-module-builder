@@ -407,8 +407,8 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker(tenant, module, TenantOperation.UPDATE,
         "1.0.0", "2.0.0", "templates/db_scripts/schemaWithOptimisticLocking.json");
     String ddl = schemaMaker.generateDDL();
-    // optimistic locking is configured for tab_ol_off, tab_ol_log, tab_ol_fail
-    Arrays.asList("tab_ol_off", "tab_ol_log", "tab_ol_fail").forEach(tab -> {
+    // trigger will be created for tab_ol_log, tab_ol_fail
+    Arrays.asList("tab_ol_log", "tab_ol_fail").forEach(tab -> {
       assertThat(ddl, containsString(
           String.format("CREATE OR REPLACE FUNCTION %s_%s.%s_set_ol_version()",
               tenant, module, tab)));
@@ -417,7 +417,7 @@ public class SchemaMakerTest {
       assertThat(ddl, containsString(
           String.format("CREATE TRIGGER set_%s_ol_version_trigger", tab)));
     });
-    // optimistic locking is not configured for tab_ol_none
+    // trigger will not be created for for tabl_ol_off and tab_ol_none
     assertThat(ddl, not(containsString(
         String.format("CREATE OR REPLACE FUNCTION %s_%s.%s_set_ol_version()",
             tenant, module, "tab_ol_none"))));

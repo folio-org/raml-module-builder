@@ -63,6 +63,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Query Syntax](#query-syntax)
 * [Estimated totalRecords](#estimated-totalrecords)
 * [Metadata](#metadata)
+* [Optimistic Locking](#optimistic-locking)
 * [Facet Support](#facet-support)
 * [JSON Schema fields](#json-schema-fields)
 * [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
@@ -1480,10 +1481,7 @@ For each **table** in `tables` property:
 14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all JSON entries in the table
 15. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into `jsonb->'id'` on each insert and update.
 16. `pkColumnName` - No longer supported. The name of the primary key column is always `id` and is copied into `jsonb->'id'` in each insert and update. The method PostgresClient.setIdField(String) no longer exists.
-17. `withOptimisticLocking` - Creates insert/update trigger to auto populate/update `_version` field in the json
-    * `off` Optimistic Locking is disabled. The trigger does nothing
-    * `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged as a warning message
-    * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction
+17. `withOptimisticLocking` - `off` (default), `logOnConflict`, or `failOnConflict`, for details see [Optimistic Locking section](#optimistic-locking) below
 
 The **views** section is a bit more self explanatory, as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```
@@ -1815,7 +1813,15 @@ RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/ram
 
 ## Optimistic Locking
 
-RMB supports optimistic locking. By default it is disabled. Module developer can enable it for specific tables by updating table definition in schema.json through attribute `withOptimisticLocking`. See #17 in [table section](https://github.com/folio-org/raml-module-builder#the-post-tenant-api). Note, this would also require field `_version` to be defined in json. The version conflict error will be reported as 419 HTTP response code if defined by RAML, otherwise, it will fall back to 400 HTTP response code.
+RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. The version conflict error will be reported as 419 HTTP response code if 419 is defined in RAML, otherwise, it will fall back to use 400 HTTP response code.
+
+    * `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
+    * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction
+    * `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged as a warning message with a customized SQL error code 23F09. A sample log entry looks like below:
+
+```
+Backend notice: severity='WARNING', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 1, _version of request is "2"' ...
+```
 
 ## Facet Support
 

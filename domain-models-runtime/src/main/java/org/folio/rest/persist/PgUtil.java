@@ -975,7 +975,7 @@ public final class PgUtil {
         if (reply.failed()) {
           if (PgExceptionUtil.isVersionConflict(reply.cause())) {
             Method method = respond409 == null ? respond400 : respond409;
-            asyncResultHandler.handle(response(reply.cause().getMessage(), method, method));
+            asyncResultHandler.handle(response(reply.cause().getMessage(), method, respond500));
           } else {
             asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
           }
@@ -1058,7 +1058,7 @@ public final class PgUtil {
         if (result.failed()) {
           if (PgExceptionUtil.isVersionConflict(result.cause())) {
             Method method = respond409 == null ? respond400 : respond409;
-            asyncResultHandler.handle(response(result.cause().getMessage(), method, method));
+            asyncResultHandler.handle(response(result.cause().getMessage(), method, respond500));
           } else {
             asyncResultHandler.handle(response(table, /* id */ "", result.cause(),
                 responseClass, respond500, respond500));

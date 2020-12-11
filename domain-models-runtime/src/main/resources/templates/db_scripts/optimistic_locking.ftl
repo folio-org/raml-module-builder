@@ -1,34 +1,28 @@
 -- auto update optimistic locking version
 -- ERROR code 23F09: 23 for class 23 — Integrity Constraint Violation, F for FOLIO, 09 for 409 HTTP status code
 
-<#if table.withOptimisticLocking??>
+<#if table.withOptimisticLocking?? && table.withOptimisticLocking.name() != "OFF">
   <#assign ol_version = "_version">
   CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.${table.tableName}_set_ol_version()
   RETURNS trigger AS $$
   BEGIN
     CASE TG_OP
       WHEN 'INSERT' THEN
-        <#if table.withOptimisticLocking.name() != "OFF">
           NEW.jsonb = jsonb_set(NEW.jsonb, '{${ol_version}}', to_jsonb(1));
-        </#if>
       WHEN 'UPDATE' THEN
-        <#if table.withOptimisticLocking.name() == "OFF">
-          NEW.jsonb = NEW.jsonb - '${ol_version}';
-        <#else>
-          IF NEW.jsonb->'${ol_version}' IS DISTINCT FROM OLD.jsonb->'${ol_version}' THEN
-            <#if table.withOptimisticLocking.name() == "FAIL">
-              <#assign ol_notice_level = "EXCEPTION">
-            <#else>
-              <#assign ol_notice_level = "WARNING">
-            </#if>
-            RAISE ${ol_notice_level} 'Cannot update record % because it has been changed: '
-                'Stored ${ol_version} is %, ${ol_version} of request is %',
-                OLD.id, OLD.jsonb->'${ol_version}', NEW.jsonb->'${ol_version}' 
-                USING ERRCODE = '23F09';
-          END IF;
-          NEW.jsonb = jsonb_set(NEW.jsonb, '{${ol_version}}',
-              to_jsonb(COALESCE((OLD.jsonb->>'${ol_version}')::numeric + 1, 1)));
-        </#if>
+        IF NEW.jsonb->'${ol_version}' IS DISTINCT FROM OLD.jsonb->'${ol_version}' THEN
+          <#if table.withOptimisticLocking.name() == "FAIL">
+            <#assign ol_notice_level = "EXCEPTION">
+          <#else>
+            <#assign ol_notice_level = "WARNING">
+          </#if>
+          RAISE ${ol_notice_level} 'Cannot update record % because it has been changed: '
+              'Stored ${ol_version} is %, ${ol_version} of request is %',
+              OLD.id, OLD.jsonb->'${ol_version}', NEW.jsonb->'${ol_version}' 
+              USING ERRCODE = '23F09';
+        END IF;
+        NEW.jsonb = jsonb_set(NEW.jsonb, '{${ol_version}}',
+            to_jsonb(COALESCE((OLD.jsonb->>'${ol_version}')::numeric + 1, 1)));
     END CASE;
     RETURN NEW;
   END;

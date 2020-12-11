@@ -418,7 +418,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
         execute(context, updateSql);
       }
     });
-    assertThat("tab_ol_off has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(0));
+    assertThat("tab_ol_off has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(2));
     assertThat("tab_ol_log has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_log")), is(2));
     assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(1));
     // update version as provided if table has no optimistic locking configuration
@@ -427,6 +427,10 @@ public class SchemaMakerIT extends PostgresClientITBase {
     execute(context, "DELETE from tab_ol_off");
     execute(context, "INSERT INTO tab_ol_off SELECT md5('abc')::uuid, jsonb_build_object('" + olVersion + "', 5)");
     assertThat("tab_ol_off ignore version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(5));
+    // turn off failOnConfict and test again
+    runSchema(context, TenantOperation.UPDATE, "schemaWithOptimisticLocking2.json");
+    execute(context, "UPDATE tab_ol_fail SET jsonb=jsonb_set(jsonb, '{" + olVersion + "}', to_jsonb('5'::text))");
+    assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(5));
   }
   
   private static void executeAndExpectFailure(TestContext context, String sqlStatement, String ... errMessages) {

@@ -67,7 +67,7 @@ public final class PgExceptionUtil {
   }
 
   /**
-   * Check for version conflict.
+   * Check for optimistic locking version conflict.
    * @param throwable any Throwable or null
    * @return true if throwable is a
    *   {@link io.vertx.pgclient.PgException PgException}
