@@ -22,10 +22,7 @@ import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.CoreMatchers;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import de.flapdoodle.embed.process.collections.Collections;
@@ -60,6 +57,14 @@ public class TenantAPIIT {
   @AfterClass
   public static void afterClass() {
     vertx.close();
+  }
+
+
+  @After
+  public void after(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantAttributes attributes = new TenantAttributes().withPurge(true);
+    tenantAPI.postTenantSync(attributes, okapiHeaders, context.asyncAssertSuccess(), vertx.getOrCreateContext());
   }
 
   /**
@@ -106,24 +111,25 @@ public class TenantAPIIT {
     TenantAttributes tenantAttributes = new TenantAttributes();
     tenantAttributes.setPurge(true);
     Async async = context.async();
-    vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
       tenantAPI.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
         if (res1.getStatus() == 400) {
           async.complete();
           return;
         }
+        context.assertEquals(201, res1.getStatus());
         TenantJob job = (TenantJob) res1.getEntity();
-        tenantAPI.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 -> {
+        tenantAPI.getTenantByOperationId(job.getId(), 0 /*TIMER_WAIT*/, okapiHeaders, onSuccess(context, res2 -> {
+          context.assertEquals(200, res2.getStatus());
             tenantAPI.deleteTenantByOperationId(job.getId(), okapiHeaders, onSuccess(context, res3 -> {
+              context.assertEquals(204, res3.getStatus());
               tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
                 context.assertFalse(bool, "tenant exists after purge");
                 async.complete();
               }));
-            }), Vertx.currentContext());
-        }), Vertx.currentContext());
-      }), Vertx.currentContext());
-    });
+            }), vertx.getOrCreateContext());
+        }), vertx.getOrCreateContext());
+      }), vertx.getOrCreateContext());
     async.await();
   }
 
@@ -432,15 +438,48 @@ public class TenantAPIIT {
 
   @Test
   public void getTenantByOperationIdNotFound(TestContext context) {
+    String id = tenantPost(context);    // create tenant
+
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      TenantAPI tenantAPI = new TenantAPI();
+      String unknownId = UUID.randomUUID().toString();
+      tenantAPI.getTenantByOperationId(unknownId, 0, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(404));
+        assertThat((String) result.getEntity(), is("Job not found " + unknownId));
+        async.complete();
+      }), Vertx.currentContext());
+    });
+    async.await();
+  }
+
+  @Test
+  public void getTenantByOperationTenantNotFound(TestContext context) {
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
       tenantAPI.getTenantByOperationId("1234", 0, okapiHeaders, onSuccess(context, result -> {
         assertThat(result.getStatus(), is(404));
+        assertThat((String) result.getEntity(), is("Tenant not found folio_shared"));
         async.complete();
       }), Vertx.currentContext());
     });
     async.await();
+  }
+
+  @Test
+  public void getTenantByOperationIdFound(TestContext context) {
+    String id = tenantPost(context);    // create tenant
+
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      TenantAPI tenantAPI = new TenantAPI();
+      tenantAPI.getTenantByOperationId(id, 0, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(200));
+        async.complete();
+      }), Vertx.currentContext());
+    });
+    async.awaitSuccess();
   }
 
   @Test
@@ -450,10 +489,11 @@ public class TenantAPIIT {
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.deleteTenantByOperationId("foo", okapiHeaders, onSuccess(context, result -> {
+      String unknownId = UUID.randomUUID().toString();
+      tenantAPI.deleteTenantByOperationId(unknownId, okapiHeaders, onSuccess(context, result -> {
         assertThat(result.getStatus(), is(404));
         String msg = (String) result.getEntity();
-        assertThat(msg, is("Job not found foo"));
+        assertThat(msg, is("Job not found " + unknownId));
         async.complete();
       }), Vertx.currentContext());
     });
@@ -475,21 +515,6 @@ public class TenantAPIIT {
       }), Vertx.currentContext());
     });
     async.await();
-  }
-
-  @Test
-  public void getTenantByOperationIdFound(TestContext context) {
-    String id = tenantPost(context);    // create tenant
-
-    Async async = context.async();
-    vertx.runOnContext(run -> {
-      TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.getTenantByOperationId(id, 0, okapiHeaders, onSuccess(context, result -> {
-        assertThat(result.getStatus(), is(200));
-        async.complete();
-      }), Vertx.currentContext());
-    });
-    async.awaitSuccess();
   }
 
   @Test

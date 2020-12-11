@@ -277,18 +277,6 @@ public class SchemaMakerIT extends PostgresClientITBase {
   }
 
   @Test
-  public void rmb_job_created(TestContext context) {
-    runSchema(context, TenantOperation.CREATE, "schema.json");
-    String sql = "SELECT jsonb FROM rmb_job WHERE id = '" + jobId.toString() + "'";
-    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
-    postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
-      context.assertEquals(1, result.size());
-      JsonObject jsonObject = result.getJsonObject(0);
-      context.assertEquals("{\"complete\":false}", jsonObject.encode());
-    }));
-  }
-
-  @Test
   public void concat_array_object_values(TestContext context) {
     assertSchemaSelectSingle(context, String.format(
         "SELECT concat_array_object_values('%s'::jsonb, 'f')",

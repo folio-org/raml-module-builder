@@ -6,7 +6,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import io.vertx.core.json.Json;
 import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -190,14 +193,36 @@ public class TenantAPI implements Tenant {
         });
   }
 
-  /**
-   * Installs or upgrades a module for a tenant.
-   *
-   * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
-   *
-   * @see <a href="https://github.com/folio-org/raml-module-builder#extending-the-tenant-init">Extending the Tenant Init</a>
-   *      for usage examples
-   */
+  Future<Void> saveJob(TenantJob tenantJob, String tenantId, String jobId, Context context) {
+    String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
+    String sql = "INSERT INTO " + table + " VALUES ('" + jobId + "'::UUID, '" + Json.encode(tenantJob) + "'::JSONB)";
+    return Future.<RowSet<Row>>future(promise -> postgresClient(context).execute(sql, promise)).mapEmpty();
+  }
+
+  Future<TenantJob> getJob(String tenantId, String jobId, Context context) {
+    String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
+    String sql = "SELECT jsonb FROM " + table + " WHERE id = '" + jobId + "'";
+    return Future.<RowSet<Row>>future(promise -> postgresClient(context).select(sql, promise))
+        .compose(reply -> {
+          if (reply.size() < 1) {
+            return Future.failedFuture("Job not found " + jobId);
+          }
+          TenantJob job = jobs.get(jobId);
+          if (job == null) {
+            return Future.failedFuture("Job not found xxxxxxxxxxx " + jobId);
+          }
+          return Future.succeededFuture(job);
+        });
+  }
+
+/**
+ * Installs or upgrades a module for a tenant.
+ *
+ * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
+ *
+ * @see <a href="https://github.com/folio-org/raml-module-builder#extending-the-tenant-init">Extending the Tenant Init</a>
+ *      for usage examples
+ */
   @Validate
   @Override
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
@@ -236,15 +261,17 @@ public class TenantAPI implements Tenant {
           })
           .onSuccess(files -> {
             postgresClient(context).runSQLFile(files[0], true)
+                .compose(res -> {
+                  if (!res.isEmpty()) {
+                    return Future.failedFuture(res.get(0));
+                  }
+                  return saveJob(job, tenantId, id, context);
+                })
                 .onFailure(cause -> {
+                  log.error(cause.getMessage(), cause);
                   handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
                 })
                 .onSuccess(result -> {
-                  if (!result.isEmpty()) {
-                    handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(result.get(0))));
-                    return;
-                  }
-                  // TODO : store job
                   if (async) {
                     handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
                         PostTenantResponse.headersFor201().withLocation(location))));
@@ -323,39 +350,57 @@ public class TenantAPI implements Tenant {
     postTenant(false, tenantAttributes, headers, handler, context);
   }
 
-  @Override
-  public void getTenantByOperationId(String operationId, int wait, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> handler, Context vertxContext) {
-    TenantJob job = jobs.get(operationId);
-    Response response;
-    if (job == null) {
-      response = GetTenantByOperationIdResponse.respond404WithTextPlain("Operation not found " + operationId);
-    } else {
-      if (wait > 0 && !Boolean.TRUE.equals(job.getComplete())) {
-        Promise<Void> promise = Promise.promise();
-        waiters.putIfAbsent(operationId, new LinkedList<>());
-        waiters.get(operationId).add(promise);
-        vertxContext.owner().setTimer(wait, res -> promise.tryComplete());
-        promise.future().onComplete(res -> getTenantByOperationId(operationId, 0, okapiHeaders, handler, vertxContext));
-        return;
+  Future<TenantJob> checkJob(String tenantId, String jobId, Context context) {
+    return tenantExists(context, tenantId).compose(exists -> {
+      if (!exists) {
+        return Future.failedFuture("Tenant not found " + tenantId);
       }
-      response = GetTenantByOperationIdResponse.respond200WithApplicationJson(job);
-    }
-    handler.handle(Future.succeededFuture(response));
+      String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
+      String sql = "SELECT jsonb FROM " + table + " WHERE id = '" + jobId + "'";
+      return Future.<RowSet<Row>>future(promise -> postgresClient(context).select(sql, promise))
+          .compose(reply -> {
+            if (reply.size() < 1) {
+              return Future.failedFuture("Job not found " + jobId);
+            }
+            TenantJob job = jobs.get(jobId);
+            if (job == null) {
+              return Future.failedFuture("Job not found xxxxxxxxxxx " + jobId);
+            }
+            return Future.succeededFuture(job);
+          });
+        });
+  }
+
+  @Override
+  public void getTenantByOperationId(String operationId, int wait, Map<String, String> headers,
+                                     Handler<AsyncResult<Response>> handler, Context context) {
+    String tenantId = TenantTool.tenantId(headers);
+    checkJob(tenantId, operationId, context)
+        .onSuccess(job -> {
+          Response response;
+          if (wait > 0 && !Boolean.TRUE.equals(job.getComplete())) {
+            Promise<Void> promise = Promise.promise();
+            waiters.putIfAbsent(operationId, new LinkedList<>());
+            waiters.get(operationId).add(promise);
+            context.owner().setTimer(wait, res -> promise.tryComplete());
+            promise.future().onComplete(res -> getTenantByOperationId(operationId, 0, headers, handler, context));
+            return;
+          }
+          response = GetTenantByOperationIdResponse.respond200WithApplicationJson(job);
+          handler.handle(Future.succeededFuture(response));
+        })
+        .onFailure(cause -> {
+          Response response = GetTenantByOperationIdResponse.respond404WithTextPlain(cause.getMessage());
+          handler.handle(Future.succeededFuture(response));
+        });
   }
 
   @Override
   public void deleteTenantByOperationId(String operationId, Map<String, String> headers,
                                         Handler<AsyncResult<Response>> handler, Context context) {
-    TenantJob job = jobs.get(operationId);
     String tenantId = TenantTool.tenantId(headers);
-    tenantExists(context, tenantId)
-        .compose(exists -> {
-          if (!exists) {
-            return Future.failedFuture("Tenant not found " + tenantId);
-          }
-          if (job == null) {
-            return Future.failedFuture("Job not found " + operationId);
-          }
+    checkJob(tenantId, operationId, context)
+        .compose(job -> {
           TenantAttributes attributes = job.getTenantAttributes();
           if (attributes != null && Boolean.TRUE.equals(attributes.getPurge())) {
             return runAsync(attributes, sqlFilePurge(tenantId), job, headers, context)
