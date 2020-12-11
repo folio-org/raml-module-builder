@@ -3,7 +3,6 @@ package org.folio.rest;
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +11,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import io.restassured.response.Response;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.http.ContentType;
@@ -67,30 +65,25 @@ public class ApiTestBase {
         header("x-okapi-tenant", "testlib").
         contentType(ContentType.JSON);
 
-    // delete tenant (schema, tables, ...) if it exists from previous tests
-    TenantAttributes delete = new TenantAttributes()
-        .withModuleFrom("mod-api-0.0.0")
-        .withParameters(Collections.singletonList(
-            new Parameter().withKey("purge").withValue("true")));
-    given(r)
-    .body(Json.encode(delete))
-    .when().post("/_/tenant")
-    .then();  // ignore errors
-
     List<Parameter> list = new LinkedList<>();
     list.add(new Parameter().withKey("loadReference").withValue("true"));
     TenantAttributes ta = new TenantAttributes().withModuleTo("mod-api-1.0.0").withParameters(list);
 
     // create tenant (schema, tables, ...)
-    Response response = given(r).header("x-okapi-url-to", "http://localhost:" + port).
-        contentType(ContentType.JSON)
+    String location = given(r)
+        .header("x-okapi-url-to", "http://localhost:" + port)
+        .contentType(ContentType.JSON)
         .body(Json.encode(ta))
         .when().post("/_/tenant")
-        .then().statusCode(201).extract().response();
-    String location = response.header("Location");
-    given(r).
-        when().get(location + "?wait=5000").
-        then().statusCode(200);
+        .then().statusCode(201)
+        .extract().header("Location");
+
+    given(r)
+        .header("x-okapi-url-to", "http://localhost:" + port)
+        .when().get(location + "?wait=5000")
+        .then()
+        .statusCode(200)
+        .body("error", is(nullValue()));
   }
 
   /**

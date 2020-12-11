@@ -3726,7 +3726,7 @@ public class PostgresClient {
       Handler<AsyncResult<List<String>>> replyHandler){
 
     long s = System.nanoTime();
-    log.info("Executing multiple statements with id " + Arrays.hashCode(sql));
+    log.info("Executing " + sql.length + " statements with id " + Arrays.hashCode(sql));
     List<String> results = new ArrayList<>();
     vertx.executeBlocking(dothis -> {
       Connection connection = null;
@@ -3741,14 +3741,16 @@ public class PostgresClient {
 
         for (int j = 0; j < sql.length; j++) {
           try {
-            log.info("trying to execute: " + sql[j].substring(0, Math.min(sql[j].length()-1, 1000)));
+            log.info("trying to execute " + (j + 1) + ": "
+                + sql[j].substring(0, Math.min(sql[j].length()-1, 1000)));
             if(sql[j].trim().toUpperCase().startsWith("COPY ")){
               copyIn(sql[j], connection);
             }
             else{
               statement.executeUpdate(sql[j]); //NOSONAR
             }
-            log.info("Successfully executed: " + sql[j].substring(0, Math.min(sql[j].length()-1, 400)));
+            log.info("Successfully executed " + (j + 1) + ": "
+                + sql[j].substring(0, Math.min(sql[j].length()-1, 400)));
           } catch (Exception e) {
             results.add(sql[j]);
             error = true;
