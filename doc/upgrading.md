@@ -41,6 +41,22 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * Remove `setWorker(true)` when starting RestVerticle in tests or production code, learn why at
   [RMB RestVerticle](https://github.com/folio-org/raml-module-builder#restverticle) and
   [MODINVSTOR-635](https://issues.folio.org/browse/MODINVSTOR-635).
+* Update the module descriptor - usually `descriptors/ModuleDescriptor-template.json` - to
+  tenant interface version 2. Replace the old `_tenant` "provides" with
+```json
+    "provides" : [ {
+       "id" : "_tenant",
+       "version" : "2.0",
+       "interfaceType" : "system",
+       "handlers" : [ {
+         "methods" : [ "POST" ],
+         "pathPattern" : "/_/tenant"
+       }, {
+         "methods" : [ "GET", "DELETE" ],
+         "pathPattern" : "/_/tenant/{id}"
+       } ]
+    } ]
+```
 
 ## Version 31.0
 
