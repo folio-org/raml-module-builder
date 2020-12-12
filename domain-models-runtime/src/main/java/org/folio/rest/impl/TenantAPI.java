@@ -259,11 +259,25 @@ public class TenantAPI implements Tenant {
         .onFailure(cause -> {
           log.error("{}", cause.getMessage(), cause);
           handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
-        }).onSuccess(exists -> {
-      if (purge && Boolean.FALSE.equals(exists)) {
-        log.error("{} does not exist", tenantId);
-        handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(tenantId + " does not exist")));
+        })
+        .onSuccess(exists -> {
+      if (purge) {
+        runAsync(tenantAttributes, sqlFilePurge(tenantId), job, headers, context)
+            .onSuccess(res -> {
+              PostgresClient.closeAllClients(tenantId);
+              handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+            })
+            .onFailure(cause -> {
+              log.error(cause.getMessage(), cause);
+              handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
+            });
         return;
+      }
+      if (tenantAttributes != null && tenantAttributes.getModuleFrom() != null &&
+          tenantAttributes.getModuleTo() == null) {
+        // disabling module for tenant. RMB does not do anything about this.
+        PostgresClient.closeAllClients(tenantId);
+        handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
       }
       sqlFile(context, tenantId, tenantAttributes, exists)
           .onFailure(cause -> {
@@ -287,33 +301,26 @@ public class TenantAPI implements Tenant {
                     handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
                         PostTenantResponse.headersFor201().withLocation(location))));
                   }
-                  if (!purge) {
-                    runAsync(tenantAttributes, files[1], job, headers, context)
-                        .onComplete(res -> {
-                          log.info("job {} completed", id);
-                          if (!async) {
-                            handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
-                                PostTenantResponse.headersFor201().withLocation(location))));
+                  runAsync(tenantAttributes, files[1], job, headers, context)
+                      .onComplete(res -> {
+                        log.info("job {} completed", id);
+                        if (async) {
+                          completeJob(job, context);
+                        }
+                        else
+                        {
+                          if (job.getError() != null) {
+                            handler.handle(Future.succeededFuture(
+                                PostTenantResponse.respond400WithTextPlain(job.getError())));
+                            return;
                           }
-                        });
-                  } else {
-                    if (!async) {
-                      runAsync(tenantAttributes, sqlFilePurge(tenantId), job, headers, context)
-                          .onComplete(res -> {
-                            PostgresClient.closeAllClients(tenantId);
-                            log.info("job {} completed", id);
-                            handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
-                                PostTenantResponse.headersFor201().withLocation(location))));
-                          });
-                    } else {
-                      // on purge async we do nothing but marking it complete
-                      completeJob(job, context);
-                    }
-                  }
-                });
+                          handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+                        }
+                      });
           });
     });
-  }
+  });
+}
 
   private void completeJob(TenantJob job, Context context) {
     job.setComplete(true);
@@ -347,7 +354,6 @@ public class TenantAPI implements Tenant {
           if (res.failed()) {
             job.setError(res.cause().getMessage());
           }
-          completeJob(job, context);
         }).mapEmpty();
   }
 
@@ -413,22 +419,16 @@ public class TenantAPI implements Tenant {
           handler.handle(Future.succeededFuture(response));
         })
         .onSuccess(job -> {
-          removeJob(tenantId, operationId, context).compose(x -> {
-            TenantAttributes attributes = job.getTenantAttributes();
-            if (attributes != null && Boolean.TRUE.equals(attributes.getPurge())) {
-              return runAsync(attributes, sqlFilePurge(tenantId), job, headers, context)
-                  .onSuccess(res -> PostgresClient.closeAllClients(tenantId));
-            }
-            return Future.succeededFuture();
-          }).onSuccess(res -> {
-            Response response = DeleteTenantByOperationIdResponse.respond204();
-            handler.handle(Future.succeededFuture(response));
-          }).onFailure(cause -> {
-            log.error("{}", cause.getMessage(), cause);
-            Response response = DeleteTenantByOperationIdResponse.respond400WithTextPlain(cause.getMessage());
-            handler.handle(Future.succeededFuture(response));
-          });
+          removeJob(tenantId, operationId, context)
+              .onSuccess(res -> {
+                Response response = DeleteTenantByOperationIdResponse.respond204();
+                handler.handle(Future.succeededFuture(response));
+              })
+              .onFailure(cause -> {
+                log.error("{}", cause.getMessage(), cause);
+                Response response = DeleteTenantByOperationIdResponse.respond400WithTextPlain(cause.getMessage());
+                handler.handle(Future.succeededFuture(response));
+              });
         });
   }
-
 }
