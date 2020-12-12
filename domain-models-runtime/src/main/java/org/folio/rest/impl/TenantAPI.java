@@ -240,7 +240,7 @@ public class TenantAPI implements Tenant {
   }
 
   private void postTenant(boolean async, TenantAttributes tenantAttributes, Map<String, String> headers,
-                          Handler<AsyncResult<Response>> handler, Context context)  {
+                          Handler<AsyncResult<Response>> handler, Context context) {
 
     String tenantId = TenantTool.tenantId(headers);
     String id = UUID.randomUUID().toString();
@@ -252,62 +252,53 @@ public class TenantAPI implements Tenant {
 
     String location = "/_/tenant/" + id;
     tenantExists(context, tenantId)
+        .compose(exists -> sqlFile(context, tenantId, tenantAttributes, exists))
         .onFailure(cause -> {
-          log.error("{}", cause.getMessage(), cause);
+          log.error(cause.getMessage(), cause);
           handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
         })
-        .onSuccess(exists -> {
-      sqlFile(context, tenantId, tenantAttributes, exists)
-          .onFailure(cause -> {
-            log.error("{}", cause.getMessage(), cause);
-            handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
-          })
-          .onSuccess(files -> {
-            postgresClient(context).runSQLFile(files[0], true)
-                .compose(res -> {
-                  if (!res.isEmpty()) {
-                    return Future.failedFuture(res.get(0));
-                  }
-                  if (files.length == 1) { // not saving job for disable or purge
-                    return Future.succeededFuture();
-                  }
-                  return saveJob(job, tenantId, id, context);
-                })
-                .onFailure(cause -> {
-                  log.error(cause.getMessage(), cause);
-                  handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
-                })
-                .onSuccess(result -> {
-                  if (files.length == 1) {
-                    // disable or purge
-                    PostgresClient.closeAllClients(tenantId);
-                    handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
-                    return;
-                  }
-                  if (async) {
-                    handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
-                        PostTenantResponse.headersFor201().withLocation(location))));
-                  }
-                  runAsync(tenantAttributes, files[1], job, headers, context)
-                      .onComplete(res -> {
-                        log.info("job {} completed", id);
-                        if (async) {
-                          completeJob(job, context);
+        .onSuccess(files ->
+          postgresClient(context).runSQLFile(files[0], true)
+              .compose(res -> {
+                if (!res.isEmpty()) {
+                  return Future.failedFuture(res.get(0));
+                }
+                if (files.length == 1) { // not saving job for disable or purge
+                  return Future.succeededFuture();
+                }
+                return saveJob(job, tenantId, id, context);
+              })
+              .onFailure(cause -> {
+                log.error(cause.getMessage(), cause);
+                handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
+              })
+              .onSuccess(result -> {
+                if (files.length == 1) { // disable or purge?
+                  PostgresClient.closeAllClients(tenantId);
+                  handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+                  return;
+                }
+                if (async) {
+                  handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
+                      PostTenantResponse.headersFor201().withLocation(location))));
+                }
+                runAsync(tenantAttributes, files[1], job, headers, context)
+                    .onComplete(res -> {
+                      log.info("job {} completed", id);
+                      if (async) {
+                        completeJob(job, context);
+                      } else {
+                        if (job.getError() != null) {
+                          handler.handle(Future.succeededFuture(
+                              PostTenantResponse.respond400WithTextPlain(job.getError())));
+                          return;
                         }
-                        else
-                        {
-                          if (job.getError() != null) {
-                            handler.handle(Future.succeededFuture(
-                                PostTenantResponse.respond400WithTextPlain(job.getError())));
-                            return;
-                          }
-                          handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
-                        }
-                      });
-          });
-    });
-  });
-}
+                        handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+                      }
+                    });
+              })
+        );
+  }
 
   private void completeJob(TenantJob job, Context context) {
     job.setComplete(true);
@@ -344,19 +335,19 @@ public class TenantAPI implements Tenant {
         }).mapEmpty();
   }
 
-    /**
-     * Stub load sample/reference data.
-     * @param attributes information about what to load.
-     * @param tenantId tenant ID
-     * @param headers HTTP headers for the request (Okapi)
-     * @return number of records loaded
-     */
-    Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
-        Context vertxContext) {
-      return Future.succeededFuture(0);
-    }
+  /**
+   * Stub load sample/reference data.
+   * @param attributes information about what to load.
+   * @param tenantId tenant ID
+   * @param headers HTTP headers for the request (Okapi)
+   * @return number of records loaded
+   */
+  Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers,
+                           Context vertxContext) {
+    return Future.succeededFuture(0);
+  }
 
-    void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
+  void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
                       Handler<AsyncResult<Response>> handler, Context context)  {
     postTenant(false, tenantAttributes, headers, handler, context);
   }
@@ -401,7 +392,7 @@ public class TenantAPI implements Tenant {
     String tenantId = TenantTool.tenantId(headers);
     checkJob(tenantId, operationId, context)
         .onFailure(cause -> {
-          log.error("{}", cause.getMessage(), cause);
+          log.error(cause.getMessage(), cause);
           Response response = DeleteTenantByOperationIdResponse.respond404WithTextPlain(cause.getMessage());
           handler.handle(Future.succeededFuture(response));
         })
@@ -412,7 +403,7 @@ public class TenantAPI implements Tenant {
                 handler.handle(Future.succeededFuture(response));
               })
               .onFailure(cause -> {
-                log.error("{}", cause.getMessage(), cause);
+                log.error(cause.getMessage(), cause);
                 Response response = DeleteTenantByOperationIdResponse.respond400WithTextPlain(cause.getMessage());
                 handler.handle(Future.succeededFuture(response));
               });
