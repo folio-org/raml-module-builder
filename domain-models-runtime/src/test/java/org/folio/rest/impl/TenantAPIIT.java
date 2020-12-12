@@ -512,12 +512,22 @@ public class TenantAPIIT {
   }
 
   @Test
-  public void postTenantSyncOk(TestContext context) {
+  public void postTenantEnableSync(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI();
     TenantAttributes tenantAttributes = new TenantAttributes();
     tenantAttributes.setModuleFrom("mod-0.0.0");
     tenantAttributes.setModuleTo("mod-1.0.0");
     tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(204));
+    }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postTenantDisable(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantAttributes tenantAttributes = new TenantAttributes();
+    tenantAttributes.setModuleFrom("mod-0.0.0");
+    tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
       assertThat(result.getStatus(), is(204));
     }), vertx.getOrCreateContext());
   }

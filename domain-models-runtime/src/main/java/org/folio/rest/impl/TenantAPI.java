@@ -139,9 +139,7 @@ public class TenantAPI implements Tenant {
     TenantOperation op = TenantOperation.CREATE;
     String previousVersion = null;
     String newVersion = tenantAttributes == null ? null : tenantAttributes.getModuleTo();
-    if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
-      op = TenantOperation.DELETE;
-    } else if (tenantExists) {
+    if (tenantExists) {
       op = TenantOperation.UPDATE;
       if (tenantAttributes != null) {
         previousVersion = tenantAttributes.getModuleFrom();
@@ -156,23 +154,22 @@ public class TenantAPI implements Tenant {
     sMaker.setSchema(schema);
     sMaker.setPreviousSchema(previousSchema);
 
+    if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
+      String [] scripts = new String[1];
+      scripts[0] = sMaker.generatePurge();
+      return scripts;
+    }
+    if (tenantAttributes != null && tenantAttributes.getModuleFrom() != null &&
+         tenantAttributes.getModuleTo() == null) {
+      String [] scripts = new String[1];
+      scripts[0] = "";
+      return scripts;
+    }
     String [] scripts = new String[2];
     scripts[0] = sMaker.generateCreate();
     scripts[1] = sMaker.generateSchemas();
     log.debug("GENERATED SCHEMA " + scripts[0]);
     return scripts;
-  }
-
-  public String sqlFilePurge(String tenantId) {
-    try {
-      SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(),
-          TenantOperation.DELETE, null, null);
-      return sMaker.generatePurge();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    } catch (TemplateException e) {  // checked exception from main.tpl parsing
-      throw new IllegalArgumentException(e);
-    }
   }
 
   private Future<String[]> sqlFile(Context context, String tenantId,
@@ -254,31 +251,12 @@ public class TenantAPI implements Tenant {
     job.setComplete(false);
 
     String location = "/_/tenant/" + id;
-    boolean purge = tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge());
     tenantExists(context, tenantId)
         .onFailure(cause -> {
           log.error("{}", cause.getMessage(), cause);
           handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
         })
         .onSuccess(exists -> {
-      if (purge) {
-        runAsync(tenantAttributes, sqlFilePurge(tenantId), job, headers, context)
-            .onSuccess(res -> {
-              PostgresClient.closeAllClients(tenantId);
-              handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
-            })
-            .onFailure(cause -> {
-              log.error(cause.getMessage(), cause);
-              handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
-            });
-        return;
-      }
-      if (tenantAttributes != null && tenantAttributes.getModuleFrom() != null &&
-          tenantAttributes.getModuleTo() == null) {
-        // disabling module for tenant. RMB does not do anything about this.
-        PostgresClient.closeAllClients(tenantId);
-        handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
-      }
       sqlFile(context, tenantId, tenantAttributes, exists)
           .onFailure(cause -> {
             log.error("{}", cause.getMessage(), cause);
@@ -290,6 +268,9 @@ public class TenantAPI implements Tenant {
                   if (!res.isEmpty()) {
                     return Future.failedFuture(res.get(0));
                   }
+                  if (files.length == 1) { // not saving job for disable or purge
+                    return Future.succeededFuture();
+                  }
                   return saveJob(job, tenantId, id, context);
                 })
                 .onFailure(cause -> {
@@ -297,6 +278,12 @@ public class TenantAPI implements Tenant {
                   handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
                 })
                 .onSuccess(result -> {
+                  if (files.length == 1) {
+                    // disable or purge
+                    PostgresClient.closeAllClients(tenantId);
+                    handler.handle(Future.succeededFuture(PostTenantResponse.respond204()));
+                    return;
+                  }
                   if (async) {
                     handler.handle(Future.succeededFuture(PostTenantResponse.respond201WithApplicationJson(job,
                         PostTenantResponse.headersFor201().withLocation(location))));
