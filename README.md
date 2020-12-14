@@ -1820,7 +1820,7 @@ RMB supports optimistic locking. By default it is disabled. Module developer can
     * `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged as a warning message with a customized SQL error code 23F09. A sample log entry looks like below:
 
 ```
-Backend notice: severity='WARNING', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 1, _version of request is "2"' ...
+Backend notice: severity='WARNING', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 2, _version of request is "1"' ...
 ```
 
 ## Facet Support
