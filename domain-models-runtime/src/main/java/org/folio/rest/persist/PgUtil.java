@@ -999,7 +999,7 @@ public final class PgUtil {
       asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
     }
   }
-  
+
   private static Method getRespond409(Class<? extends ResponseDelegate> clazz) {
     Method respond409;
     try {
@@ -1010,7 +1010,7 @@ public final class PgUtil {
     }
     return respond409;
   }
-  
+
   /**
    * Post a list of T entities to the database. Fail all if any of them fails.
 
@@ -1042,7 +1042,6 @@ public final class PgUtil {
 
     try {
       Method respond201 = responseClass.getMethod(RESPOND_201);
-      Method respond400 = responseClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond409 = getRespond409(responseClass);
       Method respond413 = responseClass.getMethod(RESPOND_413_WITH_TEXT_PLAIN, Object.class);
       if (entities != null && entities.size() > maxEntities) {
@@ -1057,7 +1056,7 @@ public final class PgUtil {
       Handler<AsyncResult<RowSet<Row>>> replyHandler = result -> {
         if (result.failed()) {
           if (PgExceptionUtil.isVersionConflict(result.cause())) {
-            Method method = respond409 == null ? respond400 : respond409;
+            Method method = respond409 == null ? respond500 : respond409;
             asyncResultHandler.handle(response(result.cause().getMessage(), method, respond500));
           } else {
             asyncResultHandler.handle(response(table, /* id */ "", result.cause(),
