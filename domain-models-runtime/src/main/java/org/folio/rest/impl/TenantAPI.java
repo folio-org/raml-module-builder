@@ -55,15 +55,8 @@ public class TenantAPI implements Tenant {
     return postgresClient(context).select(
         "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '"
             + PostgresClient.convertToPsqlStandard(tenantId) +"');")
-        .compose(result -> {
-          try {
-            Boolean aBoolean = result.iterator().next().getBoolean(0);
-            return Future.succeededFuture(aBoolean);
-          } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            return Future.failedFuture(e.getMessage());
-          }
-        });
+        .map(result -> result.iterator().next().getBoolean(0))
+        .onFailure(e -> log.error(e.getMessage(), e));
   }
 
   /**
@@ -75,19 +68,12 @@ public class TenantAPI implements Tenant {
     }
     String sql = "SELECT jsonb->>'schemaJson' " +
         "FROM " + PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_internal";
-    return postgresClient(context).selectSingle(sql).compose(row -> {
-      try {
-        String schemaString = row == null ? null : row.getString(0);
-        if (schemaString == null) {
-          return Future.succeededFuture(null);
-        }
-        Schema schema = ObjectMapperTool.getMapper().readValue(schemaString, Schema.class);
-        return Future.succeededFuture(schema);
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        return Future.failedFuture(e);
-      }
-    });
+    return postgresClient(context).selectSingle(sql)
+        .map(row -> {
+          String schemaString = row == null ? null : row.getString(0);
+          return schemaString == null ? null : ObjectMapperTool.readValue(schemaString, Schema.class);
+        })
+        .onFailure(e -> log.error(e.getMessage(), e));
   }
 
   String getTablePath() {
@@ -101,7 +87,7 @@ public class TenantAPI implements Tenant {
    * @param tenantExists false for initial installation, true for upgrading
    * @param tenantAttributes parameters like module version that may influence generated SQL
    * @param previousSchema schema to upgrade from, may be null if unknown and on initial install
-   * @return the SQL commands to create or upgrade the tenant's schema
+   * @return the SQL commands . 0 is immediate script (create, disable), 1 (optional) is update schema script.
    * @throws NoSchemaJsonException when templates/db_scripts/schema.json doesn't exist
    * @throws TemplateException when processing templates/db_scripts/schema.json fails
    */
@@ -129,25 +115,22 @@ public class TenantAPI implements Tenant {
 
     String tableInputStr = IOUtils.toString(tableInput, StandardCharsets.UTF_8);
     sMaker.setSchemaJson(tableInputStr);
-    Schema schema = ObjectMapperTool.getMapper().readValue(tableInputStr, Schema.class);
+    Schema schema = ObjectMapperTool.readValue(tableInputStr, Schema.class);
     sMaker.setSchema(schema);
     sMaker.setPreviousSchema(previousSchema);
 
     if (tenantAttributes != null && Boolean.TRUE.equals(tenantAttributes.getPurge())) {
-      String [] scripts = new String[1];
-      scripts[0] = sMaker.generatePurge();
-      return scripts;
+      return new String [] { sMaker.generatePurge() };
     }
     if (tenantAttributes != null && tenantAttributes.getModuleFrom() != null &&
          tenantAttributes.getModuleTo() == null) {
-      String [] scripts = new String[1];
-      scripts[0] = "";
-      return scripts;
+      return new String [] { "" };
     }
     String [] scripts = new String[2];
     scripts[0] = sMaker.generateCreate();
+    log.debug("GENERATED CREATE {}", scripts[0]);
     scripts[1] = sMaker.generateSchemas();
-    log.debug("GENERATED SCHEMA " + scripts[0]);
+    log.debug("GENERATED SCHEMAS {}", scripts[1]);
     return scripts;
   }
 
