@@ -8,6 +8,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.folio.dbschema.ForeignKeys;
 import org.folio.dbschema.Schema;
@@ -398,4 +399,35 @@ public class SchemaMakerTest {
     }
     assertThat(SchemaMaker.sameForeignKey(a, b), is(expected));
   }
+  
+  @Test
+  public void optimisticLocking() throws Exception {
+    String tenant = "olTenant";
+    String module = "olModule";
+    SchemaMaker schemaMaker = schemaMaker(tenant, module, TenantOperation.UPDATE,
+        "1.0.0", "2.0.0", "templates/db_scripts/schemaWithOptimisticLocking.json");
+    String ddl = schemaMaker.generateDDL();
+    // trigger will be created for tab_ol_log, tab_ol_fail
+    Arrays.asList("tab_ol_log", "tab_ol_fail").forEach(tab -> {
+      assertThat(ddl, containsString(
+          String.format("CREATE OR REPLACE FUNCTION %s_%s.%s_set_ol_version()",
+              tenant, module, tab)));
+      assertThat(ddl, containsString(
+          String.format("DROP TRIGGER IF EXISTS set_%s_ol_version_trigger", tab)));
+      assertThat(ddl, containsString(
+          String.format("CREATE TRIGGER set_%s_ol_version_trigger", tab)));
+    });
+    // trigger will not be created for for tabl_ol_off and tab_ol_none
+    assertThat(ddl, not(containsString(
+        String.format("CREATE OR REPLACE FUNCTION %s_%s.%s_set_ol_version()",
+            tenant, module, "tab_ol_none"))));
+    assertThat(ddl, not(containsString(
+        String.format("CREATE TRIGGER set_%s_ol_version_trigger", "D"))));
+    assertThat(ddl, containsString(
+        String.format("DROP TRIGGER IF EXISTS set_%s_ol_version_trigger", "tab_ol_none")));
+    assertThat(ddl, containsString(
+        String.format("DROP FUNCTION IF EXISTS %s_%s.%s_set_ol_version()",
+            tenant, module, "tab_ol_none")));
+  }
+
 }
