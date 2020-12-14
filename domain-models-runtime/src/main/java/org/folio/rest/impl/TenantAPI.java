@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 
+import io.vertx.sqlclient.Tuple;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -154,15 +155,14 @@ public class TenantAPI implements Tenant {
 
   Future<Void> saveJob(TenantJob tenantJob, String tenantId, String jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
-    String sql = "INSERT INTO " + table + " VALUES ('" + jobId + "', '" + Json.encode(tenantJob) + "'::JSONB)";
-    return postgresClient(context).execute(sql).mapEmpty();
+    String sql = "INSERT INTO " + table + " VALUES ($1, '" + Json.encode(tenantJob) + "'::JSONB)";
+    return postgresClient(context).execute(sql, Tuple.of(jobId)).mapEmpty();
   }
-
 
   Future<TenantJob> getJob(String tenantId, String jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
-    String sql = "SELECT jsonb FROM " + table + " WHERE id = '" + jobId + "'";
-    return postgresClient(context).selectSingle(sql)
+    String sql = "SELECT jsonb FROM " + table + " WHERE id = $1";
+    return postgresClient(context).selectSingle(sql, Tuple.of(jobId))
         .compose(reply -> {
           if (reply == null) {
             return Future.failedFuture("Job not found " + jobId);
@@ -175,15 +175,15 @@ public class TenantAPI implements Tenant {
   Future<Void> updateJob(TenantJob tenantJob, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantJob.getTenant()) + ".rmb_job";
     String sql = "UPDATE " + table
-        + " SET jsonb = '" + Json.encode(tenantJob) + "'::JSONB"
-        + " WHERE id = '" + tenantJob.getId() + "'";
-    return postgresClient(context).execute(sql).mapEmpty();
+        + " SET jsonb = $2::JSONB"
+        + " WHERE id = $1";
+    return postgresClient(context).execute(sql, Tuple.of(tenantJob.getId(), JsonObject.mapFrom(tenantJob))).mapEmpty();
   }
 
   Future<Void> removeJob(String tenantId, String jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
-    String sql = "DELETE FROM  " + table + " WHERE id = '" + jobId + "'";
-    return postgresClient(context).execute(sql).mapEmpty();
+    String sql = "DELETE FROM  " + table + " WHERE id = $1";
+    return postgresClient(context).execute(sql, Tuple.of(jobId)).mapEmpty();
   }
 
   /**
@@ -192,7 +192,7 @@ public class TenantAPI implements Tenant {
  * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
  *
  * @see <a href="https://github.com/folio-org/raml-module-builder#extending-the-tenant-init">Extending the Tenant Init</a>
- *      for usage examples
+ * for usage examples
  */
   @Validate
   @Override

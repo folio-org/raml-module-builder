@@ -3056,10 +3056,10 @@ public class PostgresClient {
    * <p>To update see {@link #execute(String, Handler)}.
    *
    * @param sql  The sql query to run.
-   * @return future Result
+   * @return future
    */
   public Future<Row> selectSingle(String sql) {
-    return Future.future(promise -> selectSingle(sql, promise));
+    return selectSingle(sql, Tuple.tuple());
   }
 
   /**
@@ -3088,6 +3088,17 @@ public class PostgresClient {
    */
   public void selectSingle(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
     getSQLConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a parameterized/prepared select query and return the first record, or null if there is no result.
+   *
+   * @param sql The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @return future.
+   */
+  public Future<Row> selectSingle(String sql, Tuple params) {
+    return Future.future(promise -> selectSingle(sql, params, promise));
   }
 
   static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<Row>> replyHandler) {
@@ -3216,7 +3227,7 @@ public class PostgresClient {
    * @return future result
    */
   public Future<RowSet<Row>> execute(String sql) {
-    return Future.future(promise -> execute(sql, promise));
+    return execute(sql, Tuple.tuple());
   }
   /**
    * Get vertx-pg-client connection
@@ -3291,6 +3302,16 @@ public class PostgresClient {
    */
   public void execute(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
+   * @param sql  The SQL statement to run.
+   * @param params The parameters for the placeholders in sql.
+   * @return async result.
+   */
+  public Future<RowSet<Row>> execute(String sql, Tuple params) {
+    return Future.future(promise -> execute(sql, params, promise));
   }
 
   /**
