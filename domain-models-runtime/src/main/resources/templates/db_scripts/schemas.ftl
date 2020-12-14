@@ -81,6 +81,8 @@ END $$;
     </#if>
     -- drop function that updates foreign key fields
     DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.update_${table.tableName}_references();
+    -- drop function that updates optimistic locking version
+    DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.${table.tableName}_set_ol_version() CASCADE;
   </#if>
 
   <#if table.mode != "delete">
@@ -118,6 +120,8 @@ END $$;
 
     <#include "metadata.ftl">
 
+    <#include "optimistic_locking.ftl">
+
     <#if table.withAuditing == true>
       <#include "audit.ftl">
     </#if>
@@ -131,6 +135,9 @@ END $$;
          because they may have changed. -->
     <#include "indexes.ftl">
     <#include "foreign_keys.ftl">
+    
+    <#-- Always check optimistic locking configuration -->
+    <#include "optimistic_locking.ftl">
 </#if>
 </#list>
 
