@@ -1,8 +1,9 @@
 package org.folio.rest.impl;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.stringContainsInOrder;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.CoreMatchers;
 import org.junit.*;
@@ -36,8 +38,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-
-import javax.ws.rs.core.Response;
 
 @RunWith(VertxUnitRunner.class)
 public class TenantAPIIT {
@@ -91,10 +91,11 @@ public class TenantAPIIT {
     TenantAPI tenantAPI = new TenantAPI();
     tenantAPI.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
       context.assertEquals(204, res1.getStatus());
-      tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
-        context.assertFalse(bool, "tenant exists after purge");
-        async.complete();
-      }));
+      tenantAPI.tenantExists(Vertx.currentContext(), tenantId)
+          .onComplete(context.asyncAssertSuccess(bool -> {
+            context.assertFalse(bool, "tenant exists after purge");
+            async.complete();
+          }));
     }), vertx.getOrCreateContext());
     async.await();
   }
@@ -112,22 +113,23 @@ public class TenantAPIIT {
       api.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 -> {
         TenantJob o = (TenantJob) res2.getEntity();
         context.assertTrue(o.getComplete());
-        api.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
-          context.assertTrue(bool, "tenant exists after post");
-          async.complete();
-        }));
+        api.tenantExists(Vertx.currentContext(), tenantId)
+            .onComplete(onSuccess(context, bool -> {
+              context.assertTrue(bool, "tenant exists after post");
+              async.complete();
+            }));
       }), vertx.getOrCreateContext());
     }), vertx.getOrCreateContext());
     async.await();
     return id.toString();
   }
 
-    public boolean tenantGet(TestContext context) {
+  public boolean tenantGet(TestContext context) {
     boolean [] result = new boolean [1];
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.tenantExists(Vertx.currentContext(), tenantId, res -> {
+      tenantAPI.tenantExists(Vertx.currentContext(), tenantId).onComplete(res -> {
         if (res.succeeded()) {
           result[0] = res.result();
         } else {
@@ -258,6 +260,14 @@ public class TenantAPIIT {
   }
 
   @Test
+  public void previousSchemaSqlExistsTrue(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    String tenantId = TenantTool.tenantId(okapiHeaders);
+    tenantAPI.previousSchema(vertx.getOrCreateContext(), tenantId, true)
+      .onComplete(context.asyncAssertFailure());
+  }
+
+  @Test
   public void postWithSqlError(TestContext context) {
     PostgresClient postgresClient = mock(PostgresClient.class);
     when(postgresClient.runSQLFile(anyString(), anyBoolean())).thenReturn(Future.failedFuture("mock returns failure"));
@@ -268,8 +278,8 @@ public class TenantAPIIT {
       }
 
       @Override
-      void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler) {
-        handler.handle(Future.succeededFuture(false));
+      Future<Boolean> tenantExists(Context context, String tenantId) {
+        return Future.succeededFuture(false);
       }
     };
     TenantAttributes tenantAttributes = new TenantAttributes();
@@ -292,8 +302,8 @@ public class TenantAPIIT {
       }
 
       @Override
-      void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler) {
-        handler.handle(Future.succeededFuture(false));
+      Future<Boolean> tenantExists(Context context, String tenantId) {
+        return Future.succeededFuture(false);
       }
     };
     tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
@@ -373,13 +383,9 @@ public class TenantAPIIT {
   @Test
   public void invalidTenantName(TestContext context) {
     String invalidTenantId = "- ";
-    Async async = context.async();
     vertx.runOnContext(run -> {
-      new TenantAPI().tenantExists(Vertx.currentContext(), invalidTenantId, h -> {
-        context.assertTrue(h.succeeded());
-        context.assertFalse(h.result());
-        async.complete();
-      });
+      new TenantAPI().tenantExists(Vertx.currentContext(), invalidTenantId).onComplete(
+          context.asyncAssertSuccess(bool -> context.assertFalse(bool)));
     });
   }
 
@@ -509,6 +515,18 @@ public class TenantAPIIT {
       assertThat(job.getComplete(), is(true));
       assertThat(job.getError(), is("Load Failure"));
     }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postTenantWithSqlErrorAsync(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantJob job = new TenantJob();
+    tenantAPI.runAsync(null, "SELECT (", job, okapiHeaders, vertx.getOrCreateContext())
+        .onComplete(context.asyncAssertFailure(cause -> {
+          assertThat(job.getError(), is("SQL error"));
+          // for some bizarre reason a space is put in front the returned stmt
+          assertThat(job.getMessages(), containsInAnyOrder(" SELECT ("));
+        }));
   }
 
   @Test

@@ -8,8 +8,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -52,63 +50,44 @@ public class TenantAPI implements Tenant {
     return PostgresClient.getInstance(context.owner());
   }
 
-  Future<Boolean> tenantExists(Context context, String tenantId) {
-    return Future.future(promise -> tenantExists(context, tenantId, promise));
-  }
-
-  void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler){
+  Future<Boolean> tenantExists(Context context, String tenantId){
     /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-    postgresClient(context).select(
-      "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '"+ PostgresClient.convertToPsqlStandard(tenantId) +"');",
-        reply -> {
+    return postgresClient(context).select(
+        "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '"
+            + PostgresClient.convertToPsqlStandard(tenantId) +"');")
+        .compose(result -> {
           try {
-            if(reply.succeeded()){
-              Boolean aBoolean = reply.result().iterator().next().getBoolean(0);
-              handler.handle(io.vertx.core.Future.succeededFuture(aBoolean));
-            }
-            else {
-              log.error(reply.cause().getMessage(), reply.cause());
-              handler.handle(io.vertx.core.Future.failedFuture(reply.cause().getMessage()));
-            }
+            Boolean aBoolean = result.iterator().next().getBoolean(0);
+            return Future.succeededFuture(aBoolean);
           } catch (Exception e) {
             log.error(e.getMessage(), e);
-            handler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+            return Future.failedFuture(e.getMessage());
           }
-    });
+        });
   }
 
   /**
    * @return previous Schema from rmb_internal.jsonb->>'schemaJson', or null if not exist.
    */
   Future<Schema> previousSchema(Context context, String tenantId, boolean tenantExists) {
-    Promise<Schema> promise = Promise.promise();
-
     if (! tenantExists) {
-      promise.complete(null);
-      return promise.future();
+      return Future.succeededFuture(null);
     }
-
     String sql = "SELECT jsonb->>'schemaJson' " +
         "FROM " + PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_internal";
-    postgresClient(context).selectSingle(sql, select -> {
-      if (select.failed()) {
-        promise.fail(select.cause());
-        return;
-      }
+    return postgresClient(context).selectSingle(sql).compose(row -> {
       try {
-        Row row = select.result();
         String schemaString = row == null ? null : row.getString(0);
         if (schemaString == null) {
-          promise.complete(null);
-          return;
+          return Future.succeededFuture(null);
         }
         Schema schema = ObjectMapperTool.getMapper().readValue(schemaString, Schema.class);
-        promise.complete(schema);
+        return Future.succeededFuture(schema);
       } catch (Exception e) {
-        promise.fail(e);
+        log.error(e.getMessage(), e);
+        return Future.failedFuture(e);
       }
     });
-    return promise.future();
   }
 
   String getTablePath() {
@@ -192,15 +171,15 @@ public class TenantAPI implements Tenant {
 
   Future<Void> saveJob(TenantJob tenantJob, String tenantId, String jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
-    String sql = "INSERT INTO " + table + " VALUES ('" + jobId + "'::UUID, '" + Json.encode(tenantJob) + "'::JSONB)";
-    return Future.<RowSet<Row>>future(promise -> postgresClient(context).execute(sql, promise)).mapEmpty();
+    String sql = "INSERT INTO " + table + " VALUES ('" + jobId + "', '" + Json.encode(tenantJob) + "'::JSONB)";
+    return postgresClient(context).execute(sql).mapEmpty();
   }
 
 
   Future<TenantJob> getJob(String tenantId, String jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
     String sql = "SELECT jsonb FROM " + table + " WHERE id = '" + jobId + "'";
-    return Future.<Row>future(promise -> postgresClient(context).selectSingle(sql, promise))
+    return postgresClient(context).selectSingle(sql)
         .compose(reply -> {
           if (reply == null) {
             return Future.failedFuture("Job not found " + jobId);
@@ -215,13 +194,13 @@ public class TenantAPI implements Tenant {
     String sql = "UPDATE " + table
         + " SET jsonb = '" + Json.encode(tenantJob) + "'::JSONB"
         + " WHERE id = '" + tenantJob.getId() + "'";
-    return Future.<RowSet<Row>>future(promise -> postgresClient(context).execute(sql, promise)).mapEmpty();
+    return postgresClient(context).execute(sql).mapEmpty();
   }
 
   Future<Void> removeJob(String tenantId, String jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
-    String sql = "DELETE FROM  " + table + " WHERE id = '" + jobId + "'::UUID";
-    return Future.<RowSet<Row>>future(promise -> postgresClient(context).execute(sql, promise)).mapEmpty();
+    String sql = "DELETE FROM  " + table + " WHERE id = '" + jobId + "'";
+    return postgresClient(context).execute(sql).mapEmpty();
   }
 
   /**
@@ -304,8 +283,7 @@ public class TenantAPI implements Tenant {
     job.setComplete(true);
     updateJob(job, context).onComplete(res -> {
       if (res.failed()) {
-        log.error("updateJob FAILED");
-        log.error(res.cause().getMessage(), res.cause());
+        log.error("updateJob FAILED {}", res.cause().getMessage(), res.cause());
       }
       List<Promise<Void>> promises = waiters.remove(job.getId());
       if (promises != null) {
@@ -316,7 +294,7 @@ public class TenantAPI implements Tenant {
     });
   }
 
-  private Future<Void> runAsync(TenantAttributes tenantAttributes, String file, TenantJob job, Map<String, String> headers, Context context) {
+  Future<Void> runAsync(TenantAttributes tenantAttributes, String file, TenantJob job, Map<String, String> headers, Context context) {
     return postgresClient(context).runSQLFile(file, true)
         .compose(res -> {
           if (!res.isEmpty()) {
