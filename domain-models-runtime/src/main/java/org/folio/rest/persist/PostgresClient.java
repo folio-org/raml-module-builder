@@ -2915,7 +2915,19 @@ public class PostgresClient {
     getSQLConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
-    /**
+  /**
+   * Run a select query.
+   *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql - the sql query to run
+   * @return future result
+   */
+  public Future<RowSet<Row>> select(String sql) {
+    return Future.future(promise -> select(sql, promise));
+  }
+
+  /**
    * Run a select query.
    *
    * <p>To update see {@link #execute(String, Handler)}.
@@ -3036,6 +3048,18 @@ public class PostgresClient {
    */
   public void selectSingle(String sql, Handler<AsyncResult<Row>> replyHandler) {
     getSQLConnection(conn -> selectSingle(conn, sql, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a select query and return the first record, or null if there is no result.
+   *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql  The sql query to run.
+   * @return future Result
+   */
+  public Future<Row> selectSingle(String sql) {
+    return Future.future(promise -> selectSingle(sql, promise));
   }
 
   /**
@@ -3177,15 +3201,23 @@ public class PostgresClient {
     }
   }
 
-    /**
-     * Execute an INSERT, UPDATE or DELETE statement.
-     * @param sql - the sql to run
-     * @param replyHandler - the result handler with UpdateResult
-     */
+  /**
+   * Execute an INSERT, UPDATE or DELETE statement.
+   * @param sql - the sql to run
+   * @param replyHandler - the result handler with UpdateResult
+   */
   public void execute(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     execute(sql, Tuple.tuple(), replyHandler);
   }
 
+  /**
+   * Execute an INSERT, UPDATE or DELETE statement.
+   * @param sql - the sql to run
+   * @return future result
+   */
+  public Future<RowSet<Row>> execute(String sql) {
+    return Future.future(promise -> execute(sql, promise));
+  }
   /**
    * Get vertx-pg-client connection
    * @param replyHandler
