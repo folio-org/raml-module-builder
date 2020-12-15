@@ -113,10 +113,6 @@ public class SchemaMaker {
     return writer.toString();
   }
 
-  public String generateDDL() throws IOException, TemplateException {
-    return generateCreate() + generateSchemas();
-  }
-
   public String generateIndexesOnly() throws IOException, TemplateException {
     return generateDDL("indexes_only.ftl");
   }
