@@ -127,10 +127,8 @@ public class TenantAPI implements Tenant {
          tenantAttributes.getModuleTo() == null) {
       return new String [] { "" };
     }
-    String [] scripts = new String[2];
-    scripts[0] = sMaker.generateCreate();
+    String [] scripts = new String[] { sMaker.generateCreate(), sMaker.generateSchemas() };
     log.debug("GENERATED CREATE {}", scripts[0]);
-    scripts[1] = sMaker.generateSchemas();
     log.debug("GENERATED SCHEMAS {}", scripts[1]);
     return scripts;
   }
