@@ -155,8 +155,8 @@ public class TenantAPI implements Tenant {
 
   Future<Void> saveJob(TenantJob tenantJob, String tenantId, String jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
-    String sql = "INSERT INTO " + table + " VALUES ($1, '" + Json.encode(tenantJob) + "'::JSONB)";
-    return postgresClient(context).execute(sql, Tuple.of(jobId)).mapEmpty();
+    String sql = "INSERT INTO " + table + " VALUES ($1, $2)";
+    return postgresClient(context).execute(sql, Tuple.of(jobId, JsonObject.mapFrom(tenantJob))).mapEmpty();
   }
 
   Future<TenantJob> getJob(String tenantId, String jobId, Context context) {
@@ -174,9 +174,7 @@ public class TenantAPI implements Tenant {
 
   Future<Void> updateJob(TenantJob tenantJob, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantJob.getTenant()) + ".rmb_job";
-    String sql = "UPDATE " + table
-        + " SET jsonb = $2::JSONB"
-        + " WHERE id = $1";
+    String sql = "UPDATE " + table + " SET jsonb = $2 WHERE id = $1";
     return postgresClient(context).execute(sql, Tuple.of(tenantJob.getId(), JsonObject.mapFrom(tenantJob))).mapEmpty();
   }
 
