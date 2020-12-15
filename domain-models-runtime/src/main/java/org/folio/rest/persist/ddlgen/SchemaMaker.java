@@ -42,7 +42,7 @@ public class SchemaMaker {
 
   public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion,
                      String newVersion) {
-    if(SchemaMaker.cfg == null){
+    if(SchemaMaker.cfg == null) {
       //do this ONLY ONCE
       SchemaMaker.cfg = new Configuration(new Version(2, 3, 26));
       // Where do we load the templates from:
@@ -90,11 +90,11 @@ public class SchemaMaker {
 
     String pVersion = this.previousVersion;
 
-    if (pVersion == null){
+    if (pVersion == null) {
       //will be null on deletes unless its read from db by rmb
       pVersion = "0.0";
     }
-    if (newVersion == null){
+    if (newVersion == null) {
       newVersion = "0.0";
     }
 
