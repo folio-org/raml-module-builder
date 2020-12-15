@@ -2262,14 +2262,22 @@ public class PostgresClientIT {
 
   @Test
   public void executeOK(TestContext context) {
-    Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'", res -> {
-      assertSuccess(context, res);
-      context.assertEquals(1, res.result().rowCount());
-      async.complete();
-    });
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'",
+            context.asyncAssertSuccess(res -> {
+              context.assertEquals(1, res.rowCount());
+            }));
+  }
+
+  @Test
+  public void executeOKFuture(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'")
+        .onComplete(context.asyncAssertSuccess(res -> {
+          context.assertEquals(1, res.rowCount());
+        }));
   }
 
   @Test
@@ -2294,14 +2302,23 @@ public class PostgresClientIT {
 
   @Test
   public void executeParam(TestContext context) {
-    Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))), res -> {
-      assertSuccess(context, res);
-      context.assertEquals(1, res.result().rowCount());
-      async.complete();
-    });
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))), res -> {
+          assertSuccess(context, res);
+          context.assertEquals(1, res.result().rowCount());
+        });
+  }
+
+  @Test
+  public void executeParamFuture(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))))
+        .onComplete(res -> {
+          assertSuccess(context, res);
+          context.assertEquals(1, res.result().rowCount());
+        });
   }
 
   @Test
@@ -2652,6 +2669,15 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectSingleFuture(TestContext context) {
+    postgresClient = createNumbers(context, 41, 42, 43);
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (41, 43, 45) ORDER BY i")
+        .onComplete(context.asyncAssertSuccess(select -> {
+          context.assertEquals(41, select.getInteger(0));
+        }));
+  }
+
+  @Test
   public void selectSingleTrans(TestContext context) {
     postgresClient = createNumbers(context, 45, 46, 47);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2669,6 +2695,15 @@ public class PostgresClientIT {
     postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
         Tuple.of(51, 53, 55),
         context.asyncAssertSuccess(select -> {
+          context.assertEquals(51, select.getInteger(0));
+        }));
+  }
+
+  @Test
+  public void selectSingleParamFuture(TestContext context) {
+    postgresClient = createNumbers(context, 51, 52, 53);
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+        Tuple.of(51, 53, 55)).onComplete(context.asyncAssertSuccess(select -> {
           context.assertEquals(51, select.getInteger(0));
         }));
   }
