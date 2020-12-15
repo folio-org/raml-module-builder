@@ -3,7 +3,6 @@ package org.folio.rest.impl;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.stringContainsInOrder;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -265,6 +264,18 @@ public class TenantAPIIT {
     String tenantId = TenantTool.tenantId(okapiHeaders);
     tenantAPI.previousSchema(vertx.getOrCreateContext(), tenantId, true)
       .onComplete(context.asyncAssertFailure());
+  }
+
+  @Test
+  public void previousSchemaSqlExistsTrue2(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    String tenantId = TenantTool.tenantId(okapiHeaders);
+
+    // only run create.ftl .. This makes previousSchema to find nothing on 2nd invocation
+    tenantAPI.sqlFile(vertx.getOrCreateContext(), tenantId, null, false)
+        .compose(files -> tenantAPI.postgresClient(vertx.getOrCreateContext()).runSQLFile(files[0], true))
+        .compose(x -> tenantAPI.previousSchema(vertx.getOrCreateContext(), tenantId, true)
+        .onComplete(context.asyncAssertSuccess(schema -> context.assertNull(schema))));
   }
 
   @Test
@@ -549,5 +560,4 @@ public class TenantAPIIT {
       assertThat(result.getStatus(), is(204));
     }), vertx.getOrCreateContext());
   }
-
 }

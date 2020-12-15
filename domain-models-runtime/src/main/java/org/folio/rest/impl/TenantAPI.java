@@ -6,7 +6,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
@@ -133,8 +132,8 @@ public class TenantAPI implements Tenant {
     return scripts;
   }
 
-  private Future<String[]> sqlFile(Context context, String tenantId,
-                                   TenantAttributes tenantAttributes, boolean tenantExists) {
+  Future<String[]> sqlFile(Context context, String tenantId,
+                           TenantAttributes tenantAttributes, boolean tenantExists) {
 
     return previousSchema(context, tenantId, tenantExists)
         .compose(previousSchema -> {
