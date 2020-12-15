@@ -65,6 +65,14 @@ public class SchemaMakerTest {
   }
 
   @Test
+  public void testCreateIndexesOnly() throws IOException, TemplateException {
+    SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
+        "mod-foo-18.2.3", null, "templates/db_scripts/schemaWithAudit.json");
+    String result = schemaMaker.generateIndexesOnly();
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS audit_"));
+  }
+
+  @Test
   public void canCreateAuditedTable() throws IOException, TemplateException {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.UPDATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/schemaWithAudit.json");

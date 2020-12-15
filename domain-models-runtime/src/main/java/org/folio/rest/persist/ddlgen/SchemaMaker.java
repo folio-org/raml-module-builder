@@ -64,16 +64,6 @@ public class SchemaMaker {
   }
 
   public String generateSchemas() throws IOException, TemplateException {
-    templateInput.put("schemaJson", this.getSchemaJson());
-
-    templateInput.put("tables", tables());
-
-    templateInput.put("views", this.schema.getViews());
-
-    templateInput.put("scripts", this.schema.getScripts());
-
-    templateInput.put("exactCount", this.schema.getExactCount()+"");
-
     return generateDDL("schemas.ftl");
   }
 
@@ -105,6 +95,16 @@ public class SchemaMaker {
     //TODO - check the rmbVersion in the internal_rmb table and compare to this passed in
     //version, to check if core rmb scripts need updating due to an update
     templateInput.put("rmbVersion", this.rmbVersion);
+
+    templateInput.put("schemaJson", this.getSchemaJson());
+
+    templateInput.put("tables", tables());
+
+    templateInput.put("views", this.schema.getViews());
+
+    templateInput.put("scripts", this.schema.getScripts());
+
+    templateInput.put("exactCount", this.schema.getExactCount()+"");
 
     Template tableTemplate = cfg.getTemplate(template);
     Writer writer = new StringWriter();
