@@ -196,6 +196,11 @@ public final class PgUtil {
    * If that also throws an exception create a failed future.
    *
    * <p>All exceptions are caught and reported via the returned Future.
+   *
+   * <p>If valueMethod or failResponseMethod is null a NullPointerException is reported
+   * to indicate a fatal coding error, fail the unit test, and provide a stacktrace that
+   * the developers can use to find and fix the causing code. We expect this during
+   * development only, not in production.
    */
   static <T> Future<Response> response(T value, Method valueMethod, Method failResponseMethod) {
     try {
