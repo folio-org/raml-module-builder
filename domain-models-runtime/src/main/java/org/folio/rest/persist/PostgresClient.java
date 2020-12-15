@@ -2878,7 +2878,7 @@ public class PostgresClient {
       int columnIndex = row.getColumnIndex(columnName);
       Object value = columnIndex == -1 ? null : row.getValue(columnIndex);
       if (isStringArrayType(value)) {
-        method.invoke(o, Arrays.asList(row.getStringArray(columnIndex)));
+        method.invoke(o, Arrays.asList(row.getArrayOfStrings(columnIndex)));
       } else {
         method.invoke(o, value);
       }
