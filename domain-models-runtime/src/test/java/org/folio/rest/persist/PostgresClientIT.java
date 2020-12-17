@@ -2304,10 +2304,8 @@ public class PostgresClientIT {
   public void executeParam(TestContext context) {
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))), res -> {
-          assertSuccess(context, res);
-          context.assertEquals(1, res.result().rowCount());
-        });
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))),
+            context.asyncAssertSuccess(res -> context.assertEquals(1, res.rowCount())));
   }
 
   @Test
@@ -2315,10 +2313,7 @@ public class PostgresClientIT {
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
         .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))))
-        .onComplete(res -> {
-          assertSuccess(context, res);
-          context.assertEquals(1, res.result().rowCount());
-        });
+        .onComplete(context.asyncAssertSuccess(res -> context.assertEquals(1, res.rowCount())));
   }
 
   @Test
