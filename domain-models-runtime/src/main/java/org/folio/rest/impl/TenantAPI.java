@@ -7,6 +7,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
+import io.vertx.sqlclient.Tuple;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -17,8 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
-
-import io.vertx.sqlclient.Tuple;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -182,13 +181,13 @@ public class TenantAPI implements Tenant {
   }
 
   /**
- * Installs or upgrades a module for a tenant.
- *
- * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
- *
- * @see <a href="https://github.com/folio-org/raml-module-builder#extending-the-tenant-init">Extending the Tenant Init</a>
- * for usage examples
- */
+   * Installs or upgrades a module for a tenant.
+   *
+   * <p>The <code>handler</code> signals an error with a failing result and a {@link ResponseException}.
+   *
+   * @see <a href="https://github.com/folio-org/raml-module-builder#extending-the-tenant-init">Extending the Tenant Init</a>
+   *      for usage examples
+   */
   @Validate
   @Override
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
