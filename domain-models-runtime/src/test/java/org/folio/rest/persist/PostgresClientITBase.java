@@ -166,7 +166,8 @@ public class PostgresClientITBase {
     String json = ResourceUtil.asString(schemaJsonFilename);
     try {
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-      runSqlFileAsSuperuser(context, schemaMaker.generateDDL());
+      runSqlFileAsSuperuser(context, schemaMaker.generateCreate());
+      runSqlFileAsSuperuser(context, schemaMaker.generateSchemas());
     } catch (IOException|TemplateException e) {
       context.fail(e);
     }

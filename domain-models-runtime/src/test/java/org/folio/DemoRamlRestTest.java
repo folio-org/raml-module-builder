@@ -125,7 +125,7 @@ public class DemoRamlRestTest {
     try {
       Buffer buf = Buffer.buffer("{\"purge\": true}");
       postData(context, "http://localhost:" + port + "/_/tenant", buf,
-          201, HttpMethod.POST, "application/json", TENANT, false);
+          204, HttpMethod.POST, "application/json", TENANT, false);
     } catch (Exception e) {
       context.fail(e);
     }
