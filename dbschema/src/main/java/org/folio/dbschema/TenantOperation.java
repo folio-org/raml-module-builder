@@ -6,6 +6,5 @@ package org.folio.dbschema;
  */
 public enum TenantOperation {
   CREATE,
-  UPDATE,
-  DELETE
+  UPDATE
 }

@@ -57,10 +57,29 @@ public class SchemaMakerTest {
   }
 
   @Test
+  public void testCreate() throws IOException, TemplateException {
+    SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
+        "mod-foo-18.2.3", null, "templates/db_scripts/schemaWithAudit.json");
+    String result = schemaMaker.generateCreate();
+    assertThat(result, containsString("CREATE SCHEMA harvard_circ"));
+    assertThat(result, not(containsString("CREATE INDEX IF NOT EXISTS audit_")));
+  }
+
+
+  @Test
+  public void testCreateIndexesOnly() throws IOException, TemplateException {
+    SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
+        "mod-foo-18.2.3", null, "templates/db_scripts/schemaWithAudit.json");
+    String result = schemaMaker.generateIndexesOnly();
+    assertThat(result, not(containsString("CREATE SCHEMA harvard_circ")));
+    assertThat(result, containsString("CREATE INDEX IF NOT EXISTS audit_"));
+  }
+
+  @Test
   public void canCreateAuditedTable() throws IOException, TemplateException {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.UPDATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/schemaWithAudit.json");
-    String result = schemaMaker.generateDDL();
+    String result = schemaMaker.generateSchemas();
 
     assertThat(result, containsString("CREATE TABLE IF NOT EXISTS harvard_circ.audit_test_tenantapi"));
     assertThat(result, containsString("CREATE OR REPLACE FUNCTION harvard_circ.audit_test_tenantapi_changes() RETURNS TRIGGER"));
@@ -96,7 +115,7 @@ public class SchemaMakerTest {
   public void canCreateCompoundIndex() throws IOException, TemplateException {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.UPDATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/compoundIndex.json");
-    String result = schemaMaker.generateDDL();
+    String result = schemaMaker.generateSchemas();
 
     assertThat(result, containsString("CREATE INDEX IF NOT EXISTS tablea_ftfield_idx_ft"));
     assertThat(result, containsString("concat_space_sql(tablea.jsonb->>'firstName' , tablea.jsonb->>'lastName')"));
@@ -111,7 +130,7 @@ public class SchemaMakerTest {
   public void canCreateSQLExpressionIndex() throws IOException, TemplateException {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.UPDATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/compoundIndex.json");
-    String result = schemaMaker.generateDDL();
+    String result = schemaMaker.generateSchemas();
 
     assertThat(result, containsString("lower(concat_space_sql(jsonb->>'field1', jsonb->>'field2'))"));
   }
@@ -157,7 +176,7 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-0.2.1-SNAPSHOT.2", "mod-foo-18.2.1-SNAPSHOT.2",
       "templates/db_scripts/caseinsensitive.json");
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "CREATE INDEX IF NOT EXISTS item_title_idx ON harvard_circ.item ' "
         + "|| $rmb$(left(lower(f_unaccent(jsonb->>'title')),600))$rmb$)"));
   }
@@ -168,11 +187,11 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.UPDATE,
       "mod-foo-18.2.1-SNAPSHOT.9", "mod-foo-18.2.3", "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from start;"));
 
     assertThat("generated schema contains 'select * from end;' but it shouldn't",
-      tidy(schemaMaker.generateDDL()), not(containsString("select * from end;")));
+      tidy(schemaMaker.generateSchemas()), not(containsString("select * from end;")));
   }
 
   @Test
@@ -181,10 +200,10 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-18.2.1-SNAPSHOT.9", "mod-foo-18.2.3", "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from start;"));
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from end;"));
   }
 
@@ -194,10 +213,10 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from start;"));
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from end;"));
   }
 
@@ -207,7 +226,7 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/scriptWithSnippetPath.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
       "select * from file_start;"));
   }
 
@@ -217,20 +236,20 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/scriptWithSnippetPathAndSnippet.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
       "select * from start;"));
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
       "select * from file_start;"));
   }
 
   @Test
   public void deleteSchema() throws IOException, TemplateException {
 
-    SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.DELETE,
+    SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.UPDATE,
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), allOf(
+    assertThat(tidy(schemaMaker.generatePurge()), allOf(
         containsString("DROP SCHEMA "), containsString("DROP ROLE ")));
   }
 
@@ -241,10 +260,10 @@ public class SchemaMakerTest {
       "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/scriptexists.json");
 
     assertThat("generated schema contains 'select * from start;' but it should not",
-      tidy(schemaMaker.generateDDL()), not(containsString("select * from start;")));
+      tidy(schemaMaker.generateSchemas()), not(containsString("select * from start;")));
 
     assertThat("generated schema contains 'select * from end;' but it should not",
-      tidy(schemaMaker.generateDDL()), not(containsString("select * from end;")));
+      tidy(schemaMaker.generateSchemas()), not(containsString("select * from end;")));
   }
 
   @Test
@@ -255,10 +274,10 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
       "18.2.0", "18.2.3", "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from start;"));
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from end;"));
   }
 
@@ -268,10 +287,10 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
       null, null, "templates/db_scripts/scriptexists.json");
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from start;"));
 
-    assertThat(tidy(schemaMaker.generateDDL()), containsString(
+    assertThat(tidy(schemaMaker.generateSchemas()), containsString(
         "select * from end;"));
   }
 
@@ -289,7 +308,7 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
       null, null, "templates/db_scripts/test_indexes.json");
 
-    String ddl = tidy(schemaMaker.generateDDL());
+    String ddl = tidy(schemaMaker.generateSchemas());
 
     // by default all indexes are wrapped with lower/f_unaccent
     // except full text which only obeys f_unaccent
@@ -306,7 +325,7 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("myTenant", "myModule", TenantOperation.UPDATE,
         "1.0.0", "2.0.0", "templates/db_scripts/schema.json");
     schemaMaker.setPreviousSchema(schema("templates/db_scripts/indexUpgrade.json"));
-    String ddl = schemaMaker.generateDDL();
+    String ddl = schemaMaker.generateSchemas();
     assertThat(ddl, containsString("DROP TABLE IF EXISTS myTenant_myModule.tablea CASCADE;"));
     assertThat(ddl, containsString("DROP TABLE IF EXISTS myTenant_myModule.tableb CASCADE;"));
     assertThat(ddl, containsString("DROP TABLE IF EXISTS myTenant_myModule.tablec CASCADE;"));
@@ -322,7 +341,7 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("myTenant", "myModule", TenantOperation.UPDATE,
         "1.0.0", "2.0.0", "templates/db_scripts/indexUpgrade.json");
     schemaMaker.setPreviousSchema(schema("templates/db_scripts/schema.json"));
-    String ddl = schemaMaker.generateDDL();
+    String ddl = schemaMaker.generateSchemas();
     assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS refField"));
     assertThat(ddl, not(containsString("DROP COLUMN IF EXISTS refField")));
     assertThat(ddl, containsString("CREATE OR REPLACE FUNCTION myTenant_myModule.update_test_tenantapi_references()"));
@@ -334,7 +353,7 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("myTenant", "myModule", TenantOperation.UPDATE,
         "1.0.0", "2.0.0", "templates/db_scripts/foreignKey2.json");
     schemaMaker.setPreviousSchema(schema("templates/db_scripts/foreignKey1.json"));
-    String ddl = schemaMaker.generateDDL();
+    String ddl = schemaMaker.generateSchemas();
     // a, f -> b, c, d, e, f
     assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_a"));
     assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_b"));
@@ -355,7 +374,7 @@ public class SchemaMakerTest {
     SchemaMaker schemaMaker = schemaMaker("myTenant", "myModule", TenantOperation.UPDATE,
         "1.0.0", "2.0.0", "templates/db_scripts/foreignKey1.json");
     schemaMaker.setPreviousSchema(schema("templates/db_scripts/foreignKey2.json"));
-    String ddl = schemaMaker.generateDDL();
+    String ddl = schemaMaker.generateSchemas();
     // b, c, d, e, f -> a, f
     assertThat(ddl, containsString("ADD COLUMN IF NOT EXISTS ref_a"));
     assertThat(ddl, containsString("DROP COLUMN IF EXISTS ref_b"));
@@ -406,7 +425,7 @@ public class SchemaMakerTest {
     String module = "olModule";
     SchemaMaker schemaMaker = schemaMaker(tenant, module, TenantOperation.UPDATE,
         "1.0.0", "2.0.0", "templates/db_scripts/schemaWithOptimisticLocking.json");
-    String ddl = schemaMaker.generateDDL();
+    String ddl = schemaMaker.generateSchemas();
     // trigger will be created for tab_ol_log, tab_ol_fail
     Arrays.asList("tab_ol_log", "tab_ol_fail").forEach(tab -> {
       assertThat(ddl, containsString(
