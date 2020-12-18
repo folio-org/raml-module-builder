@@ -1813,7 +1813,7 @@ RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/ram
 
 ## Optimistic Locking
 
-RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. The version conflict error will be reported as 419 HTTP response code if 419 is defined in RAML, otherwise, it will fall back to use 400 HTTP response code.
+RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 419 HTTP response code if 419 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code.
 
     * `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
     * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction
