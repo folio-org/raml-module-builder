@@ -1822,6 +1822,45 @@ RMB supports optimistic locking. By default it is disabled. Module developer can
 ```
 Backend notice: severity='WARNING', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 2, _version of request is "1"' ...
 ```
+Use mod-inventory-storage `instance` table as an example, do following to enable optimistic locking
+
+* in db `schema.json`, add `withOptimisticLocking` attribute for `instance` table definition
+
+```
+{
+  "tableName": "instance",
+  "withOptimisticLocking": "logOnConflict",
+  ...
+}
+```
+
+* in `instance.json`, add `_version` field
+
+```
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "An instance record",
+  "type": "object",
+  "properties": {
+   "_version": {
+    "type": "integer",
+    "description": "Record version for optimistic locking"
+   }
+  ...
+}
+```
+
+* update raml file to define 409 response code. For example in `instance-storage.raml` add below for `/{instanceId}` API
+
+```
+put:
+  responses:
+    409:
+      description: "Conflict"
+      body:
+        text/plain:
+          example: "Optimistic locking version has changed"
+```
 
 ## Facet Support
 
