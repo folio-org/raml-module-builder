@@ -404,8 +404,6 @@ public class PgUtilIT {
 
   @Test
   public void deleteByCQLwithNo500(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    //  insert(testContext, pg, "delete_test",  1);
     PgUtil.delete("users",  "username=delete_test",
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
         asyncAssertFail(testContext, "respond500"));
@@ -427,8 +425,6 @@ public class PgUtilIT {
 
   @Test
   public void deleteByCQLNullHeaders(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    insert(testContext, pg, "delete_test",  1);
     PgUtil.delete("users",  "username==delete_test",
         null, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 400, "null"));
