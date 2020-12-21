@@ -768,48 +768,52 @@ public final class PgUtil {
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
 
+    final Method respond500;
     try {
-      Method respond500 = responseDelegateClass
-          .getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
-      Method respond400 = responseDelegateClass
-          .getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
-      Method respond204 = responseDelegateClass.getMethod(RESPOND_204);
+      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      return;
+    }
 
-      try {
-        CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
-        CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, -1, -1);
-        PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
+    final Method respond400;
+    final Method respond204;
+    try {
+      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+      respond204 = responseDelegateClass.getMethod(RESPOND_204);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return;
+    }
 
+    try {
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, -1, -1);
+      PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
+
+      PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+      postgresClient.delete(preparedCql.getTableName(), preparedCql.getCqlWrapper(), reply -> {
         try {
-          PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
-          postgresClient.delete(preparedCql.getTableName(), preparedCql.getCqlWrapper(), reply -> {
-            try {
-              if (reply.failed()) {
-                String message = PgExceptionUtil.badRequestMessage(reply.cause());
-                if (message == null) {
-                  message = reply.cause().getMessage();
-                }
-                logger.error(message, reply.cause());
-                asyncResultHandler.handle(response(message, respond400, respond500));
-                return;
-              }
-              asyncResultHandler.handle(response(respond204, respond500));
-            } catch (Exception e) {
-              logger.error(e.getMessage(), e);
-              asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+          if (reply.failed()) {
+            String message = PgExceptionUtil.badRequestMessage(reply.cause());
+            if (message == null) {
+              message = reply.cause().getMessage();
             }
-          });
+            logger.error(message, reply.cause());
+            asyncResultHandler.handle(response(message, respond400, respond500));
+            return;
+          }
+          asyncResultHandler.handle(response(respond204, respond500));
         } catch (Exception e) {
           logger.error(e.getMessage(), e);
           asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
         }
-      } catch (FieldException e) {
-        logger.error(e.getMessage(), e);
-        asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
-      }
+      });
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
     }
   }
 
