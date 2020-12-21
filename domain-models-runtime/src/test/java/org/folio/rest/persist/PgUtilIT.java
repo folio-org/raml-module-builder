@@ -440,7 +440,7 @@ public class PgUtilIT {
     // delete two
     {
       Async async = testContext.async();
-      PgUtil.delete("users",  "username=delete_b?", okapiHeaders, vertx.getOrCreateContext(),
+      PgUtil.delete("users",  "username=delete_b*", okapiHeaders, vertx.getOrCreateContext(),
           Users.DeleteUsersByUserIdResponse.class,
           testContext.asyncAssertSuccess(res -> {
             assertThat(res.getStatus(), is(204));
