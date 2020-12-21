@@ -42,7 +42,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   [RMB RestVerticle](https://github.com/folio-org/raml-module-builder#restverticle) and
   [MODINVSTOR-635](https://issues.folio.org/browse/MODINVSTOR-635).
 * Tenant API changed - refer to
-  [RAML](https://github.com/folio-org/raml/blob/945d0fd2912eb8ef86a4d580ed8669004fe2085b/ramls/tenant.raml).
+  [RAML](https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml).
   See issues [FOLIO-2908](https://issues.folio.org/browse/FOLIO-2908)
    and [FOLIO-2877](https://issues.folio.org/browse/FOLIO-2877)
   The API for purge, upgrade, init is single end-point. Client code (mostly testing code)
