@@ -2878,7 +2878,7 @@ public class PostgresClient {
       int columnIndex = row.getColumnIndex(columnName);
       Object value = columnIndex == -1 ? null : row.getValue(columnIndex);
       if (isStringArrayType(value)) {
-        method.invoke(o, Arrays.asList(row.getStringArray(columnIndex)));
+        method.invoke(o, Arrays.asList(row.getArrayOfStrings(columnIndex)));
       } else {
         method.invoke(o, value);
       }
@@ -2915,7 +2915,19 @@ public class PostgresClient {
     getSQLConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
-    /**
+  /**
+   * Run a select query.
+   *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql - the sql query to run
+   * @return future result
+   */
+  public Future<RowSet<Row>> select(String sql) {
+    return Future.future(promise -> select(sql, promise));
+  }
+
+  /**
    * Run a select query.
    *
    * <p>To update see {@link #execute(String, Handler)}.
@@ -3041,6 +3053,18 @@ public class PostgresClient {
   /**
    * Run a select query and return the first record, or null if there is no result.
    *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql  The sql query to run.
+   * @return future
+   */
+  public Future<Row> selectSingle(String sql) {
+    return selectSingle(sql, Tuple.tuple());
+  }
+
+  /**
+   * Run a select query and return the first record, or null if there is no result.
+   *
    * <p>This never closes the connection conn.
    *
    * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
@@ -3064,6 +3088,17 @@ public class PostgresClient {
    */
   public void selectSingle(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
     getSQLConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a parameterized/prepared select query and return the first record, or null if there is no result.
+   *
+   * @param sql The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @return future.
+   */
+  public Future<Row> selectSingle(String sql, Tuple params) {
+    return Future.future(promise -> selectSingle(sql, params, promise));
   }
 
   static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<Row>> replyHandler) {
@@ -3177,15 +3212,23 @@ public class PostgresClient {
     }
   }
 
-    /**
-     * Execute an INSERT, UPDATE or DELETE statement.
-     * @param sql - the sql to run
-     * @param replyHandler - the result handler with UpdateResult
-     */
+  /**
+   * Execute an INSERT, UPDATE or DELETE statement.
+   * @param sql - the sql to run
+   * @param replyHandler - the result handler with UpdateResult
+   */
   public void execute(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     execute(sql, Tuple.tuple(), replyHandler);
   }
 
+  /**
+   * Execute an INSERT, UPDATE or DELETE statement.
+   * @param sql - the sql to run
+   * @return future result
+   */
+  public Future<RowSet<Row>> execute(String sql) {
+    return execute(sql, Tuple.tuple());
+  }
   /**
    * Get vertx-pg-client connection
    * @param replyHandler
@@ -3259,6 +3302,16 @@ public class PostgresClient {
    */
   public void execute(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
+   * @param sql  The SQL statement to run.
+   * @param params The parameters for the placeholders in sql.
+   * @return async result.
+   */
+  public Future<RowSet<Row>> execute(String sql, Tuple params) {
+    return Future.future(promise -> execute(sql, params, promise));
   }
 
   /**

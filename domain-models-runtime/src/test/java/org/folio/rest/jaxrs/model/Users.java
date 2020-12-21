@@ -250,6 +250,12 @@ public interface Users {
       return new PostUsersResponse(responseBuilder.build(), entity);
     }
 
+    public static PostUsersResponse respond409WithTextPlain(Object entity) {
+      Response.ResponseBuilder responseBuilder = Response.status(409).header("Content-Type", "text/plain");
+      responseBuilder.entity(entity);
+      return new PostUsersResponse(responseBuilder.build(), entity);
+    }
+
     public static PostUsersResponse respond413WithTextPlain(Object entity) {
       Response.ResponseBuilder responseBuilder = Response.status(413).header("Content-Type", "text/plain");
       responseBuilder.entity(entity);
@@ -356,6 +362,12 @@ public interface Users {
 
     public static PutUsersByUserIdResponse respond400WithTextPlain(Object entity) {
       Response.ResponseBuilder responseBuilder = Response.status(400).header("Content-Type", "text/plain");
+      responseBuilder.entity(entity);
+      return new PutUsersByUserIdResponse(responseBuilder.build(), entity);
+    }
+
+    public static PutUsersByUserIdResponse respond409WithTextPlain(Object entity) {
+      Response.ResponseBuilder responseBuilder = Response.status(409).header("Content-Type", "text/plain");
       responseBuilder.entity(entity);
       return new PutUsersByUserIdResponse(responseBuilder.build(), entity);
     }

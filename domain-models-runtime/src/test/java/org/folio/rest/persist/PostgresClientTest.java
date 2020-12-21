@@ -265,7 +265,7 @@ public class PostgresClientTest {
     row.addString(foo);
     row.addString(bar);
     row.addDouble(biz);
-    row.addStringArray(baz);
+    row.addArrayOfString(baz);
 
     testClient.populateExternalColumns(externalColumnSetters, o, row);
     assertThat(o.getFoo(), is(foo));
@@ -510,7 +510,7 @@ public class PostgresClientTest {
       row.addString("foo " + i);
       row.addString("bar " + i);
       row.addDouble((double) i);
-      row.addStringArray(new String[] { "This", "is", "a", "test" } );
+      row.addArrayOfString(new String[] { "This", "is", "a", "test" } );
       rows.add(row);
     }
     return new LocalRowSet(total).withColumns(columnNames).withRows(rows);

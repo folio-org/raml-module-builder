@@ -4,6 +4,8 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,7 +42,9 @@ public class SchemaMakerIT extends PostgresClientITBase {
           tenantOperation, "mod-foo-18.2.3", "mod-foo-18.2.4");
       String json = ResourceUtil.asString("templates/db_scripts/" + filename);
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-      String sql = schemaMaker.generateDDL();
+      String sql = schemaMaker.generateCreate();
+      runSqlFileAsSuperuser(context, sql);
+      sql = schemaMaker.generateSchemas();
       runSqlFileAsSuperuser(context, sql);
     } catch (Exception e) {
       context.fail(e);
@@ -388,5 +392,55 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertThat("indexdef before suppressed update", indexdef(context, "foo"), is(indexdef));
     runSchema(context, TenantOperation.UPDATE, "schema.json");
     assertThat("indexdef after suppressed update", indexdef(context, "foo"), is(indexdef));
+  }
+  
+  @Test
+  public void canCreateOptimisticLockingTrigger(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "schemaWithOptimisticLocking.json");
+    String olVersion = "_version";
+    List<String> tables = Arrays.asList("tab_ol_off", "tab_ol_log", "tab_ol_fail", "tab_ol_none");
+    String sql = "SELECT COALESCE((jsonb->>'%s')::numeric, 0) FROM %s";
+    // test insert
+    tables.forEach(table -> {
+      execute(context, "INSERT INTO " + table +
+          " SELECT md5(username)::uuid, json_build_object('username', username, 'id', md5(username)::uuid)" +
+          " FROM (SELECT '" + table + "' AS username) AS subquery");
+    });
+    assertThat("tab_ol_off has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(0));
+    assertThat("tab_ol_log has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_log")), is(1));
+    assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(1));
+    assertThat("tab_ol_none has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_none")), is(0));
+    // test update
+    tables.forEach(table -> {
+      String updateSql = "UPDATE " + table + " SET jsonb=jsonb_set(jsonb, '{" + olVersion + "}', to_jsonb('2'::text))";
+      if (table.equals("tab_ol_fail")) {
+        // fail on conflict
+        executeAndExpectFailure(context, updateSql, "Cannot update record", "because it has been changed");
+      } else {
+        execute(context, updateSql);
+      }
+    });
+    assertThat("tab_ol_off has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(2));
+    assertThat("tab_ol_log has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_log")), is(2));
+    assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(1));
+    // update version as provided if table has no optimistic locking configuration
+    assertThat("tab_ol_none has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_none")), is(2));
+    // test insert with OFF
+    execute(context, "DELETE from tab_ol_off");
+    execute(context, "INSERT INTO tab_ol_off SELECT md5('abc')::uuid, jsonb_build_object('" + olVersion + "', 5)");
+    assertThat("tab_ol_off ignore version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(5));
+    // turn off failOnConfict and test again
+    runSchema(context, TenantOperation.UPDATE, "schemaWithOptimisticLocking2.json");
+    execute(context, "UPDATE tab_ol_fail SET jsonb=jsonb_set(jsonb, '{" + olVersion + "}', to_jsonb('5'::text))");
+    assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(5));
+  }
+  
+  private static void executeAndExpectFailure(TestContext context, String sqlStatement, String ... errMessages) {
+      PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
+      postgresClient.execute(sqlStatement, context.asyncAssertFailure(cause -> {
+        for (String errMessage : errMessages) {
+          context.assertTrue(cause.getMessage().contains(errMessage));
+        }
+      }));
   }
 }

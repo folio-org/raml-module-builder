@@ -1,27 +1,4 @@
-
-<#if mode.name() == "CREATE">
-
-CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
-GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
-CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
-
-</#if>
-
-ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "$user";
 SET search_path TO ${myuniversity}_${mymodule};
-
-<#include "extensions.ftl">
-
-<#if mode.name() == "CREATE">
-
-CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
-      id SERIAL PRIMARY KEY,
-      jsonb JSONB NOT NULL
-    );
-
-insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
-
-</#if>
 
 -- List of all indexes maintained by RMB
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal_index (
@@ -104,6 +81,8 @@ END $$;
     </#if>
     -- drop function that updates foreign key fields
     DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.update_${table.tableName}_references();
+    -- drop function that updates optimistic locking version
+    DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.${table.tableName}_set_ol_version() CASCADE;
   </#if>
 
   <#if table.mode != "delete">
@@ -141,6 +120,8 @@ END $$;
 
     <#include "metadata.ftl">
 
+    <#include "optimistic_locking.ftl">
+
     <#if table.withAuditing == true>
       <#include "audit.ftl">
     </#if>
@@ -154,6 +135,9 @@ END $$;
          because they may have changed. -->
     <#include "indexes.ftl">
     <#include "foreign_keys.ftl">
+    
+    <#-- Always check optimistic locking configuration -->
+    <#include "optimistic_locking.ftl">
 </#if>
 </#list>
 
