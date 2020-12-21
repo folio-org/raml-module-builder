@@ -1075,6 +1075,14 @@ public class PgUtilIT {
   }
 
   @Test
+  public void deleteByCQLwithNo500(TestContext testContext) {
+    PgUtil.delete("users",  "username=delete_test ",
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertFailure(e -> {
+          assertThat(e, is(instanceOf(NullPointerException.class)));
+        }));
+  }
+
+  @Test
   public void optimizedSqlCanSetSize() {
     int oldSize = PgUtil.getOptimizedSqlSize();
     int newSize = 54321;
@@ -1112,6 +1120,7 @@ public class PgUtilIT {
     insert(testContext, pg, "c", n);
     insert(testContext, pg, "d foo", 5);
     insert(testContext, pg, "e", n);
+    insert(testContext, pg, "delete_test", n);
   }
 
   private UserdataCollection searchForDataWithNo500(String cql, int offset, int limit, TestContext testContext) {
