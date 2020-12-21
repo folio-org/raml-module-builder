@@ -1322,7 +1322,7 @@ cleaned up with DELETE.
 
 The RAML defining the API:
 
-   https://github.com/folio-org/raml/blob/raml1.0/ramls/tenant.raml
+   https://github.com/folio-org/raml/blob/945d0fd2912eb8ef86a4d580ed8669004fe2085b/ramls/tenant.raml
 
 By default RMB includes an implementation of the Tenant API which assumes Postgres being present.
 Implementation in
