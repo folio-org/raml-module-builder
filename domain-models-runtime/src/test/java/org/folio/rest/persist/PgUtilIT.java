@@ -403,6 +403,111 @@ public class PgUtilIT {
   }
 
   @Test
+  public void deleteByCQLwithNo500(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    //  insert(testContext, pg, "delete_test",  1);
+    PgUtil.delete("users",  "username=delete_test",
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
+        testContext.asyncAssertFailure(e -> {
+          assertThat(e, is(instanceOf(NullPointerException.class)));
+        }));
+  }
+
+  @Test
+  public void deleteByCQLwithNo400(TestContext testContext) {
+    PgUtil.delete("users", "username=delete_test",
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout400.class,
+        asyncAssertSuccess(testContext, 500, "respond400"));
+  }
+
+  @Test
+  public void deleteByCQLwithNo204(TestContext testContext) {
+    PgUtil.delete("users", "username=delete_test",
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout204.class,
+        asyncAssertSuccess(testContext, 500, "respond204"));
+  }
+
+  @Test
+  public void deleteByCQLNullHeaders(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    insert(testContext, pg, "delete_test",  1);
+    PgUtil.delete("users",  "username==delete_test",
+        null, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "null"));
+  }
+
+  @Test
+  public void deleteByCQLOK(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    insert(testContext, pg, "delete_test",  1);
+    String cql = "username=delete_test";
+
+    // check we got one
+    {
+      Async async = testContext.async();
+      PgUtil.get(
+          "users", User.class, UserdataCollection.class, cql, 0, 0, okapiHeaders,
+          vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
+            if (response.getStatus() != 200) {
+              testContext.fail("Expected status 200, got "
+                  + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+              async.complete();
+              return;
+            }
+            UserdataCollection c = (UserdataCollection) response.getEntity();
+            assertThat(c.getTotalRecords(), is(1));
+            async.complete();
+          }));
+      async.awaitSuccess(10000 /* ms */);
+    }
+    // delete it
+    {
+      Async async = testContext.async();
+      PgUtil.delete("users",  cql, okapiHeaders, vertx.getOrCreateContext(),
+          Users.DeleteUsersByUserIdResponse.class,
+          testContext.asyncAssertSuccess(res -> {
+            assertThat(res.getStatus(), is(204));
+            async.complete();
+          }));
+      async.await();
+    }
+    // and check 0 hits
+    {
+      Async async = testContext.async();
+      PgUtil.get(
+          "users", User.class, UserdataCollection.class, cql, 0, 0, okapiHeaders,
+          vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
+            if (response.getStatus() != 200) {
+              testContext.fail("Expected status 200, got "
+                  + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+              async.complete();
+              return;
+            }
+            UserdataCollection c = (UserdataCollection) response.getEntity();
+            assertThat(c.getTotalRecords(), is(0));
+            async.complete();
+          }));
+      async.awaitSuccess(10000 /* ms */);
+    }
+  }
+
+  @Test
+  public void deleteByCQLSyntaxError(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    PgUtil.delete("users",  "username==",
+        okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "expected index or term, got EOF"));
+  }
+
+  @Test
+  public void deleteByCQLBadTable(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    PgUtil.delete("users1",  "username==delete_test",
+        okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "relation \\\"testtenant_raml_module_builder.users1\\\" does not exist"));
+  }
+
+  @Test
   public void getResponseWithout500(TestContext testContext) {
     PgUtil.get("users", User.class, UserdataCollection.class, "username=b", 0, 9,
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
@@ -1105,111 +1210,6 @@ public class PgUtilIT {
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertFailure(e -> {
           assertThat(e, is(instanceOf(NullPointerException.class)));
         }));
-  }
-
-  @Test
-  public void deleteByCQLwithNo500(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-  //  insert(testContext, pg, "delete_test",  1);
-    PgUtil.delete("users",  "username=delete_test",
-        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
-        testContext.asyncAssertFailure(e -> {
-          assertThat(e, is(instanceOf(NullPointerException.class)));
-        }));
-  }
-
-  @Test
-  public void deleteByCQLwithNo400(TestContext testContext) {
-    PgUtil.delete("users", "username=delete_test",
-        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout400.class,
-        asyncAssertSuccess(testContext, 500, "respond400"));
-  }
-
-  @Test
-  public void deleteByCQLwithNo204(TestContext testContext) {
-    PgUtil.delete("users", "username=delete_test",
-        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout204.class,
-        asyncAssertSuccess(testContext, 500, "respond204"));
-  }
-
-  @Test
-  public void deleteByCQLNullHeaders(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    insert(testContext, pg, "delete_test",  1);
-    PgUtil.delete("users",  "username==delete_test",
-        null, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 400, "null"));
-  }
-
-  @Test
-  public void deleteByCQLOK(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    insert(testContext, pg, "delete_test",  1);
-    String cql = "username=delete_test";
-
-    // check we got one
-    {
-      Async async = testContext.async();
-      PgUtil.get(
-          "users", User.class, UserdataCollection.class, cql, 0, 0, okapiHeaders,
-          vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
-            if (response.getStatus() != 200) {
-              testContext.fail("Expected status 200, got "
-                  + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
-              async.complete();
-              return;
-            }
-            UserdataCollection c = (UserdataCollection) response.getEntity();
-            assertThat(c.getTotalRecords(), is(1));
-            async.complete();
-          }));
-      async.awaitSuccess(10000 /* ms */);
-    }
-    // delete it
-    {
-      Async async = testContext.async();
-      PgUtil.delete("users",  cql, okapiHeaders, vertx.getOrCreateContext(),
-          Users.DeleteUsersByUserIdResponse.class,
-          testContext.asyncAssertSuccess(res -> {
-            assertThat(res.getStatus(), is(204));
-            async.complete();
-          }));
-      async.await();
-    }
-    // and check 0 hits
-    {
-      Async async = testContext.async();
-      PgUtil.get(
-          "users", User.class, UserdataCollection.class, cql, 0, 0, okapiHeaders,
-          vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
-            if (response.getStatus() != 200) {
-              testContext.fail("Expected status 200, got "
-                  + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
-              async.complete();
-              return;
-            }
-            UserdataCollection c = (UserdataCollection) response.getEntity();
-            assertThat(c.getTotalRecords(), is(0));
-            async.complete();
-          }));
-      async.awaitSuccess(10000 /* ms */);
-    }
-  }
-
-  @Test
-  public void deleteByCQLSyntaxError(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    PgUtil.delete("users",  "username==",
-        okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 400, "expected index or term, got EOF"));
-  }
-
-  @Test
-  public void deleteByCQLBadTable(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    PgUtil.delete("users1",  "username==delete_test",
-        okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 400, "relation \\\"testtenant_raml_module_builder.users1\\\" does not exist"));
   }
 
   @Test
