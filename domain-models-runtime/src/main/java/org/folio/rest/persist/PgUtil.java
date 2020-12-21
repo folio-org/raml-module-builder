@@ -751,6 +751,72 @@ public final class PgUtil {
     }
   }
 
+   /**
+   * Delete records by CQL.
+   * @param table  the table that contains the records
+   * @param cql  the CQL query for filtering the records
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static void delete(String table,
+      String cql,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+
+    final Method respond500;
+    try {
+      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      return;
+    }
+
+    final Method respond400;
+    final Method respond204;
+    try {
+      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+      respond204 = responseDelegateClass.getMethod(RESPOND_204);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return;
+    }
+
+    try {
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, -1, -1);
+      PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
+
+      PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+      postgresClient.delete(preparedCql.getTableName(), preparedCql.getCqlWrapper(), reply -> {
+        try {
+          if (reply.failed()) {
+            String message = PgExceptionUtil.badRequestMessage(reply.cause());
+            if (message == null) {
+              message = reply.cause().getMessage();
+            }
+            logger.error(message, reply.cause());
+            asyncResultHandler.handle(response(message, respond400, respond500));
+            return;
+          }
+          asyncResultHandler.handle(response(respond204, respond500));
+        } catch (Exception e) {
+          logger.error(e.getMessage(), e);
+          asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+        }
+      });
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
+    }
+  }
+
   /**
    * Get a record by id.
    *
