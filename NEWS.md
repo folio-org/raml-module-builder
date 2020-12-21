@@ -10,7 +10,7 @@ New features (some of which are breaking changes):
  * [RMB-754](https://issues.folio.org/browse/RMB-754) Provide implementation for the async tenant API
  * [RMB-772](https://issues.folio.org/browse/RMB-772) Persist tenant operation
  * [RMB-759](https://issues.folio.org/browse/RMB-759) Consistent format for createdDate and updatedDate metadata
- * [RMB-389](https://issues.folio.org/browse/RMB-389) RMB-389 PgUtil.delete by CQL
+ * [RMB-389](https://issues.folio.org/browse/RMB-389) PgUtil.delete by CQL
  * Use okapi-common 4.5.0 (which is also using Vert.x 4.0.0)
 
 Fixes:
