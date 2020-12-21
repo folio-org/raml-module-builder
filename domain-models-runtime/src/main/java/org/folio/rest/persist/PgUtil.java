@@ -1072,7 +1072,7 @@ public final class PgUtil {
     try {
       respond409 = clazz.getMethod(RESPOND_409_WITH_TEXT_PLAIN, Object.class);
     } catch (NoSuchMethodException e) {
-      logger.warn("Reponse 409 is not defined for class " + clazz);
+      logger.warn("Response 409 is not defined for class " + clazz);
       respond409 = null;
     }
     return respond409;
