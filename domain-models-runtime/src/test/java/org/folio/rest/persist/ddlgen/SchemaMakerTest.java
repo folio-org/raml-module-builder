@@ -57,14 +57,24 @@ public class SchemaMakerTest {
   }
 
   @Test
-  public void testCreate() throws IOException, TemplateException {
+  public void testCreateCreate() throws IOException, TemplateException {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
         "mod-foo-18.2.3", null, "templates/db_scripts/schemaWithAudit.json");
     String result = schemaMaker.generateCreate();
     assertThat(result, containsString("CREATE SCHEMA harvard_circ"));
+    assertThat(result, containsString("rmb_job"));
     assertThat(result, not(containsString("CREATE INDEX IF NOT EXISTS audit_")));
   }
 
+  @Test
+  public void testCreateUpdate() throws IOException, TemplateException {
+    SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.UPDATE,
+        "mod-foo-18.2.3", "mod-foo-18.2.4", "templates/db_scripts/schemaWithAudit.json");
+    String result = schemaMaker.generateCreate();
+    assertThat(result, not(containsString("CREATE SCHEMA harvard_circ")));
+    assertThat(result, containsString("rmb_job"));
+    assertThat(result, not(containsString("CREATE INDEX IF NOT EXISTS audit_")));
+  }
 
   @Test
   public void testCreateIndexesOnly() throws IOException, TemplateException {
