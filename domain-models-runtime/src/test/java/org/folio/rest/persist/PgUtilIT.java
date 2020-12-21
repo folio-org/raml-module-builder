@@ -404,8 +404,6 @@ public class PgUtilIT {
 
   @Test
   public void deleteByCQLwithNo500(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    //  insert(testContext, pg, "delete_test",  1);
     PgUtil.delete("users",  "username=delete_test",
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
         asyncAssertFail(testContext, "respond500"));
@@ -427,8 +425,6 @@ public class PgUtilIT {
 
   @Test
   public void deleteByCQLNullHeaders(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    insert(testContext, pg, "delete_test",  1);
     PgUtil.delete("users",  "username==delete_test",
         null, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 400, "null"));
@@ -437,14 +433,26 @@ public class PgUtilIT {
   @Test
   public void deleteByCQLOK(TestContext testContext) {
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
-    insert(testContext, pg, "delete_test",  1);
-    String cql = "username=delete_test";
+    insert(testContext, pg, "delete_a",  1);
+    insert(testContext, pg, "delete_b1",  1);
+    insert(testContext, pg, "delete_b2",  1);
 
-    // check we got one
+    // delete two
+    {
+      Async async = testContext.async();
+      PgUtil.delete("users",  "username=delete_b*", okapiHeaders, vertx.getOrCreateContext(),
+          Users.DeleteUsersByUserIdResponse.class,
+          testContext.asyncAssertSuccess(res -> {
+            assertThat(res.getStatus(), is(204));
+            async.complete();
+          }));
+      async.await();
+    }
+    // and check 1 left
     {
       Async async = testContext.async();
       PgUtil.get(
-          "users", User.class, UserdataCollection.class, cql, 0, 0, okapiHeaders,
+          "users", User.class, UserdataCollection.class, "username=delete*", 0, 0, okapiHeaders,
           vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
             if (response.getStatus() != 200) {
               testContext.fail("Expected status 200, got "
@@ -454,35 +462,6 @@ public class PgUtilIT {
             }
             UserdataCollection c = (UserdataCollection) response.getEntity();
             assertThat(c.getTotalRecords(), is(1));
-            async.complete();
-          }));
-      async.awaitSuccess(10000 /* ms */);
-    }
-    // delete it
-    {
-      Async async = testContext.async();
-      PgUtil.delete("users",  cql, okapiHeaders, vertx.getOrCreateContext(),
-          Users.DeleteUsersByUserIdResponse.class,
-          testContext.asyncAssertSuccess(res -> {
-            assertThat(res.getStatus(), is(204));
-            async.complete();
-          }));
-      async.await();
-    }
-    // and check 0 hits
-    {
-      Async async = testContext.async();
-      PgUtil.get(
-          "users", User.class, UserdataCollection.class, cql, 0, 0, okapiHeaders,
-          vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
-            if (response.getStatus() != 200) {
-              testContext.fail("Expected status 200, got "
-                  + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
-              async.complete();
-              return;
-            }
-            UserdataCollection c = (UserdataCollection) response.getEntity();
-            assertThat(c.getTotalRecords(), is(0));
             async.complete();
           }));
       async.awaitSuccess(10000 /* ms */);
