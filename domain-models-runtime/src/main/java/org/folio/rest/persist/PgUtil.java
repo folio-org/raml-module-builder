@@ -777,7 +777,7 @@ public final class PgUtil {
 
       try {
         CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
-        CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, -1, 0);
+        CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, -1, -1);
         PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
 
         try {

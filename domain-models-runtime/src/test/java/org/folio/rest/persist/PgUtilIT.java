@@ -105,7 +105,7 @@ public class PgUtilIT {
   }
 
   private static final String DUMMY_VAL = "dummy value set by trigger";
-  
+
   // a special user name used to test 409 response
   private static final String USER_409 = "user_409_raise_exception";
 
@@ -132,12 +132,12 @@ public class PgUtilIT {
 
     // when user_409 is updated, raise exception and test 409 response
     execute(context, "CREATE FUNCTION " + schema + ".raise_409() RETURNS TRIGGER AS "
-        + "$$ BEGIN IF NEW.jsonb->>'username' = '" + USER_409 
+        + "$$ BEGIN IF NEW.jsonb->>'username' = '" + USER_409
         + "' THEN RAISE EXCEPTION 'version conflict' USING ERRCODE = '" + PgExceptionUtil.VERSION_CONFLICT + "'; END IF; RETURN NEW; "
         + "END; $$ language 'plpgsql';");
     execute(context, "CREATE TRIGGER trigger_409 BEFORE UPDATE ON " + schema + ".users "
             + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".raise_409();");
-    
+
     LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
   }
 
@@ -1107,13 +1107,48 @@ public class PgUtilIT {
         }));
   }
 
-  @Test
+   @Test
   public void deleteByCQLwithNo500(TestContext testContext) {
-    PgUtil.delete("users",  "username=delete_test ",
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    insert(testContext, pg, "delete_test",  1);
+    PgUtil.delete("users",  "username=delete_test",
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class, testContext.asyncAssertFailure(e -> {
           assertThat(e, is(instanceOf(NullPointerException.class)));
         }));
   }
+
+  @Test
+  public void deleteByCQLwithNo204(TestContext testContext) {
+    String uuid = randomUuid();
+    post(testContext, "Pippilotta", uuid, 201);
+
+    PgUtil.delete("users", "username=delete_test",
+        okapiHeaders, vertx.getOrCreateContext(),
+        Users.PutUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 204));
+  }
+
+  @Test
+  public void deleteByCQLwithNo400(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    setUpUserDBForTest(testContext, pg);
+    exception.expect(NullPointerException.class);
+    UserdataCollection userdataCollection = new UserdataCollection();
+    Async async = testContext.async();
+    PgUtil.delete("users","username=b", okapiHeaders,
+        vertx.getOrCreateContext(), ResponseWithout400.class, testContext.asyncAssertSuccess(response -> {
+          if (response.getStatus() != 500) {
+            testContext.fail("Expected status 500, got "
+                + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+            async.complete();
+            return;
+          }
+
+          async.complete();
+    }));
+    async.awaitSuccess(10000 /* ms */);
+  }
+
 
   @Test
   public void optimizedSqlCanSetSize() {
@@ -1153,7 +1188,6 @@ public class PgUtilIT {
     insert(testContext, pg, "c", n);
     insert(testContext, pg, "d foo", 5);
     insert(testContext, pg, "e", n);
-    insert(testContext, pg, "delete_test", n);
   }
 
   private UserdataCollection searchForDataWithNo500(String cql, int offset, int limit, TestContext testContext) {
