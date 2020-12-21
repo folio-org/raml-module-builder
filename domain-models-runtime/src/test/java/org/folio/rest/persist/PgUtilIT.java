@@ -408,9 +408,7 @@ public class PgUtilIT {
     //  insert(testContext, pg, "delete_test",  1);
     PgUtil.delete("users",  "username=delete_test",
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
-        testContext.asyncAssertFailure(e -> {
-          assertThat(e, is(instanceOf(NullPointerException.class)));
-        }));
+        asyncAssertFail(testContext, "respond500"));
   }
 
   @Test
