@@ -3673,7 +3673,7 @@ public class PostgresClient {
   }
 
   /**
-   * Execute multiple SQL commands ine one transaction as superuser.
+   * Execute multiple SQL commands in a transaction as superuser.
    *<p>
    *   Currently this function always succeeds. Failure is indicated by
    *   the lines returned (empty on no errors).
