@@ -270,12 +270,16 @@ public class TenantAPIIT {
   public void previousSchemaSqlExistsTrue2(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI();
     String tenantId = TenantTool.tenantId(okapiHeaders);
-
+    Async async = context.async();
     // only run create.ftl .. This makes previousSchema to find nothing on 2nd invocation
     tenantAPI.sqlFile(vertx.getOrCreateContext(), tenantId, null, false)
         .compose(files -> tenantAPI.postgresClient(vertx.getOrCreateContext()).runSQLFile(files[0], true))
         .compose(x -> tenantAPI.previousSchema(vertx.getOrCreateContext(), tenantId, true)
-        .onComplete(context.asyncAssertSuccess(schema -> context.assertNull(schema))));
+        .onComplete(context.asyncAssertSuccess(schema -> {
+          context.assertNull(schema);
+          async.complete();
+        })));
+    async.await();
   }
 
   @Test
