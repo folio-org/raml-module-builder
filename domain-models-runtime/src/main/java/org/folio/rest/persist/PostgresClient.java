@@ -3703,17 +3703,25 @@ public class PostgresClient {
                         log.info("Successfully executed {}", stmt);
                         return Future.succeededFuture();
                       }, res -> {
+                        log.error(res.getMessage(), res);
                         results.add(stmt);
                         if (stopOnError) {
                           return Future.failedFuture(stmt);
                         } else {
-                          log.error(res.getMessage(), res);
                           return Future.succeededFuture();
                         }
                       }).mapEmpty();
                 });
               }
-              return future.compose(x -> tx.commit()).eventually(y -> conn.close());
+              return future
+                  .compose(x -> {
+                    if (results.isEmpty()) {
+                      return tx.commit();
+                    } else {
+                      return tx.rollback();
+                    }
+                  }, x -> tx.rollback())
+                  .eventually(y -> conn.close());
             }))
         .onComplete(x -> {
           if (x.failed()) {
