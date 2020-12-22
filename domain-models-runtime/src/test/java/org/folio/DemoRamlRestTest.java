@@ -86,7 +86,7 @@ public class DemoRamlRestTest {
       Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
       String location = postData(context, "http://localhost:" + port + "/_/tenant", buf,
         201, HttpMethod.POST, "application/json", TENANT, false);
-      checkURLs(context, "http://localhost:" + port + location, 200);
+      checkURLs(context, "http://localhost:" + port + location + "?wait=10000", 200);
 
     } catch (Exception e) {
       context.fail(e);

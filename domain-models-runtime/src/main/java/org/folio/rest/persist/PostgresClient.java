@@ -22,20 +22,15 @@ import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,8 +42,6 @@ import java.util.regex.Pattern;
 import javax.crypto.SecretKey;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.util.SqlUtil;
@@ -64,16 +57,12 @@ import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.dbschema.ObjectMapperTool;
-import org.folio.rest.tools.utils.ResourceUtils;
-import org.postgresql.copy.CopyManager;
-import org.postgresql.core.BaseConnection;
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
@@ -3582,25 +3571,6 @@ public class PostgresClient {
   }
 
   /**
-   * Drop the database if it exists.
-   * @param database  database name
-   * @throws SQLException  on database error
-   * @throws IllegalArgumentException  if database name is too long, contains
-   *          illegal characters or letters with diacritical marks or non-Latin letters
-   */
-  public void dropCreateDatabase(String database) throws SQLException {
-    if (! isValidPostgresIdentifier(database)) {
-      throw new IllegalArgumentException("Illegal character in database name: " + database);
-    }
-
-    try (Connection connection = getStandaloneConnection("postgres", true);
-        Statement statement = connection.createStatement()) {
-      statement.executeUpdate("DROP DATABASE IF EXISTS " + database); //NOSONAR
-      statement.executeUpdate("CREATE DATABASE " + database); //NOSONAR
-    }
-  }
-
-  /**
    * Split string into lines.
    */
   private static List<String> lines(String string) {
@@ -3702,155 +3672,63 @@ public class PostgresClient {
     }
   }
 
-  private Connection getStandaloneConnection(String newDB, boolean superUser) throws SQLException {
-    String host = postgreSQLClientConfig.getString(HOST);
-    int port = postgreSQLClientConfig.getInteger(PORT);
-    String user = postgreSQLClientConfig.getString(USERNAME);
-    String pass = postgreSQLClientConfig.getString(PASSWORD);
-    String db = postgreSQLClientConfig.getString(DATABASE);
-
-    if(newDB != null){
-      db = newDB;
-      if(!superUser){
-        pass = newDB;
-        user = newDB;
-      }
-    }
-    return DriverManager.getConnection(
-      "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
-  }
-
   /**
-   * Copy files via the COPY FROM postgres syntax
-   * Support 3 modes
-   * 1. In line (STDIN) Notice the mandatory \. at the end of all entries to import
-   * COPY config_data (jsonb) FROM STDIN ENCODING 'UTF8';
-   * {"module":"SETTINGS","config_name":"locale","update_date":"1.1.2017","code":"system.currency_symbol.dk","description":"currency code","default": false,"enabled": true,"value": "kr"}
-   * \.
-   * 2. Copy from a data file packaged in the jar
-   * COPY config_data (jsonb) FROM 'data/locales.data' ENCODING 'UTF8';
-   * 3. Copy from a file on disk (absolute path)
-   * COPY config_data (jsonb) FROM 'C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\data\\locales.data' ENCODING 'UTF8';
-
-   * @param copyInStatement
-   * @param connection
-   * @throws Exception
+   * Execute multiple SQL commands in a transaction as superuser.
+   *<p>
+   *   Currently this function always succeeds. Failure is indicated by
+   *   the lines returned (empty on no errors).
+   *</p>
+   * @param sql SQL lines
+   * @param stopOnError whether to ignore errors
+   * @param replyHandler result with lines that failed.
    */
-  private void copyIn(String copyInStatement, Connection connection) throws Exception {
-    long totalInsertedRecords = 0;
-    CopyManager copyManager = new CopyManager((BaseConnection) connection);
-    if(copyInStatement.contains("STDIN")){
-      //run as is
-      int sep = copyInStatement.indexOf("\n");
-      String copyIn = copyInStatement.substring(0, sep);
-      String data = copyInStatement.substring(sep+1);
-      totalInsertedRecords = copyManager.copyIn(copyIn, new StringReader(data));
-    }
-    else{
-      //copy from a file,
-      String[] valuesInQuotes = StringUtils.substringsBetween(copyInStatement , "'", "'");
-      if(valuesInQuotes.length == 0){
-        log.warn("SQL statement: COPY FROM, has no STDIN and no file path wrapped in ''");
-        throw new Exception("SQL statement: COPY FROM, has no STDIN and no file path wrapped in ''");
-      }
-      //do not read from the file system for now as this needs to support data files packaged in
-      //the jar, read files into memory and load - consider improvements to this
-      String filePath = valuesInQuotes[0];
-      String data;
-      if(new File(filePath).isAbsolute()){
-        data = FileUtils.readFileToString(new File(filePath), "UTF8");
-      }
-      else{
-        try {
-          //assume running from within a jar,
-          data = ResourceUtils.resource2String(filePath);
-        } catch (Exception e) {
-          //from IDE
-          data = ResourceUtils.resource2String("/"+filePath);
-        }
-      }
-      copyInStatement = copyInStatement.replace("'"+filePath+"'", "STDIN");
-      totalInsertedRecords = copyManager.copyIn(copyInStatement, new StringReader(data));
-    }
-    log.info("Inserted " + totalInsertedRecords + " via COPY IN. Tenant: " + tenantId);
-  }
-
   private void execute(String[] sql, boolean stopOnError,
-      Handler<AsyncResult<List<String>>> replyHandler){
+                       Handler<AsyncResult<List<String>>> replyHandler) {
 
     long s = System.nanoTime();
     log.info("Executing multiple statements with id " + Arrays.hashCode(sql));
-    List<String> results = new ArrayList<>();
-    vertx.executeBlocking(dothis -> {
-      Connection connection = null;
-      Statement statement = null;
-      boolean error = false;
-      try {
+    List<String> results = new LinkedList<>();
 
-        /* this should be  super user account that is in the config file */
-        connection = getStandaloneConnection(null, false);
-        connection.setAutoCommit(false);
-        statement = connection.createStatement();
-
-        for (int j = 0; j < sql.length; j++) {
-          try {
-            log.info("trying to execute: " + sql[j].substring(0, Math.min(sql[j].length()-1, 1000)));
-            if(sql[j].trim().toUpperCase().startsWith("COPY ")){
-              copyIn(sql[j], connection);
-            }
-            else{
-              statement.executeUpdate(sql[j]); //NOSONAR
-            }
-            log.info("Successfully executed: " + sql[j].substring(0, Math.min(sql[j].length()-1, 400)));
-          } catch (Exception e) {
-            results.add(sql[j]);
-            error = true;
-            log.error(e.getMessage(),e);
-            if(stopOnError){
-              break;
-            }
+    getInstance(vertx).getClient().getConnection()
+        .compose(conn -> conn.begin()
+            .compose(tx -> {
+              Future<Void> future = Future.succeededFuture();
+              for (int i = 0; i < sql.length; i++) {
+                String stmt = sql[i];
+                future = future.compose(x -> {
+                  log.info("trying to execute: {}" + stmt);
+                  return conn.query(stmt).execute()
+                      .compose(good -> {
+                        log.info("Successfully executed {}", stmt);
+                        return Future.succeededFuture();
+                      }, res -> {
+                        log.error(res.getMessage(), res);
+                        results.add(stmt);
+                        if (stopOnError) {
+                          return Future.failedFuture(stmt);
+                        } else {
+                          return Future.succeededFuture();
+                        }
+                      }).mapEmpty();
+                });
+              }
+              return future
+                  .compose(x -> {
+                    if (results.isEmpty()) {
+                      return tx.commit();
+                    } else {
+                      return tx.rollback();
+                    }
+                  }, x -> tx.rollback())
+                  .eventually(y -> conn.close());
+            }))
+        .onComplete(x -> {
+          if (x.failed()) {
+            log.error(x.cause().getMessage(), x.cause());
           }
-        }
-        try {
-          if(error){
-            connection.rollback();
-            log.error("Rollback for: " + Arrays.hashCode(sql));
-          }
-          else{
-            connection.commit();
-            log.info("Successfully committed: " + Arrays.hashCode(sql));
-          }
-        } catch (Exception e) {
-          error = true;
-          log.error("Commit failed " + Arrays.hashCode(sql) + SPACE + e.getMessage(), e);
-        }
-      }
-      catch(Exception e){
-        log.error(e.getMessage(), e);
-        error = true;
-      }
-      finally {
-        try {
-          if(statement != null) statement.close();
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-        }
-        try {
-          if(connection != null) connection.close();
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-        }
-        if(error){
-          dothis.fail("error");
-        }
-        else{
-          dothis.complete();
-        }
-      }
-    }, done -> {
-      logTimer(EXECUTE_STAT_METHOD, "" + Arrays.hashCode(sql), s);
-      replyHandler.handle(Future.succeededFuture(results));
-    });
+          logTimer(EXECUTE_STAT_METHOD, "" + Arrays.hashCode(sql), s);
+          replyHandler.handle(Future.succeededFuture(results));
+        });
   }
 
   private static void rememberEmbeddedPostgres() {
@@ -3909,55 +3787,6 @@ public class PostgresClient {
         log.info("embedded postgress not enabled");
       }
     }
-  }
-
-  /**
-   * This is a blocking call - run in an execBlocking statement
-   * import data in a tab delimited file into columns of an existing table
-   * Using only default values of the COPY FROM STDIN Postgres command
-   * @param path - path to the file
-   * @param tableName - name of the table to import the content into
-   */
-  public void importFile(String path, String tableName) {
-
-    long recordsImported[] = new long[]{-1};
-    vertx.<String>executeBlocking(dothis -> {
-      try {
-        String host = postgreSQLClientConfig.getString(HOST);
-        int port = postgreSQLClientConfig.getInteger(PORT);
-        String user = postgreSQLClientConfig.getString(USERNAME);
-        String pass = postgreSQLClientConfig.getString(PASSWORD);
-        String db = postgreSQLClientConfig.getString(DATABASE);
-
-        log.info("Connecting to " + db);
-
-        Connection con = DriverManager.getConnection(
-          "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
-
-        log.info("Copying text data rows from stdin");
-
-        CopyManager copyManager = new CopyManager((BaseConnection) con);
-
-        FileReader fileReader = new FileReader(path);
-        recordsImported[0] = copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
-
-      } catch (Exception e) {
-        log.error(messages.getMessage("en", MessageConsts.ImportFailed), e);
-        dothis.fail(e);
-      }
-      dothis.complete("Done.");
-
-    }, whendone -> {
-
-      if(whendone.succeeded()){
-        log.info("Done importing file: " + path + ". Number of records imported: " + recordsImported[0]);
-      }
-      else{
-        log.info("Failed importing file: " + path);
-      }
-
-    });
-
   }
 
   public static void stopEmbeddedPostgres() {
