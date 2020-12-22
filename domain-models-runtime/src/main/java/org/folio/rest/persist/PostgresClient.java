@@ -3695,7 +3695,6 @@ public class PostgresClient {
               Future<Void> future = Future.succeededFuture();
               for (int i = 0; i < sql.length; i++) {
                 String stmt = sql[i];
-                int fi = i;
                 future = future.compose(x -> {
                   log.info("trying to execute: {}" + stmt);
                   return conn.query(stmt).execute()
