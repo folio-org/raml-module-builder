@@ -1358,7 +1358,7 @@ later with a call to `getTenantByOperationId`.
 
 Extend the `loadData` method, to load sample/reference data for a module.
 
-```
+```java
 @Validate
 @Override
 Future<Integer> loadData(TenantAttributes attributes, String tenantId,
