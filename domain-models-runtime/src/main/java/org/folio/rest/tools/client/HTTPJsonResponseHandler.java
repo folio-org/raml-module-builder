@@ -78,7 +78,6 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
                   + e.getMessage(), e);
         }
       }
-      cf.completeExceptionally(res.cause());
   }
 
   private void handleSuccess(Buffer bh, Response r) {
