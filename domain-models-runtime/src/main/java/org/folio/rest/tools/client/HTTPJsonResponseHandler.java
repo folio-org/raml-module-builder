@@ -69,15 +69,15 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
       }*/
 
     if (webClient != null) {
-        //this is not null when autoclose = true
-        try {
-          webClient.close();
-        } catch (Exception e) {
-          log.error(
-              "HTTPJsonResponseHandler class tried closing a client that was closed, this may be ok. "
-                  + e.getMessage(), e);
-        }
+      //this is not null when autoclose = true
+      try {
+        webClient.close();
+      } catch (Exception e) {
+        log.error(
+            "HTTPJsonResponseHandler class tried closing a client that was closed, this may be ok. "
+                + e.getMessage(), e);
       }
+    }
   }
 
   private void handleSuccess(Buffer bh, Response r) {
