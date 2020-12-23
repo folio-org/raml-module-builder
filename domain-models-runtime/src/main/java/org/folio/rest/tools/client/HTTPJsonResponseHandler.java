@@ -89,19 +89,7 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
         r.body = bh.toJsonObject();
         cf.complete(r);
       } catch (DecodeException decodeException) {
-        if ("text/plain".equals(r.getHeaders().get("Accept"))) {
-          //currently only support json responses
-          //best effort to wrap text
-          try {
-            r.body = new JsonObject(
-                "{\"wrapped_text\": " + bh.getByteBuf().toString(Charset.defaultCharset()) + "}");
-            cf.complete(r);
-          } catch (Exception e) {
-            cf.completeExceptionally(decodeException);
-          }
-        } else {
-          cf.completeExceptionally(decodeException);
-        }
+        cf.completeExceptionally(decodeException);
       }
     }
   }

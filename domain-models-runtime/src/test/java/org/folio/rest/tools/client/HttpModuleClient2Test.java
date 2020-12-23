@@ -23,6 +23,7 @@ import org.junit.runner.RunWith;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(VertxUnitRunner.class)
@@ -49,7 +50,7 @@ public class HttpModuleClient2Test {
     ctx.response().putHeader("Content-Type", "text-plain");
     ctx.request().handler(lastBuffer::appendBuffer);
     ctx.request().endHandler(res -> {
-      ctx.response().end();
+      ctx.response().end(lastBuffer);
     });
   }
 
@@ -126,6 +127,19 @@ public class HttpModuleClient2Test {
     context.assertEquals("/test-pojo", lastPath);
     context.assertEquals("{\"member\":\"abc\"}", lastBuffer.toString());
     context.assertEquals("x-value", lastHeaders.get("x-name"));
+  }
+
+  @Test(expected = ExecutionException.class)
+  public void testWithBadPojo(TestContext context) throws Exception {
+    HttpModuleClient2 httpModuleClient2 = new HttpModuleClient2("localhost", port1, "tenant");
+
+    Buffer badPojo = Buffer.buffer("{");
+
+    Map<String,String> headers = new HashMap<>();
+    headers.put("X-Name", "x-value");
+
+    final CompletableFuture<Response> cf = httpModuleClient2.request(HttpMethod.POST, badPojo, "/test-pojo", headers);
+    cf.get(5, TimeUnit.SECONDS);
   }
 
   @Test
