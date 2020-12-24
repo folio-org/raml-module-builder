@@ -46,7 +46,11 @@ public class HttpModuleClient2Test {
     lastBuffer = Buffer.buffer();
     lastPath = ctx.request().path();
     lastHeaders = ctx.request().headers();
-    ctx.response().setStatusCode(200);
+    if ("/test-error".equals(ctx.request().path())) {
+      ctx.response().setStatusCode(400);
+    } else {
+      ctx.response().setStatusCode(200);
+    }
     ctx.response().putHeader("Content-Type", "text-plain");
     ctx.request().handler(lastBuffer::appendBuffer);
     ctx.request().endHandler(res -> {
@@ -144,10 +148,24 @@ public class HttpModuleClient2Test {
     CompletableFuture<Response> cf = httpModuleClient2.request("/badpath");
     Response response = cf.get(5, TimeUnit.SECONDS);
 
+    context.assertEquals(404, response.error.getInteger("statusCode"));
     context.assertTrue(response.error.getString("errorMessage").contains("Resource not found"), response.error.getString("errorMessage"));
     context.assertNull(response.exception);
     httpModuleClient2.closeClient();
   }
+
+  @Test
+  public void testEmptyError(TestContext context) throws Exception {
+    HttpModuleClient2 httpModuleClient2 = new HttpModuleClient2("http://localhost:" + port1, "tenant");
+
+    CompletableFuture<Response> cf = httpModuleClient2.request("/test-error");
+    Response response = cf.get(5, TimeUnit.SECONDS);
+
+    context.assertEquals(400, response.error.getInteger("statusCode"));
+    context.assertNull(response.exception);
+    httpModuleClient2.closeClient();
+  }
+
 
   @Test
   public void testWithPojo(TestContext context) throws Exception {
