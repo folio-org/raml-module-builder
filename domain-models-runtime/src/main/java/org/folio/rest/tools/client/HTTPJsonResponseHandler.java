@@ -29,7 +29,9 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
 
   @Override
   public void handle(AsyncResult<HttpResponse<Buffer>> res) {
-
+    if (webClient != null) {
+      webClient.close();
+    }
     if (res.failed()) {
       Response r = new Response();
       r.populateError(endpoint, -1, res.cause().getMessage());

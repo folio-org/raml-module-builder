@@ -58,7 +58,7 @@ public class HttpModuleClient2Test {
 
     Router router = Router.router(vertx);
 
-    router.routeWithRegex("/.*").handler(this::myPreHandle);
+    router.routeWithRegex("/test.*").handler(this::myPreHandle);
 
     Promise<Void> promise = Promise.promise();
     HttpServerOptions so = new HttpServerOptions().setHandle100ContinueAutomatically(true);
@@ -100,13 +100,53 @@ public class HttpModuleClient2Test {
   public void testWithAbs(TestContext context) throws Exception {
     HttpModuleClient2 httpModuleClient2 = new HttpModuleClient2("http://localhost:" + port1, "tenant");
 
-    CompletableFuture<Response> cf = httpModuleClient2.request("/test");
+    CompletableFuture<Response> cf = httpModuleClient2.request("/test1");
     Response response = cf.get(5, TimeUnit.SECONDS);
 
     context.assertNull(response.error);
     context.assertNull(response.exception);
-    context.assertEquals("/test", lastPath);
+    context.assertEquals("/test1", lastPath);
     context.assertEquals("", lastBuffer.toString());
+
+    cf = httpModuleClient2.request("/test2");
+    response = cf.get(5, TimeUnit.SECONDS);
+
+    context.assertNull(response.error);
+    context.assertNull(response.exception);
+    context.assertEquals("/test2", lastPath);
+    context.assertEquals("", lastBuffer.toString());
+
+    httpModuleClient2.closeClient();
+  }
+
+  @Test
+  public void testWithAutoClose(TestContext context) throws Exception {
+    HttpModuleClient2 httpModuleClient2 = new HttpModuleClient2("http://localhost:" + port1, "tenant", true);
+
+    CompletableFuture<Response> cf = httpModuleClient2.request("/test1");
+    Response response = cf.get(5, TimeUnit.SECONDS);
+
+    context.assertNull(response.error);
+    context.assertNull(response.exception);
+    context.assertEquals("/test1", lastPath);
+    context.assertEquals("", lastBuffer.toString());
+
+    cf = httpModuleClient2.request("/test2");
+    response = cf.get(5, TimeUnit.SECONDS);
+
+    context.assertTrue(response.error.getString("errorMessage").contains("Client is closed"), response.error.getString("errorMessage"));
+  }
+
+  @Test
+  public void testNotFound(TestContext context) throws Exception {
+    HttpModuleClient2 httpModuleClient2 = new HttpModuleClient2("http://localhost:" + port1, "tenant");
+
+    CompletableFuture<Response> cf = httpModuleClient2.request("/badpath");
+    Response response = cf.get(5, TimeUnit.SECONDS);
+
+    context.assertTrue(response.error.getString("errorMessage").contains("Resource not found"), response.error.getString("errorMessage"));
+    context.assertNull(response.exception);
+    httpModuleClient2.closeClient();
   }
 
   @Test
