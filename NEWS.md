@@ -1,3 +1,9 @@
+## 32.0.1 2020-12-24
+
+Fixes:
+
+ * [RMB-780](https://issues.folio.org/browse/RMB-780) NPE in logs after migrating to RMB v32.0.0. Issue with HttpModuleClient2. This is primarily used by business logic modules such as mod-users-bl, mod-orders.
+
 ## 32.0.0 2020-12-21
 
 New features (some of which are breaking changes):
