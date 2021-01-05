@@ -1,3 +1,10 @@
+## 32.1.0 2021-01-05
+
+ * [RMB-782](https://issues.folio.org/browse/RMB-782) Make postTenantSync public
+ * [RMB-781](https://issues.folio.org/browse/RMB-781) Mention raml-util update for RMB upgrade notes
+ * [RMB-642](https://issues.folio.org/browse/RMB-642) Remove JDBC driver, use vertx-pg-client for running migrations
+ * [RMB-780](https://issues.folio.org/browse/RMB-780) NPE in logs after migrating to RMB v32.0.0
+
 ## 32.0.0 2020-12-21
 
 New features (some of which are breaking changes):
