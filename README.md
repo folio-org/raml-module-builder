@@ -1417,6 +1417,23 @@ For example, to copy `reference-data` to `ref-data` in resources:
 </execution>
 ```
 
+#### Unit testing
+
+For unit testing method `TenantAPI.postTenantSync` may be used
+to initialize the tenant. This method is a straight API call and is
+not called via HTTP. Use it before/after using our own provided
+interfaces in `org.folio.rest.impl`. Example:
+
+```java
+  // create
+  TenantAPI tenantAPI = new TenantAPI();
+  TenantAttributes tenantAttributes = new TenantAttributes();
+  tenantAttributes.setModuleTo("mod-2.0.0");
+  tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result ->
+    assertThat(result.getStatus(), is(204))
+  ), vertx.getOrCreateContext());
+
+```
 
 #### The Post Tenant API
 

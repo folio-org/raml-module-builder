@@ -302,8 +302,16 @@ public class TenantAPI implements Tenant {
     return Future.succeededFuture(0);
   }
 
-  void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
-                      Handler<AsyncResult<Response>> handler, Context context)  {
+  /**
+   * Tnitialize tenant, synchronous mode.
+   *
+   * @param tenantAttributes attributes for operation
+   * @param headers Okapi headers
+   * @param handler response handler
+   * @param context Vert.x context
+   */
+  public void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
+                             Handler<AsyncResult<Response>> handler, Context context)  {
     postTenant(false, tenantAttributes, headers, handler, context);
   }
 
