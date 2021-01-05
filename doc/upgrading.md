@@ -63,6 +63,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
        } ]
     } ]
 ```
+* Optional support for [optimistic locking](https://github.com/folio-org/raml-module-builder#optimistic-locking)
 
 ## Version 31.0
 
