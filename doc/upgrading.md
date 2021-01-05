@@ -67,7 +67,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
        } ]
     } ]
 ```
-Tenant interface is supported by Okapi 4.5.0 and later. RMB 32, thus, will
+Tenant interface 2.0 is supported by Okapi 4.5.0 and later. RMB 32, thus, will
 *not* work an earlier version of Okapi.
 
 ## Version 31.0
