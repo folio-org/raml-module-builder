@@ -43,10 +43,14 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   [MODINVSTOR-635](https://issues.folio.org/browse/MODINVSTOR-635).
 * Tenant API changed - refer to
   [RAML](https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml).
+  If module includes the shared raml as a Git sub module, it should be
+  updated as well.
   See issues [FOLIO-2908](https://issues.folio.org/browse/FOLIO-2908)
    and [FOLIO-2877](https://issues.folio.org/browse/FOLIO-2877)
-  The API for purge, upgrade, init is single end-point. Client code (mostly testing code)
-  must be able to handle both 201 with a Location and 204 No content.
+  The API for purge, upgrade, init is single end-point. Client code
+  (mostly testing code) must be able to handle both 201 with a Location
+  and 204 No content if testing via HTTP. However, for API testing RMB
+  32.1.0 provides a simpler call: `TenantAPI.postTenantSync`.
   Update the module descriptor - usually `descriptors/ModuleDescriptor-template.json` - to
   tenant interface version 2. Replace the old `_tenant` "provides" with
 ```json
