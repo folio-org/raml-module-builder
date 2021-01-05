@@ -69,7 +69,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ```
 Tenant interface 2.0 is supported by Okapi 4.5.0 and later. RMB 32, thus, will
 *not* work an earlier version of Okapi.
-* Optional support for [optimistic locking](https://github.com/folio-org/raml-module-builder#optimistic-locking)
+* Optional support for [optimistic locking](https://github.com/folio-org/raml-module-builder#optimistic-locking).
+Please refer to [RMB-719](https://issues.folio.org/browse/RMB-719) and [RMB-727](https://issues.folio.org/browse/RMB-727)
 
 ## Version 31.0
 
