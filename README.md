@@ -1202,7 +1202,11 @@ The field in the child table points to the primary key `id` field of the parent 
 * The `foreignKey` entry in schema.json automatically creates an index on the foreign key field.
 * For fast queries, declare an index on any other searched field like `title` in the schema.json file.
 * For a multi-table join, use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
-  It must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance.
+  The `targetPath` array must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance, queries are possible in both directions.
+* When querying in parent → child direction each sub-expression may refer to a different child/grandchild/...:
+Searching for instances using `item.status.name=="Missing" and item.effectiveLocationId="fcd64ce1-6995-48f0-840e-89ffa2288371"`
+will look for an instance that has at least one item that is missing and this or some other item of the instance has the effective location.
+Use a child-to-parent query against the item endpoint if both conditions should apply to the same item record.
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The sortBy clause doesn't support foreign table fields. Use the API endpoint of the records with the field you want to sort on.
 * The schema for the above example:
