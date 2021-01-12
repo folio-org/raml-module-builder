@@ -44,7 +44,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * Tenant API changed - refer to
   [RAML](https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml).
   Tenant interface 2.0 is supported by Okapi 4.5.0 and later. RMB 32, thus, will
-*not* work an earlier version of Okapi.
+*not* work with an earlier version of Okapi.
   If module includes the shared raml as a Git sub module, it should be
   updated as well.
   See issues [FOLIO-2908](https://issues.folio.org/browse/FOLIO-2908)
