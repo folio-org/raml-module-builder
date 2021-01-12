@@ -8,13 +8,13 @@ on:
     branches: [FOLIO-2913]
 
 jobs:
-  set-up:
+  mvnDeploy:
     runs-on: ubuntu-latest
     steps:
       - uses: folio-org/checkout@v2
         with:
           ref: FOLIO-2913
-      - run: mvn clean install
+      - run: mvn -DskipTests clean deploy
   lint:
     runs-on: ubuntu-latest
     steps:
