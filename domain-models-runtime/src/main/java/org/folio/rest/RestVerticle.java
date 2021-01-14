@@ -21,10 +21,6 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.InternetHeaders;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.ValidatorFactory;
@@ -72,7 +68,6 @@ import org.folio.util.StringUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
@@ -81,7 +76,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerFileUpload;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -89,18 +83,12 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 
 public class RestVerticle extends AbstractVerticle {
 
-  public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
-  public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
-  public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
-
   public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
   public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
-  public static final String        OKAPI_HEADER_PERMISSIONS        = "X-Okapi-Permissions";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
   public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
   public static final String        OKAPI_REQUESTID_HEADER          = "X-Okapi-Request-Id";
@@ -110,7 +98,6 @@ public class RestVerticle extends AbstractVerticle {
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
-  private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
   private static final String       DEFAULT_CONTENT_TYPE            = "application/json";
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
@@ -424,11 +411,7 @@ public class RestVerticle extends AbstractVerticle {
                 final boolean[] isContentUpload = new boolean[] { false };
                 final int[] uploadParamPosition = new int[] { -1 };
                 params.forEach(param -> {
-                  if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
-                    isContentUpload[0] = true;
-                    uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
-                  }
-                  else if(((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")){
+                  if(((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")){
                     //application/octet-stream passed - this is handled in a stream like manner
                     //and the corresponding function called must annotate with a @Stream - and be able
                     //to handle the function being called repeatedly on parts of the data
@@ -442,39 +425,7 @@ public class RestVerticle extends AbstractVerticle {
                 Iterator<Map.Entry<String, Object>> paramList = params.iterator();
                 Object[] paramArray = new Object[params.size()];
 
-                // file upload requested (multipart/form-data) but the url is not to the /admin/upload
-                // meaning, an implementing module is using its own upload handling, so read the content and
-                // pass to implementing function just like any other call
-                if (isContentUpload[0] && !streamData) {
-                  parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
-
-                  //if file upload - set needed handlers
-                  // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
-                  if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
-                    //multipart
-                    handleMultipartUpload(rc, request, uploadParamPosition, paramArray, validRequest);
-                    request.endHandler( a -> {
-                      if (validRequest[0]) {
-                        //if request is valid - invoke it
-                        try {
-                          invoke(method2Run[0], paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
-                            withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
-                            sendResponse(rc, v, start, tenantId[0]);
-                          });
-                        } catch (Exception e1) {
-                          withRequestId(rc, () -> log.error(e1.getMessage(), e1));
-                          rc.response().end();
-                        }
-                      }
-                    });
-                  } else {
-                    parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
-                    //assume input stream
-                    handleInputStreamUpload(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
-                      uploadParamPosition, paramArray, validRequest, start);
-                  }
-                }
-                else if (streamData){
+                if (streamData) {
                   parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
                   handleStream(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
                     uploadParamPosition, paramArray, validRequest, start);
@@ -566,51 +517,6 @@ public class RestVerticle extends AbstractVerticle {
       }
     });
   }
-  /**
-   * @param method2Run
-   * @param rc
-   * @param request
-   * @param okapiHeaders
-   * @param tenantId
-   * @param instance
-   * @param uploadParamPosition
-   * @param paramArray
-   * @param validRequest
-   * @param start
-   */
-  private void handleInputStreamUpload(Method method2Run, RoutingContext rc, HttpServerRequest request,
-      Object instance, String[] tenantId, Map<String, String> okapiHeaders,
-      int[] uploadParamPosition, Object[] paramArray, boolean[] validRequest, long start) {
-
-    final Buffer content = Buffer.buffer();
-
-    request.handler(new Handler<Buffer>() {
-      @Override
-      public void handle(Buffer buff) {
-        content.appendBuffer(buff);
-      }
-    });
-    request.endHandler( e -> {
-      paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(content.getBytes());
-      try {
-        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
-          withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run));
-          sendResponse(rc, v, start, tenantId[0]);
-        });
-      } catch (Exception e1) {
-        withRequestId(rc, () -> log.error(e1.getMessage(), e1));
-        rc.response().end();
-      }
-    });
-
-    request.exceptionHandler(new Handler<Throwable>(){
-      @Override
-      public void handle(Throwable event) {
-        endRequestWithError(rc, 400, true, event.getMessage(), validRequest);
-      }
-    });
-
-  }
 
   private void readInGitProps(){
     InputStream in = getClass().getClassLoader().getResourceAsStream("git.properties");
@@ -624,70 +530,6 @@ public class RestVerticle extends AbstractVerticle {
       } catch (Exception e) {
         log.warn(e.getMessage());
       }
-    }
-  }
-
-  /**
-   * @param request
-   * @param uploadParamPosition
-   * @param paramArray
-   * @param validRequest
-   */
-  private void handleMultipartUpload(RoutingContext rc,
-      HttpServerRequest request, int[] uploadParamPosition, Object[] paramArray, boolean[] validRequest) {
-    request.setExpectMultipart(true);
-    MimeMultipart mmp = new MimeMultipart();
-    //place the mmp as an argument to the 'to be called' function - at the correct position
-    paramArray[uploadParamPosition[0]] = mmp;
-    request.uploadHandler(new MultiPartHandler(rc, mmp, validRequest));
-  }
-
-  class MultiPartHandler implements Handler<io.vertx.core.http.HttpServerFileUpload> {
-
-    MimeMultipart mmp;
-    RoutingContext rc;
-    boolean[] validRequest;
-    Buffer content = Buffer.buffer();
-
-    public MultiPartHandler(RoutingContext rc, MimeMultipart mmp, boolean[] validRequest){
-      this.rc = rc;
-      this.mmp = mmp;
-      this.validRequest = validRequest;
-    }
-
-    @Override
-    public void handle(HttpServerFileUpload upload) {
-      upload.handler(new Handler<Buffer>() {
-        @Override
-        public void handle(Buffer buff) { /** called as data comes in */
-          if(content == null){
-            content = Buffer.buffer();
-          }
-          content.appendBuffer(buff);
-        }
-      });
-      upload.exceptionHandler(new Handler<Throwable>() {
-        @Override
-        public void handle(Throwable event) {
-          endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
-        }
-      });
-      /** endHandler called for each part in the multipart, so if uploading 2 files - will be called twice */
-      upload.endHandler(new Handler<Void>() {
-        @Override
-        public void handle(Void event) {
-          InternetHeaders headers = new InternetHeaders();
-          MimeBodyPart mbp = null;
-          try {
-            mbp = new MimeBodyPart(headers, content.getBytes());
-            mbp.setFileName(upload.filename());
-            mmp.addBodyPart(mbp);
-            content = null;
-          } catch (MessagingException e) {
-            withRequestId(rc, () -> log.error(e.getMessage(), e));
-          }
-        }
-      });
     }
   }
 
