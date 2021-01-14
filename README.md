@@ -293,7 +293,9 @@ Environment variables with periods/dots in their names are deprecated in RMB bec
 
 See the [Vert.x Async PostgreSQL Client Configuration documentation](https://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration) for the details.
 
-The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
+The environment variable `DB_MAXPOOLSIZE` sets the maximum number of concurrent connections for a tenant that one module instance opens. They are only opened if needed. If all connections for a tenant are in use further requests for that tenant will wait until one connnection becomes free. Other tenants and other instances of a module are unaffected. The default is 4.
+
+The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. A connection becomes idle if the query ends, it is not idle if it is waiting for a response. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
 
 The environment variable `DB_EXPLAIN_QUERY_THRESHOLD` is not observed by
 Postgres itself, but is a value - in milliseconds - that triggers query
