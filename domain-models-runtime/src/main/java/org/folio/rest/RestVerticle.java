@@ -32,6 +32,7 @@ import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.base.Joiner;
 import com.google.common.io.ByteStreams;
 
+import io.vertx.core.Future;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
@@ -173,8 +174,8 @@ public class RestVerticle extends AbstractVerticle {
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
     runHook(vv -> {
-      if (vv.failed()) {
-        String reason = vv.cause().getMessage();
+      if (((Future<?>) vv).failed()) {
+        String reason = ((Future<?>) vv).cause().getMessage();
         log.error( messages.getMessage("en", MessageConsts.InitializeVerticleFail, reason));
         startPromise.fail(reason);
         vertx.close();
