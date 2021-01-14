@@ -112,10 +112,8 @@ public class RestVerticle extends AbstractVerticle {
 
   private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
-  private static final String       SUPPORTED_CONTENT_TYPE_JSON_API_DEF = "application/vnd.api+json";
+  private static final String       DEFAULT_CONTENT_TYPE            = "application/json";
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
-  private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
-  private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static final String       HTTP_PORT_SETTING               = "http.port";
   private static String             className                       = RestVerticle.class.getName();
@@ -214,28 +212,11 @@ public class RestVerticle extends AbstractVerticle {
       }
     }
 
-    // needed so that we get the body content of the request - note that this
-    // will read the entire body into memory
-    final BodyHandler handler = BodyHandler.create();
-
-    // IMPORTANT!!!
-    // the body of the request will be read into memory for ALL PUT, ALL PATCH requests
-    // and for POST requests with the content-types below ONLY!!!
-    // multipart, for example will not be read by the body handler as vertx saves
-    // multiparts and www-encoded to disk - hence multiparts will be handled differently
-    // see uploadHandler further down
-    router.put().handler(handler);
-    router.patch().handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_API_DEF).handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_FORM).handler(handler);
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
     runHook(vv -> {
-      if (((Future<?>) vv).failed()) {
-        String reason = ((Future<?>) vv).cause().getMessage();
+      if (vv.failed()) {
+        String reason = vv.cause().getMessage();
         log.error( messages.getMessage("en", MessageConsts.InitializeVerticleFail, reason));
         startPromise.fail(reason);
         vertx.close();
@@ -427,12 +408,6 @@ public class RestVerticle extends AbstractVerticle {
                 //are as described in the raml
                 checkAcceptContentType(produces, consumes, rc, validRequest);
 
-                // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
-                //to the requested URL - array will be populated by parseParams() function
-                Iterator<Map.Entry<String, Object>> paramList = params.iterator();
-                Object[] paramArray = new Object[params.size()];
-                parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
-
                 //Get method in class to be run for this requested API endpoint
                 Method[] method2Run = new Method[]{null};
                 for (int i = 0; i < methods.length; i++) {
@@ -462,10 +437,16 @@ public class RestVerticle extends AbstractVerticle {
                   }
                 });
 
+                // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
+                //to the requested URL - array will be populated by parseParams() function
+                Iterator<Map.Entry<String, Object>> paramList = params.iterator();
+                Object[] paramArray = new Object[params.size()];
+
                 // file upload requested (multipart/form-data) but the url is not to the /admin/upload
                 // meaning, an implementing module is using its own upload handling, so read the content and
                 // pass to implementing function just like any other call
                 if (isContentUpload[0] && !streamData) {
+                  parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
 
                   //if file upload - set needed handlers
                   // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
@@ -486,39 +467,40 @@ public class RestVerticle extends AbstractVerticle {
                         }
                       }
                     });
-                  }
-
-                  else {
+                  } else {
+                    parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
                     //assume input stream
                     handleInputStreamUpload(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
                       uploadParamPosition, paramArray, validRequest, start);
                   }
                 }
-                else if(streamData){
-
+                else if (streamData){
+                  parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
                   handleStream(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
                     uploadParamPosition, paramArray, validRequest, start);
-
-                }
-                else{
-                  if (validRequest[0]) {
-                    //if request is valid - invoke it
-                    try {
-                      invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
-                        withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
-                        sendResponse(rc, v, start, tenantId[0]);
-                      });
-                    } catch (Exception e1) {
-                      withRequestId(rc, () -> log.error(e1.getMessage(), e1));
-                      rc.response().end();
+                } else {
+                  // regular request (no streaming).. Read the request body before checking params + body
+                  Buffer body = Buffer.buffer();
+                  rc.request().handler(body::appendBuffer);
+                  rc.request().endHandler(endRes -> {
+                    parseParams(rc, body, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
+                    if (validRequest[0]) {
+                      //if request is valid - invoke it
+                      try {
+                        invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
+                          withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
+                          sendResponse(rc, v, start, tenantId[0]);
+                        });
+                      } catch (Exception e1) {
+                        withRequestId(rc, () -> log.error(e1.getMessage(), e1));
+                        rc.response().end();
+                      }
+                    } else {
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
+                          validRequest);
                     }
-                  }
+                  });
                 }
-              }
-              else{
-                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
-                  validRequest);
-                return;
               }
             }
           } catch (Exception e) {
@@ -1179,7 +1161,8 @@ public class RestVerticle extends AbstractVerticle {
       // if this was left out by the client they must add for request to return
       // clean up simple stuff from the clients header - trim the string and remove ';' in case
       // it was put there as a suffix
-      String contentType = StringUtils.defaultString(request.getHeader("Content-type")).replaceFirst(";.*", "").trim();
+      String contentType = StringUtils.defaultString(request.getHeader("Content-type"), DEFAULT_CONTENT_TYPE)
+          .replaceFirst(";.*", "").trim();
       if (!consumes.contains(removeBoundry(contentType))) {
         endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType),
           validRequest);
@@ -1188,7 +1171,7 @@ public class RestVerticle extends AbstractVerticle {
 
     // type of data expected to be returned by the server
     if (produces != null && validRequest[0]) {
-      String accept = StringUtils.defaultString(request.getHeader("Accept"));
+      String accept = StringUtils.defaultString(request.getHeader("Accept"), "*/*");
       if (acceptCheck(produces, accept) == null) {
         // use contains because multiple values may be passed here
         // for example json/application; text/plain mismatch of content type found
@@ -1198,7 +1181,7 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  private void parseParams(RoutingContext rc, Iterator<Map.Entry<String, Object>> paramList, boolean[] validRequest, JsonArray consumes,
+  private void parseParams(RoutingContext rc, Buffer body, Iterator<Map.Entry<String, Object>> paramList, boolean[] validRequest, JsonArray consumes,
       Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
 
     HttpServerRequest request = rc.request();
@@ -1230,7 +1213,7 @@ public class RestVerticle extends AbstractVerticle {
               // we have special handling for the Result Handler and context, it is also assumed that
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
-              String bodyContent = rc.getBodyAsString();
+              String bodyContent = body == null ? null : body.toString();
               withRequestId(rc, () -> log.debug(rc.request().path() + " -------- bodyContent -------- " + bodyContent));
               if(bodyContent != null){
                 if("java.io.Reader".equals(valueType)){

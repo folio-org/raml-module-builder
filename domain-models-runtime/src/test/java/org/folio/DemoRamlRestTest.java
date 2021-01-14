@@ -179,7 +179,26 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
   }
 
+  @Test
+  public void acceptDefault(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200, null);
+  }
+
+  @Test
+  public void acceptNoMatch(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 400, "text/html");
+  }
+
+  @Test
+  public void contentTypeNoMatch(TestContext context) {
+    postBook(context, "?validate_field=data.description", 400,  "text/html");
+  }
+
   private void postBook(TestContext context, String parameterString, int expectedStatus) {
+    postBook(context, parameterString, expectedStatus, "application/json");
+  }
+
+  private void postBook(TestContext context, String parameterString, int expectedStatus, String contentType) {
     Book b = new Book();
     Data d = new Data();
     d.setAuthor("a");
@@ -195,7 +214,7 @@ public class DemoRamlRestTest {
       context.fail(e);
     }
     postData(context, "http://localhost:" + port + "/rmbtests/books"+parameterString, Buffer.buffer(book),
-        expectedStatus, HttpMethod.POST, "application/json", TENANT, false);
+        expectedStatus, HttpMethod.POST, contentType, TENANT, false);
   }
 
   @Test
@@ -235,7 +254,7 @@ public class DemoRamlRestTest {
     String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
 
     postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201,
-      HttpMethod.POST, "application/json", TENANT, false);
+      HttpMethod.POST, null, TENANT, false);
 
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
     books = Json.decodeValue(buf, Books.class);
@@ -486,7 +505,9 @@ public class DemoRamlRestTest {
       WebClient client = WebClient.create(vertx);
       final HttpRequest<Buffer> request = client.getAbs(url);
       request.headers().add("x-okapi-tenant", TENANT);
-      request.headers().add("Accept", accept);
+      if (accept != null) {
+        request.headers().add("Accept", accept);
+      }
       request.send(x -> {
         x.map(httpClientResponse->
         {
@@ -528,7 +549,9 @@ public class DemoRamlRestTest {
     if (userIdHeader) {
       request.putHeader("X-Okapi-User-Id", "af23adf0-61ba-4887-bf82-956c4aae2260");
     }
-    request.putHeader("Content-type",  contenttype);
+    if (contenttype != null) {
+      request.putHeader("Content-type", contenttype);
+    }
     StringBuilder location = new StringBuilder();
     if (buffer != null) {
       request.sendBuffer(buffer, e-> postDataHandler(e, async, context, errorCode,
