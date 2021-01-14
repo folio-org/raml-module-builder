@@ -50,7 +50,6 @@ import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.client.test.HttpClientMock2;
-import org.folio.rest.tools.codecs.PojoEventBusCodec;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.AsyncResponseResult;
@@ -73,7 +72,6 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
@@ -121,8 +119,6 @@ public class RestVerticle extends AbstractVerticle {
   private static String             deploymentId                     = "";
 
   private final Messages            messages                        = Messages.getInstance();
-
-  private EventBus eventBus;
 
   // this is only to run via IDE - otherwise see pom which runs the verticle and
   // requires passing -cluster and preferable -cluster-home args
@@ -180,24 +176,7 @@ public class RestVerticle extends AbstractVerticle {
     // Create a router object.
     Router router = Router.router(vertx);
 
-    eventBus = vertx.eventBus();
-
     log.info(context.getInstanceCount() + " verticles deployed ");
-
-    try {
-      //register codec to be able to pass pojos on the event bus
-      eventBus.registerCodec(new PojoEventBusCodec());
-    } catch (Exception e3) {
-      if (e3.getMessage().startsWith("Already a codec registered with name")) {
-        //needed in case we run multiple verticle instances
-        //in this vertx instace - re-registering the same codec twice throws an
-        //exception
-        log.info("Attempt to register PojoEventBusCodec again... this is acceptable ");
-      }
-      else{
-        throw e3;
-      }
-    }
 
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
