@@ -293,7 +293,9 @@ Environment variables with periods/dots in their names are deprecated in RMB bec
 
 See the [Vert.x Async PostgreSQL Client Configuration documentation](https://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration) for the details.
 
-The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
+The environment variable `DB_MAXPOOLSIZE` sets the maximum number of concurrent connections for a tenant that one module instance opens. They are only opened if needed. If all connections for a tenant are in use further requests for that tenant will wait until one connnection becomes free. Other tenants and other instances of a module are unaffected. The default is 4.
+
+The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. A connection becomes idle if the query ends, it is not idle if it is waiting for a response. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
 
 The environment variable `DB_EXPLAIN_QUERY_THRESHOLD` is not observed by
 Postgres itself, but is a value - in milliseconds - that triggers query
@@ -1145,7 +1147,11 @@ The field in the child table points to the primary key `id` field of the parent 
 * The `foreignKey` entry in schema.json automatically creates an index on the foreign key field.
 * For fast queries, declare an index on any other searched field like `title` in the schema.json file.
 * For a multi-table join, use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
-  It must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance.
+  The `targetPath` array must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance, queries are possible in both directions.
+* When querying in parent → child direction each sub-expression may refer to a different child/grandchild/...:
+Searching for instances using `item.status.name=="Missing" and item.effectiveLocationId="fcd64ce1-6995-48f0-840e-89ffa2288371"`
+will look for an instance that has at least one item that is missing and this or some other item of the instance has the effective location.
+Use a child-to-parent query against the item endpoint if both conditions should apply to the same item record.
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The sortBy clause doesn't support foreign table fields. Use the API endpoint of the records with the field you want to sort on.
 * The schema for the above example:
@@ -1775,12 +1781,12 @@ RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/ram
 
 RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 419 HTTP response code if 419 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code.
 
-    * `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
-    * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction
-    * `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged as a warning message with a customized SQL error code 23F09. A sample log entry looks like below:
+* `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
+* `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction
+* `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged as a warning message with a customized SQL error code 23F09. Consult [Vertx logging](https://vertx.io/docs/vertx-core/java/#_logging) and [PostgreSQL Errors and Messages](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html) if `logOnConflict` doesn't log. A sample log entry looks like below.
 
 ```
-Backend notice: severity='WARNING', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 2, _version of request is "1"' ...
+14:26:54 [] [] [] [] WARN  ?                    Backend notice: severity='WARNING', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 2, _version of request is "1"' ...
 ```
 Use mod-inventory-storage `instance` table as an example, do following to enable optimistic locking
 
