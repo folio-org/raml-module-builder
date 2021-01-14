@@ -120,13 +120,6 @@ public class RestVerticle extends AbstractVerticle {
 
   private final Messages            messages                        = Messages.getInstance();
 
-  // this is only to run via IDE - otherwise see pom which runs the verticle and
-  // requires passing -cluster and preferable -cluster-home args
-  public static void main(String[] args) {
-    Vertx vertx = VertxUtils.getVertxWithExceptionHandler();
-    vertx.deployVerticle(new RestVerticle());
-  }
-
   static {
     //validationFactory used to validate the pojos which are created from the json
     //passed in the request body in put and post requests. The constraints validated by this factory
