@@ -733,16 +733,6 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  public JsonObject loadConfig(String configFile) {
-    try {
-      byte[] jsonData = ByteStreams.toByteArray(getClass().getClassLoader().getResourceAsStream(configFile));
-      return new JsonObject(new String(jsonData));
-    } catch (IOException e) {
-      log.error(e.getMessage(), e);
-    }
-    return new JsonObject();
-  }
-
   private MappedClasses populateConfig() {
     MappedClasses mappedURLs = new MappedClasses();
     JsonObject jObjClasses = new JsonObject();
