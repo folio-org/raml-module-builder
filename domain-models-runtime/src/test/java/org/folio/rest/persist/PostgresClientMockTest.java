@@ -79,9 +79,7 @@ public class PostgresClientMockTest {
 
     // test exceptions
     pc.getByIdAsString(Future.failedFuture("fail"), table, id, context.asyncAssertFailure());
-    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<PgConnection>> handler)
-        -> handler.handle(Future.failedFuture("fail"))))
-        .when(mockPgPool).getConnection(any());
+    when(mockPgPool.getConnection()).thenReturn(Future.failedFuture("fail"));
     pc.getByIdAsString(table, id, context.asyncAssertFailure());
     doAnswer(AdditionalAnswers.answerVoid(
         (Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler)
