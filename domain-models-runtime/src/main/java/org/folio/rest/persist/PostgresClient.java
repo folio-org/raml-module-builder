@@ -3218,22 +3218,20 @@ public class PostgresClient {
   public Future<RowSet<Row>> execute(String sql) {
     return execute(sql, Tuple.tuple());
   }
+
+  /**
+   * Get vertx-pg-client connection
+   */
+  public Future<PgConnection> getConnection() {
+    return getClient().getConnection().map(sqlConnection -> (PgConnection) sqlConnection);
+  }
+
   /**
    * Get vertx-pg-client connection
    * @param replyHandler
    */
   public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
-    getClient().getConnection(x -> {
-      if (x.failed()) {
-        replyHandler.handle(Future.failedFuture(x.cause()));
-        return;
-      }
-      try {
-        replyHandler.handle(Future.succeededFuture((PgConnection) x.result()));
-      } catch (Exception e) {
-        replyHandler.handle(Future.failedFuture(e));
-      }
-    });
+    getConnection().onComplete(replyHandler);
   }
 
   /**
