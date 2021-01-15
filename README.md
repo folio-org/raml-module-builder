@@ -34,7 +34,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Adding code to run periodically](#adding-code-to-run-periodically)
 * [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
 * [Adding a shutdown hook](#adding-a-shutdown-hook)
-* [Implementing file uploads](#implementing-file-uploads)
+* [Implementing uploads](#implementing-uploads)
 * [Implement chunked bulk download](#implement-chunked-bulk-download)
 * [PostgreSQL integration](#postgresql-integration)
     * [Credentials](#credentials)
@@ -657,61 +657,15 @@ public class ShutdownImpl implements ShutdownAPI {
 Note that when implementing the generated interfaces it is possible to add a constructor to the implementing class. This constructor will be called for every API call. This is another way you can implement custom code that will run per request.
 
 
-## Implementing file uploads
+## Implementing uploads
 
-The RMB supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
+The RMB allows for content to be streamed to a specific implemented interface.
+For example, to upload a large file without having to save it all in memory:
 
-#### File uploads Option 1
+ - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
+ - Declare the RAML as receiving `application/octet-stream`.
 
-A multipart RAML declaration may look something like this:
-
-```raml
-/uploadmultipart:
-    description: Uploads a file
-    post:
-      description: |
-          Uploads a file
-      body:
-        multipart/form-data:
-          formParameters:
-            file:
-              description: The file to be uploaded
-              required: true
-              type: file
-```
-
-The body content would look something like this:
-
-```sh
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-Content-Disposition: form-data; name="config.json"; filename="kv_configuration.sample"
-Content-Type: application/octet-stream
-
-<file content 1>
-
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-Content-Disposition: form-data; name="sample.drl"; filename="Sample.drl"
-Content-Type: application/octet-stream
-
-<file content 2>
-
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-```
-
-There will be a `MimeMultipart` parameter passed into the generated interfaces. An implementing
-module can access its content in the following manner:
-
-```sh
-int parts = entity.getCount();
-for (int i = 0; i < parts; i++) {
-        BodyPart part = entity.getBodyPart(i);
-        Object o = part.getContent();
-}
-```
-
-where each section in the body (separated by the boundary) is a "part".
-
-An octet/stream can look something like this:
+Example RAML:
 
 ```raml
  /uploadOctet:
@@ -723,17 +677,6 @@ An octet/stream can look something like this:
         application/octet-stream:
 ```
 
-The interfaces generated from the above will contain a parameter of type `java.io.InputStream`
-representing the uploaded file.
-
-
-#### File uploads Option 2
-
-The RMB allows for content to be streamed to a specific implemented interface.
-For example, to upload a large file without having to save it all in memory:
-
- - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
- - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
 
 The RMB will then call the function every time a chunk of data is received.
 This means that a new Object is instantiated by the RMB for each chunk of
