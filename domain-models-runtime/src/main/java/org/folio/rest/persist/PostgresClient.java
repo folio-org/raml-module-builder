@@ -19,7 +19,6 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
-import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import java.io.File;
@@ -3221,23 +3220,18 @@ public class PostgresClient {
   }
 
   /**
-   * Get Vert.x {@link PgConnection}.
-   * @param replyHandler
+   * Get vertx-pg-client connection
    */
-  public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
-    getConnection().onComplete(replyHandler::handle);
+  public Future<PgConnection> getConnection() {
+    return getClient().getConnection().map(sqlConnection -> (PgConnection) sqlConnection);
   }
 
   /**
    * Get Vert.x {@link PgConnection}.
-   * @return async result with connection
+   * @param replyHandler
    */
-  public Future<PgConnection> getConnection() {
-    try {
-      return getClient().getConnection().map(result -> (PgConnection) result);
-    } catch (Exception e) {
-      return Future.failedFuture(e);
-    }
+  public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
+    getConnection().onComplete(replyHandler);
   }
 
   /**

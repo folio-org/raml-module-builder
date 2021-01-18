@@ -8,7 +8,6 @@ import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import io.vertx.core.Promise;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;

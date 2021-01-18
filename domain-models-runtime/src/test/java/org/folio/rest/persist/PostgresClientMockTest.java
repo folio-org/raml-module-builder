@@ -28,7 +28,7 @@ public class PostgresClientMockTest {
     String table = "a";
     String id = UUID.randomUUID().toString();
     PostgresClient pc = spy(PostgresClient.testClient());
-    
+
     // mock empty query result
     @SuppressWarnings("unchecked")
     RowSet<Row> mockRowSet = mock(RowSet.class);
@@ -43,7 +43,6 @@ public class PostgresClientMockTest {
     when(mockPgConnection.preparedQuery(anyString())).thenReturn(mockPreparedQuery);
     PgPool mockPgPool = mock(PgPool.class);
     when(mockPgPool.getConnection()).thenReturn(Future.succeededFuture(mockPgConnection));
-
     when(pc.getClient()).thenReturn(mockPgPool);
     SQLConnection mockSQLConnection = new SQLConnection(mockPgConnection, null, null);
     AsyncResult<SQLConnection> mockConn = Future.succeededFuture(mockSQLConnection);
@@ -77,7 +76,7 @@ public class PostgresClientMockTest {
     pc.getById(table, id, Map.class, assertGetByIdAsObject(context));
     pc.getById(mockConn, table, id, Map.class, assertGetByIdAsObject(context));
     pc.getByIdForUpdate(mockConn, table, id, Map.class, assertGetByIdAsObject(context));
-    
+
     // test exceptions
     pc.getByIdAsString(Future.failedFuture("fail"), table, id, context.asyncAssertFailure());
     when(mockPgPool.getConnection()).thenReturn(Future.failedFuture("fail"));
@@ -94,8 +93,8 @@ public class PostgresClientMockTest {
     when(mockRow.getValue(anyInt())).thenThrow(new RuntimeException("fail"));
     pc.getByIdAsString(mockConn, table, id, context.asyncAssertFailure());
     pc.getByIdAsString(mockConn, table, "1", context.asyncAssertFailure());
-  } 
-  
+  }
+
   private Handler<AsyncResult<String>> assertGetByIdAsString(TestContext context) {
     return context.asyncAssertSuccess(r -> {
       context.assertTrue(r.contains("id"));

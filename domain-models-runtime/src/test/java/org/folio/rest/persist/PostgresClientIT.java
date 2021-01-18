@@ -1749,7 +1749,7 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(getConnection());
+        getConnection().onComplete(handler);
       }
 
       @Override
@@ -1795,7 +1795,7 @@ public class PostgresClientIT {
 
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(getConnection());
+        getConnection().onComplete(handler);
       }
 
       @Override
@@ -1896,7 +1896,12 @@ public class PostgresClientIT {
 
       @Override
       public void close(Handler<AsyncResult<Void>> handler) {
+        close().onComplete(handler);
+      }
 
+      @Override
+      public Future<Void> close() {
+        return Future.succeededFuture();
       }
 
       @Override
@@ -1910,11 +1915,6 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Future<Void> close() {
-        return Future.succeededFuture();
-      }
-
-      @Override
       public DatabaseMetadata databaseMetadata() {
         throw new RuntimeException();
       }
@@ -1923,12 +1923,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
       }
 
       @Override
       public Future<SqlConnection> getConnection() {
-        return null;
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override
@@ -2075,7 +2075,7 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
       }
 
       @Override
@@ -2095,9 +2095,8 @@ public class PostgresClientIT {
 
       @Override
       public void close(Handler<AsyncResult<Void>> handler) {
-
+        close().onComplete(handler);
       }
-
 
       @Override
       public Future<Void> close() {
@@ -2203,12 +2202,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
       }
 
       @Override
       public Future<SqlConnection> getConnection() {
-        return null;
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override
