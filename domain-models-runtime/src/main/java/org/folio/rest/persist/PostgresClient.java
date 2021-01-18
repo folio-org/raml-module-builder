@@ -3283,9 +3283,13 @@ public class PostgresClient {
 
   /**
    * Execute the given function within a transaction.
-   * <p
-   * Similar to {@link PgPool#withTransaction(Function)}
-   * </p>
+   * <p>Similar to {@link PgPool#withTransaction(Function)}
+   * <ul>
+   *   <li>The connection is automatically closed in all cases when the function exits.</li>
+   *   <li>The transaction is automatically committed if the function returns a succeeded Future.
+   *   The transaction is automatically roll-backed if the function returns a failed Future or throws a Throwable.</li>
+   *   <li>The method returns a succeeded Future if the commit is successful, otherwise a failed Future.</li>
+   * </ul>
    *
    * @param function code to execute
    * @param <T> type
@@ -3309,9 +3313,12 @@ public class PostgresClient {
 
   /**
    * Get a connection from the pool and execute the given function.
-   * <p>
-   * Similar to {@link PgPool#withConnection(Function)}
-   * </p>
+   * <p>Similar to {@link PgPool#withConnection(Function)}
+   * <ul>
+   *   <li>The connection is automatically closed in all cases when the function exits.</li>
+   *   <li>The method returns a succeeded Future if the function is successful, otherwise a failed Future.</li>
+   * </ul>
+   *
    * @param function code to execute
    * @param <T> type
    * @return result handler
