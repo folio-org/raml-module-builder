@@ -1,5 +1,19 @@
 package org.folio.rest.persist;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.pgclient.PgNotification;
+import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.PreparedQuery;
+import io.vertx.sqlclient.PreparedStatement;
+import io.vertx.sqlclient.Query;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlConnection;
+import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.persist.Criteria.Criteria;
@@ -13,6 +27,8 @@ import org.junit.runner.RunWith;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientTransactionsIT extends PostgresClientITBase {
@@ -245,40 +261,290 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
 
   @Test
   public void testWithTransactionSuccess(TestContext context) {
-    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
-
-    c1.withTransaction(f ->
-      f.query("INSERT INTO " + fullTable + " VALUES (2, '{ \"name\": \"a1\"}');\n").execute().map("inserted")
-    ).onComplete(context.asyncAssertSuccess(res -> context.assertEquals("inserted", res)));
+    AtomicInteger open = new AtomicInteger();
+    AtomicInteger active = new AtomicInteger();
+    PostgresClient c1 = postgresClientMonitor(open, active);
+    {
+      Async async = context.async();
+      c1.withTransaction(f -> f
+          .query("INSERT INTO " + fullTable + " VALUES (2, '{\"name\": \"a2\"}');")
+          .execute()
+          .flatMap(res -> f
+              .query("INSERT INTO " + fullTable + " VALUES (3, '{\"name\": \"a3\"}');")
+              .execute().map("inserted 2")
+          )
+      ).onComplete(context.asyncAssertSuccess(res -> {
+        context.assertEquals("inserted 2", res);
+        async.complete();
+      }));
+      async.await();
+    }
+    context.assertEquals(0, open.get());
+    context.assertEquals(0, active.get());
+    c1.select("SELECT jsonb->>'name' FROM " + fullTable + " WHERE ID=2 OR ID=3",
+        context.asyncAssertSuccess(res -> context.assertEquals(2, res.size())));
   }
 
   @Test
   public void testWithTransactionFailure(TestContext context) {
-    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
-
-    c1.withTransaction(f ->
-        f.query("INSERT INTO " + fullTable + " VALUES (2,").execute().map("inserted")
-    ).onComplete(context.asyncAssertFailure(cause ->
-        context.assertTrue(cause.getMessage().contains("syntax error at end of input"))));
+    AtomicInteger open = new AtomicInteger();
+    AtomicInteger active = new AtomicInteger();
+    PostgresClient c1 = postgresClientMonitor(open, active);
+    {
+      Async async = context.async();
+      c1.withTransaction(f -> f
+          .query("INSERT INTO " + fullTable + " VALUES (4, '{\"name\": \"a4\"}');")
+          .execute()
+          .flatMap(res -> f
+              .query("INSERT INTO " + fullTable + " VALUES (5,")
+              .execute().map("inserted 2")
+          )).onComplete(context.asyncAssertFailure(cause -> {
+        context.assertTrue(cause.getMessage().contains("syntax error at end of input"));
+        async.complete();
+      }));
+      async.await();
+    }
+    context.assertEquals(0, open.get());
+    context.assertEquals(0, active.get());
+    // first one rolled back
+    c1.select("SELECT jsonb->>'name' FROM " + fullTable + " WHERE ID=4",
+        context.asyncAssertSuccess(res -> context.assertEquals(0, res.size())));
   }
 
   @Test
   public void testWithConnectionSuccess(TestContext context) {
-    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
-
-    c1.withConnection(f ->
-        f.query("INSERT INTO " + fullTable + " VALUES (3, '{ \"name\": \"a1\"}');\n").execute().map("inserted")
-    ).onComplete(context.asyncAssertSuccess(res -> context.assertEquals("inserted", res)));
+    AtomicInteger open = new AtomicInteger();
+    AtomicInteger active = new AtomicInteger();
+    PostgresClient c1 = postgresClientMonitor(open, active);
+    {
+      Async async = context.async();
+      c1.withConnection(f -> f
+          .query("INSERT INTO " + fullTable + " VALUES (6, '{\"name\": \"a6\"}');")
+          .execute()
+          .flatMap(res -> f
+              .query("INSERT INTO " + fullTable + " VALUES (7, '{\"name\": \"a7\"}');")
+              .execute().map("inserted 2")
+          )).onComplete(context.asyncAssertSuccess(res -> {
+        context.assertEquals("inserted 2", res);
+        async.complete();
+      }));
+      async.await();
+    }
+    context.assertEquals(0, open.get());
+    context.assertEquals(0, active.get());
+    c1.select("SELECT jsonb->>'name' FROM " + fullTable + " WHERE ID=6 OR ID=7",
+        context.asyncAssertSuccess(res -> context.assertEquals(2, res.size())));
   }
 
   @Test
   public void testWithConnectionFailure(TestContext context) {
-    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
-
-    c1.withConnection(f ->
-        f.query("INSERT INTO " + fullTable + " VALUES (3,").execute().map("inserted")
-    ).onComplete(context.asyncAssertFailure(cause ->
-        context.assertTrue(cause.getMessage().contains("syntax error at end of input"))));
+    AtomicInteger open = new AtomicInteger();
+    AtomicInteger active = new AtomicInteger();
+    PostgresClient c1 = postgresClientMonitor(open, active);
+    context.assertEquals(0, open.get());
+    {
+      Async async = context.async();
+      c1.withConnection(f -> f
+          .query("INSERT INTO " + fullTable + " VALUES (8, '{\"name\": \"a8\"}');")
+          .execute()
+          .flatMap(res -> f
+              .query("INSERT INTO " + fullTable + " VALUES (9,")
+              .execute().map("inserted 2")
+          )).onComplete(context.asyncAssertFailure(cause -> {
+        context.assertTrue(cause.getMessage().contains("syntax error at end of input"));
+        async.complete();
+      }));
+      async.await();
+    }
+    context.assertEquals(0, open.get());
+    context.assertEquals(0, active.get());
+    // no rollback, so first one was inserted..
+    c1.select("SELECT jsonb->>'name' FROM " + fullTable + " WHERE ID=8",
+        context.asyncAssertSuccess(res -> context.assertEquals(1, res.size())));
   }
 
+  class MonitorTransaction implements Transaction {
+    final Transaction transaction;
+    final AtomicInteger active;
+
+    MonitorTransaction(Transaction transaction, AtomicInteger active) {
+      this.transaction = transaction;
+      this.active = active;
+    }
+
+    @Override
+    public Future<Void> commit() {
+      active.decrementAndGet();
+      return transaction.commit();
+    }
+
+    @Override
+    public void commit(Handler<AsyncResult<Void>> handler) {
+      commit().onComplete(handler);
+    }
+
+    @Override
+    public Future<Void> rollback() {
+      active.decrementAndGet();
+      return transaction.rollback();
+    }
+
+    @Override
+    public void rollback(Handler<AsyncResult<Void>> handler) {
+      rollback().onComplete(handler);
+    }
+
+    @Override
+    public void completion(Handler<AsyncResult<Void>> handler) {
+      transaction.completion(handler);
+    }
+
+    @Override
+    public Future<Void> completion() {
+      return transaction.completion();
+    }
+  }
+
+    class MonitorPgConnection implements PgConnection {
+    final PgConnection conn;
+    final AtomicInteger open;
+    final AtomicInteger active;
+
+    MonitorPgConnection(PgConnection conn, AtomicInteger open, AtomicInteger active) {
+      this.open = open;
+      this.active = active;
+      open.incrementAndGet();
+      this.conn = conn;
+    }
+
+    @Override
+    public PgConnection notificationHandler(Handler<PgNotification> handler) {
+      conn.notificationHandler(handler);
+      return this;
+    }
+
+    @Override
+    public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
+      conn.cancelRequest(handler);
+      return this;
+    }
+
+    @Override
+    public int processId() {
+      return conn.processId();
+    }
+
+    @Override
+    public int secretKey() {
+      return conn.secretKey();
+    }
+
+    @Override
+    public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
+      conn.prepare(s, handler);
+      return this;
+    }
+
+    @Override
+    public Future<PreparedStatement> prepare(String s) {
+      return conn.prepare(s);
+    }
+
+    @Override
+    public PgConnection exceptionHandler(Handler<Throwable> handler) {
+      conn.exceptionHandler(handler);
+      return this;
+    }
+
+    @Override
+    public PgConnection closeHandler(Handler<Void> handler) {
+      conn.closeHandler(handler);
+      return this;
+    }
+
+    @Override
+    public void begin(Handler<AsyncResult<Transaction>> handler) {
+      begin().onComplete(handler);
+    }
+
+    @Override
+    public Future<Transaction> begin() {
+      active.incrementAndGet();
+      return conn.begin().map(trans -> new MonitorTransaction(trans, active));
+    }
+
+    @Override
+    public boolean isSSL() {
+      return conn.isSSL();
+    }
+
+    @Override
+    public Query<RowSet<Row>> query(String s) {
+      return conn.query(s);
+    }
+
+    @Override
+    public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+      return conn.preparedQuery(s);
+    }
+
+    @Override
+    public void close(Handler<AsyncResult<Void>> handler) {
+      close().onComplete(handler);
+    }
+
+    @Override
+    public Future<Void> close() {
+      open.decrementAndGet();
+      return conn.close();
+    }
+
+    @Override
+    public DatabaseMetadata databaseMetadata() {
+      return conn.databaseMetadata();
+    }
+  }
+
+  private PostgresClient postgresClientMonitor(AtomicInteger open, AtomicInteger active) {
+    try {
+      PostgresClient postgresClient = new PostgresClient(vertx, tenant);
+      PgPool ePool = postgresClient.getClient();
+      PgPool client = new PgPool() {
+
+        @Override
+        public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
+          getConnection().onComplete(handler);
+        }
+
+        @Override
+        public Future<SqlConnection> getConnection() {
+          return ePool.getConnection().map(conn -> new MonitorPgConnection((PgConnection) conn, open, active));
+        }
+
+        @Override
+        public Query<RowSet<Row>> query(String s) {
+          return ePool.query(s);
+        }
+
+        @Override
+        public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+          return ePool.preparedQuery(s);
+        }
+
+        @Override
+        public void close(Handler<AsyncResult<Void>> handler) {
+          close().onComplete(handler);
+        }
+
+        @Override
+        public Future<Void> close() {
+          return ePool.close();
+        }
+      };
+      postgresClient.setClient(client);
+      return postgresClient;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
 }
