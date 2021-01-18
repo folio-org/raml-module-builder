@@ -3219,14 +3219,19 @@ public class PostgresClient {
   public Future<RowSet<Row>> execute(String sql) {
     return execute(sql, Tuple.tuple());
   }
+
   /**
-   * Get vertx-pg-client connection
+   * Get Vert.x {@link PgConnection}.
    * @param replyHandler
    */
   public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
     getConnection().onComplete(replyHandler::handle);
   }
 
+  /**
+   * Get Vert.x {@link PgConnection}.
+   * @return async result with connection
+   */
   public Future<PgConnection> getConnection() {
     try {
       return getClient().getConnection().map(result -> (PgConnection) result);
@@ -3292,7 +3297,7 @@ public class PostgresClient {
    * @param <T> type
    * @return result handler
    */
-  public <T> Future<T> withTransaction(Function<SqlConnection, Future<T>> function) {
+  public <T> Future<T> withTransaction(Function<PgConnection, Future<T>> function) {
     return getConnection()
       .flatMap(conn -> conn
         .begin()
@@ -3317,7 +3322,7 @@ public class PostgresClient {
    * @param <T> type
    * @return result handler
    */
-  public <T> Future<T> withConnection(Function<SqlConnection, Future<T>> function) {
+  public <T> Future<T> withConnection(Function<PgConnection, Future<T>> function) {
     return getConnection().flatMap(conn -> function.apply(conn).onComplete(ar -> conn.close()));
   }
 
