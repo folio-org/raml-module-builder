@@ -19,6 +19,7 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
+import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import java.io.File;
@@ -3223,17 +3224,15 @@ public class PostgresClient {
    * @param replyHandler
    */
   public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
-    getClient().getConnection(x -> {
-      if (x.failed()) {
-        replyHandler.handle(Future.failedFuture(x.cause()));
-        return;
-      }
-      try {
-        replyHandler.handle(Future.succeededFuture((PgConnection) x.result()));
-      } catch (Exception e) {
-        replyHandler.handle(Future.failedFuture(e));
-      }
-    });
+    getConnection().onComplete(replyHandler::handle);
+  }
+
+  public Future<PgConnection> getConnection() {
+    try {
+      return getClient().getConnection().map(result -> (PgConnection) result);
+    } catch (Exception e) {
+      return Future.failedFuture(e);
+    }
   }
 
   /**
@@ -3281,6 +3280,45 @@ public class PostgresClient {
       SQLConnection sqlConnection = new SQLConnection(pgConnection, null, timerId);
       handler.handle(Future.succeededFuture(sqlConnection));
     });
+  }
+
+  /**
+   * Execute the given function within a transaction.
+   * <p
+   * Similar to {@link PgPool#withTransaction(Function)}
+   * </p>
+   *
+   * @param function code to execute
+   * @param <T> type
+   * @return result handler
+   */
+  public <T> Future<T> withTransaction(Function<SqlConnection, Future<T>> function) {
+    return getConnection()
+      .flatMap(conn -> conn
+        .begin()
+        .flatMap(tx -> function
+          .apply(conn)
+          .compose(
+            res -> tx
+              .commit()
+              .flatMap(v -> Future.succeededFuture(res)),
+            err -> tx
+              .rollback()
+              .compose(v -> Future.failedFuture(err), failure -> Future.failedFuture(err))))
+        .onComplete(ar -> conn.close()));
+  }
+
+  /**
+   * Get a connection from the pool and execute the given function.
+   * <p>
+   * Similar to {@link PgPool#withConnection(Function)}
+   * </p>
+   * @param function code to execute
+   * @param <T> type
+   * @return result handler
+   */
+  public <T> Future<T> withConnection(Function<SqlConnection, Future<T>> function) {
+    return getConnection().flatMap(conn -> function.apply(conn).onComplete(ar -> conn.close()));
   }
 
   /**

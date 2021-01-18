@@ -2080,7 +2080,7 @@ public class PostgresClientIT {
 
       @Override
       public Future<SqlConnection> getConnection() {
-        return null;
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override

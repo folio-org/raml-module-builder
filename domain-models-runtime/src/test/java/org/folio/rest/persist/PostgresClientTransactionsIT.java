@@ -243,4 +243,42 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     deleteTransaction(context);
   }
 
+  @Test
+  public void testWithTransactionSuccess(TestContext context) {
+    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
+
+    c1.withTransaction(f ->
+      f.query("INSERT INTO " + fullTable + " VALUES (2, '{ \"name\": \"a1\"}');\n").execute().map("inserted")
+    ).onComplete(context.asyncAssertSuccess(res -> context.assertEquals("inserted", res)));
+  }
+
+  @Test
+  public void testWithTransactionFailure(TestContext context) {
+    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
+
+    c1.withTransaction(f ->
+        f.query("INSERT INTO " + fullTable + " VALUES (2,").execute().map("inserted")
+    ).onComplete(context.asyncAssertFailure(cause ->
+        context.assertTrue(cause.getMessage().contains("syntax error at end of input"))));
+  }
+
+  @Test
+  public void testWithConnectionSuccess(TestContext context) {
+    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
+
+    c1.withConnection(f ->
+        f.query("INSERT INTO " + fullTable + " VALUES (3, '{ \"name\": \"a1\"}');\n").execute().map("inserted")
+    ).onComplete(context.asyncAssertSuccess(res -> context.assertEquals("inserted", res)));
+  }
+
+  @Test
+  public void testWithConnectionFailure(TestContext context) {
+    PostgresClient c1 = PostgresClient.getInstance(vertx, tenant);
+
+    c1.withConnection(f ->
+        f.query("INSERT INTO " + fullTable + " VALUES (3,").execute().map("inserted")
+    ).onComplete(context.asyncAssertFailure(cause ->
+        context.assertTrue(cause.getMessage().contains("syntax error at end of input"))));
+  }
+
 }

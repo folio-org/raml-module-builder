@@ -22,7 +22,7 @@ import org.mockito.AdditionalAnswers;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientMockTest {
-  
+
   @Test
   public void testGetById(TestContext context) {
     String table = "a";
@@ -42,9 +42,8 @@ public class PostgresClientMockTest {
     PgConnection mockPgConnection = mock(PgConnection.class);
     when(mockPgConnection.preparedQuery(anyString())).thenReturn(mockPreparedQuery);
     PgPool mockPgPool = mock(PgPool.class);
-    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<PgConnection>> handler)
-        -> handler.handle(Future.succeededFuture(mockPgConnection))))
-        .when(mockPgPool).getConnection(any());
+    when(mockPgPool.getConnection()).thenReturn(Future.succeededFuture(mockPgConnection));
+
     when(pc.getClient()).thenReturn(mockPgPool);
     SQLConnection mockSQLConnection = new SQLConnection(mockPgConnection, null, null);
     AsyncResult<SQLConnection> mockConn = Future.succeededFuture(mockSQLConnection);
@@ -81,9 +80,7 @@ public class PostgresClientMockTest {
     
     // test exceptions
     pc.getByIdAsString(Future.failedFuture("fail"), table, id, context.asyncAssertFailure());
-    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<PgConnection>> handler)
-        -> handler.handle(Future.failedFuture("fail"))))
-        .when(mockPgPool).getConnection(any());
+    when(mockPgPool.getConnection()).thenReturn(Future.failedFuture("fail"));
     pc.getByIdAsString(table, id, context.asyncAssertFailure());
     doAnswer(AdditionalAnswers.answerVoid(
         (Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler)
