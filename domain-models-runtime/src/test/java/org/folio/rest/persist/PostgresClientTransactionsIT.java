@@ -299,6 +299,10 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
       c1.withTransaction(f -> f
           .query("INSERT INTO " + fullTable + " VALUES (4, '{\"name\": \"a4\"}');")
           .execute()
+          .onComplete(x -> {
+            context.assertEquals(1, open.get());
+            context.assertEquals(1, active.get());
+          })
           .flatMap(res -> f
               .query("INSERT INTO " + fullTable + " VALUES (5,")
               .execute().map("inserted 2")
@@ -325,6 +329,10 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
       c1.withConnection(f -> f
           .query("INSERT INTO " + fullTable + " VALUES (6, '{\"name\": \"a6\"}');")
           .execute()
+          .onComplete(x -> {
+            context.assertEquals(1, open.get());
+            context.assertEquals(0, active.get());
+          })
           .flatMap(res -> f
               .query("INSERT INTO " + fullTable + " VALUES (7, '{\"name\": \"a7\"}');")
               .execute().map("inserted 2")
@@ -351,6 +359,10 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
       c1.withConnection(f -> f
           .query("INSERT INTO " + fullTable + " VALUES (8, '{\"name\": \"a8\"}');")
           .execute()
+          .onComplete(x -> {
+            context.assertEquals(1, open.get());
+            context.assertEquals(0, active.get());
+          })
           .flatMap(res -> f
               .query("INSERT INTO " + fullTable + " VALUES (9,")
               .execute().map("inserted 2")
