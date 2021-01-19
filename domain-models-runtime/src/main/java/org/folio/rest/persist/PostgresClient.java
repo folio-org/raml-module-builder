@@ -3292,8 +3292,6 @@ public class PostgresClient {
    * </ul>
    *
    * @param function code to execute
-   * @param <T> type
-   * @return result handler
    */
   public <T> Future<T> withTransaction(Function<PgConnection, Future<T>> function) {
     return getConnection()
@@ -3316,12 +3314,11 @@ public class PostgresClient {
    * <p>Similar to {@link PgPool#withConnection(Function)}
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
-   *   <li>The method returns a succeeded Future if the function is successful, otherwise a failed Future.</li>
+   *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
+   *   thrown by the function.</li>
    * </ul>
    *
    * @param function code to execute
-   * @param <T> type
-   * @return result handler
    */
   public <T> Future<T> withConnection(Function<PgConnection, Future<T>> function) {
     return getConnection().flatMap(conn -> function.apply(conn).onComplete(ar -> conn.close()));

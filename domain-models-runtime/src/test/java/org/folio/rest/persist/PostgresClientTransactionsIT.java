@@ -269,6 +269,10 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
       c1.withTransaction(f -> f
           .query("INSERT INTO " + fullTable + " VALUES (2, '{\"name\": \"a2\"}');")
           .execute()
+          .onComplete(x -> {
+            context.assertEquals(1, open.get());
+            context.assertEquals(1, active.get());
+          })
           .flatMap(res -> f
               .query("INSERT INTO " + fullTable + " VALUES (3, '{\"name\": \"a3\"}');")
               .execute().map("inserted 2")
@@ -405,7 +409,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     }
   }
 
-    class MonitorPgConnection implements PgConnection {
+  class MonitorPgConnection implements PgConnection {
     final PgConnection conn;
     final AtomicInteger open;
     final AtomicInteger active;
