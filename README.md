@@ -224,7 +224,7 @@ $ mvn clean install
 ```
 
 - Its RAMLs and JSON schemas can be found in the `ramls` directory.
-These are also displayed as local [API documentation](#documentation-of-the-apis).
+  These are also displayed as local [API documentation](#documentation-of-the-apis).
 
 - Open the pom.xml file - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files into the `target/generated-sources/raml-jaxrs` directory. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
 
@@ -252,40 +252,40 @@ we will get your local development server running and populated with test data.
 - `-Dhttp.port=8080` (Optional -- defaults to 8081)
 
 - `-Ddebug_log_package=*` (Optional -- Set log level to debug for all packages.
-Or use `org.folio.rest.*` for all classes within a specific package,
-or `org.folio.rest.RestVerticle` for a specific class.)
+  Or use `org.folio.rest.*` for all classes within a specific package,
+  or `org.folio.rest.RestVerticle` for a specific class.)
 
 - `embed_postgres=true` (Optional -- enforces starting an embedded postgreSQL, defaults to false)
 
 - `db_connection=[path]` (Optional -- path to an external JSON config file with
   connection parameters to a PostgreSQL DB)
 
-  - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
-    "username":"postgres","password":"mysecretpassword", "database":"postgres",
-    "charset":"windows-1252", "queryTimeout" : 10000}`
+    - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
+      "username":"postgres","password":"mysecretpassword", "database":"postgres",
+      "charset":"windows-1252", "queryTimeout" : 10000}`
 
 - Other module-specific arguments can be passed via the command line in the format key=value. These will be accessible to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
 
 - Optional JVM arguments can be passed before the `-jar` argument, e.g.
-`-XX:+HeapDumpOnOutOfMemoryError`
-`-XX:+PrintGCDetails`
-`-XX:+PrintGCTimeStamps`
-`-Xloggc:C:\Git\circulation\gc.log`
+  `-XX:+HeapDumpOnOutOfMemoryError`
+  `-XX:+PrintGCDetails`
+  `-XX:+PrintGCTimeStamps`
+  `-Xloggc:C:\Git\circulation\gc.log`
 
 ## Environment Variables
 
 RMB implementing modules expect a set of environment variables to be passed in at module startup. The environment variables expected by RMB modules are:
 
- - DB_HOST
- - DB_PORT
- - DB_USERNAME
- - DB_PASSWORD
- - DB_DATABASE
- - DB_QUERYTIMEOUT
- - DB_CHARSET
- - DB_MAXPOOLSIZE
- - DB_CONNECTIONRELEASEDELAY
- - DB_EXPLAIN_QUERY_THRESHOLD
+- DB_HOST
+- DB_PORT
+- DB_USERNAME
+- DB_PASSWORD
+- DB_DATABASE
+- DB_QUERYTIMEOUT
+- DB_CHARSET
+- DB_MAXPOOLSIZE
+- DB_CONNECTIONRELEASEDELAY
+- DB_EXPLAIN_QUERY_THRESHOLD
 
 The first five are mandatory, the others are optional.
 
@@ -662,8 +662,8 @@ Note that when implementing the generated interfaces it is possible to add a con
 The RMB allows for content to be streamed to a specific implemented interface.
 For example, to upload a large file without having to save it all in memory:
 
- - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
- - Declare the RAML as receiving `application/octet-stream`.
+- Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
+- Declare the RAML as receiving `application/octet-stream`.
 
 Example RAML:
 
@@ -780,10 +780,10 @@ A module can also set the secret key via the static method `AES.setSecretKey(myk
 
 The needed steps are:
 
- -  Generate a key
- -  Encrypt a password
- -  Include that password in the config file
- -  Either call `AES.setSecretKey(mykey)` or the `admin/set_AES_key` API (to load the secret key into memory)
+-  Generate a key
+-  Encrypt a password
+-  Include that password in the config file
+-  Either call `AES.setSecretKey(mykey)` or the `admin/set_AES_key` API (to load the secret key into memory)
 
 A good way for a module to set the secret key is by using the post deployment hook interface in the RMB.
 
@@ -901,14 +901,14 @@ field name:
 Only these relations have been implemented yet:
 
 * `=` (this is `==` for number matching and `adj` for a string matching.
-       Examples 1: `height =/number 3.4` Example 2: `title = Potter`)
+  Examples 1: `height =/number 3.4` Example 2: `title = Potter`)
 * `==` (field match, for example `barcode == 883746123` or field prefix match `title == "Harry Pott*"`
-        matching "Harry Potter and the chamber of secrets" but not "Science of Harry Potter";
-        `==/number` matches any form: 3.4 = 3.400 = 0.34e1)
+  matching "Harry Potter and the chamber of secrets" but not "Science of Harry Potter";
+  `==/number` matches any form: 3.4 = 3.400 = 0.34e1)
 * `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
 * `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
 * `adj` (substring phrase match: all words of the query string exist consecutively in that order, there may be any
-          whitespace and punctuation in between, `title adj "Harry Potter"` matches "The Harry - . - Potter Story")
+  whitespace and punctuation in between, `title adj "Harry Potter"` matches "The Harry - . - Potter Story")
 * `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
@@ -994,9 +994,9 @@ a more complex query, for example
 `cql.allRecords=1 NOT name=Smith sortBy name/sort.ascending`
 
 * `cql.allRecords=1 NOT name=Smith` matches all records where name does not contain Smith
-   as a word or where name is not defined.
+  as a word or where name is not defined.
 * `name="" NOT name=Smith` matches all records where name is defined but does not contain
-   Smith as a word.
+  Smith as a word.
 * For performance reasons, searching for `*` in any fulltext field will match all records as well,
   including records where that field does not exist.
 
@@ -1011,7 +1011,7 @@ not defined or if it is defined but doesn't match.
 * `cql.allRecords=1 NOT name=""` matches all records where name is not defined.
 * `name==""` matches all records where name is defined and empty.
 * `cql.allRecords=1 NOT name==""` matches all records where name is defined and not empty or
-   where name is not defined.
+  where name is not defined.
 * `name="" NOT name==""` matches all records where name is defined and not empty.
 
 ### CQL: Matching array elements
@@ -1046,12 +1046,12 @@ An example of this kind of structure is `contributors ` (property) from
 mod-inventory-storage . `contributorTypeId` is the type of contributor
 (type1).
 
-With CQL you can limit searches to `property1` with regular match in
-`subfield`, with type1=value2 with
+With CQL you can limit searches to `property` with regular match in
+`subfield`, with type1=value1 with
 
     property =/@type1=value1 value
 
-Observe that the relation modifier is preceeded with the @-character to
+Observe that the relation modifier is preceded with the @-character to
 avoid clash with other CQL relation modifiers.
 
 The type1, type2 and subfield must all be defined in schema.json, because
@@ -1107,19 +1107,19 @@ This will allow you to perform searches, such as:
 
 CQL2PGjson allows generating and querying indexes that contain multiple columns. The index json object now has support for the following properties:
 * sqlExpression
-	Allows the user to explicitly define the expression they wish to use in the index
-	```
-        "fieldName": "address",
-        "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",
-	```
+  Allows the user to explicitly define the expression they wish to use in the index
+  ```
+      "fieldName": "address",
+      "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",
+  ```
 
 * multiFieldNames
-	This is a comma-separated list of json fields that are to be concatenated together via concat_ws with a space character.
-	example:
-	```
-		"fieldName": "address",
-		"multiFieldNames": "city,state",
-	```
+  This is a comma-separated list of json fields that are to be concatenated together via concat_ws with a space character.
+  example:
+  ```
+      "fieldName": "address",
+      "multiFieldNames": "city,state",
+  ```
 These 2 examples are equivalent and would be queried by using the fieldName such as:
 
 ```
@@ -1149,9 +1149,9 @@ The field in the child table points to the primary key `id` field of the parent 
 * For a multi-table join, use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
   The `targetPath` array must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance, queries are possible in both directions.
 * When querying in parent → child direction each sub-expression may refer to a different child/grandchild/...:
-Searching for instances using `item.status.name=="Missing" and item.effectiveLocationId="fcd64ce1-6995-48f0-840e-89ffa2288371"`
-will look for an instance that has at least one item that is missing and this or some other item of the instance has the effective location.
-Use a child-to-parent query against the item endpoint if both conditions should apply to the same item record.
+  Searching for instances using `item.status.name=="Missing" and item.effectiveLocationId="fcd64ce1-6995-48f0-840e-89ffa2288371"`
+  will look for an instance that has at least one item that is missing and this or some other item of the instance has the effective location.
+  Use a child-to-parent query against the item endpoint if both conditions should apply to the same item record.
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The sortBy clause doesn't support foreign table fields. Use the API endpoint of the records with the field you want to sort on.
 * The schema for the above example:
@@ -1271,11 +1271,11 @@ cleaned up with DELETE.
 
 The RAML defining the API:
 
-   https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml
+https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml
 
 By default RMB includes an implementation of the Tenant API which assumes Postgres being present.
 Implementation in
- [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) file. You might want to extend/override this because:
+[TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) file. You might want to extend/override this because:
 
 1. You want to not call it at all (your module is not using Postgres).
 2. You want to provide further Tenant control, such as loading reference and/or sample data.
@@ -1393,7 +1393,7 @@ The file contains an array of tables and views to create for a tenant on registr
 
 An example can be found here:
 
- - https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example.json
+- https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/examples/schema.json.example.json
 
 The top level properties in schema.json (some of which are optional) are `scripts`, `tables`, `views` and `exactCount`.
 
@@ -1587,12 +1587,12 @@ actions/info to be done during tenant creation/update.
 
 As of now (this may change in the future), securing a tenant's connection to the database via an encrypted password can be accomplished in the following way:
 
- - Set the secret key (as described in the Securing DB Configuration file section)
+- Set the secret key (as described in the Securing DB Configuration file section)
 
-  The PASSWORD will be replaced with the following:
-  encrypt(tenant id with secret key) = **new tenant's password**
-  The **new tenant's password** will replace the default PASSWORD value (which is the tenantid_modulename)
-  The RMB Postgres client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
+The PASSWORD will be replaced with the following:
+encrypt(tenant id with secret key) = **new tenant's password**
+The **new tenant's password** will replace the default PASSWORD value (which is the tenantid_modulename)
+The RMB Postgres client will use the secret key and the passed in tenant id to calculate the tenant's password when DB connections are needed for that tenant. Note that if you use the tenant API and set the secret key - the decrypting of the password will be done by the Postgres Client for each tenant connection.
 
 
 The RMB comes with a TenantClient to facilitate calling the API via URL.
@@ -1695,7 +1695,7 @@ Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
 `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
 specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify
 directory in the form of glob expression (e.g. "raml-util/**")
- For example:
+For example:
 ```
 <systemProperty>
   <key>schema_paths</key>
@@ -1835,7 +1835,7 @@ To add faceting to your API.
 1. Add the [faceting RAML trait](https://github.com/folio-org/raml/blob/master/traits/facets.raml) to your RAML and reference it from the endpoint (using the is:[])
     - facet query parameter format: `facets=a.b.c` or `facets=a.b.c:10` (they are repeating). For example `?facets=active&facets=personal.lastName`
 2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas.
-For example:
+   For example:
 ```
  "type": "object",
   "properties": {
@@ -1858,8 +1858,8 @@ You can set the amount of results to facet on by calling (defaults to 10,000) `F
 Note that higher numbers will potentially affect performance.
 
 4. Faceting on array fields can be done in the following manner:
-`personal.secondaryAddress[].postalCode`
-`personal.secondaryAddress[].address[].postalCode`
+   `personal.secondaryAddress[].postalCode`
+   `personal.secondaryAddress[].address[].postalCode`
 
 NOTE: Creating an index on potential facet fields may be required so that performance is not greatly hindered
 
@@ -1898,8 +1898,8 @@ Incomplete list of available properties:
 - jsonschema2pojo.config.serializable - makes classes serializable
 
 For more available properties see:
- https://joelittlejohn.github.io/jsonschema2pojo/site/1.0.0/generate-mojo.html
- https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java
+https://joelittlejohn.github.io/jsonschema2pojo/site/1.0.0/generate-mojo.html
+https://github.com/mulesoft-labs/raml-for-jax-rs/blob/master/raml-to-jaxrs/jaxrs-code-generator/src/main/java/org/raml/jaxrs/generator/RamlToJaxRSGenerationConfig.java
 
 ## Overriding RAML (traits) / query parameters
 
@@ -2046,8 +2046,8 @@ All current API documentation is also available at [dev.folio.org/doc/api](https
 RMB uses [log4j2](https://logging.apache.org/log4j/2.x/) for logging.
 Bundled with the domain-models-runtime (jar) there are two log4j configurations:
 
- * `log4j2.properties` console/line based logger and it is the default
- * `log4j2-json.properties` JSON structured logging
+* `log4j2.properties` console/line based logger and it is the default
+* `log4j2-json.properties` JSON structured logging
 
 You can choose the JSON structured logging by using setting:
 
@@ -2070,29 +2070,29 @@ Change log level of all classes to FINE:
 
 A `java_package` parameter can also be passed to change the log level of a specific package. For example:
 
- `http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.PostgresClient`
+`http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist.PostgresClient`
 
- `http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist`
+`http://localhost:8081/admin/loglevel?level=INFO&java_package=org.folio.rest.persist`
 
 ## Monitoring
 
 The runtime framework via the `/admin` API exposes (as previously mentioned) some APIs to help monitor the service (setting log levels, DB information).
 Some are listed below (and see the [full set](#documentation-of-the-apis)):
 
- - `/admin/jstack` -- Stack traces of all threads in the JVM to help find slower and bottleneck methods.
- - `/admin/memory` -- A jstat type of reply indicating memory usage within the JVM on a per pool basis (survivor, old gen, new gen, metadata, etc.) with usage percentages.
- - `/admin/slow_queries` -- Queries taking longer than X seconds.
- - `/admin/cache_hit_rates` -- Cache hit rates in Postgres.
- - `/admin/table_index_usage` -- Index usage per table.
- - `/admin/postgres_table_size` -- Disk space used per table.
- - `/admin/postgres_table_access_stats` -- Information about how tables are being accessed.
- - `/admin/postgres_load` -- Load information in Postgres.
- - `/admin/postgres_active_sessions` -- Active sessions in Postgres.
- - `/admin/health` -- Returns status code 200 as long as service is up.
+- `/admin/jstack` -- Stack traces of all threads in the JVM to help find slower and bottleneck methods.
+- `/admin/memory` -- A jstat type of reply indicating memory usage within the JVM on a per pool basis (survivor, old gen, new gen, metadata, etc.) with usage percentages.
+- `/admin/slow_queries` -- Queries taking longer than X seconds.
+- `/admin/cache_hit_rates` -- Cache hit rates in Postgres.
+- `/admin/table_index_usage` -- Index usage per table.
+- `/admin/postgres_table_size` -- Disk space used per table.
+- `/admin/postgres_table_access_stats` -- Information about how tables are being accessed.
+- `/admin/postgres_load` -- Load information in Postgres.
+- `/admin/postgres_active_sessions` -- Active sessions in Postgres.
+- `/admin/health` -- Returns status code 200 as long as service is up.
 
 ## Instrumentation
 
-RMB shares the same instrumentation code with Okapi. Please see 
+RMB shares the same instrumentation code with Okapi. Please see
 [Okapi instrumentation](https://github.com/folio-org/okapi/blob/master/doc/guide.md#instrumentation).
 Change `okapi-core/target/okapi-core-fat.jar dev` in the example to RMB based module jar name and parameters.
 
@@ -2198,23 +2198,23 @@ Requesting a stack trace would look like this:
 ## Querying multiple modules via HTTP
 
 The RMB has some tools available to help:
- - Make HTTP requests to other modules
- - Parse JSON responses received (as well as any JSON for that matter)
- - Merge together / Join JSON responses from multiple modules
- - Build simple CQL query strings based on values in a JSON
+- Make HTTP requests to other modules
+- Parse JSON responses received (as well as any JSON for that matter)
+- Merge together / Join JSON responses from multiple modules
+- Build simple CQL query strings based on values in a JSON
 
 #### HTTP Requests
 
 The `HttpModuleClient2` class exposes a basic HTTP Client.
 The full constructor takes the following parameters
- - host
- - port
- - tenantId
- - keepAlive - of connections (default: true)
- - connTO - connection timeout (default: 2 seconds)
- - idleTO - idle timeout (default: 5 seconds)
- - autoCloseConnections - close connection when request completes (default: true)
- - cacheTO - cache of endpoint results timeout (in minutes, default: 30)
+- host
+- port
+- tenantId
+- keepAlive - of connections (default: true)
+- connTO - connection timeout (default: 2 seconds)
+- idleTO - idle timeout (default: 5 seconds)
+- autoCloseConnections - close connection when request completes (default: true)
+- cacheTO - cache of endpoint results timeout (in minutes, default: 30)
 
 ```
     HttpModuleClient2 hc = new HttpModuleClient2("localhost", 8083, "myuniversity_new2", false);
@@ -2227,44 +2227,44 @@ The factory will then return either the actual `HttpModuleClient2` class or an i
 See [mock_content.json](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/resources/mock_content.json) for an example of how to associate a url with mocked data and headers
 
 The client returns a `Response` object. The `Response` class has the following members:
-  - endpoint - url the response came from
-  - code - http returned status code for request
-  - (JsonObject) body - the response data
-  - (JsonObject) error -  in case of an error - The `error` member will be populated. The
+- endpoint - url the response came from
+- code - http returned status code for request
+- (JsonObject) body - the response data
+- (JsonObject) error -  in case of an error - The `error` member will be populated. The
   error object will contain the `endpoint`, the `statusCode`, and the `errorMessage`
-  - (Throwable) exception - if an exception was thrown during the API call
+- (Throwable) exception - if an exception was thrown during the API call
 
 
 The `HttpModuleClient2 request` function can receive the following parameters:
- - `HttpMethod` - (default: GET)
- - `endpoint` - API endpoint
- - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
- - `RollBackURL` - NOT SUPPORTED - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
- - `cachable` - Whether to cache the response
- - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
-`
-CompletableFuture<Response> cf =
-hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
-Response userResponse = cf.get(5, TimeUnit.SECONDS);
-`
-This will create a query string with all values from the JSON found in the path `usergroups[*].id` and will generate a CQL query string which will look something like this:
-`?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
-See `BuildCQL` for configuration options.
+- `HttpMethod` - (default: GET)
+- `endpoint` - API endpoint
+- `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
+- `RollBackURL` - NOT SUPPORTED - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
+- `cachable` - Whether to cache the response
+- `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
+  `
+  CompletableFuture<Response> cf =
+  hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
+  Response userResponse = cf.get(5, TimeUnit.SECONDS);
+  `
+  This will create a query string with all values from the JSON found in the path `usergroups[*].id` and will generate a CQL query string which will look something like this:
+  `?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
+  See `BuildCQL` for configuration options.
 
 The `Response` class also exposes a joinOn function that allow you to join / merge the received JSON objects from multiple requests.
 
 `public Response joinOn(String withField, Response response, String onField, String insertField,
-      String intoField, boolean allowNulls)`
+String intoField, boolean allowNulls)`
 
 
 The Join occurs with the response initiating the joinOn call:
 
- - `withField` - the field within the response whose value / values will be used to join
- - `response` - the response to join this response with
- - `onField` - the field in the passed in response whose value / values will be used to join
- - `insertField` - the field in the passed in `response` to push into the current response (defaults to the `onField` value if this is not passed in)
- - `intoField` - the field to populate within this response
- - `allowNulls` - whether to populate with `null` if the field requested to push into the current response is `null` - if set to false - then the field will not be populated with a null value.
+- `withField` - the field within the response whose value / values will be used to join
+- `response` - the response to join this response with
+- `onField` - the field in the passed in response whose value / values will be used to join
+- `insertField` - the field in the passed in `response` to push into the current response (defaults to the `onField` value if this is not passed in)
+- `intoField` - the field to populate within this response
+- `allowNulls` - whether to populate with `null` if the field requested to push into the current response is `null` - if set to false - then the field will not be populated with a null value.
 
 Example:
 
