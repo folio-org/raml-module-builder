@@ -21,7 +21,6 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -33,7 +32,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -63,9 +61,6 @@ import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.dbschema.ObjectMapperTool;
-import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
-import ru.yandex.qatools.embed.postgresql.PostgresProcess;
-import ru.yandex.qatools.embed.postgresql.distribution.Version;
 
 /**
  * @author shale
@@ -94,7 +89,8 @@ public class PostgresClient {
   /** default release delay in milliseconds; after this time an idle database connection is closed */
   private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
-  private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
+
+  private static PostgresTester posgresTester;
 
   private static final String    SELECT = "SELECT ";
   private static final String    UPDATE = "UPDATE ";
@@ -112,7 +108,6 @@ public class PostgresClient {
   private static final String    HOST      = "host";
   private static final String    PORT      = "port";
   private static final String    DATABASE  = "database";
-  private static final String    DEFAULT_IP = "127.0.0.1";
 
   private static final String    GET_STAT_METHOD = "get";
   private static final String    SAVE_STAT_METHOD = "save";
@@ -128,7 +123,6 @@ public class PostgresClient {
   private static final String    SEMI_COLON = ";";
 
 
-  private static EmbeddedPostgres embeddedPostgres;
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
   private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
@@ -236,8 +230,25 @@ public class PostgresClient {
    * @param embed - whether to use embedded specific defaults
    */
   public static void setIsEmbedded(boolean embed){
+    if (embed) {
+      if (posgresTester == null) {
+        posgresTester = new PostgresTesterEmbedded();
+      }
+    } else {
+      if (posgresTester != null) {
+        posgresTester.stop();
+        posgresTester = null;
+      }
+    }
     embeddedMode = embed;
   }
+
+  public static void setPostgresTester(PostgresTester tester) {
+    stopEmbeddedPostgres();
+    embeddedMode = true;
+    posgresTester = tester;
+  }
+
 
   /**
    * Set the port that overwrites to port of the embedded PostgreSQL.
@@ -522,17 +533,11 @@ public class PostgresClient {
       // LoadConfs.loadConfig writes its own log message
     }
     if (config == null) {
-      if (NetworkUtils.isLocalPortFree(EMBEDDED_POSTGRES_PORT)) {
-        log.info("No DB configuration found, starting embedded postgres with default config");
-        setIsEmbedded(true);
-      } else {
-        log.info("No DB configuration found, using default config, port is already in use");
-      }
+      log.info("No DB configuration found, using default config, port is already in use");
+      setIsEmbedded(true);
       config = new JsonObject();
       config.put(USERNAME, USERNAME);
       config.put(PASSWORD, PASSWORD);
-      config.put(HOST, DEFAULT_IP);
-      config.put(PORT, EMBEDDED_POSTGRES_PORT);
       config.put(DATABASE, "postgres");
     }
     Object v = config.remove(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name());
@@ -3772,71 +3777,33 @@ public class PostgresClient {
         });
   }
 
-  private static void rememberEmbeddedPostgres() {
-     embeddedPostgres = new EmbeddedPostgres(Version.Main.V10);
-  }
-
   /**
    * Start an embedded PostgreSQL.
-   * doesn't change the configuration.
-   *
-   * @throws IOException  when starting embedded PostgreSQL fails
+   * Changes HOST and PORT oc configuration
    */
   public void startEmbeddedPostgres() throws IOException {
     // starting Postgres
     setIsEmbedded(true);
-    if (embeddedPostgres == null) {
-      int port = postgreSQLClientConfig.getInteger(PORT);
+
+    if (!posgresTester.isStarted()) {
       String username = postgreSQLClientConfig.getString(USERNAME);
       String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
-      String locale = "en_US.UTF-8";
-      String operatingSystem = System.getProperty("os.name").toLowerCase();
-      if (operatingSystem.contains("win")) {
-        locale = "american_usa";
-      }
-      rememberEmbeddedPostgres();
-      embeddedPostgres.start("localhost", port, database, username, password,
-        Arrays.asList("-E", "UTF-8", "--locale", locale));
+      posgresTester.start(database, username, password);
+      postgreSQLClientConfig.put(PORT, posgresTester.getPort());
+      postgreSQLClientConfig.put(HOST, posgresTester.getHost());
       Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
-
-      log.info("embedded postgres started on port " + port);
-    } else {
-      log.info("embedded postgres is already running...");
-    }
-  }
-
-  /**
-   * .sql files
-   * @param path
-   */
-  public void importFileEmbedded(String path) {
-    // starting Postgres
-    if (embeddedMode) {
-      if (embeddedPostgres != null) {
-        Optional<PostgresProcess> optionalPostgresProcess = embeddedPostgres.getProcess();
-        if (optionalPostgresProcess.isPresent()) {
-          log.info("embedded postgress import starting....");
-          PostgresProcess postgresProcess = optionalPostgresProcess.get();
-          postgresProcess.importFromFile(new File(path));
-          log.info("embedded postgress import complete....");
-        } else {
-          log.warn("embedded postgress is not running...");
-        }
-      } else {
-        log.info("embedded postgress not enabled");
-      }
     }
   }
 
   public static void stopEmbeddedPostgres() {
-    if (embeddedPostgres != null) {
+    if (posgresTester != null && posgresTester.isStarted()) {
       closeAllClients();
       LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
-      embeddedPostgres.stop();
-      embeddedPostgres = null;
       embeddedMode = false;
+      posgresTester.stop();
+      posgresTester = null;
     }
   }
 

@@ -111,11 +111,15 @@ public class PostgresClientIT {
   public static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
 
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
+    /*
     String embed = System.getProperty("embed_postgres", "").toLowerCase().trim();
     if ("true".equals(embed)) {
       PostgresClient.setIsEmbedded(true);
       PostgresClient.getInstance(vertx).startEmbeddedPostgres();
     }
+
+     */
     PostgresClient.setExplainQueryThreshold(0);
 
     // fail the complete test class if the connection to postgres doesn't work

@@ -30,7 +30,6 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.base.Joiner;
-import com.google.common.io.ByteStreams;
 
 import io.vertx.core.Future;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -874,7 +873,6 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   private void cmdProcessing() throws IOException {
-    String importDataPath = null;
     // TODO need to add a normal command line parser
     List<String> cmdParams = processArgs();
 
@@ -903,15 +901,6 @@ public class RestVerticle extends AbstractVerticle {
           PostgresClient.setIsEmbedded(true);
           PostgresClient.setConfigFilePath(null);
         }
-        else if (param != null && param.startsWith("postgres_import_path=")) {
-          try {
-            importDataPath = param.split("=")[1];
-            System.out.println("Setting path to import DB file....  " + importDataPath);
-          } catch (Exception e) {
-            // any problems - print exception and continue
-            log.error(e.getMessage(), e);
-          }
-        }
         else{
           //assume module specific cmd line args with '=' separator
           String []arg = param.split("=");
@@ -926,14 +915,8 @@ public class RestVerticle extends AbstractVerticle {
         }
       }
 
-      if (PostgresClient.isEmbedded() || importDataPath != null) {
+      if (PostgresClient.isEmbedded()) {
         PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-      }
-
-      if (importDataPath != null) {
-        // blocks as well for now
-        System.out.println("Import DB file....  " + importDataPath);
-        PostgresClient.getInstance(vertx).importFileEmbedded(importDataPath);
       }
     }
   }
