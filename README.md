@@ -1817,10 +1817,10 @@ RMB supports optimistic locking. By default it is disabled. Module developer can
 
     * `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
     * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction
-    * `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged as a warning message with a customized SQL error code 23F09. A sample log entry looks like below:
+    * `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged with a customized SQL error code 23F09. A sample log entry looks like below:
 
 ```
-Backend notice: severity='WARNING', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 2, _version of request is "1"' ...
+Backend notice: severity='NOTICE', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 2, _version of request is "1"' ...
 ```
 Use mod-inventory-storage `instance` table as an example, do following to enable optimistic locking
 
