@@ -14,7 +14,7 @@
           <#if table.withOptimisticLocking.name() == "FAIL">
             <#assign ol_notice_level = "EXCEPTION">
           <#else>
-            <#assign ol_notice_level = "WARNING">
+            <#assign ol_notice_level = "NOTICE">
           </#if>
           RAISE ${ol_notice_level} 'Cannot update record % because it has been changed: '
               'Stored ${ol_version} is %, ${ol_version} of request is %',
