@@ -1,3 +1,9 @@
+## 32.0.2 2021-01-31
+
+Fixes:
+
+ * [RMB-786](https://issues.folio.org/browse/RMB-786) Change OL trigger notice level.
+
 ## 32.0.1 2020-12-24
 
 Fixes:
@@ -48,7 +54,7 @@ Fixes:
  * [RMB-715](https://issues.folio.org/browse/RMB-715) [Snyk] Update commons-cli from 1.3.1 to 1.4
  * [RMB-716](https://issues.folio.org/browse/RMB-716) [Snyk] Update javaparser-core from 3.3.0 to 3.16.1
  * [RMB-714](https://issues.folio.org/browse/RMB-714) Remove unused aws-lambda-java-core dependency
- * [RMB-725](https://issues.folio.org/browse/RMB-725) StringUtil.cqlEncode masking CQL characters preventing CQL injection	
+ * [RMB-725](https://issues.folio.org/browse/RMB-725) StringUtil.cqlEncode masking CQL characters preventing CQL injection
 
 ## 31.0.0 2020-08-18
 
