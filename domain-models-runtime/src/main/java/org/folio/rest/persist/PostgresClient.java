@@ -3091,6 +3091,7 @@ public class PostgresClient {
   }
 
   static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<Row>> replyHandler) {
+    log.info("AD: selectReturn");
     if (res.failed()) {
       replyHandler.handle(Future.failedFuture(res.cause()));
       return;
@@ -3121,15 +3122,19 @@ public class PostgresClient {
    */
   public void selectSingle(AsyncResult<SQLConnection> conn, String sql, Tuple params,
                            Handler<AsyncResult<Row>> replyHandler) {
+    log.info("AD: selectSingle");
     try {
       if (conn.failed()) {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
       if (params.size() == 0) {
+        log.info("AD: selectSingle 1");
         conn.result().conn.query(sql).execute(res -> selectReturn(res, replyHandler));
       } else {
-        conn.result().conn.preparedQuery(sql).execute(params, res -> selectReturn(res, replyHandler));
+        log.info("AD: selectSingle 2");
+        conn.result().conn.preparedQuery(sql).execute(params).onComplete(res -> selectReturn(res, replyHandler));
+
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
