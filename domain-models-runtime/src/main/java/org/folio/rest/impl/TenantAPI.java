@@ -155,7 +155,7 @@ public class TenantAPI implements Tenant {
     return postgresClient(context).execute(sql, Tuple.of(jobId, JsonObject.mapFrom(tenantJob))).mapEmpty();
   }
 
-  Future<TenantJob> getJob(String tenantId, String jobId, Context context) {
+  Future<TenantJob> getJob(String tenantId, UUID jobId, Context context) {
     String table = PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_job";
     String sql = "SELECT jsonb FROM " + table + " WHERE id = $1";
     return postgresClient(context).selectSingle(sql, Tuple.of(jobId))
@@ -315,7 +315,7 @@ public class TenantAPI implements Tenant {
     postTenant(false, tenantAttributes, headers, handler, context);
   }
 
-  Future<TenantJob> checkJob(String tenantId, String jobId, Context context) {
+  Future<TenantJob> checkJob(String tenantId, UUID jobId, Context context) {
     return tenantExists(context, tenantId).compose(exists -> {
       if (!exists) {
         return Future.failedFuture("Tenant not found " + tenantId);
@@ -328,48 +328,60 @@ public class TenantAPI implements Tenant {
   public void getTenantByOperationId(String operationId, int wait, Map<String, String> headers,
                                      Handler<AsyncResult<Response>> handler, Context context) {
     String tenantId = TenantTool.tenantId(headers);
-    checkJob(tenantId, operationId, context)
-        .onSuccess(job -> {
-          Response response;
-          if (wait > 0 && !Boolean.TRUE.equals(job.getComplete())) {
-            Promise<Void> promise = Promise.promise();
-            waiters.putIfAbsent(operationId, new LinkedList<>());
-            waiters.get(operationId).add(promise);
-            context.owner().setTimer(wait, res -> promise.tryComplete());
-            promise.future().onComplete(res -> getTenantByOperationId(operationId, 0, headers, handler, context));
-            return;
-          }
-          response = GetTenantByOperationIdResponse.respond200WithApplicationJson(job);
-          handler.handle(Future.succeededFuture(response));
-        })
-        .onFailure(cause -> {
-          log.error(cause.getMessage(), cause);
-          Response response = GetTenantByOperationIdResponse.respond404WithTextPlain(cause.getMessage());
-          handler.handle(Future.succeededFuture(response));
-        });
+    try {
+      checkJob(tenantId, UUID.fromString(operationId), context)
+          .onSuccess(job -> {
+            Response response;
+            if (wait > 0 && !Boolean.TRUE.equals(job.getComplete())) {
+              Promise<Void> promise = Promise.promise();
+              waiters.putIfAbsent(operationId, new LinkedList<>());
+              waiters.get(operationId).add(promise);
+              context.owner().setTimer(wait, res -> promise.tryComplete());
+              promise.future().onComplete(res -> getTenantByOperationId(operationId, 0, headers, handler, context));
+              return;
+            }
+            response = GetTenantByOperationIdResponse.respond200WithApplicationJson(job);
+            handler.handle(Future.succeededFuture(response));
+          })
+          .onFailure(cause -> {
+            log.error(cause.getMessage(), cause);
+            Response response = GetTenantByOperationIdResponse.respond404WithTextPlain(cause.getMessage());
+            handler.handle(Future.succeededFuture(response));
+          });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      Response response = GetTenantByOperationIdResponse.respond400WithTextPlain(e.getMessage());
+      handler.handle(Future.succeededFuture(response));
+    }
   }
 
   @Override
   public void deleteTenantByOperationId(String operationId, Map<String, String> headers,
                                         Handler<AsyncResult<Response>> handler, Context context) {
     String tenantId = TenantTool.tenantId(headers);
-    checkJob(tenantId, operationId, context)
-        .onFailure(cause -> {
-          log.error(cause.getMessage(), cause);
-          Response response = DeleteTenantByOperationIdResponse.respond404WithTextPlain(cause.getMessage());
-          handler.handle(Future.succeededFuture(response));
-        })
-        .onSuccess(job -> {
-          removeJob(tenantId, operationId, context)
-              .onSuccess(res -> {
-                Response response = DeleteTenantByOperationIdResponse.respond204();
-                handler.handle(Future.succeededFuture(response));
-              })
-              .onFailure(cause -> {
-                log.error(cause.getMessage(), cause);
-                Response response = DeleteTenantByOperationIdResponse.respond400WithTextPlain(cause.getMessage());
-                handler.handle(Future.succeededFuture(response));
-              });
-        });
+    try {
+      checkJob(tenantId, UUID.fromString(operationId), context)
+          .onFailure(cause -> {
+            log.error(cause.getMessage(), cause);
+            Response response = DeleteTenantByOperationIdResponse.respond404WithTextPlain(cause.getMessage());
+            handler.handle(Future.succeededFuture(response));
+          })
+          .onSuccess(job -> {
+            removeJob(tenantId, operationId, context)
+                .onSuccess(res -> {
+                  Response response = DeleteTenantByOperationIdResponse.respond204();
+                  handler.handle(Future.succeededFuture(response));
+                })
+                .onFailure(cause -> {
+                  log.error(cause.getMessage(), cause);
+                  Response response = DeleteTenantByOperationIdResponse.respond400WithTextPlain(cause.getMessage());
+                  handler.handle(Future.succeededFuture(response));
+                });
+          });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      Response response = GetTenantByOperationIdResponse.respond400WithTextPlain(e.getMessage());
+      handler.handle(Future.succeededFuture(response));
+    }
   }
 }
