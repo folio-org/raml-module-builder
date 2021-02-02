@@ -111,6 +111,10 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+    <dependency>
       <groupId>ru.yandex.qatools.embed</groupId>
       <artifactId>postgresql-embedded</artifactId>
       <version>${postgresql-embedded-version}</version>

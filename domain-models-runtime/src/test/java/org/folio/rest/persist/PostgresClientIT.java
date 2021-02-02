@@ -104,6 +104,7 @@ public class PostgresClientIT {
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
   }
 
@@ -111,11 +112,7 @@ public class PostgresClientIT {
   public static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
 
-    String embed = System.getProperty("embed_postgres", "").toLowerCase().trim();
-    if ("true".equals(embed)) {
-      PostgresClient.setIsEmbedded(true);
-      PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-    }
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     PostgresClient.setExplainQueryThreshold(0);
 
     // fail the complete test class if the connection to postgres doesn't work

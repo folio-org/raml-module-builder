@@ -36,6 +36,7 @@ public class PostgresClientITBase {
 
   protected static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     dropSchemaAndRole(context);
     executeSuperuser(context,
         "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN",

@@ -1,5 +1,6 @@
 package org.folio.rest.persist;
 
+import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -45,6 +46,10 @@ public class RunSQLIT {
     });
   }
 
+  @BeforeClass
+  public static void beforeClass() {
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
+  }
   @Before
   public void setUp() {
     vertx = VertxUtils.getVertxFromContextOrNew();

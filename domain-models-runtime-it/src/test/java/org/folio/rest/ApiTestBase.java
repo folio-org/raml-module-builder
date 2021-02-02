@@ -22,6 +22,8 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.PostgresTesterEmbedded;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.jupiter.api.BeforeAll;
 

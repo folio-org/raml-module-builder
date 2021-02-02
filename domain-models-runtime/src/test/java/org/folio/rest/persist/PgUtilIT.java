@@ -63,45 +63,20 @@ public class PgUtilIT {
   @Rule
   public final ExpectedException exception = ExpectedException.none();
   /** If we start and stop our own embedded postgres */
-  static private boolean ownEmbeddedPostgres = false;
   static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
   static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
   static private Vertx vertx;
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     vertx = VertxUtils.getVertxWithExceptionHandler();
-    startEmbeddedPostgres(vertx);
     createUserTable(context);
   }
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    if (ownEmbeddedPostgres) {
-      PostgresClient.stopEmbeddedPostgres();
-    }
-
     vertx.close(context.asyncAssertSuccess());
-  }
-
-  public static void startEmbeddedPostgres(Vertx vertx) throws IOException {
-    if (PostgresClient.isEmbedded()) {
-      // starting and stopping embedded postgres is done by someone else
-      return;
-    }
-
-    // Read configuration
-    PostgresClient postgresClient = PostgresClient.getInstance(vertx);
-
-    if (! PostgresClient.isEmbedded()) {
-      // some external postgres
-      return;
-    }
-
-    postgresClient.startEmbeddedPostgres();
-
-    // We started our own embedded postgres, we also need to stop it.
-    ownEmbeddedPostgres = true;
   }
 
   private static final String DUMMY_VAL = "dummy value set by trigger";
