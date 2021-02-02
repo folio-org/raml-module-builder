@@ -470,7 +470,7 @@ public class TenantAPIIT {
 
   @Test
   public void deleteTenantByOperationIdNotFound(TestContext context) {
-    String id = tenantPost(context);    // create tenant
+    tenantPost(context);    // create tenant
 
     Async async = context.async();
     vertx.runOnContext(run -> {
@@ -480,6 +480,20 @@ public class TenantAPIIT {
         assertThat(result.getStatus(), is(404));
         String msg = (String) result.getEntity();
         assertThat(msg, is("Job not found " + unknownId));
+        async.complete();
+      }), Vertx.currentContext());
+    });
+    async.await();
+  }
+
+  @Test
+  public void deleteTenantByOperationIdOK(TestContext context) {
+    String id = tenantPost(context);    // create tenant
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      TenantAPI tenantAPI = new TenantAPI();
+      tenantAPI.deleteTenantByOperationId(id, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(204));
         async.complete();
       }), Vertx.currentContext());
     });
