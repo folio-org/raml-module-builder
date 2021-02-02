@@ -1779,14 +1779,20 @@ RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/ram
 
 ## Optimistic Locking
 
-RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 419 HTTP response code if 419 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code.
+RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 409 HTTP response code if 419 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code.
 
 * `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
-* `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction
-* `logOnConflict` Optimistic Locking is enabled. Version conflict info is logged with a customized SQL error code 23F09. Consult [Vertx logging](https://vertx.io/docs/vertx-core/java/#_logging) and [PostgreSQL Errors and Messages](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html) if `logOnConflict` doesn't log. A sample log entry looks like below.
+* `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction with a customized SQL error code 23F09.
+* `logOnConflict` Optimistic Locking is enabled but the conflicting update succeeds, the version conflict info is logged with a customized SQL error code 23F09. Consult [Vertx logging](https://vertx.io/docs/vertx-core/java/#_logging) and [PostgreSQL Errors and Messages](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html) if `logOnConflict` doesn't log.
+
+_Sample log entries:_
 
 ```
-14:26:54 [] [] [] [] WARN  ?                    Backend notice: severity='NOTICE', code='23F09', message='Cannot update record 57db089f-18e4-7815-55d5-4cc6607e9059 because it has been changed: Stored _version is 2, _version of request is "1"' ...
+01:14:07 [] [] [] [] WARN  ?                    Backend notice: severity='NOTICE', code='23F09', message='Ignoring optimistic locking conflict while overwriting changed record 57db089f-18e4-7815-55d5-4cc6607e9059: Stored _version is 2, _version of request is "1"' ...
+```
+
+```
+01:15:20 [] [] [] [] ERROR PostgresClient       saveBatch size=2 { "message": "version conflict", "severity": "ERROR", "code": "23F09", "where": "PL/pgSQL function raise_409() line 1 at RAISE", "file": "pl_exec.c", "line": "3337", "routine": "exec_stmt_raise" }
 ```
 Use mod-inventory-storage `instance` table as an example, do following to enable optimistic locking
 
