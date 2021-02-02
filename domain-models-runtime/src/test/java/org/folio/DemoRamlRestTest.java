@@ -21,6 +21,7 @@ import org.folio.rest.jaxrs.model.Books;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.persist.PostgresTesterContainer;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.VertxUtils;
@@ -74,6 +75,7 @@ public class DemoRamlRestTest {
     // some tests (withoutParameter, withoutYearParameter) fail under other locales like Locale.GERMANY
     Locale.setDefault(Locale.US);
 
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
     RestAssured.port = port;

@@ -20,6 +20,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.PostgresTesterContainer;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.CoreMatchers;
@@ -51,6 +52,7 @@ public class TenantAPIIT {
   @BeforeClass
   public static void setUpClass() {
     vertx = VertxUtils.getVertxWithExceptionHandler();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
   @AfterClass

@@ -503,7 +503,7 @@ public class PostgresClient {
       // LoadConfs.loadConfig writes its own log message
     }
     if (config == null) {
-      log.info("No DB configuration found, using default config, port is already in use");
+      log.info("No DB configuration found, switching to embedded mode");
       setIsEmbedded(true);
       config = new JsonObject();
       config.put(USERNAME, USERNAME);

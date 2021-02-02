@@ -69,6 +69,7 @@ public class PgUtilIT {
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     vertx = VertxUtils.getVertxWithExceptionHandler();
     createUserTable(context);
   }
