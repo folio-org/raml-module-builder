@@ -1046,12 +1046,12 @@ An example of this kind of structure is `contributors ` (property) from
 mod-inventory-storage . `contributorTypeId` is the type of contributor
 (type1).
 
-With CQL you can limit searches to `property1` with regular match in
-`subfield`, with type1=value2 with
+With CQL you can limit searches to `property` with regular match in
+`subfield`, with type1=value1 with
 
     property =/@type1=value1 value
 
-Observe that the relation modifier is preceeded with the @-character to
+Observe that the relation modifier is preceded with the @-character to
 avoid clash with other CQL relation modifiers.
 
 The type1, type2 and subfield must all be defined in schema.json, because
