@@ -139,8 +139,6 @@ public class PostgresClient {
       // \\b = a word boundary
       Pattern.compile("^\\s*COPY\\b.*\\bFROM\\s+STDIN\\b.*", Pattern.CASE_INSENSITIVE);
 
-  private static int embeddedPort            = -1;
-
   /** analyze threshold value in milliseconds */
   private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
 
@@ -249,34 +247,6 @@ public class PostgresClient {
     posgresTester = tester;
   }
 
-
-  /**
-   * Set the port that overwrites to port of the embedded PostgreSQL.
-   * This port overwrites any default port and any port set in the
-   * DB_PORT environment variable or the
-   * PostgreSQL configuration file. It is only used when <code>isEmbedded() == true</code>
-   * when invoking the constructor.
-   * <p>
-   * This function must be invoked before calling the constructor.
-   * <p>
-   * Use -1 to not overwrite the port.
-   *
-   * <p>-1 is the default.
-   *
-   * @param port  the port for embedded PostgreSQL, or -1 to not overwrite the port
-   */
-  public static void setEmbeddedPort(int port){
-    embeddedPort = port;
-  }
-
-  /**
-   * @return the port number to use for embedded PostgreSQL, or -1 for not overwriting the
-   *         port number of the configuration.
-   * @see #setEmbeddedPort(int)
-   */
-  public static int getEmbeddedPort() {
-    return embeddedPort;
-  }
   /**
    * True if embedded specific defaults for the
    * PostgreSQL configuration should be used if there is no
@@ -550,12 +520,6 @@ public class PostgresClient {
       log.info("Using schema: " + tenantId);
       config.put(USERNAME, schemaName);
       config.put(PASSWORD, createPassword(tenantId));
-    }
-    if(embeddedPort != -1 && embeddedMode){
-      //over ride the declared default port - coming from the config file and use the
-      //passed in port as well. useful when multiple modules start up an embedded postgres
-      //in a single server.
-      config.put(PORT, embeddedPort);
     }
     return config;
   }
