@@ -914,10 +914,6 @@ public class RestVerticle extends AbstractVerticle {
           }
         }
       }
-
-      if (PostgresClient.isEmbedded()) {
-        PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-      }
     }
   }
 

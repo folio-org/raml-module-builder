@@ -493,11 +493,11 @@ public class PostgresClient {
     }
 
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
-    logPostgresConfig();
 
     if (isEmbedded()) {
       startEmbeddedPostgres();
     }
+    logPostgresConfig();
 
     client = createPgPool(vertx, postgreSQLClientConfig);
   }
@@ -3791,10 +3791,10 @@ public class PostgresClient {
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       posgresTester.start(database, username, password);
-      postgreSQLClientConfig.put(PORT, posgresTester.getPort());
-      postgreSQLClientConfig.put(HOST, posgresTester.getHost());
       Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
     }
+    postgreSQLClientConfig.put(PORT, posgresTester.getPort());
+    postgreSQLClientConfig.put(HOST, posgresTester.getHost());
   }
 
   public static void stopEmbeddedPostgres() {

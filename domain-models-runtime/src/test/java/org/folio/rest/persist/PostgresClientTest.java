@@ -85,8 +85,8 @@ public class PostgresClientTest {
     PostgresClient.setConfigFilePath("nonexisting");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", null, empty);
     assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
-    assertThat(config.getString("host"), is("127.0.0.1"));
-    assertThat(config.getInteger("port"), is(6000));
+    assertThat(config.containsKey("host"), is(false));
+    assertThat(config.containsKey("port"), is(false));
     assertThat(config.getString("username"), is("username"));
   }
 
@@ -97,8 +97,6 @@ public class PostgresClientTest {
     PostgresClient.setEmbeddedPort(port);
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "barschema", empty);
     assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
-    assertThat(config.getString("host"), is("127.0.0.1"));
-    assertThat(config.getInteger("port"), is(port));
     assertThat(config.getString("username"), is("barschema"));
   }
 
