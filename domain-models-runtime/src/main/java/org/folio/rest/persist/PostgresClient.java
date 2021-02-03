@@ -59,7 +59,6 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
 
