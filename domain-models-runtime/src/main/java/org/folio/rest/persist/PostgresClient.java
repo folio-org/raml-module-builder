@@ -90,7 +90,7 @@ public class PostgresClient {
   private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
 
-  private static PostgresTester posgresTester;
+  private static PostgresTester postgresTester;
 
   private static final String    SELECT = "SELECT ";
   private static final String    UPDATE = "UPDATE ";
@@ -229,8 +229,8 @@ public class PostgresClient {
    */
   public static void setIsEmbedded(boolean embed) {
     if (embed) {
-      if (posgresTester == null) {
-        posgresTester = new PostgresTesterEmbedded();
+      if (postgresTester == null) {
+        postgresTester = new PostgresTesterEmbedded();
       }
     }
     embeddedMode = embed;
@@ -239,7 +239,7 @@ public class PostgresClient {
   public static void setPostgresTester(PostgresTester tester) {
     stopEmbeddedPostgres();
     embeddedMode = true;
-    posgresTester = tester;
+    postgresTester = tester;
   }
 
   /**
@@ -3744,25 +3744,25 @@ public class PostgresClient {
     // starting Postgres
     setIsEmbedded(true);
 
-    if (!posgresTester.isStarted()) {
+    if (!postgresTester.isStarted()) {
       String username = postgreSQLClientConfig.getString(USERNAME);
       String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
-      posgresTester.start(database, username, password);
+      postgresTester.start(database, username, password);
       Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
     }
-    postgreSQLClientConfig.put(PORT, posgresTester.getPort());
-    postgreSQLClientConfig.put(HOST, posgresTester.getHost());
+    postgreSQLClientConfig.put(PORT, postgresTester.getPort());
+    postgreSQLClientConfig.put(HOST, postgresTester.getHost());
   }
 
   public static void stopEmbeddedPostgres() {
-    if (posgresTester != null) {
+    if (postgresTester != null) {
       closeAllClients();
       LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
       embeddedMode = false;
-      posgresTester.close();
-      posgresTester = null;
+      postgresTester.close();
+      postgresTester = null;
     }
   }
 
