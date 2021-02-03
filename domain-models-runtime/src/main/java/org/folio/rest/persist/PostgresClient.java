@@ -271,7 +271,7 @@ public class PostgresClient {
    * @return the port number to use for embedded PostgreSQL, or -1 for not overwriting the
    *         port number of the configuration.
    * @see #setEmbeddedPort(int)
-   * @deprecated will be depracted in a future release (system assigns port on its own)
+   * @deprecated will be removed in a future release, use {@link #setPostgresTester(PostgresTester)} and {@link org.folio.postgres.testing.PostgresTesterContainer} instead that picks a free port.
    */
   @Deprecated
   public static int getEmbeddedPort() {
