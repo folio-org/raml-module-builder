@@ -3757,7 +3757,7 @@ public class PostgresClient {
   }
 
   public static void stopEmbeddedPostgres() {
-    if (posgresTester != null && posgresTester.isStarted()) {
+    if (posgresTester != null) {
       closeAllClients();
       LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
       embeddedMode = false;
