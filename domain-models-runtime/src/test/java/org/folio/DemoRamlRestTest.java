@@ -13,7 +13,6 @@ import java.util.Date;
 import java.util.Locale;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
 import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
@@ -75,7 +74,8 @@ public class DemoRamlRestTest {
     // some tests (withoutParameter, withoutYearParameter) fail under other locales like Locale.GERMANY
     Locale.setDefault(Locale.US);
 
-    PostgresClient.setPostgresTester(new PostgresTesterContainer());
+    // do not use PostgresClient.setPostgresTester here so we check that PostgresTesterEmbedded is working
+
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
     RestAssured.port = port;
