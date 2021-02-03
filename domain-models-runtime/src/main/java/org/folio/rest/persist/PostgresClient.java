@@ -259,7 +259,7 @@ public class PostgresClient {
    * <p>-1 is the default.
    *
    * @param port  the port for embedded PostgreSQL, or -1 to not overwrite the port.
-   * @deprecated will be deprecated in a future release
+   * @deprecated will be removed in a future release, use {@link #setPostgresTester(PostgresTester)} and {@link org.folio.postgres.testing.PostgresTesterContainer} instead that picks a free port.
    *
    */
   @Deprecated
