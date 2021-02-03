@@ -12,17 +12,21 @@ import java.io.UncheckedIOException;
 import java.util.Arrays;
 
 public class PostgresTesterEmbedded implements PostgresTester {
-  private static final int EMBEDDED_POSTGRES_PORT = 6000;
   private static Logger log = LogManager.getLogger(PostgresTesterEmbedded.class);
   private EmbeddedPostgres embeddedPostgres;
+  private final int embeddedPort;
+
+  public PostgresTesterEmbedded(int embeddedPort) {
+    this.embeddedPort = embeddedPort;
+  }
 
   @Override
   public void start(String database, String username, String password) {
-    if (!NetworkUtils.isLocalPortFree(EMBEDDED_POSTGRES_PORT)) {
-      log.info("Port {} is already in use, assume embedded Postgres is already running", EMBEDDED_POSTGRES_PORT);
+    if (!NetworkUtils.isLocalPortFree(embeddedPort)) {
+      log.info("Port {} is already in use, assume embedded Postgres is already running", embeddedPort);
       return;
     }
-    log.info("Starting embedded postgres on port {}", EMBEDDED_POSTGRES_PORT);
+    log.info("Starting embedded postgres on port {}", embeddedPort);
     String locale = "en_US.UTF-8";
     String operatingSystem = System.getProperty("os.name").toLowerCase();
     if (operatingSystem.contains("win")) {
@@ -30,7 +34,7 @@ public class PostgresTesterEmbedded implements PostgresTester {
     }
     embeddedPostgres = new EmbeddedPostgres(Version.Main.V10);
     try {
-      embeddedPostgres.start("localhost", EMBEDDED_POSTGRES_PORT, database, username, password,
+      embeddedPostgres.start("localhost", embeddedPort, database, username, password,
           Arrays.asList("-E", "UTF-8", "--locale", locale));
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -39,7 +43,7 @@ public class PostgresTesterEmbedded implements PostgresTester {
 
   @Override
   public Integer getPort() {
-    return EMBEDDED_POSTGRES_PORT;
+    return embeddedPort;
   }
 
   @Override
