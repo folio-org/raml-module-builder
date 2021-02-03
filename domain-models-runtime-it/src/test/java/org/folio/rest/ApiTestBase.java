@@ -69,7 +69,7 @@ public class ApiTestBase {
         header("x-okapi-tenant", "testlib").
         contentType(ContentType.JSON);
 
-    // delete tenant (schema, tables, ...) if it exists from previous tests, ignore errors.
+    // delete tenant (schema, tables, ...) if it exists from previous tests
     TenantAttributes ta = new TenantAttributes().withPurge(true);
     given(r).header("x-okapi-url-to", "http://localhost:" + port).
         contentType(ContentType.JSON)
