@@ -1,5 +1,7 @@
 package org.folio.postgres.testing;
 
+import java.time.Duration;
+
 import org.folio.util.PostgresTester;
 import org.testcontainers.containers.PostgreSQLContainer;
 
@@ -37,7 +39,8 @@ public class PostgresTesterContainer implements PostgresTester {
     postgreSQLContainer = new PostgreSQLContainer<>(dockerImageName)
         .withDatabaseName(database)
         .withUsername(username)
-        .withPassword(password);
+        .withPassword(password)
+        .withStartupTimeout(Duration.ofSeconds(60));
     postgreSQLContainer.start();
   }
 
