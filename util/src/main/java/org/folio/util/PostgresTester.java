@@ -1,13 +1,16 @@
 package org.folio.util;
 
-public interface PostgresTester {
+import java.io.Closeable;
+
+public interface PostgresTester extends Closeable {
   void start(String database, String username, String password);
 
-  int getPort();
+  Integer getPort();
 
   String getHost();
 
   boolean isStarted();
 
-  boolean stop();
+  @Override
+  void close();
 }

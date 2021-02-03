@@ -3761,7 +3761,7 @@ public class PostgresClient {
       closeAllClients();
       LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
       embeddedMode = false;
-      posgresTester.stop();
+      posgresTester.close();
       posgresTester = null;
     }
   }

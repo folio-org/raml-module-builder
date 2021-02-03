@@ -38,7 +38,7 @@ public class PostgresTesterEmbedded implements PostgresTester {
   }
 
   @Override
-  public int getPort() {
+  public Integer getPort() {
     return EMBEDDED_POSTGRES_PORT;
   }
 
@@ -52,13 +52,11 @@ public class PostgresTesterEmbedded implements PostgresTester {
     return embeddedPostgres != null;
   }
 
-  @Override
-  public boolean stop() {
+  public void close() {
     if (embeddedPostgres == null) {
-      return false;
+      return;
     }
     embeddedPostgres.stop();
     embeddedPostgres = null;
-    return true;
   }
 }

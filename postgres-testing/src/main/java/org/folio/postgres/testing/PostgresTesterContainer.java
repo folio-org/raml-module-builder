@@ -9,49 +9,54 @@ import java.util.logging.Logger;
 public class PostgresTesterContainer implements PostgresTester {
 
   private static final Logger log = Logger.getLogger("PostgresTesterContainer");
+  private PostgreSQLContainer<?> postgreSQLContainer;
+  private String dockerImageName;
 
-  private PostgreSQLContainer<?> postgresSQLContainer;
+  public PostgresTesterContainer(String containerName) {
+    this.dockerImageName = containerName;
+  }
 
-  @Override
-  public void start(String database, String username, String password) {
-    if (postgresSQLContainer != null) {
-      throw new IllegalStateException("postgresTesterContainer already started");
-    }
-    try {
-      postgresSQLContainer = new PostgreSQLContainer<>("postgres:12-alpine")
-          .withDatabaseName(database)
-          .withUsername(username)
-          .withPassword(password);
-      postgresSQLContainer.start();
-    } catch (Exception e) {
-      postgresSQLContainer.stop();
-      postgresSQLContainer = null;
-      log.log(Level.WARNING, e.getMessage(), e);
-    }
+  public PostgresTesterContainer() {
+    this("postgres:12-alpine");
   }
 
   @Override
-  public int getPort() {
-    return postgresSQLContainer.getFirstMappedPort();
+  public void start(String database, String username, String password) {
+    if (postgreSQLContainer != null) {
+      throw new IllegalStateException("already started");
+    }
+    postgreSQLContainer = new PostgreSQLContainer<>(dockerImageName)
+        .withDatabaseName(database)
+        .withUsername(username)
+        .withPassword(password);
+    postgreSQLContainer.start();
+  }
+
+  @Override
+  public Integer getPort() {
+    if (postgreSQLContainer == null) {
+      throw new IllegalStateException("not started");
+    }
+    return postgreSQLContainer.getFirstMappedPort();
   }
 
   @Override
   public String getHost() {
-    return postgresSQLContainer.getHost();
+    if (postgreSQLContainer == null) {
+      throw new IllegalStateException("not started");
+    }
+    return postgreSQLContainer.getHost();
   }
 
   @Override
   public boolean isStarted() {
-    return postgresSQLContainer != null;
+    return postgreSQLContainer != null;
   }
 
-  @Override
-  public boolean stop() {
-    if (postgresSQLContainer == null) {
-      return false;
+  public void close() {
+    if (postgreSQLContainer != null) {
+      postgreSQLContainer.close();
+      postgreSQLContainer = null;
     }
-    postgresSQLContainer.stop();
-    postgresSQLContainer = null;
-    return true;
   }
 }
