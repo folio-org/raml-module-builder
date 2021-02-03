@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>32.1.0</version>
+    <version>32.1.1-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-interface-extensions</artifactId>
 
