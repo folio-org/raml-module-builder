@@ -15,6 +15,8 @@ public class PostgresTesterContainerTest {
     Assert.assertNotNull(tester.getHost());
     Assert.assertTrue(tester.getPort() >= 1024);
     tester.close();
+    Assert.assertFalse(tester.isStarted());
+    tester.close();
   }
 
   @Test(expected = IllegalStateException.class)

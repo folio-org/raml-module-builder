@@ -20,6 +20,12 @@ public class PostgresTesterContainer implements PostgresTester {
     this("postgres:12-alpine");
   }
 
+  // S2095: Resources should be closed
+  // We can't close in start. As this whole class is Closeable!
+  @java.lang.SuppressWarnings({"squid:S2095"})
+  /**
+   * Start the container.
+   */
   @Override
   public void start(String database, String username, String password) {
     if (postgreSQLContainer != null) {
@@ -53,6 +59,7 @@ public class PostgresTesterContainer implements PostgresTester {
     return postgreSQLContainer != null;
   }
 
+  @Override
   public void close() {
     if (postgreSQLContainer != null) {
       postgreSQLContainer.close();
