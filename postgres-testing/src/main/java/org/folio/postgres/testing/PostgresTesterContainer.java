@@ -8,10 +8,17 @@ public class PostgresTesterContainer implements PostgresTester {
   private PostgreSQLContainer<?> postgreSQLContainer;
   private String dockerImageName;
 
-  public PostgresTesterContainer(String containerName) {
-    this.dockerImageName = containerName;
+  /**
+   * Create postgres container based on given image.
+   * @param dockerImageName
+   */
+  public PostgresTesterContainer(String dockerImageName) {
+    this.dockerImageName = dockerImageName;
   }
 
+  /**
+   *  Create postgres container with default image Postgres 12.
+   */
   public PostgresTesterContainer() {
     this("postgres:12-alpine");
   }
