@@ -3,12 +3,8 @@ package org.folio.postgres.testing;
 import org.folio.util.PostgresTester;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 public class PostgresTesterContainer implements PostgresTester {
 
-  private static final Logger log = Logger.getLogger("PostgresTesterContainer");
   private PostgreSQLContainer<?> postgreSQLContainer;
   private String dockerImageName;
 
