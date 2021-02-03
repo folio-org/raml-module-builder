@@ -1,5 +1,6 @@
 package org.folio.rest.persist;
 
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;

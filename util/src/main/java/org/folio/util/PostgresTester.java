@@ -1,4 +1,4 @@
-package org.folio.rest.persist;
+package org.folio.util;
 
 public interface PostgresTester {
   void start(String database, String username, String password);

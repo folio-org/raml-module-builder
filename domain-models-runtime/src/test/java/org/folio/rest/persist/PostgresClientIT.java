@@ -57,6 +57,7 @@ import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.PostgresClient.QueryHelper;

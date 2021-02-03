@@ -8,6 +8,7 @@
   <modules>
     <module>testing</module>
     <module>util</module>
+    <module>postgres-testing</module>
     <module>dbschema</module>
     <module>cql2pgjson</module>
     <module>cql2pgjson-cli</module>

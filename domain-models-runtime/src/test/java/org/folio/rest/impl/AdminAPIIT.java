@@ -14,8 +14,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.folio.HttpStatus;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.PostgresTesterContainer;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;

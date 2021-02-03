@@ -61,6 +61,7 @@ import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.dbschema.ObjectMapperTool;
+import org.folio.util.PostgresTester;
 
 /**
  * @author shale
@@ -227,15 +228,10 @@ public class PostgresClient {
    *
    * @param embed - whether to use embedded specific defaults
    */
-  public static void setIsEmbedded(boolean embed){
+  public static void setIsEmbedded(boolean embed) {
     if (embed) {
       if (posgresTester == null) {
         posgresTester = new PostgresTesterEmbedded();
-      }
-    } else {
-      if (posgresTester != null) {
-        posgresTester.stop();
-        posgresTester = null;
       }
     }
     embeddedMode = embed;
