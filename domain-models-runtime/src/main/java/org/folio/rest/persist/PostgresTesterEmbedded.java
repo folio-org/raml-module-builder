@@ -12,7 +12,7 @@ import ru.yandex.qatools.embed.postgresql.distribution.Version;
 
 /**
  * This implements testing with EmbeddedPostgres.
- * @deprecated will be removed in next major version.
+ * @deprecated will be removed in next major version; replaced with {@link org.folio.postgres.testing.PostgresTesterContainer}.
  */
 @Deprecated
 class PostgresTesterEmbedded implements PostgresTester {
