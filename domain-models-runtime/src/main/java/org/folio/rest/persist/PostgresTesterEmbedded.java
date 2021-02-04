@@ -1,5 +1,8 @@
 package org.folio.rest.persist;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Arrays;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -7,16 +10,17 @@ import org.folio.util.PostgresTester;
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.distribution.Version;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.Arrays;
-
-public class PostgresTesterEmbedded implements PostgresTester {
+/**
+ * This implements testing with EmbeddedPostgres.
+ * @deprecated will be removed in next major version.
+ */
+@Deprecated
+class PostgresTesterEmbedded implements PostgresTester {
   private static Logger log = LogManager.getLogger(PostgresTesterEmbedded.class);
   private EmbeddedPostgres embeddedPostgres;
   private final int embeddedPort;
 
-  public PostgresTesterEmbedded(int embeddedPort) {
+  PostgresTesterEmbedded(int embeddedPort) {
     this.embeddedPort = embeddedPort;
   }
 
