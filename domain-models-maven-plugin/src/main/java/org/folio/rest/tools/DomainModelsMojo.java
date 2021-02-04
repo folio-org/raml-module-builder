@@ -20,6 +20,9 @@ import org.apache.maven.project.MavenProject;
 import org.folio.rest.tools.plugins.CustomTypeAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
 
+/**
+ * @requiresDependencyResolution runtime
+ */
 @Mojo(name = "java", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class DomainModelsMojo extends AbstractMojo {
 
@@ -77,6 +80,8 @@ public class DomainModelsMojo extends AbstractMojo {
     System.err.println("project.baseDir = " + (project == null ? "" : project.getBasedir()));
     System.err.println("project.name = " + (project == null ? "" : project.getName()));
     System.err.println("project.actifactId = " + (project == null ? "" : project.getArtifactId()));
+    System.err.println("Artifacts: " + project.getArtifacts());
+    System.err.println("Artifacts: " + project.getArtifactMap());
 
     if (ramlDirs != null) {
       System.out.println("ramlDirs.size=" + ramlDirs.length);
@@ -98,9 +103,7 @@ public class DomainModelsMojo extends AbstractMojo {
         generateInterfaces();
         ModuleNameWriter.writeModuleNameClass(project);
       }
-      if (generateClients) {
-        ClientGenerator.generate(project.getBasedir().getAbsolutePath(), true);
-      }
+      ClientGenerator.generate(project.getBasedir().getAbsolutePath(), generateClients);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }

@@ -22,9 +22,6 @@
 
 package org.folio.rest.tools.utils;
 
-import static com.google.common.base.Charsets.US_ASCII;
-import static com.google.common.base.StandardSystemProperty.JAVA_CLASS_PATH;
-import static com.google.common.base.StandardSystemProperty.PATH_SEPARATOR;
 import static java.nio.file.Files.createDirectory;
 import static java.nio.file.Files.createFile;
 import static java.nio.file.Files.createSymbolicLink;
@@ -32,11 +29,6 @@ import static java.nio.file.Files.createTempDirectory;
 import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.*;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Closer;
-import com.google.common.io.Files;
-import com.google.common.io.Resources;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -48,8 +40,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.Permission;
 import java.security.PermissionCollection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -63,13 +59,14 @@ import java.util.jar.Manifest;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import junit.framework.TestCase;
-import org.apache.commons.io.FileUtils;
 import org.folio.rest.tools.utils.ClassPath.ClassInfo;
 import org.folio.rest.tools.utils.ClassPath.ResourceInfo;
 
 /** Functional tests of {@link ClassPath}. */
 public class ClassPathTest extends TestCase {
   private static final Logger log = Logger.getLogger(ClassPathTest.class.getName());
+  private static final String PATH_SEPARATOR = "path.separator";
+  private static final String JAVA_CLASS_PATH = "java.class.path";
 
   public void testClassPathEntries_emptyURLClassLoader_noParent() {
     assertThat(ClassPath.Scanner.getClassPathEntries(new URLClassLoader(new URL[0], null)).keySet())
@@ -230,7 +227,7 @@ public class ClassPathTest extends TestCase {
       ClassPath.DefaultScanner scanner = new ClassPath.DefaultScanner();
       scanner.scan(root.toFile(), loader);
 
-      assertEquals(ImmutableSet.of(new ResourceInfo("some.txt", loader)), scanner.getResources());
+      assertEquals(Collections.singleton(new ResourceInfo("some.txt", loader)), scanner.getResources());
     } finally {
       deleteRecursivelyOrLog(root);
     }
@@ -393,13 +390,12 @@ public class ClassPathTest extends TestCase {
   // Test that ResourceInfo.urls() returns identical content to ClassLoader.getResources()
 
   public void testGetClassPathUrls() throws Exception {
-    String oldPathSeparator = PATH_SEPARATOR.value();
-    String oldClassPath = JAVA_CLASS_PATH.value();
-    System.setProperty(PATH_SEPARATOR.key(), ":");
+    String oldPathSeparator = System.getProperty(PATH_SEPARATOR);
+    String oldClassPath = System.getProperty(JAVA_CLASS_PATH);
+    System.setProperty(PATH_SEPARATOR, ":");
     System.setProperty(
-        JAVA_CLASS_PATH.key(),
-        Joiner.on(":")
-            .join(
+        JAVA_CLASS_PATH,
+        String.join(":",
                 "relative/path/to/some.jar",
                 "/absolute/path/to/some.jar",
                 "relative/path/to/class/root",
@@ -421,8 +417,8 @@ public class ClassPathTest extends TestCase {
 
       assertThat(urls).hasSize(4);
     } finally {
-      System.setProperty(PATH_SEPARATOR.key(), oldPathSeparator);
-      System.setProperty(JAVA_CLASS_PATH.key(), oldClassPath);
+      System.setProperty(PATH_SEPARATOR, oldPathSeparator);
+      System.setProperty(JAVA_CLASS_PATH, oldClassPath);
     }
   }
 
@@ -517,24 +513,20 @@ public class ClassPathTest extends TestCase {
     manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
     manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH, jarFile.getName());
 
-    Closer closer = Closer.create();
-    try {
-      FileOutputStream fileOut = closer.register(new FileOutputStream(jarFile));
-      JarOutputStream jarOut = closer.register(new JarOutputStream(fileOut));
+    try (FileOutputStream fileOut = new FileOutputStream(jarFile);
+      JarOutputStream jarOut = new JarOutputStream(fileOut)) {
       for (String entry : entries) {
         jarOut.putNextEntry(new ZipEntry(entry));
-        Resources.copy(ClassPathTest.class.getResource(entry), jarOut);
-        jarOut.closeEntry();
+        try (InputStream in = ClassPathTest.class.getResource(entry).openStream()) {
+          in.transferTo(jarOut);
+          jarOut.closeEntry();
+        }
       }
-    } catch (Throwable e) {
-      throw closer.rethrow(e);
-    } finally {
-      closer.close();
     }
   }
 
   private static Manifest manifest(String content) throws IOException {
-    InputStream in = new ByteArrayInputStream(content.getBytes(US_ASCII));
+    InputStream in = new ByteArrayInputStream(content.getBytes(StandardCharsets.US_ASCII));
     Manifest manifest = new Manifest();
     manifest.read(in);
     return manifest;
@@ -550,10 +542,10 @@ public class ClassPathTest extends TestCase {
     @Override
     protected void scanDirectory(ClassLoader loader, File root) throws IOException {
       URI base = root.toURI();
-      for (File entry : Files.fileTreeTraverser().preOrderTraversal(root)) {
-        String resourceName = new File(base.relativize(entry.toURI()).getPath()).getPath();
+      Files.walk(root.toPath()).forEachOrdered(entry -> {
+        String resourceName = new File(base.relativize(entry.toUri()).getPath()).getPath();
         resources.add(resourceName);
-      }
+      });
     }
 
     @Override
@@ -566,10 +558,10 @@ public class ClassPathTest extends TestCase {
   }
 
   private static URL makeJarUrlWithName(String name) throws IOException {
-    File fullPath = new File(Files.createTempDir(), name);
-    File jarFile = JarFileFinder.pickAnyJarFile();
+    Path fullPath = Files.createTempDirectory(null).resolve(name);
+    Path jarFile = JarFileFinder.pickAnyJarFile().toPath();
     Files.copy(jarFile, fullPath);
-    return fullPath.toURI().toURL();
+    return fullPath.toUri().toURL();
   }
 
   private static final class JarFileFinder extends ClassPath.Scanner {
@@ -599,9 +591,12 @@ public class ClassPathTest extends TestCase {
     private static final class StopScanningException extends RuntimeException {}
   }
 
-  private static void deleteRecursivelyOrLog(java.nio.file.Path path) {
+  private static void deleteRecursivelyOrLog(Path path) {
     try {
-      FileUtils.forceDelete(path.toFile());
+      Files.walk(path)
+      .map(Path::toFile)
+      .sorted((file1, file2) -> file2.compareTo(file1))
+      .forEachOrdered(File::delete);
     } catch (IOException e) {
       log.log(WARNING, "Failure cleaning up test directory", e);
     }

@@ -84,6 +84,9 @@
             <goals>
               <goal>java</goal>
             </goals>
+            <configuration>
+              <generateClients>true</generateClients>
+            </configuration>
           </execution>
         </executions>
       </plugin>

@@ -2,11 +2,8 @@ package org.folio.rest.tools;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
-
+import java.nio.file.Files;
 import java.util.regex.Pattern;
-import org.apache.commons.io.FileUtils;
 import org.folio.util.ResourceUtil;
 import org.junit.After;
 import org.junit.Assert;
@@ -25,14 +22,14 @@ public class ClientGeneratorTest {
     System.setProperty("project.basedir", ".");
     sourceDir = System.getProperties().getProperty("project.basedir")
       + ClientGenerator.PATH_TO_GENERATE_TO
-      + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
+      + ClientGenerator.CLIENT_GEN_PACKAGE.replace('.', '/');
   }
 
   @After
   public void cleanUp() throws IOException {
     System.clearProperty("client.generate");
     System.clearProperty("project.basedir");
-    FileUtils.deleteDirectory(new File(sourceDir));
+    ClientGenerator.makeCleanDir(sourceDir);
   }
 
   @Test
@@ -44,7 +41,7 @@ public class ClientGeneratorTest {
     // IDEs always removes trailing spaces from edited files, but java code generator adds then,
     // so we need to remove them before the comparison
 
-    String actual = removeTrailingSpaces(FileUtils.readFileToString(expectedClient, StandardCharsets.UTF_8));
+    String actual = removeTrailingSpaces(Files.readString(expectedClient.toPath()));
 
     String expected = removeTrailingSpaces(ResourceUtil.asString("/clients/TestClient.txt", this.getClass()));
 

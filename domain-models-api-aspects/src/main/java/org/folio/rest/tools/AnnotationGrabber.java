@@ -29,6 +29,7 @@ public class AnnotationGrabber {
   public static final String  DELIMITER              = "&!!&";
   public static final String  PATH_MAPPING_FILE      = "API_PATH_MAPPINGS";
   public static final String  PATH_ANNOTATION        = Path.class.getName();
+  public static final String  INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
   public static final String  CLASS_NAME             = "class";
   public static final String  INTERFACE_NAME         = "interface";
   public static final String  FUNCTION_NAME          = "function";
@@ -59,7 +60,7 @@ public class AnnotationGrabber {
     JsonObject globalClassMapping = new JsonObject();
 
     // get classes in generated package
-    Collection<Class<?>> interfaces = findTopLevelInterfacesInPackage(RTFConsts.INTERFACE_PACKAGE);
+    Collection<Class<?>> interfaces = findTopLevelInterfacesInPackage(INTERFACE_PACKAGE);
 
     // loop over all the classes from the package
     interfaces.forEach(intface -> {

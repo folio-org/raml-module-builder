@@ -50,7 +50,6 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>30.0-jre</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -441,9 +440,10 @@
               <artifactSet />
               <filters>
                 <filter>
-                  <!-- exclude ModuleName, domain-models-maven-plugin will create it -->
+                  <!-- exclude what domain-models-maven-plugin will recreate based on module raml data -->
                   <artifact>org.folio:domain-models-api-interfaces</artifact>
                   <excludes>
+                    <exclude>org/folio/rest/jaxrs/MappedClassesConfig.class</exclude>
                     <exclude>org/folio/rest/tools/utils/ModuleName.class</exclude>
                   </excludes>
                 </filter>

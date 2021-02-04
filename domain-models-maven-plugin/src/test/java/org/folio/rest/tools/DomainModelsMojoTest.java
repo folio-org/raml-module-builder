@@ -6,11 +6,6 @@ import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class DomainModelsMojoTest implements WithAssertions {
-  @Test
-  void noop() {
-    new DomainModelsMojo()
-    .execute();
-  }
 
   @Test
   void generateInterfaces() {
