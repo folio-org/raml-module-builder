@@ -12,14 +12,13 @@
       WHEN 'UPDATE' THEN
         IF NEW.jsonb->'${ol_version}' IS DISTINCT FROM OLD.jsonb->'${ol_version}' THEN
           <#if table.withOptimisticLocking.name() == "FAIL">
-            <#assign ol_notice_level = "EXCEPTION">
+            RAISE 'Cannot update record % because it has been changed (optimistic locking): '
           <#else>
-            <#assign ol_notice_level = "WARNING">
+            RAISE NOTICE 'Ignoring optimistic locking conflict while overwriting changed record %: '
           </#if>
-          RAISE ${ol_notice_level} 'Cannot update record % because it has been changed: '
-              'Stored ${ol_version} is %, ${ol_version} of request is %',
-              OLD.id, OLD.jsonb->'${ol_version}', NEW.jsonb->'${ol_version}' 
-              USING ERRCODE = '23F09';
+                'Stored ${ol_version} is %, ${ol_version} of request is %',
+                OLD.id, OLD.jsonb->'${ol_version}', NEW.jsonb->'${ol_version}' 
+                USING ERRCODE = '23F09', TABLE = '${table.tableName}', SCHEMA = '${myuniversity}_${mymodule}';
         END IF;
         NEW.jsonb = jsonb_set(NEW.jsonb, '{${ol_version}}',
             to_jsonb(COALESCE((OLD.jsonb->>'${ol_version}')::numeric + 1, 1)));

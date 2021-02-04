@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.in;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -408,7 +409,7 @@ public class TenantAPIIT {
 
   @Test
   public void getTenantByOperationIdNotFound(TestContext context) {
-    String id = tenantPost(context);    // create tenant
+    tenantPost(context);    // create tenant
 
     Async async = context.async();
     vertx.runOnContext(run -> {
@@ -424,11 +425,28 @@ public class TenantAPIIT {
   }
 
   @Test
+  public void getTenantByOperationIdInvalidUUID(TestContext context) {
+    tenantPost(context);    // create tenant
+
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      TenantAPI tenantAPI = new TenantAPI();
+      String invalidUUID = "1234";
+      tenantAPI.getTenantByOperationId(invalidUUID, 0, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(400));
+        assertThat((String) result.getEntity(), is("Invalid UUID string: " + invalidUUID));
+        async.complete();
+      }), Vertx.currentContext());
+    });
+    async.await();
+  }
+
+  @Test
   public void getTenantByOperationTenantNotFound(TestContext context) {
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.getTenantByOperationId("1234", 0, okapiHeaders, onSuccess(context, result -> {
+      tenantAPI.getTenantByOperationId(UUID.randomUUID().toString(), 0, okapiHeaders, onSuccess(context, result -> {
         assertThat(result.getStatus(), is(404));
         assertThat((String) result.getEntity(), is("Tenant not found folio_shared"));
         async.complete();
@@ -454,7 +472,7 @@ public class TenantAPIIT {
 
   @Test
   public void deleteTenantByOperationIdNotFound(TestContext context) {
-    String id = tenantPost(context);    // create tenant
+    tenantPost(context);    // create tenant
 
     Async async = context.async();
     vertx.runOnContext(run -> {
@@ -471,13 +489,26 @@ public class TenantAPIIT {
   }
 
   @Test
-  public void deleteTenantByOperationTenantNotFound(TestContext context) {
-    tenantDeleteAsync(context);
-
+  public void deleteTenantByOperationIdOK(TestContext context) {
+    String id = tenantPost(context);    // create tenant
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.deleteTenantByOperationId("foo", okapiHeaders, onSuccess(context, result -> {
+      tenantAPI.deleteTenantByOperationId(id, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(204));
+        async.complete();
+      }), Vertx.currentContext());
+    });
+    async.await();
+  }
+
+  @Test
+  public void deleteTenantByOperationIdTenantNotFound(TestContext context) {
+    tenantDeleteAsync(context);
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      TenantAPI tenantAPI = new TenantAPI();
+      tenantAPI.deleteTenantByOperationId(UUID.randomUUID().toString(), okapiHeaders, onSuccess(context, result -> {
         assertThat(result.getStatus(), is(404));
         String msg = (String) result.getEntity();
         assertThat(msg, is("Tenant not found folio_shared"));
@@ -488,18 +519,17 @@ public class TenantAPIIT {
   }
 
   @Test
-  public void deleteTenantByOperationIdFound(TestContext context) {
-    String id = tenantPost(context);    // create tenant
-
+  public void deleteTenantByOperationIdInvalidUUID(TestContext context) {
     Async async = context.async();
-    vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.deleteTenantByOperationId(id, okapiHeaders, onSuccess(context, result -> {
-        assertThat(result.getStatus(), is(204));
+      String invalidUUID = "1234";
+      tenantAPI.deleteTenantByOperationId(invalidUUID, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(400));
+        String msg = (String) result.getEntity();
+        assertThat(msg, is("Invalid UUID string: " + invalidUUID));
         async.complete();
       }), Vertx.currentContext());
-    });
-    async.awaitSuccess();
+    async.await();
   }
 
   @Test
