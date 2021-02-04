@@ -20,8 +20,10 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -45,6 +47,7 @@ public class ApiTestBase {
       return;
     }
 
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     DeploymentOptions deploymentOptions = new DeploymentOptions()
         .setConfig(new JsonObject().put("http.port", RestAssured.port));
 
@@ -66,14 +69,17 @@ public class ApiTestBase {
         header("x-okapi-tenant", "testlib").
         contentType(ContentType.JSON);
 
-    // delete tenant (schema, tables, ...) if it exists from previous tests, ignore errors.
-    given(r).
-    when().delete("/_/tenant").
-    then();
+    // delete tenant (schema, tables, ...) if it exists from previous tests
+    TenantAttributes ta = new TenantAttributes().withPurge(true);
+    given(r).header("x-okapi-url-to", "http://localhost:" + port).
+        contentType(ContentType.JSON)
+        .body(Json.encode(ta))
+        .when().post("/_/tenant")
+        .then().statusCode(204);
 
     List<Parameter> list = new LinkedList<>();
     list.add(new Parameter().withKey("loadReference").withValue("true"));
-    TenantAttributes ta = new TenantAttributes().withModuleTo("mod-api-1.0.0").withParameters(list);
+    ta = new TenantAttributes().withModuleTo("mod-api-1.0.0").withParameters(list);
 
     // create tenant (schema, tables, ...)
     Response response = given(r).header("x-okapi-url-to", "http://localhost:" + port).

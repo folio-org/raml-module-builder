@@ -74,6 +74,8 @@ public class DemoRamlRestTest {
     // some tests (withoutParameter, withoutYearParameter) fail under other locales like Locale.GERMANY
     Locale.setDefault(Locale.US);
 
+    // do not use PostgresClient.setPostgresTester here so we check that PostgresTesterEmbedded is working
+
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
     RestAssured.port = port;

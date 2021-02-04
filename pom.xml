@@ -8,6 +8,7 @@
   <modules>
     <module>testing</module>
     <module>util</module>
+    <module>postgres-testing</module>
     <module>dbschema</module>
     <module>cql2pgjson</module>
     <module>cql2pgjson-cli</module>
@@ -183,7 +184,13 @@
         <artifactId>commons-collections4</artifactId>
         <version>4.1</version>
       </dependency>
-
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>1.15.1</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 

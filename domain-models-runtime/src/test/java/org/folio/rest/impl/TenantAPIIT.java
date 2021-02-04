@@ -16,6 +16,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 
 import org.folio.dbschema.Schema;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
@@ -52,6 +53,7 @@ public class TenantAPIIT {
   @BeforeClass
   public static void setUpClass() {
     vertx = VertxUtils.getVertxWithExceptionHandler();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
   @AfterClass
