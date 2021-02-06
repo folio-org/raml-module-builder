@@ -238,7 +238,7 @@ These are also displayed as local [API documentation](#documentation-of-the-apis
 Now run the module in standalone mode:
 
 ```
-$ java -jar target/mod-notify-fat.jar embed_postgres=true
+$ java -jar target/mod-notify-fat.jar
 ```
 
 Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
@@ -249,16 +249,16 @@ we will get your local development server running and populated with test data.
 
 ## Command-line options
 
-- `-Dhttp.port=8080` (Optional -- defaults to 8081)
+- `-Dhttp.port=8080` Optional -- defaults to 8081
 
-- `-Ddebug_log_package=*` (Optional -- Set log level to debug for all packages.
+- `-Ddebug_log_package=*` Optional -- Set log level to debug for all packages.
 Or use `org.folio.rest.*` for all classes within a specific package,
-or `org.folio.rest.RestVerticle` for a specific class.)
+or `org.folio.rest.RestVerticle` for a specific class.
 
-- `embed_postgres=true` (Optional -- enforces starting an embedded postgreSQL, defaults to false)
+- `embed_postgres=true` Optional -- enforces starting an embedded postgreSQL
 
-- `db_connection=[path]` (Optional -- path to an external JSON config file with
-  connection parameters to a PostgreSQL DB)
+- `db_connection=[path]` Optional -- path to an external JSON config file with
+  connection parameters to a PostgreSQL DB
 
   - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
     "username":"postgres","password":"mysecretpassword", "database":"postgres",
@@ -348,12 +348,20 @@ Adjust the POM file to match your project, e.g. artifactID, version, etc.
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>29.0.0</version>
+      <version>32.3.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>postgres-testing</artifactId>
+      <version>32.3.0</version>
+      <scope>test</scope>
     </dependency>
     ...
     ...
   </dependencies>
 ```
+
+(postgres-testing is available in version 32.3.0 and later)
 
 ### Step 3: Add the plugins to your pom.xml
 
@@ -532,8 +540,15 @@ public class InitAPIs implements InitAPI {
 
 ## Adding code to run periodically
 
+This API can be used if your module *instance* needs to perform ongoing tasks.
+Consider using Okapi's timer facility if the task to be performed is "per-tenant"
+and only needs to be executed on one instance and not all instances of the module.
+If the task performs operations on persistent storage, that is typically a sign
+that it should be using the timer facility.
+
 It is possible to add custom code that will run periodically. For example,
 to ongoingly check status of something in the system and act upon that.
+
 Need to implement the PeriodicAPI interface:
 
 ```java
@@ -572,7 +587,6 @@ public class PeriodicAPIImpl implements PeriodicAPI {
 ```
 
 There can be multiple implementations of the periodic hook, all will be called by the RMB framework.
-
 
 ## Adding a hook to run immediately after verticle deployment
 
