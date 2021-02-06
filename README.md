@@ -544,7 +544,7 @@ This API can be used if your module *instance* needs to perform ongoing tasks.
 Consider using Okapi's timer facility if the task to be performed is "per-tenant"
 and only needs to be executed on one instance and not all instances of the module.
 If the task performs operations on persistent storage, that is typically a sign
-that it should be using the timer facility.
+that it should be using the Okapi timer facility (not was is presented in this section).
 
 It is possible to add custom code that will run periodically. For example,
 to ongoingly check status of something in the system and act upon that.
