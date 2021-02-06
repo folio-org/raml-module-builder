@@ -423,7 +423,7 @@ public class ClassPath {
         }
       }
 
-      return new LinkedHashMap<File, ClassLoader>(entries);
+      return new LinkedHashMap<>(entries);
     }
 
     private static List<URL> getClassLoaderUrls(ClassLoader classloader) {
