@@ -49,6 +49,7 @@ import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.resource.DomainModelConsts;
+import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.codecs.PojoEventBusCodec;
@@ -189,7 +190,7 @@ public class RestVerticle extends AbstractVerticle {
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
 
     // maps paths found in raml to the generated functions to route to when the paths are requested
-    MappedClasses mappedURLs = new MappedClasses();
+    MappedClasses mappedURLs = populateConfig();
 
     // set of exposed urls as declared in the raml
     Set<String> urlPaths = mappedURLs.getAvailURLs();
@@ -942,6 +943,36 @@ public class RestVerticle extends AbstractVerticle {
       log.error(e.getMessage(), e);
     }
     return new JsonObject();
+  }
+
+  private MappedClasses populateConfig() {
+    MappedClasses mappedURLs = new MappedClasses();
+    JsonObject jObjClasses = new JsonObject();
+    try {
+      jObjClasses.mergeIn(AnnotationGrabber.generateMappings(null));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+    }
+    // loadConfig(JSON_URL_MAPPINGS);
+    Set<String> classURLs = jObjClasses.fieldNames();
+    classURLs.forEach(classURL -> {
+      log.info(classURL);
+      JsonObject jObjMethods = jObjClasses.getJsonObject(classURL);
+      Set<String> methodURLs = jObjMethods.fieldNames();
+      jObjMethods.fieldNames();
+      methodURLs.forEach(methodURL -> {
+        Object val = jObjMethods.getValue(methodURL);
+        if (val instanceof JsonArray) {
+          ((JsonArray) val).forEach(entry -> {
+            String pathRegex = ((JsonObject) entry).getString("regex2method");
+            ((JsonObject) entry).put(AnnotationGrabber.CLASS_NAME, jObjMethods.getString(AnnotationGrabber.CLASS_NAME));
+            ((JsonObject) entry).put(AnnotationGrabber.INTERFACE_NAME, jObjMethods.getString(AnnotationGrabber.INTERFACE_NAME));
+            mappedURLs.addPath(pathRegex, (JsonObject) entry);
+          });
+        }
+      });
+    });
+    return mappedURLs;
   }
 
   @Override

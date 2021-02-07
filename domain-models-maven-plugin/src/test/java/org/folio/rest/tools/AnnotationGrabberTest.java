@@ -13,7 +13,7 @@ public class AnnotationGrabberTest {
 
   @Test
   public void generateMappings() throws Exception {
-    JsonObject mappings = AnnotationGrabber.generateMappings(true);
+    JsonObject mappings = AnnotationGrabber.generateMappings(null);
     log.info(mappings.encodePrettily());
     JsonObject unittests = mappings.getJsonObject("^unittests");
     assertThat(unittests.getString("class"), is("org.folio.rest.jaxrs.resource.TestResource"));

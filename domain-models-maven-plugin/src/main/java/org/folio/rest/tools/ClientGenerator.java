@@ -51,7 +51,7 @@ import javax.mail.internet.MimeMultipart;
 /**
  *
  */
-public class ClientGenerator {
+public class ClientGenerator implements ClientGrabber {
 
   public static final String  CLASS_NAME             = "class";
   public static final String  INTERFACE_NAME         = "interface";
@@ -79,7 +79,7 @@ public class ClientGenerator {
   private static String basedir;
 
   /* Creating java code model classes */
-  JCodeModel jcodeModel = new JCodeModel();
+  JCodeModel jcodeModel = null;
 
   /* for creating the class per interface */
   JDefinedClass jc = null;
@@ -108,7 +108,8 @@ public class ClientGenerator {
         + ClientGenerator.PATH_TO_GENERATE_TO
         + CLIENT_GEN_PACKAGE.replace('.', '/');
     makeCleanDir(packageDir);
-    AnnotationGrabber.generateMappings(generateClient);
+    ClientGrabber clientGrabber = new ClientGenerator();
+    AnnotationGrabber.generateMappings(clientGrabber);
   }
 
   /**
@@ -256,7 +257,9 @@ public class ClientGenerator {
     return method;
   }
 
+  @Override
   public void generateClassMeta(String className) {
+    jcodeModel = new JCodeModel();
 
     /* Adding packages here */
     JPackage jp = jcodeModel._package(CLIENT_GEN_PACKAGE);
@@ -321,6 +324,7 @@ public class ClientGenerator {
     }
   }
 
+  @Override
   public void generateMethodMeta(String methodName, JsonObject params, String url,
       String httpVerb, JsonArray contentType, JsonArray accepts){
 
@@ -635,6 +639,7 @@ public class ClientGenerator {
     return false;
   }
 
+  @Override
   public void generateClass(JsonObject classSpecificMapping) throws IOException {
     jcodeModel.build(new File(basedir + PATH_TO_GENERATE_TO));
   }

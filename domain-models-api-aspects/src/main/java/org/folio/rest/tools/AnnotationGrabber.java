@@ -56,7 +56,7 @@ public class AnnotationGrabber {
   // ^http.*?\/\/.*?\/apis\/patrons\/?(.+?)*
   // ^http.*?\/\/.*?\/apis\/([^\/]+)\/([^\/]+)(\?.*)
 
-  public static JsonObject generateMappings(boolean generateClient) throws IOException {
+  public static JsonObject generateMappings(ClientGrabber clientGrabber) throws IOException {
     JsonObject globalClassMapping = new JsonObject();
 
     // get classes in generated package
@@ -65,8 +65,6 @@ public class AnnotationGrabber {
     // loop over all the classes from the package
     interfaces.forEach(intface -> {
       try {
-
-        ClientGenerator cGen = new ClientGenerator();
 
         // ----------------- class level annotations -----------------------//
         // -----------------------------------------------------------------//
@@ -92,8 +90,8 @@ public class AnnotationGrabber {
             Object value = method.invoke(annotations[i], (Object[]) null);
             if (type.isAssignableFrom(Path.class)) {
               classSpecificMapping.put(CLASS_URL, "^" + value);
-              if (generateClient){
-                cGen.generateClassMeta(intface.getName());
+              if (clientGrabber != null) {
+                clientGrabber.generateClassMeta(intface.getName());
               }
             }
           }
@@ -167,8 +165,8 @@ public class AnnotationGrabber {
             methodObj.put(METHOD_URL, classSpecificMapping.getString(CLASS_URL));
             methodObj.put(REGEX_URL, getRegexForPath(classSpecificMapping.getString(CLASS_URL)));
           }
-          if (generateClient) {
-            cGen.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
+          if (clientGrabber != null) {
+            clientGrabber.generateMethodMeta(methodObj.getString(FUNCTION_NAME),
               methodObj.getJsonObject(METHOD_PARAMS),
               methodObj.getString(METHOD_URL),
               methodObj.getString(HTTP_METHOD),
@@ -188,8 +186,8 @@ public class AnnotationGrabber {
         }
         globalClassMapping.put(classSpecificMapping.getString(CLASS_URL), classSpecificMapping);
 
-        if (generateClient){
-          cGen.generateClass(classSpecificMapping);
+        if (clientGrabber != null) {
+          clientGrabber.generateClass(classSpecificMapping);
         }
       } catch (Exception e) {
         log.log(Level.SEVERE, e.getMessage(), e);
