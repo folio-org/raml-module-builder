@@ -44,7 +44,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
 import org.folio.okapi.common.logging.FolioLoggingContext;
 import org.folio.rest.annotations.Stream;
-import org.folio.rest.jaxrs.MappedClassesConfig;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -190,7 +189,7 @@ public class RestVerticle extends AbstractVerticle {
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
 
     // maps paths found in raml to the generated functions to route to when the paths are requested
-    MappedClasses mappedURLs = MappedClassesConfig.get();
+    MappedClasses mappedURLs = new MappedClasses();
 
     // set of exposed urls as declared in the raml
     Set<String> urlPaths = mappedURLs.getAvailURLs();
